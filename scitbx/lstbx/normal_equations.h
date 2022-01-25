@@ -411,43 +411,49 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
     }
 
 #if defined(_OPENMP)
-    void add_residuals_omp(const int n,
-      af::const_ref<scalar_t> const &yc,
-      af::const_ref<scalar_t> const &yo,
-      af::const_ref<scalar_t> const &w)
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
     {
       n_data += n;
-      FloatType yo2 = 0;
-      FloatType yodyc = 0;
-      FloatType yc2 = 0;
-#pragma omp parallel for reduction(+:yo2,yodyc,yc2)
-      for (int i = 0; i < n; i++) {
-        yo2 += w[i] * yo[i] * yo[i];
-        yodyc += w[i] * yo[i] * yc[i];
-        yc2 += w[i] * yc[i] * yc[i];
+      scalar_t temp1;
+      scalar_t temp2 = 0;
+      scalar_t temp3 = 0;
+      scalar_t temp4 = 0;
+#pragma omp parallel for reduction(+:temp2, temp3, temp4) num_threads(threads) private(temp1)
+      for (int i = start; i < start + n; i++) {
+        temp1 = w[i] * yo[i];
+        temp2 += temp1 * yo[i];
+        temp3 += temp1 * yc[i];
+        temp4 += w[i] * yc[i] * yc[i];
       }
-      yo_sq += yo2;
-      yo_dot_yc += yodyc;
-      yc_sq += yc2;
+      yo_sq += temp2;
+      yo_dot_yc += temp3;
+      yc_sq += temp4;
     }
 
-    void add_residuals_omp(scalar_t n,
-      af::const_ref<scalar_t> const &yc,
-      af::const_ref<scalar_t> const &yo)
+    void add_residuals_omp(const int& n,
+      const int& start,
+      const int& threads,
+      af::const_ref<scalar_t> const& yc,
+      af::const_ref<scalar_t> const& yo)
     {
       n_data += n;
-      FloatType yo2 = 0;
-      FloatType yodyc = 0;
-      FloatType yc2 = 0;
-#pragma omp parallel for reduction(+:yo2,yodyc,yc2)
-      for (int i = 0; i < int(n); i++) {
-        yo2 += yo[i] * yo[i];
-        yodyc += yo[i] * yc[i];
-        yc2 += yc[i] * yc[i];
+      scalar_t temp1 = 0;
+      scalar_t temp2 = 0;
+      scalar_t temp3 = 0;
+#pragma omp parallel for reduction(+:temp1, temp2, temp3) num_threads(threads)
+      for (int i = start; i < start + n; i++) {
+        temp1 += yo[i] * yo[i];
+        temp2 += yo[i] * yc[i];
+        temp3 += yc[i] * yc[i];
       }
-      yo_sq += yo2;
-      yo_dot_yc += yodyc;
-      yc_sq += yc2;
+      yo_sq += temp1;
+      yo_dot_yc += temp2;
+      yc_sq += temp3;
     }
 #endif
 
@@ -495,81 +501,123 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
 
 #if defined(_OPENMP)
     /// Add many equations in one go using OpenMP
-    void add_equations_omp(const int n_ref, const int n_par, const int n_threads,
-      af::const_ref<scalar_t> const &yc,
-      std::vector<FloatType> const &jacobian_yc,
-      af::const_ref<scalar_t> const &yo,
-      af::const_ref<scalar_t> const &w)
+    void add_equations_omp(const int& n_ref,
+      const int& n_par,
+      const int& chunk_size,
+      const int& start,
+      const int& threads,
+      std::vector<FloatType>& matrix,          //
+      std::vector<FloatType>& yo_dot_grad_yc_, // These are arrays passed as locals for each thread to reduce overhead of generating them for each chunk
+      std::vector<FloatType>& yc_dot_grad_yc_, //
+      af::const_ref<scalar_t> const& yc,
+      std::vector<FloatType> const& jacobian_yc,
+      af::const_ref<scalar_t> const& yo,
+      af::const_ref<scalar_t> const& w)
     {
       SCITBX_ASSERT(yc.size() == n_ref
-        && (!w.size() || yc.size() == w.size()))
-        (yc.size())(n_ref)(w.size());
-      SCITBX_ASSERT(jacobian_yc.size() == n_ref*n_parameters())
-        (jacobian_yc.size())(n_ref*n_parameters());
+        && (!w.size() || yc.size() == w.size())
+        && yo.size() == n_ref)
+        (yc.size())(n_ref)(w.size())(yo.size());
+      SCITBX_ASSERT(jacobian_yc.size() == chunk_size * n_par)
+        (jacobian_yc.size())(chunk_size)(n_par);
       SCITBX_ASSERT(!finalised());
       FloatType* m = symmetric_matrix_owning_ref_t(grad_yc_dot_grad_yc).array().begin();
-      const int limit = n_par * (n_par + 1) / 2;
+      const int limit = matrix.size() / threads;
+      const int stepsize = 30;
       if (w.size()) {
-        add_residuals_omp(n_ref, yc, yo, w);
-#pragma omp parallel num_threads(n_threads)
+        n_data += chunk_size;
+        FloatType temp2 = 0;
+        FloatType temp3 = 0;
+        FloatType temp4 = 0;
+#pragma omp parallel num_threads(threads) shared(temp2,temp3,temp4)
         {
-          std::vector<FloatType> matrix(limit),
-            yo_dot_grad_yc_(n_par), yc_dot_grad_yc_(n_par);
-          for (int i = 0; i < n_ref; ++i) {
-            const double* g_yc_loc = &(jacobian_yc[i*n_par]);
+          FloatType temp1;
+          const int thread = omp_get_thread_num();
+          FloatType* l_matrix = &(matrix[thread * limit]);        //
+          FloatType* l_ogc = &(yo_dot_grad_yc_[thread * n_par]);  // Take just the piece of the given array that is required for this thread
+          FloatType* l_cgc = &(yc_dot_grad_yc_[thread * n_par]);  //
+#pragma omp for reduction(+:temp2, temp3, temp4)
+          for (int i = start; i < start + chunk_size; i++) {
+            temp1 = w[i] * yo[i];
+            temp2 += temp1 * yo[i];
+            temp3 += temp1 * yc[i];
+            temp4 += w[i] * yc[i] * yc[i];
+          }
+#pragma omp single
+          {
+            yo_sq += temp2;
+            yo_dot_yc += temp3;
+            yc_sq += temp4;
+          }
+          for (int i = start; i < start + chunk_size; ++i) {
+            const FloatType* g_yc_loc = &(jacobian_yc[(i - start) * n_par]);
+            // Doing this backwards apparently increases data locality and outperforms forwards
 #pragma omp for nowait schedule(static,1)
-            for (int x = 0; x < n_par; ++x) {
-              if (g_yc_loc[x] != 0.0) {
-                FloatType alpha_x = w[i] * g_yc_loc[x];
-                yo_dot_grad_yc_[x] += alpha_x * yo[i];
-                yc_dot_grad_yc_[x] += alpha_x * yc[i];
-                int run = x * (n_par - 1) - x * (x - 1) / 2;
-                for (int y = x; y < n_par; y++) {
-                  matrix[run + y] += alpha_x * g_yc_loc[y];
-                }
+            for (int x = n_par - 1; x >= 0; x--) {
+              FloatType alpha_x = w[i] * g_yc_loc[x];
+              l_ogc[x] += alpha_x * yo[i];
+              l_cgc[x] += alpha_x * yc[i];
+              int run = x * (n_par - 1) - x * (x - 1) / 2;
+              for (int y = n_par - 1; y >= x; y--) {
+                l_matrix[run + y] += alpha_x * g_yc_loc[y];
               }
             }
           }
 #pragma omp critical
           {
             for (int i = 0; i < limit; i++) {
-              m[i] += matrix[i];
+              m[i] += l_matrix[i];
             }
             for (int i = 0; i < n_par; i++) {
-              yo_dot_grad_yc[i] += yo_dot_grad_yc_[i];
-              yc_dot_grad_yc[i] += yc_dot_grad_yc_[i];
+              yo_dot_grad_yc[i] += l_ogc[i];
+              yc_dot_grad_yc[i] += l_cgc[i];
             }
           }
         }
       }
       else {
-        add_residuals_omp(n_ref, yc, yo);
-#pragma omp parallel num_threads(n_threads)
+        n_data += chunk_size;
+        scalar_t temp2 = 0;
+        scalar_t temp3 = 0;
+        scalar_t temp4 = 0;
+#pragma omp parallel num_threads(threads) shared(temp2,temp3,temp4)
         {
-          std::vector<FloatType> matrix(limit),
-            yo_dot_grad_yc_(n_par), yc_dot_grad_yc_(n_par);
-          for (int i = 0; i < n_ref; ++i) {
-            const double* g_yc_loc = &(jacobian_yc[i*n_par]);
+          const int thread = omp_get_thread_num();
+          FloatType* l_matrix = &(matrix[thread * limit]);        //
+          FloatType* l_ogc = &(yo_dot_grad_yc_[thread * n_par]);  // Take just the piece of the given array that is required for this thread
+          FloatType* l_cgc = &(yc_dot_grad_yc_[thread * n_par]);  //
+#pragma omp for reduction(+:temp2, temp3, temp4)
+          for (int i = start; i < start + chunk_size; i++) {
+            temp2 += yo[i] * yo[i];
+            temp3 += yo[i] * yc[i];
+            temp4 += w[i] * yc[i] * yc[i];
+          }
+#pragma omp critical
+          {
+            yo_sq += temp2;
+            yo_dot_yc += temp3;
+            yc_sq += temp4;
+          }
+          for (int i = start; i < start + chunk_size; ++i) {
+            const double* g_yc_loc = &(jacobian_yc[(i - start) * n_par]);
 #pragma omp for nowait schedule(static,1)
-            for (int x = 0; x < n_par; ++x) {
-              if (g_yc_loc[x] != 0.0) {
-                yo_dot_grad_yc_[x] += g_yc_loc[x] * yo[i];
-                yc_dot_grad_yc_[x] += g_yc_loc[x] * yc[i];
-                int run = x * (n_par - 1) - x * (x - 1) / 2;
-                for (int y = x; y < n_par; y++) {
-                  matrix[run + y] += g_yc_loc[x] * g_yc_loc[y];
-                }
+            for (int x = n_par - 1; x >= 0; ++x) {
+              l_ogc[x] += g_yc_loc[x] * yo[i];
+              l_cgc[x] += g_yc_loc[x] * yc[i];
+              int run = x * (n_par - 1) - x * (x - 1) / 2;
+              for (int y = n_par - 1; y >= 0; y++) {
+                l_matrix[run + y] += g_yc_loc[x] * g_yc_loc[y];
               }
             }
           }
 #pragma omp critical
           {
             for (int i = 0; i < limit; i++) {
-              m[i] += matrix[i];
+              m[i] += l_matrix[i];
             }
             for (int i = 0; i < n_par; i++) {
-              yo_dot_grad_yc[i] += yo_dot_grad_yc_[i];
-              yc_dot_grad_yc[i] += yc_dot_grad_yc_[i];
+              yo_dot_grad_yc[i] += l_ogc[i];
+              yc_dot_grad_yc[i] += l_cgc[i];
             }
           }
         }

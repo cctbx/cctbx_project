@@ -27,6 +27,7 @@ struct accumulate_reflection_chunk_omp {
   af::ref<FloatType> observables;
   af::ref<FloatType> weights;
   af::versa<FloatType, af::c_grid<2> >& design_matrix;
+  int max_memory;
 
   accumulate_reflection_chunk_omp(
     boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
@@ -43,7 +44,8 @@ struct accumulate_reflection_chunk_omp {
     af::ref<std::complex<FloatType> > f_calc,
     af::ref<FloatType> observables,
     af::ref<FloatType> weights,
-    af::versa<FloatType, af::c_grid<2> >& design_matrix)
+    af::versa<FloatType, af::c_grid<2> >& design_matrix,
+    int &max_memory)
     : normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
     reflections(reflections), f_mask(f_mask), twp(twp),
     weighting_scheme(weighting_scheme),
@@ -53,100 +55,176 @@ struct accumulate_reflection_chunk_omp {
     exti(exti),
     objective_only(objective_only), compute_grad(!objective_only),
     f_calc(f_calc), observables(observables), weights(weights),
-    design_matrix(design_matrix)
+    design_matrix(design_matrix), max_memory(max_memory)
   {}
 
   void operator()() {
     try {
       const int n = reflections.size();
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
-      const int threads = parent_t::get_available_threads();
-      std::vector<FloatType> gradients;
+      const int threads = 2*parent_t::get_available_threads();
+      //const int threads = 2;
+      bool error_flag = false;
+      std::string error_string;
+      std::vector<FloatType> gradients, matrix, yo_dot_grad_yc_, yc_dot_grad_yc_;
       boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
       f_calc_threads.resize(threads);
       for (int i = 0; i < threads; i++) {
         f_calc_threads[i] = f_calc_function.fork();
       }
-      if (compute_grad && !build_design_matrix) {
-        gradients.resize(n*n_rows);
+      const FloatType temp_memory = threads * ((n_rows * (n_rows + 1) / 2) + 3 * n_rows) * sizeof(FloatType) / 1048576.0;
+      const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
+      int size = n;
+      FloatType req_mem = temp_memory + size * mem_per_size;
+      while (req_mem > max_memory) {
+        size -= threads;
+        req_mem -= mem_per_size * threads;
+        if (size >= n) {
+          break;
+        }
+      }
+      matrix.resize(threads * (n_rows * (n_rows + 1) / 2));
+      yo_dot_grad_yc_.resize(threads * n_rows);
+      yc_dot_grad_yc_.resize(threads * n_rows);
+      if (compute_grad && !build_design_matrix && size < n) {
+        gradients.resize(size * n_rows);
       }
       twinning_processor<FloatType> twp(reflections, f_mask, compute_grad,
         jacobian_transpose_matching_grad_fc);
+      for (int i_h = 0; i_h * size < n; i_h++) {
+        const int start = i_h * size;
+        //check whetehr last chunk is smaller
+        if (start + size >= n) {
+          size = n - start;
+          if (compute_grad && !build_design_matrix) {
+            gradients.resize(size * n_rows);
+          }
+        }
 #pragma omp parallel num_threads(threads)
-      {
-        /* Make a gradient vector for each thread.
-        Must pre-allocate or Jt.G causes a crash
-        */
-        af::shared<FloatType> gradient(n_rows);
-        const int thread = omp_get_thread_num();
-#pragma omp for schedule(static,1)
-        for (int i_h = 0; i_h < n; ++i_h) {
-          miller::index<> const& h = reflections.index(i_h);
-          if (f_mask.size()) {
-            f_calc_threads[thread]->compute(h, f_mask[i_h], compute_grad);
+        {
+#pragma omp for nowait
+          for (int dummy = 0; dummy < 3; dummy++) {
+            if (dummy == 0) {
+              std::fill(matrix.begin(), matrix.end(), 0);
+            }
+            else if (dummy == 1) {
+              std::fill(yo_dot_grad_yc_.begin(), yo_dot_grad_yc_.end(), 0);
+            }
+            else if (dummy == 2) {
+              std::fill(yc_dot_grad_yc_.begin(), yc_dot_grad_yc_.end(), 0);
+            }
           }
-          else {
-            f_calc_threads[thread]->compute(h, boost::none, compute_grad);
+          /* Make a gradient vector for each thread
+             Must pre-allocate or Jt.G causes a crash
+          */
+          af::shared<FloatType> gradient(n_rows);
+          const int thread = omp_get_thread_num();
+#pragma omp for
+          for (int run = 0; run < size; run++) {
+            if (error_flag) {
+              break;
+            }
+            const int refl_i = start + run;
+            miller::index<> const& h = reflections.index(refl_i);
+            try {
+              if (f_mask.size()) {
+                f_calc_threads[thread]->compute(h, f_mask[refl_i], compute_grad);
+              }
+              else {
+                f_calc_threads[thread]->compute(h, boost::none, compute_grad);
+              }
+            }
+            catch (smtbx::error const& e) {
+              error_flag = true, error_string = e.what();
+              break;
+            }
+            catch (std::exception const& e) {
+              error_flag = true, error_string = e.what();
+              break;
+            }
+            f_calc[refl_i] = f_calc_threads[thread]->get_f_calc();
+            //skip hoarding memory if Gradients are not needed.
+            if (compute_grad) {
+              if (f_calc_threads[thread]->raw_gradients()) {
+                gradient = jacobian_transpose_matching_grad_fc *
+                  f_calc_threads[thread]->get_grad_observable();
+              }
+              else {
+                gradient = af::shared<FloatType>(
+                  f_calc_threads[thread]->get_grad_observable().begin(),
+                  f_calc_threads[thread]->get_grad_observable().end());
+              }
+            }
+
+            // sort out twinning
+            FloatType observable = twp.process(
+              i_h, *f_calc_threads[thread], gradient);
+            // extinction correction
+            af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
+            observable *= exti_k[0];
+            f_calc[refl_i] *= std::sqrt(exti_k[0]);
+            observables[refl_i] = observable;
+
+            FloatType weight = weighting_scheme(reflections.fo_sq(refl_i),
+              reflections.sig(refl_i), observable, scale_factor);
+            weights[refl_i] = weight;
+            if (!objective_only) {
+              if (exti.grad_value()) {
+                FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
+                int grad_index = exti.get_grad_index();
+                SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradient.size()));
+                gradient[grad_index] += exti_k[1] * exti_der;
+              }
+              if (!build_design_matrix) {
+                memcpy(&gradients[run * n_rows], gradient.begin(), sizeof(FloatType) * n_rows);
+              }
+            }
+            if (build_design_matrix) {
+              memcpy(&design_matrix(refl_i, 0), gradient.begin(),
+                gradient.size() * sizeof(FloatType));
+            }
           }
-          f_calc[i_h] = f_calc_threads[thread]->get_f_calc();
-          //skip hoarding memory if Gradients are not needed.
-          if (compute_grad) {
-            if (f_calc_threads[thread]->raw_gradients()) {
-              gradient = jacobian_transpose_matching_grad_fc *
-                f_calc_threads[thread]->get_grad_observable();
+        }
+        if (!error_flag) {
+          if (objective_only) {
+            if (weights.size()) {
+              normal_equations.add_residuals_omp(size, start, threads, observables,
+                reflections.data().const_ref(), weights);
             }
             else {
-              gradient = af::shared<FloatType>(
-                f_calc_threads[thread]->get_grad_observable().begin(),
-                f_calc_threads[thread]->get_grad_observable().end());
+              normal_equations.add_residuals_omp(size, start, threads, observables,
+                reflections.data().const_ref());
             }
           }
-          // sort out twinning
-          FloatType observable = twp.process(
-            i_h, *f_calc_threads[thread], gradient);
-          // extinction correction
-          af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
-          observable *= exti_k[0];
-          f_calc[i_h] *= std::sqrt(exti_k[0]);
-          observables[i_h] = observable;
-
-          FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
-            reflections.sig(i_h), observable, scale_factor);
-          weights[i_h] = weight;
-          if (objective_only) {
-            normal_equations.add_residual(observable,
-              reflections.fo_sq(i_h), weight);
+          else if (!build_design_matrix) {
+            normal_equations.add_equations_omp(n, n_rows, size, start, threads,
+              matrix, yo_dot_grad_yc_, yc_dot_grad_yc_,
+              observables, gradients, reflections.data().const_ref(), weights);
           }
-          else {
-            if (exti.grad_value()) {
-              FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
-              int grad_index = exti.get_grad_index();
-              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-              gradient[grad_index] += exti_k[1] * exti_der;
-            }
-            if (!build_design_matrix) {
-              memcpy(&gradients[i_h * n_rows], gradient.begin(), sizeof(FloatType) * n_rows);
-            }
-          }
-          if (build_design_matrix) {
-            memcpy(&design_matrix(i_h, 0), gradient.begin(),
-              gradient.size() * sizeof(FloatType));
-          }
+        }
+        if (error_flag) {
+          break;
         }
       }
-      if (objective_only) {
-        if (weights.size()) {
-          normal_equations.add_residuals_omp(n, observables,
-              reflections.data().const_ref(), weights);
-        }
-        else {
-          normal_equations.add_residuals_omp(n, observables,
-              reflections.data().const_ref());
-        }
+      if (error_flag) {
+        exception_.reset(new smtbx::error(error_string));
       }
-      else if (!build_design_matrix) {
-        normal_equations.add_equations_omp(n, n_rows, threads,
-            observables, gradients, reflections.data().const_ref(), weights);
+      //Cleaning up memory in parallel using a faster way than simply clear()
+      //Compare http://www.gotw.ca/gotw/054.htm
+#pragma omp parallel for num_threads(threads)
+      for (int dummy = 0; dummy < 3; dummy++) {
+        if (dummy == 0) {
+          matrix.clear(), std::vector<FloatType>(matrix).swap(matrix);
+        }
+        else if (dummy == 1) {
+          yo_dot_grad_yc_.clear(), std::vector<FloatType>(yo_dot_grad_yc_).swap(yo_dot_grad_yc_);
+        }
+        else if (dummy == 2) {
+          yc_dot_grad_yc_.clear(), std::vector<FloatType>(yc_dot_grad_yc_).swap(yc_dot_grad_yc_);
+        }
+        else if (dummy == 3) {
+          gradients.clear(), std::vector<FloatType>(gradients).swap(gradients);
+        }
       }
     }
     catch (smtbx::error const& e) {
