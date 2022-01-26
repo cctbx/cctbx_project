@@ -9,8 +9,8 @@ on a 64-core (Opteron 6380) Linux server.
 The _small_cell_ indexing algorithm was described in Brewster, 2015:
 https://doi.org/10.1107/S1399004714026145 
 
-The experimental structure determination in this README is described in Schriber and Paley, 2021,
-Nature (in press).
+The experimental structure determination in this README is described in Schriber and Paley, 2021:
+https://doi.org/10.1038/s41586-021-04218-3
 
 ### Installation of software
 
@@ -58,16 +58,39 @@ above to set the `DISPLAY` environment variable.
 
 ### Availability of data
 
-The raw data collected at SACLA will be made available via CXIDB. For now contact
-the author: dwpaley at lbl dot gov.
+The raw data are available via CXIDB: https://www.cxidb.org/id-189.html
+
 Runs 3133 through 3214 are sufficient to determine the structure. A carefully
 refined detector metrology file, `step2_refined2.expt`, is also required.
 
-Extract the data and export an environment variable pointing to the path:
+Transferring the data from CXIDB is much faster using Globus. Steps for the transfer are
+provided here:
+
+  <details> <summary>Globus setup and transfer</summary>
+
+    $ export $SACLA_DATA=<destination for raw data>
+    $ mkdir -p $SACLA_DATA/data $SACLA_DATA/geom
+    $ mkdir ~/globus; cd ~/globus
+    $ wget https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
+    $ tar -xf globus*; rm *.tgz; cd globus*
+    $ ./globusconnectpersonal -setup --no-gui # authenticate and note the endpoint uuid
+    $ export DEST_UUID=<uuid from last step>
+    $ export SRC_UUID=4daf664e-f07f-11eb-8329-f56dd2959cb8 # this is the CXIDB Globus endpoint
+    $ ./globusconnectpersonal -start -restrict-paths $GLOBUS_DEST
+    $ conda install globus-cli -c conda-forge
+    $ globus login
+    $ cd $GLOBUS_DEST
+    $ for m in {783133..783214}; do for n in {0..2}; do echo "--recursive $m-$n $m-$n" >> todo.txt; done; done
+    $ globus transfer --batch $SRC_UUID://189/sacla2019/data/ $DEST_UUID:$SACLA_DATA/data/ < todo.txt
+    $ globus task list # find the task uuid so you can monitor it
+    $ globus task event-list <task uuid>
+  </details>
+
+Get the refined geometry file for the SACLA data; also make sure the environment variable
+`SACLA_DATA` has been set.
 
 ```
-$ tar -xvzf *.tar.gz
-$ export SACLA_DATA=$PWD/data
+$ pushd $SACLA_DATA/geom; wget https://www.cxidb.org/data/189/sacla2019/step2_refined2.expt; popd
 ```
 
 
