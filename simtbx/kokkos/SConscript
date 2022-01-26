@@ -266,6 +266,8 @@ kokkos_cxxflags = subprocess.check_output(
   cwd=os.environ['KOKKOS_PATH'])
 kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
 kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
+if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
+  kokkos_cxxflags = [f.strip('"' for f in kokkos_cxxflags[1:])]
 print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
@@ -304,9 +306,6 @@ if not env_etc.no_boost_python:
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-  print("DEBUG1", kokkos_cxxflags)
-  print("DEBUG2", os.environ['KOKKOS_PATH'])
-  print("DEBUG3", os.environ['SHELL'])
   default_libs = [
     "simtbx_kokkos",
     "scitbx_boost_python",
