@@ -267,7 +267,7 @@ kokkos_cxxflags = subprocess.check_output(
 kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
 kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
 if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
-  kokkos_cxxflags = [f.strip('"' for f in kokkos_cxxflags[1:])]
+  kokkos_cxxflags = [f.strip('"') for f in kokkos_cxxflags[1:]]
 print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
