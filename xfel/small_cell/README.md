@@ -76,7 +76,7 @@ provided here:
     $ ./globusconnectpersonal -setup --no-gui # authenticate and note the endpoint uuid
     $ export DEST_UUID=<uuid from last step>
     $ export SRC_UUID=4daf664e-f07f-11eb-8329-f56dd2959cb8 # this is the CXIDB Globus endpoint
-    $ ./globusconnectpersonal -start -restrict-paths $GLOBUS_DEST
+    $ ./globusconnectpersonal -start -restrict-paths $GLOBUS_DEST & # run in background
     $ conda install globus-cli -c conda-forge
     $ globus login
     $ cd $GLOBUS_DEST
