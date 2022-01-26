@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Wed Dec  1 15:06:09 2021
+The date of file generation: Tue Jan 25 14:20:58 2022
 """
 from __future__ import absolute_import, division, print_function
 
@@ -1743,6 +1743,7 @@ lookup = {
   "SYS" : "U",
   "UOX" : "U",
   "0AH" : "S",
+  "175" : "S",
   "1X6" : "S",
   "2JG" : "S",
   "2RX" : "S",
@@ -1761,6 +1762,8 @@ lookup = {
   "BSE" : "S",
   "BWB" : "S",
   "BXT" : "S",
+  "CRW" : "S",
+  "CRX" : "S",
   "CWR" : "S",
   "DBS" : "S",
   "DHA" : "S",
@@ -1775,6 +1778,7 @@ lookup = {
   "K7K" : "S",
   "LPS" : "S",
   "MC1" : "S",
+  "MDO" : "S",
   "MH6" : "S",
   "MIR" : "S",
   "MIS" : "S",
