@@ -1143,7 +1143,7 @@ class HKLViewFrame() :
       ln = len(self.viewer.all_vectors)
       self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)) ) )
     self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
-    
+
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
     Kcartvec = list( self.viewer.scene.renderscale*( (0,1,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1402,6 +1402,9 @@ masterphilstr = """
       .type = float
     normal_vector = -1
       .type = int
+    normal_vector_length_scale = -1
+      .type = float
+      .caption = "If value is negative the length of the normal vector is used as the scale."
     clipwidth = None
       .type = float
     fractional_vector = reciprocal *realspace

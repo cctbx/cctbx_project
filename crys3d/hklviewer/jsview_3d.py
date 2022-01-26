@@ -457,29 +457,38 @@ class hklview_3d:
       hkldist = -1
       clipwidth = None
       self.fix_orientation()
+      uc = self.miller_array.unit_cell()
+
       if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
+      msg = ""
       if self.params.clip_plane.normal_vector != -1:
-        hkldist = -self.params.clip_plane.hkldist
         # cartvec is reciprocal vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
+        # hklvec is reciprocal vector in reciprocal coordinates.
+        # First try and see if they are stored in self.all_vectors[..][5].
+        # If not then convert the cartesian representation cartvec of hklvec
+        # into the reciprocal coordinates
         try:
-          # hklvec is reciprocal vector in reciprocal coordinates
           hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
-          uc = self.miller_array.unit_cell()
-          # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
-          real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
-          # In the general case real_space_vec is not parallel to hklvec
-          # Orient the clip plane perpendicular to real_space_vec while at the 
-          # same time slide clip plane along the cartvec (reciprocal vector) direction
-          # in units of cartvec length
-          self.orient_vector_to_screen(real_space_vec)
-          L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-          cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
-          hkldist = -self.params.clip_plane.hkldist * L *cosine
         except Exception as e:
-          pass # hklvec couldn't be parsed
+          hklvec = roundoff(list(matrix.sqr(uc.orthogonalization_matrix()).transpose() * cartvec/self.scene.renderscale))
+        # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
+        real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
+        # In the general case real_space_vec is not parallel to hklvec
+        # Orient the clip plane perpendicular to real_space_vec while at the
+        # same time slide clip plane along the cartvec (reciprocal vector) direction
+        # in units of cartvec projected onto real_space_vec
+        self.mprint("clip plane perpendicular to hkl direction: %s" %str(hklvec))
+        self.orient_vector_to_screen(real_space_vec)
+        L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        if self.params.clip_plane.normal_vector_length_scale > 0:
+          L = self.params.clip_plane.normal_vector_length_scale
+        cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
+        hkldist = -self.params.clip_plane.hkldist * L *cosine
+        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
+      self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
         self.ExpandInBrowser()
@@ -1930,18 +1939,17 @@ in the space group %s\nwith unit cell %s\n""" \
       # for debugging deduce the corresponding rotation matrix from this new axis
       usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
       self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
-    # adjust the length of the rotation axes to be compatible with the sphere of reflections
-    s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
+    ## adjust the length of the rotation axes to be compatible with the sphere of reflections
+    #s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
     if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       label = "%s-fold" %str(order)
-    return tuple((s*rotaxis)[0]), theta, label, order
+    return tuple((rotaxis)[0]), theta, label, order
+    #return tuple((s*rotaxis)[0]), theta, label, order
 
 
   def show_rotation_axes(self):
     if self.viewerparams.show_symmetry_rotation_axes:
-      #s = self.scene.renderscale
-      s = self.reciproc_scale
       for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2, labelpos=1.0)
@@ -1970,10 +1978,7 @@ in the space group %s\nwith unit cell %s\n""" \
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
       name = label + hklop.replace(",", "_")
       if val:
-        self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], r=0.1, g=0.1,b=0.1,
-                                  label=label, name=name, radius=0.2, labelpos=1.0)
         self.currentrotvec = v # the vector used for aligning
-
         if order > 0 and hklop != "":
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
           rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
@@ -1985,6 +1990,14 @@ in the space group %s\nwith unit cell %s\n""" \
             nfoldrotmx = RotMx * nfoldrotmx
             nfoldrot = nfoldrot.multiply( rt.r() )
             self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
+          # adjust the length of the rotation axes to be compatible with the sphere of reflections
+          uc = self.miller_array.unit_cell()
+          OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+          s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
+          self.currentrotvec = [s*v[0], s*v[1], s*v[2]]
+        self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
+                                   self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
+                                   label=label, name=name, radius=0.2, labelpos=1.0)
       else:
         self.RemovePrimitives(name)
         self.visual_symmxs = []
@@ -2173,6 +2186,7 @@ in the space group %s\nwith unit cell %s\n""" \
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
+    self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s" %(clipNear, clipFar, -self.cameraPosZ), verbose=1)
 
 
   def set_camera_type(self):
@@ -2448,11 +2462,11 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
 ngl_philstr = """
-  mouse_sensitivity = 0.04
+  mouse_sensitivity = 0.02
     .type = float
   bin_opacities = ""
     .type = str
-  tooltip_alpha = 0.70
+  tooltip_alpha = 0.80
     .type = float
   fontsize = 9
     .type = int

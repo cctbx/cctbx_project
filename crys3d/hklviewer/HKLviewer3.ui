@@ -381,7 +381,7 @@ p, li { white-space: pre-wrap; }
                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Limit the view of reflections with a clip plane parallel to the screen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
                       <property name="title">
-                       <string>Slice with a clip plane defined by:</string>
+                       <string>Slice with a clip plane which:</string>
                       </property>
                       <property name="alignment">
                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -392,25 +392,98 @@ p, li { white-space: pre-wrap; }
                       <property name="checked">
                        <bool>false</bool>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_24">
-                       <item row="0" column="0">
-                        <widget class="QLabel" name="label_9">
+                      <layout class="QGridLayout" name="gridLayout_9">
+                       <item row="0" column="0" colspan="3">
+                        <widget class="QRadioButton" name="parallel_current_orientation_btn">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
                          <property name="text">
-                          <string>Normal to vector:</string>
+                          <string>is parallel to current orientation</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
                        <item row="1" column="0">
-                        <widget class="QLabel" name="label_15">
+                        <widget class="QRadioButton" name="normal_realspace_vec_btn">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
                          <property name="text">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Distance from origin in units, &lt;span style=&quot; font-weight:600;&quot;&gt;L&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1" colspan="2">
+                        <widget class="QLabel" name="label_9">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                           <horstretch>1</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>is normal to real space vector associated with:</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
+                       <item row="1" column="3">
+                        <widget class="QComboBox" name="clipplane_normal_vector_combo"/>
+                       </item>
+                       <item row="1" column="4">
+                        <widget class="QLabel" name="label_13">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Scale:</string>
+                         </property>
+                         <property name="textFormat">
+                          <enum>Qt::RichText</enum>
+                         </property>
+                         <property name="alignment">
+                          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="5">
+                        <widget class="QLineEdit" name="clipplane_normal_vector_length">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="readOnly">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0" colspan="2">
+                        <widget class="QLabel" name="label_15">
+                         <property name="text">
+                          <string>Distance from origin</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="2">
                         <widget class="MyQDoubleSpinBox" name="hkldist_spinBox">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -429,7 +502,23 @@ p, li { white-space: pre-wrap; }
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="4">
+                       <item row="2" column="3" colspan="2">
+                        <widget class="QLabel" name="label_21">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>Clip Plane Width:</string>
+                         </property>
+                         <property name="alignment">
+                          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="5">
                         <widget class="MyQDoubleSpinBox" name="clipwidth_spinBox">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -447,48 +536,6 @@ p, li { white-space: pre-wrap; }
                           <double>0.500000000000000</double>
                          </property>
                         </widget>
-                       </item>
-                       <item row="1" column="2" colspan="2">
-                        <widget class="QLabel" name="label_21">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>Clip Plane Width:</string>
-                         </property>
-                         <property name="alignment">
-                          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="4">
-                        <widget class="QLineEdit" name="clipplane_normal_vector_length">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="readOnly">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="3">
-                        <widget class="QLabel" name="label_13">
-                         <property name="text">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;with length &lt;span style=&quot; font-weight:600;&quot;&gt;L&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                         </property>
-                         <property name="textFormat">
-                          <enum>Qt::RichText</enum>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1" colspan="2">
-                        <widget class="QComboBox" name="clipplane_normal_vector_combo"/>
                        </item>
                       </layout>
                      </widget>
@@ -561,24 +608,12 @@ p, li { white-space: pre-wrap; }
                        <item row="1" column="0">
                         <widget class="QGroupBox" name="groupBox_2">
                          <property name="title">
-                          <string>Rotate along X</string>
+                          <string>Rotate around X</string>
                          </property>
                          <property name="alignment">
                           <set>Qt::AlignCenter</set>
                          </property>
                          <layout class="QGridLayout" name="gridLayout_16">
-                          <property name="leftMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>3</number>
-                          </property>
                           <item row="0" column="0">
                            <widget class="QPushButton" name="xHKLrotBtn">
                             <property name="sizePolicy">
@@ -631,24 +666,12 @@ p, li { white-space: pre-wrap; }
                        <item row="1" column="1">
                         <widget class="QGroupBox" name="groupBox_4">
                          <property name="title">
-                          <string>Rotate along Y</string>
+                          <string>Rotate around Y</string>
                          </property>
                          <property name="alignment">
                           <set>Qt::AlignCenter</set>
                          </property>
                          <layout class="QGridLayout" name="gridLayout_19">
-                          <property name="leftMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>3</number>
-                          </property>
                           <item row="0" column="0">
                            <widget class="QPushButton" name="yHKLrotBtn">
                             <property name="sizePolicy">
@@ -689,24 +712,12 @@ p, li { white-space: pre-wrap; }
                        <item row="1" column="2">
                         <widget class="QGroupBox" name="groupBox_6">
                          <property name="title">
-                          <string>Rotate along Z</string>
+                          <string>Rotate around Z</string>
                          </property>
                          <property name="alignment">
                           <set>Qt::AlignCenter</set>
                          </property>
                          <layout class="QGridLayout" name="gridLayout_21">
-                          <property name="leftMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>3</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>3</number>
-                          </property>
                           <item row="0" column="0">
                            <widget class="QPushButton" name="zHKLrotBtn">
                             <property name="sizePolicy">

@@ -71,6 +71,7 @@ var isdebug = false;
 var tdelay = 100;
 var displaytooltips = true;
 var colourchart = null;
+var infobanner = null;
 var ResetViewBtn = null;
 var sockwaitcount = 0;
 var ready_for_closing = false;
@@ -142,8 +143,7 @@ function addElement(el)
 }
 
 
-function addDivBox(name, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=10)
-{
+function addDivBox(name, t, l, w, h, bgcolour = "rgba(255, 255, 255, 0.0)", fsize = 10) {
   let txt = "";
   if (name != null && name != "null")
     txt = name.toString();
@@ -151,18 +151,44 @@ function addDivBox(name, t, l, w, h, bgcolour="rgba(255, 255, 255, 0.0)", fsize=
     txt = "";
 
   let divbox = createElement("div",
-  {
-    innerText: txt
-  },
-  {
-    backgroundColor: bgcolour,
-    color:  "rgba(0, 0, 0, 1.0)",
-    top: t.toString() + "px",
-    left: l.toString() + "px",
-    width: w.toString() + "px",
-    height: h.toString() + "px",
-  },
-  fsize
+    {
+      innerText: txt
+    },
+    {
+      backgroundColor: bgcolour,
+      color: "rgba(0, 0, 0, 1.0)",
+      top: t.toString() + "px",
+      left: l.toString() + "px",
+      width: w.toString() + "px",
+      height: h.toString() + "px",
+    },
+    fsize
+  );
+  addElement(divbox);
+  return divbox;
+}
+
+
+function addBottomDivBox(name, b, l, w, h, bgcolour = "rgba(255, 255, 255, 0.0)", fsize = 10) {
+  let txt = "";
+  if (name != null && name != "null")
+    txt = name.toString();
+  else
+    txt = "";
+
+  let divbox = createElement("div",
+    {
+      innerText: txt
+    },
+    {
+      backgroundColor: bgcolour,
+      color: "rgba(0, 0, 0, 1.0)",
+      bottom: b.toString() + "px",
+      left: l.toString() + "px",
+      width: w.toString() + "px",
+      height: h.toString() + "px",
+    },
+    fsize
   );
   addElement(divbox);
   return divbox;
@@ -1125,9 +1151,18 @@ function onMessage(e)
       document = null;
     }
 
-    if (msgtype ==="SetBrowserDebug")
-    {
-      isdebug = (val[0] === "true" );
+    if (msgtype === "PrintInformation") {
+      let msg = datval[1];
+      let wp = getTextWidth(msg, fontsize);
+      if (infobanner != null)
+        infobanner.remove(); // delete previous colour chart if any
+      if (msg == "")
+        return;
+      infobanner = addBottomDivBox(msg, 10, 110, wp+2, 15, "rgba(255, 255, 255, 1.0)", fontsize);
+    }
+
+    if (msgtype === "SetBrowserDebug") {
+      isdebug = (val[0] === "true");
     }
 
     if (msgtype ==="RemoveStageObjects")

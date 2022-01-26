@@ -815,6 +815,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.clipplane_normal_vector_combo.clear()
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
+            cw = 0
             for row, (opnr, label, order, cartvec, hklop, hkls, abcs) in enumerate(self.all_vectors):
               for col,elm in enumerate((label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
@@ -826,8 +827,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
               cartveclength = math.sqrt(cartvec[0]*cartvec[0] +cartvec[1]*cartvec[1] +cartvec[2]*cartvec[2] )
               self.clipplane_normal_vector_combo.addItem(label, userData=cartveclength)
-
-
+              cw = max(cw, self.clipplane_normal_vector_combo.fontMetrics().width( label) )
+            self.clipplane_normal_vector_combo.view().setMinimumWidth(cw)
 
             rc = self.vectortable2.rowCount()-1 # last row is for user defined vector
             item = QTableWidgetItem("new vector")
@@ -1557,7 +1558,7 @@ clip_plane.normal_vector = -1
     self.hkldist_spinBox.editingFinished.connect(self.onHKLdistEditFinished)
     self.hkldist_spinBox.onStepBy = self.onHKLdistEditFinished
 
-    self.clipwidth_spinBox.setValue(2 )
+    self.clipwidth_spinBox.setValue(0.35 )
     self.clipwidth_spinBox.setDecimals(3)
     self.clipwidth_spinBox.setSingleStep(0.025)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
@@ -1570,15 +1571,47 @@ clip_plane.normal_vector = -1
     self.yHKLbackrotBtn.clicked.connect(self.onYangleHKLrotateback)
     self.xHKLbackrotBtn.clicked.connect(self.onXangleHKLrotateback)
     self.zHKLbackrotBtn.clicked.connect(self.onZangleHKLrotateback)
-
+    self.clipplane_normal_vector_length.editingFinished.connect(self.onClipwidthNormalVecLengthEditFinished)
     self.clipplane_normal_vector_combo.activated.connect(self.onClipPlaneNormalVecSelchange)
+
+    self.parallel_current_orientation_btn.clicked.connect(self.onParallel_current_orientation_btn_click)
+    self.normal_realspace_vec_btn.clicked.connect(self.onNormal_realspace_vec_btn_click)
+
+
+  def onClipwidthNormalVecLengthEditFinished(self):
+    if not self.unfeedback:
+      philstr = "clip_plane.normal_vector_length_scale = %s"  %self.clipplane_normal_vector_length.text()
+      self.send_message(philstr)
 
 
   def onClipPlaneNormalVecSelchange(self):
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
     philstr = """viewer.fixorientation = vector
-clip_plane.normal_vector = %d""" %self.clipplane_normal_vector_combo.currentIndex()
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = %d
+clip_plane.normal_vector_length_scale = -1
+""" %(self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
     self.send_message(philstr)
+
+
+  def onParallel_current_orientation_btn_click(self):
+    self.clipplane_normal_vector_combo.setEnabled(False)
+    philstr = """viewer.fixorientation = vector
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = -1
+""" %self.clipwidth_spinBox.value()
+    self.send_message(philstr)
+
+
+  def onNormal_realspace_vec_btn_click(self):
+    self.clipplane_normal_vector_combo.setEnabled(True)
+    philstr = """viewer.fixorientation = vector
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = %d
+clip_plane.normal_vector_length_scale = -1
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+    self.send_message(philstr)
+
 
 
   def onXangleHKLrotate(self):
@@ -1626,14 +1659,28 @@ clip_plane.normal_vector = %d""" %self.clipplane_normal_vector_combo.currentInde
       if self.showsliceGroupCheckbox.isChecked() == False:
         self.showsliceGroupCheckbox.setChecked(False)
         self.showsliceGroupCheckbox.setChecked(False)
-        self.send_message("""viewer {
-                                                      slice_mode = False
-                                                      inbrowser = True
-                                                  }
-                            """)
-
+        if self.normal_realspace_vec_btn.isChecked():
+          self.clipplane_normal_vector_combo.setEnabled(True)
+          philstr = """viewer {
+  slice_mode = False
+  inbrowser = True
+  fixorientation = vector
+}
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = %d
+clip_plane.normal_vector_length_scale = -1
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+        else:
+          philstr = """viewer {
+  slice_mode = False
+  inbrowser = True
+  fixorientation = vector
+}
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = -1
+          """ %self.clipwidth_spinBox.value()
     else:
-      self.send_message("""viewer {
+      philstr = """viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = "None"
@@ -1642,15 +1689,8 @@ clip_plane {
   normal_vector = -1
   clipwidth = 0.0
 }
-       """)
-
-    clipwidth = self.clipwidth_spinBox.value()
-    philstr = """clip_plane {
-  clipwidth = %s
-}
-        """ %clipwidth
-
-    #self.send_message(philstr)
+       """
+    self.send_message(philstr)
 
 
   def onRotaVecAngleChanged(self, val):
