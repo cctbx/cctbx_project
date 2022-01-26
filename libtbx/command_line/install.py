@@ -7,7 +7,6 @@ import os
 import shutil
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
-from six.moves import range
 
 try:
   import procrunner
@@ -106,7 +105,7 @@ def run(args):
     os.chdir(abs(libtbx.env.build_path))
     result = procrunner.run(['libtbx.configure'] + packages_to_configure,
                                     print_stdout=False, print_stderr=False)
-    if result['exitcode']:
+    if result.returncode:
       errors = True
       print(result['stdout'])
       print(result['stderr'])
@@ -115,7 +114,7 @@ def run(args):
             % " ".join(packages_to_configure))
     else:
       result = procrunner.run(['make'])
-      if result['exitcode']:
+      if result.returncode:
         errors = True
   if errors:
     sys.exit(1)
@@ -131,7 +130,7 @@ def install_git(**kwargs):
   try:
     result = procrunner.run(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
                                     print_stdout=False)
-    if result['exitcode']:
+    if result.returncode:
       if os.path.exists(kwargs['location']) and not os.listdir(kwargs['location']):
         # git-auth can leave an empty directory behind
         os.rmdir(kwargs['location'])
@@ -141,7 +140,7 @@ def install_git(**kwargs):
       os.chdir(kwargs['location'])
       result = procrunner.run(['git', 'repack', '-a', '-d'], print_stderr=True)
       os.chdir(oldcwd)
-      assert result['exitcode'] == 0, "Repack operation failed. Delete repository and try again."
+      assert result.returncode == 0, "Repack operation failed. Delete repository and try again."
       os.remove(os.path.join(kwargs['location'], '.git', 'objects', 'info', 'alternates'))
     Toolbox.set_git_repository_config_to_rebase(os.path.join(kwargs['location'], '.git', 'config'))
     return True
@@ -197,9 +196,7 @@ def install_pip(**kwargs):
   if not git_installation:
     return False
   result = procrunner.run(['libtbx.pip', 'install', '-e', kwargs['location']], print_stderr=True)
-  if result['exitcode']:
-    return False
-  return True
+  return not result.returncode
 
 mechanisms = collections.OrderedDict((
   ('git-auth', install_git),
