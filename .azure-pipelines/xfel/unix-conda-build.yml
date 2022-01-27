@@ -111,9 +111,6 @@ steps:
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export OMP_NUM_THREADS=4
     libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=4
-    echo "DEBUG"
-    cat mp4k/rank_0*.err
-    echo "DEBUG2"
   failOnStderr: false
   displayName: Test
 
