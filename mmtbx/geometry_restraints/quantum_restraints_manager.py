@@ -328,6 +328,49 @@ def running_this_macro_cycle(qmr, macro_cycle):
   else:
     return False
 
+def update_bond_restraints(ligand_model,
+                           model_grm=None, # flag for update vs checking
+                           log=StringIO()):
+  ligand_grm = ligand_model.get_restraints_manager()
+  atoms = ligand_model.get_atoms()
+  bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
+    sites_cart=ligand_model.get_sites_cart())
+  sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
+    'delta',
+    ligand_model.get_sites_cart())
+  i=0
+  for info in sorted_table:
+    (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
+    i_atom=atoms[i_seq]
+    j_atom=atoms[j_seq]
+    if model_grm:
+      if i_atom.element_is_hydrogen(): continue
+      if j_atom.element_is_hydrogen(): continue
+    i_seqs=[i_seq, j_seq]
+    bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+    i+=1
+    if model_grm:
+      print('    %-2d %s - %s %5.3f ~> %5.3f' % (
+        i,
+        i_atom.id_str().replace('pdb=',''),
+        j_atom.id_str().replace('pdb=',''),
+        bond.distance_ideal,
+        distance_model), file=log)
+      bond.distance_ideal=distance_model
+      i_seqs=[i_atom.tmp, j_atom.tmp]
+      bond=model_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+      bond.distance_ideal=distance_model
+    else:
+      if ( i_atom.element_is_hydrogen() or j_atom.element_is_hydrogen()):
+        if distance_model>1.5:
+          print('    %-2d %s - %s %5.3f ~> %5.3f' % (
+            i,
+            i_atom.id_str().replace('pdb=',''),
+            j_atom.id_str().replace('pdb=',''),
+            bond.distance_ideal,
+            distance_model), file=log)
+          raise Sorry('Poor QM optimisation of X-H bond')
+
 def update_restraints(model,
                       params,
                       macro_cycle=None,
@@ -431,6 +474,8 @@ def update_restraints(model,
             file=log)
       print('  Check the QM minimisation for errors or incorrect protonation.',
             file=log)
+      if rmsd>20:
+        print('  Movement of cartesian coordinates is very large.', file=log)
     ligand_model.get_hierarchy().atoms().set_xyz(xyz)
     old = buffer_model.get_hierarchy().atoms().extract_xyz()
     # rmsd = old.rms_difference(xyz_buffer)
@@ -446,36 +491,10 @@ def update_restraints(model,
     #  - bonds
     #
     model_grm = model.get_restraints_manager()
-    ligand_grm = ligand_model.get_restraints_manager()
-    buffer_grm = buffer_model.get_restraints_manager()
-    atoms = ligand_model.get_atoms()
-    #
-    bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
-      sites_cart=ligand_model.get_sites_cart())
-    sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
-      'delta',
-      ligand_model.get_sites_cart())
+    print('\n  Checking', file=log)
+    update_bond_restraints(buffer_model, log=log)
     print('\n  Transfer', file=log)
-    i=0
-    for info in sorted_table:
-      (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
-      i_atom=atoms[i_seq]
-      j_atom=atoms[j_seq]
-      i_seqs=[i_seq, j_seq]
-      if i_atom.element_is_hydrogen(): continue
-      if j_atom.element_is_hydrogen(): continue
-      bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
-      i+=1
-      print('    %-2d %s - %s %5.3f ~> %5.3f' % (
-        i,
-        i_atom.id_str().replace('pdb=',''),
-        j_atom.id_str().replace('pdb=',''),
-        bond.distance_ideal,
-        distance_model), file=log)
-      bond.distance_ideal=distance_model
-      i_seqs=[i_atom.tmp, j_atom.tmp]
-      bond=model_grm.geometry.bond_params_table.lookup(*list(i_seqs))
-      bond.distance_ideal=distance_model
+    update_bond_restraints(ligand_model, model_grm=model_grm, log=log)
     #
     #    - angles
     #
