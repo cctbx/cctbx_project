@@ -109,8 +109,8 @@ steps:
     libtbx.configure xfel_regression LS49 ls49_big_data
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
-    export OMP_NUM_THREADS=4
-    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=4
+    export OMP_NUM_THREADS=2
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
 
