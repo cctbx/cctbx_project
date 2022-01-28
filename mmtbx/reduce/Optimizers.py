@@ -252,7 +252,36 @@ class _SingletonOptimizer(object):
       if altID is not None:
         alts = [altID]
 
+      # Clear the Movers list for each model.  It will be retained from one alternate to the next.
+      self._movers = []
       for ai in alts:
+        # If we are doing the second or later alternate, place all Movers that are in a compatible alternate
+        # back into their initial configuration so we start from the same state we would have if this were
+        # our only alternate being tested.  This is particularly important because the flip states need to
+        # be reported from their base state rather than from wherever they were left by the previous
+        # alternate.
+        for m in self._movers:
+          coarse = m.CoarsePositions()
+          if coarse.atoms[0].parent().altloc in ['', ' ', ai]:
+            print('XXX Resetting Mover in conformation "'+coarse.atoms[0].parent().altloc+'"')
+            self._setMoverState(coarse, 0)
+
+            # Apply any location and information fixups needed for the initial configuration.
+            fixUp = m.FixUp(0)
+            myAtoms = fixUp.atoms
+            for i, p in enumerate(fixUp.positions):
+              myAtoms[i].xyz = p
+            for i, e in enumerate(fixUp.extraInfos):
+              print('XXX Fixing up Mover extra info in conformation "'+coarse.atoms[0].parent().altloc+'"')
+              self._extraAtomInfo.setMappingFor(myAtoms[i], e)
+            for i, d in enumerate(fixUp.deleteMes):
+              # Either ensure that it is deleted or ensure that it is not depending on the
+              # value of the deletion result.
+              if d:
+                self._deleteMes.add(myAtoms[i])
+              else:
+                self._deleteMes.discard(myAtoms[i])
+
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
           ", alternate '"+ai+"'\n")
@@ -619,21 +648,22 @@ class _SingletonOptimizer(object):
               self._deleteMes.discard(myAtoms[i])
         self._infoString += _ReportTiming("fix up Movers")
 
-        ################################################################################
-        # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-        # both in the initial setup and determined during optimization.  Phantom Hydrogens
-        # on waters do not need to be adjusted because they were never added to the
-        # structure.
-        self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
-        for a in self._deleteMes:
-          aName = a.name.strip().upper()
-          resName = a.parent().resname.strip().upper()
-          resID = str(a.parent().parent().resseq_as_int())
-          chainID = a.parent().parent().parent().id
-          resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-          self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
-          a.parent().remove_atom(a)
-        self._infoString += _ReportTiming("delete Hydrogens")
+      ################################################################################
+      # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
+      # both in the initial setup and determined during optimization.  Phantom Hydrogens
+      # on waters do not need to be adjusted because they were never added to the
+      # structure.
+      # We only do this after the last-checked alternate configuration for a given model.
+      self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
+      for a in self._deleteMes:
+        aName = a.name.strip().upper()
+        resName = a.parent().resname.strip().upper()
+        resID = str(a.parent().parent().resseq_as_int())
+        chainID = a.parent().parent().parent().id
+        resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+        self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
+        a.parent().remove_atom(a)
+      self._infoString += _ReportTiming("delete Hydrogens")
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
@@ -1632,7 +1662,6 @@ END
 
   #========================================================================
   # Unit tests for each type of Optimizer.
-  # @todo
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
@@ -1753,6 +1782,10 @@ END
     if name in ["HD1", "HE2"]:
       if not a in ret.deleteAtoms:
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
+
+  #========================================================================
+  # Check a case where a HisFlip would be flipped and locked down and have its Hydrogen removed.
+  # @todo
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
