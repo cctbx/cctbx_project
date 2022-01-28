@@ -498,6 +498,8 @@ def update_restraints(model,
     #
     #    - angles
     #
+    ligand_grm = ligand_model.get_restraints_manager()
+    atoms = ligand_model.get_atoms()
     sorted_table, n_not_shown = ligand_grm.geometry.angle_proxies.get_sorted(
       'delta',
       ligand_model.get_sites_cart())
@@ -536,7 +538,6 @@ def update_restraints(model,
       angle = model_lookup.get(angle_proxy.i_seqs, None)
       if angle is None: continue
       angle_proxy.angle_ideal=angle
-
     #
     #    - torsions
     #
@@ -570,6 +571,11 @@ def update_restraints(model,
       ligand_lookup[key]=angle_model
       key = (atoms[key[3]].tmp, atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
       model_lookup[key]=angle_model
+    # for angle_proxy in ligand_grm.geometry.dihedral_proxies:
+    #   angle = ligand_lookup.get(angle_proxy.i_seqs, None)
+    #   if angle is None: continue
+    #   angle_proxy.angle_ideal=angle
+    # assert 0
 
     print('', file=log)
     if qmr.write_restraints:
