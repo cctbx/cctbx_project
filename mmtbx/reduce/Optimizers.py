@@ -1415,8 +1415,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
                 ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                # The first two elements come from configuration 0 and the second two from configuration 3
-                bondedConfig = (i // 2) * 3
+                # The first two elements in the enumeration come from Histidine configuration 0
+                # and the second two from configuration 4, so we figure out which one we should
+                # be in.
+                bondedConfig = (i // 2) * 4
                 infoString += _VerboseCheck(5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                 break
           if bondedConfig is not None:
