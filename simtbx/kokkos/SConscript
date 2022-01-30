@@ -1,6 +1,6 @@
 import os
 import subprocess
-from shutil import copy
+from shutil import copy, which
 
 import libtbx.load_env
 
@@ -41,13 +41,13 @@ cfg_default.env['KOKKOS_ARCH'] = "HSW"
 cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
-cfg_default.env['CXX'] = 'g++'
+cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
 
 list_cfg = []
 
 cfg_corigpu = cfg_default.get_copy()
 cfg_corigpu.host_variable = 'NERSC_HOST'
-cfg_corigpu.host_name = 'cori' 
+cfg_corigpu.host_name = 'cori'
 cfg_corigpu.env['KOKKOS_DEVICES'] = "Cuda"
 cfg_corigpu.env['KOKKOS_ARCH'] = "Volta70"
 cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
@@ -133,6 +133,71 @@ if os.path.isfile(src):
 else:
   print('Error: {src} does not exist'.format(src=src))
 print()
+
+# =============================================================================
+# Build kokkos with CMake
+# The build needs to be in a directory not in the build directory, otherwise
+# kokkos-kernels will find that build directory instead of build/lib/cmake/Kokkos
+# The error will look like
+#
+#   -- The project name is: KokkosKernels
+#   CMake Error at /dev/shm/bkpoon/software/xfel/build/kokkos/KokkosConfig.cmake:48 (INCLUDE):
+#     INCLUDE could not find requested file:
+
+#       /dev/shm/bkpoon/software/xfel/build/kokkos/KokkosTargets.cmake
+#   Call Stack (most recent call first):
+#     CMakeLists.txt:107 (FIND_PACKAGE)
+#
+# kokkos will be installed in build with the libraries in lib, not lib64
+#
+# TODO:
+# - Change over from Makefile version to cmake version
+# - Change system configuration classes to select backends with cmake
+#   flags instead of environment variables
+# - Verify that libraries from cmake version works the same as libkokkos.a
+
+cmake_is_available = which('cmake')
+if cmake_is_available:
+  print('='*79)
+  print('Building kokkos with cmake')
+  print('-'*79)
+  kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos_build')
+  if not os.path.isdir(kokkos_build_dir):
+    os.mkdir(kokkos_build_dir)
+  returncode = subprocess.call([
+      'cmake',
+      os.environ['KOKKOS_PATH'],
+      '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
+      '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
+      '-DCMAKE_INSTALL_LIBDIR=lib',
+      '-DKokkos_ENABLE_SERIAL=ON',
+      '-DKokkos_ENABLE_OPENMP=ON'
+    ],
+    cwd=kokkos_build_dir)
+  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
+
+  # -----------------------------------------------------------------------------
+  # Build kokkos-kernels with CMake
+  print('='*79)
+  print('Building kokkos_kernels')
+  print('-'*79)
+  kokkos_kernels_dir = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
+  returncode = subprocess.call([
+      'cmake',
+      '.',
+      '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
+      '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
+      '-DCMAKE_INSTALL_LIBDIR=lib',
+      '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.'))
+    ],
+    cwd=kokkos_kernels_dir)
+  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_kernels_dir)
+else:
+  print('*'*79)
+  print('cmake was not found')
+  print('Skipping builds of kokkos and kokkos-kernels')
+  print('*'*79)
+# =============================================================================
 
 print('Getting environment variables')
 print('-'*79)
