@@ -244,13 +244,7 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
   return outl
 
 def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
-  program = qmr.package.program
-  if program=='test':
-    qmm = qm_manager.base_manager
-  elif program=='orca':
-    qmm = qm_manager.orca_manager
-    if qmr.package.method is Auto:
-      qmr.package.method='AM1'
+  def default_defaults(qmr):
     if qmr.package.basis_set is Auto:
       qmr.package.basis_set=''
     if qmr.package.solvent_model is Auto:
@@ -259,6 +253,19 @@ def get_qm_manager(ligand_model, buffer_model, qmr, log=StringIO()):
       qmr.package.multiplicity=1
     if qmr.package.charge is Auto:
       qmr.package.charge=0
+  program = qmr.package.program
+  if program=='test':
+    qmm = qm_manager.base_manager
+  elif program=='orca':
+    qmm = qm_manager.orca_manager
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='AM1'
+  elif program=='mopac':
+    qmm = qm_manager.mopac_manager
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='PM7'
   else:
     assert 0
 

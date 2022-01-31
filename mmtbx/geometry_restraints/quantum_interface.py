@@ -16,11 +16,15 @@ def env_exists_exists(env, var, check=True):
 def is_orca_installed(env, var):
   return env_exists_exists(env, var)
 
+def is_mopac_installed(env, var):
+  return env_exists_exists(env, var)
+
 def is_qm_test_installed(env, var):
   return env_exists_exists(env, var, check=False)
 
 program_options = {
   'orca' : (is_orca_installed, 'PHENIX_ORCA'),
+  'mopac' : (is_mopac_installed, 'PHENIX_MOPAC'),
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 

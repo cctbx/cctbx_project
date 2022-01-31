@@ -33,6 +33,9 @@ class base_manager():
     # validate
     if self.basis_set is None: self.basis_set=''
     if self.solvent_model is None: self.solvent_model=''
+    #
+    self.interest_array = None
+    self.error_lines = []
 
   def __repr__(self):
     program = getattr(self, 'program', '')
@@ -90,6 +93,37 @@ class base_manager():
 
   def get_timings(self, energy=False):
     return '-'
+
+class base_qm_manager(base_manager):
+  def get_opt(self,
+              cleanup=False,
+              file_read=True,
+              coordinate_filename_ext='.xyz',
+              log_filename_ext='.log',
+              log=None):
+    coordinates = None
+    if file_read:
+      filename = self.get_coordinate_filename()
+      if os.path.exists(filename):
+        lf = filename.replace(coordinate_filename_ext, log_filename_ext)
+        if os.path.exists(lf):
+          process_qm_log_file(lf, log=log)
+        print('  Reading coordinates from %s\n' % filename, file=log)
+        coordinates = self.read_xyz_output()
+    if coordinates is None:
+      self.opt_setup()
+      self.run_cmd(log=log)
+      coordinates = self.read_xyz_output()
+    coordinates_buffer = coordinates
+    if cleanup: self.cleanup(level=cleanup)
+    if hasattr(self, 'interest_array'):
+      tmp = []
+      if hasattr(self, 'interest_array'):
+        for sel, atom in zip(self.interest_array, coordinates):
+          if sel:
+            tmp.append(atom)
+        coordinates=tmp
+    return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
 #
 # QM runner
 #
@@ -107,11 +141,22 @@ def qm_runner(qmm,
     func = get_func(base_manager, program_goal)
   elif qmm.program=='orca':
     func = get_func(orca_manager, program_goal)
+    coordinate_filename_ext='.xyz'
+    log_filename_ext='.log'
+  elif qmm.program=='mopac':
+    func = get_func(mopac_manager, program_goal)
+    coordinate_filename_ext='.arc'
+    log_filename_ext='.out'
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
   if func is None:
     raise Sorry('QM manager does not have get_%s' % program_goal)
-  ligand_xyz, buffer_xyz = func(qmm, cleanup=cleanup, file_read=file_read, log=log)
+  ligand_xyz, buffer_xyz = func(qmm,
+                                cleanup=cleanup,
+                                file_read=file_read,
+                                coordinate_filename_ext=coordinate_filename_ext,
+                                log_filename_ext=log_filename_ext,
+                                log=log)
   return ligand_xyz, buffer_xyz
 #
 # ORCA
@@ -175,6 +220,8 @@ def process_qm_log_file(log_filename=None,
     #   status = True
     if line.find('ORCA TERMINATED NORMALLY')>-1:
       status = True
+    if line.find('* JOB ENDED NORMALLY *')>-1:
+      status = True
     if error_lines:
       for el in error_lines:
         if line.find(el)>-1:
@@ -224,7 +271,7 @@ def run_qm_cmd(cmd,
     assert 0
   return rc
 
-class orca_manager(base_manager):
+class orca_manager(base_qm_manager):
 
   error_lines = [
                   'ORCA finished by error termination in GSTEP',
@@ -232,7 +279,6 @@ class orca_manager(base_manager):
                   'SCF NOT CONVERGED AFTER',
                   'SERIOUS PROBLEM IN SOSCF',
                 ]
-  interest_array = None
 
   def get_coordinate_filename(self): return 'orca_%s.xyz' % self.preamble
 
@@ -445,31 +491,6 @@ end
       outl += freeze_outl
     self.write_input(outl)
 
-  def get_opt(self, cleanup=False, file_read=True, log=None):
-    coordinates = None
-    if file_read:
-      filename = self.get_coordinate_filename()
-      if os.path.exists(filename):
-        lf = filename.replace('.xyz', '.log')
-        if os.path.exists(lf):
-          process_qm_log_file(lf, log=log)
-        print('  Reading coordinates from %s\n' % filename, file=log)
-        coordinates = self.read_xyz_output()
-    if coordinates is None:
-      self.opt_setup()
-      self.run_cmd(log=log)
-      coordinates = self.read_xyz_output()
-    coordinates_buffer = coordinates
-    if cleanup: self.cleanup(level=cleanup)
-    if hasattr(self, 'interest_array'):
-      tmp = []
-      if hasattr(self, 'interest_array'):
-        for sel, atom in zip(self.interest_array, coordinates):
-          if sel:
-            tmp.append(atom)
-        coordinates=tmp
-    return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
-
   def cleanup(self, level=None, verbose=False):
     if not self.preamble: return
     if level is None: return
@@ -502,6 +523,93 @@ end
     cmd += ' %s' % filenames[-1]
     easy_run.go(cmd)
 
+class mopac_manager(base_qm_manager):
+  def get_coordinate_filename(self): return 'mopac_%s.arc' % self.preamble
+
+  def get_log_filename(self): return 'mopac_%s.out' % self.preamble
+
+  def opt_setup(self):
+    outl = '%s %s %s %s\n%s\n\n' % (
+     self.method,
+     self.basis_set,
+     self.solvent_model,
+     'GEO-OK',
+     self.preamble,
+     )
+    outl += self.get_coordinate_lines()
+    self.write_input(outl)
+
+  def get_coordinate_lines(self, interest_only=False):
+    outl = ''
+    if hasattr(self, 'freeze_a_ray'):
+      assert self.interest_array
+      assert len(self.interest_array)==len(self.atoms)
+    for i, atom in enumerate(self.atoms):
+      if interest_only and self.interest_array and not self.interest_array[i]:
+        continue
+      opt = self.interest_array[i]
+      if opt:opt=1
+      else: opt=0
+      outl += ' %s %0.5f %d %0.5f %d %0.5f %d\n' % (
+        atom.element,
+        atom.xyz[0],
+        opt,
+        atom.xyz[1],
+        opt,
+        atom.xyz[2],
+        opt,
+        # atom.id_str(),
+        # i,
+        )
+    outl += '\n'
+    return outl
+
+  def write_input(self, outl):
+    f=open('mopac_%s.mop' % self.preamble, 'w')
+    f.write(outl)
+    del f
+
+  def read_xyz_output(self):
+    filename = self.get_coordinate_filename()
+    if not os.path.exists(filename):
+      raise Sorry('QM output filename not found: %s' % filename)
+    f=open(filename, 'r')
+    lines = f.read()
+    del f
+    rc = flex.vec3_double()
+    read_xyz = False
+    for i, line in enumerate(lines.splitlines()):
+      if read_xyz:
+        tmp = line.split()
+        if len(tmp)==7:
+          rc.append((float(tmp[1]), float(tmp[3]), float(tmp[5])))
+      if line.find('FINAL GEOMETRY OBTAINED')>-1:
+        read_xyz=True
+    return rc
+
+  def get_cmd(self):
+    # cmd = '%s orca_%s.in >& orca_%s.log' % (
+    cmd = '%s mopac_%s' % (
+      os.environ['PHENIX_MOPAC'],
+      self.preamble,
+      )
+    return cmd
+
+  def run_cmd(self, redirect_output=True, log=None):
+    t0=time.time()
+    cmd = self.get_cmd()
+    run_qm_cmd(cmd,
+               'mopac_%s.out' % self.preamble,
+               error_lines=self.error_lines,
+               redirect_output=redirect_output,
+               log=log,
+               )
+    self.times.append(time.time()-t0)
+
+  def cleanup(self, level=None, verbose=False):
+    if level=='all':
+      assert 0
+
 class manager(standard_manager):
   def __init__(self,
                params,
@@ -516,12 +624,14 @@ class manager(standard_manager):
     assert qi.selection
     if qi.orca.use_orca:
       print('Orca')
+    assert 0
 
   def get_engrad(self, sites_cart):
     self.execution_manager.set_sites_cart(sites_cart)
     return self.execution_manager.get_engrad()
 
   def get_opt(self, sites_cart):
+    assert 0
     self.execution_manager.set_sites_cart(sites_cart)
     return self.execution_manager.get_opt()
 
