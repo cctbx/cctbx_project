@@ -1414,7 +1414,7 @@ class ResidualsPlotter(object):
     data *= 1000
     h = flex.histogram(data, n_slots=40)
     fig = plt.figure()
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(111)
     ax.plot(h.slot_centers().as_numpy_array(), h.slots().as_numpy_array(), '-')
     plt.title("%sHistogram of image RMSDs"%tag)
     ax.set_xlabel("RMSD (microns)")
@@ -1423,7 +1423,7 @@ class ResidualsPlotter(object):
     if not boxplot: return
 
     fig = plt.figure()
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(111)
     plt.boxplot(data, vert=False)
     plt.title("%sBoxplot of image RMSDs"%tag)
     ax.set_xlabel("RMSD (microns)")
