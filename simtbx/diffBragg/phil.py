@@ -922,6 +922,16 @@ refiner {
 
 roi_phil = """
 roi {
+  mask_all_if_any_outside_trusted_range = True
+    .type = bool
+    .help = If a reflection has any pixels which are outside the detectors
+    .help = trusted range, then mask the entire reflections and surrounding
+    .help = pixels. If False, then only pixels outside the range are masked.
+    .help = Note: this only takes effect if mask_outside_trusted_range=True.
+  mask_outside_trusted_range = False
+    .type = bool
+    .help = Check the dxtbx detector's trusted range and use that to mask
+    .help = out-of-range pixels on a per-image basis
   only_filter_zingers_above_mean = True
     .type = bool
     .help = if fitting background, theres a zinger filter step (background_threshold)
