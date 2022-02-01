@@ -178,23 +178,53 @@ class _():
 
     return imageset
 
-  def as_explist(self):
+  def as_explist(self, fname=None, toggle_conventions=False):
     """
     return experiment list for simulated image
     """
+    C = self.crystal
+    if toggle_conventions:
+      # switch to DIALS convention before writing CBF
+      # also change basis of crystal
+      CURRENT_CONV = self.beamcenter_convention
+      FSO = sqr(self.fdet_vector + self.sdet_vector + self.pix0_vector_mm)
+      self.beamcenter_convention=DIALS
+      FSO2 = sqr(self.fdet_vector + self.sdet_vector + self.dials_origin_mm)
+      xtal_transform = FSO.inverse()*FSO2
+
+      # transform the crystal vectors
+      a,b,c = map(lambda x: xtal_transform*col(x) , C.get_real_space_vectors())
+      Cdict = C.to_dict()
+      Cdict['real_space_a'] = a
+      Cdict['real_space_b'] = b
+      Cdict['real_space_b'] = c
+      C = CrystalFactory.from_dict(Cdict)
+
     exp = Experiment()
-    exp.crystal = self.crystal
+    exp.crystal = C
     exp.beam = self.beam
     exp.detector = self.detector
     exp.imageset = self.imageset
     explist = ExperimentList()
     explist.append(exp)
+    if fname is not None:
+        explist.as_file(fname)
+    if toggle_conventions:
+      self.beamcenter_convention=CURRENT_CONV
 
     return explist
 
-  def to_cbf(self, cbf_filename):
+  def to_cbf(self, cbf_filename, toggle_conventions=False):
+    if toggle_conventions:
+      # switch to DIALS convention before writing CBF
+      CURRENT_CONV = self.beamcenter_convention
+      self.beamcenter_convention=DIALS
+
     writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
     writer.write_cbf(cbf_filename, index=0)
+
+    if toggle_conventions:
+      self.beamcenter_convention=CURRENT_CONV
 
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)
