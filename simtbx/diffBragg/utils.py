@@ -601,8 +601,24 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
 
 
 def strip_thickness_from_detector(detector):
-    """warning: this overrides detector hierarchy"""
-    thin_detector = Detector()
+    """return a new dxtbx detector with 0 thickness"""
+    return set_detector_thickness(detector,0,0)
+
+
+def set_detector_thickness(detector, thick=0, mu=0):
+    """
+    warning: this overrides detector hierarchy
+
+    :param detector: dxtbx detector model
+    :param thick: sensor thickness in mm
+    :param mu: sensor absorption length in mm
+    :return: new dxtbx detector model
+    """
+    px_type = "SimplePxMmStrategy"
+    if thick > 0:
+        px_type = "ParallaxCorrectedPxMmStrategy"
+
+    new_detector = Detector()
     for i_pan in range(len(detector)):
         panel = detector[i_pan]
         panel_dict = panel.to_dict()
@@ -610,12 +626,12 @@ def strip_thickness_from_detector(detector):
         panel_dict["origin"] = panel.get_origin()
         panel_dict["fast_axis"] = panel.get_fast_axis()
         panel_dict["slow_axis"] = panel.get_slow_axis()
-        panel_dict["mu"] = 0
-        panel_dict["thickness"] = 0
-        panel_dict["px_mm_strategy"] = {'type': 'SimplePxMmStrategy'}
-        thin_panel = Panel.from_dict(panel_dict)
-        thin_detector.add_panel(thin_panel)
-    return thin_detector
+        panel_dict["mu"] = mu
+        panel_dict["thickness"] = thick
+        panel_dict["px_mm_strategy"] = {'type': px_type}
+        new_panel = Panel.from_dict(panel_dict)
+        new_detector.add_panel(new_panel)
+    return new_detector
 
 
 def image_data_from_expt(expt, as_double=True):
@@ -695,6 +711,10 @@ def simulator_from_expt_and_params(expt, params=None):
     if params.simulator.detector.force_zero_thickness:
         SIM.detector = strip_thickness_from_detector(expt.detector)
     else:
+        atten = params.simulator.detector.atten
+        thick = params.simulator.detector.thick
+        if atten is not None and thick is not None:
+            expt.detector = set_detector_thickness(expt.detector, thick, 1./atten)
         SIM.detector = expt.detector
 
     # create nanoBragg crystal
@@ -723,6 +743,7 @@ def simulator_from_expt_and_params(expt, params=None):
             miller_data = get_complex_fcalc_from_pdb(pdb_name,
                 dmin=params.simulator.structure_factors.dmin,
                 dmax=params.simulator.structure_factors.dmax,
+                wavelength=expt.beam.get_wavelength(),
                 k_sol=params.simulator.structure_factors.from_pdb.k_sol,
                 b_sol=params.simulator.structure_factors.from_pdb.b_sol)
             miller_data = miller_data.as_amplitude_array()
@@ -760,6 +781,14 @@ def simulator_from_expt_and_params(expt, params=None):
     if init_scale is not None:
         #TODO phase this parameter out since its redundant?
         SIM.update_nanoBragg_instance("spot_scale", init_scale)
+
+    test_panel = SIM.detector[0]
+    if test_panel.get_thickness() > 0:
+        SIM.update_nanoBragg_instance(
+            "detector_thicksteps", params.simulator.detector.thicksteps)
+    MAIN_LOGGER.debug("Detector thicksteps = %d" % SIM.D.detector_thicksteps )
+    MAIN_LOGGER.debug("Detector thick = %f mm" % SIM.D.detector_thick_mm )
+    MAIN_LOGGER.debug("Detector atten len = %f mm" % SIM.D.detector_attenuation_length_mm )
     return SIM
 
 

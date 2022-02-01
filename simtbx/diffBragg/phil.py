@@ -726,9 +726,22 @@ simulator {
       .help = diameter of the beam in mm
   }
   detector {
+    thick = None
+      .type = float
+      .help = sensor thickness in millimeters. Overrides dxtbx detector model.
+      .help = Note: must also provide param `atten`, otherwise this param is ineffective
+    atten = None
+      .type = float
+      .help = x-ray absorption length in millimeters
+      .help = for sensor. Overrides dxtbx detector model.
+      .help = Note: must also provide param `thick`, otherwise this param is ineffective
     force_zero_thickness = False
       .type = bool
       .help = if True, then set sensor thickness to 0
+    thicksteps = 1
+      .type = int
+      .help = number of layers within sensor where scattering
+      .help = will be averaged over (evenly divided). This is a nanoBragg attribute
   }
 }
 """
@@ -968,6 +981,10 @@ roi {
 }
 
 geometry {
+  optimized_results_tag = None
+    .type = str
+    .help = optional tagname, if provided,write optimized refls/expts alongside the
+    .help = input refls/expts however using this tag suffix
   first_n = None
     .type = int
     .help = only load the first_n experiments from the input pickle
