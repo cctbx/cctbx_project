@@ -201,11 +201,12 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
 def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       oversample=0, Ncells_abc=(50, 50, 50),
                       mos_dom=1, mos_spread=0, beamsize_mm=0.001, device_Id=0,
-                      show_params=True, crystal_size_mm=0.01, printout_pix=None,
+                      show_params=True, crystal_size_mm=None, printout_pix=None,
                       verbose=0, default_F=0, interpolate=0, profile="gauss",
                       spot_scale_override=None,
                       mosaicity_random_seeds=None,
-                      nopolar=False, diffuse_params=None, cuda=False):
+                      nopolar=False, diffuse_params=None, cuda=False,
+                        show_timings=False):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -239,7 +240,8 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.mosaic_seeds = mosaicity_random_seeds
 
     S.instantiate_diffBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
-                            default_F=default_F)
+                            default_F=default_F,
+                            auto_set_spotscale=crystal_size_mm is not None and spot_scale_override is None)
 
     if spot_scale_override is not None:
         S.update_nanoBragg_instance("spot_scale", spot_scale_override)
@@ -247,8 +249,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
     if show_params:
         S.D.show_params()
+        print("Spot scale=%f" % S.D.spot_scale)
 
-    S.D.verbose = 2
+    if show_timings and verbose < 2:
+        S.D.verbose = 2
     S.D.record_time = True
     if diffuse_params is not None:
         S.D.use_diffuse = True
@@ -256,11 +260,13 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.D.diffuse_gamma = diffuse_params["gamma"]
         S.D.diffuse_sigma = diffuse_params["sigma"]
     S.D.add_diffBragg_spots_full()
-    S.D.show_timings()
+    if show_timings:
+        S.D.show_timings()
     t = time.time()
     data = S.D.raw_pixels_roi.as_numpy_array().reshape(img_shape)
     t = time.time() - t
-    print("Took %f sec to recast and reshape" % t)
+    if show_timings:
+        print("Took %f sec to recast and reshape" % t)
     if printout_pix is not None:
         S.D.raw_pixels_roi*=0
         p,f,s = printout_pix
