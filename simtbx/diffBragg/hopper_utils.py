@@ -116,13 +116,14 @@ class DataModeler:
         self.params = params  # phil params (see diffBragg/phil.py)
         self._abs_path_params()
         self.SIM = None  # simulator object (instance of nanoBragg.sim_data.SimData
-        self.E = None  # placeholder for the experiment
+        self.E = None  # placeholder for the dxtbx.model.Experiment instance
         self.pan_fast_slow =None  # (pid, fast, slow) per pixel
         self.all_background =None  # background model per pixel (photon units)
         self.roi_id =None  # region of interest ID per pixel
         self.u_id = None  # set of unique region of interest ids
         self.all_freq = None  # flag for the h,k,l frequency of the observed pixel
         self.best_model = None  # best model value at each pixel
+        self.best_model_includes_background = False  # whether the best model includes the background scattering estimate
         self.all_data =None  # data at each pixel (photon units)
         self.all_gain = None  # gain value per pixel (used during diffBragg/refiners/stage_two_refiner)
         self.all_sigmas =None  # error model for each pixel (photon units)
@@ -141,6 +142,8 @@ class DataModeler:
         self.refls_idx = None  # position of modeled spot in original refl array
         self.refls = None  # reflection table
         self.sigma_rdout = None   # the value of the readout noise in photon units
+        self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
+        self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
 
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
@@ -312,7 +315,6 @@ class DataModeler:
             self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
         else:
             self.Hi_asu = self.Hi
-
 
         self.data_to_one_dim(img_data, is_trusted, background)
         return True
@@ -634,34 +636,49 @@ class DataModeler:
                               center=centers.G, beta=betas.G)
             P.add(p)
 
+
         # these parameters are equal for all texture-domains within a crystal
+        fix_Nabc = [fix.Nabc]*3
+        if self.params.simulator.crystal.has_isotropic_ncells:
+            fix_Nabc = [fix_Nabc[0], True, True]
+
+        fix_difsig = [fix.diffuse_sigma]*3
+        if self.params.isotropic.diffuse_sigma:
+            fix_difsig = [fix_difsig[0], True, True]
+
+        fix_difgam = [fix.diffuse_gamma]*3
+        if self.params.isotropic.diffuse_gamma:
+            fix_difgam = [fix_difgam[0], True, True]
+
+        fix_eta = [fix.eta_abc]*3
+        if self.params.simulator.crystal.has_isotropic_mosaicity:
+            fix_eta = [fix_eta[0], True, True]
+
         for ii in range(3):
             # Mosaic domain tensor
             p = ParameterType(init=init.Nabc[ii], sigma=sigma.Nabc[ii],
                               minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
-                              fix=fix.Nabc, name="Nabc%d" % (ii,),
+                              fix=fix_Nabc[ii], name="Nabc%d" % (ii,),
                               center=centers.Nabc[ii], beta=betas.Nabc[ii])
             P.add(p)
 
             # diffuse gamma and sigma
             p = ParameterType(init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
                               minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
-                              fix=fix.diffuse_gamma, name="diffuse_gamma%d" % (ii,),
+                              fix=fix_difgam[ii], name="diffuse_gamma%d" % (ii,),
                               center=centers.diffuse_gamma[ii], beta=betas.diffuse_gamma[ii])
             P.add(p)
 
             p = ParameterType(init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
                               minval=mins.diffuse_sigma[ii], maxval=maxs.diffuse_sigma[ii],
-                              fix=fix.diffuse_sigma, name="diffuse_sigma%d" % (ii,),
+                              fix=fix_difsig[ii], name="diffuse_sigma%d" % (ii,),
                               center=centers.diffuse_sigma[ii], beta=betas.diffuse_sigma[ii])
             P.add(p)
-            # only refine eta_abc0 for isotropic spread model
-            fix_eta = fix.eta_abc
-            if not fix_eta and not self.SIM.D.has_anisotropic_mosaic_spread and ii > 0:
-                fix_eta = False
+
+            # mosaic spread (mosaicity)
             p = ParameterType(init=init.eta_abc[ii], sigma=sigma.eta_abc[ii],
                               minval=mins.eta_abc[ii], maxval=maxs.eta_abc[ii],
-                              fix=fix_eta, name="eta_abc%d" % (ii,),
+                              fix=fix_eta[ii], name="eta_abc%d" % (ii,),
                               center=centers.eta_abc[ii], beta=betas.eta_abc[ii])
             P.add(p)
 
@@ -740,7 +757,7 @@ class DataModeler:
 
     def get_data_model_pairs(self):
         if self.best_model is None:
-            raise ValueError("cannot get the best model with setting best_model attribute")
+            raise ValueError("cannot get the best model, there is no best_model attribute")
         all_dat_img, all_mod_img = [], []
         all_trusted = []
         all_bragg = []
@@ -753,14 +770,16 @@ class DataModeler:
             else:
                 all_trusted.append(None)
 
-            # dat = img_data[pid, y1:y2, x1:x2]
             dat = self.all_data[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
             all_dat_img.append(dat)
             if self.all_background is not None:
-                bg = self.all_background[self.roi_id==i_roi].reshape((y2-y1, x2-x1))
-                # assume mod does not contain background
-                all_bragg.append(mod)
-                all_mod_img.append(mod+bg)
+                bg = self.all_background[self.roi_id == i_roi].reshape((y2-y1, x2-x1))
+                if self.best_model_includes_background:
+                    all_bragg.append(mod-bg)
+                    all_mod_img.append(mod)
+                else:
+                    all_bragg.append(mod)
+                    all_mod_img.append(mod+bg)
             else:  # assume mod contains background
                 all_mod_img.append(mod)
                 all_bragg.append(None)
@@ -892,6 +911,9 @@ def model(x, SIM, pfs,  compute_grad=True):
     # Mosaic block
     Nabc_params = [SIM.P["Nabc%d" % (i_n,)] for i_n in range(3)]
     Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
+    if SIM.D.isotropic_ncells:
+        Nb = Na
+        Nc = Na
     SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
 
     # diffuse signals
@@ -979,6 +1001,8 @@ def model(x, SIM, pfs,  compute_grad=True):
                     p = Nabc_params[i_n]
                     N_grad = p.get_deriv(x[p.xpos], N_grad)
                     J[p.xpos] += N_grad
+                    if SIM.D.isotropic_ncells:
+                        break
 
             if SIM.D.use_diffuse:
                 for t in ['gamma','sigma']:
@@ -1249,6 +1273,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
 
     x = Modeler.Minimize(x0)
     Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model_includes_background = False
 
     new_crystal = update_crystal_from_x(Modeler.SIM, x)
     new_exp = deepcopy(Modeler.E)
@@ -1281,9 +1306,17 @@ def update_detector_from_x(SIM, x):
     return det
 
 
-def update_crystal_from_x(SIM, x):
-    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+def new_cryst_from_rotXYZ_and_ucell(rotXYZ, ucparam, orig_crystal):
+    """
 
+    :param rotXYZ: tuple of rotation angles about princple axes (radians)
+        Crystal will be rotated by rotX about (-1,0,0 ), rotY about (0,-1,0) and rotZ about
+        (0,0,-1) . This is the convention used by diffBragg
+    :param ucparam: unit cell parameter tuple (a,b,c, alpha, beta, gamma) in Angstrom,degrees)
+    :param orig_crystal: dxtbx.model.Crystal object which will be copied and adjusted according to ucell and rotXYZ
+    :return: new dxtbx.model.Crystal object
+    """
+    rotX, rotY, rotZ = rotXYZ
     xax = col((-1, 0, 0))
     yax = col((0, -1, 0))
     zax = col((0, 0, -1))
@@ -1292,28 +1325,44 @@ def update_crystal_from_x(SIM, x):
     RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
     RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
     M = RX * RY * RZ
-    U = M * sqr(SIM.crystal.dxtbx_crystal.get_U())
-    new_C = deepcopy(SIM.crystal.dxtbx_crystal)
+    U = M * sqr(orig_crystal.get_U())
+    new_C = deepcopy(orig_crystal)
     new_C.set_U(U)
 
-    ucparam = a, b, c, al, be, ga
     ucman = utils.manager_from_params(ucparam)
     new_C.set_B(ucman.B_recipspace)
-
     return new_C
 
 
-def get_new_xycalcs(Modeler, new_exp):
+def update_crystal_from_x(SIM, x):
+    """
+    :param SIM: sim_data instance containing a nanoBragg crystal object
+    :param x: parameters returned by hopper_utils (instance of simtbx.diffBragg.refiners.parameters.Parameters()
+    :return: a new dxtbx.model.Crystal object with updated unit cell and orientation matrix
+    """
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+    ucparam = a, b, c, al, be, ga
+    return new_cryst_from_rotXYZ_and_ucell((rotX,rotY,rotZ), ucparam, SIM.crystal.dxtbx_crystal)
+
+
+def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
+    """
+
+    :param Modeler: data modeler instance after refinement
+    :param new_exp: post-refinement dxtbx experiment obj
+    :param old_refl_tag: exisiting columns will be renamed with this tag as a prefix
+    :return: refl table with xyzcalcs derived from the modeling results
+    """
     _,_,_, bragg_subimg = Modeler.get_data_model_pairs()
     new_refls = deepcopy(Modeler.refls)
 
     reflkeys = list(new_refls.keys())
     if "xyzcal.px" in reflkeys:
-        new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+        new_refls['%s.xyzcal.px' % old_refl_tag] = deepcopy(new_refls['xyzcal.px'])
     if "xyzcal.mm" in reflkeys:
-        new_refls['dials.xyzcal.mm'] = deepcopy(new_refls['xyzcal.mm'])
+        new_refls['%s.xyzcal.mm' % old_refl_tag] = deepcopy(new_refls['xyzcal.mm'])
     if "xyzobs.mm.value" in list(new_refls.keys()):
-        new_refls['dials.xyzobs.mm.value'] = deepcopy(new_refls['xyzobs.mm.value'])
+        new_refls['%s.xyzobs.mm.value' % old_refl_tag] = deepcopy(new_refls['xyzobs.mm.value'])
 
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     new_xycalcs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
