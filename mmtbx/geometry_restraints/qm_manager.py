@@ -22,6 +22,7 @@ class base_manager():
                solvent_model,
                charge,
                multiplicity,
+               nproc=1,
                preamble=None,
                log=None,
                ):
@@ -529,13 +530,14 @@ class mopac_manager(base_qm_manager):
   def get_log_filename(self): return 'mopac_%s.out' % self.preamble
 
   def opt_setup(self):
-    outl = '%s %s %s %s\n%s\n\n' % (
+    outl = '%s %s %s %s \n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
-     'GEO-OK',
+     'CHARGE=%s THREADS=%s' % (self.charge, self.nproc),
      self.preamble,
      )
+    assert self.multiplicity==1
     outl += self.get_coordinate_lines()
     self.write_input(outl)
 
