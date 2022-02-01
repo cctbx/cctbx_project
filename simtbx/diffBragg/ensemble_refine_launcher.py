@@ -123,6 +123,27 @@ class RefineLauncher:
         return self.RUC
 
     def load_inputs(self, pandas_table, miller_data=None, refls_key='predictions'):
+        """
+
+        :param pandas_table: contains path to the experiments (pandas column exp_name) to be loaded
+            the pandas table is expected to have been written by diffBragg.hopper or
+            diffBragg.hopper_process . See method save_to_pandas in simtbx/command_line/hopper.py
+            For example, if the outputdir of diffBragg.hopper was set to `all_shots`, then
+            there should be a golder all_shots/pandas created which contains all of the per-shot pandas
+            dataframes. They should be concatenated as follows, forming a suitable argument for this method
+            >> import glob,pandas
+            >> fnames = glob.glob("all_shots/pandas/rank*/*pkl")
+            >> df = pandas.concat([ pandas.read_pickle(f) for f in fnames])
+            >> df.reset_index(inplace=True, drop=True)
+            >> df.to_pickle("all_shots.pkl")
+            >> # Then later, as part of an MPI application, the following will load all data:
+            >> RefineLauncher_instance.load_inputs(df, refls_key="stage1_refls")
+
+        :param miller_data: Optional miller array for the structure factor component of the model
+        :param refls_key: key specifying the reflection tables in the pandas table
+            Modeled pixels will lie in shoeboxes centered on each x,y,z in xyzobs.px.value
+        :return:
+        """
         COMM.Barrier()
         num_exp = len(pandas_table)
         first_exper_file = pandas_table.exp_name.values[0]
@@ -238,6 +259,7 @@ class RefineLauncher:
             shot_modeler.ucell_man = UcellMan
             self.SIM.num_ucell_param = len(shot_modeler.ucell_man.variables)  # for convenience
 
+            loaded_spectra = False
             if self.params.spectrum_from_imageset:
                 try:
                     shot_spectra = hopper_utils.downsamp_spec(self.SIM, self.params, expt, return_and_dont_set=True)
@@ -249,6 +271,7 @@ class RefineLauncher:
             if not loaded_spectra:
                 if "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
                     shot_spectra = utils.load_spectra_from_dataframe(exper_dataframe)
+                    LOGGER.debug("Loaded specta from %s" % exper_dataframe.spectrum_filename.values[0])
 
                 else:
                     total_flux = exper_dataframe.total_flux.values[0]
@@ -271,6 +294,7 @@ class RefineLauncher:
             else:
                 shot_modeler.originZ_init = 0
             shot_modeler.exper_name = exper_name
+            shot_modeler.refl_name = refl_name
 
             shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
