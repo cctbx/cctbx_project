@@ -5,6 +5,7 @@ __global__
 void gpu_sum_over_steps(
         int Npix_to_model, unsigned int* panels_fasts_slows,
         CUDAREAL* floatimage,
+        CUDAREAL* wavelenimage,
         CUDAREAL* d_Umat_images, CUDAREAL* d2_Umat_images,
         CUDAREAL* d_Bmat_images, CUDAREAL* d2_Bmat_images,
         CUDAREAL* d_Ncells_images, CUDAREAL* d2_Ncells_images,
@@ -57,7 +58,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell)
+        bool refine_Icell, bool save_wavelenimage)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -226,6 +227,7 @@ void gpu_sum_over_steps(
 
         // reset photon count for this pixel
         double _I=0;
+        double Ilambda=0;
 
         // reset derivative photon counts for the various parameters
         double rot_manager_dI[3] = {0,0,0};
@@ -526,6 +528,8 @@ void gpu_sum_over_steps(
             CUDAREAL _I_total = _I_cell *I0;
             CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
+            if (save_wavelenimage)
+                Ilambda += Iincrement*lambda_ang;
 
             if (s_refine_diffuse){
                 CUDAREAL step_scale = texture_scale*_F_cell*_F_cell;
@@ -917,6 +921,8 @@ void gpu_sum_over_steps(
         // final scale term to being everything to photon number units
         CUDAREAL _scale_term = _polar*_om * s_overall_scale;
         floatimage[i_pix] = _scale_term*_I;
+        if (save_wavelenimage)
+            wavelenimage[i_pix] = Ilambda / _I;
 
         // udpate the rotation derivative images*
         for (int i_rot =0 ; i_rot < 3 ; i_rot++){
