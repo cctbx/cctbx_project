@@ -21,7 +21,7 @@ class RangedParameter:
   """
 
   def __init__(self, init=0, minval=-1, maxval=1, sigma=1, fix=False, center=None, beta=None,
-               name="param"):
+               name="param", is_global=False):
     """
 
     :param init: initial value for parameter
@@ -32,6 +32,7 @@ class RangedParameter:
     :param center: restraint center
     :param beta: restraint variance (smaller values give rise to tighter restraints)
     :param name: str, an optional name for this parameter, for bookkeeping
+    :param is_global: bool, useful flag, if True, the parameter is common to all shots in a multi-shot refinement
     """
     self.minval = minval
     self.maxval = maxval
@@ -41,6 +42,7 @@ class RangedParameter:
     self.center = center
     self.beta = beta
     self.name = name
+    self.is_global = is_global  # useful flag for potential APIs, specifies if the parameter is shared amongst all shots ?
     self._current_val = None  # place holder for the last value (output of get_val)
     # TODO use _rescaled_val in get_restraint_term and get_deriv in order to limit the valls to get_val
     self.xpos = 0  # position of parameter in list of params
@@ -98,6 +100,8 @@ class RangedParameter:
   def get_val(self, x_current):
     sin_arg = self.sigma * (x_current - 1) + self.arcsin_term
     val = (sin(sin_arg) + 1) * self.rng / 2 + self.minval
+    self.value = val
+    self.xvalue = x_current
     return val
 
   def get_deriv(self, x_current, deriv):
