@@ -421,6 +421,7 @@ class DataModeler:
         pixel_counter = np.zeros_like(img_data)
         self.all_nominal_hkl = []
         self.hi_asu_perpix = []
+        numOutOfRange = 0
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
             x1, x2, y1, y2 = self.rois[i_roi]
@@ -431,6 +432,16 @@ class DataModeler:
             data = data.ravel()
             all_background += list(background[pid, y1:y2, x1:x2].ravel())
             trusted = is_trusted[pid, y1:y2, x1:x2].ravel()
+
+            if self.params.roi.mask_outside_trusted_range:
+                minDat, maxDat = self.E.detector[pid].get_trusted_range()
+                data_out_of_range = np.logical_or(data <= minDat, data >= maxDat)
+                if self.params.roi.mask_all_if_any_outside_trusted_range:
+                    if np.any(data_out_of_range):
+                        data_out_of_range[:] = True
+
+                trusted[data_out_of_range] = False
+                numOutOfRange +=np.sum(data_out_of_range)
 
             if self.params.mask_highest_values is not None:
                 trusted[np.argsort(data)[-self.params.mask_highest_values:]] = False
@@ -459,6 +470,8 @@ class DataModeler:
                 self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
                 self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
+        if self.params.roi.mask_outside_trusted_range:
+            MAIN_LOGGER.debug("Found %d pixels outside of trusted range" % numOutOfRange)
         all_freq = []
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
@@ -1185,7 +1198,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))[trusted].sum()   # negative log Likelihood target
 
     # width of z-score should decrease as refinement proceeds
-    zscore_sigma = np.std(resid / np.sqrt(V))
+    zscore_sigma = np.std( (resid / np.sqrt(V))[trusted])
 
     restraint_terms = {}
     if params.use_restraints:
