@@ -52,7 +52,8 @@ def run_program(program_class=None, custom_process_arguments=None,
 
   # use /dev/null or nul for quiet mode
   if '--quiet' in args:
-    logger = open(os.devnull, 'w')
+    logger = multi_out()
+    logger.register('parser_log', StringIO())
 
   # create logger
   if logger is None:
@@ -284,7 +285,8 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--show-defaults', '--show_defaults',
       nargs='?', const=0, type=int, choices=range(0,4),
-      help='show default parameters with expert level (default=0)')
+      help='show default parameters with expert level (default=0)'
+    )
 
     # --attributes-level by itself is set to 0
     # --attributes-level=n sets it to n and it can only be {0, 1, 2, 3}
@@ -298,7 +300,7 @@ class CCTBXParser(ParserBase):
     # switch for writing only DataManager PHIL parameters
     self.add_argument(
       '--write-data', '--write_data', action='store_true',
-      help='write DataManager PHIL parameters to file (%s)' % \
+      help='write DataManager PHIL parameters to file (%s)' %
       self.data_filename
     )
 
@@ -306,7 +308,7 @@ class CCTBXParser(ParserBase):
     # switch for writing all the default PHIL parameters
     self.add_argument(
       '--write-defaults', '--write_defaults', action='store_true',
-      help='write default PHIL parameters to file (%s)' % \
+      help='write default PHIL parameters to file (%s)' %
       self.defaults_filename
     )
 
@@ -314,7 +316,7 @@ class CCTBXParser(ParserBase):
     # switch for writing only modified PHIL parameters
     self.add_argument(
       '--write-modified', '--write_modified', action='store_true',
-      help='write modifed PHIL parameters to file (%s)' % \
+      help='write modifed PHIL parameters to file (%s)' %
       self.modified_filename
     )
 
@@ -345,7 +347,7 @@ class CCTBXParser(ParserBase):
     # --overwrite
     # switch for overwriting files, takes precedence over PHIL definition
     self.add_argument(
-      '--overwrite', action='store_true', default=False,
+      '--overwrite', action='store_true',
       help='overwrite files, this overrides the output.overwrite PHIL parameter'
     )
 
@@ -355,7 +357,7 @@ class CCTBXParser(ParserBase):
     # e.g. --profile model.pdb should pass model.pdb to the program, not dump
     # the profiling stats to model.pdb.
     self.add_argument(
-      '--profile', action='store_true', default=False,
+      '--profile', action='store_true',
       help='enable profiling and outputs statistics to a file (profile.out).'
     )
 
@@ -364,7 +366,8 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--citations',
       nargs='?', const='default', type=str, choices=['default', 'cell', 'iucr'],
-      help='show citation(s) for program in different formats')
+      help='show citation(s) for program in different formats'
+    )
 
     # --quiet
     # suppress output
@@ -377,7 +380,8 @@ class CCTBXParser(ParserBase):
     # returns the program version
     self.add_argument(
       '--version', '-v', action='store_true',
-      help='show version information')
+      help='show version information'
+    )
 
   # ---------------------------------------------------------------------------
   def parse_args(self, args):
