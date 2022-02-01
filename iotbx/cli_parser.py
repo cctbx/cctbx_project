@@ -50,6 +50,10 @@ def run_program(program_class=None, custom_process_arguments=None,
     pr = cProfile.Profile()
     pr.enable()
 
+  # use /dev/null or nul for quiet mode
+  if '--quiet' in args:
+    logger = open(os.devnull, 'w')
+
   # create logger
   if logger is None:
     logger = multi_out()
@@ -103,6 +107,10 @@ def run_program(program_class=None, custom_process_arguments=None,
   print('='*79, file=logger)
   print('Job complete', file=logger)
   t()
+
+  # clean up file for quiet mode
+  if namespace.quiet:
+    logger.close()
 
   if json:
     result = task.get_results_as_JSON()
@@ -357,6 +365,13 @@ class CCTBXParser(ParserBase):
       '--citations',
       nargs='?', const='default', type=str, choices=['default', 'cell', 'iucr'],
       help='show citation(s) for program in different formats')
+
+    # --quiet
+    # suppress output
+    self.add_argument(
+      '--quiet', action='store_true',
+      help='suppress output to terminal'
+    )
 
     # --version
     # returns the program version
