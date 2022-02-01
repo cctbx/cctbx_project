@@ -111,6 +111,12 @@ def PAR_from_params(params, experiment, best=None):
     PAR.Nabc = [None]*3
     PAR.Ndef = [None]*3
     PAR.RotXYZ_params = [None]*3
+
+    if not params.use_restraints or params.fix.ucell:
+        # dummie values:
+        params.centers.ucell = [1, 1, 1, 1, 1, 1]
+        params.betas.ucell = [1,1,1,1,1,1]
+
     for i in range(3):
         initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
         PAR.Nabc[i] = ParameterType(init=initN, minval=params.mins.Nabc[i],
