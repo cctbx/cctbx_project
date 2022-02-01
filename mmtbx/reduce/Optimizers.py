@@ -257,9 +257,8 @@ class _SingletonOptimizer(object):
       for ai in alts:
         # If we are doing the second or later alternate, place all Movers that are in a compatible alternate
         # back into their initial configuration so we start from the same state we would have if this were
-        # our only alternate being tested.  This is particularly important because the flip states need to
-        # be reported from their base state rather than from wherever they were left by the previous
-        # alternate.
+        # our only alternate being tested.  This will ensure that we get compatible outputs when run either
+        # way (we may end up with equivalent but different results, like 120 degree rotations for 3 hydrogens).
         for m in self._movers:
           coarse = m.CoarsePositions()
           if coarse.atoms[0].parent().altloc in ['', ' ', ai]:
@@ -267,20 +266,7 @@ class _SingletonOptimizer(object):
             self._setMoverState(coarse, 0)
 
             # Apply any location and information fixups needed for the initial configuration.
-            fixUp = m.FixUp(0)
-            myAtoms = fixUp.atoms
-            for i, p in enumerate(fixUp.positions):
-              myAtoms[i].xyz = p
-            for i, e in enumerate(fixUp.extraInfos):
-              print('XXX Fixing up Mover extra info in conformation "'+coarse.atoms[0].parent().altloc+'"')
-              self._extraAtomInfo.setMappingFor(myAtoms[i], e)
-            for i, d in enumerate(fixUp.deleteMes):
-              # Either ensure that it is deleted or ensure that it is not depending on the
-              # value of the deletion result.
-              if d:
-                self._deleteMes.add(myAtoms[i])
-              else:
-                self._deleteMes.discard(myAtoms[i])
+            self._doFixup(m.FixUp(0))
 
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
@@ -580,7 +566,7 @@ class _SingletonOptimizer(object):
           description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
 
           # If the Mover is a flip of some kind, then the substring "lipped" will be present
-          # in the description.  When that happes, we check the final state and the flipped
+          # in the description.  When that happens, we check the final state and the flipped
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           if "lipped" in description:
@@ -630,22 +616,7 @@ class _SingletonOptimizer(object):
         for m in self._movers:
           loc = self._coarseLocations[m]
           self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(type(m),loc))
-          fixUp = m.FixUp(loc)
-          myAtoms = fixUp.atoms
-          for i, p in enumerate(fixUp.positions):
-            self._infoString += _VerboseCheck(5,"Moving atom to {}\n".format(p))
-            myAtoms[i].xyz = p
-          for i, e in enumerate(fixUp.extraInfos):
-            self._infoString += _VerboseCheck(5,"Atom info to {}\n".format(e))
-            self._extraAtomInfo.setMappingFor(myAtoms[i], e)
-          for i, d in enumerate(fixUp.deleteMes):
-            # Either ensure that it is deleted or ensure that it is not depending on the
-            # value of the deletion result.
-            self._infoString += _VerboseCheck(5,"Atom deleted is {}\n".format(d))
-            if d:
-              self._deleteMes.add(myAtoms[i])
-            else:
-              self._deleteMes.discard(myAtoms[i])
+          self._doFixup(m.FixUp(loc))
         self._infoString += _ReportTiming("fix up Movers")
 
       ################################################################################
@@ -722,6 +693,27 @@ class _SingletonOptimizer(object):
         self._spatialQuery.remove(positionReturn.atoms[i])
         self._deleteMes.discard(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
+
+  def _doFixup(self, fixUp):
+    """
+      Move the atoms to their fixup positions, updating their extra atom info
+      and deletion status
+    """
+    myAtoms = fixUp.atoms
+    for i, p in enumerate(fixUp.positions):
+      self._infoString += _VerboseCheck(5,"Moving atom to {}\n".format(p))
+      myAtoms[i].xyz = p
+    for i, e in enumerate(fixUp.extraInfos):
+      self._infoString += _VerboseCheck(5,"Atom info to {}\n".format(e))
+      self._extraAtomInfo.setMappingFor(myAtoms[i], e)
+    for i, d in enumerate(fixUp.deleteMes):
+      # Either ensure that it is deleted or ensure that it is not depending on the
+      # value of the deletion result.
+      self._infoString += _VerboseCheck(5,"Atom deleted is {}\n".format(d))
+      if d:
+        self._deleteMes.add(myAtoms[i])
+      else:
+        self._deleteMes.discard(myAtoms[i])
 
   def _scoreAtom(self, atom):
     maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
