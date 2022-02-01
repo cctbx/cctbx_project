@@ -671,6 +671,10 @@ simulator {
       name = None
         .type = str
         .help = path to a pdb file
+      add_anom = True
+        .type = bool
+        .help = Use the dxtbx beams wavelength to sample the henke tables
+        .help = and add anomalous contributions from each atom
       k_sol = None
         .type = float
         .help = solvent component of structure factor: k_sol * exp(-b_sol*s^2/4)

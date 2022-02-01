@@ -740,10 +740,13 @@ def simulator_from_expt_and_params(expt, params=None):
     # load the structure factors
     if mtz_name is None:
         if pdb_name is not None:
+            wavelength=None
+            if params.simulator.structure_factors.from_pdb.add_anom:
+                wavelength = expt.beam.get_wavelength()
             miller_data = get_complex_fcalc_from_pdb(pdb_name,
                 dmin=params.simulator.structure_factors.dmin,
                 dmax=params.simulator.structure_factors.dmax,
-                wavelength=expt.beam.get_wavelength(),
+                wavelength=wavelength,
                 k_sol=params.simulator.structure_factors.from_pdb.k_sol,
                 b_sol=params.simulator.structure_factors.from_pdb.b_sol)
             miller_data = miller_data.as_amplitude_array()

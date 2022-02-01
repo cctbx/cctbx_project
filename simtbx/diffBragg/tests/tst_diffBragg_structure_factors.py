@@ -8,6 +8,12 @@ from simtbx.nanoBragg import tst_nanoBragg_multipanel
 from dxtbx.model import Experiment
 import numpy as np
 
+# make a dummie experiment
+expt = Experiment()
+expt.detector = tst_nanoBragg_multipanel.whole_det
+expt.beam = tst_nanoBragg_multipanel.beam
+expt.crystal = tst_nanoBragg_multipanel.cryst
+
 # write a dummie PDB file
 PDB = "1234.pdb"
 o = open(PDB, "w")
@@ -15,7 +21,9 @@ o.write(pdb_lines)
 o.close()
 
 # Create a miller array from on-disk PDB file
-F = utils.get_complex_fcalc_from_pdb(PDB, dmin=2, dmax=20, k_sol=0.2, b_sol=20)
+F = utils.get_complex_fcalc_from_pdb(PDB,
+    wavelength=expt.beam.get_wavelength(),
+    dmin=2, dmax=20, k_sol=0.2, b_sol=20)
 F = F.as_amplitude_array()
 Fmap = {h: amp for h,amp in zip(F.indices(), F.data())}
 
@@ -23,15 +31,12 @@ Fmap = {h: amp for h,amp in zip(F.indices(), F.data())}
 phil_scope = parse(hopper_phil+philz)
 params = phil_scope.extract()
 params.simulator.structure_factors.from_pdb.name = PDB
+params.simulator.structure_factors.from_pdb.add_anom = True
 params.simulator.structure_factors.from_pdb.k_sol = 0.2
 params.simulator.structure_factors.from_pdb.b_sol = 20
 params.simulator.structure_factors.dmin = 2
 params.simulator.structure_factors.dmax = 20
 
-expt = Experiment()
-expt.detector = tst_nanoBragg_multipanel.whole_det
-expt.beam = tst_nanoBragg_multipanel.beam
-expt.crystal = tst_nanoBragg_multipanel.cryst
 
 SIM = utils.simulator_from_expt_and_params(expt, params)
 
