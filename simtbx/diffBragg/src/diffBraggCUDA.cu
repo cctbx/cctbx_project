@@ -152,6 +152,9 @@ void diffBragg_sum_over_steps_cuda(
 
         //gettimeofday(&t3, 0));
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
+        if (db_flags.wavelength_img){
+            gpuErr(cudaMallocManaged(&cp.cu_wavelenimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
+        }
         if (db_flags.refine_diffuse){
             gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_sigma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
@@ -387,6 +390,7 @@ void diffBragg_sum_over_steps_cuda(
     gpu_sum_over_steps<<<numblocks, blocksize>>>(
         Npix_to_model, cp.cu_panels_fasts_slows,
         cp.cu_floatimage,
+        cp.cu_wavelenimage,
         cp.cu_d_Umat_images, cp.cu_d2_Umat_images,
         cp.cu_d_Bmat_images, cp.cu_d2_Bmat_images,
         cp.cu_d_Ncells_images, cp.cu_d2_Ncells_images,
@@ -433,7 +437,8 @@ void diffBragg_sum_over_steps_cuda(
         cp.cu_fpfdp,  cp.cu_fpfdp_derivs, cp.cu_atom_data, num_atoms,
         db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse,
         cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images,
-        db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell);
+        db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
+        db_flags.wavelength_img);
 
     error_msg(cudaGetLastError(), "after kernel call");
 
@@ -452,6 +457,11 @@ void diffBragg_sum_over_steps_cuda(
 //  COPY BACK FROM DEVICE
     for (int i=0; i< Npix_to_model; i++){
         floatimage[i] = cp.cu_floatimage[i];
+    }
+    if(db_flags.wavelength_img){
+        for (int i=0; i< Npix_to_model; i++){
+            d_image.wavelength[i] = cp.cu_wavelenimage[i];
+        }
     }
     if (db_flags.refine_fcell){
         for (int i=0; i<Npix_to_model; i++){
@@ -520,6 +530,7 @@ void freedom(diffBragg_cudaPointers& cp){
 
     if (cp.device_is_allocated){
         gpuErr(cudaFree( cp.cu_floatimage));
+        gpuErr(cudaFree( cp.cu_wavelenimage));
         gpuErr(cudaFree( cp.cu_d_Umat_images));
         gpuErr(cudaFree( cp.cu_d_Bmat_images));
         gpuErr(cudaFree( cp.cu_d_Ncells_images));

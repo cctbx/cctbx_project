@@ -15,6 +15,7 @@ typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 __global__ void gpu_sum_over_steps(
         int Npix_to_model, unsigned int* panels_fasts_slows,
         CUDAREAL* floatimage,
+        CUDAREAL* wavelenimage,
         CUDAREAL* d_Umat_images, CUDAREAL* d2_Umat_images,
         CUDAREAL* d_Bmat_images, CUDAREAL* d2_Bmat_images,
         CUDAREAL* d_Ncells_images, CUDAREAL* d2_Ncells_images,
@@ -67,4 +68,4 @@ __global__ void gpu_sum_over_steps(
         bool doing_fp_fdp_derivs,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell);
+        bool refine_Icell, bool save_wavelenimage);

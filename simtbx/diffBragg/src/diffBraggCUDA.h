@@ -23,6 +23,7 @@ struct diffBragg_cudaPointers {
   unsigned int* cu_panels_fasts_slows;
 
   CUDAREAL* cu_floatimage;
+  CUDAREAL* cu_wavelenimage=NULL;
   CUDAREAL* cu_d_diffuse_sigma_images=NULL;
   CUDAREAL* cu_d_diffuse_gamma_images=NULL;
   CUDAREAL* cu_d_Umat_images=NULL;
