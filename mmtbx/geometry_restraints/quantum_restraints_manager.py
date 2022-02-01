@@ -578,20 +578,23 @@ def update_restraints(model,
       ligand_lookup[key]=angle_model
       key = (atoms[key[3]].tmp, atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
       model_lookup[key]=angle_model
-    # for angle_proxy in ligand_grm.geometry.dihedral_proxies:
-    #   angle = ligand_lookup.get(angle_proxy.i_seqs, None)
-    #   if angle is None: continue
-    #   angle_proxy.angle_ideal=angle
-    # assert 0
+    for angle_proxy in ligand_grm.geometry.dihedral_proxies:
+      angle = ligand_lookup.get(angle_proxy.i_seqs, None)
+      if angle is None: continue
+      angle_proxy.angle_ideal=angle
+    for angle_proxy in model_grm.geometry.dihedral_proxies:
+      angle = model_lookup.get(angle_proxy.i_seqs, None)
+      if angle is None: continue
+      angle_proxy.angle_ideal=angle
 
     print('', file=log)
     if qmr.write_restraints:
       print('write_restraints parameter still in development')
-      # cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
-      # print('  Writing restraints to %s.cif' % qmm.preamble)
-      # f=open('%s.cif' % qmm.preamble, 'w')
-      # f.write(str(cif_object))
-      # del f
+      cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
+      print('  Writing restraints to %s.cif' % qmm.preamble)
+      f=open('%s.cif' % qmm.preamble, 'w')
+      f.write(str(cif_object))
+      del f
     #
     # final stats
     #

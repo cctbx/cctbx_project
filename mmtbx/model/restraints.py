@@ -93,6 +93,7 @@ def get_torsion_dictionary(ligand_model, ideal=True):
 def get_restraints_from_model_via_grm(ligand_model, ideal=True, verbose=True):
   bond_lookup = get_bond_dictionary(ligand_model, ideal=ideal)
   angle_lookup = get_angle_dictionary(ligand_model, ideal=ideal)
+  torsion_lookup = get_torsion_dictionary(ligand_model, ideal=ideal)
   codes = []
   atoms = ligand_model.get_atoms()
   for atom in atoms:
@@ -127,5 +128,17 @@ def get_restraints_from_model_via_grm(ligand_model, ideal=True, verbose=True):
         assert angle_ideal
         values.append(angle_ideal)
       loop.update_column('_chem_comp_angle.value_angle', values)
-  assert 0
+    elif key=='_chem_comp_tor':
+      values = []
+      for row in loop.iterrows():
+        key = [row['_chem_comp_tor.atom_id_1'],
+               row['_chem_comp_tor.atom_id_2'],
+               row['_chem_comp_tor.atom_id_3'],
+               row['_chem_comp_tor.atom_id_4'],
+               ]
+        key.sort()
+        angle_ideal = torsion_lookup.get(tuple(key), None)
+        assert angle_ideal
+        values.append(angle_ideal)
+      loop.update_column('_chem_comp_tor.value_angle', values)
   return co
