@@ -1,3 +1,11 @@
+2022.1
+======
+
+* Added option to use legacy bulk solvent mask
+* Added option to any_reflection_file_reader to control averaging of
+  anomalous data columns in MTZ files
+* Fix SHELXF formatting where integer values may be interpreted as decimal
+
 2021.12
 =======
 
