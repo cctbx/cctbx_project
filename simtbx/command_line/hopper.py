@@ -3,6 +3,7 @@ import socket
 import glob
 from copy import deepcopy
 from simtbx.diffBragg import hopper_utils
+from dxtbx.model.experiment_list import ExperimentListFactory
 import h5py
 from dxtbx.model.experiment_list import ExperimentList
 try:
@@ -71,8 +72,6 @@ class Script:
                 read_reflections=True,
                 check_format=False,
                 epilog="PyCuties")
-        self.parser = COMM.bcast(self.parser)
-        if COMM.rank == 0:
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
             assert self.params.outdir is not None
         self.params = COMM.bcast(self.params)
@@ -89,6 +88,7 @@ class Script:
         mpi_logger.setup_logging_from_params(self.params)
 
     def run(self):
+        MAIN_LOGGER = logging.getLogger("diffBragg.main")
         assert os.path.exists(self.params.exp_ref_spec_file)
         input_lines = None
         best_models = None
@@ -148,6 +148,7 @@ class Script:
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
+            MAIN_LOGGER.info("Modeling %s" % exp)
             Modeler = hopper_utils.DataModeler(self.params)
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
@@ -181,7 +182,11 @@ class Script:
                 if self.params.only_dump_gathers:
                     continue
 
+            if self.params.refiner.reference_geom is not None:
+                detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
+                Modeler.E.detector = detector
             Modeler.SimulatorFromExperiment(best)
+            Modeler.SIM.D.store_ave_wavelength_image = True
             if self.params.refiner.verbose is not None and COMM.rank==0:
                 Modeler.SIM.D.verbose = self.params.refiner.verbose
             if self.params.profile:
@@ -221,6 +226,7 @@ class Script:
 def save_up(Modeler, x, exp, i_exp, input_refls):
     LOGGER = logging.getLogger("refine")
     Modeler.best_model, _ = hopper_utils.model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    Modeler.best_model_includes_background = False
     LOGGER.info("Optimized values for i_exp %d:" % i_exp)
     hopper_utils.look_at_x(x, Modeler.SIM)
 
@@ -239,6 +245,15 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
 
     data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
+
+    wavelen_subimg = []
+    if Modeler.SIM.D.store_ave_wavelength_image:
+        bm = Modeler.best_model.copy()
+        Modeler.best_model = Modeler.SIM.D.ave_wavelength_image().as_numpy_array()
+        Modeler.best_model_includes_background = True
+        _, wavelen_subimg, _,_ = Modeler.get_data_model_pairs()
+        Modeler.best_model = bm
+        Modeler.best_model_includes_background = False
 
     comp = {"compression": "lzf"}
     new_refls = deepcopy(Modeler.refls)
@@ -259,6 +274,8 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
             sigmaZs.append(sigmaZ)
             h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
             h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
+            if wavelen_subimg:
+                h5.create_dataset("wavelength/roi%d" % i_roi, data=wavelen_subimg[i_roi], **comp)
             if bragg_subimg[0] is not None:
                 h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
                 if np.any(bragg_subimg[i_roi] > 0):
