@@ -134,13 +134,15 @@ class Spotfinder_radial_average:
         vertical_line = ax.axvline(color='r', lw=0.8, ls='--', x=xvalues[1])
         vertical_line.set_visible(False)
         def onmove(event):
+          if fig.canvas.toolbar.mode: return
           x = event.xdata
           vertical_line.set_xdata(x)
           ax.figure.canvas.draw()
         def onclick(event):
+          if fig.canvas.toolbar.mode: return
           vertical_line.set_visible(True)
-          print()
         def onrelease(event):
+          if fig.canvas.toolbar.mode: return
           vertical_line.set_visible(False)
           peak = self._nearest_peak(event.xdata,xvalues,yvalues)
           if peak is not None:
