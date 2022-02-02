@@ -129,6 +129,7 @@ class Spotfinder_radial_average:
           f.write("{:.6f}\t{}\n".format(1/x, y))
 
     if params.output.peak_file:
+      assert plt.get_backend() == "TkAgg"
       #If a peak list output file is specified, do interactive peak picking:
       with open(params.output.peak_file, 'w') as f:
         vertical_line = ax.axvline(color='r', lw=0.8, ls='--', x=xvalues[1])

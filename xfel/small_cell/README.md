@@ -182,12 +182,11 @@ $ cd combined; dials.combine_experiments *.expt *.refl reference_from_experiment
 
 Plot the powder pattern:
 ```
-$ cctbx.xfel.powder_from_spots combined.* output.xy_file=powder.xy
+$ cctbx.xfel.powder_from_spots combined.* output.xy_file=powder.xy output.peak_file=peaks.txt
 ```
 
-This should display an interactive matplotlib window. Manually identify about 20 d-spacings. Record them
-with 3 decimal places accuracy in a new file `peaks.txt`. Then run GSASII powder
-indexing through the `candidate_cells` wrapper:
+This should display an interactive matplotlib window. Zoom, drag and click to identify about 20 d-spacings.
+Then run GSASII powder indexing through the `candidate_cells` wrapper:
 ```
 $ cctbx.xfel.candidate_cells nproc=64 input.peak_list=peaks.txt input.powder_pattern=powder.xy search.timeout=300
 ```
