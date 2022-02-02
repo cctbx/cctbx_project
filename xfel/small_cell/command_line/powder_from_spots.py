@@ -90,6 +90,12 @@ output {
     .type = str
   xy_file = None
     .type = str
+  peak_file = None
+    .type = str
+    .help = Optionally, specify an output file for interactive peak picking in \
+            the plot window. Clicking and holding on the plot will bring up a \
+            vertical line to help; releasing the mouse button will add the \
+            nearest local maximum to the output file peak_file.
 }
 """
 )
