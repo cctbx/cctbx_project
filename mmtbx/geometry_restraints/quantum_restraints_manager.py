@@ -588,13 +588,13 @@ def update_restraints(model,
       angle_proxy.angle_ideal=angle
 
     print('', file=log)
-    if qmr.write_restraints:
-      print('write_restraints parameter still in development')
-      cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
-      print('  Writing restraints to %s.cif' % qmm.preamble)
-      f=open('%s.cif' % qmm.preamble, 'w')
-      f.write(str(cif_object))
-      del f
+    # if qmr.write_restraints:
+    #   print('write_restraints parameter still in development')
+    #   cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
+    #   print('  Writing restraints to %s.cif' % qmm.preamble)
+    #   f=open('%s.cif' % qmm.preamble, 'w')
+    #   f.write(str(cif_object))
+    #   del f
     #
     # final stats
     #
