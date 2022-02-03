@@ -129,7 +129,10 @@ class Spotfinder_radial_average:
           f.write("{:.6f}\t{}\n".format(1/x, y))
 
     if params.output.peak_file:
-      assert plt.get_backend() == "TkAgg"
+      backend_list = ["TkAgg","QtAgg"]
+      assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
+You can set the MPLBACKEND environment varibale to change this.
+Currently supported options: %s""" %backend_list
       #If a peak list output file is specified, do interactive peak picking:
       with open(params.output.peak_file, 'w') as f:
         vertical_line = ax.axvline(color='r', lw=0.8, ls='--', x=xvalues[1])
@@ -138,17 +141,18 @@ class Spotfinder_radial_average:
           if fig.canvas.toolbar.mode: return
           x = event.xdata
           vertical_line.set_xdata(x)
-          ax.figure.canvas.draw()
+          if plt.getp(vertical_line, 'visible'):
+            ax.figure.canvas.draw()
         def onclick(event):
           if fig.canvas.toolbar.mode: return
           vertical_line.set_visible(True)
         def onrelease(event):
           if fig.canvas.toolbar.mode: return
           vertical_line.set_visible(False)
+          ax.figure.canvas.draw()
           peak = self._nearest_peak(event.xdata,xvalues,yvalues)
           if peak is not None:
             print('Selected x=%f, nearest local maximum=%f, writing to %s.' % (1/event.xdata, peak, params.output.peak_file))
-            f.write(str(1/event.xdata)+"\n")
 
         mmv = fig.canvas.mpl_connect('motion_notify_event', onmove)
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
