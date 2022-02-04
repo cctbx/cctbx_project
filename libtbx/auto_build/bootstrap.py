@@ -998,6 +998,13 @@ class kokkos_module(SourceModule):
                'https://github.com/kokkos/kokkos.git',
                'https://github.com/kokkos/kokkos/archive/master.zip']
 
+class kokkos_kernels_module(SourceModule):
+  module = 'kokkos-kernels'
+  anonymous = ['git',
+               'git@github.com:kokkos/kokkos-kernels.git',
+               'https://github.com/kokkos/kokkos-kernels.git',
+               'https://github.com/kokkos/kokkos-kernels/archive/master.zip']
+
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
@@ -2189,7 +2196,7 @@ class CCTBXBuilder(CCIBuilder):
         self.add_step(self.shell(command=['git', 'checkout', '3.3.9'], workdir=workdir))
 
 class DIALSBuilder(CCIBuilder):
-  CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos']
+  CODEBASES_EXTRA = ['dials', 'iota', 'xia2', 'kokkos', 'kokkos-kernels']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   HOT_EXTRA = ['msgpack']
   def add_tests(self):
@@ -2274,6 +2281,7 @@ class XFELBuilder(CCIBuilder):
     'uc_metrics',
     'ncdist',
     'kokkos',
+    'kokkos-kernels',
   ]
   LIBTBX_EXTRA = [
     'dials',
