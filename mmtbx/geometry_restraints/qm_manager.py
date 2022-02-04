@@ -530,11 +530,15 @@ class mopac_manager(base_qm_manager):
   def get_log_filename(self): return 'mopac_%s.out' % self.preamble
 
   def opt_setup(self):
+    if self.nproc==0:
+      nproc_str=''
+    else:
+      nproc_str='THREADS=%s' % self.nproc
     outl = '%s %s %s %s \n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
-     'CHARGE=%s THREADS=%s' % (self.charge, self.nproc),
+     'CHARGE=%s %s' % (self.charge, nproc_str),
      self.preamble,
      )
     assert self.multiplicity==1
@@ -543,15 +547,15 @@ class mopac_manager(base_qm_manager):
 
   def get_coordinate_lines(self, interest_only=False):
     outl = ''
-    if hasattr(self, 'freeze_a_ray'):
-      assert self.interest_array
-      assert len(self.interest_array)==len(self.atoms)
     for i, atom in enumerate(self.atoms):
       if interest_only and self.interest_array and not self.interest_array[i]:
         continue
-      opt = self.interest_array[i]
-      if opt:opt=1
-      else: opt=0
+      opt = 1
+      if hasattr(self, 'freeze_a_ray'):
+        opt = self.freeze_a_ray [i]
+        if opt: opt=0
+        else: opt=1
+      if atom.element in ['H', 'D']: opt=1
       outl += ' %s %0.5f %d %0.5f %d %0.5f %d\n' % (
         atom.element,
         atom.xyz[0],
