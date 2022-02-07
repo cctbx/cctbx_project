@@ -1,8 +1,21 @@
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.merge
+
+import os, sys
+
+# vvv Temporary fix for https://github.com/dials/dials/issues/1998
+# Remove this when https://github.com/pydata/numexpr/pull/400 and
+# https://github.com/dials/dials/pull/2000 have been merged and released
+if os.environ.get("CCTBX_NO_UUID", None) is not None:
+  def mp_system(): return sys.platform.capitalize()
+  def mp_machine(): return 'x86_64'
+  import platform
+  platform.system = mp_system
+  platform.machine = mp_machine
+# ^^^
+
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
-import os
 
 # Note, when modifying this list, be sure to modify the README in xfel/merging
 
@@ -111,7 +124,7 @@ class Script(object):
     # Create the workers using the factories
     self.mpi_logger.log_step_time("CREATE_WORKERS")
     from xfel.merging import application
-    import importlib, sys, copy
+    import importlib, copy
 
     self._resolve_persistent_columns()
 
