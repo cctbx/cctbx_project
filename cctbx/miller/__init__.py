@@ -4566,6 +4566,8 @@ class array(set):
                                          assert_shannon_sampling=True,
                                          f_000=None):
     # J. P. Abrahams and A. G. W. Leslie, Acta Cryst. (1996). D52, 30-42
+    # This should really have been called "local_variance_map" because the
+    # square root is not taken after local averaging of density-squared
     complete_set = self.complete_set()
     sphere_reciprocal=get_sphere_reciprocal(
        complete_set=complete_set,radius=radius)
