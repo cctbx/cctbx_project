@@ -1533,8 +1533,7 @@ class annotation(structure_base):
          max_h_bond_length=self.max_h_bond_length,
          keep_self=None)
       score_list.append([score_1,s1])
-    score_list.sort()
-    score_list.reverse()
+    score_list = sorted(score_list, key = lambda s: s[0], reverse = True)
 
     remove_list=[]
     keep_list=[]
