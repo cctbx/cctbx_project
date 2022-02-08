@@ -1889,13 +1889,25 @@ def get_chain_type_of_chain(chain, return_rna_if_rna_or_dna = False):
   return get_chain_type(hierarchy = new_hierarchy,
      return_rna_if_rna_or_dna = return_rna_if_rna_or_dna)
 
-def get_chain_type(model=None, hierarchy=None,
+def get_chain_type(model=None, hierarchy=None, model_list = None,
      return_protein_if_present = False,
      return_rna_if_rna_or_dna = False):
   '''
    Identify chain type in a hierarchy or model and require only one chain type.
-   if return_protein_if_present and protein is present, return PROTEIN
+   if return_protein_if_present and protein is present, return PROTEIN.
+
+   If model_list, return list of chain_types present
   '''
+
+  if model_list is not None:
+    chain_type_list = []
+    for m in model_list:
+      ct = get_chain_type(model = m,
+       return_protein_if_present = return_protein_if_present,
+       return_rna_if_rna_or_dna = return_rna_if_rna_or_dna)
+      if ct is not None and not ct in chain_type_list:
+        chain_type_list.append(ct)
+    return chain_type_list
 
   if not hierarchy:
     hierarchy = model.get_hierarchy()
