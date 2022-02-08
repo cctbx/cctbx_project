@@ -672,6 +672,32 @@ def add_main_chain_atoms(hierarchy,
     add_main_chain_atoms_to_protein_three(three)
   assert 0
 
+def perdeuterate_model_ligands(hierarchy,
+                               verbose=False,
+                               ):
+  if verbose: hierarchy.show()
+  for model in hierarchy.models():
+    if verbose: print('model: "%s"' % model.id)
+    for chain in model.chains():
+      if verbose: print('chain: "%s"' % chain.id)
+      for residue_group in chain.residue_groups():
+        if verbose: print('  residue_group: resseq="%s" icode="%s"' % (
+          residue_group.resseq, residue_group.icode))
+        altlocs = []
+        for atom_group in residue_group.atom_groups():
+          altlocs.append(atom_group.altloc)
+        for atom_group in residue_group.atom_groups():
+          if verbose: print('  atom_group: resname="%s" altloc="%s"' % (
+            atom_group.resname, atom_group.altloc))
+          for atom in atom_group.atoms():
+            if atom.element.strip() in ["H"]:
+              atom.element = " D"
+              atom.name = atom.name.replace("H","D", 1)
+
+  hierarchy.atoms().reset_serial()
+  if verbose: hierarchy.show()
+  return hierarchy
+
 def main_hydrogen(model,
                   terminate_all_N_terminals=False,
                   terminate_all_C_terminals=False,
