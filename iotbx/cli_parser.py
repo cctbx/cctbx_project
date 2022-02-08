@@ -50,7 +50,7 @@ def run_program(program_class=None, custom_process_arguments=None,
     pr = cProfile.Profile()
     pr.enable()
 
-  # use /dev/null or nul for quiet mode
+  # keep output in quiet mode
   if '--quiet' in args:
     logger = multi_out()
     logger.register('parser_log', StringIO())
