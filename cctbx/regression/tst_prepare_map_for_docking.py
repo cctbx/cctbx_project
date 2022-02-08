@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 import math
 from iotbx.map_model_manager import map_model_manager
+from cctbx.maptbx.prepare_map_for_docking import add_ordered_volume_mask
 from cctbx.maptbx.prepare_map_for_docking import run_refine_cryoem_errors
 from cctbx import adptbx
 from scitbx.array_family import flex
@@ -92,10 +93,22 @@ def exercise():
       map1_coeffs, map_id = 'map_manager_1')
   mmm.add_map_from_fourier_coefficients(
       map2_coeffs, map_id = 'map_manager_2')
+  # mm1 = mmm.map_manager_1()
+  # mm2 = mmm.map_manager_2()
+  # mm_mean_data = (mm1.map_data() + mm2.map_data()) / 2
+  mm_mean_data = (mmm.map_manager_1().map_data() + mmm.map_manager_2().map_data()) / 2
+  mmm.map_manager().set_map_data(map_data = mm_mean_data)
+  # Add mask map for ordered component of map
+  protein_mw = n_residues * 110. # MW from model would be better...
+  nucleic_mw = None
+  mask_id = 'ordered_volume_mask'
+  add_ordered_volume_mask(mmm, d_min,
+      protein_mw=protein_mw, nucleic_mw=nucleic_mw,
+      map_id_out=mask_id)
   box_centre = tuple(flex.double((ucpars[0],ucpars[1],ucpars[2]))/2)
   results = run_refine_cryoem_errors(
       mmm, d_min,
-      sphere_cent=tuple(box_centre), radius=model_radius, verbosity=0)
+      sphere_cent=tuple(box_centre), radius=model_radius+d_min, verbosity=0)
 
   resultsdict = results.resultsdict
   b_refined_a = resultsdict["a_baniso"]
