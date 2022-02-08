@@ -1456,7 +1456,6 @@ def run():
   shift_map_origin = args.shift_map_origin
 
   mask_specified = True
-  mask = None
   sphere_cent = None
   radius = None
 
