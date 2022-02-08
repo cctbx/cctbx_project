@@ -2,8 +2,6 @@ from __future__ import print_function
 from __future__ import division
 
 import math
-from cctbx.maptbx import mask
-
 from scitbx.array_family import flex
 from scitbx.dtmin.minimizer import Minimizer
 from scitbx.dtmin.refinebase import RefineBase
@@ -938,11 +936,99 @@ def default_target_spectrum(ssqr):
     best_val = (1.-ds)*best_data[is1][1] + ds*best_data[is2][1]
     return best_val
 
+def add_local_squared_deviation_map(
+    mmm, radius, d_min, map_id_in='map_manager', map_id_out='variance_map'):
+  """
+  Add spherically-averaged squared map to map_model_manager
+
+  Compulsory arguments:
+  mmm:    map_model_manager containing input map
+  radius: radius of sphere over which squared deviation is averaged
+  d_min:  estimate of best resolution for map
+
+  Optional arguments:
+  map_id_in:  identifier of input map, defaults to map_manager
+  map_id_out: identifier of output map, defaults to 'variance map'
+  """
+
+  mm_in = mmm.get_map_manager_by_id(map_id = map_id_in)
+  coeffs_in = mm_in.map_as_fourier_coefficients(d_min=d_min)
+  map_out = coeffs_in.local_standard_deviation_map(radius=radius, d_min=d_min)
+  # map_out is an fft_map object, which can't easily be added to
+  # map_model_manager as a similar map_manager object, so cycle through FT
+  mm_out = map_out.as_map_manager()
+  mean_square_map_coeffs = mm_out.map_as_fourier_coefficients(d_min=d_min)
+  mmm.add_map_from_fourier_coefficients(mean_square_map_coeffs,
+      map_id=map_id_out)
+
+def add_ordered_volume_mask(
+    mmm, d_min, rad_factor=1.5, protein_mw=None, nucleic_mw=None,
+    map_id_in='map_manager', map_id_out='ordered_volume_mask'):
+  """
+  Add map defining mask covering the volume of most ordered density required
+  to contain the specified content of protein and nucleic acid, judged by local
+  squared deviation of input map
+
+  Compulsory arguments:
+  mmm: map_model_manager containing input_map
+  d_min: estimate of best resolution for map
+
+  Optional arguments:
+  rad_factor: factor by which d_min is multiplied to get radius for averaging
+    sphere, defaults to 1.5
+  protein_mw*: molecular weight of protein expected in map, if any
+  nucleic_mw*: molecular weight of nucleic acid expected in map
+  map_id_in: identifier of input map, defaults to map_manager
+  map_id_out: identifier of output map, defaults to ordered_volume_mask
+
+  * Note that at least one of protein_mw and nucleic_mw must be specified
+  """
+
+  assert((protein_mw is not None) or (nucleic_mw is not None))
+
+  # Compute local average of squared density, using a sphere that will cover a
+  # sufficient number of independent points and extending at least 5 A to
+  # sample non-bonded contact distances. A rad_factor of 1.5 should yield
+  # 4*Pi/3 * (2*1.5)^3 or about 113 independent points for the average.
+  radius = max(d_min*rad_factor, 5.)
+  add_local_squared_deviation_map(mmm, radius, d_min,
+      map_id_in=map_id_in, map_id_out='variance_map')
+
+  # Choose enough points in averaged squared density map to covered expected
+  # ordered structure
+  map_volume = mmm.map_manager().unit_cell().volume()
+  mm_in = mmm.get_map_manager_by_id(map_id='variance_map')
+  variance_map_data = mm_in.map_data()
+  numpoints = variance_map_data.size()
+  # Convert content into volume using partial specific volumes
+  target_volume = 0.
+  if protein_mw is not None:
+    target_volume += protein_mw*1.229
+  if nucleic_mw is not None:
+    target_volume += nucleic_mw*0.945
+  # Expand volume by amount needed for sphere expanded by d_min in radius
+  equivalent_radius = math.pow(target_volume / (4*math.pi/3.),1./3)
+  volume_factor = ((equivalent_radius+d_min)/equivalent_radius)**3
+  expanded_target_volume = target_volume*volume_factor
+  target_points = int(expanded_target_volume/map_volume * numpoints)
+  from cctbx.maptbx.segment_and_split_map import find_threshold_in_map
+  threshold = find_threshold_in_map(target_points = target_points,
+      map_data = variance_map_data)
+  temp_bool_3D = (variance_map_data >=  threshold)
+  # as_double method doesn't work for multidimensional flex.bool
+  mask_shape = temp_bool_3D.all()
+  overall_mask = temp_bool_3D.as_1d().as_double()
+  overall_mask.reshape(flex.grid(mask_shape))
+  new_mm = mmm.map_manager().customized_copy(map_data=overall_mask)
+  mmm.remove_map_manager_by_id(map_id='variance_map')
+  mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
+
 def run_refine_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
+    ordered_mask_id='ordered_volume_mask',
     sphere_cent=None, radius=None, verbosity=1, prior_params=None,
-    shift_map_origin=True):
+    shift_map_origin=True, keep_full_map=False):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
 
@@ -964,14 +1050,20 @@ def run_refine_cryoem_errors(
   shift_map_origin: should map coefficients be shifted to correspond to
     original origin, rather than the origin being the corner of the box,
     default True
+  keep_full_map: don't mask or box the input map
+    default False, use with caution
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
   """
 
   from scipy import interpolate
   from libtbx import group_args
+  from iotbx.map_model_manager import map_model_manager
 
-  # Start from two maps in map_model_manager plus optional mask specification
-  # First get map coefficients for maps after spherical masking
+  # Start from two half-maps and ordered volume mask in map_model_manager
+  # Keep track of ordered volume in whole reconstruction
+  ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
+  total_ordered_points = flex.mean(ordered_mm.map_data()) * ordered_mm.map_data().size()
+  # Get map coefficients for maps after spherical masking
   ucpars = mmm.map_manager().unit_cell().parameters()
   if sphere_cent is None:
     # Default to sphere in center of cell extending halfway to nearest edge
@@ -991,40 +1083,55 @@ def run_refine_cryoem_errors(
     cart_min[i] = max(cart_min[i],0)
     cart_max[i] = min(cart_max[i],ucpars[i])
 
-  # Box the map within xyz bounds, converted to map grid units
   cs = mmm.crystal_symmetry()
   uc = cs.unit_cell()
-  lower_frac = uc.fractionalize(tuple(cart_min))
-  upper_frac = uc.fractionalize(tuple(cart_max))
-  map_data = mmm.map_data()
-  all_orig = map_data.all()
-  lower_bounds = [int(math.floor(f * n)) for f, n in zip(lower_frac, all_orig)]
-  upper_bounds = [int(math.ceil( f * n)) for f, n in zip(upper_frac, all_orig)]
-  working_mmm = mmm.extract_all_maps_with_bounds(
-      lower_bounds=lower_bounds, upper_bounds=upper_bounds)
-  # Make and apply spherical mask
-  working_mmm.create_spherical_mask(
-    soft_mask_radius=soft_mask_radius,
-    boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
-  working_mmm.apply_mask_to_maps(
-    map_ids=[map_1_id, map_2_id], mask_id='mask')
-  mask_info = working_mmm.mask_info()
-  # Keep track of volume of map (in voxels) for determining relative
-  # scale of sigmaE in different subvolumes
-  weighted_points = mask_info.size*mask_info.mean # Weighted volume
-  # Mean mask value measures the weighted fraction of the volume of the whole
-  # map occupied by the density used. This can be converted into the radius of
-  # a sphere (on a relative scale) that would occupy this volume, and then
-  # the oversampling of the Fourier transform is the ratio of the volume of the
-  # total map box divided by the volume of a cube just enclosing that sphere.
-  relative_radius = (3*mask_info.mean/(4*math.pi))**(1./3.)
-  relative_volume = (2*relative_radius)**3
-  over_sampling_factor = 1./relative_volume
-  box_volume = uc.volume() * (
-      working_mmm.map_data().size()/mmm.map_data().size())
-  masked_volume = box_volume * relative_volume
+  # working_mmm = map_model_manager()
+  # Set some parameters that will be overwritten if masked and cut out
+  over_sampling_factor = 1.
+  weighted_points = mmm.map_data().size()
+  box_volume = uc.volume()
+  masked_volume = box_volume
+  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
 
-  d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
+  if (keep_full_map):
+    working_mmm = mmm.deep_copy()
+  else:
+    # Box the map within xyz bounds, converted to map grid units
+    lower_frac = uc.fractionalize(tuple(cart_min))
+    upper_frac = uc.fractionalize(tuple(cart_max))
+    map_data = mmm.map_data()
+    all_orig = map_data.all()
+    lower_bounds = [int(math.floor(f * n)) for f, n in zip(lower_frac, all_orig)]
+    upper_bounds = [int(math.ceil( f * n)) for f, n in zip(upper_frac, all_orig)]
+    working_mmm = mmm.extract_all_maps_with_bounds(
+        lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+    # Make and apply spherical mask
+    working_mmm.create_spherical_mask(
+      soft_mask_radius=soft_mask_radius,
+      boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
+    working_mmm.apply_mask_to_maps()
+    mask_info = working_mmm.mask_info()
+
+    # Keep track of weighted volume of map (in voxels) for determining relative
+    # scale of sigmaE in different subvolumes: includes disordered volume
+    weighted_points = mask_info.size*mask_info.mean # Weighted volume
+    box_volume = uc.volume() * (
+        working_mmm.map_data().size()/mmm.map_data().size())
+    masked_volume = box_volume * mask_info.mean
+
+    # Also need weighted volume of ordered region of map, used to compute
+    # fraction of total scattering contained in the working map as well as
+    # an oversampling ratio defined as which fraction of the cube contains
+    # ordered density. (This could possibly be divided by about 2 to put it
+    # on the same scale as crystallographic data with 50% bulk solvent on average)
+    cutout_ordered_mm = working_mmm.get_map_manager_by_id(map_id=ordered_mask_id)
+    cutout_ordered_points = (flex.mean(cutout_ordered_mm.map_data()) *
+          cutout_ordered_mm.map_data().size())
+    fraction_scattering = cutout_ordered_points / total_ordered_points
+    over_sampling_factor = cutout_ordered_mm.map_data().size() / cutout_ordered_points
+
+    d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
+
   mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
   mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_2_id)
 
@@ -1238,9 +1345,16 @@ def run_refine_cryoem_errors(
     i_bin_used += 1
 
   # At this point, weighted_map_noise is the sum of the noise variance for a
-  # weighted half-map. In the following, this sum should be multiplied by two
+  # weighted half-map. In the following, this sum could be multiplied by two
   # for Friedel symmetry, but then divided by two for effects of averaging.
-  weighted_map_noise = math.sqrt(weighted_map_noise) / box_volume
+  weighted_map_noise = math.sqrt(weighted_map_noise) / masked_volume
+
+  # The following code could be used if we wanted to return a map_model_manager
+  # wEmean = dobs*expectE
+  # working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  # working_mmm.remove_map_manager_by_id(map_1_id)
+  # working_mmm.remove_map_manager_by_id(map_2_id)
+
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
     ucwork = expectE.crystal_symmetry().unit_cell()
@@ -1268,7 +1382,7 @@ def run_refine_cryoem_errors(
     shift_cart = shift_cart,
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
-    masked_volume = masked_volume,
+    fraction_scattering = fraction_scattering,
     weighted_map_noise = weighted_map_noise,
     resultsdict = resultsdict)
 
@@ -1283,21 +1397,22 @@ def run():
   d_min: desired resolution, either best for whole map or for local region
 
   Optional command-line arguments (keyworded):
+  --protein_mw*: molecular weight expected for protein component of ordered density
+  --nucleic_mw*: same for nucleic acid component
   --file_root: root name for output files
-  --mask: optional mask to define map region (not yet implemented)
-  --sphere_cent: Centre of sphere defining target map region
-          defaults to centre of map, unless mask is specified
-  --radius: radius of sphere
-          defaults to narrowest extent of input map divided by 4,
-          unless mask is specified
-  --shift_map_origin: shift output mtz file to match input map on its origin:
-          default
-  --no_shift_map_origin: leave origin of map at lowest corner of the box
+  --sphere_cent: Centre of sphere defining target map region (3 floats)
+          defaults to centre of map
+  --radius: radius of sphere (1 float)
+          must be given if sphere_cent defined, otherwise
+          defaults to narrowest extent of input map divided by 4
+  --shift_map_origin: shift output mtz file to match input map on its origin?
+          default True
   --write_params: write out refined parameters as a pickle file
   --read_params: start with refined parameters from earlier run
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
+  * NB: at least one of protein_mw or nucleic_mw must be given
   """
   import argparse
   import pickle
@@ -1311,16 +1426,19 @@ def run():
   parser.add_argument('map1',help='Map file for half-map 1')
   parser.add_argument('map2', help='Map file for half-map 2')
   parser.add_argument('d_min', help='d_min for maps', type=float)
+  parser.add_argument('--protein_mw',
+                      help='Molecular weight of protein component of map',
+                      type=float)
+  parser.add_argument('--nucleic_mw',
+                      help='Molecular weight of nucleic acid component of map',
+                      type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
   parser.add_argument('--read_params', help='Filename for prior parameters')
   parser.add_argument('--write_params', help='Write out refined parameters',
                       action='store_true')
-  parser.add_argument('--shift_map_origin', dest='shift_map_origin', action='store_true')
-  parser.add_argument('--no_shift_map_origin', dest='shift_map_origin', action='store_false')
+  parser.add_argument('--shift_map_origin', dest='shift_map_origin', type=bool)
   parser.set_defaults(shift_map_origin=True)
-  parser.add_argument('--mask',
-                      help='Optional mask to define map region (not implemented)')
   parser.add_argument('--sphere_cent',help='Centre of sphere for docking', nargs=3, type=float)
   parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
   parser.add_argument('-m', '--mute', dest = 'mute',
@@ -1341,11 +1459,19 @@ def run():
   mask = None
   sphere_cent = None
   radius = None
-  if args.mask is not None:
-    print("Mask file is not yet implemented")
+
+  protein_mw = None
+  nucleic_mw = None
+  if ((args.protein_mw is None) and (args.nucleic_mw is None)):
+    print("At least one of protein_mw or nucleic_mw must be given")
     sys.stdout.flush()
     exit
-  elif args.sphere_cent is not None:
+  if args.protein_mw is not None:
+    protein_mw = args.protein_mw
+  if args.nucleic_mw is not None:
+    nucleic_mw = args.nucleic_mw
+
+  if args.sphere_cent is not None:
     assert args.radius is not None
     sphere_cent = tuple(args.sphere_cent)
     radius = args.radius
@@ -1366,6 +1492,18 @@ def run():
   map2_filename = args.map2
   mm2 = dm.get_real_map(map2_filename)
   mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2)
+  # Add mask map for ordered component of map
+  mask_id = 'ordered_volume_mask'
+  add_ordered_volume_mask(mmm, d_min,
+      protein_mw=protein_mw, nucleic_mw=nucleic_mw,
+      map_id_out=mask_id)
+  if verbosity>1:
+    ordered_mm = mmm.get_map_manager_by_id(map_id=mask_id)
+    if args.file_root is not None:
+      map_file_name = args.file_root + "_ordered_volume_mask.map"
+    else:
+      map_file_name = "ordered_volume_mask.map"
+    ordered_mm.write_map(map_file_name)
 
   if (prior_params is None):
     # Initial refinement to get overall error parameters
@@ -1373,7 +1511,7 @@ def run():
       shift_map_origin=shift_map_origin)
     prior_params = results.resultsdict
     if args.write_params:
-      if (args.file_root is not None):
+      if args.file_root is not None:
         paramsfile = args.file_root + ".pickle"
       else:
         paramsfile = "prior_params.pickle"
@@ -1405,8 +1543,9 @@ def run():
     print ("Origin of full map relative to mtz:", shift_cart)
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
   over_sampling_factor = results.over_sampling_factor
+  fraction_scattering = results.fraction_scattering
   print ("Over-sampling factor for Fourier terms:",over_sampling_factor)
-  print ("Weighted volume of density:",results.masked_volume)
+  print ("Fraction of total scattering:",fraction_scattering)
   sys.stdout.flush()
 
 if (__name__ == "__main__"):
