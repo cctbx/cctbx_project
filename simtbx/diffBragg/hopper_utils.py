@@ -144,6 +144,7 @@ class DataModeler:
         self.sigma_rdout = None   # the value of the readout noise in photon units
         self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
         self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
+        self.spec_name = None  # optional name specifying spectrum file(.lam)
 
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
@@ -1226,7 +1227,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     for name, val in restraint_terms.items():
         if val > 0:
             frac_total = val / f *100.
-            restraint_debug_s += "%s: %.1f%%; " % (name, frac_total)
+            restraint_debug_s += "%s: %.2f%%; " % (name, frac_total)
 
     # fractions of the target function
     g = None  # gradient vector
