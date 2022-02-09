@@ -66,7 +66,10 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           norm_by_spectrum=False,
                           symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
                           force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False,
-                          use_exascale_api=False, use_db=False):
+                          use_exascale_api=False, use_db=False, show_timings=False, perpixel_wavelen=False,
+                          det_thicksteps=None):
+    if perpixel_wavelen and not use_db:
+        raise NotImplementedError("to get perpixel wavelengths set use_db=True to use the diffBragg backend")
     if use_exascale_api:
         assert gpu_energy_channels is not None, "cant use exascale api if not in a GPU build"
         assert multipanel_sim is not None, "cant use exascale api if LS49: https://github.com/nksauter/LS49.git  is not configured\n install in the modules folder"
@@ -121,9 +124,9 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
 
     lam0 = df.lam0.values[0]
     lam1 = df.lam1.values[0]
-    if lam0 == -1:
+    if lam0 == -1 or np.isnan(lam0):
         lam0 = 0
-    if lam1 == -1:
+    if lam1 == -1 or np.isnan(lam1):
         lam1 = 1
     wavelens = utils.ENERGY_CONV / energies
     wavelens = lam0 + lam1*wavelens
@@ -175,7 +178,10 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     show_params=not quiet,
                                     nopolar=nopolar,
                                     printout_pix=printout_pix,
-                                    diffuse_params=diffuse_params, cuda=cuda)
+                                    diffuse_params=diffuse_params, cuda=cuda,
+                                    show_timings=show_timings,
+                                    perpixel_wavelen=perpixel_wavelen,
+                                    det_thicksteps=det_thicksteps)
         return results, expt
 
     else:
@@ -206,7 +212,8 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       spot_scale_override=None,
                       mosaicity_random_seeds=None,
                       nopolar=False, diffuse_params=None, cuda=False,
-                        show_timings=False):
+                      show_timings=False,perpixel_wavelen=False,
+                      det_thicksteps=None):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -246,6 +253,9 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     if spot_scale_override is not None:
         S.update_nanoBragg_instance("spot_scale", spot_scale_override)
     S.update_nanoBragg_instance("nopolar", nopolar)
+    if det_thicksteps is not None:
+        S.update_nanoBragg_instance(
+            "detector_thicksteps", det_thicksteps)
 
     if show_params:
         S.D.show_params()
@@ -253,6 +263,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
     if show_timings and verbose < 2:
         S.D.verbose = 2
+    S.D.store_ave_wavelength_image = perpixel_wavelen
     S.D.record_time = True
     if diffuse_params is not None:
         S.D.use_diffuse = True
@@ -264,6 +275,9 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.D.show_timings()
     t = time.time()
     data = S.D.raw_pixels_roi.as_numpy_array().reshape(img_shape)
+    if perpixel_wavelen:
+        wavelen_data = S.D.ave_wavelength_image().as_numpy_array().reshape(img_shape)
+
     t = time.time() - t
     if show_timings:
         print("Took %f sec to recast and reshape" % t)
@@ -279,7 +293,10 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     S.D.free_Fhkl2()
     if S.D.gpu_free is not None:
         S.D.gpu_free()
-    return data
+    if perpixel_wavelen:
+        return data, wavelen_data
+    else:
+        return data
 
 
 if __name__ == "__main__":
