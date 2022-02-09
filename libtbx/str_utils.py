@@ -132,20 +132,34 @@ def prefix_each_line(prefix, lines_as_one_string, rstrip=True):
     suffix="",
     rstrip=rstrip)
 
-def make_header(line, out=None, header_len=80):
+def show_text(line, prefix="", out=None):
+  if(out is None): out = sys.stdout
+  print(file=out)
+  print("%s%s"%(prefix, line), file=out)
+  print(file=out)
+
+def make_header(line, out=None, header_len=80, repeat=1, new_line_start=True,
+                new_line_end=True):
   if (out is None): out = sys.stdout
-  line_len = len(line)
-  #assert line_len <= header_len
-  fill_len = header_len - line_len
-  fill_rl = fill_len//2
-  fill_r = fill_rl
-  fill_l = fill_rl
-  if (fill_rl*2 != fill_len):
-    fill_r +=1
-  out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
-  if(len(out_string) > 80):
-    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
-  print(out_string, file=out)
+  if(new_line_start):
+    print(file=out)
+  def one():
+    line_len = len(line)
+    #assert line_len <= header_len
+    fill_len = header_len - line_len
+    fill_rl = fill_len//2
+    fill_r = fill_rl
+    fill_l = fill_rl
+    if (fill_rl*2 != fill_len):
+      fill_r +=1
+    out_string = "="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)
+    if(len(out_string) > 80):
+      out_string = "="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)
+    print(out_string, file=out)
+  for it in range(0,repeat):
+    one()
+  if(new_line_end):
+    print(file=out)
   out.flush()
 
 def make_sub_header(text, out=None, header_len=80, sep='-'):
