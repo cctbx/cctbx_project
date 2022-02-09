@@ -138,11 +138,11 @@ def show_text(line, prefix="", out=None):
   print("%s%s"%(prefix, line), file=out)
   print(file=out)
 
-def make_header(line, out=None, header_len=80, repeat=1, new_line_start=True,
-                new_line_end=True):
+def make_header(line, out=None, header_len=80, repeat=1, new_line_start=False,
+                new_line_end=False):
   if (out is None): out = sys.stdout
-  if(new_line_start):
-    print(file=out)
+  #if(new_line_start):
+  #  print("\n",file=out)
   def one():
     line_len = len(line)
     #assert line_len <= header_len
@@ -152,14 +152,14 @@ def make_header(line, out=None, header_len=80, repeat=1, new_line_start=True,
     fill_l = fill_rl
     if (fill_rl*2 != fill_len):
       fill_r +=1
-    out_string = "="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)
+    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
     if(len(out_string) > 80):
-      out_string = "="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)
+      out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
     print(out_string, file=out)
   for it in range(0,repeat):
     one()
-  if(new_line_end):
-    print(file=out)
+  #if(new_line_end):
+  #  print("\n",file=out)
   out.flush()
 
 def make_sub_header(text, out=None, header_len=80, sep='-'):
