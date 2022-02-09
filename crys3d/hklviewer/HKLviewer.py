@@ -19,7 +19,7 @@ if sys.version_info[0] < 3:
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QProgressBar, QPushButton, QRadioButton, QRect,
+    QMainWindow, QMenu, QMenuBar, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
@@ -128,14 +128,14 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.browserfontspinBox,      2, 4, 1, 1)
     layout.addWidget(parent.cameraPerspectCheckBox,  3, 0, 1, 1)
     layout.addWidget(parent.bufsize_labeltxt,        4, 0, 1, 1)
-    layout.addWidget(parent.clearbufbtn,             4, 2, 1, 2)
     layout.addWidget(parent.bufsizespinBox,          4, 4, 1, 1)
-
-    layout.addWidget(parent.ttiplabeltxt,            5, 0, 1, 1)
-    layout.addWidget(parent.ttipClickradio,          5, 1, 1, 1)
-    layout.addWidget(parent.ttipHoverradio,          5, 2, 1, 1)
-    layout.addWidget(parent.ttipalphalabeltxt,       5, 3, 1, 1)
-    layout.addWidget(parent.ttipalpha_spinBox,       5, 4, 1, 1)
+    layout.addWidget(parent.clearbufbtn,             5, 0, 1, 1)
+    layout.addWidget(parent.wraptextbtn,             5, 2, 1, 2)
+    layout.addWidget(parent.ttiplabeltxt,            6, 0, 1, 1)
+    layout.addWidget(parent.ttipClickradio,          6, 1, 1, 1)
+    layout.addWidget(parent.ttipHoverradio,          6, 2, 1, 1)
+    layout.addWidget(parent.ttipalphalabeltxt,       6, 3, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,       6, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -224,6 +224,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
     self.datatypedict = { }
     self.browserfontsize = None
+    self.mousespeedscale = 2000
     self.isembedded = isembedded
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
@@ -285,13 +286,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.zmq_context = None
     self.unfeedback = False
     self.cctbxpythonversion = None
-    #self.cctbxpython = cctbxpython
     self.mousespeed_labeltxt = QLabel()
     self.mousespeed_labeltxt.setText("Mouse speed:")
     self.mousemoveslider = QSlider(Qt.Horizontal)
-    self.mousemoveslider.setMinimum(2)
+    self.mousemoveslider.setMinimum(1)
     self.mousemoveslider.setMaximum(200)
-    self.mousemoveslider.setValue(2)
+    self.mousemoveslider.setValue(float(self.mousespeed)*self.mousespeedscale)
     self.mousemoveslider.sliderReleased.connect(self.onFinalMouseSensitivity)
     self.mousemoveslider.valueChanged.connect(self.onMouseSensitivity)
     self.mousesensitxtbox = QLineEdit('')
@@ -323,12 +323,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.bufsizespinBox = QSpinBox()
     self.bufsizespinBox.setSingleStep(1)
     self.bufsizespinBox.setRange(1, 100)
-    self.bufsizespinBox.setValue(10)
+    self.bufsizespinBox.setValue(int(self.textinfosize))
+    self.bufsizespinBox.valueChanged.connect(self.onTextbufferSizeChanged)
     self.bufsize_labeltxt = QLabel()
     self.bufsize_labeltxt.setText("Text buffer size (Kbytes):")
     self.clearbufbtn = QPushButton()
     self.clearbufbtn.setText("Clear all text")
     self.clearbufbtn.clicked.connect(self.onClearTextBuffer)
+    self.wraptextbtn = QCheckBox()
+    self.wraptextbtn.setText("Word wrap text")
+    self.wraptextbtn.clicked.connect(self.onWrapTextBuffer)
     self.ttiplabeltxt = QLabel()
     self.ttiplabeltxt.setText("Tooltips")
     self.ttipalphalabeltxt = QLabel()
@@ -591,7 +595,6 @@ newarray._sigmas = sigs
       self.sysabsentcheckbox.setChecked(False)
       self.missingcheckbox.setChecked(False)
       self.onlymissingcheckbox.setChecked(False)
-      self.showsliceGroupCheckbox.setChecked(False)
 
 
   def onSaveReflectionFile(self):
@@ -934,7 +937,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             else:
               self.infostr += currentinfostr + "\n"
               # display no more than self.bufsize bytes of text
-              self.infostr = self.infostr[-1000*self.bufsizespinBox.value():]
+              self.infostr = self.infostr[-1000*self.textinfosize:]
               self.textInfo.setPlainText(self.infostr)
               self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
             currentinfostr = ""
@@ -987,12 +990,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.ManualPowerScalecheckbox.setChecked( math.isnan( self.currentphilstringdict['viewer.nth_power_scale_radii'] )==False )
     self.power_scale_spinBox.setEnabled( self.ManualPowerScalecheckbox.isChecked() )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
-    self.showsliceGroupCheckbox.setChecked( self.currentphilstringdict['viewer.slice_mode'])
     self.expandP1checkbox.setChecked( self.currentphilstringdict['viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['viewer.expand_anomalous'])
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['viewer.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
-    self.mousemoveslider.setValue( 2000*self.currentphilstringdict['NGL.mouse_sensitivity'])
+    self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
     vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
@@ -1002,25 +1004,16 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.ColourMapSelectDlg.setDataType(arraytype)
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
-    self.sliceindexspinBox.setValue( self.currentphilstringdict['viewer.slice_index'])
     self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
     if self.currentphilstringdict['spacegroup_choice'] is not None:
       self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['spacegroup_choice'] )
     #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['viewer.show_missing'])
     self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['viewer.show_missing'] )
-    axidx = -1
-    for axidx,c in enumerate(self.sliceaxis.values()):
-      if c in self.currentphilstringdict['viewer.slice_axis']:
-        break
-
-    self.SliceLabelComboBox.setCurrentIndex( axidx )
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL.camera_type'])
-    #self.ClipPlaneChkGroupBox.setChecked( self.currentphilstringdict['clip_plane.clipwidth'] != None and not self.showsliceGroupCheckbox.isChecked() )
     if self.currentphilstringdict['clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.PlaneParallelCheckbox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "reflection_slice")
     self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "vector")
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
@@ -1058,6 +1051,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.millerarraytable.sortByColumn(idx, Qt.SortOrder.AscendingOrder)
     self.millerarraytable.resizeColumnsToContents()
 
+
   def onSortChkbox(self):
     self.onSortComboBoxSelchange(self.millerarraytableform.SortComboBox.currentIndex() )
 
@@ -1067,14 +1061,20 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.millerarraytable.resizeColumnsToContents()
 
 
+  def onTextbufferSizeChanged(self,val):
+    if self.unfeedback:
+      return
+    self.textinfosize = val
+
+
   def onFinalMouseSensitivity(self):
-    val = self.mousemoveslider.value()/2000.0
-    self.send_message('NGL.mouse_sensitivity = %f' %val)
+    self.mousespeed = self.mousemoveslider.value()/self.mousespeedscale
+    self.send_message('NGL.mouse_sensitivity = "%2.3f"' %self.mousespeed)
 
 
   def onMouseSensitivity(self):
-    val = self.mousemoveslider.value()/2000.0
-    self.mousesensitxtbox.setText("%2.2f" %val )
+    self.mousespeed = self.mousemoveslider.value()/self.mousespeedscale
+    self.mousesensitxtbox.setText("%2.1f" %(self.mousemoveslider.value()*10.0/self.mousemoveslider.maximum()) )
 
 
   def onTooltipAlphaChanged(self, val):
@@ -1115,6 +1115,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.infostr = ""
 
 
+  def onWrapTextBuffer(self):
+    if self.wraptextbtn.isChecked():
+      self.textInfo.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+    else:
+      self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
+
+
   def onCameraPerspect(self,val):
     if self.cameraPerspectCheckBox.isChecked():
       self.send_message("NGL.camera_type = perspective")
@@ -1125,86 +1132,49 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def ExpandRefls(self):
     if self.unfeedback:
       return
-    if self.showsliceGroupCheckbox.isChecked():
-      if self.ExpandReflsGroupBox.isChecked():
-        self.send_message('''
-        viewer.expand_to_p1 = True
-        viewer.expand_anomalous = True
-        viewer.inbrowser = False
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_to_p1 = False
-        viewer.expand_anomalous = False
-        viewer.inbrowser = False
-                        ''' )
+    if self.ExpandReflsGroupBox.isChecked():
+      self.send_message('''
+      viewer.expand_to_p1 = True
+      viewer.expand_anomalous = True
+      viewer.inbrowser = True
+                      ''' )
     else:
-      if self.ExpandReflsGroupBox.isChecked():
-        self.send_message('''
-        viewer.expand_to_p1 = True
-        viewer.expand_anomalous = True
-        viewer.inbrowser = True
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_to_p1 = False
-        viewer.expand_anomalous = False
-        viewer.inbrowser = True
-                        ''' )
+      self.send_message('''
+      viewer.expand_to_p1 = False
+      viewer.expand_anomalous = False
+      viewer.inbrowser = True
+                      ''' )
 
 
   def ExpandToP1(self):
     if self.unfeedback:
       return
-    if self.showsliceGroupCheckbox.isChecked():
-      if self.expandP1checkbox.isChecked():
-        self.send_message('''
-        viewer.expand_to_p1 = True
-        viewer.inbrowser = False
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_to_p1 = False
-        viewer.inbrowser = False
-                        ''' )
+    if self.expandP1checkbox.isChecked():
+      self.send_message('''
+      viewer.expand_to_p1 = True
+      viewer.inbrowser = True
+                      ''' )
     else:
-      if self.expandP1checkbox.isChecked():
-        self.send_message('''
-        viewer.expand_to_p1 = True
-        viewer.inbrowser = True
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_to_p1 = False
-        viewer.inbrowser = True
-                        ''' )
+      self.send_message('''
+      viewer.expand_to_p1 = False
+      viewer.inbrowser = True
+                      ''' )
 
 
   def ExpandAnomalous(self):
     if self.unfeedback:
       return
-    if self.showsliceGroupCheckbox.isChecked():
-      if self.expandAnomalouscheckbox.isChecked():
-        self.send_message('''
-        viewer.expand_anomalous = True
-        viewer.inbrowser = False
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_anomalous = False
-        viewer.inbrowser = False
-                        ''' )
+    if self.expandAnomalouscheckbox.isChecked():
+      self.send_message('''
+      viewer.expand_anomalous = True
+      viewer.inbrowser = True
+                      ''' )
     else:
-      if self.expandAnomalouscheckbox.isChecked():
-        self.send_message('''
-        viewer.expand_anomalous = True
-        viewer.inbrowser = True
-                        ''' )
-      else:
-        self.send_message('''
-        viewer.expand_anomalous = False
-        viewer.inbrowser = True
-                        ''' )
+      self.send_message('''
+      viewer.expand_anomalous = False
+      viewer.inbrowser = True
+                      ''' )
+
 
   def showSysAbsent(self):
     if self.unfeedback:
@@ -1235,58 +1205,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.send_message('viewer.show_only_missing = True')
     else:
       self.send_message('viewer.show_only_missing = False')
-
-
-  def showSlice(self):
-    if self.unfeedback:
-      return
-    if self.showsliceGroupCheckbox.isChecked():
-      #self.ClipPlaneChkGroupBox.setChecked(False)
-      self.send_message("""viewer {
-  slice_mode = True
-  inbrowser = False
-  fixorientation = "reflection_slice"
-  is_parallel = False
-}
-    """)
-      i = self.SliceLabelComboBox.currentIndex()
-      rmin = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[0][i]
-      rmax = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[1][i]
-      self.sliceindexspinBox.setRange(rmin, rmax)
-    else:
-      #self.ClipPlaneChkGroupBox.setChecked(True)
-      self.send_message("""viewer {
-  slice_mode = False
-  inbrowser = True
-  fixorientation = "None"
-}
-clip_plane.normal_vector = -1
-       """)
-
-
-  def onSliceComboSelchange(self,i):
-    if self.unfeedback:
-      return
-    # 3th element in each table row is the min-max span of hkls.
-    # TODO: fix this for when user manually deselects min-max span of hkls from table rows
-    rmin = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[0][i]
-    rmax = eval(self.array_infotpls[self.currentmillarray_idx][1][3])[1][i]
-    self.sliceindexspinBox.setRange(rmin, rmax)
-    val = "None"
-    if self.PlaneParallelCheckbox.isChecked():
-      val = "reflection_slice"
-    self.send_message("""viewer {
-    slice_axis = %s
-    is_parallel = False
-    fixorientation = "%s"
-}""" %(self.sliceaxis[i], val))
-
-
-  def onSliceIndexChanged(self, val):
-    if self.unfeedback:
-      return
-    self.sliceindex = val
-    self.send_message("viewer.slice_index = %d" %self.sliceindex)
 
 
   def onBindataComboSelchange(self, i):
@@ -1536,19 +1454,6 @@ clip_plane.normal_vector = -1
 
 
   def CreateSliceTabs(self):
-    #self.SliceReflectionsBox.clicked.connect(self.onSliceReflectionsBoxclicked)
-    self.showsliceGroupCheckbox.clicked.connect(self.showSlice)
-
-    self.sliceindex = 0
-    self.sliceindexspinBox.setValue(self.sliceindex)
-    self.sliceindexspinBox.setSingleStep(1)
-    self.sliceindexspinBox.setRange(-100, 100)
-    self.sliceindexspinBox.valueChanged.connect(self.onSliceIndexChanged)
-    self.SliceLabelComboBox.activated.connect(self.onSliceComboSelchange)
-    self.sliceaxis = { 0:"h", 1:"k", 2:"l" }
-    self.SliceLabelComboBox.addItems( list( self.sliceaxis.values()) )
-
-    self.PlaneParallelCheckbox.clicked.connect(self.onPlaneParallelCheckbox)
     vprec = 2
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
@@ -1656,12 +1561,9 @@ clip_plane.normal_vector_length_scale = -1
       return
     hkldist, clipwidth = 0.0, None
     if self.ClipPlaneChkGroupBox.isChecked():
-      if self.showsliceGroupCheckbox.isChecked() == False:
-        self.showsliceGroupCheckbox.setChecked(False)
-        self.showsliceGroupCheckbox.setChecked(False)
-        if self.normal_realspace_vec_btn.isChecked():
-          self.clipplane_normal_vector_combo.setEnabled(True)
-          philstr = """viewer {
+      if self.normal_realspace_vec_btn.isChecked():
+        self.clipplane_normal_vector_combo.setEnabled(True)
+        philstr = """viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = vector
@@ -1670,8 +1572,9 @@ clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
 clip_plane.normal_vector_length_scale = -1
 """ %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
-        else:
-          philstr = """viewer {
+      else:
+        self.clipplane_normal_vector_combo.setEnabled(False)
+        philstr = """viewer {
   slice_mode = False
   inbrowser = True
   fixorientation = vector
@@ -1750,14 +1653,6 @@ clip_plane {
   def onLvecChanged(self, val):
     if not self.unfeedback:
       self.send_message("clip_plane.l = %f" %self.lvec_spinBox.value())
-
-
-  def onPlaneParallelCheckbox(self):
-    if not self.unfeedback:
-      val = "None"
-      if self.PlaneParallelCheckbox.isChecked():
-        val = "reflection_slice"
-      self.send_message('viewer.fixorientation = "%s"' %val)
 
 
   def onMillerTableCellPressed(self, row, col):
@@ -2085,6 +1980,8 @@ clip_plane {
     self.settings.beginGroup(self.Qtversion )
     self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
     self.settings.setValue("FontSize", self.fontsize )
+    self.settings.setValue("MouseSpeed", self.mousespeed )
+    self.settings.setValue("TextBufferSize", self.textinfosize )
     self.settings.setValue("BrowserFontSize", self.browserfontsize )
     self.settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
     self.settings.setValue("windowsize", self.window.size())
@@ -2153,6 +2050,8 @@ clip_plane {
                                     ]
     self.settings.endGroup()
     self.QWebEngineViewFlags = self.settings.value("QWebEngineViewFlags", None)
+    self.mousespeed = self.settings.value("MouseSpeed", 0.3)
+    self.textinfosize = self.settings.value("TextBufferSize", 30)
     self.fontsize = self.settings.value("FontSize", 10)
     self.browserfontsize = self.settings.value("BrowserFontSize", 9)
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
@@ -2179,6 +2078,13 @@ clip_plane {
 
   def UsePersistedQsettings(self):
     # Now assign the users persisted settings to the GUI
+    if self.mousespeed is not None:
+      self.mousemoveslider.setValue(float(self.mousespeed)*self.mousespeedscale)
+      self.mousesensitxtbox.setText("%2.1f" %(self.mousemoveslider.value()*10.0/self.mousemoveslider.maximum()) )
+      self.send_message('NGL.mouse_sensitivity = %s' %self.mousespeed)
+    if self.textinfosize is not None:
+      self.onTextbufferSizeChanged(int(self.textinfosize))
+      self.bufsizespinBox.setValue(int(self.textinfosize))
     if self.fontsize is not None:
       self.onFontsizeChanged(int(self.fontsize))
       self.fontspinBox.setValue(int(self.fontsize))
@@ -2196,18 +2102,6 @@ clip_plane {
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
     self.setDatatypedict(self.datatypedict)
-    """
-    stored_colnames_select_lst = []
-    current_philstr = "selected_info {\n"
-    for philname, caption, value in self.colnames_select_lst:
-      is_selected = bool(self.colnames_select_dict[philname])
-      stored_colnames_select_lst.append( (philname, caption, is_selected) )
-      current_philstr += "  %s = %s\n" %(philname, is_selected)
-    current_philstr += "}\n"
-    self.send_message(current_philstr)
-    self.colnames_select_lst = stored_colnames_select_lst
-    self.select_millertable_column_dlg.make_new_selection_table()
-    """
 
 
   @staticmethod

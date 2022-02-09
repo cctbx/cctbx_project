@@ -225,12 +225,10 @@ class hklview_3d:
 
     """
     Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklviewer/html2canvas.min.js")
-    #Threejslibpath = libtbx.env.under_dist("crys3d","hklviewer/three.js")
     NGLlibpath = libtbx.env.under_dist("crys3d","hklviewer/ngl.js")
     HKLjscriptpath = libtbx.env.under_dist("crys3d","hklviewer/HKLJavaScripts.js")
     HKLjscriptpath = os.path.abspath( HKLjscriptpath)
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
-    #Threejsliburl = "file:///" + Threejslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
     self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl,
@@ -563,9 +561,11 @@ class hklview_3d:
     return ampls, phases
 
 
-  def get_rothkl_from_IDs(self, id, sym_id, anomalous=False):
-    if bool(anomalous):
-      id = id % len(self.scene.indices)
+  def get_rothkl_from_IDs(self, id, sym_id):
+    anomalous = False
+    if id < 0:
+      anomalous = True
+      id = abs(id) # we set anomalous ids as the negative of the original ids
     hkl = self.scene.indices[id]
     hklvec = flex.vec3_double( [(hkl[0], hkl[1], hkl[2])])
     rotmx=None
@@ -577,18 +577,18 @@ class hklview_3d:
       # if a symmetry mate was clicked then deduce its hkl coordinate by
       # applying the rotation to the original hkl coordinate
       Rhkl = hklvec[0] * rotmx
-    rothkl = Rhkl
-    if bool(anomalous):
-      rothkl = (-Rhkl[0], -Rhkl[1], -Rhkl[2])
+    rothkl = (int(Rhkl[0]), int(Rhkl[1]), int(Rhkl[2]))
+    if anomalous:
+      rothkl = (int(-Rhkl[0]), int(-Rhkl[1]), int(-Rhkl[2]))
     return rothkl, hkl
 
 
-  def make_visual_symHKLs(self, id, sym_id, anomalous=False):
+  def make_visual_symHKLs(self, id, sym_id):
     symid = sym_id
     # if a user operator was added then iterate until we find it
     #while self.currentsymop != self.symops[symid]:
     #  symid += 1
-    rothkl, dummy = self.get_rothkl_from_IDs(id, symid, anomalous) # and use it
+    rothkl, dummy = self.get_rothkl_from_IDs(id, symid) # and use it
     if self.visual_symmxs:
       # if a list of symmetry matrices have been deduced from a selected rotation operator
       # then also compute the other symmetry mates of the current hkl
@@ -599,14 +599,13 @@ class hklview_3d:
 
 
   def GetTooltipOnTheFly(self, id, sym_id, anomalous=False):
-    rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id, anomalous)
+    rothkl, hkl = self.get_rothkl_from_IDs(id, sym_id)
     spbufttip = '\'HKL: [%d,%d,%d]' %(rothkl[0], rothkl[1], rothkl[2])
     if rothkl != hkl: # then show the original hkl before P1 or anomalous expansion
       spbufttip += ', (asu): [%d,%d,%d]' %(hkl[0], hkl[1], hkl[2])
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
-    #for dummykey, (hklscene, maxdat,mindat,maxsig,minsig,info) in self.HKLscenedict.items():
     for hklscene in self.HKLscenes:
       sigvals = []
       datvals = []
@@ -643,7 +642,7 @@ class hklview_3d:
           spbufttip += str(roundoff(datval, 2)) + ", " + str(roundoff(sigma, 2))
         else:
           spbufttip += str(roundoff(datval, 2))
-    spbufttip += '\\n\\n%d,%d,%d' %(id, sym_id, anomalous) # compared by the javascript
+    spbufttip += '\\n\\n%d,%d' %(id, sym_id) # compared by the javascript
     spbufttip += '\''
     return spbufttip
 
@@ -1527,17 +1526,15 @@ class hklview_3d:
           ttipids = message.split("tooltip_id:")[1]
           hklid = eval(message.split("tooltip_id:")[1])[0]
           sym_id = eval(message.split("tooltip_id:")[1])[1]
-          is_friedel_mate = eval(message.split("tooltip_id:")[1])[2]
-          ttip = self.GetTooltipOnTheFly(hklid, sym_id, is_friedel_mate)
+          ttip = self.GetTooltipOnTheFly(hklid, sym_id)
           self.AddToBrowserMsgQueue("ShowThisTooltip", ttip)
         elif "match_hkl_id:" in message:
           hklid = eval(message.split("match_hkl_id:")[1])[0]
           sym_id = eval(message.split("match_hkl_id:")[1])[1]
-          is_friedel_mate = eval(message.split("match_hkl_id:")[1])[2]
           if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
-            self.make_visual_symHKLs(hklid, sym_id, is_friedel_mate)
+            self.make_visual_symHKLs(hklid, sym_id)
             self.visualise_sym_HKLs()
-            hkl = self.scene.indices[hklid]
+            hkl = self.scene.indices[abs(hklid)]
             hklmatches = miller.match_indices(self.parent.origarrays["HKLs"], [hkl])
             orig_hkl_ids = list(hklmatches.pairs().column(0))
             self.SendInfoToGUI( { "clicked_HKL": hkl, "orig_hkl_ids": orig_hkl_ids })
@@ -1546,6 +1543,17 @@ class hklview_3d:
         elif "SelectedBrowserDataColumnComboBox" in message:
           sceneid = int(message.split(":")[1])
           self.parent.SetScene(sceneid)
+        elif "InFrustum:" in message:
+          # if GetReflectionsInFrustum() finds no reflections then message=="InFrustum::" which crashes eval()
+          if "InFrustum::" not in message:
+            hklids = eval(message.split(":")[1])
+            rotids = eval(message.split(":")[2])
+            visiblehkls = []
+            for i,hklid in enumerate(hklids):
+              hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
+              visiblehkls.append(hkl)
+            self.mprint( "visible hkls: " + str(list(set(visiblehkls))))
+          self.mprint( message, verbose=2)
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)

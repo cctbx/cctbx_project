@@ -4,10 +4,6 @@
 // https://stackoverflow.com/questions/31772564/websocket-to-localhost-not-working-on-microsoft-edge
 // to enable websocket connection
 
-//import THREE from './three.js';
-//import NGL from './ngl.esm.js';
-//var three = THREE;
-
 if ((typeof isHKLviewer) != "boolean")
   var isHKLviewer = false;
 
@@ -42,18 +38,19 @@ var AA = String.fromCharCode(197); // short for angstrom
 var DGR = String.fromCharCode(176); // short for degree symbol
 var current_ttip = "";
 var ttips = [];
+var filename = ""
 var vectorreprs = [];
 var vectorshapeComps = [];
 var positions = [];
-var br_positions = [];
-var br_colours = [];
-var br_radii = [];
-var br_ttips = [];
+var expansion_positions = [];
+var expansion_colours = [];
+var expansion_radii = [];
+var expansion_ttips = [];
 var colours = [];
 var alphas = [];
 var radii = [];
 var shapebufs = [];
-var br_shapebufs = [];
+var expansion_shapebufs = [];
 var nrots = 0;
 var fontsize = 9;
 var postrotmxflag = false;
@@ -275,16 +272,16 @@ function RemoveStageObjects()
   vectorreprs = [];
   vectorshapeComps = [];
   positions = [];
-  br_positions = [];
-  br_colours = [];
-  br_radii = [];
-  br_ttips = [];
+  expansion_positions = [];
+  expansion_colours = [];
+  expansion_radii = [];
+  expansion_ttips = [];
   expstate = "";
   colours = [];
   alphas = [];
   radii = [];
   shapebufs = [];
-  br_shapebufs = [];
+  expansion_shapebufs = [];
   shapeComp = null;
   // delete shape to ensure shape.boundingbox will equal viewer.boundingbox of the currently loaded reflections
   shape = null;
@@ -502,9 +499,9 @@ function onMessage(e)
       {
         alphas[bin] = parseFloat(val[1]);
         shapebufs[bin].setParameters({ opacity: alphas[bin] });
-        if (br_shapebufs.length)
+        if (expansion_shapebufs.length)
           for (let g=0; g < nrots; g++ )
-            br_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
+            expansion_shapebufs[bin][g].setParameters({opacity: alphas[bin]});
         RenderRequest();
       }
     }
@@ -520,13 +517,13 @@ function onMessage(e)
         colours[bin][3*si+2] = parseFloat(val[4]);
         shapebufs[bin].setAttributes({ color: colours[bin] });
 
-        if (br_shapebufs.length)
+        if (expansion_shapebufs.length)
           for (let g=0; g < nrots; g++ )
           {
-            br_colours[bin][3*si] = parseFloat(val[2]);
-            br_colours[bin][3*si+1] = parseFloat(val[3]);
-            br_colours[bin][3*si+2] = parseFloat(val[4]);
-            br_shapebufs[bin][g].setAttributes({ color: br_colours[bin] });
+            expansion_colours[bin][3*si] = parseFloat(val[2]);
+            expansion_colours[bin][3*si+1] = parseFloat(val[3]);
+            expansion_colours[bin][3*si+2] = parseFloat(val[4]);
+            expansion_shapebufs[bin][g].setAttributes({ color: expansion_colours[bin] });
           }
         RenderRequest();
       }
@@ -601,11 +598,11 @@ function onMessage(e)
       // remove shapecomp from stage first
       stage.removeComponent(shapeComp);
 
-      br_positions = [];
-      br_colours = [];
-      br_radii = [];
-      br_ttips = [];
-      br_shapebufs = [];
+      expansion_positions = [];
+      expansion_colours = [];
+      expansion_radii = [];
+      expansion_ttips = [];
+      expansion_shapebufs = [];
       let nexpandrefls = 0;
 
       //alert('rotations:\n' + val);
@@ -641,14 +638,14 @@ function onMessage(e)
           anoexp = true;
           csize = nsize*6;
         }
-        br_positions.push( [] );
-        br_shapebufs.push( [] );
-        br_colours.push( [] );
-        br_radii.push( [] );
-        br_ttips.push( [] );
+        expansion_positions.push( [] );
+        expansion_shapebufs.push( [] );
+        expansion_colours.push( [] );
+        expansion_radii.push( [] );
+        expansion_ttips.push( [] );
 
-        br_colours[bin] = colours[bin];
-        br_radii[bin] = radii[bin];
+        expansion_colours[bin] = colours[bin];
+        expansion_radii[bin] = radii[bin];
         if (anoexp)
         {
           let colarr = [];
@@ -658,7 +655,7 @@ function onMessage(e)
             colarr[i] = colours[bin][i];
             colarr[i+cl] = colours[bin][i];
           }
-          br_colours[bin] = new Float32Array(colarr);
+          expansion_colours[bin] = new Float32Array(colarr);
 
           let radiiarr = [];
           let rl = radii[bin].length;
@@ -667,7 +664,7 @@ function onMessage(e)
             radiiarr[i] = radii[bin][i];
             radiiarr[i+rl] = radii[bin][i];
           }
-          br_radii[bin] = new Float32Array(radiiarr);
+          expansion_radii[bin] = new Float32Array(radiiarr);
         }
 
         nrots = 0;
@@ -677,15 +674,14 @@ function onMessage(e)
           if (rotationstrs[rotmxidx].length < 1 )
             continue;
           nrots++;
-
-          br_positions[bin].push( [] );
-          br_shapebufs[bin].push( [] );
-          br_ttips[bin].push( [] );
-          Object.assign(br_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
-          br_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
-          br_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation. Used by PickingProxyfunc
-          br_ttips[bin][rotmxidx].cartpos = ttips[bin].cartpos.slice(0); // deep copy the ttips[bin].cartpos object
-          br_positions[bin][rotmxidx] = new Float32Array( csize );
+          expansion_positions[bin].push( [] );
+          expansion_shapebufs[bin].push( [] );
+          expansion_ttips[bin].push( [] );
+          Object.assign(expansion_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
+          expansion_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
+          expansion_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation. Used by PickingProxyfunc
+          expansion_ttips[bin][rotmxidx].cartpos = ttips[bin].cartpos.slice(0); // deep copy the ttips[bin].cartpos object
+          expansion_positions[bin][rotmxidx] = new Float32Array( csize );
           nexpandrefls += csize;
 
           for (let i=0; i<nsize; i++)
@@ -694,33 +690,31 @@ function onMessage(e)
             r.x = positions[bin][idx];
             r.y = positions[bin][idx+1];
             r.z = positions[bin][idx+2];
-
             r.applyMatrix3(Rotmats[rotmxidx]);
-
-            br_positions[bin][rotmxidx][idx] = r.x;
-            br_positions[bin][rotmxidx][idx + 1] = r.y;
-            br_positions[bin][rotmxidx][idx + 2] = r.z;
-
-            br_ttips[bin][rotmxidx].cartpos[i] = [r.x,r.y,r.z];
+            expansion_positions[bin][rotmxidx][idx] = r.x;
+            expansion_positions[bin][rotmxidx][idx + 1] = r.y;
+            expansion_positions[bin][rotmxidx][idx + 2] = r.z;
+            expansion_ttips[bin][rotmxidx].cartpos[i] = [r.x,r.y,r.z];
 
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
-              br_positions[bin][rotmxidx][nsize3 + idx] = r.x;
-              br_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
-              br_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
-              br_ttips[bin][rotmxidx].cartpos[nsize + i] = [r.x, r.y, r.z];
+              expansion_positions[bin][rotmxidx][nsize3 + idx] = r.x;
+              expansion_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
+              expansion_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
+              expansion_ttips[bin][rotmxidx].cartpos[nsize + i] = [r.x, r.y, r.z];
+              expansion_ttips[bin][rotmxidx].ids[nsize + i + 1] = - ttips[bin].ids.slice(0)[i + 1];
             }
           }
 
-          br_shapebufs[bin][rotmxidx] = new NGL.SphereBuffer({
-              position: br_positions[bin][rotmxidx],
-              color: br_colours[bin],
-              radius: br_radii[bin],
+          expansion_shapebufs[bin][rotmxidx] = new NGL.SphereBuffer({
+              position: expansion_positions[bin][rotmxidx],
+              color: expansion_colours[bin],
+              radius: expansion_radii[bin],
               // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
-              picking: br_ttips[bin][rotmxidx],
+              picking: expansion_ttips[bin][rotmxidx],
               } );
-          shape.addBuffer(br_shapebufs[bin][rotmxidx]);
+          shape.addBuffer(expansion_shapebufs[bin][rotmxidx]);
         }
         if (nexpandrefls == nsize*3)
           expstate = "";
@@ -739,7 +733,7 @@ function onMessage(e)
       {
         for (let rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
         {
-          br_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
+          expansion_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
         }
       }
 
@@ -1036,24 +1030,6 @@ function onMessage(e)
     if (msgtype === "RemovePrimitives")
     {
       RemovePrimitives(val[0].trim());
-      /*
-      let reprname = val[0].trim(); // elmstrs[0].trim();
-      // if reprname is supplied only remove vectors with that name
-      let reprnamegone = false;
-      let clipvecgone = false;
-      let unitcellgone = false;
-      let reciprocunitcellgone = false;
-      if (reprname != "")
-        reprnamegone = DeletePrimitives(reprname);
-      else // otherwise remove all vectors
-      {
-        clipvecgone = DeletePrimitives("clip_vector");
-        unitcellgone = DeletePrimitives("unitcell");
-        reciprocunitcellgone = DeletePrimitives("reciprocal_unitcell");
-      }
-      if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
-        RenderRequest();
-      */
     }
 
     if (msgtype === "DefineHKL_Axes")
@@ -1107,10 +1083,9 @@ function onMessage(e)
       stage.viewer.parameters.clipScale = 'absolute';
       clipFixToCamPosZ = true;
 
-      if (near >= far )
-      { // default to no clipping if near >= far
+      if (near >= far) { // default to no clipping if near >= far
         stage.viewer.parameters.clipMode = 'scene';
-      // clipScale = 'relative' means clip planes are in percentage
+        // clipScale = 'relative' means clip planes are in percentage
         stage.viewer.parameters.clipScale = 'relative';
         clipFixToCamPosZ = false;
         near = 0;
@@ -1122,6 +1097,9 @@ function onMessage(e)
       stage.viewer.parameters.clipFar = far;
       origclipnear = near;
       origclipfar = far;
+      if (stage.viewer.parameters.clipScale == 'absolute')
+        GetReflectionsInFrustum();
+
       //stage.viewer.requestRender();
       RenderRequest();
     }
@@ -1487,15 +1465,18 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
       ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
-      hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
-      if (pickingProxy.pid >= ids.length)
+      //hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
+      //if (pickingProxy.pid >= ids.length)
+      hkl_id = ids[pickingProxy.pid];
+      if (hkl_id < 0)
         is_friedel_mate = 1;
     }
     // tell python the id of the hkl and id of the rotation operator
     rightnow = timefunc();
     if (rightnow - timenow > tdelay)
     { // only post every 50 milli second as not to overwhelm python
-      ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+      //ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+      ttipid = String([hkl_id, sym_id]);
       // send this to python which will send back a tooltip text
       if (pickingProxy.mouse.buttons == 1 || eventstr == 'hover') // left click or hover for tooltips
         WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
@@ -1630,7 +1611,6 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     }
   }
 
-
   colourchart.oncontextmenu = function (e) { // oncontextmenu captures right clicks
     e.preventDefault()
     //alert("in oncontextmenu")
@@ -1650,44 +1630,7 @@ function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays
     if (isHKLviewer == true)
       WebsockSendMsg('onClick colour chart');
   };
-
 }
-
-
-function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
-{
-  // Tooltip ids is a list of numbers matching the array index of the radiiarray 
-  let ttiplst = [-1].concat(ttipids);
-  // Prepend this list with -1. This value will be reassigned with an id nummber of 
-  // a rotation operator when expanding to P1. PickingProxyfunc() will send back to cctbx.python the 
-  // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
-  let posarray = new Array(radiiarray.length);
-  for (let i = 0; i < posarray.length; i++)
-    posarray[i] = coordarray.slice(3 * i, 3 * i + 3);
-
-  ttips.push( { ids: ttiplst, cartpos: posarray,
-       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
-  }  );
-  positions.push( new Float32Array( coordarray ) );
-  colours.push( new Float32Array( colourarray ) );
-  radii.push( new Float32Array( radiiarray ) );
-  let curridx = positions.length -1;
-  shapebufs.push( new NGL.SphereBuffer({
-    position: positions[curridx], // 1dim array [x0, y0, z0, x1, y1, z1,...] for all reflections
-    color: colours[curridx], // 1dim array [R0, G0, B0, R1, G1, B1,...] for all reflections
-    radius: radii[curridx], // 1dim array [r0, r1, r3,...]for all reflections
-    picking: ttips[curridx],
-    })
-  );
-  if (shape == null)
-    shape = new NGL.Shape('shape');
-  shape.addBuffer(shapebufs[curridx]);
-  //shapeComp = stage.addComponentFromObject(shape);
-  //shapeComp.addRepresentation('buffer');
-  alphas.push(1.0);
-  nbins = nbins + 1;
-}
-
 
 
 function MakeXYZ_Axis() {
@@ -1812,19 +1755,105 @@ function MakeXYZ_Axis() {
 }
 
 
+function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids) 
+{
+  // Primary function for creating the reflections to be displayed. There will be 
+  // as many SphereBuffer elements in shapebufs as there are reflection bins requested 
+  // by the user (default is 1).
+  // Tooltip ids is a list of numbers matching the array index of the radiiarray 
+  let ttiplst = [-1].concat(ttipids);
+  // Prepend this list with -1. This value will be reassigned with an id nummber of 
+  // a rotation operator when expanding to P1. PickingProxyfunc() will send back to cctbx.python the 
+  // id number of the rotation operator and number in ttiplst matching the reflection that was clicked.
+  let posarray = new Array(radiiarray.length);
+  for (let i = 0; i < posarray.length; i++)
+    posarray[i] = coordarray.slice(3 * i, 3 * i + 3);
+  // cartpos: posarray is used in our own frustum culling function as well as for debugging
+  // since it is simpler to access than shapebufs[0].geometry.attributes.position.array[4 * 3 * i]
+  ttips.push( { ids: ttiplst, cartpos: posarray,
+       getPosition: function() { return { x:0, y:0 }; } // dummy function to avoid crash
+  }  );
+  positions.push( new Float32Array( coordarray ) );
+  colours.push( new Float32Array( colourarray ) );
+  radii.push( new Float32Array( radiiarray ) );
+  let curridx = positions.length - 1;
+  
+  shapebufs.push( new NGL.SphereBuffer({
+    position: positions[curridx], // 1dim array [x0, y0, z0, x1, y1, z1,...] for all reflections
+    color: colours[curridx], // 1dim array [R0, G0, B0, R1, G1, B1,...] for all reflections
+    radius: radii[curridx], // 1dim array [r0, r1, r3,...]for all reflections
+    picking: ttips[curridx],
+  })
+  );
+
+  if (shape == null)
+    shape = new NGL.Shape('shape');
+  shape.addBuffer(shapebufs[curridx]);
+
+  alphas.push(1.0);
+  nbins = nbins + 1;
+}
+
+
+function GetReflectionsInFrustumFromBuffer(buffer) {
+  // For the simple case where clip planes are parallel with the screen as in clipFar, clipNear.
+  // Use cartesian coordinates of reflections stored in shapebufs[0].picking.cartpos
+  let hkls_infrustums = [];
+  let rotid_infrustum = [];
+  if (buffer.parameters.opacity < 0.3) // use the same threshold as when tooltips won't show
+    return [hkls_infrustums, rotid_infrustum];
+
+  for (let i = 0; i < buffer.picking.cartpos.length; i++) {
+    let x = buffer.picking.cartpos[i][0];
+    let y = buffer.picking.cartpos[i][1];
+    let z = buffer.picking.cartpos[i][2];
+    let hklpos = new NGL.Vector3(x, y, z);
+    let m = stage.viewer.modelGroup.children[0].matrixWorld;
+    let currenthklpos = hklpos.applyMatrix4(m);
+    let childZ = currenthklpos.z - stage.viewer.camera.position.z;
+    let infrustum = false;
+    if (childZ <= stage.viewer.parameters.clipFar && childZ >= stage.viewer.parameters.clipNear) {
+      infrustum = true;
+      let hklid = buffer.picking.ids[i + 1];
+      let rotid = buffer.picking.ids[0];
+      hkls_infrustums.push(hklid);
+      rotid_infrustum.push(rotid);
+    }
+  }
+  return [hkls_infrustums, rotid_infrustum];
+}
+
+
+function GetReflectionsInFrustum() {
+  if (stage.viewer.parameters.clipScale != 'absolute')
+    return; // we rely on clipNear clipFar being absolute values and not percentage
+  let hkls_infrustums = [];
+  let rotid_infrustum = [];
+  for (let bin = 0; bin < shapebufs.length; bin++) {
+    let arr = GetReflectionsInFrustumFromBuffer(shapebufs[bin]);
+    hkls_infrustums = hkls_infrustums.concat(arr[0]);
+    rotid_infrustum = rotid_infrustum.concat(arr[1]);
+    if (expansion_shapebufs.length > 0)
+      for (let rotmxidx = 0; rotmxidx < expansion_shapebufs[bin].length; rotmxidx++) {
+        arr = GetReflectionsInFrustumFromBuffer(expansion_shapebufs[bin][rotmxidx]);
+        hkls_infrustums = hkls_infrustums.concat(arr[0]);
+        rotid_infrustum = rotid_infrustum.concat(arr[1]);
+      }
+  }
+  WebsockSendMsg('InFrustum:' + hkls_infrustums + ':' + rotid_infrustum);
+}
+
 
 function HKLscene()
 {
   stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
                                     tooltip:false, // create our own tooltip from a div element
                                     fogNear: 100, fogFar: 100 });
-
   stage.setParameters( { cameraType: camtype } );
 // create tooltip element and add to the viewer canvas
   stage.viewer.container.appendChild(tooltip);
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
-  //stage.mouseControls.add("clickPick-right", ClickPickingProxyfunc);
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
@@ -1879,15 +1908,15 @@ function HKLscene()
 
 
   stage.viewer.signals.rendered.add(
-    function()
+    function ()
     {
-      if (postrotmxflag === true)
-      {
+      if (postrotmxflag === true) {
         let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
         postrotmxflag = false;
       }
     }
+    
   );
 
 
@@ -1908,6 +1937,7 @@ function HKLscene()
       }
     }
   );
+
 
   function SetDefaultOrientation()
   {
@@ -1962,6 +1992,8 @@ function HKLscene()
 
 function OnUpdateOrientation()
 {
+  GetReflectionsInFrustum();
+
   let msg = getOrientMsg();
   WebsockSendMsg('MouseMovedOrientation:\n' + msg );
 }

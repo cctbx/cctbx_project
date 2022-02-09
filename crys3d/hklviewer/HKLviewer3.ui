@@ -203,7 +203,7 @@ p, li { white-space: pre-wrap; }
                  <x>0</x>
                  <y>0</y>
                  <width>421</width>
-                 <height>364</height>
+                 <height>392</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_4">
@@ -228,7 +228,7 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="currentIndex">
-                   <number>0</number>
+                   <number>1</number>
                   </property>
                   <widget class="QWidget" name="tab">
                    <attribute name="title">
@@ -753,94 +753,6 @@ p, li { white-space: pre-wrap; }
                            </widget>
                           </item>
                          </layout>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item row="2" column="0">
-                     <widget class="QGroupBox" name="showsliceGroupCheckbox">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>1</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="toolTip">
-                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show a single plane of reflections for a constant value of either h,k or l&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                      </property>
-                      <property name="title">
-                       <string>Show a single plane of reflections</string>
-                      </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <property name="checked">
-                       <bool>false</bool>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_6">
-                       <property name="leftMargin">
-                        <number>3</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>3</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>3</number>
-                       </property>
-                       <property name="bottomMargin">
-                        <number>3</number>
-                       </property>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_3">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="text">
-                          <string>equal to</string>
-                         </property>
-                         <property name="alignment">
-                          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                         </property>
-                         <property name="indent">
-                          <number>1</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="2">
-                        <widget class="QSpinBox" name="sliceindexspinBox">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="alignment">
-                          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="PlaneParallelCheckbox">
-                         <property name="text">
-                          <string>Align Parallel to Screen</string>
-                         </property>
-                         <property name="checked">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QComboBox" name="SliceLabelComboBox">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
                         </widget>
                        </item>
                       </layout>
