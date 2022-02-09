@@ -77,8 +77,20 @@ class NBbeam(object):
   @property
   def nanoBragg_constructor_beam(self):
     """dumb necessity FIXME please"""
+
     beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
-    beam.set_wavelength(beam.get_wavelength() * 1e10)
+
+    # dont think this matters, but set the nominal beam to have the average wavelength
+    num = 0
+    den = 0
+    for b in self.xray_beams:
+      wave = b.get_wavelength()
+      wt = b.get_flux()
+      num += wave * wt
+      den += wt
+    ave_wave = num / den
+
+    beam.set_wavelength(ave_wave * 1e10)
     return beam
 
   @property
