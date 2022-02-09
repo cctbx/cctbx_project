@@ -30,7 +30,7 @@ class integrate(worker):
 
     # Re-generate the image sets using their format classes so we can read the raw data
     # Integrate the experiments one at a time to not use up memory
-    all_integrated_expts = ExperimentList
+    all_integrated_expts = ExperimentList()
     all_integrated_refls = flex.reflection_table()
     current_imageset = None
     current_imageset_path = None
