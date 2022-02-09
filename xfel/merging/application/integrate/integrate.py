@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dxtbx.imageset import ImageSetFactory
+from dxtbx.model.experiment_list import ExperimentList
 from dials.array_family import flex
 import os
 
@@ -29,7 +30,8 @@ class integrate(worker):
 
     # Re-generate the image sets using their format classes so we can read the raw data
     # Integrate the experiments one at a time to not use up memory
-    all_integrated = flex.reflection_table()
+    all_integrated_expts = ExperimentList
+    all_integrated_refls = flex.reflection_table()
     current_imageset = None
     current_imageset_path = None
     for expt_id, expt in enumerate(experiments):
@@ -46,16 +48,21 @@ class integrate(worker):
       idents[0] = expt.identifier
       refls['id'] = flex.int(len(refls), 0)
 
-      integrated = processor.integrate(experiments[expt_id:expt_id+1], refls)
+      try:
+        integrated = processor.integrate(experiments[expt_id:expt_id+1], refls)
+      except RuntimeError:
+        self.logger.log("Error integrating expt %"%expt_id)
+        continue
 
+      all_integrated_expts.append(expt)
       idents = integrated.experiment_identifiers()
       del idents[0]
       idents[expt_id] = expt.identifier
-      integrated['id'] = flex.int(len(integrated), expt_id)
-      all_integrated.extend(integrated)
+      integrated['id'] = flex.int(len(integrated), len(all_integrated_expts)-1)
+      all_integrated_refls.extend(integrated)
 
-    self.logger.log("Integration done, %d experiments, %d reflections"%(len(experiments), len(all_integrated)))
-    return experiments, all_integrated
+    self.logger.log("Integration done, %d experiments, %d reflections"%(len(all_integrated_expts), len(all_integrated_refls)))
+    return all_integrated_expts, all_integrated_refls
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
