@@ -190,8 +190,12 @@ class RefineLauncher:
             refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)
             # FIXME need to remove (0,0,0) bboxes
-            good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
-            refls = refls.select(good_sel)
+
+            try:
+                good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
+                refls = refls.select(good_sel)
+            except KeyError:
+                pass
 
             #UcellMan = utils.manager_from_crystal(expt.crystal)
             opt_uc_param = exper_dataframe[["a","b","c","al","be","ga"]].values[0]
@@ -272,6 +276,7 @@ class RefineLauncher:
                 if "spectrum_filename" in list(exper_dataframe) and exper_dataframe.spectrum_filename.values[0] is not None:
                     shot_spectra = utils.load_spectra_from_dataframe(exper_dataframe)
                     LOGGER.debug("Loaded specta from %s" % exper_dataframe.spectrum_filename.values[0])
+                    shot_modeler.spec_name = exper_dataframe.spectrum_filename.values[0]
 
                 else:
                     total_flux = exper_dataframe.total_flux.values[0]
@@ -322,7 +327,10 @@ class RefineLauncher:
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
 
         LOGGER.info("EVENT: Gathering global HKL information")
-        self._gather_Hi_information()
+        try:
+            self._gather_Hi_information()
+        except TypeError:
+            pass
         LOGGER.info("EVENT: FINISHED gather global HKL information")
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
