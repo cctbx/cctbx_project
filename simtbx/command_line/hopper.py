@@ -186,7 +186,7 @@ class Script:
                 detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
                 Modeler.E.detector = detector
             Modeler.SimulatorFromExperiment(best)
-            Modeler.SIM.D.store_ave_wavelength_image = True
+            Modeler.SIM.D.store_ave_wavelength_image = self.params.store_wavelength_images
             if self.params.refiner.verbose is not None and COMM.rank==0:
                 Modeler.SIM.D.verbose = self.params.refiner.verbose
             if self.params.profile:
@@ -314,6 +314,81 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     hopper_utils.finalize_SIM(Modeler.SIM, log=SIMlog_path, lam=spectra_path)
 
 
+def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
+                       diff_gamma, diff_sigma, detz_shift, use_diffuse, gamma_miller_units, eta,
+                       rotXYZ, ucell_p, ucell_p_init, lam0_lam1,
+                       spec_file, spec_stride,flux, beamsize_mm,
+                       orig_exp_name, opt_exp_name, spec_from_imageset, oversample,
+                       opt_det, stg1_refls, stg1_img_path):
+    """
+
+    :param xtal_scale:
+    :param Amat:
+    :param ncells_abc:
+    :param ncells_def:
+    :param eta_abc:
+    :param diff_gamma:
+    :param diff_sigma:
+    :param detz_shift:
+    :param use_diffuse:
+    :param gamma_miller_units:
+    :param eta:
+    :param rotXYZ:
+    :param ucell_p:
+    :param ucell_p_init:
+    :param lam0_lam1:
+    :param spec_file:
+    :param spec_stride:
+    :param flux:
+    :param beamsize_mm:
+    :param orig_exp_name:
+    :param opt_exp_name:
+    :param spec_from_imageset:
+    :param oversample:
+    :param opt_det:
+    :param stg1_refls:
+    :param stg1_img_path:
+    :return:
+    """
+    a,b,c,al,be,ga = ucell_p
+    a_init, b_init, c_init, al_init, be_init, ga_init = ucell_p_init
+    lam0,lam1 = lam0_lam1
+    df = pandas.DataFrame({
+        "spot_scales": [xtal_scale], "Amats": [Amat], "ncells": [ncells_abc],
+        "eta_abc": [eta_abc],
+        "detz_shift_mm": [detz_shift * 1e3],
+        "ncells_def": [ncells_def],
+        "diffuse_gamma": [diff_gamma],
+        "diffuse_sigma": [diff_sigma],
+        "fp_fdp_shift": [np.nan],
+        "use_diffuse_models": [use_diffuse],
+        "gamma_miller_units": [gamma_miller_units],
+        "eta": eta,
+        "rotX": rotXYZ[0],
+        "rotY": rotXYZ[1],
+        "rotZ": rotXYZ[2],
+        "a": a, "b": b, "c": c, "al": al, "be": be, "ga": ga,
+        "a_init": a_init, "b_init": b_init, "c_init": c_init, "al_init": al_init,
+        "lam0": lam0, "lam1": lam1,
+        "be_init": be_init, "ga_init": ga_init})
+    if spec_file is not None:
+        spec_file = os.path.abspath(spec_file)
+    df["spectrum_filename"] = spec_file
+    df["spectrum_stride"] = spec_stride
+
+    df["total_flux"] = flux
+    df["beamsize_mm"] = beamsize_mm
+    df["exp_name"] = os.path.abspath(orig_exp_name)
+    df["opt_exp_name"] = os.path.abspath(opt_exp_name)
+    df["spectrum_from_imageset"] = spec_from_imageset
+    df["oversample"] = oversample
+    if opt_det is not None:
+        df["opt_det"] = opt_det
+    df["stage1_refls"] = stg1_refls
+    df["stage1_output_img"] = stg1_img_path
+    return df
+
+
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path):
     LOGGER = logging.getLogger("refine")
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers")
@@ -348,41 +423,12 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     ucman = utils.manager_from_params(ucparam)
     SIM.crystal.dxtbx_crystal.set_B(ucman.B_recipspace)
 
-    Amats = [SIM.crystal.dxtbx_crystal.get_A()]
+    Amat = SIM.crystal.dxtbx_crystal.get_A()
     ncells_def_vals = [(0, 0, 0)]
     ncells_vals = [(Na, Nb, Nc)]
     eta = [0]
     lam0 = [-1]
     lam1 = [-1]
-    df = pandas.DataFrame({
-        # "panX": list(panX), "panY": list(panY), "panZ": list(panZ),
-        # "panO": list(panO), "panF": list(panF), "panS": list(panS),
-        "spot_scales": xtal_scales, "Amats": Amats, "ncells": ncells_vals,
-        "eta_abc": [(eta_a, eta_b, eta_c)],
-        "detz_shift_mm": [detz_shift * 1e3],
-        "ncells_def": ncells_def_vals,
-        "diffuse_gamma": [(diff_gam_a, diff_gam_b, diff_gam_c)],
-        "diffuse_sigma": [(diff_sig_a, diff_sig_b, diff_sig_c)],
-        "fp_fdp_shift": [shift],
-        "use_diffuse_models": [params.use_diffuse_models],
-        "gamma_miller_units": [params.gamma_miller_units],
-        # "bgplanes": bgplanes, "image_corr": image_corr,
-        # "init_image_corr": init_img_corr,
-        # "fcell_xstart": fcell_xstart,
-        # "ucell_xstart": ucell_xstart,
-        # "init_misorient": init_misori, "final_misorient": final_misori,
-        # "bg_coef": bg_coef,
-        "eta": eta,
-        "rotX": rotX,
-        "rotY": rotY,
-        "rotZ": rotZ,
-        "a": a, "b": b, "c": c, "al": al, "be": be, "ga": ga,
-        "a_init": a_init, "b_init": b_init, "c_init": c_init, "al_init": al_init,
-        "lam0": lam0, "lam1": lam1,
-        "be_init": be_init, "ga_init": ga_init})
-    # "scale_xpos": scale_xpos,
-    # "ncells_xpos": ncells_xstart,
-    # "bgplanes_xpos": bgplane_xpos})
 
     basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
     opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
@@ -394,23 +440,27 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list.as_file(opt_exp_path)
     LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
 
-    spec_file = None
-    if params.simulator.spectrum.filename is not None:
-        spec_file = os.path.abspath(params.simulator.spectrum.filename)
-    df["spectrum_filename"] = spec_file
-    df["spectrum_stride"] = params.simulator.spectrum.stride
-
-    df["total_flux"] = SIM.D.flux  # params.simulator.total_flux
-    df["beamsize_mm"] = SIM.beam.size_mm
-    df["exp_name"] = os.path.abspath(orig_exp_name)
-    df["opt_exp_name"] = os.path.abspath(opt_exp_path)
-    df["spectrum_from_imageset"] = params.spectrum_from_imageset
-    df["oversample"] = params.simulator.oversample
-    if params.opt_det is not None:
-        df["opt_det"] = params.opt_det
-    df["stage1_refls"] = stg1_refls
-    df["stage1_output_img"] = stg1_img_path
-
+    df = single_expt_pandas(xtal_scale=scale, Amat=Amat,
+        ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
+        eta_abc=(eta_a, eta_b, eta_c),
+        diff_gamma=(diff_gam_a, diff_gam_b, diff_gam_c),
+        diff_sigma=(diff_sig_a, diff_sig_b, diff_sig_c),
+        detz_shift=detz_shift,
+        use_diffuse=params.use_diffuse_models,
+        gamma_miller_units=params.gamma_miller_units,
+        eta=eta,
+        rotXYZ=(rotX, rotY, rotZ),
+        ucell_p = (a,b,c,al,be,ga),
+        ucell_p_init=(a_init, b_init, c_init, al_init, be_init, ga_init),
+        lam0_lam1 = (lam0, lam1),
+        spec_file=params.simulator.spectrum.filename,
+        spec_stride=params.simulator.spectrum.stride,
+        flux=SIM.D.flux, beamsize_mm=SIM.beam.size_mm,
+        orig_exp_name=orig_exp_name, opt_exp_name=opt_exp_path,
+        spec_from_imageset=params.spectrum_from_imageset,
+        oversample=params.simulator.oversample,
+        opt_det=params.opt_det, stg1_refls=stg1_refls,
+        stg1_img_path=stg1_img_path)
     df.to_pickle(pandas_path)
     return df
 
