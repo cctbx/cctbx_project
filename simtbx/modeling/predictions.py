@@ -13,7 +13,24 @@ from dxtbx.model import ExperimentList
 from numpy import logical_not as logi_not
 
 
-def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_override=None):
+def get_spot_wave(predictions, expt, wavelen_images):
+    perSpotWave = flex.double()
+    for i_sb, sb in enumerate(predictions['shoebox']):
+        x1,x2,y1,y2,_,_ = sb.bbox
+        pid = predictions[i_sb]['panel']
+        assert x1 >= 0 and y1 >=0
+        xdim, ydim = expt.detector[pid].get_image_size()
+        assert x2 <= xdim and y2 <= ydim
+        wavelen_subimg = wavelen_images[pid, y1:y2, x1:x2]
+        where_signal  = sb.mask.as_numpy_array()[0] == SIGNAL_MASK
+        wave_where_sig = wavelen_subimg[where_signal]
+        assert not  np.any(np.isnan(wave_where_sig))
+        ave_wave = wave_where_sig.mean()
+        perSpotWave.append(ave_wave)
+    return perSpotWave
+
+
+def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spectrum_override=None):
     """
     :param df: pandas dataframe, stage1_df attribute of simtbx.command_line.hopper_process.HopperProcess
     :param params: instance of diffBragg/phil.py phil params
@@ -21,7 +38,7 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
     :param eid: experiment identifier, TODO: verify that the default is an empty string ''
     :param device_Id: GPU device Id for simulating forward model
     :param spectrum_override: the X-ray spectra to use during prediction
-    :return: predicted reflections table , to be passed along to dials.integrate functions
+    :return: predicted reflections table, to be passed along to dials.integrate functions
     """
     mtz_file = mtz_col = None
     defaultF = params.predictions.default_Famplitude
@@ -30,7 +47,8 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
         mtz_col = params.simulator.structure_factors.mtz_column
         defaultF = 0
     # returns the images and the experiment including any pre-modeling modifications (e.g. thinning out the detector)
-    panel_images, expt = model_spots_from_pandas(
+
+    model_out = model_spots_from_pandas(
         df,
         oversample_override=params.predictions.oversample_override,
         Ncells_abc_override=params.predictions.Nabc_override,
@@ -44,10 +62,21 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
         symbol_override=params.predictions.symbol_override,
         force_no_detector_thickness=params.simulator.detector.force_zero_thickness,
         use_exascale_api=params.predictions.method == "exascale",
-        use_db=params.predictions.method == "diffbragg")
+        use_db=params.predictions.method == "diffbragg",
+        show_timings=params.predictions.verbose,
+        perpixel_wavelen=params.predictions.laue_mode,
+        det_thicksteps=params.predictions.thicksteps_override)
 
-    predictions = refls_from_sims(panel_images, expt.detector, expt.beam, thresh=params.predictions.threshold,
-                                  max_spot_size=1000)
+    if not params.predictions.laue_mode:
+        panel_images, expt = model_out
+    else:
+        (panel_images, wavelen_images), expt = model_out
+    # NOTE:  panel-images contains per-pixel model, and wavelen_images contains per-pixel wavelength
+
+    predictions = refls_from_sims(panel_images, expt.detector,
+                                expt.beam, thresh=params.predictions.threshold,
+                                max_spot_size=1000,
+                                use_detect_peaks=params.predictions.use_peak_detection)
     print("Found %d Bragg peak predictions above the threshold" %len(predictions))
 
     # TODO: pulled these from comparing to a normal stills_process prediction table, not sure what they imply
@@ -63,15 +92,24 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
     El.append(expt)
     predictions.centroid_px_to_mm(El)
     predictions.map_centroids_to_reciprocal_space(El)
-
-    strong.centroid_px_to_mm(El)
-    strong.map_centroids_to_reciprocal_space(El)
+    if params.predictions.laue_mode:
+        # need to alter rlp according to wavelength ?
+        predictions['rlp'] *= expt.beam.get_wavelength()
+        predictions['ave_wavelen'] = get_spot_wave(predictions, expt, wavelen_images)
+        predictions['rlp'] /= predictions['ave_wavelen']
 
     refls_to_hkl(predictions, expt.detector, expt.beam, expt.crystal, update_table=True)
+
     predictions['xyzcal.px'] = predictions['xyzobs.px.value']
     predictions['xyzcal.mm'] = predictions['xyzobs.mm.value']
     predictions["num_pixels"] = numpix = predictions["shoebox"].count_mask_values(SIGNAL_MASK)
     predictions['scatter'] = predictions["intensity.sum.value"] / flex.double(np.array(numpix, np.float64))
+
+    if strong is None:
+        return predictions
+
+    strong.centroid_px_to_mm(El)
+    strong.map_centroids_to_reciprocal_space(El)
 
     # separate out the weak from the strong
     label_weak_predictions(predictions, strong,params.predictions.qcut)
@@ -88,14 +126,15 @@ def get_predicted_from_pandas(df, params, strong, eid='', device_Id=0, spectrum_
     return predictions, panel_images
 
 
-def label_weak_predictions(predictions, strong, q_cutoff=0.005):
+def label_weak_predictions(predictions, strong, q_cutoff=0.005, col="rlp"):
     """
     :param predictions: model reflection table
     :param strong: strong observed spots (reflection table)
-    :param q_cutoff: distance in RLP space - arbitrary, increasing will bring in more candidates, 0.005 seems reasonable
+    :param q_cutoff: distance in RLP space or pixel space, depending on col - arbitrary, increasing will bring in more candidates, 0.005 seems reasonable
+    :param col: column to read distances from, can be rlp or xyzobs.px.value
     """
-    strong_tree = cKDTree(strong['rlp'])
-    predicted_tree = cKDTree(predictions['rlp'])
+    strong_tree = cKDTree(strong[col])
+    predicted_tree = cKDTree(predictions[col])
 
     # for each strong refl, find all predictions within q_cutoff of the strong rlp
     pred_idx_candidates = strong_tree.query_ball_tree(predicted_tree, q_cutoff)
