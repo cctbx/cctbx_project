@@ -6,7 +6,7 @@ import numpy as np
 from scipy import fft
 import pickle
 from scipy.optimize import minimize
-
+from scipy.ndimage import generate_binary_structure, maximum_filter, binary_erosion
 from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from cctbx.crystal import symmetry
@@ -1000,8 +1000,29 @@ def manager_from_params(ucell_p):
     return manager
 
 
+def detect_peaks(image_, threshold=0):
+    """
+    Detector of peaks in a 2d array
+    Borrowed recipe: https://stackoverflow.com/a/3689710/2077270
+    :param image: 2d img
+    :param threshold: float, cutoff, pixels below this are assumed to background (e.g. not peaks)
+    :returns: a binary image thats 1 at the potision of the peaks
+    """
+    image = image_.copy()
+    image[image < threshold] = 0
+    neighborhood = generate_binary_structure(2,2)
+    local_max = maximum_filter(image, footprint=neighborhood)==image
+    background = (image == 0)
+
+    eroded_background = binary_erosion(background, structure=neighborhood, border_value=1)
+
+    detected_peaks = local_max ^ eroded_background
+
+    return detected_peaks
+
+
 def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids=None,
-                    max_spot_size=1000, **kwargs):
+                    max_spot_size=1000, use_detect_peaks=False, **kwargs):
     """
     This is for converting the centroids in the noiseless simtbx images
     to a multi panel reflection table
@@ -1013,6 +1034,9 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     :param filter: optional filter to apply to images before
         labeling threshold, typically one of scipy.ndimage's filters
     :param pids: panel IDS , else assumes panel_imgs is same length as detector
+    :param max_spot_size: maximum number of px in a spot
+    :param use_detect_peaks: precisely compute the peak of each simulated spot
+        and throw away the profile
     :param kwargs: kwargs to pass along to the optional filter
     :return: a reflection table of spot centroids
     """
@@ -1026,7 +1050,9 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     for i, pid in enumerate(panel_ids):
         plab = PixelListLabeller()
         img = panel_imgs[i]
-        if filter is not None:
+        if use_detect_peaks:
+            mask = detect_peaks(img, thresh)
+        elif filter is not None:
             mask = filter(img, **kwargs) > thresh
         else:
             mask = img > thresh
@@ -1235,7 +1261,7 @@ def parse_reso_string(s):
 
 
 def refls_to_hkl(refls, detector, beam, crystal,
-                 update_table=False, returnQ=False):
+                 update_table=False, returnQ=False, wavelen=None):
     """
     convert pixel panel reflections to miller index data
     :param refls:  reflecton table for a panel or a tuple of (x,y)
@@ -1256,15 +1282,9 @@ def refls_to_hkl(refls, detector, beam, crystal,
     Ai = sqr(crystal.get_A()).inverse()
     Ai = Ai.as_numpy_array()
     HKL = np.dot( Ai, q_vecs.T)
-    HKLi = np.ceil(HKL-0.5) #map( lambda h: np.ceil(h-0.5).astype(int), HKL)
+    HKLi = np.ceil(HKL-0.5)
     if update_table:
-        #refls['miller_index'] = flex.miller_index(len(refls),(0,0,0))
         refls['miller_index'] = flex.miller_index(list(map(tuple, HKLi.T.astype(np.int32))))
-        #from IPython import embed
-        #embed();exit()
-        #mil_idx = flex.vec3_int(tuple(map(tuple, np.vstack(HKLi).T)))
-        #for i in range(len(refls)):
-        #    refls['miller_index'][i] = mil_idx[i]
     if returnQ:
         return np.vstack(HKL).T, np.vstack(HKLi).T, q_vecs
     else:
@@ -1465,3 +1485,34 @@ def recover_diff_phil_from_scope_extract(modeler_file):
     user_phil = parse("\n".join(output))
     master = parse("diffBragg {\n%s\n}" %  (phil.philz + phil.hopper_phil))
     master.fetch_diff(source=user_phil).show()
+
+
+def get_extracted_params_from_phil_sources(phil_file=None, cmdline_phil_lst=None):
+    """
+    get a params obj derived from diffBragg/phil.py thats ready to passed to various methods
+    :param phil_file: is the path to a phil configuration file for diffBragg/phil.py
+    :param cmdline_phil_lst: list of strings, each a command line phil arg, e.g. ['rank0_level=high', 'outdir=something']
+
+    Just like in normal operation, the cmdline str does not need to specify the absolute scope unless there are conflicting scopes
+    """
+
+    phil_scope = parse(phil.philz + phil.hopper_phil)
+    arg_interp = phil_scope.command_line_argument_interpreter(home_scope="")
+
+    phil_sources = []
+
+    if phil_file is not None:
+        phil_from_file = open(phil_file, "r").read()
+        user_phil = parse(phil_from_file)
+        phil_sources.append(user_phil)
+
+    if cmdline_phil_lst is not None:
+        command_line_phils = [arg_interp.process(phil.strip()) for phil in cmdline_phil_lst]
+        phil_sources += command_line_phils
+
+    working_phil, unused = phil_scope.fetch(sources=phil_sources, track_unused_definitions=True)
+    for loc in unused:
+        print("WARNING: unused phil:", loc)
+
+    params = working_phil.extract()
+    return params
