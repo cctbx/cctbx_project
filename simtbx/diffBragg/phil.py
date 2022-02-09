@@ -577,6 +577,10 @@ min_spot = 5
   .type = int
   .help = minimum spots on a shot in order to optimize that shot
   .expert_level = 10
+store_wavelength_images = False
+  .type = bool
+  .help = for simtbx.diffBragg.hopper, optionally write subimages whose value
+  .help = is the avereage wavelength per pixels, weighted by the model
 logging
   .help = controls the logging module for hopper and stage_two
   .expert_level = 10
@@ -995,6 +999,11 @@ roi {
 }
 
 geometry {
+  pandas_dir = None
+    .type = str
+    .help = If provided, Pandas dataframes for each shot will be written here
+    .help = These are the same format as those saved during stage 1
+    .help = Also, data modelers will pickled and written here as well
   optimized_results_tag = None
     .type = str
     .help = optional tagname, if provided,write optimized refls/expts alongside the
@@ -1065,6 +1074,18 @@ geometry {
 
 predictions_phil = """
 predictions {
+  use_peak_detection = False
+    .type = bool
+    .help = If True, then simulations will be converted to refl tables
+    .help = where each reflection is a single pixel corresponding
+    .help = to the peak in the simulated spot. This is useful if one
+    .help = models spatial overlaps with separate peaks
+  verbose = False
+    .type = bool
+    .help = See more console output from prediction methods
+  laue_mode = False
+    .type = bool
+    .help = if True, predict the per-pixel wavelenth from the model and use that for index assigment
   qcut = 0.1
     .type = float
     .help = Label predicted reflection as a strong reflection if its within this
@@ -1076,6 +1097,9 @@ predictions {
     .type = float
     .help = value determining the cutoff for the forward model intensity. Bragg peaks will then be determined
     .help = as regions of connected values greater than the threshold
+  thicksteps_override = None
+    .type = int
+    .help = Use to force the number of detector thickness steps to a specific value
   oversample_override = None
     .type = int
     .help = force the pixel oversample rate to this value during the forward model simulation
