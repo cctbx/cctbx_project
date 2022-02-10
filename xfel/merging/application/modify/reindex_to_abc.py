@@ -1,3 +1,4 @@
+from __future__ import division
 from xfel.merging.application.worker import worker
 from rstbx.symmetry.constraints import parameter_reduction
 from cctbx import sgtbx
