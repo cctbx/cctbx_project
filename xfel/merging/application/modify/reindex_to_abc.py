@@ -25,7 +25,7 @@ class reindex_to_abc(worker):
 
   def __repr__(self):
     return 'Reindex according to an a,b,c basis tranformation'
-  
+
   def run(self, experiments, reflections):
     cb_op_str = self.params.modify.reindex_to_abc.change_of_basis_op
     change_of_basis_op = sgtbx.change_of_basis_op(cb_op_str)
@@ -43,6 +43,3 @@ class reindex_to_abc(worker):
     reflections["miller_index"] = miller_indices_reindexed
 
     return experiments, reflections
-
-
-
