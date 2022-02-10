@@ -333,6 +333,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.wraptextbtn = QCheckBox()
     self.wraptextbtn.setText("Word wrap text")
     self.wraptextbtn.clicked.connect(self.onWrapTextBuffer)
+    self.wraptextbtn.setCheckState(Qt.Checked if self.wraptextinfo else Qt.Unchecked)
     self.ttiplabeltxt = QLabel()
     self.ttiplabeltxt.setText("Tooltips")
     self.ttipalphalabeltxt = QLabel()
@@ -1117,8 +1118,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onWrapTextBuffer(self):
     if self.wraptextbtn.isChecked():
+      self.wraptextinfo = True
       self.textInfo.setLineWrapMode(QPlainTextEdit.WidgetWidth)
     else:
+      self.wraptextinfo = False
       self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
 
 
@@ -1342,13 +1345,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.send_message("nbins = %d" %self.nbins)
 
 
-  def onRadiiScaleChanged(self, val):
+  def onRadiiScaleEditFinished(self):
     if self.unfeedback:
       return
     self.send_message("viewer.scale = %f" %self.radii_scale_spinBox.value() )
 
 
-  def onPowerScaleChanged(self, val):
+  def onPowerScaleEditFinished(self):
     if self.unfeedback:
       return
     self.send_message("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
@@ -1566,6 +1569,7 @@ clip_plane.normal_vector_length_scale = -1
         philstr = """viewer {
   slice_mode = False
   inbrowser = True
+  is_parallel = False
   fixorientation = vector
 }
 clip_plane.clipwidth = %f
@@ -1577,6 +1581,7 @@ clip_plane.normal_vector_length_scale = -1
         philstr = """viewer {
   slice_mode = False
   inbrowser = True
+  is_parallel = False
   fixorientation = vector
 }
 clip_plane.clipwidth = %f
@@ -1800,8 +1805,10 @@ clip_plane {
 
   def createRadiiScaleGroupBox(self):
     self.ManualPowerScalecheckbox.clicked.connect(self.onManualPowerScale)
-    self.power_scale_spinBox.valueChanged.connect(self.onPowerScaleChanged)
-    self.radii_scale_spinBox.valueChanged.connect(self.onRadiiScaleChanged)
+    self.power_scale_spinBox.editingFinished.connect(self.onPowerScaleEditFinished)
+    self.power_scale_spinBox.onStepBy = self.onPowerScaleEditFinished
+    self.radii_scale_spinBox.editingFinished.connect(self.onRadiiScaleEditFinished)
+    self.radii_scale_spinBox.onStepBy = self.onRadiiScaleEditFinished
 
 
   def createBinsBox(self):
@@ -1980,6 +1987,7 @@ clip_plane {
     self.settings.beginGroup(self.Qtversion )
     self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
     self.settings.setValue("FontSize", self.fontsize )
+    self.settings.setValue("WordWrapTextInfo", int(self.wraptextinfo ))
     self.settings.setValue("MouseSpeed", self.mousespeed )
     self.settings.setValue("TextBufferSize", self.textinfosize )
     self.settings.setValue("BrowserFontSize", self.browserfontsize )
@@ -2052,6 +2060,7 @@ clip_plane {
     self.QWebEngineViewFlags = self.settings.value("QWebEngineViewFlags", None)
     self.mousespeed = self.settings.value("MouseSpeed", 0.3)
     self.textinfosize = self.settings.value("TextBufferSize", 30)
+    self.wraptextinfo = bool(self.settings.value("WordWrapTextInfo", 0))
     self.fontsize = self.settings.value("FontSize", 10)
     self.browserfontsize = self.settings.value("BrowserFontSize", 9)
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
@@ -2082,6 +2091,8 @@ clip_plane {
       self.mousemoveslider.setValue(float(self.mousespeed)*self.mousespeedscale)
       self.mousesensitxtbox.setText("%2.1f" %(self.mousemoveslider.value()*10.0/self.mousemoveslider.maximum()) )
       self.send_message('NGL.mouse_sensitivity = %s' %self.mousespeed)
+    if self.wraptextinfo is not None:
+      self.textInfo.setLineWrapMode(QPlainTextEdit.WidgetWidth if self.wraptextinfo else QPlainTextEdit.NoWrap)
     if self.textinfosize is not None:
       self.onTextbufferSizeChanged(int(self.textinfosize))
       self.bufsizespinBox.setValue(int(self.textinfosize))

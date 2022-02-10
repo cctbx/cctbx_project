@@ -203,7 +203,7 @@ p, li { white-space: pre-wrap; }
                  <x>0</x>
                  <y>0</y>
                  <width>421</width>
-                 <height>392</height>
+                 <height>364</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_4">
@@ -228,7 +228,7 @@ p, li { white-space: pre-wrap; }
                    </sizepolicy>
                   </property>
                   <property name="currentIndex">
-                   <number>1</number>
+                   <number>0</number>
                   </property>
                   <widget class="QWidget" name="tab">
                    <attribute name="title">
@@ -781,7 +781,7 @@ p, li { white-space: pre-wrap; }
                       </property>
                       <layout class="QGridLayout" name="gridLayout_10">
                        <item row="2" column="1">
-                        <widget class="QDoubleSpinBox" name="radii_scale_spinBox">
+                        <widget class="MyQDoubleSpinBox" name="radii_scale_spinBox">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                            <horstretch>0</horstretch>
@@ -844,7 +844,7 @@ p, li { white-space: pre-wrap; }
                         </widget>
                        </item>
                        <item row="1" column="3">
-                        <widget class="QDoubleSpinBox" name="power_scale_spinBox">
+                        <widget class="MyQDoubleSpinBox" name="power_scale_spinBox">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                            <horstretch>0</horstretch>

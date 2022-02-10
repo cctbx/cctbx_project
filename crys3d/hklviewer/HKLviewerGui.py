@@ -163,7 +163,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 392))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 364))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -502,7 +502,7 @@ class Ui_MainWindow(object):
         self.gridLayout_10.setSpacing(4)
         self.gridLayout_10.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_10.setObjectName(u"gridLayout_10")
-        self.radii_scale_spinBox = QDoubleSpinBox(self.groupBox_3)
+        self.radii_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
         self.radii_scale_spinBox.setObjectName(u"radii_scale_spinBox")
         sizePolicy16 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         sizePolicy16.setHorizontalStretch(0)
@@ -536,7 +536,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_10.addWidget(self.label_10, 1, 2, 1, 1)
 
-        self.power_scale_spinBox = QDoubleSpinBox(self.groupBox_3)
+        self.power_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
         self.power_scale_spinBox.setObjectName(u"power_scale_spinBox")
         sizePolicy16.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
         self.power_scale_spinBox.setSizePolicy(sizePolicy16)
@@ -904,7 +904,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(1)
+        self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
 

@@ -478,14 +478,15 @@ class hklview_3d:
         # Orient the clip plane perpendicular to real_space_vec while at the
         # same time slide clip plane along the cartvec (reciprocal vector) direction
         # in units of cartvec projected onto real_space_vec
-        self.mprint("clip plane perpendicular to hkl direction: %s" %str(hklvec))
+        self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
         self.orient_vector_to_screen(real_space_vec)
         L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
         if self.params.clip_plane.normal_vector_length_scale > 0:
           L = self.params.clip_plane.normal_vector_length_scale
         cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * L *cosine
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
+        #msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
+        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], hkldist)
       self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
