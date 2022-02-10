@@ -37,7 +37,7 @@ class RefineCryoemErrors(RefineBase):
     self.large_shifts_beta = [astar * astar, bstar * bstar, cstar * cstar, astar * bstar, astar * cstar, bstar * cstar]
 
   def target_gradient_hessian(self, do_gradient=True, do_hessian=True):
-    if (do_hessian):
+    if do_hessian:
       assert (do_gradient)
     # Extract parameters into variables with sensible names
     n_bins = self.n_bins
@@ -108,7 +108,7 @@ class RefineCryoemErrors(RefineBase):
           dmLL_by_dsigE_terms = (
             (2 * sigmaE_terms - hyposqr) / (2 * sigmaE_sqr)
             - sumsqrcos / (2 * u2sigE2) + 1. / (u2sigE))
-        if (self.refine_Asqr_beta or self.refine_sigmaE_beta):
+        if self.refine_Asqr_beta or self.refine_sigmaE_beta:
           h_as_double, k_as_double, l_as_double = (
             ma_sel.indices().as_vec3_double().parts())
           hh = flex.pow2(h_as_double)
@@ -195,7 +195,7 @@ class RefineCryoemErrors(RefineBase):
                 or self.refine_sigmaE_beta):
             d2mLL_by_dsigE2_terms = ( (hyposqr - sigmaE_terms)
               / (sigmaE_sqr * sigmaE_terms) + sumsqrcos/u2sigE3 - 1./u2sigE2)
-          if (self.refine_Asqr_beta or self.refine_sigmaE_beta):
+          if self.refine_Asqr_beta or self.refine_sigmaE_beta:
             hh_sqr = flex.pow2(hh)
             kk_sqr = flex.pow2(kk)
             ll_sqr = flex.pow2(ll)
@@ -290,7 +290,7 @@ class RefineCryoemErrors(RefineBase):
       stbin = sigmaT_bins[i_bin_used]
       logbin = math.log(stbin)
       f += (logbin/sigmascale)**2 / 2
-      if (do_gradient and self.refine_sigmaT_bins):
+      if do_gradient and self.refine_sigmaT_bins:
         g[i_sigmaT_bin] += logbin / (stbin * sigmascale**2)
         if do_hessian:
           h[i_sigmaT_bin,i_sigmaT_bin] += (1.-logbin)/(stbin*sigmascale)**2
@@ -551,7 +551,7 @@ class RefineCryoemErrors(RefineBase):
     list_all = (full_list or len(self.refine_mask) == 0)
     iref = 0
     for i in range(len(self.x)):
-      if (list_all or self.refine_mask[i]):
+      if list_all or self.refine_mask[i]:
         self.log_tab_printf(2, level, "%-15s %10.5g\n", (parameter_names[iref], self.x[i]))
         iref += 1
 
@@ -960,17 +960,25 @@ def add_local_squared_deviation_map(
   mean_square_map_coeffs = mm_out.map_as_fourier_coefficients(d_min=d_min)
   mmm.add_map_from_fourier_coefficients(mean_square_map_coeffs,
       map_id=map_id_out)
+  # All map values should be positive, but round trip through FT might change
+  # this. Check and add an offset if required to make minimum slightly positive.
+  mm_out = mmm.get_map_manager_by_id(map_id=map_id_out)
+  min_map_value = flex.min(mm_out.map_data())
+  if min_map_value <= 0:
+    max_map_value = flex.max(mm_out.map_data())
+    offset = (max_map_value - min_map_value)/100000. - min_map_value
+    mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
 def add_ordered_volume_mask(
     mmm, d_min, rad_factor=1.5, protein_mw=None, nucleic_mw=None,
-    map_id_in='map_manager', map_id_out='ordered_volume_mask'):
+    map_id_out='ordered_volume_mask'):
   """
   Add map defining mask covering the volume of most ordered density required
   to contain the specified content of protein and nucleic acid, judged by local
   squared deviation of input map
 
   Compulsory arguments:
-  mmm: map_model_manager containing input_map
+  mmm: map_model_manager containing input half-maps in default map_managers
   d_min: estimate of best resolution for map
 
   Optional arguments:
@@ -978,7 +986,6 @@ def add_ordered_volume_mask(
     sphere, defaults to 1.5
   protein_mw*: molecular weight of protein expected in map, if any
   nucleic_mw*: molecular weight of nucleic acid expected in map
-  map_id_in: identifier of input map, defaults to map_manager
   map_id_out: identifier of output map, defaults to ordered_volume_mask
 
   * Note that at least one of protein_mw and nucleic_mw must be specified
@@ -991,15 +998,40 @@ def add_ordered_volume_mask(
   # sample non-bonded contact distances. A rad_factor of 1.5 should yield
   # 4*Pi/3 * (2*1.5)^3 or about 113 independent points for the average.
   radius = max(d_min*rad_factor, 5.)
-  add_local_squared_deviation_map(mmm, radius, d_min,
-      map_id_in=map_id_in, map_id_out='variance_map')
+
+  working_mmm = mmm.deep_copy()
+  wmm1 = working_mmm.map_manager_1()
+  wmm2 = working_mmm.map_manager_2()
+  # Input map_manager may contain arbitrarily filtered map that is not the
+  # simple average of the two half-maps
+  mm_mean = wmm1.customized_copy(map_data = (wmm1.map_data() + wmm2.map_data()) / 2)
+  working_mmm.set_map_manager(mm_mean)
+  delta_mm = wmm1.customized_copy(map_data = wmm1.map_data() - wmm2.map_data())
+  working_mmm.add_map_manager_by_id(delta_mm, map_id = 'delta_map')
+
+  add_local_squared_deviation_map(working_mmm, radius, d_min,
+      map_id_in='map_manager', map_id_out='map_variance')
+  mvmm = working_mmm.get_map_manager_by_id('map_variance')
+  add_local_squared_deviation_map(working_mmm, radius, d_min,
+      map_id_in='delta_map', map_id_out='noise_variance')
+  # When maps are masked near the corners and edges, both signal and noise can
+  # approach zero. Avoid getting close to dividing zero by zero, by adding a
+  # small offset to the noise variance.
+  # At the same time, correct noise variance by factor of two for averaging
+  nvmm = working_mmm.get_map_manager_by_id('noise_variance')
+  nvmm_min = min(flex.min(nvmm.map_data()) , 0.)
+  nvmm_max = flex.max(nvmm.map_data())
+  nvmm.map = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.
+
+  # Compute Z-score where values much greater than 1 indicate signal
+  mm_Zscore = mvmm.customized_copy(
+      map_data = flex.sqrt(mvmm.map_data()/nvmm.map_data()))
 
   # Choose enough points in averaged squared density map to covered expected
   # ordered structure
-  map_volume = mmm.map_manager().unit_cell().volume()
-  mm_in = mmm.get_map_manager_by_id(map_id='variance_map')
-  variance_map_data = mm_in.map_data()
-  numpoints = variance_map_data.size()
+  map_volume = working_mmm.map_manager().unit_cell().volume()
+  Zscore_map_data = mm_Zscore.map_data()
+  numpoints = Zscore_map_data.size()
   # Convert content into volume using partial specific volumes
   target_volume = 0.
   if protein_mw is not None:
@@ -1011,16 +1043,17 @@ def add_ordered_volume_mask(
   volume_factor = ((equivalent_radius+d_min)/equivalent_radius)**3
   expanded_target_volume = target_volume*volume_factor
   target_points = int(expanded_target_volume/map_volume * numpoints)
+
+  # Find threshold for target number of masked points
   from cctbx.maptbx.segment_and_split_map import find_threshold_in_map
   threshold = find_threshold_in_map(target_points = target_points,
-      map_data = variance_map_data)
-  temp_bool_3D = (variance_map_data >=  threshold)
+      map_data = Zscore_map_data)
+  temp_bool_3D = (Zscore_map_data >=  threshold)
   # as_double method doesn't work for multidimensional flex.bool
   mask_shape = temp_bool_3D.all()
   overall_mask = temp_bool_3D.as_1d().as_double()
   overall_mask.reshape(flex.grid(mask_shape))
   new_mm = mmm.map_manager().customized_copy(map_data=overall_mask)
-  mmm.remove_map_manager_by_id(map_id='variance_map')
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
 def run_refine_cryoem_errors(
@@ -1093,7 +1126,7 @@ def run_refine_cryoem_errors(
   masked_volume = box_volume
   d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
 
-  if (keep_full_map):
+  if keep_full_map:
     working_mmm = mmm.deep_copy()
   else:
     # Box the map within xyz bounds, converted to map grid units
@@ -1184,7 +1217,7 @@ def run_refine_cryoem_errors(
   wilson_b_intensity = -4 * slope
   n_bins = ssqr_bins.size()
 
-  if (prior_params is not None):
+  if prior_params is not None:
     if d_min < 0.99*math.sqrt(1./prior_params['ssqmax']):
       print("Requested resolution is higher than prior parameters support")
       sys.stdout.flush()
@@ -1223,7 +1256,7 @@ def run_refine_cryoem_errors(
   start_params.extend(sigmaE_beta)
 
   # create inputs for the minimizer's run method
-  if (prior_params is not None):
+  if prior_params is not None:
     macro = ["Eprior"]        # protocol: fix error terms using prior
   else:
     macro = ["default"]       # protocol: refine sigmaE terms too
@@ -1282,7 +1315,7 @@ def run_refine_cryoem_errors(
       print("  ",es.values()[iv],es.vectors(iv))
 
     print("\nParameters for SigmaE")
-    if (prior_params is not None):
+    if prior_params is not None:
       print("  SigmaE scale applied to prior bins:", sigmaE_scale)
     for i_bin in range(n_bins):
       print("  Bin #", i_bin + 1, "SigmaE base: ", sigmaE_bins[i_bin])
@@ -1338,7 +1371,7 @@ def run_refine_cryoem_errors(
     mc1sel = mc1.select(sel)
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
-    if (verbosity > 0):
+    if verbosity > 0:
       print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC)
       sys.stdout.flush()
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
@@ -1348,6 +1381,11 @@ def run_refine_cryoem_errors(
   # weighted half-map. In the following, this sum could be multiplied by two
   # for Friedel symmetry, but then divided by two for effects of averaging.
   weighted_map_noise = math.sqrt(weighted_map_noise) / masked_volume
+
+  if verbosity > 0:
+    print("Fraction of full map scattering: ",fraction_scattering)
+    print("Over-sampling factor: ",over_sampling_factor)
+    print("Weighted map noise: ",weighted_map_noise)
 
   # The following code could be used if we wanted to return a map_model_manager
   # wEmean = dobs*expectE
@@ -1461,7 +1499,7 @@ def run():
 
   protein_mw = None
   nucleic_mw = None
-  if ((args.protein_mw is None) and (args.nucleic_mw is None)):
+  if (args.protein_mw is None) and (args.nucleic_mw is None):
     print("At least one of protein_mw or nucleic_mw must be given")
     sys.stdout.flush()
     exit
@@ -1478,7 +1516,7 @@ def run():
     mask_specified = False
 
   # Get prior parameters if provided
-  if (args.read_params is not None):
+  if args.read_params is not None:
     infile = open(args.read_params,"rb")
     prior_params = pickle.load(infile)
     infile.close()
@@ -1490,8 +1528,10 @@ def run():
   mm1 = dm.get_real_map(map1_filename)
   map2_filename = args.map2
   mm2 = dm.get_real_map(map2_filename)
-  mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2)
-  # Add mask map for ordered component of map
+  delta_mm = mm1.customized_copy(map_data = mm1.map_data() - mm2.map_data())
+  mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2,
+      extra_map_manager_list=[delta_mm], extra_map_manager_id_list=['delta_map'])
+  # Add mask map for ordered component of map.
   mask_id = 'ordered_volume_mask'
   add_ordered_volume_mask(mmm, d_min,
       protein_mw=protein_mw, nucleic_mw=nucleic_mw,
@@ -1504,7 +1544,7 @@ def run():
       map_file_name = "ordered_volume_mask.map"
     ordered_mm.write_map(map_file_name)
 
-  if (prior_params is None):
+  if prior_params is None:
     # Initial refinement to get overall error parameters
     results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity,
       shift_map_origin=shift_map_origin)
@@ -1532,7 +1572,7 @@ def run():
       dobs,column_root_label='Dobs',column_types='W')
   mtz_object=mtz_dataset.mtz_object()
 
-  if (args.file_root is not None):
+  if args.file_root is not None:
     mtzout_file_name = args.file_root + ".mtz"
   else:
     mtzout_file_name = "weighted_map_data.mtz"
@@ -1547,5 +1587,5 @@ def run():
   print ("Fraction of total scattering:",fraction_scattering)
   sys.stdout.flush()
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   run()
