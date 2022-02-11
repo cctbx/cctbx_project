@@ -430,9 +430,16 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
     param_map = xray_structure.parameter_map()
     covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
   fp_fdp_table = {}
+  fp_fdp_table_fixed = {}
+  fp_fdp_table_completeness = {}
   for i_seq, sc in enumerate(xray_structure.scatterers()):
-    covariance_diagonal
     sc_params = param_map[i_seq]
+    completeness = fp_fdp_table_completeness.get(sc.scattering_type, None)
+    if completeness is None:
+      completeness = [1,1,1]
+      fp_fdp_table_completeness[sc.scattering_type] = completeness
+    else:
+      completeness[0] += 1
     fp, fdp = sc.fp, sc.fdp
     if covariance_matrix:
       if sc.flags.grad_fp():
@@ -441,7 +448,20 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
       if sc.flags.grad_fdp():
         fdp = format_float_with_su(sc.fdp,
                 math.sqrt(covariance_diagonal[sc_params.fdp]))
-    fp_fdp_table.setdefault(sc.scattering_type, (fp, fdp))
+      elif not sc.flags.grad_fp():
+        fp_fdp_table_fixed[sc.scattering_type] = (fp, fdp)
+    fp_fdp = fp_fdp_table.get(sc.scattering_type, None)
+    if fp_fdp is None:
+      fp_fdp_table[sc.scattering_type] = (fp, fdp)
+    else:
+      if fp == fp_fdp[0]:
+        completeness[1] += 1
+      if fdp == fp_fdp[1]:
+        completeness[2] += 1
+
+  for sc, completeness in fp_fdp_table_completeness.items():
+    if completeness[0] != completeness[1] or completeness[0] != completeness[2]:
+      del fp_fdp_table[sc]
 
   disp_source = inelastic_references.get(
     xray_structure.inelastic_form_factors_source)
@@ -459,10 +479,12 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
 %i-Gaussian fit: Grosse-Kunstleve RW, Sauter NK, Adams PD:
 Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."""
       scat_source = scat_source %gaussian.n_terms()
-    if disp_source == ".":
-      fp, fdp = ".", "."
-    else:
-      fp, fdp = fp_fdp_table[atom_type]
+    fp, fdp = ".", "."
+    if "" != disp_source:
+      if atom_type in fp_fdp_table:
+        fp, fdp = fp_fdp_table[atom_type]
+      elif atom_type in fp_fdp_table_fixed:
+        fp, fdp = fp_fdp_table_fixed[atom_type]
       if not isinstance(fp, str):
         fp = "%.5f" %fp
       if not isinstance(fdp, str):

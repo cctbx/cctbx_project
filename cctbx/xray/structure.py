@@ -2122,8 +2122,11 @@ class structure(crystal.special_position_settings):
       '_atom_site_fract_x', '_atom_site_fract_y', '_atom_site_fract_z',
       '_atom_site_U_iso_or_equiv', '_atom_site_adp_type',
       '_atom_site_occupancy'))
+    refined_disp = []
+    if covariance_matrix:
+      covariance_diagonal = covariance_matrix.matrix_packed_u_diagonal()
     for i_seq, sc in enumerate(scatterers):
-      site = occu = u_iso_or_equiv = None
+      site = occu = u_iso_or_equiv = fp = fdp = None
       # site
       if covariance_matrix is not None:
         params = param_map[i_seq]
@@ -2149,6 +2152,15 @@ class structure(crystal.special_position_settings):
                    ).dot(u_star_to_u_iso_linear_form)
             u_iso_or_equiv = format_float_with_su(
               sc.u_iso_or_equiv(uc), math.sqrt(var))
+        if sc.flags.grad_fp() or sc.flags.grad_fdp():
+          fp, fdp = sc.fp, sc.fdp
+          if sc.flags.grad_fp():
+            fp = format_float_with_su(sc.fp,
+                math.sqrt(covariance_diagonal[params.fp]))
+          if sc.flags.grad_fdp():
+            fdp = format_float_with_su(sc.fdp,
+                math.sqrt(covariance_diagonal[params.fdp]))
+          refined_disp.append((sc, fp, fdp))
 
       if site is None:
         site = [fmt % sc.site[i] for i in range(3)]
@@ -2227,6 +2239,14 @@ class structure(crystal.special_position_settings):
           D_loop.add_row(D_row)
         cs_cif_block.add_loop(C_loop)
         cs_cif_block.add_loop(D_loop)
+      if refined_disp:
+        disp_loop = model.loop(header=(['_atom_site_dispersion_label',
+                                        '_atom_site_dispersion_real',
+                                        '_atom_site_dispersion_imag']))
+        for sc, fp, fdp in refined_disp:
+          disp_loop.add_row([sc.label, fp, fdp])
+        cs_cif_block.add_loop(disp_loop)
+
       cs_cif_block.add_loop(atom_type_cif_loop(self, format=format, covariance_matrix=covariance_matrix))
     return cs_cif_block
 
