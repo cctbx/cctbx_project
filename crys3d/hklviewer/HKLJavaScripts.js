@@ -676,12 +676,17 @@ function onMessage(e)
           nrots++;
           expansion_positions[bin].push( [] );
           expansion_shapebufs[bin].push( [] );
-          expansion_ttips[bin].push( [] );
-          Object.assign(expansion_ttips[bin][rotmxidx], ttips[bin]); // deep copy the ttips[bin] object
-          expansion_ttips[bin][rotmxidx].ids = ttips[bin].ids.slice(0); // deep copy the ttips[bin].ids object
+          expansion_ttips[bin].push([]);
+          if (anoexp) {
+            expansion_ttips[bin][rotmxidx].ids = new Array(2 * nsize + 2);
+            expansion_ttips[bin][rotmxidx].cartpos = new Array(2 * nsize);
+          }
+          else {
+            expansion_ttips[bin][rotmxidx].ids = new Array(nsize + 1);
+            expansion_ttips[bin][rotmxidx].cartpos = new Array(nsize);
+          }
           expansion_ttips[bin][rotmxidx].ids[0] = rotmxidx; // id number of rotation. Used by PickingProxyfunc
-          expansion_ttips[bin][rotmxidx].cartpos = ttips[bin].cartpos.slice(0); // deep copy the ttips[bin].cartpos object
-          expansion_positions[bin][rotmxidx] = new Float32Array( csize );
+          expansion_positions[bin][rotmxidx] = new Float32Array(csize);
           nexpandrefls += csize;
 
           for (let i=0; i<nsize; i++)
@@ -695,7 +700,7 @@ function onMessage(e)
             expansion_positions[bin][rotmxidx][idx + 1] = r.y;
             expansion_positions[bin][rotmxidx][idx + 2] = r.z;
             expansion_ttips[bin][rotmxidx].cartpos[i] = [r.x,r.y,r.z];
-
+            expansion_ttips[bin][rotmxidx].ids[i + 1] = ttips[bin].ids[i + 1];
             if (anoexp)
             {
               r.negate(); // inversion for anomalous pair
@@ -703,7 +708,8 @@ function onMessage(e)
               expansion_positions[bin][rotmxidx][nsize3 + idx + 1] = r.y;
               expansion_positions[bin][rotmxidx][nsize3 + idx + 2] = r.z;
               expansion_ttips[bin][rotmxidx].cartpos[nsize + i] = [r.x, r.y, r.z];
-              expansion_ttips[bin][rotmxidx].ids[nsize + i + 1] = - ttips[bin].ids.slice(0)[i + 1];
+ // indicate this hkl is a friedel mate with negative id of original hkl
+              expansion_ttips[bin][rotmxidx].ids[nsize + 1 + i] = -ttips[bin].ids[i + 1];
             }
           }
 
@@ -711,10 +717,11 @@ function onMessage(e)
               position: expansion_positions[bin][rotmxidx],
               color: expansion_colours[bin],
               radius: expansion_radii[bin],
-              // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
+// rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
               picking: expansion_ttips[bin][rotmxidx],
               } );
           shape.addBuffer(expansion_shapebufs[bin][rotmxidx]);
+          WebsockSendMsg('Expanded rotation operator ' + rotmxidx.toString());
         }
         if (nexpandrefls == nsize*3)
           expstate = "";

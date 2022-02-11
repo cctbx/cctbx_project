@@ -485,8 +485,8 @@ class hklview_3d:
           L = self.params.clip_plane.normal_vector_length_scale
         cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * L *cosine
-        #msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], hkldist)
+        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
+        #msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], hkldist)
       self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
@@ -1490,6 +1490,8 @@ class hklview_3d:
             self.WBmessenger.StopWebsocket()
         elif "JavaScriptError:" in message:
           self.mprint( message, verbose=0)
+        elif "Expanded rotation operator" in message:
+          self.mprint( message, verbose=1)
         elif "Expand" in message:
           self.mprint( message, verbose=2)
         elif "Connection lost" in message:
