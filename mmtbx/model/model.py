@@ -1221,6 +1221,12 @@ class manager(object):
     xrs = self.get_xray_structure()
     return xrs.hd_selection()
 
+  def fully_deuterated(self):
+    atom_types = self.get_xray_structure()._scattering_type_registry.\
+       type_index_pairs_as_dict().keys()
+    if("D" in atom_types and not "H" in atom_types): return True
+    else: return False
+
   def get_ias_selection(self):
     if self.ias_manager is None:
       return None

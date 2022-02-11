@@ -117,7 +117,7 @@ class run(object):
     self.m = None
     if(self.target_map is not None and len(self.co.clusters)>0):
       # Set weights
-      AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1}
+      AN = {"S":16, "O":8, "N":7, "C":6, "SE":34, "H":1, "D":5}
       #AN = {"S":1, "O":1, "N":1, "C":1, "SE":1, "H":1}
       self.weights = flex.double()
       for atom in self.residue.atoms():
