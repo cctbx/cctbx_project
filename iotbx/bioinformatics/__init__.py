@@ -1917,8 +1917,16 @@ def get_chain_type(model=None, hierarchy=None, model_list = None,
 
   count_protein = hierarchy.select(sel1).atoms().extract_xyz().size()
 
-  asc1 = hierarchy.atom_selection_cache()
-  sel1 = asc1.selection(string = '(not protein) and (not water) and (not hetero)')
+
+  # XXX on colab this can give the error:
+  #  RuntimeError: Another associated atom_tmp_sentinel instance still exists
+  try:
+    asc1 = hierarchy.atom_selection_cache()
+    sel1 = asc1.selection(string = '(not protein) and (not water) and (not hetero)')
+  except Exception as e:
+    hierarchy = hierarchy.deep_copy()
+    asc1 = hierarchy.atom_selection_cache()
+    sel1 = asc1.selection(string = '(not protein) and (not water) and (not hetero)')
   hierarchy_rna_dna= hierarchy.select(sel1)
   count_rna_dna= hierarchy_rna_dna.atoms().extract_xyz().size()
 
