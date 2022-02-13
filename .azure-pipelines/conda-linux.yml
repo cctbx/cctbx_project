@@ -72,7 +72,7 @@ jobs:
       /tmp/docker exec -t -u 0 ci-container \
       sh -c "sed -i 's/mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-Base.repo"
       /tmp/docker exec -t -u 0 ci-container \
-      sh -c "sed -i 's/#baseurl=http:\/\/mirror/baseurl=http:\/\/vault/g' /etc/yum.repos.d/CentOS-Base.repo"
+      sh -c "sed -i 's/#baseurl=http:\/\/mirror\.centos\.org\/centos/baseurl=http:\/\/ftp\.riken\.jp\/Linux\/centos-vault\/centos/g' /etc/yum.repos.d/CentOS-Base.repo"
       cat /etc/yum.repos.d/CentOS-Base.repo
     displayName: Modify yum repositories for CentOS 6
     condition: eq('${{ parameters.version[0] }}', 6)
