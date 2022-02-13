@@ -122,7 +122,7 @@ struct accumulate_reflection_chunk_omp {
 #pragma omp for
           for (int run = 0; run < size; run++) {
             if (error_flag) {
-              break;
+              continue;
             }
             const int refl_i = start + run;
             miller::index<> const& h = reflections.index(refl_i);
@@ -135,12 +135,14 @@ struct accumulate_reflection_chunk_omp {
               }
             }
             catch (smtbx::error const& e) {
-              error_flag = true, error_string = e.what();
-              break;
+              error_flag = true;;
+              error_string = e.what();
+              continue;
             }
             catch (std::exception const& e) {
-              error_flag = true, error_string = e.what();
-              break;
+              error_flag = true;
+              error_string = e.what();
+              continue;
             }
             f_calc[refl_i] = f_calc_threads[thread]->get_f_calc();
             //skip hoarding memory if Gradients are not needed.

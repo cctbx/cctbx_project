@@ -13,6 +13,10 @@
 #include <scitbx/sparse/matrix.h>
 #include <scitbx/sparse/triangular.h>
 #include <sstream>
+#if defined(_OPENMP)
+  #include <omp.h>
+#endif
+
 
 namespace scitbx { namespace lstbx { namespace normal_equations {
 
