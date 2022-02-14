@@ -1036,7 +1036,7 @@ function onMessage(e)
 
     if (msgtype === "RemovePrimitives")
     {
-      RemovePrimitives(val[0].trim());
+      RemovePrimitives(datval[1]);
     }
 
     if (msgtype === "DefineHKL_Axes")
@@ -1138,12 +1138,13 @@ function onMessage(e)
 
     if (msgtype === "PrintInformation") {
       let msg = datval[1];
-      let wp = getTextWidth(msg, fontsize);
+      let infofsize = fontsize + 1;
+      let wp = getTextWidth(msg, infofsize);
       if (infobanner != null)
         infobanner.remove(); // delete previous colour chart if any
       if (msg == "")
         return;
-      infobanner = addBottomDivBox(msg, 10, 110, wp+2, 15, "rgba(255, 255, 255, 1.0)", fontsize);
+      infobanner = addBottomDivBox(msg, 10, 110, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
     if (msgtype === "SetBrowserDebug") {

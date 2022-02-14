@@ -413,7 +413,7 @@ p, li { white-space: pre-wrap; }
                         <widget class="QRadioButton" name="normal_realspace_vec_btn">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                           <horstretch>0</horstretch>
+                           <horstretch>1</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
@@ -422,24 +422,15 @@ p, li { white-space: pre-wrap; }
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1" colspan="2">
-                        <widget class="QLabel" name="label_9">
+                       <item row="1" column="3">
+                        <widget class="QComboBox" name="clipplane_normal_vector_combo">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                           <horstretch>1</horstretch>
+                           <horstretch>3</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
-                         <property name="text">
-                          <string>is normal to real space vector associated with:</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
                         </widget>
-                       </item>
-                       <item row="1" column="3">
-                        <widget class="QComboBox" name="clipplane_normal_vector_combo"/>
                        </item>
                        <item row="1" column="4">
                         <widget class="QLabel" name="label_13">
@@ -475,6 +466,9 @@ p, li { white-space: pre-wrap; }
                        </item>
                        <item row="2" column="0" colspan="2">
                         <widget class="QLabel" name="label_15">
+                         <property name="toolTip">
+                          <string>in units of the selected vector above</string>
+                         </property>
                          <property name="text">
                           <string>Distance from origin</string>
                          </property>
@@ -490,6 +484,9 @@ p, li { white-space: pre-wrap; }
                            <horstretch>0</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
+                         </property>
+                         <property name="toolTip">
+                          <string>in units of the selected vector above</string>
                          </property>
                          <property name="decimals">
                           <number>4</number>
@@ -526,6 +523,9 @@ p, li { white-space: pre-wrap; }
                            <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
+                         <property name="toolTip">
+                          <string>Adjust width to exclude reflections that should not be visible or to make visible reflections that are not</string>
+                         </property>
                          <property name="minimum">
                           <double>0.500000000000000</double>
                          </property>
@@ -534,6 +534,22 @@ p, li { white-space: pre-wrap; }
                          </property>
                          <property name="singleStep">
                           <double>0.500000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1" colspan="2">
+                        <widget class="QLabel" name="label_9">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                           <horstretch>1</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="text">
+                          <string>is normal to real space vector associated with:</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>

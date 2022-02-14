@@ -472,6 +472,9 @@ class hklview_3d:
           hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
         except Exception as e:
           hklvec = roundoff(list(matrix.sqr(uc.orthogonalization_matrix()).transpose() * cartvec/self.scene.renderscale))
+        # Make a string of the equation of the plane of reflections
+        hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
+        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist *hklvecsqr)
         # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
         real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
         # In the general case real_space_vec is not parallel to hklvec
@@ -485,8 +488,6 @@ class hklview_3d:
           L = self.params.clip_plane.normal_vector_length_scale
         cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * L *cosine
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist)
-        #msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], hkldist)
       self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
