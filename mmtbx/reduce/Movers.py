@@ -171,9 +171,9 @@ class MoverNull(object):
   def PoseDescription(self, coarseIndex, fineIndex):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state"
+      return "Unrecognized state ."
     else:
-      return "Original location"
+      return "Original location ."
 
 ##################################################################################
 class _MoverRotator(object):
@@ -1310,11 +1310,11 @@ def Test():
     fixUp = m.FixUp(0)
     if len(fixUp.atoms) != 0:
       return "Movers.Test() MoverNull: Expected 0 atoms for FixUp, got "+str(len(fixUp.atoms))
-    if m.PoseDescription(0,0) != "Original location":
+    if m.PoseDescription(0,0) != "Original location .":
       return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,0)
-    if m.PoseDescription(1,0) != "Unrecognized state":
+    if m.PoseDescription(1,0) != "Unrecognized state .":
       return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(1,0)
-    if m.PoseDescription(0,1) != "Unrecognized state":
+    if m.PoseDescription(0,1) != "Unrecognized state .":
       return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,1)
 
   except Exception as e:
@@ -2013,7 +2013,7 @@ def Test():
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Flipped":
+    if mover.PoseDescription(1,0) != "Flipped . .":
       return "Movers.Test() MoverAmideFlip basic: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,1)
 
   except Exception as e:
@@ -2178,7 +2178,7 @@ def Test():
       return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Flipped":
+    if mover.PoseDescription(1,0) != "Flipped . .":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,0)
 
   except Exception as e:
@@ -2430,13 +2430,13 @@ def Test():
           return "Movers.Test() MoverHisFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Unflipped HD1 added":
+    if mover.PoseDescription(1,0) != "Unflipped HD1Added HE2NotAdded":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
-    if mover.PoseDescription(2,0) != "Unflipped HE2 added":
+    if mover.PoseDescription(2,0) != "Unflipped HD1NotAdded HE2Added":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
-    if mover.PoseDescription(3,0) != "Unflipped":
+    if mover.PoseDescription(3,0) != "Unflipped HD1NotAdded HE2NotAdded":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
-    if mover.PoseDescription(4,0) != "Flipped HD1 added HE2 added":
+    if mover.PoseDescription(4,0) != "Flipped HD1Added HE2Added":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
 
   except Exception as e:
