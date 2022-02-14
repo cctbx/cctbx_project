@@ -1028,7 +1028,11 @@ def add_ordered_volume_mask(
       map_data = flex.sqrt(mvmm.map_data()/nvmm.map_data()))
 
   # Choose enough points in averaged squared density map to covered expected
-  # ordered structure
+  # ordered structure. An alternative that could be implemented is to assign
+  # any parts of map unlikely to arise from noise as ordered density, without
+  # reference to expected content. This might require figuring out
+  # the effective number of independent points in the averaging sphere to
+  # calibrate the chi-square distribution.
   map_volume = working_mmm.map_manager().unit_cell().volume()
   Zscore_map_data = mm_Zscore.map_data()
   numpoints = Zscore_map_data.size()
@@ -1152,16 +1156,21 @@ def run_refine_cryoem_errors(
         working_mmm.map_data().size()/mmm.map_data().size())
     masked_volume = box_volume * mask_info.mean
 
-    # Also need weighted volume of ordered region of map, used to compute
-    # fraction of total scattering contained in the working map as well as
-    # an oversampling ratio defined as which fraction of the cube contains
-    # ordered density. (This could possibly be divided by about 2 to put it
-    # on the same scale as crystallographic data with 50% bulk solvent on average)
+    # Use weighted volume of ordered region of map to compute fraction of total
+    # scattering contained in the working map
     cutout_ordered_mm = working_mmm.get_map_manager_by_id(map_id=ordered_mask_id)
     cutout_ordered_points = (flex.mean(cutout_ordered_mm.map_data()) *
           cutout_ordered_mm.map_data().size())
     fraction_scattering = cutout_ordered_points / total_ordered_points
-    over_sampling_factor = cutout_ordered_mm.map_data().size() / cutout_ordered_points
+    # Calculate an oversampling ratio defined as the ratio between the size of
+    # the cut-out cube and the size of a cube that could contain a sphere
+    # big enough to hold the volume of ordered density. Because the ratio of
+    # the size of a cube to the sphere inscribed in it is about 1.9 (which is
+    # close to the factor of two between typical protein volume and unit cell
+    # volume in a crystal), this should yield likelihood scores on a similar
+    # scale to crystallographic ones.
+    over_sampling_factor = (cutout_ordered_mm.map_data().size() /
+        (cutout_ordered_points * 6./math.pi) )
 
     d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
 
