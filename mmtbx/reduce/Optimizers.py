@@ -356,11 +356,14 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
+        model.setup_riding_h_manager()
+        riding_h_manager = model.get_riding_h_manager()
+        h_parameterization = riding_h_manager.h_parameterization
         hyds = model.rotatable_hd_selection(iselection=True)
         self._infoString += _ReportTiming("select rotatable hydrogens")
         ret = _PlaceMovers(self._atoms, hyds,
-                           bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
-                           self._maximumVDWRadius, addFlipMovers)
+                           bondedNeighborLists, h_parameterization, self._spatialQuery,
+                           self._extraAtomInfo, self._maximumVDWRadius, addFlipMovers)
         self._infoString += ret.infoString
         self._movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(self._movers))+" Movers\n")
@@ -1207,8 +1210,8 @@ class _PlaceMoversReturn(object):
     self.deleteAtoms = deleteAtoms
     self.moverInfo = moverInfo
 
-def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo,
-                  maxVDWRadius, addFlipMovers):
+def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, spatialQuery,
+                  extraAtomInfo, maxVDWRadius, addFlipMovers):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -1216,6 +1219,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
   structure that the atom from the first parameter interacts with that lists all of the
   bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+  :param hParameters: List indexed by sequence ID that stores the riding
+  coefficients for hydrogens that have associated dihedral angles.  This can be
+  obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
   :param spatialQuery: Probe.SpatialQuery structure to rapidly determine which atoms
   are within a specified distance of a location.
   :param extraAtomInfo: Probe.ExtraAtomInfo mapper that provides radius and other
@@ -1307,7 +1313,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
-          movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
+          movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, hParameters, potentialAcceptors))
           infoString += _VerboseCheck(1,"Added MoverSingleHydrogenRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
           moverInfo[movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
@@ -1324,7 +1330,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           numH += 1
       if numH == 3:
         try:
-          movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists))
+          movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists, hParameters))
           infoString += _VerboseCheck(1,"Added MoverNH3Rotator "+str(len(movers))+" to "+resNameAndID+"\n")
           moverInfo[movers[-1]] = "NH3Rotator at "+resNameAndID+" "+aName;
         except Exception as e:
@@ -1347,14 +1353,14 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         # so that they Hydrogens will be staggered but do not add it to those to be optimized.
         if len(bondedNeighborLists[neighbor]) == 3:
           try:
-            movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists))
+            movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists, hParameters))
             infoString += _VerboseCheck(1,"Added MoverAromaticMethylRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+"\n")
             moverInfo[movers[-1]] = "AromaticMethylRotator at "+resNameAndID+" "+aName;
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
         else:
           try:
-            ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists)
+            ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists, hParameters)
             infoString += _VerboseCheck(1,"Used MoverTetrahedralMethylRotator to stagger "+resNameAndID+" "+aName+"\n")
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
@@ -1759,7 +1765,7 @@ END
   # Place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, sq, extra, maxVDWRad, True)
+                     bondedNeighborLists, None, sq, extra, maxVDWRad, True)
   movers = ret.moverList
   if len(movers) != 0:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))

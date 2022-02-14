@@ -31,6 +31,7 @@ from scitbx.array_family import flex
 from mmtbx.probe import AtomTypes
 from cctbx.eltbx.attenuation_coefficient import nist_elements
 from iotbx import pdb
+from libtbx.utils import null_out
 
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
@@ -312,6 +313,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
         for ag in rg.atom_groups():
 
           for a in ag.atoms():
+            #print('  XXX Checking atom',a.parent().resname.strip(),a.name.strip(),a.i_seq)
             extra = probeExt.ExtraAtomInfo()
             if not useProbeTablesByDefault:
               # See if we can find out about its Hydrogen-bonding status from the
@@ -745,6 +747,53 @@ class conventionalSortingKey(object):
     # The tertiary criterion is alphabetical ordering.  This only applies when there is
     # no distinction on the earlier criteria.  C, CA, CB, CG will sort in that order.
     return self._name < other._name
+
+def dihedralChoicesForRotatableHydrogens(hydrogens, hParams, potentials):
+  """
+    Determine which of the hydrogens passed in is the one that should be used to
+    define the conventional dihedral for a rotatable hydrogen bond, and which of
+    the potential third-link neighbors should be used as the other atom for the
+    calculation.  If it can determine this using the hydrogen parameters, it does
+    so.  If not, it falls back on a heuristic, atom-naming-based approach.
+    :param hydrogens: List of atoms in a set of rotatable hydrogens.
+    :param hParams: List indexed by sequence ID that stores the riding
+    coefficients for hydrogens that have associated dihedral angles.  This can be
+    obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
+    :param potentials: List of atoms; potential third-bonded neighbor atoms to the hydrogens.
+    It can be obtained by walking the covalent bonds in the structure from any of
+    the hydrogens.
+    :returns: A tuple whose first entry is the hydrogen to use, whose second entry
+    is the atom to use to compute the dihedral, and whose third entry is a warnings
+    string describing the need to fall back.
+  """
+  warnings = ""
+  conventionalH = None
+  conventionalFriend = None
+  for h in hydrogens:
+    # Find the Hydrogen whose "n" entry is 0 and fill in it and the associated
+    # potential atom.
+    try:
+      item = hParams[h.i_seq]
+      if item.n == 0:
+        whichPotential = item.a2
+        for p in potentials:
+          if p.i_seq == whichPotential:
+            conventionalH = h
+            conventionalFriend = p
+    except Exception as e:
+      pass
+
+  # Fall back on heuristic if we didn't get an answer using the above approach.
+  # We pick the largest-named Hydrogen and the smallest-named friend to match the
+  # behavior observed in test code from the above approach.  Any hydrogen will pick
+  # an equivalent energy because they are all identical in form and symmetrically
+  # oriented.
+  if conventionalH is None or conventionalFriend is None:
+    warnings += "dihedralChoicesForRotatableHydrogens(): Falling back to heuristic\n"
+    conventionalH = sorted(hydrogens, key=conventionalSortingKey)[-1]
+    conventionalFriend = sorted(potentials, key=conventionalSortingKey)[0]
+
+  return conventionalH, conventionalFriend, warnings
 
 ##################################################################################
 # Helper functions to make things that are compatible with vec3_double so
@@ -1207,6 +1256,75 @@ END
     assert s[i].name.strip() == expectedNames[i], "Helpers.Test(): conventionalSortingKey test failed"
 
   #========================================================================
+  # Run unit tests on the dihedralChoicesForRotatableHydrogens class.  Both
+  # with and without fallback to the heuristic.
+  pdb_dihedral ='''
+CRYST1   15.957   14.695   20.777  90.00  90.00  90.00 P 1
+ATOM      1  N   VAL A   4      10.552   7.244  12.226  1.00 11.32           N
+ATOM      2  CA  VAL A   4       9.264   6.605  12.502  1.00 11.54           C
+ATOM      3  C   VAL A   4       8.169   7.396  11.772  1.00 11.25           C
+ATOM      4  O   VAL A   4       7.912   8.570  12.087  1.00 12.48           O
+ATOM      5  CB  VAL A   4       8.972   6.612  14.048  1.00 12.54           C
+ATOM      6  CG1 VAL A   4       7.640   5.915  14.308  1.00 11.37           C
+ATOM      7  CG2 VAL A   4      10.139   5.959  14.827  1.00 12.59           C
+ATOM      8  H   VAL A   4      10.592   8.064  12.483  1.00 11.32           H
+ATOM      9  HA  VAL A   4       9.282   5.685  12.195  1.00 11.54           H
+ATOM     10  HB  VAL A   4       8.903   7.525  14.367  1.00 12.54           H
+ATOM     11 HG11 VAL A   4       7.454   5.916  15.260  1.00 11.37           H
+ATOM     12 HG12 VAL A   4       6.932   6.385  13.840  1.00 11.37           H
+ATOM     13 HG13 VAL A   4       7.686   5.000  13.989  1.00 11.37           H
+ATOM     14 HG21 VAL A   4       9.942   5.972  15.777  1.00 12.59           H
+ATOM     15 HG22 VAL A   4      10.251   5.041  14.533  1.00 12.59           H
+ATOM     16 HG23 VAL A   4      10.957   6.454  14.660  1.00 12.59           H
+ATOM     17  N   TYR A   5       7.521   6.791  10.776  1.00  9.67           N
+ATOM     18  CA  TYR A   5       6.396   7.390  10.072  1.00  9.24           C
+ATOM     19  C   TYR A   5       5.146   6.935  10.810  1.00 10.02           C
+ATOM     20  O   TYR A   5       5.000   5.738  11.127  1.00 10.62           O
+ATOM     21  CB  TYR A   5       6.289   6.896   8.621  1.00  9.83           C
+ATOM     22  CG  TYR A   5       7.382   7.426   7.724  1.00 12.79           C
+ATOM     23  CD1 TYR A   5       8.649   6.852   7.769  1.00 13.60           C
+ATOM     24  CD2 TYR A   5       7.105   8.491   6.868  1.00 12.13           C
+ATOM     25  CE1 TYR A   5       9.651   7.354   6.948  1.00 14.77           C
+ATOM     26  CE2 TYR A   5       8.116   8.986   6.053  1.00 14.21           C
+ATOM     27  CZ  TYR A   5       9.375   8.421   6.104  1.00 14.05           C
+ATOM     28  OH  TYR A   5      10.398   8.932   5.306  1.00 17.48           O
+ATOM     29  H   TYR A   5       7.729   6.008  10.488  1.00  9.67           H
+ATOM     30  HA  TYR A   5       6.507   8.353  10.049  1.00  9.24           H
+ATOM     31  HB2 TYR A   5       6.316   5.926   8.614  1.00  9.83           H
+ATOM     32  HB3 TYR A   5       5.428   7.159   8.260  1.00  9.83           H
+ATOM     33  HD1 TYR A   5       8.823   6.141   8.342  1.00 13.60           H
+ATOM     34  HD2 TYR A   5       6.254   8.866   6.843  1.00 12.13           H
+ATOM     35  HE1 TYR A   5      10.501   6.978   6.964  1.00 14.77           H
+ATOM     36  HE2 TYR A   5       7.945   9.695   5.476  1.00 14.21           H
+ATOM     37  HH  TYR A   5      10.168   9.680   5.000  1.00 17.48           H
+TER
+'''
+  pdb_inp = iotbx.pdb.input(lines=pdb_dihedral.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    log         = null_out())
+  model.set_log(null_out()) # don't print out stuff
+  ph = model.get_hierarchy()
+  model.process(make_restraints=True) # get restraints_manager
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
+  h_parameterization = riding_h_manager.h_parameterization
+  atoms = model.get_atoms()
+  assert atoms[10].name.strip().upper() == 'HG11', "Helpers.Test(): Internal error"
+  hydrogens = [ atoms[10], atoms[11], atoms[12] ] # HG1, HG2, HG3
+  potentials = [ atoms[1], atoms[6] ]  # CA, CG2
+
+  myH, myFriend, warnings = dihedralChoicesForRotatableHydrogens(hydrogens, h_parameterization, potentials)
+  assert warnings == "", "Helpers.Test(): Unexpected warning from dihedralChoicesForRotatableHydrogens: "+warnings
+  assert myH == atoms[12], "Helpers.Test(): Unexpected H from dihedralChoicesForRotatableHydrogens"
+  assert myFriend == atoms[1], "Helpers.Test(): Unexpected friend from dihedralChoicesForRotatableHydrogens"
+
+  myH, myFriend, warnings = dihedralChoicesForRotatableHydrogens(hydrogens, None, potentials)
+  assert warnings != "", "Helpers.Test(): Unexpected empty warning from dihedralChoicesForRotatableHydrogens"
+  assert myH == atoms[12], "Helpers.Test(): Unexpected H from dihedralChoicesForRotatableHydrogens"
+  assert myFriend == atoms[1], "Helpers.Test(): Unexpected friend from dihedralChoicesForRotatableHydrogens"
+
+  #========================================================================
   # Run unit tests on rvec3 and lvec3.
   v1 = rvec3([0, 0, 0])
   v2 = rvec3([1, 0, 0])
@@ -1230,4 +1348,4 @@ if __name__ == '__main__':
 
   # This will raise an assertion failure if there is a problem
   Test(fileName)
-  print('OK')
+  print('Success!')
