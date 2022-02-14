@@ -719,7 +719,7 @@ class conventionalSortingKey(object):
       if c.isdigit():
         self._numberInName = self._numberInName + c
 
-    self._atomicNumber = _nist_table.atomic_number(atom.element)
+    self._atomicNumber = _nist_table.atomic_number(atom.element.strip().upper())
 
     # We trim all white space from the name.
     self._name = atom.name.strip()
