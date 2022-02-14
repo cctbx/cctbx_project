@@ -98,7 +98,9 @@ from mmtbx.probe.Helpers import rvec3, lvec3, conventionalSortingKey, dihedralCh
 #       int coarseIndex,   # Coarse position index
 #       int fineIndex      # Fine position index
 #    )
-#     Returns a human-readible description of the state.
+#     Returns a human-readible description of the state.  This must have the same
+#       number of words in all cases for all Movers to make things easier for a
+#       program to parse.
 #
 # The caller is responsible for moving the specified atoms to their positions,
 # modifying the ExtraAtomInfo, and deleting/ignoring them before dong any calculations
@@ -341,7 +343,7 @@ class _MoverRotator(object):
   def PoseDescription(self, coarseIndex, fineIndex):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state"
+      return "Unrecognized state ."
     else:
       angle = self._offset + self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex]
       while angle > 180: angle -= 360
@@ -827,11 +829,11 @@ class MoverAmideFlip(object):
   def PoseDescription(self, coarseIndex, fineIndex):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state"
+      return "Unrecognized state ."
     elif coarseIndex == 0:
-      return "Unflipped"
+      return "Unflipped . ."
     else:
-      return "Flipped"
+      return "Flipped . ."
 
 ##################################################################################
 class MoverHisFlip(object):
@@ -1075,15 +1077,19 @@ class MoverHisFlip(object):
   def PoseDescription(self, coarseIndex, fineIndex):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state"
+      return "Unrecognized state ."
     elif coarseIndex < 4:
       ret = "Unflipped"
     else:
       ret = "Flipped"
     if coarseIndex % 4 == 0 or coarseIndex % 4 == 1:
-      ret += " HD1 added"
+      ret += " HD1Added"
+    else:
+      ret += " HD1NotAdded"
     if coarseIndex % 4 == 0 or coarseIndex % 4 == 2:
-      ret += " HE2 added"
+      ret += " HE2Added"
+    else:
+      ret += " HE2NotAdded"
     return ret
 
 ##################################################################################

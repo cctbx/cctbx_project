@@ -572,6 +572,8 @@ class _SingletonOptimizer(object):
           # in the description.  When that happens, we check the final state and the flipped
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
+          # We add the same number of words to the output string in all cases to make things
+          # easier for a program to parse.
           if "lipped" in description:
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
@@ -582,9 +584,13 @@ class _SingletonOptimizer(object):
             self._setMoverState(coarse, final)
             finalScore, finalBump = _scoreMoverReportClash(self, m)
             if otherBump and finalBump:
-              description += " (both orientations clash)"
+              description += " BothClash"
             elif abs(finalScore - otherScore) <= 0.5:
-              description += " (uncertain)"
+              description += " Uncertain"
+            else:
+              description += " ."
+          else:
+            description += " ."
 
           self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
             self._moverInfo[m], self._highScores[m], description ))
