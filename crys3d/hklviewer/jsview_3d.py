@@ -381,6 +381,9 @@ class hklview_3d:
     if has_phil_path(diff_phil, "show_vector"):
       self.show_vector()
 
+    if has_phil_path(diff_phil, "show_all_vectors"):
+      self.show_all_vectors()
+
     if has_phil_path(diff_phil, "angle_around_vector"):
       self.rotate_around_numbered_vector()
 
@@ -1850,10 +1853,11 @@ Distance: %s
                             label, r, g, b, name, radius, labelpos)
 
 
-  def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="", r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
+  def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="",
+                            r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8, autozoom = True ):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=1)
-    self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
-         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos) )
+    self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos, autozoom) )
     if name=="":
       self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
 
@@ -1981,40 +1985,48 @@ in the space group %s\nwith unit cell %s\n""" \
         self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "") )
 
 
-  def show_vector(self):
-    [i, val] = eval(self.viewerparams.show_vector)
-    self.visual_symmxs = []
+  def show_all_vectors(self):
+    for (opnr, label, order, v, hklop, hkl, abc) in self.all_vectors:
+      self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, v, hklop, autozoom=False)
 
-    if i < len(self.all_vectors):
-      (opnr, label, order, v, hklop, hkl, abc) = self.all_vectors[i]
-      # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
-      name = label + hklop.replace(",", "_")
-      if val:
-        self.currentrotvec = v # the vector used for aligning
-        if order > 0 and hklop != "":
+
+  def show_vector(self):
+    [i, isvisible] = eval(self.viewerparams.show_vector)
+    self.visual_symmxs = []
+    (opnr, label, order, v, hklop, hkl, abc) = self.all_vectors[i]
+    self.show_labelled_vector(isvisible, label, order, v, hklop)
+
+
+  def show_labelled_vector(self, isvisible, label, order, v, hklop, autozoom=True):
+    # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
+    name = label + hklop.replace(",", "_")
+    if isvisible:
+      self.currentrotvec = v # the vector used for aligning
+      if order > 0 and hklop != "":
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
-          rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
-          RotMx = matrix.sqr(rt.r().as_double() )
-          self.visual_symmxs.append( (RotMx, rt.r().as_hkl()) )
-          nfoldrotmx = RotMx
-          nfoldrot = rt.r()
-          for ord in range(order -1): # skip identity operator
-            nfoldrotmx = RotMx * nfoldrotmx
-            nfoldrot = nfoldrot.multiply( rt.r() )
-            self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
-          # adjust the length of the rotation axes to be compatible with the sphere of reflections
-          uc = self.miller_array.unit_cell()
-          OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-          s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
-          self.currentrotvec = [s*v[0], s*v[1], s*v[2]]
-        self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
-                                   self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
-                                   label=label, name=name, radius=0.2, labelpos=1.0)
-      else:
-        self.RemovePrimitives(name)
-        self.visual_symmxs = []
-        self.visual_symHKLs = []
-      self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
+        rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
+        RotMx = matrix.sqr(rt.r().as_double() )
+        self.visual_symmxs.append( (RotMx, rt.r().as_hkl()) )
+        nfoldrotmx = RotMx
+        nfoldrot = rt.r()
+        for ord in range(order -1): # skip identity operator
+          nfoldrotmx = RotMx * nfoldrotmx
+          nfoldrot = nfoldrot.multiply( rt.r() )
+          self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
+        # adjust the length of the rotation axes to be compatible with the sphere of reflections
+        uc = self.miller_array.unit_cell()
+        OrtMx = matrix.sqr( uc.orthogonalization_matrix())
+        s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
+        self.currentrotvec = [s*v[0], s*v[1], s*v[2]]
+      self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
+                                  self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
+                                  label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
+    else:
+      self.RemovePrimitives(name)
+      self.visual_symmxs = []
+      self.visual_symHKLs = []
+      self.viewerparams.show_all_vectors = False
+    self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
 
 
   def visualise_sym_HKLs(self):

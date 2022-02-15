@@ -1368,13 +1368,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onShowAllVectors(self):
+    self.unfeedback = True
     if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
       for rvrow in range(self.vectortable2.rowCount()):
         if self.vectortable2.item(rvrow, 0).text() !=  "new vector":
           self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
+      self.send_message("viewer.show_all_vectors = True")
     if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
       for rvrow in range(self.vectortable2.rowCount()):
         self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
+      self.send_message("viewer.show_all_vectors = False")
+    self.unfeedback = False
 
 
   def onVectorTableItemChanged(self, item):
@@ -1422,13 +1426,12 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.send_message("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
-          if not self.unfeedback:
-            if sum >= rc:
-              self.ShowAllVectorsBtn.setCheckState(Qt.Checked)
-            if sum == 0:
-              self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
-            if sum >0.0 and sum < rc:
-              self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
+          if sum >= rc:
+            self.ShowAllVectorsBtn.setCheckState(Qt.Checked)
+          if sum == 0:
+            self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
+          if sum >0.0 and sum < rc:
+            self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
       if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()

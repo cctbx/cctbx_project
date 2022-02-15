@@ -1013,6 +1013,7 @@ function onMessage(e)
       // of this and all pending vectors stored in vectorshape and render them.
       // Otherwise just accummulate the new vector
       let reprname = val2[10].trim();
+      let autozoom = val2[13];
       if (reprname != "")
       {
         DeletePrimitives(reprname); // delete any existing vectors with the same name
@@ -1029,6 +1030,9 @@ function onMessage(e)
           vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
                                                                       { name: reprname} )
         );
+        if (autozoom == "True")
+          vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
+
         vectorshape = null;
         RenderRequest();
       }
@@ -1138,10 +1142,10 @@ function onMessage(e)
 
     if (msgtype === "PrintInformation") {
       let msg = datval[1];
-      let infofsize = fontsize + 1;
+      let infofsize = fontsize + 1; // slightly bigger font of infobanner to make it more prominent
       let wp = getTextWidth(msg, infofsize);
       if (infobanner != null)
-        infobanner.remove(); // delete previous colour chart if any
+        infobanner.remove(); // delete previous infobanner if any
       if (msg == "")
         return;
       infobanner = addBottomDivBox(msg, 10, 110, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
