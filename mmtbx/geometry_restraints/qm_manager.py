@@ -2,161 +2,48 @@ from __future__ import absolute_import, division, print_function
 import os
 from io import StringIO
 import time
-import tempfile
 
-from libtbx.utils import Sorry
 from scitbx.array_family import flex
-from libtbx import adopt_init_args
-from libtbx import easy_run
 
-from cctbx.geometry_restraints.manager import manager as standard_manager
+# from cctbx.geometry_restraints.manager import manager as standard_manager
+
+from mmtbx.geometry_restraints import base_qm_manager, mopac_manager
 
 harkcal = 627.50946900
 bohrang = 0.52918
-
-class base_manager():
-  def __init__(self,
-               atoms,
-               method,
-               basis_set,
-               solvent_model,
-               charge,
-               multiplicity,
-               nproc=1,
-               preamble=None,
-               log=None,
-               ):
-    adopt_init_args(self, locals())
-    self.times = flex.double()
-    self.energies = {}
-    if self.preamble is None:
-      self.preamble = os.path.basename(tempfile.NamedTemporaryFile().name)
-    # validate
-    if self.basis_set is None: self.basis_set=''
-    if self.solvent_model is None: self.solvent_model=''
-    #
-    self.interest_array = None
-    self.error_lines = []
-
-  def __repr__(self):
-    program = getattr(self, 'program', '')
-    if program: program = ' - %s' % program
-    outl = 'QI Manager%s\n' % program
-    outl += ' charge: %s multiplicity: %s\n method: %s basis: "%s" solvent: "%s"\n' % (
-      self.charge,
-      self.multiplicity,
-      self.method,
-      self.basis_set,
-      self.solvent_model,
-      )
-    for atom in self.atoms:
-      outl += '  %s\n' % atom.quote()
-    return outl
-
-  def get_charge(self): return self.charge
-
-  def set_charge(self, charge): self.charge = charge
-
-  def add_atoms(self, atoms, replace=False):
-    if replace:
-      self.atoms=atoms
-    else:
-      quotes = []
-      for atom in self.atoms:
-        quotes.append(atom.quote())
-      for atom in atoms:
-        assert atom.quote() not in quotes, 'found duplicate %s' % atom.quote()
-      self.atoms.append(atoms)
-
-  def set_interest_atoms(self, selection_array):
-    assert len(selection_array)==len(self.atoms)
-    self.interest_array = selection_array
-
-  def set_frozen_atoms(self, selection_array):
-    assert len(selection_array)==len(self.atoms)
-    self.freeze_a_ray = selection_array
-
-  def get_opt(self, cleanup=False, file_read=False, log=None):
-    import random
-    rc = []
-    for atom in self.atoms:
-      rc.append([])
-      for i in range(3):
-        rc[-1].append(atom.xyz[i]+(random.random()-0.5)/10)
-    rc_buffer = rc
-    tmp = []
-    if hasattr(self, 'interest_array'):
-      for sel, atom in zip(self.interest_array, rc):
-        if sel:
-          tmp.append(atom)
-      rc=tmp
-    return flex.vec3_double(rc), flex.vec3_double(rc_buffer)
-
-  def get_timings(self, energy=False):
-    return '-'
-
-class base_qm_manager(base_manager):
-  def get_opt(self,
-              cleanup=False,
-              file_read=True,
-              coordinate_filename_ext='.xyz',
-              log_filename_ext='.log',
-              log=None):
-    coordinates = None
-    if file_read:
-      filename = self.get_coordinate_filename()
-      if os.path.exists(filename):
-        lf = filename.replace(coordinate_filename_ext, log_filename_ext)
-        if os.path.exists(lf):
-          process_qm_log_file(lf, log=log)
-        print('  Reading coordinates from %s\n' % filename, file=log)
-        coordinates = self.read_xyz_output()
-    if coordinates is None:
-      self.opt_setup()
-      self.run_cmd(log=log)
-      coordinates = self.read_xyz_output()
-    coordinates_buffer = coordinates
-    if cleanup: self.cleanup(level=cleanup)
-    if hasattr(self, 'interest_array'):
-      tmp = []
-      if hasattr(self, 'interest_array'):
-        for sel, atom in zip(self.interest_array, coordinates):
-          if sel:
-            tmp.append(atom)
-        coordinates=tmp
-    return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
 #
 # QM runner
 #
 def qm_runner(qmm,
-              program_goal='opt',
               cleanup=True,
               file_read=False,
-              log=None,
-              verbose=False
+              log=StringIO(),
               ):
   def get_func(manager, attr):
     return getattr(manager, 'get_%s' % attr, None)
-  if verbose: print(qmm)
+  redirect_output=True
   if qmm.program=='test':
-    func = get_func(base_manager, program_goal)
+    func = get_func(base_qm_manager.base_manager, qmm.program_goal)
   elif qmm.program=='orca':
-    func = get_func(orca_manager, program_goal)
+    func = get_func(orca_manager, qmm.program_goal)
     coordinate_filename_ext='.xyz'
     log_filename_ext='.log'
+    raise Sorry('Orca temporarily unsupported. Consider using MOPAC.')
   elif qmm.program=='mopac':
-    func = get_func(mopac_manager, program_goal)
+    func = get_func(mopac_manager.mopac_manager, qmm.program_goal)
     coordinate_filename_ext='.arc'
     log_filename_ext='.out'
+    redirect_output=False
   else:
     raise Sorry('QM program not found or set "%s"' % qmm.program)
   if func is None:
-    raise Sorry('QM manager does not have get_%s' % program_goal)
+    raise Sorry('QM manager does not have get_%s' % qmm.program_goal)
   ligand_xyz, buffer_xyz = func(qmm,
                                 cleanup=cleanup,
                                 file_read=file_read,
                                 coordinate_filename_ext=coordinate_filename_ext,
                                 log_filename_ext=log_filename_ext,
+                                redirect_output=redirect_output,
                                 log=log)
   return ligand_xyz, buffer_xyz
 #
@@ -184,95 +71,16 @@ def qm_runner(qmm,
        Please check your results very carefully.
     ----------------------------------------------------------------------------
           '''
-def process_orca_convergence(lines):
-  s = ''
-  for line in lines:
-    tmp = line.split()
-    if tmp[-1] in ['YES', 'NO']:
-      # rc[tmp[0]]=tmp[-1]
-      s+= '%s ' % tmp[-1]
-  return s
+# def process_orca_convergence(lines):
+#   s = ''
+#   for line in lines:
+#     tmp = line.split()
+#     if tmp[-1] in ['YES', 'NO']:
+#       # rc[tmp[0]]=tmp[-1]
+#       s+= '%s ' % tmp[-1]
+#   return s
 
-def loop_over_file(filename):
-  f=open(filename, 'r')
-  lines = f.read()
-  del f
-  for line in lines.splitlines():
-    yield line
-
-def process_qm_log_file(log_filename=None,
-                        generator=None,
-                        error_lines=None,
-                        log=None,
-                        ):
-  if log_filename is not None: generator=loop_over_file(log_filename)
-  error_line = None
-  status = None
-  for i, line in enumerate(generator):
-    # print(i,line)
-    if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
-      cycle = int(line.split()[4])
-      if cycle==1: print('  QM minimisation started', file=log)
-    # if line.find('Max(Improp)')>-1:
-    #   conv = process_orca_convergence(last_ten)
-      # if cycle%10==0:
-        # print('  Opt. cycle %s %s %s %0.1fmin' % (cycle, conv, i, (time.time()-t0)/60))
-    # if line.find('OPTIMIZATION RUN DONE')>-1:
-    #   status = True
-    if line.find('ORCA TERMINATED NORMALLY')>-1:
-      status = True
-    if line.find('* JOB ENDED NORMALLY *')>-1:
-      status = True
-    if error_lines:
-      for el in error_lines:
-        if line.find(el)>-1:
-          error_line = line
-          break
-    if error_line: break
-  if error_line:
-    raise Sorry(error_line)
-  if not status:
-    raise Sorry('QM does not seem to have converged. Check %s' % log_filename)
-  return status
-
-def run_qm_cmd(cmd,
-               log_filename,
-               error_lines=None,
-               redirect_output=True,
-               log=None,
-               verbose=False,
-               ):
-  def loop_over_list(l):
-    for line in l:
-      yield l
-  import time
-  t0=time.time()
-  if verbose: print('run_qm_cmd',cmd,log_filename)
-  if redirect_output:
-    cmd += ' >& %s' % log_filename
-
-  print('  Starting : %s' % cmd, file=log)
-  rc = easy_run.go(cmd)
-
-  if redirect_output:
-    generator = loop_over_file(log_filename)
-  else:
-    generator = loop_over_list(rc.stdout_lines)
-
-  status = process_qm_log_file(generator=generator,
-                               error_lines=error_lines,
-                               log=log)
-  if rc.stderr_lines:
-    print('stderr')
-    for line in rc.stderr_lines:
-      print(line)
-    print('stdout')
-    for line in rc.stdout_lines:
-      print(line)
-    assert 0
-  return rc
-
-class orca_manager(base_qm_manager):
+class orca_manager(base_qm_manager.base_qm_manager):
 
   error_lines = [
                   'ORCA finished by error termination in GSTEP',
@@ -378,7 +186,6 @@ class orca_manager(base_qm_manager):
     del f
 
   def get_cmd(self):
-    # cmd = '%s orca_%s.in >& orca_%s.log' % (
     cmd = '%s orca_%s.in' % (
       os.environ['PHENIX_ORCA'],
       self.preamble,
@@ -396,11 +203,11 @@ class orca_manager(base_qm_manager):
                )
     self.times.append(time.time()-t0)
 
-  def get_coordinate_lines(self, interest_only=False):
+  def get_coordinate_lines(self):
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for i, atom in enumerate(self.atoms):
-      if interest_only and self.interest_array and not self.interest_array[i]:
-        continue
+      # if interest_only and self.ligand_atoms_array and not self.ligand_atoms_array[i]:
+      #   continue
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,
         atom.xyz[0],
@@ -426,6 +233,8 @@ class orca_manager(base_qm_manager):
                  optimise_h=True,
                  cleanup=False,
                  file_read=True,
+                 coordinate_filename_ext=None, # not used
+                 log_filename_ext=None, # not used
                  log=None):
     energy=None
     if file_read:
@@ -448,7 +257,6 @@ class orca_manager(base_qm_manager):
       self.run_cmd()
       energy = self.read_energy()
     if cleanup: self.cleanup(level=cleanup)
-    assert 0
     return energy
 
   def get_engrad(self):
@@ -524,185 +332,94 @@ end
     cmd += ' %s' % filenames[-1]
     easy_run.go(cmd)
 
-class mopac_manager(base_qm_manager):
-  def get_coordinate_filename(self): return 'mopac_%s.arc' % self.preamble
+# class manager(standard_manager):
+#   def __init__(self,
+#                params,
+#                log=StringIO()):
+#     # self.gradients_factory = gradients_factory
+#     adopt_init_args(self, locals(), exclude=["log"])
+#     self.validate()
+#     assert 0
 
-  def get_log_filename(self): return 'mopac_%s.out' % self.preamble
+#   def validate(self):
+#     qi = self.params.qi
+#     assert qi.use_quantum_interface
+#     assert qi.selection
+#     if qi.orca.use_orca:
+#       print('Orca')
+#     assert 0
 
-  def opt_setup(self):
-    if self.nproc==0:
-      nproc_str=''
-    else:
-      nproc_str='THREADS=%s' % self.nproc
-    outl = '%s %s %s %s \n%s\n\n' % (
-     self.method,
-     self.basis_set,
-     self.solvent_model,
-     'CHARGE=%s %s' % (self.charge, nproc_str),
-     self.preamble,
-     )
-    assert self.multiplicity==1
-    outl += self.get_coordinate_lines()
-    self.write_input(outl)
+#   def get_engrad(self, sites_cart):
+#     self.execution_manager.set_sites_cart(sites_cart)
+#     return self.execution_manager.get_engrad()
 
-  def get_coordinate_lines(self, interest_only=False):
-    outl = ''
-    for i, atom in enumerate(self.atoms):
-      if interest_only and self.interest_array and not self.interest_array[i]:
-        continue
-      opt = 1
-      if hasattr(self, 'freeze_a_ray'):
-        opt = self.freeze_a_ray [i]
-        if opt: opt=0
-        else: opt=1
-      if atom.element in ['H', 'D']: opt=1
-      outl += ' %s %0.5f %d %0.5f %d %0.5f %d\n' % (
-        atom.element,
-        atom.xyz[0],
-        opt,
-        atom.xyz[1],
-        opt,
-        atom.xyz[2],
-        opt,
-        # atom.id_str(),
-        # i,
-        )
-    outl += '\n'
-    return outl
+#   def get_opt(self, sites_cart):
+#     assert 0
+#     self.execution_manager.set_sites_cart(sites_cart)
+#     return self.execution_manager.get_opt()
 
-  def write_input(self, outl):
-    f=open('mopac_%s.mop' % self.preamble, 'w')
-    f.write(outl)
-    del f
+#   def set_qm_info(self,
+#                   method,
+#                   basis_set,
+#                   solvent_model,
+#                   charge,
+#                   multiplicity,
+#                   ):
+#     adopt_init_args(self, locals())
+#     if self.basis_set is None:
+#       self.basis_set = ''
+#     if self.solvent_model is None:
+#       self.solvent_model = ''
+#     self.execution_manager = orca_manager( self.qm_atoms,
+#                                            self.method,
+#                                            self.basis_set,
+#                                            self.solvent_model,
+#                                            self.charge,
+#                                            self.multiplicity
+#                                            )
 
-  def read_xyz_output(self):
-    filename = self.get_coordinate_filename()
-    if not os.path.exists(filename):
-      raise Sorry('QM output filename not found: %s' % filename)
-    f=open(filename, 'r')
-    lines = f.read()
-    del f
-    rc = flex.vec3_double()
-    read_xyz = False
-    for i, line in enumerate(lines.splitlines()):
-      if read_xyz:
-        tmp = line.split()
-        if len(tmp)==7:
-          rc.append((float(tmp[1]), float(tmp[3]), float(tmp[5])))
-      if line.find('FINAL GEOMETRY OBTAINED')>-1:
-        read_xyz=True
-    return rc
+#   def set_qm_atoms(self, qm_atoms):
+#     self.qm_atoms = qm_atoms
+#     self.qm_iseqs = []
+#     for atom in self.qm_atoms:
+#       self.qm_iseqs.append(atom.i_seq)
 
-  def get_cmd(self):
-    # cmd = '%s orca_%s.in >& orca_%s.log' % (
-    cmd = '%s mopac_%s' % (
-      os.environ['PHENIX_MOPAC'],
-      self.preamble,
-      )
-    return cmd
-
-  def run_cmd(self, redirect_output=True, log=None):
-    t0=time.time()
-    cmd = self.get_cmd()
-    run_qm_cmd(cmd,
-               'mopac_%s.out' % self.preamble,
-               error_lines=self.error_lines,
-               redirect_output=redirect_output,
-               log=log,
-               )
-    self.times.append(time.time()-t0)
-
-  def cleanup(self, level=None, verbose=False):
-    if level=='all':
-      assert 0
-
-class manager(standard_manager):
-  def __init__(self,
-               params,
-               log=StringIO()):
-    # self.gradients_factory = gradients_factory
-    adopt_init_args(self, locals(), exclude=["log"])
-    self.validate()
-
-  def validate(self):
-    qi = self.params.qi
-    assert qi.use_quantum_interface
-    assert qi.selection
-    if qi.orca.use_orca:
-      print('Orca')
-    assert 0
-
-  def get_engrad(self, sites_cart):
-    self.execution_manager.set_sites_cart(sites_cart)
-    return self.execution_manager.get_engrad()
-
-  def get_opt(self, sites_cart):
-    assert 0
-    self.execution_manager.set_sites_cart(sites_cart)
-    return self.execution_manager.get_opt()
-
-  def set_qm_info(self,
-                  method,
-                  basis_set,
-                  solvent_model,
-                  charge,
-                  multiplicity,
-                  ):
-    adopt_init_args(self, locals())
-    if self.basis_set is None:
-      self.basis_set = ''
-    if self.solvent_model is None:
-      self.solvent_model = ''
-    self.execution_manager = orca_manager( self.qm_atoms,
-                                           self.method,
-                                           self.basis_set,
-                                           self.solvent_model,
-                                           self.charge,
-                                           self.multiplicity
-                                           )
-
-  def set_qm_atoms(self, qm_atoms):
-    self.qm_atoms = qm_atoms
-    self.qm_iseqs = []
-    for atom in self.qm_atoms:
-      self.qm_iseqs.append(atom.i_seq)
-
-  def energies_sites(self,
-                     sites_cart,
-                     flags=None,
-                     custom_nonbonded_function=None,
-                     compute_gradients=False,
-                     gradients=None,
-                     disable_asu_cache=False,
-                     normalization=False,
-                     external_energy_function=None,
-                     extension_objects=[],
-                     site_labels=None,
-                     log=None):
-    result = standard_manager.energies_sites(
-      self,
-      sites_cart,
-      flags=flags,
-      custom_nonbonded_function=custom_nonbonded_function,
-      compute_gradients=compute_gradients,
-      gradients=gradients,
-      disable_asu_cache=disable_asu_cache,
-      normalization=normalization,
-      external_energy_function=external_energy_function,
-      extension_objects=extension_objects,
-      site_labels=site_labels,
-      )
-    if compute_gradients:
-      qm_sites_cart = []
-      for i_seq in self.qm_iseqs:
-        qm_sites_cart.append(sites_cart[i_seq])
-      # coordinates = self.get_opt(qm_sites_cart)
-      # print(list(coordinates))
-      # assert 0
-      energy, gradients = self.get_engrad(qm_sites_cart)
-      for i_seq, gradient in zip(self.qm_iseqs, gradients):
-        result.gradients[i_seq]=gradient
-    return result
+#   def energies_sites(self,
+#                      sites_cart,
+#                      flags=None,
+#                      custom_nonbonded_function=None,
+#                      compute_gradients=False,
+#                      gradients=None,
+#                      disable_asu_cache=False,
+#                      normalization=False,
+#                      external_energy_function=None,
+#                      extension_objects=[],
+#                      site_labels=None,
+#                      log=None):
+#     result = standard_manager.energies_sites(
+#       self,
+#       sites_cart,
+#       flags=flags,
+#       custom_nonbonded_function=custom_nonbonded_function,
+#       compute_gradients=compute_gradients,
+    #   gradients=gradients,
+    #   disable_asu_cache=disable_asu_cache,
+    #   normalization=normalization,
+    #   external_energy_function=external_energy_function,
+    #   extension_objects=extension_objects,
+    #   site_labels=site_labels,
+    #   )
+    # if compute_gradients:
+    #   qm_sites_cart = []
+    #   for i_seq in self.qm_iseqs:
+    #     qm_sites_cart.append(sites_cart[i_seq])
+    #   # coordinates = self.get_opt(qm_sites_cart)
+    #   # print(list(coordinates))
+    #   # assert 0
+    #   energy, gradients = self.get_engrad(qm_sites_cart)
+    #   for i_seq, gradient in zip(self.qm_iseqs, gradients):
+    #     result.gradients[i_seq]=gradient
+    # return result
 
 def main():
   from iotbx import pdb

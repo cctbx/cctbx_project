@@ -64,11 +64,13 @@ qm_restraints
   buffer = 3.5
     .type = float
     .help = distance to include entire residues into the enviroment of the core
-  capping_groups = False
-    .type = bool
   calculate_starting_energy = False
     .type = bool
   calculate_final_energy = False
+    .type = bool
+  calculate_starting_strain = False
+    .type = bool
+  calculate_final_strain = False
     .type = bool
   write_pdb_core = False
     .type = bool
@@ -85,6 +87,15 @@ qm_restraints
     .type = choice
   run_in_macro_cycles = *first_only all test
     .type = choice
+  ignore_x_h_distance_protein = False
+    .type = bool
+  capping_groups = False
+    .type = bool
+  do_not_update_restraints = False
+    .type = bool
+    .style = hidden
+    .help = For testing and maybe getting strain energy of standard restraints
+  do_not_even_calculate_qm_restraints = False
   %s
 }
 '''
@@ -99,16 +110,6 @@ qm_restraints
   qm_package_scope = qm_package_scope % programs
   qm_restraints_scope = qm_restraints_scope % qm_package_scope
   return qm_restraints_scope
-
-def orca_action():
-  outl = '''
-    orca
-      .help = Orca
-    {
-      include scope mmtbx.geometry_restraints.qm_manager.orca_master_phil_str
-    }
-  '''
-  return outl
 
 def electrons(model, log=None):
   from elbow.quantum import electrons
@@ -185,7 +186,7 @@ def validate_qm_restraints(qm_restraints, verbose=False):
   return True
 
 def is_quantum_interface_active(params, verbose=False):
-  """Checks whether the QI is active
+  """Checks whether the QI is active at all
 
   Args:
       params (PHIL): PHIL scope with a possible 'qi' scope
@@ -200,17 +201,53 @@ def is_quantum_interface_active(params, verbose=False):
   if verbose: print('  len(qm_restraints)=%d' % len(params.qi.qm_restraints))
   if len(params.qi.qm_restraints):
     if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
-      return True, 'qm_restraints'
+      return True, 'qm_restraints' # includes restraints and energy
   return False
 
-def is_quantum_interface_active_this_macro_cycle(params, macro_cycle, verbose=False):
+def is_qi_energy_pre_refinement(params,
+                                macro_cycle,
+                                ):
+  qi = is_quantum_interface_active(params)
+  if qi:
+    rc = []
+    if qi[1]=='qm_restraints':
+      for i, qmr in enumerate(params.qi.qm_restraints):
+        if macro_cycle==1:
+          if qmr.calculate_starting_energy or qmr.calculate_starting_strain:
+            rc.append(True)
+    return True in rc
+  else:
+    return False
+
+def is_qi_energy_post_refinement(params,
+                                macro_cycle,
+                                ):
+  qi = is_quantum_interface_active(params)
+  if qi:
+    rc = []
+    if qi[1]=='qm_restraints':
+      for i, qmr in enumerate(params.qi.qm_restraints):
+        if macro_cycle==params.main.number_of_macro_cycles:
+          if qmr.calculate_final_energy or qmr.calculate_final_strain:
+            rc.append(True)
+    return True in rc
+  else:
+    return False
+
+def is_quantum_interface_active_this_macro_cycle(params,
+                                                 macro_cycle,
+                                                 energy_only=False,
+                                                 verbose=False):
   from mmtbx.geometry_restraints.quantum_restraints_manager import running_this_macro_cycle
   qi = is_quantum_interface_active(params)
   if qi:
     rc = []
     if qi[1]=='qm_restraints':
       for i, qmr in enumerate(params.qi.qm_restraints):
-        rc.append(running_this_macro_cycle(qmr, macro_cycle))
+        rc.append(running_this_macro_cycle(qmr,
+                                           macro_cycle,
+                                           params.main.number_of_macro_cycles,
+                                           energy_only=energy_only))
     else:
       assert 0
     return rc

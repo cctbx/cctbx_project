@@ -575,16 +575,21 @@ class CCTBXParser(ParserBase):
       self.working_phil = self.master_phil.fetch()
 
     # show unrecognized parameters and abort
+    advice = ''
     if len(unused_phil) > 0:
       print('  Unrecognized PHIL parameters:', file=self.logger)
       print('  -----------------------------', file=self.logger)
       for phil in unused_phil:
         print('    %s' % phil, file=self.logger)
+        if str(phil).find('.qi.')>-1:
+          advice = 'Consider setting a QM package using PHENIX_MOPAC, PHENIX_ORCA or similar.'
       print('', file=self.logger)
       error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
                       self.prog
       error_message += wordwrap('Please run this program with the --show-defaults option to see what parameters are available.', max_chars=self.text_width) + '\n'
       error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
+      if advice:
+        error_message += wordwrap(advice, max_chars=self.text_width) + '\n'
       raise Sorry(error_message)
 
     # process input phil for file/directory defintions and add to DataManager
