@@ -38,15 +38,16 @@ def load_wfc(element):
   if(folder is None):
     raise Sorry("No _lda.wfc files found.")
   #
+  if(len(element)==1): suffix = element+"__lda.wfc"
+  else:                suffix = element+"_lda.wfc"
   lines=open(os.path.join(
-    dat_path,"./plugin/yoink/dat/"+element+"_lda.wfc")).readlines()
+    dat_path,"./plugin/yoink/dat/"+suffix)).readlines()
   num_orbitals=int(lines[0].strip().split()[0])
   occ_electrons_array = [[0]*num_orbitals]
   line_three = lines[2].strip().split()
   for i in range(len(line_three)):
     occ_electrons_array[0][i]=int(line_three[i])
-  ##TODO check
-  occ_electrons=np.array(occ_electrons_array[0])
+  occ_electrons=occ_electrons_array[0]
 
   line_four = lines[3].strip().split()
   xmin      = float(line_four[0])
@@ -72,7 +73,7 @@ def load_wfc(element):
     wfcin_array   = wfcin_array,
     occ_electrons = occ_electrons)
 
-  easy_pickle.dump("%s_wfc_obj.pkl"%element, wfc_obj)
+  easy_pickle.dump(suffix, wfc_obj)
   return wfc_obj
 
 def run(ph, core=None):
