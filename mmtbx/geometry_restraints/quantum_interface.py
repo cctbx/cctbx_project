@@ -96,6 +96,9 @@ qm_restraints
     .style = hidden
     .help = For testing and maybe getting strain energy of standard restraints
   do_not_even_calculate_qm_restraints = False
+    .type = bool
+    .style = hidden
+    .help = For testing and maybe getting strain energy of standard restraints
   %s
 }
 '''
