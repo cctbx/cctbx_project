@@ -4,7 +4,6 @@ import time
 import math
 import libtbx.load_env
 from scitbx.array_family import flex
-import numpy as np
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 
