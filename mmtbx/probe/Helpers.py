@@ -31,7 +31,7 @@ from scitbx.array_family import flex
 from mmtbx.probe import AtomTypes
 from cctbx.eltbx.attenuation_coefficient import nist_elements
 from iotbx import pdb
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
@@ -692,69 +692,12 @@ def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
       ei.isDonor = False
       extraAtomInfo.setMappingFor(a, ei)
 
-# Class created once to keep from having to generate it each time we call conventionalSortingKey
-_nist_table = nist_elements()
-
-class conventionalSortingKey(object):
-  """
-    A key suitable for sorting a list of atoms based on the ordering that would be
-    used to determine which branch to take when computing dihedral angles.  This is useful
-    when determining which branch to take, or which hydrogen atom from a set of 2 or 3
-    attached to the same atom, to find the conventional orientation or atoms to use to
-    compute the conventional dihedral angle.
-    @todo Get the official definition; this was based on two heuristics from Jane Richardson
-    and then guessing about the alphabetical third criterion.  The numeric ordering also
-    has not yet been verified; whether it should be sorted left-justified or not.
-    Defines the __lt__ (less-than) operator so that it can be used in a sort.
-  """
-
-  def __init__(self, atom):
-    """
-      Construct the key based on the information found in the atom.
-    """
-
-    # We find all of the numeric characters in the name and catenate them.
-    # We store them into a string, so that they will behave like a left-
-    # justified digits behind the decimal.
-    self._numberInName = ""
-    for c in atom.name:
-      if c.isdigit():
-        self._numberInName = self._numberInName + c
-
-    self._atomicNumber = _nist_table.atomic_number(atom.element.strip().upper())
-
-    # We trim all white space from the name.
-    self._name = atom.name.strip()
-
-  def __lt__(self, other):
-    # The primary sorting criterion is a number associated with the atom name.  For example,
-    # HB2 and HB3 will sort in that order; and H and H2 will sort in that order;
-    # HN51 HN52 and HN53 will sort in that order; CG ND1 will sort in that order.
-    # The numbers are left-adjusted, so HN33 HN6 will sort in that order.
-    if self._numberInName < other._numberInName:
-      return True
-    if self._numberInName > other._numberInName:
-      return False
-
-    # The secondary criterion is the atomic number of the atom, with heavier numbers
-    # sorting before lighter numbers.  This only applies when there is no numerical
-    # distinction.  O, N, C will sort in that order.
-    if self._atomicNumber > other._atomicNumber:
-      return True
-    if self._atomicNumber < other._atomicNumber:
-      return False
-
-    # The tertiary criterion is alphabetical ordering.  This only applies when there is
-    # no distinction on the earlier criteria.  C, CA, CB, CG will sort in that order.
-    return self._name < other._name
-
 def dihedralChoicesForRotatableHydrogens(hydrogens, hParams, potentials):
   """
     Determine which of the hydrogens passed in is the one that should be used to
     define the conventional dihedral for a rotatable hydrogen bond, and which of
     the potential third-link neighbors should be used as the other atom for the
-    calculation.  If it can determine this using the hydrogen parameters, it does
-    so.  If not, it falls back on a heuristic, atom-naming-based approach.
+    calculation.
     :param hydrogens: List of atoms in a set of rotatable hydrogens.
     :param hParams: List indexed by sequence ID that stores the riding
     coefficients for hydrogens that have associated dihedral angles.  This can be
@@ -763,10 +706,8 @@ def dihedralChoicesForRotatableHydrogens(hydrogens, hParams, potentials):
     It can be obtained by walking the covalent bonds in the structure from any of
     the hydrogens.
     :returns: A tuple whose first entry is the hydrogen to use, whose second entry
-    is the atom to use to compute the dihedral, and whose third entry is a warnings
-    string describing the need to fall back.
+    is the atom to use to compute the dihedral.
   """
-  warnings = ""
   conventionalH = None
   conventionalFriend = None
   for h in hydrogens:
@@ -783,17 +724,11 @@ def dihedralChoicesForRotatableHydrogens(hydrogens, hParams, potentials):
     except Exception as e:
       pass
 
-  # Fall back on heuristic if we didn't get an answer using the above approach.
-  # We pick the largest-named Hydrogen and the smallest-named friend to match the
-  # behavior observed in test code from the above approach.  Any hydrogen will pick
-  # an equivalent energy because they are all identical in form and symmetrically
-  # oriented.
+  # Throw a Sorry if we were unable to find an answer.
   if conventionalH is None or conventionalFriend is None:
-    warnings += "dihedralChoicesForRotatableHydrogens(): Falling back to heuristic\n"
-    conventionalH = sorted(hydrogens, key=conventionalSortingKey)[-1]
-    conventionalFriend = sorted(potentials, key=conventionalSortingKey)[0]
+    raise Sorry("mmtbx.probe.Helpers.dihedralChoicesForRotatableHydrogens(): Could not determine atoms to use")
 
-  return conventionalH, conventionalFriend, warnings
+  return conventionalH, conventionalFriend
 
 ##################################################################################
 # Helper functions to make things that are compatible with vec3_double so
@@ -1227,37 +1162,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
 
   #========================================================================
-  # Run unit tests on sortingKey class.
-  # Build a table with atoms (note, some with bogus names and some in duplicate positions)
-  # to test the sorting routine.
-  pdb_sort_test = (
-"""
-ATOM    442  N   HIS A  61      26.965  32.911   7.593  1.00  7.19           N
-ATOM    443  CA  HIS A  61      27.557  32.385   6.403  1.00  7.24           C
-ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
-ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
-ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
-ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
-ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
-ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
-ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
-ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
-ATOM    452  N12 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
-END
-"""
-    )
-  dm = iotbx.data_manager.DataManager(['model'])
-  dm.process_model_str("pdb_sort_test.pdb",pdb_sort_test)
-  model = dm.get_model()
-  atoms = model.get_hierarchy().models()[0].atoms()
-  s = sorted(atoms, key=conventionalSortingKey)
-  expectedNames = ['O','N','C','CA','CB','CG','ND1','CE1','N12','NE2','CD2']
-  for i in range(len(s)):
-    assert s[i].name.strip() == expectedNames[i], "Helpers.Test(): conventionalSortingKey test failed"
-
-  #========================================================================
   # Run unit tests on the dihedralChoicesForRotatableHydrogens class.  Both
-  # with and without fallback to the heuristic.
+  # with and without being able to find the results.
   pdb_dihedral ='''
 CRYST1   15.957   14.695   20.777  90.00  90.00  90.00 P 1
 ATOM      1  N   VAL A   4      10.552   7.244  12.226  1.00 11.32           N
@@ -1314,15 +1220,16 @@ TER
   hydrogens = [ atoms[10], atoms[11], atoms[12] ] # HG1, HG2, HG3
   potentials = [ atoms[1], atoms[6] ]  # CA, CG2
 
-  myH, myFriend, warnings = dihedralChoicesForRotatableHydrogens(hydrogens, h_parameterization, potentials)
-  assert warnings == "", "Helpers.Test(): Unexpected warning from dihedralChoicesForRotatableHydrogens: "+warnings
+  myH, myFriend = dihedralChoicesForRotatableHydrogens(hydrogens, h_parameterization, potentials)
   assert myH == atoms[12], "Helpers.Test(): Unexpected H from dihedralChoicesForRotatableHydrogens"
   assert myFriend == atoms[1], "Helpers.Test(): Unexpected friend from dihedralChoicesForRotatableHydrogens"
 
-  myH, myFriend, warnings = dihedralChoicesForRotatableHydrogens(hydrogens, None, potentials)
-  assert warnings != "", "Helpers.Test(): Unexpected empty warning from dihedralChoicesForRotatableHydrogens"
-  assert myH == atoms[12], "Helpers.Test(): Unexpected H from dihedralChoicesForRotatableHydrogens"
-  assert myFriend == atoms[1], "Helpers.Test(): Unexpected friend from dihedralChoicesForRotatableHydrogens"
+  gotSorry = False
+  try:
+    myH, myFriend = dihedralChoicesForRotatableHydrogens(hydrogens, None, potentials)
+  except Exception:
+    gotSorry = True
+  assert gotSorry, "Helpers.Test(): Unexpected lack of exception from dihedralChoicesForRotatableHydrogens"
 
   #========================================================================
   # Run unit tests on rvec3 and lvec3.

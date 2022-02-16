@@ -21,7 +21,7 @@ from scitbx.array_family import flex
 from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
-from mmtbx.probe.Helpers import rvec3, lvec3, conventionalSortingKey, dihedralChoicesForRotatableHydrogens
+from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
 
 
 ##################################################################################
@@ -425,7 +425,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # whether there are two or three friends, it wants to be in the plane if there are two of them and it
     # wants to be between two edges if there are three.  It turns out that rotating it to point away from
     # the conventional-branch friend works in both of those cases.
-    conventionalH, conventionalFriend, ignore = dihedralChoicesForRotatableHydrogens(atoms,
+    conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(atoms,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -521,7 +521,7 @@ class MoverNH3Rotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
     # conventional (lowest in sort order) of them to point away from the conventional (lowest
     # sort order) of the friends.
-    conventionalH, conventionalFriend, ignore = dihedralChoicesForRotatableHydrogens(hydrogens,
+    conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -590,7 +590,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
     # conventional (lowest in sort order) of them to point away from the conventional (lowest
     # sort order) of the friends plus 90 degrees.
-    conventionalH, conventionalFriend, ignore = dihedralChoicesForRotatableHydrogens(hydrogens,
+    conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -672,7 +672,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
     # conventional (lowest in sort order) of them to point away from the conventional (lowest
     # sort order) of the friends.
-    conventionalH, conventionalFriend, ignore = dihedralChoicesForRotatableHydrogens(hydrogens,
+    conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -1482,7 +1482,17 @@ def Test():
     acc.name = "C"
     acc.xyz = [ math.cos(13*math.pi/180), math.sin(13*math.pi/180), 1.0 ]
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, None, [acc])
+    # Construct a stand-in riding-coefficients-producing hParams object that will provide an
+    # appropriate dihedral atom for the hydrogen to use.
+    class Item:
+      def __init__(self, paramN, paramA2):
+        self.n = paramN
+        self.a2 = paramA2
+    item = Item(0, f1.i_seq)
+    hParams = {}
+    hParams[h.i_seq] = item
+
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams, [acc])
 
     # Check for hydrogen rotated into -X plane at a distance of sqrt(2) from Z axis.
     # It should have been rotated 180 degrees from f1 because f1 is the conventional branch based on its name.
@@ -1568,7 +1578,17 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, None)
+    # Construct a stand-in riding-coefficients-producing hParams object that will provide an
+    # appropriate dihedral atom for the hydrogen to use.
+    class Item:
+      def __init__(self, paramN, paramA2):
+        self.n = paramN
+        self.a2 = paramA2
+    item = Item(0, f1.i_seq)
+    hParams = {}
+    hParams[h.i_seq] = item
+
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
     # it should have picked f1 as the conventional friend to be opposite to based on its name.
@@ -1665,7 +1685,17 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverNH3Rotator(n, bondedNeighborLists, None)
+    # Construct a stand-in riding-coefficients-producing hParams object that will provide an
+    # appropriate dihedral atom for the appropriate hydrogen to use.
+    class Item:
+      def __init__(self, paramN, paramA2):
+        self.n = paramN
+        self.a2 = paramA2
+    item = Item(0, f1.i_seq)
+    hParams = {}
+    hParams[h3.i_seq] = item
+
+    mover = MoverNH3Rotator(n, bondedNeighborLists, hParams)
 
     # Check for the third hydrogen on the -X axis at a distance of sqrt(2) from Z the axis.
     if not (h3.xyz[2] == 1 and h3.xyz[0]+math.sqrt(2) < 1e-5):
@@ -1752,7 +1782,17 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
-    mover = MoverAromaticMethylRotator(n, bondedNeighborLists, None)
+    # Construct a stand-in riding-coefficients-producing hParams object that will provide an
+    # appropriate dihedral atom for the appropriate hydrogen to use.
+    class Item:
+      def __init__(self, paramN, paramA2):
+        self.n = paramN
+        self.a2 = paramA2
+    item = Item(0, f1.i_seq)
+    hParams = {}
+    hParams[h3.i_seq] = item
+
+    mover = MoverAromaticMethylRotator(n, bondedNeighborLists, hParams)
 
     # Check for the third hydrogen on the +Y axis at a distance of sqrt(2) from Z the axis.
     if not (h3.xyz[2] == 1 and abs(h3.xyz[1]-math.sqrt(2)) < 1e-5):
@@ -1841,7 +1881,17 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
-    mover = MoverTetrahedralMethylRotator(n, bondedNeighborLists, None)
+    # Construct a stand-in riding-coefficients-producing hParams object that will provide an
+    # appropriate dihedral atom for the appropriate hydrogen to use.
+    class Item:
+      def __init__(self, paramN, paramA2):
+        self.n = paramN
+        self.a2 = paramA2
+    item = Item(0, f1.i_seq)
+    hParams = {}
+    hParams[h3.i_seq] = item
+
+    mover = MoverTetrahedralMethylRotator(n, bondedNeighborLists, hParams)
 
     # Check for the third hydrogen on the -X axis at a distance of sqrt(2) from Z the axis.
     if not (h3.xyz[2] == 1 and abs(-h3.xyz[0]-math.sqrt(2)) < 1e-5):
