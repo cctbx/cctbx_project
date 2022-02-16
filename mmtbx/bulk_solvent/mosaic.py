@@ -687,7 +687,7 @@ class f_masks(object):
     del self._mask_p1
 
   def _add_from_aggregated(self, selection, diff_map):
-    if(selection is None): return
+    if(selection is None or diff_map is None): return
     self.do_mosaic = True
     v = selection.count(True)
     volume = v*self.step**3
