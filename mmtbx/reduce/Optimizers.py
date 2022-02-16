@@ -218,6 +218,9 @@ class _SingletonOptimizer(object):
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
 
+    model.setup_riding_h_manager()
+    riding_h_manager = model.get_riding_h_manager()
+    h_parameterization = riding_h_manager.h_parameterization
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
@@ -356,9 +359,6 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
-        model.setup_riding_h_manager()
-        riding_h_manager = model.get_riding_h_manager()
-        h_parameterization = riding_h_manager.h_parameterization
         hyds = model.rotatable_hd_selection(iselection=True)
         self._infoString += _ReportTiming("select rotatable hydrogens")
         ret = _PlaceMovers(self._atoms, hyds,
