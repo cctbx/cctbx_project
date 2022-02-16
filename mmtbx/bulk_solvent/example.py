@@ -79,7 +79,7 @@ def get_data(pdbf, mtzf):
   determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server  = rfs,
     keep_going              = True,
-    extract_r_free_flags    = False,
+    extract_r_free_flags    = True,
     force_non_anomalous     = True,
     log                     = null_out())
   f_obs        = determine_data_and_flags_result.f_obs
@@ -92,14 +92,26 @@ def get_data(pdbf, mtzf):
     remove_outliers         = True,
     apply_scale_k1_to_f_obs = True
     )
+  # Skip
+  rw = fmodel.r_work()
+  rf = fmodel.r_free()
+  if(fmodel.f_obs().d_min()>3):           return None
+  if(fmodel.f_obs().completeness()<0.95): return None
+  if(rw>0.25):                            return None
+  if(rf<=rw):                             return None
+  if(abs(rf-rw)*100<2):                   return None
+  if(fmodel.f_obs().resolution_filter(d_min=8).completeness()<0.95): return None
+  #
   def f_obs():        return fmodel.f_obs()
   def r_free_flags(): return fmodel.r_free_flags()
   def f_calc():       return fmodel.f_calc()
+  def flags():        return fmodel.r_free_flags()
   return group_args(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = fmodel.xray_structure,
-    f_calc         = f_calc)
+    f_calc         = f_calc,
+    flags          = flags)
 
 def get_fmodel(o, f_mask, remove_outliers, log):
   fo, fm = o.f_obs().common_sets(f_mask)
@@ -127,10 +139,8 @@ def get_fmodel(o, f_mask, remove_outliers, log):
   return group_args(fmodel = fmodel, mc = mc)
 
 class compute(object):
-  def __init__(self, pdbf, mtzf, log):
+  def __init__(self, D, log):
     self.log = log
-    # Get objects out of files, and set grid step
-    D = get_data(pdbf, mtzf)
     #
     print("-"*79, file=log)
     print("A-2013, all defaults", file=log)
@@ -223,19 +233,23 @@ def run_one(args):
   pdb_inp = iotbx.pdb.input(file_name=pdbf)
   cs = pdb_inp.crystal_symmetry()
   #
-  #if(cs.space_group_number() != 1): return
+  if(cs.space_group_number() != 1): return
   if(not pdb_inp.get_experiment_type() in
      ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
   #
   #log = sys.stdout
   log = open("%s.log"%code,"w")
   try:
+    D = get_data(pdbf, mtzf)
+    if(D is None):
+      log.close()
+      if(os.path.isfile("%s.log"%code)): os.remove("%s.log"%code)
+      return
     # main
-    o = compute(pdbf=pdbf, mtzf=mtzf, log=log)
+    o = compute(D=D, log=log)
     log.flush()
     ### SKIP
-    if(not o.mm.do_mosaic or o.fmodel_2013.r_work()>0.30 or
-       len(o.mm.regions.values())<1):
+    if(not o.mm.do_mosaic or len(o.mm.regions.values())<1):
       log.close()
       if(os.path.isfile("%s.log"%code)): os.remove("%s.log"%code)
       return

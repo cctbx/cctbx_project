@@ -229,7 +229,7 @@ def thiken_bins(bins, n, ds):
   for i, bin in enumerate(result):
     ds_ = ds.select(bin)
     mi, ma = flex.min(ds_), flex.max(ds_)
-    if(mi<3 and ma>=3):
+    if(mi<3 and ma>=3 and len(tmp)>0):
       tmp[i-1] = tmp[i-1] | bin
     else:
       tmp.append(bin)
@@ -675,7 +675,7 @@ class f_masks(object):
     # Preliminarily if need to do mosaic.
     self.n_regions = len(self.FV.values())
     self.do_mosaic = False
-    if(self.n_regions>1):
+    if(self.n_regions>1 and flex.max(self.d_spacings)>6):
       self.do_mosaic = True
     # Add aggregated small regions (if present)
     self._add_from_aggregated(selection=small_selection, diff_map=diff_map)
