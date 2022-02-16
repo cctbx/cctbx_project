@@ -961,12 +961,11 @@ def add_local_squared_deviation_map(
   mmm.add_map_from_fourier_coefficients(mean_square_map_coeffs,
       map_id=map_id_out)
   # All map values should be positive, but round trip through FT might change
-  # this. Check and add an offset if required to make minimum slightly positive.
+  # this. Check and add an offset if required to make minimum non-negative.
   mm_out = mmm.get_map_manager_by_id(map_id=map_id_out)
   min_map_value = flex.min(mm_out.map_data())
-  if min_map_value <= 0:
-    max_map_value = flex.max(mm_out.map_data())
-    offset = (max_map_value - min_map_value)/100000. - min_map_value
+  if min_map_value < 0:
+    offset = -min_map_value
     mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
 def add_ordered_volume_mask(
@@ -1021,7 +1020,7 @@ def add_ordered_volume_mask(
   nvmm = working_mmm.get_map_manager_by_id('noise_variance')
   nvmm_min = min(flex.min(nvmm.map_data()) , 0.)
   nvmm_max = flex.max(nvmm.map_data())
-  nvmm.map = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.
+  nvmm.set_map_data(map_data = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.)
 
   # Compute Z-score where values much greater than 1 indicate signal
   mm_Zscore = mvmm.customized_copy(
