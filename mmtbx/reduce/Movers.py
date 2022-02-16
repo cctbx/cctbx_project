@@ -858,7 +858,7 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): ne2Atom is not a Nitrogen")
     partners = bondedNeighborLists[ne2Atom]
     if len(partners) != 3:
-      raise ValueError("MoverHisFlip(): ne2Atom does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): NE2 does not have three bonded neighbors")
     hydrogens = []
     carbons = []
     for a in partners:
@@ -867,9 +867,9 @@ class MoverHisFlip(object):
       elif a.element == "C":
         carbons.append(a)
     if len(hydrogens) != 1:
-      raise ValueError("MoverHisFlip(): ne2Atom does not have one bonded hydrogen")
+      raise ValueError("MoverHisFlip(): NE2 does not have one bonded hydrogen (probably ionically bound)")
     if len(carbons) != 2:
-      raise ValueError("MoverHisFlip(): ne2Atom does not have two bonded carbons")
+      raise ValueError("MoverHisFlip(): NE2 does not have two bonded carbons")
     ne2HAtom = hydrogens[0]
 
     # Determine if the first Carbon is CE1, which is bonded to two Nitrogens (zero Carbons).  If not,
@@ -878,7 +878,7 @@ class MoverHisFlip(object):
     cTest = carbons[0]
     bonded = bondedNeighborLists[cTest]
     if len(bonded) != 3:
-      raise ValueError("MoverHisFlip(): ne2Atom neighbor does not have three bonded neighbors")
+      raise ValueError("MoverHisFlip(): NE2 neighbor does not have three bonded neighbors")
     cs = 0
     for b in bonded:
       if b.element == "C":
@@ -910,7 +910,7 @@ class MoverHisFlip(object):
       if b.element_is_hydrogen():
         cd2HAtom = b
     if cd2HAtom is None:
-      raise ValueError("MoverHisFlip(): Could not find Hydrogen attached to CD2")
+      raise ValueError("MoverHisFlip(): CD2 does not have a bonded hydrogen")
 
     # Find CG on the other side of CD2.
     cgAtom = None
@@ -950,7 +950,7 @@ class MoverHisFlip(object):
       if b.element_is_hydrogen():
         nd1HAtom = b
     if nd1HAtom is None:
-      raise ValueError("MoverHisFlip(): ND1 does not have a bonded hydrogen")
+      raise ValueError("MoverHisFlip(): ND1 does not have a bonded hydrogen (probably ionically bound)")
 
     # Find CA on the other side of CB and find CBs Hydrogens
     caAtom = None
@@ -1083,13 +1083,13 @@ class MoverHisFlip(object):
     else:
       ret = "Flipped"
     if coarseIndex % 4 == 0 or coarseIndex % 4 == 1:
-      ret += " HD1Added"
+      ret += " HD1Placed"
     else:
-      ret += " HD1NotAdded"
+      ret += " HD1NotPlaced"
     if coarseIndex % 4 == 0 or coarseIndex % 4 == 2:
-      ret += " HE2Added"
+      ret += " HE2Placed"
     else:
-      ret += " HE2NotAdded"
+      ret += " HE2NotPlaced"
     return ret
 
 ##################################################################################
@@ -2480,13 +2480,13 @@ def Test():
           return "Movers.Test() MoverHisFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Unflipped HD1Added HE2NotAdded":
+    if mover.PoseDescription(1,0) != "Unflipped HD1Placed HE2NotPlaced":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
-    if mover.PoseDescription(2,0) != "Unflipped HD1NotAdded HE2Added":
+    if mover.PoseDescription(2,0) != "Unflipped HD1NotPlaced HE2Placed":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
-    if mover.PoseDescription(3,0) != "Unflipped HD1NotAdded HE2NotAdded":
+    if mover.PoseDescription(3,0) != "Unflipped HD1NotPlaced HE2NotPlaced":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
-    if mover.PoseDescription(4,0) != "Flipped HD1Added HE2Added":
+    if mover.PoseDescription(4,0) != "Flipped HD1Placed HE2Placed":
       return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
 
   except Exception as e:
