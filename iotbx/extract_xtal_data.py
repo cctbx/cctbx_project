@@ -235,7 +235,8 @@ class run(object):
                keep_going = False,
                log = None,
                prefer_anomalous = None,
-               force_non_anomalous = False):
+               force_non_anomalous = False,
+               allow_mismatch_flags = False):
     adopt_init_args(self, locals())
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
@@ -577,7 +578,7 @@ class run(object):
     r_free_flags = r_free_flags.map_to_asu().common_set(f_obs)
     n_missing_r_free_flags = f_obs.indices().size() \
       - r_free_flags.indices().size()
-    if(n_missing_r_free_flags != 0):
+    if(not self.allow_mismatch_flags and n_missing_r_free_flags != 0):
       msg = [
         "R-free flags not compatible with F-obs array:"
         " missing flag for %d F-obs selected for refinement"

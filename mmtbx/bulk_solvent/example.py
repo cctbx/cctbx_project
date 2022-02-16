@@ -81,6 +81,7 @@ def get_data(pdbf, mtzf):
     keep_going              = True,
     extract_r_free_flags    = True,
     force_non_anomalous     = True,
+    allow_mismatch_flags    = True,
     log                     = null_out())
   f_obs        = determine_data_and_flags_result.f_obs
   r_free_flags = determine_data_and_flags_result.r_free_flags
@@ -315,6 +316,9 @@ def run(cmdargs):
     pdbs, mtzs, codes, sizes = get_files_sorted(pdb_files, hkl_files)
     argss = []
     for pdb, mtz, code in zip(pdbs, mtzs, codes):
+      if(os.path.isfile("%s.log"%code) and
+         os.path.isfile("%s.pkl"%code) and
+         os.path.isfile("%s_mc.mtz"%code)): continue
       argss.append([pdb, mtz, code, alg])
     if(NPROC>1):
       stdout_and_results = easy_mp.pool_map(
