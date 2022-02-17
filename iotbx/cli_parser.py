@@ -674,17 +674,17 @@ class CCTBXParser(ParserBase):
       citation_format=self.namespace.citations)
 
 # =============================================================================
-def run_program(parser_class=CCTBXParser, program_class=None, custom_process_arguments=None,
+def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arguments=None,
                 unused_phil_raises_sorry=True, args=None, json=False, logger=None):
   '''
   Function for running programs using CCTBXParser and the program template
 
   Parameters
   ----------
-  parser: CCTBXParser
-    The parser class to use for parsing. It must be the CCTBXParser or a subclass
   program_class: ProgramTemplate
     The class defining the program. It must be a subclass of ProgramTemplate
+  parser_class: CCTBXParser
+    The parser class to use for parsing. It must be the CCTBXParser or a subclass
   custom_process_arguments: function(parser)
     Custom function to parse unknown arguments (optional)
   unused_phil_raises_sorry: bool
