@@ -97,17 +97,26 @@ namespace simtbx { namespace Kokkos {
              &simtbx::Kokkos::exascale_api::add_energy_channel_from_gpu_amplitudes,
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spot contributions to the detector's accumulator array")
         .def("add_energy_channel_mask_allpanel",
-             static_cast<void (exascale_api::*)(int const&,kokkos_energy_channels&,kokkos_detector&, af::shared<int> const) >
-             (&exascale_api::add_energy_channel_mask_allpanel),
-             (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
-             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
-             "The pixel_active_list_ints is a small array with integer-offset addresses for each pixel-of-interest")
-        .def("add_energy_channel_mask_allpanel",
              static_cast<void (exascale_api::*)(int const&,kokkos_energy_channels&,kokkos_detector&, af::shared<bool>) >
              (&exascale_api::add_energy_channel_mask_allpanel),
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_mask_bools")),
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
              "The pixel_active_mask_bools is a large array with one bool per detector pixel")
+        .def("add_energy_channel_mask_allpanel",
+             static_cast<void (exascale_api::*)(int const&,kokkos_energy_channels&,kokkos_detector&, af::shared<int> const) >
+             (&exascale_api::add_energy_channel_mask_allpanel),
+             (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
+             "The pixel_active_list_ints is a small array with integer-offset addresses for each pixel-of-interest")
+        .def("add_energy_multichannel_mask_allpanel",
+             static_cast<void (exascale_api::*)(af::shared<int> const,kokkos_energy_channels&,kokkos_detector&, af::shared<int> const) >
+             (&exascale_api::add_energy_multichannel_mask_allpanel),
+             (arg_("ichannels"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
+             "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
+             "The pixel_active_list_ints is a small array with integer-offset addresses for each pixel-of-interest"
+             "ichannels: for each nanoBragg source, the value instructs the simulation which channel in gpu_structure_factors"
+             "to use for structure factor lookup.  If -1, skip this source wavelength."
+             )
         .def("add_background", &simtbx::Kokkos::exascale_api::add_background,
              "Add a background field directly on the GPU")
         .def("show",&simtbx::Kokkos::exascale_api::show)
