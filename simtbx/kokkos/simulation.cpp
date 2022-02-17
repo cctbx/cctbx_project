@@ -248,6 +248,78 @@ namespace Kokkos {
     add_array(kdt.m_accumulate_floatimage, kdt.m_floatimage);
   }
 
+  void
+  exascale_api::add_energy_multichannel_mask_allpanel(
+    af::shared<int> const ichannels,
+    simtbx::Kokkos::kokkos_energy_channels & kec,
+    simtbx::Kokkos::kokkos_detector & kdt,
+    af::shared<int> const active_pixel_list
+  ){
+    kdt.set_active_pixels_on_GPU(active_pixel_list);
+
+    // transfer source_I, source_lambda
+    // the int arguments are for sizes of the arrays
+    int source_count = SIM.sources;
+    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+
+    SCITBX_ASSERT(SIM.sources == ichannels.size()); /* For each nanoBragg source, this value instructs
+    the simulation where to look for structure factors.  If -1, skip this source wavelength. */
+
+    for (int ictr = 0; ictr < SIM.sources; ++ictr){
+      if (ichannels[ictr] < 0) continue; // the ichannel array
+      //printf("HA HA %4d channel %4d, %5.1f %5.1f %5.1f %10.5f %10.5g\n",ictr,ichannels[ictr],
+      //  SIM.source_X[ictr], SIM.source_Y[ictr], SIM.source_Z[ictr],
+      //  SIM.source_I[ictr], SIM.source_lambda[ictr]);
+
+      // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
+      vector_cudareal_t current_channel_Fhkl = kec.d_channel_Fhkl[ichannels[ictr]];
+
+      vector_cudareal_t c_source_X = vector_cudareal_t("c_source_X", 0);
+      vector_cudareal_t c_source_Y = vector_cudareal_t("c_source_Y", 0);
+      vector_cudareal_t c_source_Z = vector_cudareal_t("c_source_Z", 0);
+      vector_cudareal_t c_source_I = vector_cudareal_t("c_source_I", 0);
+      vector_cudareal_t c_source_lambda = vector_cudareal_t("c_source_lambda", 0);
+      transfer_double2kokkos(c_source_X, &(SIM.source_X[ictr]), 1);
+      transfer_double2kokkos(c_source_Y, &(SIM.source_Y[ictr]), 1);
+      transfer_double2kokkos(c_source_Z, &(SIM.source_Z[ictr]), 1);
+      transfer_double2kokkos(c_source_I, &(SIM.source_I[ictr]), 1);
+      transfer_double2kokkos(c_source_lambda, &(SIM.source_lambda[ictr]), 1);
+
+      debranch_maskall_Kernel(
+      kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
+      SIM.oversample, SIM.point_pixel,
+      SIM.pixel_size, m_subpixel_size, m_steps,
+      SIM.detector_thickstep, SIM.detector_thicksteps,
+      SIM.detector_thick, SIM.detector_attnlen,
+      m_vector_length,
+      kdt.m_sdet_vector,
+      kdt.m_fdet_vector,
+      kdt.m_odet_vector,
+      kdt.m_pix0_vector,
+      kdt.m_distance, kdt.m_distance, m_beam_vector,
+      kdt.m_Xbeam, kdt.m_Ybeam,
+      SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
+      1, c_source_X, c_source_Y, c_source_Z,
+      c_source_I, c_source_lambda, m_a0, m_b0,
+      m_c0, SIM.xtal_shape, SIM.mosaic_domains, m_mosaic_umats,
+      SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
+      m_water_size, m_water_F, m_water_MW, simtbx::nanoBragg::r_e_sqr, SIM.fluence,
+      simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,
+      current_channel_Fhkl, kec.m_FhklParams, SIM.nopolar,
+      m_polar_vector, SIM.polarization, SIM.fudge,
+      kdt.m_active_pixel_list,
+      // return arrays:
+      kdt.m_floatimage,
+      kdt.m_omega_reduction,
+      kdt.m_max_I_x_reduction,
+      kdt.m_max_I_y_reduction,
+      kdt.m_rangemap);
+    //don't want to free the kec data when the nanoBragg goes out of scope, so switch the pointer
+    // cu_current_channel_Fhkl = NULL;
+      add_array(kdt.m_accumulate_floatimage, kdt.m_floatimage);
+    }// loop over channels
+  }
 
   void
   exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt) {
