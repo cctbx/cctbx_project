@@ -23,107 +23,6 @@ from libtbx.str_utils import wordwrap
 from libtbx.utils import multi_out, show_times, Sorry
 
 # =============================================================================
-def run_program(program_class=None, custom_process_arguments=None,
-                unused_phil_raises_sorry=True, args=None, json=False, logger=None):
-  '''
-  Function for running programs using CCTBXParser and the program template
-
-  :param program_class:  ProgramTemplate type (required)
-  :param custom_process_arguments:
-                         Custom function to parse unknown arguments (optional)
-  :param unused_phil_raises_sorry: if False, any unused PHIL parameters
-                         are kept for parsing later
-  :param args:           list of command-line arguments (optional)
-  :param json:           if True, get_results_as_JSON is called for the return
-                         value instead of get_results
-  :param logger:         logger (e.g. multi_out) for output (optional)
-  :rtype:                whatever is returned from program_class.get_results()
-  '''
-
-  assert program_class is not None
-
-  if args is None:
-    args = sys.argv[1:]
-
-  # start profiling
-  pr = None
-  if '--profile' in args:
-    import cProfile
-    pr = cProfile.Profile()
-    pr.enable()
-
-  # keep output in quiet mode
-  if '--quiet' in args:
-    logger = multi_out()
-    logger.register('parser_log', StringIO())
-
-  # create logger
-  if logger is None:
-    logger = multi_out()
-    logger.register('stdout', sys.stdout)
-    logger.register('parser_log', StringIO())
-
-  # start timer
-  t = show_times(out=logger)
-
-  # create parser
-  parser = CCTBXParser(program_class=program_class,
-                       custom_process_arguments=custom_process_arguments,
-                       unused_phil_raises_sorry=unused_phil_raises_sorry,
-                       logger=logger)
-  namespace = parser.parse_args(args)
-
-  # start program
-  print('Starting job', file=logger)
-  print('='*79, file=logger)
-  task = program_class(parser.data_manager, parser.working_phil.extract(),
-                       master_phil=parser.master_phil,
-                       logger=logger)
-
-  # validate inputs
-  task.validate()
-
-  # run program
-  task.run()
-
-  # clean up (optional)
-  task.clean_up()
-
-  # dump profiling stats
-  if pr is not None:
-    pr.disable()
-    pr.dump_stats('profile.out')
-
-  # output JSON
-  if namespace.json:
-    result = task.get_results_as_JSON()
-    if result is not None:
-      with open(parser.json_filename, 'w') as f:
-        f.write(result)
-    else:
-      print('', file=logger)
-      print('!'*79, file=logger)
-      print('WARNING: The get_results_as_JSON function has not been defined for this program')
-      print('!'*79, file=logger)
-
-  # stop timer
-  print('', file=logger)
-  print('='*79, file=logger)
-  print('Job complete', file=logger)
-  t()
-
-  # clean up file for quiet mode
-  if namespace.quiet:
-    logger.close()
-
-  if json:
-    result = task.get_results_as_JSON()
-  else:
-    result = task.get_results()
-
-  return result
-
-# =============================================================================
 class ParserBase(argparse.ArgumentParser):
 
   def __init__(self, parse_files=True, parse_phil=True, parse_dir=False,
@@ -773,6 +672,117 @@ class CCTBXParser(ParserBase):
     self.program_class.show_template_citation(
       text_width=self.text_width, logger=self.logger,
       citation_format=self.namespace.citations)
+
+# =============================================================================
+def run_program(parser=CCTBXParser, program_class=None, custom_process_arguments=None,
+                unused_phil_raises_sorry=True, args=None, json=False, logger=None):
+  '''
+  Function for running programs using CCTBXParser and the program template
+
+  Parameters
+  ----------
+  parser: CCTBXParser
+    The parser class to use for parsing. It must be the CCTBXParser or a subclass
+  program_class: ProgramTemplate
+    The class defining the program. It must be a subclass of ProgramTemplate
+  custom_process_arguments: function(parser)
+    Custom function to parse unknown arguments (optional)
+  unused_phil_raises_sorry: bool
+    If False, any unused PHIL parameters are kept for parsing later
+  args: list
+    List of command-line arguments (optional)
+  json: bool
+    If True, get_results_as_JSON is called for the return value instead of get_results
+  logger: multi_out
+    For logging output (optional)
+
+  Returns
+  -------
+    Whatever is returned from program_class.get_results() or program_class.get_results_as_JSON()
+  '''
+
+  assert program_class is not None
+
+  if args is None:
+    args = sys.argv[1:]
+
+  # start profiling
+  pr = None
+  if '--profile' in args:
+    import cProfile
+    pr = cProfile.Profile()
+    pr.enable()
+
+  # keep output in quiet mode
+  if '--quiet' in args:
+    logger = multi_out()
+    logger.register('parser_log', StringIO())
+
+  # create logger
+  if logger is None:
+    logger = multi_out()
+    logger.register('stdout', sys.stdout)
+    logger.register('parser_log', StringIO())
+
+  # start timer
+  t = show_times(out=logger)
+
+  # create parser
+  parser = parser(program_class=program_class,
+                  custom_process_arguments=custom_process_arguments,
+                  unused_phil_raises_sorry=unused_phil_raises_sorry,
+                  logger=logger)
+  namespace = parser.parse_args(args)
+
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = program_class(parser.data_manager, parser.working_phil.extract(),
+                       master_phil=parser.master_phil,
+                       logger=logger)
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+  # clean up (optional)
+  task.clean_up()
+
+  # dump profiling stats
+  if pr is not None:
+    pr.disable()
+    pr.dump_stats('profile.out')
+
+  # output JSON
+  if namespace.json:
+    result = task.get_results_as_JSON()
+    if result is not None:
+      with open(parser.json_filename, 'w') as f:
+        f.write(result)
+    else:
+      print('', file=logger)
+      print('!'*79, file=logger)
+      print('WARNING: The get_results_as_JSON function has not been defined for this program')
+      print('!'*79, file=logger)
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  t()
+
+  # clean up file for quiet mode
+  if namespace.quiet:
+    logger.close()
+
+  if json:
+    result = task.get_results_as_JSON()
+  else:
+    result = task.get_results()
+
+  return result
 
 # =============================================================================
 # end
