@@ -153,6 +153,7 @@ Currently supported options: %s""" %backend_list
           peak = self._nearest_peak(event.xdata,xvalues,yvalues)
           if peak is not None:
             print('Selected x=%f, nearest local maximum=%f, writing to %s.' % (1/event.xdata, peak, params.output.peak_file))
+            f.write(str(peak)+"\n")
 
         mmv = fig.canvas.mpl_connect('motion_notify_event', onmove)
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
