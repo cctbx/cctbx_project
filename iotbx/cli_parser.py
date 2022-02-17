@@ -674,7 +674,7 @@ class CCTBXParser(ParserBase):
       citation_format=self.namespace.citations)
 
 # =============================================================================
-def run_program(parser=CCTBXParser, program_class=None, custom_process_arguments=None,
+def run_program(parser_class=CCTBXParser, program_class=None, custom_process_arguments=None,
                 unused_phil_raises_sorry=True, args=None, json=False, logger=None):
   '''
   Function for running programs using CCTBXParser and the program template
@@ -728,10 +728,10 @@ def run_program(parser=CCTBXParser, program_class=None, custom_process_arguments
   t = show_times(out=logger)
 
   # create parser
-  parser = parser(program_class=program_class,
-                  custom_process_arguments=custom_process_arguments,
-                  unused_phil_raises_sorry=unused_phil_raises_sorry,
-                  logger=logger)
+  parser = parser_class(program_class=program_class,
+                        custom_process_arguments=custom_process_arguments,
+                        unused_phil_raises_sorry=unused_phil_raises_sorry,
+                        logger=logger)
   namespace = parser.parse_args(args)
 
   # start program
