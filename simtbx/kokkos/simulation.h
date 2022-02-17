@@ -30,6 +30,11 @@ struct exascale_api {
     simtbx::Kokkos::kokkos_detector &,
     af::shared<int> const
   );
+  void add_energy_multichannel_mask_allpanel(af::shared<int> const,
+    simtbx::Kokkos::kokkos_energy_channels &,
+    simtbx::Kokkos::kokkos_detector &,
+    af::shared<int> const
+  );
 
   void add_background(simtbx::Kokkos::kokkos_detector &);
   void allocate();
