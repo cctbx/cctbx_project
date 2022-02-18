@@ -257,23 +257,23 @@ class _SingletonOptimizer(object):
 
       # Clear the Movers list for each model.  It will be retained from one alternate to the next.
       self._movers = []
-      for ai in alts:
+      for alt in alts:
         # If we are doing the second or later alternate, place all Movers that are in a compatible alternate
         # back into their initial configuration so we start from the same state we would have if this were
-        # our only alternate being tested.  This will ensure that we get compatible outputs when run either
+        # the only alternate being tested.  This will ensure that we get compatible outputs when run either
         # way (we may end up with equivalent but different results, like 120 degree rotations for 3 hydrogens).
         for m in self._movers:
           coarse = m.CoarsePositions()
-          if coarse.atoms[0].parent().altloc in ['', ' ', ai]:
-            print('XXX Resetting Mover in conformation "'+coarse.atoms[0].parent().altloc+'"')
+          if coarse.atoms[0].parent().altloc in ['', ' ', alt]:
             self._setMoverState(coarse, 0)
 
             # Apply any location and information fixups needed for the initial configuration.
+            # This will in all cases put things back into their original configuration.
             self._doFixup(m.FixUp(0))
 
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
-          ", alternate '"+ai+"'\n")
+          ", alternate '"+alt+"'\n")
         self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(self._bondedNeighborDepth)+"\n")
         self._infoString += _VerboseCheck(1,"  probeRadius = "+str(self._probeRadius)+"\n")
         self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(self._useNeutronDistances)+"\n")
@@ -286,7 +286,7 @@ class _SingletonOptimizer(object):
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
         # pick the first available conformation for each atom group.
-        self._atoms = GetAtomsForConformer(myModel, ai)
+        self._atoms = GetAtomsForConformer(myModel, alt)
 
         ################################################################################
         # Reset the timer
@@ -595,7 +595,7 @@ class _SingletonOptimizer(object):
           self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
             self._moverInfo[m], self._highScores[m], description ))
 
-        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+ai+"':\n")
+        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
         for g in sortedGroups:
           self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:")
