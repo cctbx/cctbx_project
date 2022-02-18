@@ -388,7 +388,9 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                   warnings += "Could not find "+a.name.strip()+" in CCTBX, using Probe tables\n"
               except Exception as e:
                 # Warn and drop through to below.
-                warnings += ("Could not look up "+a.name.strip()+" in CCTBX "+
+                fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
+                  str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
+                warnings += ("Could not look up "+fullName+" in CCTBX "+
                   "(perhaps interpretation was not run on the model?), using Probe tables"+
                   ": "+str(e)+"\n")
 
