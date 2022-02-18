@@ -2749,8 +2749,8 @@ class map_model_manager(object):
           matching_model.get_hierarchy().atoms().extract_name()):
           print(x,y, file = self.log)
 
-      print("Target and matching model do not have the same atoms...cannot",
-        "use ca_only=False in rmsd_of_matching_residues", file = self.log)
+        print("Target and matching model do not have the same atoms...cannot",
+         "use ca_only=False in rmsd_of_matching_residues", file = self.log)
       return None
 
     target_sites = target_model.get_sites_cart()
