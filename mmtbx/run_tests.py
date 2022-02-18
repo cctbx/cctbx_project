@@ -317,6 +317,7 @@ general_tests = [
   "$D/regression/ncs/tst_minimization_ncs_constraints3.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints_real_space.py",
   "$D/monomer_library/tst_correct_hydrogens.py",
+  '$D/mmtbx/monomer_library/tst_deuterium_terminii.py',
   # automatic linking
   "$D/monomer_library/tst_superpose_ideal.py",
   "$D/monomer_library/tst_iron_sulfur_clusters.py",

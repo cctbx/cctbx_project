@@ -1419,7 +1419,7 @@ class monomer_mapping(slots_getstate_setstate):
           i_seq = u.get(given_name)
           if (i_seq is None): continue
           # special case for terminating breaks with HC hydrogen
-          if caa and given_name in ["HC"] and "OC" not in ani.atom_names:
+          if caa and given_name in ["HC", 'DC'] and "OC" not in ani.atom_names:
             u_mon_lib[given_name]=i_seq
           elif caa and given_name in ['HBC'] and 'CB' in ani.atom_names:
             u_mon_lib[given_name]=i_seq
@@ -1432,7 +1432,7 @@ class monomer_mapping(slots_getstate_setstate):
         mod_mod_ids.append(mod_dict["COOH"])
       elif ("OXT" in u):
         mod_mod_ids.append(mod_dict["COO"])
-      elif ("HC" in u) and caa: # special case for non-physical neutral C term.
+      elif (("HC" in u) or ('DC' in u)) and caa: # special case for non-physical neutral C term.
         mod_mod_ids.append(mod_dict["CF-COH"])
       elif ("HBC" in u) and caa: # specical case for removed main chain
         mod_mod_ids.append(mod_dict["CF-CBH"])
@@ -3319,6 +3319,7 @@ class build_all_chain_proxies(linking_mixins):
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
       if self.params.flip_symmetric_amino_acids:
         self.pdb_hierarchy.flip_symmetric_amino_acids()
+    self.pdb_hierarchy.merge_atoms_at_end_to_residues()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
