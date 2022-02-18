@@ -143,6 +143,7 @@ class tertiary_xh_site(hydrogens):
   room_temperature_bond_length = { 'C' : 0.98,
                                    'N' : 0.91,
                                    'B' : 0.98,
+                                   'O' : 0.85,
                                    }
 
   def add_hydrogen_to(self, reparametrisation, bond_length,
