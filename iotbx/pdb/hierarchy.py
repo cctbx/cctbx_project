@@ -1480,21 +1480,22 @@ class _():
     """Transfered from qrefine for merging single H/D atoms from the end of the
     PDB input to the correct residue object
     """
-    residues = {}
-    for ag in self.atom_groups():
-      # complication with alt.loc.
-      key = ag.id_str()
-      previous_instance = residues.setdefault(key, None)
-      if previous_instance:
-        # move atoms from here to there
-        for atom in ag.atoms():
-          previous_instance.append_atom(atom.detached_copy())
-          ag.remove_atom(atom)
-        rg = ag.parent()
-        rg.remove_atom_group(ag)
-        chain = rg.parent()
-        chain.remove_residue_group(rg)
-      residues[key] = ag
+    for model_id, model in enumerate(self.models()):
+      residues = {}
+      for ag in model.atom_groups():
+        # complication with alt.loc.
+        key = '%s %s' % (model_id, ag.id_str())
+        previous_instance = residues.setdefault(key, None)
+        if previous_instance:
+          # move atoms from here to there
+          for atom in ag.atoms():
+            previous_instance.append_atom(atom.detached_copy())
+            ag.remove_atom(atom)
+          rg = ag.parent()
+          rg.remove_atom_group(ag)
+          chain = rg.parent()
+          chain.remove_residue_group(rg)
+        residues[key] = ag
 
   def flip_symmetric_amino_acids(self):
     import time
