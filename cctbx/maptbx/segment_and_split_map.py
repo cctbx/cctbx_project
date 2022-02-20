@@ -2993,9 +2993,11 @@ def run_get_ncs_from_map(params = None,
   else:
     return None, None, None # did not even try
   # check separately for helical symmetry
-  if params.reconstruction_symmetry.symmetry.lower() == 'helical':
+  if params.reconstruction_symmetry.symmetry and \
+       params.reconstruction_symmetry.symmetry.lower() == 'helical':
     helical_list = [True]
-  elif params.reconstruction_symmetry.symmetry.lower() in ['all', 'any'] and\
+  elif params.reconstruction_symmetry.symmetry and \
+       params.reconstruction_symmetry.symmetry.lower() in ['all', 'any'] and\
       params.reconstruction_symmetry.include_helical_symmetry:
     helical_list = [False, True]
   else:
