@@ -1460,6 +1460,8 @@ class hklview_3d:
 
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
+    self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
+
 
 
   def ProcessBrowserMessage(self, message):
@@ -2487,18 +2489,23 @@ in the space group %s\nwith unit cell %s\n""" \
     msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
+
   def get_current_datatype(self):
     # Amplitudes, Map coeffs, weights, floating points, etc
     if self.viewerparams.scene_id is None:
       return None
-    return self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][1]
+    dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][1]
+    # if dtype is boring generic then use the name of the data column for dtype
+    if dtype in ["Floating-point", "Integer"]:
+      dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][0]
+    return dtype
 
 
   def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
     self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
                           "ColourPowerScale": self.viewerparams.color_powscale,
-                          "Datatype": self.get_current_datatype(),
+                          "CurrentDatatype": self.get_current_datatype(),
                           "ShowColourMapDialog": 1
                          } )
 

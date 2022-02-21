@@ -311,7 +311,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.setWindowFlags(Qt.Tool)
     self.parent = parent
     self.selcolmap = ""
-    self.datatype = ""
+    self.datatypestr = ""
     self.powscale = 1
     #self.setWindowFlags(Qt.Tool)
     # Create the maptlotlib FigureCanvas object,
@@ -384,7 +384,7 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.hide()
 
   def updatelabel(self):
-    self.labeltxt.setText('Selected colour gradient map: %s for %s data' %(self.selcolmap, self.datatype) )
+    self.labeltxt.setText('Selected colour gradient map: %s for %s data' %(self.selcolmap, self.datatypestr) )
 
   def onReverseMap(self):
     if self.reversecheckbox.isChecked():
@@ -412,10 +412,10 @@ class MPLColourSchemes(QtWidgets.QDialog):
     self.powscaleslider.setValue(int(val))
     self.updatelabel()
 
-  def setDataType(self, datatype):
-    self.datatype = datatype
+  def setDataType(self, datatypestr):
+    self.datatypestr = datatypestr
     self.updatelabel()
-    if datatype == "Map coeffs" or datatype == "Phases":
+    if datatypestr == "Map coeffs" or datatypestr == "Phases":
       self.powscaleslider.setDisabled(True)
       self.setPowerScaleSliderVal(1.0)
     else:

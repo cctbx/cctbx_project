@@ -141,7 +141,9 @@ class SettingsForm(QDialog):
     layout.setRowStretch (1 ,0)
     myGroupBox.setLayout(layout)
     mainLayout = QGridLayout()
-    mainLayout.addWidget(myGroupBox,     0, 0)
+    mainLayout.addWidget(myGroupBox,                       0, 0, 1, 3)
+    mainLayout.addWidget(parent.resetlabeltxt,             1, 0, 1, 2)
+    mainLayout.addWidget(parent.resetFactoryDefaultbtn,    1, 2, 1, 1)
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
 
@@ -217,11 +219,10 @@ MainWindow.setCentralWidget(self.centralwidget)
 """
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  settings = QSettings("CCTBX", "HKLviewer" ) # static attribute so can be accessed in RemoveQsettings()
-  # qversion() comes out like '5.12.5'. We just want '5.12'
-  Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
-
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
+    self.settings = QSettings("CCTBX", "HKLviewer" )
+    # qversion() comes out like '5.12.5'. We just want '5.12'
+    self.Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
     self.datatypedict = { }
     self.browserfontsize = None
     self.mousespeedscale = 2000
@@ -345,7 +346,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipClickradio = QRadioButton()
     self.ttipClickradio.setText( "Clicked")
     self.ttipClickradio.clicked.connect(self.onShowTooltips)
-
     self.ttipalpha = 0.85
     self.ttipalpha_spinBox = QDoubleSpinBox()
     self.ttipalpha_spinBox.setSingleStep(0.05)
@@ -354,7 +354,13 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
-    #self.ttip_click_invoke = "hover"
+    self.reset_to_factorydefaults = False
+    self.resetlabeltxt = QLabel()
+    self.resetlabeltxt.setWordWrap(True)
+    self.resetlabeltxt.setText("Delete user settings and revert to factory defaults for GUI, colour and radii scheme")
+    self.resetFactoryDefaultbtn = QPushButton()
+    self.resetFactoryDefaultbtn.setText("Reset Settings")
+    self.resetFactoryDefaultbtn.clicked.connect(self.onResetFactoryDefault)
 
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
@@ -537,7 +543,8 @@ newarray._sigmas = sigs
         self.webpagedebugform.deleteLater()
       self.BrowserBox.close()
       self.BrowserBox.deleteLater()
-    self.PersistQsettings()
+    if not self.reset_to_factorydefaults:
+      self.PersistQsettings()
     if not self.isembedded:
       event.accept()
 
@@ -776,7 +783,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             currentinfostr = self.infodict.get("info",[])
             if self.closing:
               print(currentinfostr)
-
             if "Destroying HKLViewFrame" in currentinfostr:
               self.canexit = True
 
@@ -902,10 +908,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
             self.ColourMapSelectDlg.setPowerScaleSliderVal( self.infodict.get("ColourPowerScale", 1.0))
             if self.infodict.get("ShowColourMapDialog"):
-              arraytype = self.array_infotpls[self.currentmillarray_idx][1][1]
-              self.ColourMapSelectDlg.setDataType(arraytype)
               self.ColourMapSelectDlg.show()
               self.ColourMapSelectDlg.activateWindow()
+
+          if self.infodict.get("CurrentDatatype"):
+            self.ColourMapSelectDlg.setDataType(self.infodict.get("CurrentDatatype", ""))
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
@@ -932,15 +939,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           self.fileisvalid = True
 
           if currentinfostr:
-            if self.isembedded:
-              print(currentinfostr)
-            else:
-              self.infostr += currentinfostr + "\n"
-              # display no more than self.bufsize bytes of text
-              self.infostr = self.infostr[-1000*self.textinfosize:]
-              self.textInfo.setPlainText(self.infostr)
-              self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
-            currentinfostr = ""
+            self.AddInfoText(currentinfostr)
 
           if (self.NewFileLoaded or self.NewMillerArray) or self.NewHKLscenes:
             self.NewMillerArray = False
@@ -971,6 +970,16 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           print( errmsg  +  traceback.format_exc(limit=10) )
 
 
+  def AddInfoText(self, currentinfostr):
+    if self.isembedded:
+      print(currentinfostr)
+    else:
+      self.infostr += currentinfostr + "\n"
+      # display no more than self.bufsize bytes of text
+      self.infostr = self.infostr[-1000*self.textinfosize:]
+      self.textInfo.setPlainText(self.infostr)
+      self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
+
 
   def make_new_millertable(self):
     self.millertable.clearContents()
@@ -982,7 +991,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     for row,(headerlst,infotpls,fmtstrtpls,fmtstr2tpls) in enumerate(self.array_infotpls):
       for col,elm in enumerate(infotpls):
         self.millertable.setItem(row, col, QTableWidgetItem(fmtstrtpls[col].format(elm)))
-
 
 
   def UpdateGUI(self):
@@ -999,9 +1007,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
-    if self.currentmillarray_idx is not None:
-      arraytype = self.array_infotpls[self.currentmillarray_idx][1][1]
-      self.ColourMapSelectDlg.setDataType(arraytype)
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
     self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
@@ -1123,6 +1128,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onClearTextBuffer(self):
     self.textInfo.clear()
     self.infostr = ""
+
+
+  def onResetFactoryDefault(self):
+    self.RemoveQsettings()
+    self.reset_to_factorydefaults = True
+    msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
+    self.AddInfoText(msg)
 
 
   def onWrapTextBuffer(self):
@@ -2025,7 +2037,7 @@ clip_plane {
     Qtversion = self.Qtversion
     if write_factory_default_settings:
       self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
-      print("Writing factory defaults to " + self.factorydefaultfname)
+      self.AddInfoText("Writing factory defaults to " + self.factorydefaultfname)
       Qtversion = "Qt"
     if not write_factory_default_settings:  # don't store system specific value as a default
       self.settings.setValue("PythonPath", self.cctbxpython )
@@ -2118,7 +2130,6 @@ clip_plane {
     self.settings.beginGroup(Qtversion)
     self.settings.beginGroup("DataTypesGroups")
     datatypes = self.settings.childGroups()
-    #datatypedict = { }
     if datatypes:
       for datatype in datatypes:
         self.datatypedict[ datatype ] = [ self.settings.value(datatype + "/ColourChart", "brg"),
@@ -2192,16 +2203,16 @@ clip_plane {
 
 
   def MakeNewFactoryDefaultQsettings(self):
+    # Call this from debugger python prompt to create a new Factory default settings .ini file
+    # to be stored alongside this source file.
     self.PersistQsettings(True)
 
 
-  @staticmethod
-  def RemoveQsettings(all=False):
-    mstr = NGL_HKLViewer.Qtversion
+  def RemoveQsettings(self, all=False):
+    mstr = self.Qtversion
     if all:
       mstr = ""
-    NGL_HKLViewer.settings.remove(mstr)
-
+    self.settings.remove(mstr)
 
 
 def run(isembedded=False, chimeraxsession=None):
@@ -2209,8 +2220,11 @@ def run(isembedded=False, chimeraxsession=None):
   #time.sleep(10) # enough time for attaching debugger
   try:
     debugtrue = False
+    make_new_factory_default_settings = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
+      if "new_factory_defaults" in e:
+        make_new_factory_default_settings= True
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
         debugtrue = True
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
@@ -2218,14 +2232,6 @@ def run(isembedded=False, chimeraxsession=None):
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
         if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
-      if "remove_settings" in e:
-        NGL_HKLViewer.RemoveQsettings()
-        print("HKLViewer settings for %s removed." %NGL_HKLViewer.Qtversion)
-        exit()
-      if "remove_all_settings" in e:
-        NGL_HKLViewer.RemoveQsettings(all=True)
-        print("All HKLViewer settings removed.")
-        exit()
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
@@ -2255,6 +2261,9 @@ def run(isembedded=False, chimeraxsession=None):
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
+
+    if make_new_factory_default_settings:
+      HKLguiobj.MakeNewFactoryDefaultQsettings()
 
     if isembedded:
       return HKLguiobj
