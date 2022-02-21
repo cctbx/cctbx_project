@@ -104,8 +104,8 @@ namespace Kokkos {
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
     int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+    transfer_double2kokkos(m_source_I, SIM.source_I.begin(), source_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda.begin(), source_count);
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
 
@@ -193,8 +193,8 @@ namespace Kokkos {
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
     int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+    transfer_double2kokkos(m_source_I, SIM.source_I.begin(), source_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda.begin(), source_count);
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_lambda, SIM.source_lambda, SIM.sources));
 
@@ -260,17 +260,17 @@ namespace Kokkos {
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
     int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+    transfer_double2kokkos(m_source_I, SIM.source_I.begin(), source_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda.begin(), source_count);
 
     SCITBX_ASSERT(SIM.sources == ichannels.size()); /* For each nanoBragg source, this value instructs
     the simulation where to look for structure factors.  If -1, skip this source wavelength. */
 
     for (int ictr = 0; ictr < SIM.sources; ++ictr){
       if (ichannels[ictr] < 0) continue; // the ichannel array
-      printf("HA HA %4d channel %4d, %5.1f %5.1f %5.1f %10.5f %10.5g\n",ictr,ichannels[ictr],
-        SIM.source_X[ictr], SIM.source_Y[ictr], SIM.source_Z[ictr],
-        SIM.source_I[ictr], SIM.source_lambda[ictr]);
+      //printf("debug_sc %4d channel %4d, %5.1f %5.1f %5.1f %10.5f %10.5g\n",ictr,ichannels[ictr],
+      //  SIM.source_X[ictr], SIM.source_Y[ictr], SIM.source_Z[ictr],
+      //  SIM.source_I[ictr], SIM.source_lambda[ictr]);
 
       // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:
       vector_cudareal_t current_channel_Fhkl = kec.d_channel_Fhkl[ichannels[ictr]];
@@ -328,19 +328,19 @@ namespace Kokkos {
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
         int sources_count = SIM.sources;
-        transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
-        transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
+        transfer_double2kokkos(m_source_I, SIM.source_I.begin(), sources_count);
+        transfer_double2kokkos(m_source_lambda, SIM.source_lambda.begin(), sources_count);
         // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_I, SIM.source_I, SIM.sources));
         // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_lambda, SIM.source_lambda, SIM.sources));
 
         vector_cudareal_t stol_of("stol_of", SIM.stols);
-        transfer_X2kokkos(stol_of, SIM.stol_of, SIM.stols);
+        transfer_X2kokkos(stol_of, SIM.stol_of.begin(), SIM.stols);
         // CUDAREAL * cu_stol_of;
         // cudaSafeCall(cudaMalloc((void ** )&cu_stol_of, sizeof(*cu_stol_of) * SIM.stols));
         // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_stol_of, SIM.stol_of, SIM.stols));
 
         vector_cudareal_t Fbg_of("Fbg_of", SIM.stols);
-        transfer_X2kokkos(Fbg_of, SIM.Fbg_of, SIM.stols);
+        transfer_X2kokkos(Fbg_of, SIM.Fbg_of.begin(), SIM.stols);
         // CUDAREAL * cu_Fbg_of;
         // cudaSafeCall(cudaMalloc((void ** )&cu_Fbg_of, sizeof(*cu_Fbg_of) * SIM.stols));
         // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, SIM.Fbg_of, SIM.stols));
@@ -457,14 +457,14 @@ namespace Kokkos {
     transfer_double2kokkos(m_polar_vector, polar_vector_unitized, m_vector_length);
 
     int sources_count = SIM.sources;
-    transfer_double2kokkos(m_source_X, SIM.source_X, sources_count);
-    transfer_double2kokkos(m_source_Y, SIM.source_Y, sources_count);
-    transfer_double2kokkos(m_source_Z, SIM.source_Z, sources_count);
-    transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
+    transfer_double2kokkos(m_source_X, SIM.source_X.begin(), sources_count);
+    transfer_double2kokkos(m_source_Y, SIM.source_Y.begin(), sources_count);
+    transfer_double2kokkos(m_source_Z, SIM.source_Z.begin(), sources_count);
+    transfer_double2kokkos(m_source_I, SIM.source_I.begin(), sources_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda.begin(), sources_count);
 
     int mosaic_domains_count = SIM.mosaic_domains;
-    transfer_double2kokkos(m_mosaic_umats, SIM.mosaic_umats, mosaic_domains_count * 9);
+    transfer_double2kokkos(m_mosaic_umats, SIM.mosaic_umats.begin(), mosaic_domains_count * 9);
 
     // cudaSafeCall(cudaMalloc((void ** )&cu_polar_vector, sizeof(*cu_polar_vector) * vector_length));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_polar_vector, polar_vector_unitized, vector_length));

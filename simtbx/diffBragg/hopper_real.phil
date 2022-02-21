@@ -1,0 +1,66 @@
+ucell_edge_perc=15
+ucell_ang_abs=1
+space_group=P212121
+use_restraints = False
+method="L-BFGS-B"
+spectrum_from_imageset = False
+downsamp_spec {
+  delta_en = 1
+}
+roi {
+  shoebox_size = 12
+  fit_tilt=False
+  fit_tilt_using_weights = False
+  hotpixel_mask = bad.pkl
+  reject_edge_reflections = False
+  reject_roi_with_hotpix = False
+  pad_shoebox_for_background_estimation=10
+}
+refiner {
+  mask = bad.pkl 
+  adu_per_photon = 0.7 
+  sigma_r=10
+}
+simulator {
+  total_flux=1e12
+  oversample=1
+  crystal.has_isotropic_ncells = False
+  structure_factors.mtz_name = 7lvc.pdb.mtz 
+  structure_factors.mtz_column = "F(+),F(-)"
+  beam.size_mm = 0.001
+  detector.force_zero_thickness = True
+}
+init {
+  Nabc=[31.03,30.41,10.63]
+  G=100
+}
+mins {
+  Nabc=[3,3,3]
+  detz_shift=-1.5
+  RotXYZ=[-15,-15,-15]
+  G=0
+}
+maxs {
+  RotXYZ=[15,15,15]
+  Nabc=[1600,1600,1600]
+  G=1e16
+  detz_shift=1.5
+}
+betas {
+  RotXYZ=1e-4
+  Nabc=[5e2,5e2,5e1]
+  G=1e6
+  ucell=[1e-6,3e-6]
+  detz_shift=1e-6
+  Nvol=30
+}
+centers {
+  G=50
+  Nabc=[30.44,29.77,10.16]
+  ucell=[78.627,265.202]
+  B=10
+  Nvol=9205
+}
+sigmas {
+  RotXYZ=[1e-3,1e-3,1e-3]
+}
