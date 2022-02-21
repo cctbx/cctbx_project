@@ -22,8 +22,6 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon )
 
-
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -164,7 +162,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 364))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 392))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -268,66 +266,62 @@ class Ui_MainWindow(object):
         self.ClipPlaneChkGroupBox.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
         self.ClipPlaneChkGroupBox.setCheckable(True)
         self.ClipPlaneChkGroupBox.setChecked(False)
-        self.gridLayout_9 = QGridLayout(self.ClipPlaneChkGroupBox)
-        self.gridLayout_9.setSpacing(4)
-        self.gridLayout_9.setContentsMargins(3, 3, 3, 3)
-        self.gridLayout_9.setObjectName(u"gridLayout_9")
-        self.parallel_current_orientation_btn = QRadioButton(self.ClipPlaneChkGroupBox)
-        self.parallel_current_orientation_btn.setObjectName(u"parallel_current_orientation_btn")
-        sizePolicy10 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
-        sizePolicy10.setHorizontalStretch(0)
-        sizePolicy10.setVerticalStretch(0)
-        sizePolicy10.setHeightForWidth(self.parallel_current_orientation_btn.sizePolicy().hasHeightForWidth())
-        self.parallel_current_orientation_btn.setSizePolicy(sizePolicy10)
-        self.parallel_current_orientation_btn.setChecked(True)
+        self.gridLayout_6 = QGridLayout(self.ClipPlaneChkGroupBox)
+        self.gridLayout_6.setSpacing(4)
+        self.gridLayout_6.setContentsMargins(3, 3, 3, 3)
+        self.gridLayout_6.setObjectName(u"gridLayout_6")
+        self.normal_vec_btn = QRadioButton(self.ClipPlaneChkGroupBox)
+        self.normal_vec_btn.setObjectName(u"normal_vec_btn")
 
-        self.gridLayout_9.addWidget(self.parallel_current_orientation_btn, 0, 0, 1, 3)
-
-        self.normal_realspace_vec_btn = QRadioButton(self.ClipPlaneChkGroupBox)
-        self.normal_realspace_vec_btn.setObjectName(u"normal_realspace_vec_btn")
-        sizePolicy11 = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
-        sizePolicy11.setHorizontalStretch(1)
-        sizePolicy11.setVerticalStretch(0)
-        sizePolicy11.setHeightForWidth(self.normal_realspace_vec_btn.sizePolicy().hasHeightForWidth())
-        self.normal_realspace_vec_btn.setSizePolicy(sizePolicy11)
-
-        self.gridLayout_9.addWidget(self.normal_realspace_vec_btn, 1, 0, 1, 1)
+        self.gridLayout_6.addWidget(self.normal_vec_btn, 1, 0, 1, 2)
 
         self.clipplane_normal_vector_combo = QComboBox(self.ClipPlaneChkGroupBox)
         self.clipplane_normal_vector_combo.setObjectName(u"clipplane_normal_vector_combo")
-        sizePolicy12 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        sizePolicy12.setHorizontalStretch(3)
-        sizePolicy12.setVerticalStretch(0)
-        sizePolicy12.setHeightForWidth(self.clipplane_normal_vector_combo.sizePolicy().hasHeightForWidth())
-        self.clipplane_normal_vector_combo.setSizePolicy(sizePolicy12)
+        sizePolicy10 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy10.setHorizontalStretch(3)
+        sizePolicy10.setVerticalStretch(0)
+        sizePolicy10.setHeightForWidth(self.clipplane_normal_vector_combo.sizePolicy().hasHeightForWidth())
+        self.clipplane_normal_vector_combo.setSizePolicy(sizePolicy10)
 
-        self.gridLayout_9.addWidget(self.clipplane_normal_vector_combo, 1, 3, 1, 1)
-
-        self.label_13 = QLabel(self.ClipPlaneChkGroupBox)
-        self.label_13.setObjectName(u"label_13")
-        sizePolicy7.setHeightForWidth(self.label_13.sizePolicy().hasHeightForWidth())
-        self.label_13.setSizePolicy(sizePolicy7)
-        self.label_13.setTextFormat(Qt.RichText)
-        self.label_13.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
-
-        self.gridLayout_9.addWidget(self.label_13, 1, 4, 1, 1)
+        self.gridLayout_6.addWidget(self.clipplane_normal_vector_combo, 1, 3, 2, 2)
 
         self.clipplane_normal_vector_length = QLineEdit(self.ClipPlaneChkGroupBox)
         self.clipplane_normal_vector_length.setObjectName(u"clipplane_normal_vector_length")
-        sizePolicy13 = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
-        sizePolicy13.setHorizontalStretch(0)
-        sizePolicy13.setVerticalStretch(0)
-        sizePolicy13.setHeightForWidth(self.clipplane_normal_vector_length.sizePolicy().hasHeightForWidth())
-        self.clipplane_normal_vector_length.setSizePolicy(sizePolicy13)
+        sizePolicy11 = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        sizePolicy11.setHorizontalStretch(0)
+        sizePolicy11.setVerticalStretch(0)
+        sizePolicy11.setHeightForWidth(self.clipplane_normal_vector_length.sizePolicy().hasHeightForWidth())
+        self.clipplane_normal_vector_length.setSizePolicy(sizePolicy11)
         self.clipplane_normal_vector_length.setReadOnly(False)
 
-        self.gridLayout_9.addWidget(self.clipplane_normal_vector_length, 1, 5, 1, 1)
+        self.gridLayout_6.addWidget(self.clipplane_normal_vector_length, 1, 6, 2, 1)
+
+        self.normal_realspace_vec_btn = QRadioButton(self.ClipPlaneChkGroupBox)
+        self.normal_realspace_vec_btn.setObjectName(u"normal_realspace_vec_btn")
+        sizePolicy12 = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        sizePolicy12.setHorizontalStretch(1)
+        sizePolicy12.setVerticalStretch(0)
+        sizePolicy12.setHeightForWidth(self.normal_realspace_vec_btn.sizePolicy().hasHeightForWidth())
+        self.normal_realspace_vec_btn.setSizePolicy(sizePolicy12)
+
+        self.gridLayout_6.addWidget(self.normal_realspace_vec_btn, 2, 0, 1, 1)
+
+        self.normal_realspace_vec_label = QLabel(self.ClipPlaneChkGroupBox)
+        self.normal_realspace_vec_label.setObjectName(u"normal_realspace_vec_label")
+        sizePolicy13 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy13.setHorizontalStretch(1)
+        sizePolicy13.setVerticalStretch(0)
+        sizePolicy13.setHeightForWidth(self.normal_realspace_vec_label.sizePolicy().hasHeightForWidth())
+        self.normal_realspace_vec_label.setSizePolicy(sizePolicy13)
+        self.normal_realspace_vec_label.setWordWrap(True)
+
+        self.gridLayout_6.addWidget(self.normal_realspace_vec_label, 2, 1, 1, 2)
 
         self.label_15 = QLabel(self.ClipPlaneChkGroupBox)
         self.label_15.setObjectName(u"label_15")
         self.label_15.setWordWrap(True)
 
-        self.gridLayout_9.addWidget(self.label_15, 2, 0, 1, 2)
+        self.gridLayout_6.addWidget(self.label_15, 3, 0, 1, 2)
 
         self.hkldist_spinBox = MyQDoubleSpinBox(self.ClipPlaneChkGroupBox)
         self.hkldist_spinBox.setObjectName(u"hkldist_spinBox")
@@ -340,7 +334,7 @@ class Ui_MainWindow(object):
         self.hkldist_spinBox.setMinimum(-1000.000000000000000)
         self.hkldist_spinBox.setMaximum(1000.000000000000000)
 
-        self.gridLayout_9.addWidget(self.hkldist_spinBox, 2, 2, 1, 1)
+        self.gridLayout_6.addWidget(self.hkldist_spinBox, 3, 2, 1, 2)
 
         self.label_21 = QLabel(self.ClipPlaneChkGroupBox)
         self.label_21.setObjectName(u"label_21")
@@ -351,7 +345,7 @@ class Ui_MainWindow(object):
         self.label_21.setSizePolicy(sizePolicy15)
         self.label_21.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
 
-        self.gridLayout_9.addWidget(self.label_21, 2, 3, 1, 2)
+        self.gridLayout_6.addWidget(self.label_21, 3, 4, 1, 2)
 
         self.clipwidth_spinBox = MyQDoubleSpinBox(self.ClipPlaneChkGroupBox)
         self.clipwidth_spinBox.setObjectName(u"clipwidth_spinBox")
@@ -361,18 +355,27 @@ class Ui_MainWindow(object):
         self.clipwidth_spinBox.setMaximum(100.000000000000000)
         self.clipwidth_spinBox.setSingleStep(0.500000000000000)
 
-        self.gridLayout_9.addWidget(self.clipwidth_spinBox, 2, 5, 1, 1)
+        self.gridLayout_6.addWidget(self.clipwidth_spinBox, 3, 6, 1, 1)
 
-        self.label_9 = QLabel(self.ClipPlaneChkGroupBox)
-        self.label_9.setObjectName(u"label_9")
-        sizePolicy16 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        sizePolicy16.setHorizontalStretch(1)
+        self.label_13 = QLabel(self.ClipPlaneChkGroupBox)
+        self.label_13.setObjectName(u"label_13")
+        sizePolicy7.setHeightForWidth(self.label_13.sizePolicy().hasHeightForWidth())
+        self.label_13.setSizePolicy(sizePolicy7)
+        self.label_13.setTextFormat(Qt.RichText)
+        self.label_13.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
+
+        self.gridLayout_6.addWidget(self.label_13, 1, 5, 2, 1)
+
+        self.parallel_current_orientation_btn = QRadioButton(self.ClipPlaneChkGroupBox)
+        self.parallel_current_orientation_btn.setObjectName(u"parallel_current_orientation_btn")
+        sizePolicy16 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        sizePolicy16.setHorizontalStretch(0)
         sizePolicy16.setVerticalStretch(0)
-        sizePolicy16.setHeightForWidth(self.label_9.sizePolicy().hasHeightForWidth())
-        self.label_9.setSizePolicy(sizePolicy16)
-        self.label_9.setWordWrap(True)
+        sizePolicy16.setHeightForWidth(self.parallel_current_orientation_btn.sizePolicy().hasHeightForWidth())
+        self.parallel_current_orientation_btn.setSizePolicy(sizePolicy16)
+        self.parallel_current_orientation_btn.setChecked(True)
 
-        self.gridLayout_9.addWidget(self.label_9, 1, 1, 1, 2)
+        self.gridLayout_6.addWidget(self.parallel_current_orientation_btn, 0, 0, 1, 3)
 
 
         self.gridLayout_7.addWidget(self.ClipPlaneChkGroupBox, 0, 0, 1, 1)
@@ -394,8 +397,8 @@ class Ui_MainWindow(object):
 
         self.angleStepHKLrotSpinBox = QDoubleSpinBox(self.groupBox)
         self.angleStepHKLrotSpinBox.setObjectName(u"angleStepHKLrotSpinBox")
-        sizePolicy10.setHeightForWidth(self.angleStepHKLrotSpinBox.sizePolicy().hasHeightForWidth())
-        self.angleStepHKLrotSpinBox.setSizePolicy(sizePolicy10)
+        sizePolicy16.setHeightForWidth(self.angleStepHKLrotSpinBox.sizePolicy().hasHeightForWidth())
+        self.angleStepHKLrotSpinBox.setSizePolicy(sizePolicy16)
         self.angleStepHKLrotSpinBox.setWrapping(True)
         self.angleStepHKLrotSpinBox.setDecimals(1)
         self.angleStepHKLrotSpinBox.setMinimum(0.000000000000000)
@@ -414,8 +417,8 @@ class Ui_MainWindow(object):
         self.gridLayout_16.setObjectName(u"gridLayout_16")
         self.xHKLrotBtn = QPushButton(self.groupBox_2)
         self.xHKLrotBtn.setObjectName(u"xHKLrotBtn")
-        sizePolicy13.setHeightForWidth(self.xHKLrotBtn.sizePolicy().hasHeightForWidth())
-        self.xHKLrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.xHKLrotBtn.sizePolicy().hasHeightForWidth())
+        self.xHKLrotBtn.setSizePolicy(sizePolicy11)
         icon = QIcon()
         icon.addFile(u"roundarrow2.png", QSize(), QIcon.Normal, QIcon.Off)
         self.xHKLrotBtn.setIcon(icon)
@@ -425,8 +428,8 @@ class Ui_MainWindow(object):
 
         self.xHKLbackrotBtn = QPushButton(self.groupBox_2)
         self.xHKLbackrotBtn.setObjectName(u"xHKLbackrotBtn")
-        sizePolicy13.setHeightForWidth(self.xHKLbackrotBtn.sizePolicy().hasHeightForWidth())
-        self.xHKLbackrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.xHKLbackrotBtn.sizePolicy().hasHeightForWidth())
+        self.xHKLbackrotBtn.setSizePolicy(sizePolicy11)
         icon1 = QIcon()
         icon1.addFile(u"roundarrow.png", QSize(), QIcon.Normal, QIcon.Off)
         self.xHKLbackrotBtn.setIcon(icon1)
@@ -446,16 +449,16 @@ class Ui_MainWindow(object):
         self.gridLayout_19.setObjectName(u"gridLayout_19")
         self.yHKLrotBtn = QPushButton(self.groupBox_4)
         self.yHKLrotBtn.setObjectName(u"yHKLrotBtn")
-        sizePolicy13.setHeightForWidth(self.yHKLrotBtn.sizePolicy().hasHeightForWidth())
-        self.yHKLrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.yHKLrotBtn.sizePolicy().hasHeightForWidth())
+        self.yHKLrotBtn.setSizePolicy(sizePolicy11)
         self.yHKLrotBtn.setIcon(icon)
 
         self.gridLayout_19.addWidget(self.yHKLrotBtn, 0, 0, 1, 1)
 
         self.yHKLbackrotBtn = QPushButton(self.groupBox_4)
         self.yHKLbackrotBtn.setObjectName(u"yHKLbackrotBtn")
-        sizePolicy13.setHeightForWidth(self.yHKLbackrotBtn.sizePolicy().hasHeightForWidth())
-        self.yHKLbackrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.yHKLbackrotBtn.sizePolicy().hasHeightForWidth())
+        self.yHKLbackrotBtn.setSizePolicy(sizePolicy11)
         self.yHKLbackrotBtn.setIcon(icon1)
 
         self.gridLayout_19.addWidget(self.yHKLbackrotBtn, 0, 1, 1, 1)
@@ -472,16 +475,16 @@ class Ui_MainWindow(object):
         self.gridLayout_21.setObjectName(u"gridLayout_21")
         self.zHKLrotBtn = QPushButton(self.groupBox_6)
         self.zHKLrotBtn.setObjectName(u"zHKLrotBtn")
-        sizePolicy13.setHeightForWidth(self.zHKLrotBtn.sizePolicy().hasHeightForWidth())
-        self.zHKLrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.zHKLrotBtn.sizePolicy().hasHeightForWidth())
+        self.zHKLrotBtn.setSizePolicy(sizePolicy11)
         self.zHKLrotBtn.setIcon(icon)
 
         self.gridLayout_21.addWidget(self.zHKLrotBtn, 0, 0, 1, 1)
 
         self.zHKLbackrotBtn = QPushButton(self.groupBox_6)
         self.zHKLbackrotBtn.setObjectName(u"zHKLbackrotBtn")
-        sizePolicy13.setHeightForWidth(self.zHKLbackrotBtn.sizePolicy().hasHeightForWidth())
-        self.zHKLbackrotBtn.setSizePolicy(sizePolicy13)
+        sizePolicy11.setHeightForWidth(self.zHKLbackrotBtn.sizePolicy().hasHeightForWidth())
+        self.zHKLbackrotBtn.setSizePolicy(sizePolicy11)
         self.zHKLbackrotBtn.setIcon(icon1)
 
         self.gridLayout_21.addWidget(self.zHKLbackrotBtn, 0, 1, 1, 1)
@@ -913,7 +916,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.functionTabWidget.setCurrentIndex(0)
+        self.functionTabWidget.setCurrentIndex(1)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
 
@@ -964,10 +967,13 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.ClipPlaneChkGroupBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Limit the view of reflections with a clip plane parallel to the screen</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane which:", None))
-        self.parallel_current_orientation_btn.setText(QCoreApplication.translate("MainWindow", u"is parallel to current orientation", None))
+        self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane parallel to screen that:", None))
+        self.normal_vec_btn.setText(QCoreApplication.translate("MainWindow", u"is normal to:", None))
+#if QT_CONFIG(tooltip)
+        self.clipplane_normal_vector_length.setToolTip(QCoreApplication.translate("MainWindow", u"use current scale or multiply with a number to form a new scale", None))
+#endif // QT_CONFIG(tooltip)
         self.normal_realspace_vec_btn.setText("")
-        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Scale:", None))
+        self.normal_realspace_vec_label.setText(QCoreApplication.translate("MainWindow", u"is normal to real space vector associated with:", None))
 #if QT_CONFIG(tooltip)
         self.label_15.setToolTip(QCoreApplication.translate("MainWindow", u"in units of the selected vector above", None))
 #endif // QT_CONFIG(tooltip)
@@ -979,7 +985,8 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.clipwidth_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"Adjust width to exclude reflections that should not be visible or to make visible reflections that are not", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_9.setText(QCoreApplication.translate("MainWindow", u"is normal to real space vector associated with:", None))
+        self.label_13.setText(QCoreApplication.translate("MainWindow", u"Scale:", None))
+        self.parallel_current_orientation_btn.setText(QCoreApplication.translate("MainWindow", u"uses current orientation", None))
         self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotate reflections around X, Y, Z axes", None))
         self.label_14.setText(QCoreApplication.translate("MainWindow", u"Angular step of:", None))
         self.angleStepHKLrotSpinBox.setSuffix(QCoreApplication.translate("MainWindow", u"\u00ba", None))

@@ -217,7 +217,7 @@ MainWindow.setCentralWidget(self.centralwidget)
 """
 
 class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
-  settings = QSettings("CCTBX", "HKLviewer" )
+  settings = QSettings("CCTBX", "HKLviewer" ) # static attribute so can be accessed in RemoveQsettings()
   # qversion() comes out like '5.12.5'. We just want '5.12'
   Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
 
@@ -228,6 +228,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.isembedded = isembedded
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
+    self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
     self.ReadPersistedQsettings()
     self.lasttime = time.monotonic()
 
@@ -820,7 +821,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.vectortable2.clearContents()
             self.vectortable2.setRowCount(len(self.all_vectors)+1)
             cw = 0
-            for row, (opnr, label, order, cartvec, hklop, hkls, abcs) in enumerate(self.all_vectors):
+            for row, (opnr, label, order, cartvec, hklop, hkls, abcs, length) in enumerate(self.all_vectors):
               for col,elm in enumerate((label, hklop, hkls, abcs)):
                 item = QTableWidgetItem(str(elm))
                 if col == 0:
@@ -828,9 +829,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                   item.setCheckState(Qt.Unchecked)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
-
-              cartveclength = math.sqrt(cartvec[0]*cartvec[0] +cartvec[1]*cartvec[1] +cartvec[2]*cartvec[2] )
-              self.clipplane_normal_vector_combo.addItem(label, userData=cartveclength)
+              self.clipplane_normal_vector_combo.addItem(label, userData=length)
               cw = max(cw, self.clipplane_normal_vector_combo.fontMetrics().width( label) )
             self.clipplane_normal_vector_combo.view().setMinimumWidth(cw)
 
@@ -1027,6 +1026,16 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
+
+    idx = self.clipplane_normal_vector_combo.currentIndex()
+    if len(self.all_vectors) > 0:
+      opnr, label, order, cartvec, hklop, hkls, abcs, length = self.all_vectors[idx]
+      if hkls == "":
+        self.normal_realspace_vec_btn.setEnabled(False)
+        self.normal_realspace_vec_label.setEnabled(False)
+      else:
+        self.normal_realspace_vec_btn.setEnabled(True)
+        self.normal_realspace_vec_label.setEnabled(True)
 
     self.unfeedback = False
 
@@ -1471,7 +1480,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
     self.clipwidth_spinBox.setValue(0.35 )
     self.clipwidth_spinBox.setDecimals(3)
-    self.clipwidth_spinBox.setSingleStep(0.025)
+    self.clipwidth_spinBox.setSingleStep(0.05)
     self.clipwidth_spinBox.setRange(0.0, 100.0)
     self.clipwidth_spinBox.editingFinished.connect(self.onClipwidthEditFinished)
     self.clipwidth_spinBox.onStepBy = self.onClipwidthEditFinished
@@ -1487,12 +1496,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
     self.parallel_current_orientation_btn.clicked.connect(self.onParallel_current_orientation_btn_click)
     self.normal_realspace_vec_btn.clicked.connect(self.onNormal_realspace_vec_btn_click)
+    self.normal_vec_btn.clicked.connect(self.onNormal_vec_btn_click)
 
 
   def onClipwidthNormalVecLengthEditFinished(self):
     if not self.unfeedback:
-      philstr = "clip_plane.normal_vector_length_scale = %s"  %self.clipplane_normal_vector_length.text()
-      self.send_message(philstr)
+      try:
+        val = eval(self.clipplane_normal_vector_length.text())
+        philstr = "clip_plane.normal_vector_length_scale = %s"  %val
+        self.send_message(philstr)
+      except Exception as e:
+        print( str(e) )
 
 
   def onClipPlaneNormalVecSelchange(self):
@@ -1507,22 +1521,35 @@ clip_plane.normal_vector_length_scale = -1
 
   def onParallel_current_orientation_btn_click(self):
     self.clipplane_normal_vector_combo.setEnabled(False)
-    philstr = """viewer.fixorientation = vector
+    philstr = """viewer.fixorientation = *None
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = -1
 """ %self.clipwidth_spinBox.value()
     self.send_message(philstr)
 
 
-  def onNormal_realspace_vec_btn_click(self):
+  def onNormal_vec_btn_click(self):
     self.clipplane_normal_vector_combo.setEnabled(True)
-    philstr = """viewer.fixorientation = vector
+    philstr = """viewer.fixorientation = *vector
+viewer.is_parallel = False
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
+clip_plane.is_assoc_real_space_vector = False
 clip_plane.normal_vector_length_scale = -1
 """ %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
     self.send_message(philstr)
 
+
+  def onNormal_realspace_vec_btn_click(self):
+    self.clipplane_normal_vector_combo.setEnabled(True)
+    philstr = """viewer.fixorientation = *vector
+viewer.is_parallel = False
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = %d
+clip_plane.is_assoc_real_space_vector = True
+clip_plane.normal_vector_length_scale = -1
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+    self.send_message(philstr)
 
 
   def onXangleHKLrotate(self):
@@ -1577,6 +1604,20 @@ clip_plane.normal_vector_length_scale = -1
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
+clip_plane.is_assoc_real_space_vector = True
+clip_plane.normal_vector_length_scale = -1
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+      elif self.normal_vec_btn.isChecked():
+        self.clipplane_normal_vector_combo.setEnabled(True)
+        philstr = """viewer {
+  slice_mode = False
+  inbrowser = True
+  is_parallel = False
+  fixorientation = vector
+}
+clip_plane.clipwidth = %f
+clip_plane.normal_vector = %d
+clip_plane.is_assoc_real_space_vector = False
 clip_plane.normal_vector_length_scale = -1
 """ %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
       else:
@@ -1584,7 +1625,7 @@ clip_plane.normal_vector_length_scale = -1
         philstr = """viewer {
   slice_mode = False
   inbrowser = True
-  is_parallel = False
+  is_parallel = True
   fixorientation = vector
 }
 clip_plane.clipwidth = %f
@@ -1980,15 +2021,28 @@ clip_plane {
     return self.send_message(str(self.datatypedict), msgtype="datatypedict")
 
 
-  def PersistQsettings(self):
-    self.settings.setValue("PythonPath", self.cctbxpython )
+  def PersistQsettings(self, write_factory_default_settings = False):
+    Qtversion = self.Qtversion
+    if write_factory_default_settings:
+      self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
+      print("Writing factory defaults to " + self.factorydefaultfname)
+      Qtversion = "Qt"
+    if not write_factory_default_settings:  # don't store system specific value as a default
+      self.settings.setValue("PythonPath", self.cctbxpython )
     self.settings.beginGroup("MillerTableColumnHeader")
+
     for philname, dummy, value in self.colnames_select_lst:
       self.settings.setValue(philname, int(value) )
+    if len(self.colnames_select_lst) == 0:
+      # No hkl file was opened so just save whatever MillerTableColumnHeader was already on disc
+      # ReadPersistedQsettings() stored this in self.colnames_select_dict initially
+      for philname in list(self.colnames_select_dict.keys()):
+        self.settings.setValue(philname, int(self.colnames_select_dict[philname]) )
     self.settings.endGroup() # MillerTableColumnHeader
 
-    self.settings.beginGroup(self.Qtversion )
-    self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
+    self.settings.beginGroup(Qtversion )
+    if not write_factory_default_settings: # don't store system specific value as a default
+      self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
     self.settings.setValue("FontSize", self.fontsize )
     self.settings.setValue("WordWrapTextInfo", int(self.wraptextinfo ))
     self.settings.setValue("MouseSpeed", self.mousespeed )
@@ -2008,10 +2062,24 @@ clip_plane {
       self.settings.setValue(datatype + "/RadiiScale", self.datatypedict[ datatype ][3])
     self.settings.endGroup() # DataTypesGroups
     self.settings.endGroup() # PySide2_ + Qtversion
+    if write_factory_default_settings: # reset path for when closing app will save settings again
+      self.settings = QSettings("CCTBX", "HKLviewer" )
 
 
   def ReadPersistedQsettings(self):
     # read the users persisted settings from disc
+    # First see if there are any. If not then use factory defaults stored in .ini file
+    self.settings.beginGroup(self.Qtversion)
+    use_factory_default_settings = False
+    if len(self.settings.allKeys()) == 0: # no settings for this Qt version
+      use_factory_default_settings = True
+    self.settings.endGroup()
+    Qtversion = self.Qtversion
+    if use_factory_default_settings:
+      print("Reading factory defaults from " + self.factorydefaultfname)
+      self.settings = QSettings(self.factorydefaultfname, QSettings.IniFormat)
+      Qtversion = "Qt"
+
     # Locate cctbx.python. If not in the Qsettings then try if in the executable path environment
     cctbxpython_from_settings = self.settings.value("PythonPath", "")
     cctbxpython_from_env = ""
@@ -2042,13 +2110,12 @@ clip_plane {
     self.settings.beginGroup("MillerTableColumnHeader")
     keys = self.settings.childKeys()
     for philname in keys:
-     self.colnames_select_dict[philname] = self.settings.value(philname, 1)
+      self.colnames_select_dict[philname] = int(self.settings.value(philname, 1))
     self.settings.endGroup() # MillerTableColumnHeader
-
     # In case of more than one PySide2 installation tag the settings by version number of PySide2
-    # as different versions may use different metrics for font and window sizes
-    self.settings.beginGroup(self.Qtversion)
-
+    # as different versions seem too use different scaling for font and window sizes
+    # But in case of using factory defaults then just look for the "Qt" group
+    self.settings.beginGroup(Qtversion)
     self.settings.beginGroup("DataTypesGroups")
     datatypes = self.settings.childGroups()
     #datatypedict = { }
@@ -2061,21 +2128,27 @@ clip_plane {
                                     ]
     self.settings.endGroup()
     self.QWebEngineViewFlags = self.settings.value("QWebEngineViewFlags", None)
-    self.mousespeed = self.settings.value("MouseSpeed", 0.3)
-    self.textinfosize = self.settings.value("TextBufferSize", 30)
+    self.mousespeed = float(self.settings.value("MouseSpeed", 0.3))
+    self.textinfosize = int(self.settings.value("TextBufferSize", 30))
     self.wraptextinfo = bool(self.settings.value("WordWrapTextInfo", 0))
-    self.fontsize = self.settings.value("FontSize", 10)
-    self.browserfontsize = self.settings.value("BrowserFontSize", 9)
+    self.fontsize = float(self.settings.value("FontSize", 10))
+    self.browserfontsize = float(self.settings.value("BrowserFontSize", 9))
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
     self.windowsize = self.settings.value("windowsize", None)
     self.splitter1sizes = self.settings.value("splitter1Sizes", None)
     self.splitter2sizes = self.settings.value("splitter2Sizes", None)
     self.settings.endGroup()
+    if use_factory_default_settings:
+      # Revert to storing settings in the default Qsettings location such as
+      # Windows: HKEY_CURRENT_USER\Software\ , Linux: $HOME/.config/ or MacOS: $HOME/Library/Preferences/
+      # Do this by constructing a Qsettings object with our program scope
+      self.settings = QSettings("CCTBX", "HKLviewer" )
+
     # test for any necessary flags for WebGL to work on this platform
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
       if not self.isembedded:
-        print("testing if WebGL works in QWebEngineView....")
+        print("Testing if WebGL works in QWebEngineView....")
         QtChromiumCheck_fpath = os.path.join(os.path.split(HKLviewerGui.__file__)[0], "QtChromiumCheck.py")
         cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
         webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
@@ -2118,12 +2191,17 @@ clip_plane {
     self.setDatatypedict(self.datatypedict)
 
 
+  def MakeNewFactoryDefaultQsettings(self):
+    self.PersistQsettings(True)
+
+
   @staticmethod
   def RemoveQsettings(all=False):
     mstr = NGL_HKLViewer.Qtversion
     if all:
       mstr = ""
     NGL_HKLViewer.settings.remove(mstr)
+
 
 
 def run(isembedded=False, chimeraxsession=None):

@@ -408,15 +408,6 @@ class hklview_3d:
       self.set_scene()
       self.params.miller_array_operations = ""
 
-    if has_phil_path(diff_phil, "fixorientation", "slice_axis") and \
-     self.viewerparams.slice_mode and self.viewerparams.fixorientation == "reflection_slice":
-     # explicit slicing is not volatile
-      if self.viewerparams.slice_axis=="h": hkl = [1,0,0]
-      if self.viewerparams.slice_axis=="k": hkl = [0,1,0]
-      if self.viewerparams.slice_axis=="l": hkl = [0,0,1]
-      R = hkl[0] * self.normal_kl + hkl[1] * self.normal_lh - hkl[2] * self.normal_hk
-      self.orient_vector_to_screen(R[0])
-
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
                       "use_provided_miller_arrays",
@@ -465,8 +456,10 @@ class hklview_3d:
         hkldist = self.params.clip_plane.hkldist
       msg = ""
       if self.params.clip_plane.normal_vector != -1:
-        # cartvec is reciprocal vector in cartesian coordinates
+        # cartvec can be hklvec vector in cartesian coordinates
+        # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
+        L = self.all_vectors[ self.params.clip_plane.normal_vector ][7]
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
@@ -474,21 +467,29 @@ class hklview_3d:
         try:
           hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
         except Exception as e:
-          hklvec = roundoff(list(matrix.sqr(uc.orthogonalization_matrix()).transpose() * cartvec/self.scene.renderscale))
-        # Make a string of the equation of the plane of reflections
-        hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" %(hklvec[0], hklvec[1], hklvec[2], self.params.clip_plane.hkldist *hklvecsqr)
+          hklvec = list(self.reciprocal_from_real_space_vector(cartvec ))
         # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
         real_space_vec = hklvec * matrix.sqr(uc.orthogonalization_matrix())
         # In the general case real_space_vec is not parallel to hklvec
         # Orient the clip plane perpendicular to real_space_vec while at the
         # same time slide clip plane along the cartvec (reciprocal vector) direction
         # in units of cartvec projected onto real_space_vec
+        if self.params.clip_plane.is_assoc_real_space_vector:
+          orientvector = real_space_vec
+        else:
+          orientvector = cartvec
         self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
-        self.orient_vector_to_screen(real_space_vec)
-        L = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        self.orient_vector_to_screen(orientvector)
+        scalefactor = 1.0
         if self.params.clip_plane.normal_vector_length_scale > 0:
+          scalefactor = L/self.params.clip_plane.normal_vector_length_scale
           L = self.params.clip_plane.normal_vector_length_scale
+        # Make a string of the equation of the plane of reflections
+        hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
+        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
+          %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
+          roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
+          #roundoff(self.params.clip_plane.hkldist * L))
         cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * L *cosine
       self.AddToBrowserMsgQueue("PrintInformation", msg)
@@ -1170,7 +1171,6 @@ class hklview_3d:
     self.normal_hk = h_axis.cross( k_axis )
     self.normal_kl = k_axis.cross( l_axis )
     self.normal_lh = l_axis.cross( h_axis )
-
     maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
     l1 = self.scene.renderscale * maxnorm * 1.1
     l2= self.scene.renderscale * maxnorm * 1.15
@@ -1825,7 +1825,7 @@ Distance: %s
 
 
   def draw_vector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
-                  r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8):
+                  r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8, autozoom = True):
     """
     Place vector from [s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
     If name=="" creation is deferred until draw_vector is eventually called with name != ""
@@ -1850,7 +1850,7 @@ Distance: %s
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
     self.draw_cartesian_vector(svec1[0], svec1[1], svec1[2], svec2[0], svec2[1], svec2[2],
-                            label, r, g, b, name, radius, labelpos)
+                            label, r, g, b, name, radius, labelpos, autozoom)
 
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="",
@@ -1982,26 +1982,27 @@ in the space group %s\nwith unit cell %s\n""" \
       (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
       if label != "":
         self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
-        self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "") )
+        veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )
 
 
   def show_all_vectors(self):
-    for (opnr, label, order, v, hklop, hkl, abc) in self.all_vectors:
-      self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, v, hklop, autozoom=False)
+    for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
+      self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, cartvec, hklop, autozoom=False)
 
 
   def show_vector(self):
     [i, isvisible] = eval(self.viewerparams.show_vector)
     self.visual_symmxs = []
-    (opnr, label, order, v, hklop, hkl, abc) = self.all_vectors[i]
+    (opnr, label, order, v, hklop, hkl, abc, length) = self.all_vectors[i]
     self.show_labelled_vector(isvisible, label, order, v, hklop)
 
 
-  def show_labelled_vector(self, isvisible, label, order, v, hklop, autozoom=True):
+  def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
     # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
     name = label + hklop.replace(",", "_")
     if isvisible:
-      self.currentrotvec = v # the vector used for aligning
+      self.currentrotvec = cartvec # cartesian vector to display and used for aligning
       if order > 0 and hklop != "":
 # if this is a rotation operator deduce the group of successive rotation matrices it belongs to
         rt = sgtbx.rt_mx(symbol= hklop, r_den=12, t_den=144)
@@ -2017,7 +2018,7 @@ in the space group %s\nwith unit cell %s\n""" \
         uc = self.miller_array.unit_cell()
         OrtMx = matrix.sqr( uc.orthogonalization_matrix())
         s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
-        self.currentrotvec = [s*v[0], s*v[1], s*v[2]]
+        self.currentrotvec = [s*cartvec[0], s*cartvec[1], s*cartvec[2]]
       self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
                                   self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
                                   label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
@@ -2114,7 +2115,8 @@ in the space group %s\nwith unit cell %s\n""" \
     self.draw_vector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
     self.draw_vector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
     self.draw_vector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
-    self.draw_vector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad, name="unitcell")
+    self.draw_vector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad,
+                     name="unitcell", autozoom=False)
     self.mprint( "Adding real space unit cell", verbose=1)
 
 
@@ -2135,7 +2137,8 @@ in the space group %s\nwith unit cell %s\n""" \
     self.draw_vector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
     self.draw_vector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
     self.draw_vector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
-    self.draw_vector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad, name="reciprocal_unitcell")
+    self.draw_vector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad,
+                     name="reciprocal_unitcell", autozoom=False)
     self.mprint( "Adding reciprocal unit cell", verbose=1)
 
 
@@ -2157,6 +2160,33 @@ in the space group %s\nwith unit cell %s\n""" \
     vec2 = vec * matrix.sqr(uc.orthogonalization_matrix())
     bodydiagonal_length =  vec2.length()
     self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
+
+
+  def real_space_from_cartesian_vector(self, cartvec):
+    uc = self.miller_array.unit_cell()
+    return cartvec * matrix.sqr(uc.fractionalization_matrix())
+
+
+  def real_space_associated_with_reciprocal_vector(self, hklvec):
+    # Get corresponding real space vector (in real space units) to the hkl vector
+    uc = self.miller_array.unit_cell()
+    R= hklvec[0] * self.normal_kl + hklvec[1] * self.normal_lh - hklvec[2] * self.normal_hk
+    return (R[0]*matrix.sqr(uc.orthogonalization_matrix()).inverse()) * self.scene.renderscale
+    #return hklvec * matrix.sqr(uc.orthogonalization_matrix())
+
+
+  def reciprocal_from_real_space_vector(self, realspacevec):
+    uc = self.miller_array.unit_cell()
+    return matrix.sqr(uc.orthogonalization_matrix()).inverse() * realspacevec
+
+
+  def reciprocal_associated_with_real_space_vector(self, hklvec):
+    uc = self.miller_array.unit_cell()
+    cartvec = hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()
+    myhkl = matrix.sqr(uc.orthogonalization_matrix()).inverse() * cartvec * self.scene.renderscale
+    #hkl = myhkl[0] * self.normal_bc + myhkl[1] * self.normal_ca - myhkl[2] * self.normal_ab
+    return myhkl
+
 
 
   def project_vector1_vector2(self, vec1, vec2):
