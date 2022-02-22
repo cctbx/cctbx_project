@@ -1149,6 +1149,9 @@ def run_refine_cryoem_errors(
   from libtbx import group_args
   from iotbx.map_model_manager import map_model_manager
 
+  if verbosity > 0:
+    print("\nPrepare map for docking by analysing signal and errors")
+
   # Start from two half-maps and ordered volume mask in map_model_manager
   # Keep track of ordered volume in whole reconstruction
   ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
@@ -1587,14 +1590,14 @@ def run():
     nucleic_mw = args.nucleic_mw
 
   if args.model is not None:
-    if (args.cutout_model is None) and(args.flatten_model is None):
+    if not (args.cutout_model or args.flatten_model):
       print('Use for model must be specified (flatten or cut out map')
       sys.stdout.flush()
       exit
     model_file = args.model
     model = dm.get_model(model_file)
 
-  if (args.sphere_cent is not None) and (args.cutout_model is not None):
+  if (args.sphere_cent is not None) and args.cutout_model:
     print("Only one method to define region to cut out (sphere or model) can be given")
     sys.stdout.flush()
     exit
@@ -1603,7 +1606,7 @@ def run():
     sphere_cent = tuple(args.sphere_cent)
     radius = args.radius
     cutout_specified = True
-  if args.cutout_model is not None:
+  if args.cutout_model:
     assert args.model is not None
     sphere_cent, radius = sphere_enclosing_model(model)
     radius = radius + d_min # Expand to allow width for density
