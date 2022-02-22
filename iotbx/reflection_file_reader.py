@@ -92,7 +92,7 @@ def _cif_prefilter(file_name):
   if f_ext.lower() == '.gz': f_root, f_ext = os.path.splitext(f_root)
   if f_ext.lower() in ['.cif', '.mmcif', '.dic']: return True
   with open(file_name) as f:
-    for l in f.readlines():
+    for l in f:
       if l.strip().startswith('#'): continue
       if not l.strip(): continue
       return l.strip().lower().startswith('data_')
