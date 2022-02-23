@@ -24,13 +24,12 @@ import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-import iota.components.iota_utils as util
-import iota.components.gui.controls as ct
-import iota.components.gui.phil_controls as pct
-from iota.components.gui import make_phil_index
-from iota.components.gui.base import IOTABasePanel, IOTABaseFrame, \
-  IOTABaseScrolledPanel
-from iota.components.gui.plotter import PlotWindow
+from iota.utils import utils
+import iota.gui.controls as ct
+import iota.gui.phil_controls as pct
+from iota.gui import make_phil_index
+from iota.gui.base import IOTABasePanel, IOTABaseFrame, IOTABaseScrolledPanel
+from iota.gui.plotter import PlotWindow
 
 from prime import prime_license, prime_description
 import prime.postrefine.mod_gui_dialogs as dlg
@@ -39,8 +38,8 @@ from prime.postrefine.mod_input import master_phil
 from prime.postrefine.mod_plotter import Plotter
 
 user = getpass.getuser()
-ginp = util.InputFinder()
-f = util.WxFlags()
+ginp = utils.InputFinder()
+f = utils.WxFlags()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -173,7 +172,7 @@ class PRIMEInputWindow(IOTABasePanel):
         self.pparams.hklrefin = reference
 
     self.out_dir = self.out_box.ctr.GetValue()
-    self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)  # Need to change
+    self.pparams.run_no = utils.set_base_dir(out_dir=self.out_dir)  # Need to change
     self.pparams.title = self.project_title.ctr.GetValue()
     self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
     self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
@@ -206,7 +205,7 @@ class PRIMEInputWindow(IOTABasePanel):
     self.pparams = self.prime_phil.extract()
 
   def generate_phil_string(self, current_phil):
-    with util.Capturing() as txt_output:
+    with utils.Capturing() as txt_output:
       current_phil.show()
     self.phil_string = ''
     for one_output in txt_output:
@@ -427,10 +426,10 @@ class PRIMEWindow(IOTABaseFrame):
     # update output folder
     if update_run_no:
       if self.pparams.run_no is None:
-        self.pparams.run_no = util.set_base_dir()
+        self.pparams.run_no = utils.set_base_dir()
       else:
         self.out_dir = os.path.dirname(self.pparams.run_no)
-        self.pparams.run_no = util.set_base_dir(out_dir=self.out_dir)
+        self.pparams.run_no = utils.set_base_dir(out_dir=self.out_dir)
 
     # Update index and PHIL from params
     self.prime_index.update_from_python(python_object=self.pparams)
@@ -526,7 +525,7 @@ class PRIMEWindow(IOTABaseFrame):
     # Automatically advance run_no
     old_run_no = self.input_window.get_value('run_no')
     if os.path.isdir(old_run_no):
-      new_run_no = util.set_base_dir(dirname=os.path.dirname(old_run_no))
+      new_run_no = utils.set_base_dir(dirname=os.path.dirname(old_run_no))
       self.input_window.change_value('run_no', new_run_no)
 
     input_phil_string = self.input_window.GetPHIL(expand=True)
@@ -571,7 +570,7 @@ class PRIMEWindow(IOTABaseFrame):
 
     # Generate text of params
     final_phil = master_phil.format(python_object=self.pparams)
-    with util.Capturing() as txt_output:
+    with utils.Capturing() as txt_output:
       final_phil.show()
     txt_out = ''
     for one_output in txt_output:

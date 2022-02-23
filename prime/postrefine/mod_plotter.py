@@ -12,7 +12,7 @@ import numpy as np
 
 from matplotlib import gridspec, rc
 
-from iota.components.gui.plotter import Plotter as IOTAPlotter
+from iota.gui.plotter import Plotter as IOTAPlotter
 
 class Plotter(IOTAPlotter):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''

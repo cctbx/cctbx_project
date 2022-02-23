@@ -15,9 +15,9 @@ from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
-from iota.components.iota_utils import WxFlags, Capturing
-from iota.components.gui.base import BaseBackendDialog, IOTABaseDialog
-import iota.components.gui.controls as ct
+from iota.utils.utils import WxFlags, Capturing
+from iota.gui.base import BaseBackendDialog, IOTABaseDialog
+import iota.gui.controls as ct
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
