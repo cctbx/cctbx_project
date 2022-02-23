@@ -487,6 +487,7 @@ class _SingletonOptimizer(object):
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
 
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
