@@ -1018,6 +1018,22 @@ namespace {
       || ((e[0] == 'H' || e[0] == 'D') && (e[1] == ' ' || e[1] == '\0')));
   }
 
+
+  // Convert a fixed-length character array to a string.
+  // This makes it at most 2 characters long and also makes both characters upper case.
+  // We do this because some paths through CCTBX produced lower-case second letters and
+  // others produces upper-case second letters.
+  static std::string convertElementToString(char* a)
+  {
+    std::string ret = "";
+    for (size_t i = 0; i < 2; i++) {
+      if (a[i]) {
+        ret += toupper(a[i]);
+      }
+    }
+    return ret;
+  }
+
   bool
   atom::element_is_positive_ion() const
   {
@@ -1041,7 +1057,9 @@ namespace {
     };
     static std::set<std::string> positiveIons(&posi[0], &posi[sizeof(posi) / sizeof(posi[0])]);
 
-    return positiveIons.find(data->element.elems) != positiveIons.end();
+    // The element name is stored in a 2-character array that is not alwayszero terminated, so we
+    // need to put it into string form before we check it against the list above.
+    return positiveIons.find(convertElementToString(data->element.elems)) != positiveIons.end();
   }
 
   bool
@@ -1056,7 +1074,9 @@ namespace {
     static const char* negi[] = { "F", "CL", "BR", "I" };
     static std::set<std::string> negativeIons(&negi[0], &negi[sizeof(negi) / sizeof(negi[0])]);
 
-    return negativeIons.find(data->element.elems) != negativeIons.end();
+    // The element name is stored in a 2-character array that is not always zero terminated, so we
+    // need to put it into string form before we check it against the list above.
+    return negativeIons.find(convertElementToString(data->element.elems)) != negativeIons.end();
   }
 
   bool
