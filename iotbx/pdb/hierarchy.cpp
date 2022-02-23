@@ -1025,7 +1025,7 @@ namespace {
   // others produces upper-case second letters.
   static std::string convertElementToString(char* a)
   {
-    std::string ret = "";
+    std::string ret;
     for (size_t i = 0; i < 2; i++) {
       if (a[i]) {
         ret += toupper(a[i]);
