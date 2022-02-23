@@ -491,6 +491,7 @@ def extract(file_name,
         i += 1
       if(ma is not None):
         column_labels.add(label)
+        if("FWT-1" in label): dec=None
         dataset.add_miller_array(ma,
           column_root_label=label,
           label_decorator=dec,
