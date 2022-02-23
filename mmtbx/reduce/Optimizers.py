@@ -1739,7 +1739,6 @@ END
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
   # conformation.
   carts = flex.vec3_double()
-  maxVDWRad = 1
   for a in atoms:
     carts.append(a.xyz)
 
@@ -1753,6 +1752,7 @@ END
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
   for a in atoms:
     maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 

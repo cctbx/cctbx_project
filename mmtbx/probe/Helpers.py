@@ -95,10 +95,6 @@ probe
   implicit_hydrogens = False
     .type = bool
     .help = Use implicit hydrogens, no water proxies (-implicit in probe)
-
-  use_original_probe_tables = False
-    .type = bool
-    .help = Use the original Probe tables rather than CCTBX tables by default (for regression tests)
 }
 """
 
@@ -262,8 +258,7 @@ class getExtraAtomInfoReturn(object):
 def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, probePhil = None):
   """
     Helper function to provide a mapper for ExtraAtomInfo needed by Probe when scoring
-    models.  It first tries to find the information in CCTBX.  If it cannot, it looks
-    the information up using the original C-code Probe tables and algorithms.
+    models.
     :param model: Map Model Manager's Model containing all of the atoms to be described.
     PDB interpretation must have been done on the model, perhaps by calling
     model.process(make_restraints=True), with useNeutronDistances matching
@@ -280,11 +275,6 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
       implicit_hydrogens (bool): Default is to use distances consistent with
       explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
       This must be set consistently with the hydrogens in the model.
-      use_original_probe_tables (bool): Do not attempt to read the data from CCTBX, use the
-      original Probe tables.  This is normally the fall-back when it cannot find the data in
-      CCTBX.  The Probe tables do not have accurate data on HET atoms, only standard residues.
-      The values in the tables may differ from the current CCTBX values, and the Probe tables
-      are not being maintained.
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
@@ -294,13 +284,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
   # Pull parameters from PHIL parameters, if they are present.  Otherwise, set to
   # defaults
   useImplicitHydrogenDistances = False
-  useProbeTablesByDefault = False
   if probePhil is not None:
     useImplicitHydrogenDistances = probePhil.implicit_hydrogens
-    useProbeTablesByDefault = probePhil.use_original_probe_tables
-
-  # Construct the AtomTypes object we're going to use, telling it whether to use neutron distances.
-  at = AtomTypes.AtomTypes(useNeutronDistances, useImplicitHydrogenDistances)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
   extras = probeExt.ExtraAtomInfoMap([],[])
@@ -313,94 +298,81 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
         for ag in rg.atom_groups():
 
           for a in ag.atoms():
-            #print('  XXX Checking atom',a.parent().resname.strip(),a.name.strip(),a.i_seq)
             extra = probeExt.ExtraAtomInfo()
-            if not useProbeTablesByDefault:
-              # See if we can find out about its Hydrogen-bonding status from the
-              # model.  If so, we fill it and the vdwRadius information from
-              # CCTBX.
-              try:
-                hb_type = model.get_specific_h_bond_type(a.i_seq)
-                if isinstance(hb_type, str):
-                  if hb_type == "A" or hb_type == "B":
-                    extra.isAcceptor = True
-                  if hb_type == "D" or hb_type == "B":
-                    extra.isDonor = True
+            try:
+              hb_type = model.get_specific_h_bond_type(a.i_seq)
+              if isinstance(hb_type, str):
+                if hb_type == "A" or hb_type == "B":
+                  extra.isAcceptor = True
+                if hb_type == "D" or hb_type == "B":
+                  extra.isDonor = True
 
-                  # For ions, the Richardsons determined in discussion with
-                  # Michael Prisant that we want to use the ionic radius rather than the
-                  # larger radius for all purposes.
-                  # @todo Once the CCTBX radius determination discussion and upgrade is
-                  # complete (ongoing as of September 2021), this check might be removed
-                  # and we'll just use the CCTBX radius.
-                  if a.element_is_ion():
-                    warnings += "Using ionic radius for "+a.name.strip()+"\n"
-                    extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
-                  else:
-                    extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
-
-                  # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
-                  # ring itself to behave as an acceptor.
-                  # @todo Remove this once we have a better way to model the ring itself
-                  # as an acceptor, perhaps making it a cylinder or a sphere in the center
-                  # of the ring.
-                  if a.element in ['C','N']:
-                    if AtomTypes.IsAromatic(ag.resname, a.name):
-                      extra.isAcceptor = True
-                      warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
-
-                  # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
-                  # We only do this in HET atoms because CCTBX routines seem to be working
-                  # properly in standard residues.
-                  # We determine whether it is in a het atom by seeing if the residue name
-                  # is in the amino-acid mapping structure.
-                  if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
-                    if a.element == 'N':
-                      # See if the atom has no Hydrogens covalently bonded to it.
-                      found = False
-                      for n in bondedNeighborLists[a]:
-                        if n.element_is_hydrogen():
-                          found = True
-                          break
-                      if not found and not extra.isAcceptor:
-                        extra.isAcceptor = True
-                        warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
-
-                  # Mark all Carbonyl's with the Probe radius while the Richarsons and
-                  # the CCTBX decide how to handle this.
-                  # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
-                  # for Carbonyls and remove this if so.  It needs to stay with these values
-                  # to avoid spurious collisions per experiments run by the Richardsons in
-                  # September 2021.
-                  if a.name.strip().upper() == 'C':
-                    if useImplicitHydrogenDistances:
-                      extra.vdwRadius = 1.80
-                    else:
-                      extra.vdwRadius = 1.65
-                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
-
-                  extras.setMappingFor(a, extra)
-                  continue
-
-                # Did not find the information from CCTBX, so look it up using
-                # the original Probe approach by dropping through to below
+                # For ions, the Richardsons determined in discussion with
+                # Michael Prisant that we want to use the ionic radius rather than the
+                # larger radius for all purposes.
+                # @todo Once the CCTBX radius determination discussion and upgrade is
+                # complete (ongoing as of September 2021), this check might be removed
+                # and we'll just use the CCTBX radius.
+                if a.element_is_ion():
+                  warnings += "Using ionic radius for "+a.name.strip()+"\n"
+                  extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
                 else:
-                  warnings += "Could not find "+a.name.strip()+" in CCTBX, using Probe tables\n"
-              except Exception as e:
-                # Warn and drop through to below.
+                  extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
+
+                # Mark aromatic ring N and C atoms as acceptors as a hack to enable the
+                # ring itself to behave as an acceptor.
+                # @todo Remove this once we have a better way to model the ring itself
+                # as an acceptor, perhaps making it a cylinder or a sphere in the center
+                # of the ring.
+                if a.element in ['C','N']:
+                  if AtomTypes.IsAromatic(ag.resname, a.name):
+                    extra.isAcceptor = True
+                    warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
+
+                # Mark Nitrogens that do not have an attached Hydrogen as acceptors.
+                # We only do this in HET atoms because CCTBX routines seem to be working
+                # properly in standard residues.
+                # We determine whether it is in a het atom by seeing if the residue name
+                # is in the amino-acid mapping structure.
+                if not a.parent().resname in iotbx.pdb.amino_acid_codes.one_letter_given_three_letter:
+                  if a.element == 'N':
+                    # See if the atom has no Hydrogens covalently bonded to it.
+                    found = False
+                    for n in bondedNeighborLists[a]:
+                      if n.element_is_hydrogen():
+                        found = True
+                        break
+                    if not found and not extra.isAcceptor:
+                      extra.isAcceptor = True
+                      warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
+
+                # Mark all Carbonyl's with the Probe radius while the Richarsons and
+                # the CCTBX decide how to handle this.
+                # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
+                # for Carbonyls and remove this if so.  It needs to stay with these values
+                # to avoid spurious collisions per experiments run by the Richardsons in
+                # September 2021.
+                if a.name.strip().upper() == 'C':
+                  if useImplicitHydrogenDistances:
+                    extra.vdwRadius = 1.80
+                  else:
+                    extra.vdwRadius = 1.65
+                  warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+
+                extras.setMappingFor(a, extra)
+
+              # Did not find hydrogen-bond information for this atom.
+              else:
                 fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                   str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
-                warnings += ("Could not look up "+fullName+" in CCTBX "+
-                  "(perhaps interpretation was not run on the model?), using Probe tables"+
-                  ": "+str(e)+"\n")
+                raise Sorry("Could not find atom info for "+fullName+
+                  "(perhaps interpretation was not run on the model?)\n")
 
-            # Did not find what we were looking for in CCTBX, so drop through to Probe.
-            # Probe always returns the result we want as the VdW radius, even for ions.
-            extra, warn = at.FindProbeExtraAtomInfo(a)
-            if len(warn) > 0:
-              warnings += "  Probe says: "+warn+"\n"
-
-            extras.setMappingFor(a, extra)
+            except Exception as e:
+              fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
+                str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
+              raise Sorry("Could not find atom info for "+fullName+
+                "(perhaps interpretation was not run on the model?)\n")
 
   return getExtraAtomInfoReturn(extras, warnings)
 
@@ -834,31 +806,20 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     ["O",   1.52,  True,  False],
     ["CD2", 1.74,  False, False]
   ]
-  probeChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, False],
-    ["ND1", 1.55, True,  False],
-    ["C",   1.65, False, False],
-    ["CB",  1.7,  False, False],
-    ["O",   1.4,  True,  False],
-    ["CD2", 1.7,  False, False]
-  ]
 
   # Situations to run the test in and expected results:
   cases = [
-    # Use neutron distances, use implicit distances, use probe values, expected results
-    [False, False, False, standardChecks],
-    [True,  False, False, neutronChecks],
-    [False, True,  False, implicitChecks],
-    [False, False, True,  probeChecks]
+    # Use neutron distances, use implicit distances, expected results
+    [False, False, standardChecks],
+    [True,  False, neutronChecks],
+    [False, True,  implicitChecks]
   ]
 
   for cs in cases:
     useNeutronDistances = cs[0]
     useImplicitHydrogenDistances = cs[1]
-    useProbe = cs[2]
-    checks = cs[3]
-    runType = "; neutron,implicit,probe = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)+","+str(useProbe)
+    checks = cs[2]
+    runType = "; neutron,implicit,probe = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)
 
     dm = iotbx.data_manager.DataManager(['model'])
     dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
@@ -884,10 +845,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # Get the extra atom information for the model using default parameters.
     # Make a PHIL-like structure to hold the parameters.
     class philLike:
-      def __init__(self, useImplicitHydrogenDistances = False, useProbe = False):
+      def __init__(self, useImplicitHydrogenDistances = False):
         self.implicit_hydrogens = useImplicitHydrogenDistances
-        self.use_original_probe_tables = useProbe
-    philArgs = philLike(useImplicitHydrogenDistances, useProbe)
+    philArgs = philLike(useImplicitHydrogenDistances)
     extras = getExtraAtomInfo(model,bondedNeighborLists,
       useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
 
