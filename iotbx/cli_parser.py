@@ -478,8 +478,8 @@ class CCTBXParser(ParserBase):
       self.working_phil = self.master_phil.fetch()
 
     # show unrecognized parameters and abort
-    advice = ''
-    if len(self.unused_phil) > 0:
+    if len(self.unused_phil) > 0 and self.unused_phil_raises_sorry:
+      advice = ''
       print('  Unrecognized PHIL parameters:', file=self.logger)
       print('  -----------------------------', file=self.logger)
       for phil in self.unused_phil:
