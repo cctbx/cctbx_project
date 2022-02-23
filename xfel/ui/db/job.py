@@ -941,7 +941,7 @@ def submit_all_jobs(app):
     assert trial, "No trial found in task list, don't know where to save the results"
     trial_tags_ids = [t.id for t in trial.tags]
     dataset_tags = [t for t in dataset.tags if t.id in trial_tags_ids]
-    if not dataset_tags: continue
+    if not dataset_tags or len(dataset_tags) < len(dataset.tags): continue
     runs_rungroups = []
     for rungroup in trial.rungroups:
       for run in rungroup.runs:
