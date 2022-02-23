@@ -131,6 +131,18 @@ def IsAromatic(resName, atomName):
 def Test(inFileName = None):
 
   #========================================================================
+  # Check IsSpecialAminoAcidCarbonyl() to ensure it gives results when expected and not when not.
+  carbonylChecks = [
+      ['ASP', ' CG', True],
+      ['ASP', ' CG ', True],
+      ['GLU', ' CD ', True],
+      ['GLU', ' CG ', False],
+      ['ASN',   'O', False]
+    ]
+  for a in carbonylChecks:
+    assert IsSpecialAminoAcidCarbonyl(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as Carbonyl {}".format(a[0],a[1],a[2])
+
+  #========================================================================
   # Check IsAromatic() to ensure it gives results when expected and not when not.
   aromaticChecks = [
       ['PHE', 'CE2', True],
