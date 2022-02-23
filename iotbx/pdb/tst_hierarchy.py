@@ -162,7 +162,7 @@ def exercise_atom():
     a.element = e
     assert not a.element_is_hydrogen()
   # Spot-check some elements to see if they are positive ions and ions
-  for e in ["LI", "RH", "SI", "SN", "V", "GE", "CU", "ZN"]:
+  for e in ["LI", "RH", "SI", "SN", "V", "GE", "CU", "ZN", "Cu", "Zn"]:
     a.element = e
     assert a.element_is_positive_ion(), e + " was not seen as a positive ion"
     assert a.element_is_ion(), e + " was not seen as an ion"
@@ -174,7 +174,7 @@ def exercise_atom():
     a.element = e
     assert a.element_is_negative_ion(), e + " was not seen as a negative ion"
     assert a.element_is_ion(), e + " was not seen as an ion"
-  for e in ["HE", "C", "XE", "RN", "KR", "B", "LI", "RH", "SI", "SN", "V", "GE"]:
+  for e in ["HE", "C", "XE", "RN", "KR", "B", "LI", "RH", "SI", "SN", "V", "GE", "Sn", "Ge"]:
     a.element = e
     assert not a.element_is_negative_ion(), e + " was seen as a negative ion"
   # Spot-check some elements to ensure they are not ions of either polarity
