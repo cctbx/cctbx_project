@@ -165,7 +165,8 @@ NOTES:
       startAdd = work_clock()
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model = self.model,
-        n_terminal_charge=self.params.n_terminal_charge
+        n_terminal_charge=self.params.n_terminal_charge,
+        stop_for_unknowns=True
       )
       reduce_add_h_obj.run()
       self.model = reduce_add_h_obj.get_model()
@@ -176,6 +177,8 @@ NOTES:
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
       startInt = work_clock()
+      self.model.get_hierarchy().sort_atoms_in_place()
+      self.model.get_hierarchy().atoms().reset_serial()
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.allow_polymer_cross_special_position=True
       p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
