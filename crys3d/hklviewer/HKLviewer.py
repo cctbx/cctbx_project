@@ -276,6 +276,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
     self.devmode = False
+    self.make_new_factory_default_settings = False
     for e in sys.argv:
       if "UseOSBrowser" in e:
         self.UseOSBrowser = True
@@ -284,6 +285,8 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.actiondebug.setVisible(True)
       if  "debug" in e:
         self.actiondebug.setVisible(True)
+      if "new_factory_defaults" in e:
+        self.make_new_factory_default_settings= True
 
     self.zmq_context = None
     self.unfeedback = False
@@ -1135,6 +1138,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.reset_to_factorydefaults = True
     msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
     self.AddInfoText(msg)
+    self.resetFactoryDefaultbtn.setEnabled(False)
 
 
   def onWrapTextBuffer(self):
@@ -2079,7 +2083,7 @@ clip_plane {
 
 
   def ReadPersistedQsettings(self):
-    # read the users persisted settings from disc
+    # Read the user's persisted settings from disc
     # First see if there are any. If not then use factory defaults stored in .ini file
     self.settings.beginGroup(self.Qtversion)
     use_factory_default_settings = False
@@ -2200,12 +2204,9 @@ clip_plane {
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
     self.setDatatypedict(self.datatypedict)
-
-
-  def MakeNewFactoryDefaultQsettings(self):
-    # Call this from debugger python prompt to create a new Factory default settings .ini file
-    # to be stored alongside this source file.
-    self.PersistQsettings(True)
+    if self.make_new_factory_default_settings:
+      # Create a new Factory default settings .ini file to be stored alongside this source file.
+      self.PersistQsettings(True)
 
 
   def RemoveQsettings(self, all=False):
@@ -2220,11 +2221,8 @@ def run(isembedded=False, chimeraxsession=None):
   #time.sleep(10) # enough time for attaching debugger
   try:
     debugtrue = False
-    make_new_factory_default_settings = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
-      if "new_factory_defaults" in e:
-        make_new_factory_default_settings= True
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
         debugtrue = True
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
@@ -2261,9 +2259,6 @@ def run(isembedded=False, chimeraxsession=None):
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
-
-    if make_new_factory_default_settings:
-      HKLguiobj.MakeNewFactoryDefaultQsettings()
 
     if isembedded:
       return HKLguiobj

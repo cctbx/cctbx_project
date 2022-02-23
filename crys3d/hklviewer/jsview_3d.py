@@ -120,6 +120,7 @@ class hklview_3d:
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
+    self.zoom = None
     self.boundingX = None
     self.boundingY = None
     self.boundingZ = None
@@ -1515,6 +1516,7 @@ class hklview_3d:
           self.clipNear = flst[0]
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
+          self.zoom = flst[3]
           self.clipplane_msg_sem.release()
         elif "ReturnBoundingBox:" in message:
           datastr = message[ message.find("\n") + 1: ]
@@ -2241,7 +2243,7 @@ in the space group %s\nwith unit cell %s\n""" \
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ)
+    self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s" %(clipNear, clipFar, -self.cameraPosZ), verbose=1)
 
 
@@ -2283,10 +2285,12 @@ in the space group %s\nwith unit cell %s\n""" \
     self.mousespeed_msg_sem.release()
 
 
-  def SetClipPlaneDistances(self, near, far, cameraPosZ=None):
+  def SetClipPlaneDistances(self, near, far, cameraPosZ=None, zoom=None):
     if cameraPosZ is None:
       cameraPosZ = self.cameraPosZ
-    msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ)
+    if zoom is None:
+      zoom= self.zoom
+    msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ) + ", " + str(zoom)
     self.AddToBrowserMsgQueue("SetClipPlaneDistances", msg)
 
 
@@ -2294,6 +2298,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
+    self.zoom = None
     self.clipplane_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
     if self.WaitforHandshake():
@@ -2301,10 +2306,10 @@ in the space group %s\nwith unit cell %s\n""" \
       if not self.clipplane_msg_sem.acquire(blocking=False) and nwait < 5:
         nwait += self.sleeptime
         self.mprint("clipplane_msg_sem, wait= %s" %nwait, verbose=2)
-      self.mprint("clipnear, clipfar, cameraPosZ: %s, %s %s" \
-                 %(self.clipNear, self.clipFar, self.cameraPosZ), 2)
+      self.mprint("clipnear, clipfar, cameraPosZ, zoom: %s, %s, %s, %s" \
+                 %(self.clipNear, self.clipFar, self.cameraPosZ, self.zoom), 2)
     self.clipplane_msg_sem.release()
-    return (self.clipNear, self.clipFar, self.cameraPosZ)
+    return (self.clipNear, self.clipFar, self.cameraPosZ, self.zoom)
 
 
   def GetBoundingBox(self):

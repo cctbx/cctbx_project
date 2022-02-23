@@ -379,7 +379,7 @@ function ReturnClipPlaneDistances()
 
   let msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
-                  cameradist ] )
+                  cameradist, stage.viewer.camera.zoom ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
@@ -417,6 +417,20 @@ function RemovePrimitives(reprname)
     RenderRequest();
 }
 
+
+function CameraZoom(t, deltaX, deltaY) {
+  let z = stage.viewer.camera.zoom;
+  z += (deltaX + deltaY) / 4.0;
+  if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
+    stage.viewer.camera.zoom = z;
+    stage.viewer.requestRender();
+    ReturnClipPlaneDistances();
+  }
+  let msg = "dx: " + deltaX.toString() + ", dy: " + deltaY.toString()
+    + ", zoom:" + stage.viewer.camera.zoom.toString();
+  if (isdebug)
+    console.log(msg);
+};
 
 
 async function RenderRequest()
@@ -747,13 +761,19 @@ function onMessage(e)
       RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
     }
-
+    
     if (msgtype === "DisableMouseRotation")
     {
-      WebsockSendMsg( 'Fix mouse rotation' + pagename );
+      WebsockSendMsg('Fix mouse rotation' + pagename);
+
       stage.mouseControls.remove("drag-left");
       stage.mouseControls.remove("scroll-ctrl");
       stage.mouseControls.remove("scroll-shift");
+
+      stage.mouseControls.remove("drag-shift-right");
+      stage.mouseControls.remove("drag-shift-left");
+      stage.mouseControls.add("drag-shift-right", CameraZoom);
+      stage.mouseControls.add("drag-shift-left", CameraZoom);
     }
 
     if (msgtype === "EnableMouseRotation")
@@ -762,8 +782,13 @@ function onMessage(e)
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
-    }
 
+      stage.mouseControls.remove("drag-shift-right");
+      stage.mouseControls.remove("drag-shift-left");
+      stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
+      stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+    }
+    
     if (msgtype === "RotateStage")
     {
       WebsockSendMsg('Rotating stage ' + pagename);
@@ -1089,6 +1114,7 @@ function onMessage(e)
       let near = parseFloat(val[0]);
       let far = parseFloat(val[1]);
       origcameraZpos = parseFloat(val[2]);
+      let zoom = parseFloat(val[3]);
       stage.viewer.parameters.clipMode =  'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
       stage.viewer.parameters.clipScale = 'absolute';
@@ -1111,7 +1137,7 @@ function onMessage(e)
       if (stage.viewer.parameters.clipScale == 'absolute')
         GetReflectionsInFrustum();
 
-      //stage.viewer.requestRender();
+      stage.viewer.camera.zoom = zoom;
       RenderRequest();
     }
 
@@ -1287,15 +1313,6 @@ function onMessage(e)
     {
       // test something new
       /*
-      var newradii = radii[0].map(function(element) {
-        return element*1.5;
-      });
-      shapebufs[0].setAttributes({
-          radius: newradii
-      })
-      repr = shapeComp.addRepresentation('buffer');
-      //stage.viewer.requestRender();
-      RenderRequest();
       */
     }
     if (isdebug)
@@ -1867,6 +1884,26 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
 
+  function SetDefaultOrientation() {
+    //if (shapeComp == null)
+    //  return;
+    let m4 = new NGL.Matrix4();
+    let axis = new NGL.Vector3();
+    axis.x = 0.0;
+    axis.y = 1.0;
+    axis.z = 0.0;
+    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+    // But we want x-axis pointing right and z-axis pointing out of the screen. 
+    // Rotate coordinate system to that effect
+    m4.makeRotationAxis(axis, Math.PI);
+    if (shapeComp != null)
+      shapeComp.autoView(500);
+    stage.viewerControls.orient(m4);
+  }
+
+  SetDefaultOrientation();
+
+
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
@@ -1881,10 +1918,20 @@ function HKLscene()
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+        ReturnClipPlaneDistances();
+        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
         timenow = timefunc();
       }
       tooltip.style.display = "none";
+      /*
+      let dim = stage.viewer.parameters.clipNear + stage.viewer.parameters.clipFar + stage.viewer.camera.position.z;
+      let msg2 = "clips: " + stage.viewer.parameters.clipNear.toString() + ", " +
+        stage.viewer.parameters.clipFar.toString() + ", origcamZ: " + origcameraZpos.toString() +
+        ", cameraZ: " + stage.viewer.camera.position.z.toString() + ", dim: " + dim.toString();
+      //msg2 = "dx: " + deltaX.toString() + ", dy: " + deltaY.toString()
+      if (isdebug)
+        console.log(msg2);
+     */ 
     }
   );
 
@@ -1950,25 +1997,6 @@ function HKLscene()
     }
   );
 
-
-  function SetDefaultOrientation()
-  {
-    if (shapeComp == null)
-      return;
-    let m4 = new NGL.Matrix4();
-    let axis = new NGL.Vector3();
-    axis.x = 0.0;
-    axis.y = 1.0;
-    axis.z = 0.0;
-    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
-    // But we want x-axis pointing right and z-axis pointing out of the screen. 
-    // Rotate coordinate system to that effect
-    m4.makeRotationAxis(axis, Math.PI);
-    shapeComp.autoView(500);
-    stage.viewerControls.orient(m4);
-  }
-
-  SetDefaultOrientation();
 
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);
