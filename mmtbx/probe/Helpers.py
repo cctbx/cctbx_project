@@ -29,7 +29,6 @@ import mmtbx
 import scitbx.matrix
 from scitbx.array_family import flex
 from mmtbx.probe import AtomTypes
-from cctbx.eltbx.attenuation_coefficient import nist_elements
 from iotbx import pdb
 from libtbx.utils import null_out, Sorry
 
