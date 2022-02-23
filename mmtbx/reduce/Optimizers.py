@@ -47,7 +47,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 
 # Default value of 1 reports standard information.
 # Value of 2 reports timing information.
-# Setting it to 0 removes all inforamtional messages.
+# Setting it to 0 removes all informational messages.
 # Setting it above 1 provides additional debugging information.
 verbosity = 3
 
