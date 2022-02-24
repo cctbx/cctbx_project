@@ -1137,7 +1137,9 @@ function onMessage(e)
       if (stage.viewer.parameters.clipScale == 'absolute')
         GetReflectionsInFrustum();
 
-      stage.viewer.camera.zoom = zoom;
+      if (Number.isNaN(zoom) == false)
+        stage.viewer.camera.zoom = zoom;
+
       RenderRequest();
     }
 

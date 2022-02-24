@@ -645,7 +645,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     Deal with the messages posted to this GUI by cmdlineframes.py
     """
     if self.webpagedebugform is not None:
-      self.webpagedebugform.update()
+      try: # During shutdown this may fail if webpagedebugform exits before message handler terminates
+        self.webpagedebugform.update()
+      except Exception as e:
+        pass
     if self.zmq_context:
       if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
         self.lasttime = time.monotonic()
@@ -1121,7 +1124,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
     self.select_millertable_column_dlg.resize()
     self.textInfo.setFont(font)
-
+    self.SpaceGrpUCellText.setFont(font)
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val

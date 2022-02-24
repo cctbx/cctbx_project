@@ -186,11 +186,17 @@
                <bool>true</bool>
               </property>
               <property name="html">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+               <string notr="true">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Space group: &lt;/span&gt;P21 21 21&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br /&gt;Unit cell: &lt;/span&gt;(98.371, 98.371, 263.131, 90, 90, 120)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Space group: &lt;/span&gt;P21 21 21&lt;br /&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Unit cell:&lt;/span&gt; (98.371, 98.371, 263.131, 90, 90, 120)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="overwriteMode">
+               <bool>true</bool>
+              </property>
+              <property name="acceptRichText">
+               <bool>false</bool>
               </property>
              </widget>
              <widget class="QScrollArea" name="scrollArea">
@@ -202,7 +208,7 @@ p, li { white-space: pre-wrap; }
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>421</width>
+                 <width>434</width>
                  <height>392</height>
                 </rect>
                </property>
@@ -395,6 +401,9 @@ p, li { white-space: pre-wrap; }
                       <layout class="QGridLayout" name="gridLayout_6">
                        <item row="1" column="0" colspan="2">
                         <widget class="QRadioButton" name="normal_vec_btn">
+                         <property name="toolTip">
+                          <string>Useful for inspecting reflections perpendicular to a rotation axis or a tNCS vector</string>
+                         </property>
                          <property name="text">
                           <string>is normal to:</string>
                          </property>
@@ -434,6 +443,9 @@ p, li { white-space: pre-wrap; }
                            <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
+                         <property name="toolTip">
+                          <string>Useful for inspecting reflections satisfying an equation for a plane through reciprocal space</string>
+                         </property>
                          <property name="text">
                           <string/>
                          </property>
@@ -446,6 +458,9 @@ p, li { white-space: pre-wrap; }
                            <horstretch>1</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
+                         </property>
+                         <property name="toolTip">
+                          <string>Useful for inspecting reflections satisfying an equation for a plane through reciprocal space</string>
                          </property>
                          <property name="text">
                           <string>is normal to real space vector associated with:</string>

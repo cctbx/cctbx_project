@@ -22,6 +22,7 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon )
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if MainWindow.objectName():
@@ -156,13 +157,20 @@ class Ui_MainWindow(object):
         self.SpaceGrpUCellText.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setReadOnly(True)
+        self.SpaceGrpUCellText.setHtml(u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-size:8pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-weight:600;\">Space group: </span>P21 21 21<br /><span style=\" font-weight:600;\">Unit cell:</span> (98.371, 98.371, 263.131, 90, 90, 120)</p></body></html>")
+        self.SpaceGrpUCellText.setOverwriteMode(True)
+        self.SpaceGrpUCellText.setAcceptRichText(False)
         self.splitter_2.addWidget(self.SpaceGrpUCellText)
         self.scrollArea = QScrollArea(self.splitter_2)
         self.scrollArea.setObjectName(u"scrollArea")
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 421, 392))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 434, 392))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -939,11 +947,6 @@ class Ui_MainWindow(object):
         self.actionColour_Gradient.setText(QCoreApplication.translate("MainWindow", u"Colour Gradient...", None))
         self.actionHKLviewer_Tutorial.setText(QCoreApplication.translate("MainWindow", u"Tutorial", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
-        self.SpaceGrpUCellText.setHtml(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-weight:600;\">Space group: </span>P21 21 21<span style=\" font-weight:600;\"><br />Unit cell: </span>(98.371, 98.371, 263.131, 90, 90, 120)</p></body></html>", None))
         self.ExpandReflsGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Expand reflections", None))
 #if QT_CONFIG(tooltip)
         self.expandP1checkbox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Expand reflections from their asymmetric wedge by replicating reflections from succesive rotations operations defined by the spacegroup. If the set of reflections is not symmetry unique some (h,k,l) indices may display more than one reflection.</p></body></html>", None))
@@ -968,11 +971,20 @@ class Ui_MainWindow(object):
         self.ClipPlaneChkGroupBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Limit the view of reflections with a clip plane parallel to the screen</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.ClipPlaneChkGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Slice with a clip plane parallel to screen that:", None))
+#if QT_CONFIG(tooltip)
+        self.normal_vec_btn.setToolTip(QCoreApplication.translate("MainWindow", u"Useful for inspecting reflections perpendicular to a rotation axis or a tNCS vector", None))
+#endif // QT_CONFIG(tooltip)
         self.normal_vec_btn.setText(QCoreApplication.translate("MainWindow", u"is normal to:", None))
 #if QT_CONFIG(tooltip)
         self.clipplane_normal_vector_length.setToolTip(QCoreApplication.translate("MainWindow", u"use current scale or multiply with a number to form a new scale", None))
 #endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.normal_realspace_vec_btn.setToolTip(QCoreApplication.translate("MainWindow", u"Useful for inspecting reflections satisfying an equation for a plane through reciprocal space", None))
+#endif // QT_CONFIG(tooltip)
         self.normal_realspace_vec_btn.setText("")
+#if QT_CONFIG(tooltip)
+        self.normal_realspace_vec_label.setToolTip(QCoreApplication.translate("MainWindow", u"Useful for inspecting reflections satisfying an equation for a plane through reciprocal space", None))
+#endif // QT_CONFIG(tooltip)
         self.normal_realspace_vec_label.setText(QCoreApplication.translate("MainWindow", u"is normal to real space vector associated with:", None))
 #if QT_CONFIG(tooltip)
         self.label_15.setToolTip(QCoreApplication.translate("MainWindow", u"in units of the selected vector above", None))
