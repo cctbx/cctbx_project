@@ -5,10 +5,12 @@
 #include <smtbx/refinement/least_squares_fc.h>
 #include <smtbx/import_scitbx_af.h>
 #include <scitbx/vec3.h>
+#include <smtbx/ED/ed_data.h>
 
 namespace smtbx {
   namespace refinement {
     namespace least_squares {
+      using namespace cctbx::smtbx::ED;
 
       template <typename FloatType>
       class f_calc_function_ed : public f_calc_function_base<FloatType> {
@@ -18,9 +20,13 @@ namespace smtbx {
         typedef builder_base<FloatType> data_t;
           
         f_calc_function_ed(data_t& data,
-          scitbx::mat3<FloatType> const& omat)
+          scitbx::mat3<FloatType> const& UB,
+          af::shared<FrameInfo<FloatType> > const& frames,
+          af::shared<BeamInfo<FloatType> > const& beams)
           : data(data),
-          omat(omat),
+          UB(UB),
+          frames(frames),
+          beams(beams),
           index(-1)
         {
           f_calc = data.f_calc();
@@ -46,7 +52,7 @@ namespace smtbx {
 
         virtual boost::shared_ptr<f_calc_function_base_t> fork() const {
           return boost::shared_ptr<f_calc_function_base_t>(
-            new f_calc_function_ed(data, omat));
+            new f_calc_function_ed(data, UB, frames, beams));
         }
 
         virtual FloatType get_observable() const {
@@ -65,7 +71,9 @@ namespace smtbx {
         virtual bool raw_gradients() const { return false; }
       private:
         data_t& data;
-        scitbx::mat3<FloatType> omat;
+        scitbx::mat3<FloatType> UB;
+        af::shared<FrameInfo<FloatType> > frames;
+        af::shared<BeamInfo<FloatType> > beams;
         af::shared<std::complex<FloatType> > f_calc;
         af::shared<FloatType> observables;
         af::shared<FloatType> weights;

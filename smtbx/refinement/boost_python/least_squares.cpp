@@ -175,9 +175,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed", no_init)
           .def(init<builder_base<FloatType> &,
-            scitbx::mat3<FloatType> const&>(
+            scitbx::mat3<FloatType> const&,
+            af::shared<FrameInfo<FloatType> >,
+            af::shared<BeamInfo<FloatType> > >(
             (arg("data"),
-              arg("beams"))))
+              arg("UB"), arg("frames"), arg("beams"))))
           ;
       }
 
