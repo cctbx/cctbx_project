@@ -856,6 +856,12 @@ class phenix_regression(SourceModule):
                'git@gitlab.com:phenix_project/phenix_regression.git',
                'https://gitlab.com/phenix_project/phenix_regression.git']
 
+class phenix_colabs(SourceModule):
+  module = 'Colabs'
+  anonymous = ['git',
+               'git@github.com:phenix-project/Colabs.git',
+               'https://github.com/phenix-project/Colabs.git']
+
 class plex_module(SourceModule):
   module = 'Plex'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/Plex/trunk']
@@ -2320,6 +2326,7 @@ class PhenixBuilder(CCIBuilder):
     'phenix_html',
     'phenix_examples',
     'phenix_pathwalker',
+    'Colabs',
     'labelit',
     'Plex',
     'PyQuante',
