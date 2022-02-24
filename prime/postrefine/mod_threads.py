@@ -11,7 +11,7 @@ import os
 import wx
 from threading import Thread
 
-from iota.components.iota_threads import CustomRun
+from iota.threads.iota_threads import CustomRun
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
