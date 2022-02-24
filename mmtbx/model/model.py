@@ -2088,7 +2088,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_h_bond_type takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_h_bonds):
-      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+      print('get_specific_h_bond_type(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
     type_h_bond = self._type_h_bonds[i_seq]
     return type_h_bond
 
@@ -2097,7 +2097,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+      print('get_specific_vdw_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     if vdw_radius_without_H:
@@ -2119,7 +2119,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_ion_radius takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('i_seq is larger than array length. Likely due to a unsupported selection.')
+      print('get_specific_ion_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     ion_radii = e.lib_atom[type_energy].ion_radius

@@ -11,9 +11,17 @@
 find_package(PkgConfig)
 
 find_path(SCITBX_INCLUDE_DIR scitbx/array_family/operator_traits_builtin.h
-		  HINTS C:/cctbx/build/include C:/tmp/cctbx/build/include)
+	  HINTS
+	  	C:/cctbx/build/include
+		C:/tmp/cctbx/build/include
+		C:/tmp/cctbx_phenix/build/include
+	)
 find_path(SCITBX_SRC_INCLUDE_DIR scitbx/vec3.h
-		  HINTS C:/cctbx/modules/cctbx_project C:/tmp/cctbx/modules/cctbx_project)
+	  HINTS
+	  	C:/cctbx/modules/cctbx_project
+		C:/tmp/cctbx/modules/cctbx_project
+		C:/tmp/cctbx_phenix/modules/cctbx_project
+	)
 
 set(CCTBX_INCLUDE_DIRS ${SCITBX_INCLUDE_DIR} ${SCITBX_SRC_INCLUDE_DIR})
 
@@ -25,6 +33,7 @@ find_library(IOTBX_PDB_LIBRARY
 	HINTS
 	"C:/cctbx/build/lib"
 	"C:/tmp/cctbx/build/lib"
+	"C:/tmp/cctbx_phenix/build/lib"
 	PATHS
 	C:/usr/local
 	/usr/local)

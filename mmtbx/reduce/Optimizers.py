@@ -47,7 +47,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 
 # Default value of 1 reports standard information.
 # Value of 2 reports timing information.
-# Setting it to 0 removes all inforamtional messages.
+# Setting it to 0 removes all informational messages.
 # Setting it above 1 provides additional debugging information.
 verbosity = 3
 
@@ -218,6 +218,9 @@ class _SingletonOptimizer(object):
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
 
+    model.setup_riding_h_manager()
+    riding_h_manager = model.get_riding_h_manager()
+    h_parameterization = riding_h_manager.h_parameterization
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
@@ -252,10 +255,25 @@ class _SingletonOptimizer(object):
       if altID is not None:
         alts = [altID]
 
-      for ai in alts:
+      # Clear the Movers list for each model.  It will be retained from one alternate to the next.
+      self._movers = []
+      for alt in alts:
+        # If we are doing the second or later alternate, place all Movers that are in a compatible alternate
+        # back into their initial configuration so we start from the same state we would have if this were
+        # the only alternate being tested.  This will ensure that we get compatible outputs when run either
+        # way (we may end up with equivalent but different results, like 120 degree rotations for 3 hydrogens).
+        for m in self._movers:
+          coarse = m.CoarsePositions()
+          if coarse.atoms[0].parent().altloc in ['', ' ', alt]:
+            self._setMoverState(coarse, 0)
+
+            # Apply any location and information fixups needed for the initial configuration.
+            # This will in all cases put things back into their original configuration.
+            self._doFixup(m.FixUp(0))
+
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(1,"Running Reduce optimization on model index "+str(mi)+
-          ", alternate '"+ai+"'\n")
+          ", alternate '"+alt+"'\n")
         self._infoString += _VerboseCheck(1,"  bondedNeighborDepth = "+str(self._bondedNeighborDepth)+"\n")
         self._infoString += _VerboseCheck(1,"  probeRadius = "+str(self._probeRadius)+"\n")
         self._infoString += _VerboseCheck(1,"  useNeutronDistances = "+str(self._useNeutronDistances)+"\n")
@@ -268,7 +286,7 @@ class _SingletonOptimizer(object):
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
         # pick the first available conformation for each atom group.
-        self._atoms = GetAtomsForConformer(myModel, ai)
+        self._atoms = GetAtomsForConformer(myModel, alt)
 
         ################################################################################
         # Reset the timer
@@ -341,14 +359,17 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
-        ret = _PlaceMovers(self._atoms, model.rotatable_hd_selection(iselection=True),
-                           bondedNeighborLists, self._spatialQuery, self._extraAtomInfo,
-                           self._maximumVDWRadius, addFlipMovers)
+        hyds = model.rotatable_hd_selection(iselection=True)
+        self._infoString += _ReportTiming("select rotatable hydrogens")
+        ret = _PlaceMovers(self._atoms, hyds,
+                           bondedNeighborLists, h_parameterization, self._spatialQuery,
+                           self._extraAtomInfo, self._maximumVDWRadius, addFlipMovers)
         self._infoString += ret.infoString
         self._movers = ret.moverList
         self._infoString += _VerboseCheck(1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(1,'Marked '+str(len(ret.deleteAtoms))+' atoms for deletion\n')
         self._infoString += _ReportTiming("place movers")
+        self._moverInfo = ret.moverInfo
 
         ################################################################################
         # Add the atoms that were unconditionally marked for deletion during placement
@@ -466,6 +487,7 @@ class _SingletonOptimizer(object):
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
 
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
@@ -480,6 +502,16 @@ class _SingletonOptimizer(object):
         # Contruct the DotScorer object we'll use to score the dots.
         self._dotScorer = probeExt.DotScorer(self._extraAtomInfo)
         self._infoString += _ReportTiming("construct dot scorer")
+
+        ################################################################################
+        # Compute and store the initial score for each Mover in its info
+        for m in self._movers:
+          coarse = m.CoarsePositions()
+          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          self._setMoverState(coarse, 0)
+          for a in coarse.atoms:
+            score += self._scoreAtom(a)
+          self._moverInfo[m] += " Initial score: {:.2f}".format(score)
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -518,51 +550,101 @@ class _SingletonOptimizer(object):
           self._optimizeSingleMoverFine(m)
         self._infoString += _ReportTiming("optimize all Movers (fine)")
 
+        ################################################################################
+        # Print the final state and score for all Movers
+        def _scoreMoverReportClash(self, m):
+          coarse = m.CoarsePositions()
+          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          clash = False
+          for atom in coarse.atoms:
+            maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
+            res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
+              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+              self._probeDensity, False)
+            score += res.totalScore()
+            if res.hasBadBump:
+              clash = True
+          return score, clash
+
+        def _printPose(self, m):
+          description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
+
+          # If the Mover is a flip of some kind, then the substring "lipped" will be present
+          # in the description.  When that happens, we check the final state and the flipped
+          # state (which is half of the coarse states away) to see if both have clashes or
+          # if they are close in energy. If so, then we annotate the output.
+          # We add the same number of words to the output string in all cases to make things
+          # easier for a program to parse.
+          if "lipped" in description:
+            coarse = m.CoarsePositions()
+            numPositions = len(coarse.positions)
+            final = self._coarseLocations[m]
+            other = (final + numPositions//2) % numPositions
+            self._setMoverState(coarse, other)
+            otherScore, otherBump = _scoreMoverReportClash(self, m)
+            self._setMoverState(coarse, final)
+            finalScore, finalBump = _scoreMoverReportClash(self, m)
+            if otherBump and finalBump:
+              description += " BothClash"
+            elif abs(finalScore - otherScore) <= 0.5:
+              description += " Uncertain"
+            else:
+              description += " ."
+          else:
+            description += " ."
+
+          self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
+            self._moverInfo[m], self._highScores[m], description ))
+
+        self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
+        sortedGroups = sorted(groupCliques, key=len, reverse=True)
+        for g in sortedGroups:
+          self._infoString += _VerboseCheck(1," Set of "+str(len(g))+" Movers:")
+          movers = [self._interactionGraph.vertex_label(i) for i in g]
+          # Parse the record for each mover and pull out the initial score.  Sum the initial and
+          # final scores across all Movers in the group and report this.
+          initial = 0.0
+          final = 0.0
+          for m in movers:
+            initial += float(self._moverInfo[m].split()[9])
+            final += self._highScores[m]
+          self._infoString += _VerboseCheck(1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
+          for m in movers:
+            _printPose(self, m)
+        self._infoString += _VerboseCheck(1," Singleton Movers:\n")
+        for s in singletonCliques:
+          m = self._interactionGraph.vertex_label(s[0])
+          _printPose(self, m)
+        self._infoString += _VerboseCheck(1,"END REPORT\n")
+
+        ################################################################################
         # Do FixUp on the final coarse orientations.  Set the positions, extra atom info
         # and deletion status for all atoms that have entries for each.
+        # This must be done after we print the scores because the print methods move the
+        # coarse state to see how much it changed.
         self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
         for m in self._movers:
           loc = self._coarseLocations[m]
           self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(type(m),loc))
-          fixUp = m.FixUp(loc)
-          myAtoms = fixUp.atoms
-          for i, p in enumerate(fixUp.positions):
-            self._infoString += _VerboseCheck(5,"Moving atom to {}\n".format(p))
-            myAtoms[i].xyz = p
-          for i, e in enumerate(fixUp.extraInfos):
-            self._infoString += _VerboseCheck(5,"Atom info to {}\n".format(e))
-            self._extraAtomInfo.setMappingFor(myAtoms[i], e)
-          for i, d in enumerate(fixUp.deleteMes):
-            # Either ensure that it is deleted or ensure that it is not depending on the
-            # value of the deletion result.
-            self._infoString += _VerboseCheck(5,"Atom deleted is {}\n".format(d))
-            if d:
-              self._deleteMes.add(myAtoms[i])
-            else:
-              self._deleteMes.discard(myAtoms[i])
+          self._doFixup(m.FixUp(loc))
         self._infoString += _ReportTiming("fix up Movers")
 
-        ################################################################################
-        # Print the final state and score for all Movers
-        for i,m in enumerate(self._movers):
-          self._infoString += _VerboseCheck(1,"Mover {:4d} in coarse state {:2d}, fine state {:2d} with score {:.2f}\n".format(
-            i, self._coarseLocations[m], self._fineLocations[m],self._highScores[m]))
-
-        ################################################################################
-        # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
-        # both in the initial setup and determined during optimization.  Phantom Hydrogens
-        # on waters do not need to be adjusted because they were never added to the
-        # structure.
-        self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
-        for a in self._deleteMes:
-          aName = a.name.strip().upper()
-          resName = a.parent().resname.strip().upper()
-          resID = str(a.parent().parent().resseq_as_int())
-          chainID = a.parent().parent().parent().id
-          resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-          self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
-          a.parent().remove_atom(a)
-        self._infoString += _ReportTiming("delete Hydrogens")
+      ################################################################################
+      # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
+      # both in the initial setup and determined during optimization.  Phantom Hydrogens
+      # on waters do not need to be adjusted because they were never added to the
+      # structure.
+      # We only do this after the last-checked alternate configuration for a given model.
+      self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
+      for a in self._deleteMes:
+        aName = a.name.strip().upper()
+        resName = a.parent().resname.strip().upper()
+        resID = str(a.parent().parent().resseq_as_int())
+        chainID = a.parent().parent().parent().id
+        resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+        self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
+        a.parent().remove_atom(a)
+      self._infoString += _ReportTiming("delete Hydrogens")
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
@@ -621,6 +703,27 @@ class _SingletonOptimizer(object):
         self._spatialQuery.remove(positionReturn.atoms[i])
         self._deleteMes.discard(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
+
+  def _doFixup(self, fixUp):
+    """
+      Move the atoms to their fixup positions, updating their extra atom info
+      and deletion status
+    """
+    myAtoms = fixUp.atoms
+    for i, p in enumerate(fixUp.positions):
+      self._infoString += _VerboseCheck(5,"Moving atom to {}\n".format(p))
+      myAtoms[i].xyz = p
+    for i, e in enumerate(fixUp.extraInfos):
+      self._infoString += _VerboseCheck(5,"Atom info to {}\n".format(e))
+      self._extraAtomInfo.setMappingFor(myAtoms[i], e)
+    for i, d in enumerate(fixUp.deleteMes):
+      # Either ensure that it is deleted or ensure that it is not depending on the
+      # value of the deletion result.
+      self._infoString += _VerboseCheck(5,"Atom deleted is {}\n".format(d))
+      if d:
+        self._deleteMes.add(myAtoms[i])
+      else:
+        self._deleteMes.discard(myAtoms[i])
 
   def _scoreAtom(self, atom):
     maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
@@ -1105,14 +1208,17 @@ class _PlaceMoversReturn(object):
   # that may contain information the user would like to know (where Movers were placed,
   # failed Mover placements due to missing Hydrogens, etc.).  Also returns a list of
   # atoms that should be deleted as a result of situations determined during the
-  # placement.
-  def __init__(self, moverList, infoString, deleteAtoms):
+  # placement.  Also returns a dictionary mapping from Movers to strings describing each Mover.
+  # @todo Make this a method of the base Optimizer so we're not passing things in and
+  # out and immediately reassigning them to member variables.
+  def __init__(self, moverList, infoString, deleteAtoms, moverInfo):
     self.moverList = moverList
     self.infoString = infoString
     self.deleteAtoms = deleteAtoms
+    self.moverInfo = moverInfo
 
-def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery, extraAtomInfo,
-                  maxVDWRadius, addFlipMovers):
+def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, spatialQuery,
+                  extraAtomInfo, maxVDWRadius, addFlipMovers):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -1120,6 +1226,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
   :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
   structure that the atom from the first parameter interacts with that lists all of the
   bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+  :param hParameters: List indexed by sequence ID that stores the riding
+  coefficients for hydrogens that have associated dihedral angles.  This can be
+  obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
   :param spatialQuery: Probe.SpatialQuery structure to rapidly determine which atoms
   are within a specified distance of a location.
   :param extraAtomInfo: Probe.ExtraAtomInfo mapper that provides radius and other
@@ -1140,6 +1249,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
   # Information string to return, filled in when we cannot place a Mover.
   infoString = ""
+
+  # Dictionary mapping from Mover to information about the Mover, so that we can keep track of
+  # everything from its placement to its final state in the same string.
+  moverInfo = {}
 
   # The radius of a Polar Hydrogen (one that forms Hydrogen bonds)
   # @todo Can we look this up from inside CCTBX?
@@ -1207,9 +1320,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
             if acceptor or flipPartner:
               potentialAcceptors.append(c)
 
-          movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, potentialAcceptors))
+          movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, hParameters, potentialAcceptors))
           infoString += _VerboseCheck(1,"Added MoverSingleHydrogenRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+
             " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
+          moverInfo[movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
       except Exception as e:
         infoString += _VerboseCheck(0,"Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
@@ -1219,12 +1333,13 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
     if a.element == 'N' and len(bondedNeighborLists[a]) == 4:
       numH = 0
       for n in bondedNeighborLists[a]:
-        if n.element == "H":
+        if n.element_is_hydrogen():
           numH += 1
       if numH == 3:
         try:
-          movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists))
+          movers.append(Movers.MoverNH3Rotator(a, bondedNeighborLists, hParameters))
           infoString += _VerboseCheck(1,"Added MoverNH3Rotator "+str(len(movers))+" to "+resNameAndID+"\n")
+          moverInfo[movers[-1]] = "NH3Rotator at "+resNameAndID+" "+aName;
         except Exception as e:
           infoString += _VerboseCheck(0,"Could not add MoverNH3Rotator to "+resNameAndID+": "+str(e)+"\n")
 
@@ -1235,7 +1350,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
       numH = 0
       neighbor = None
       for n in bondedNeighborLists[a]:
-        if n.element == "H":
+        if n.element_is_hydrogen():
           numH += 1
         else:
           neighbor = n
@@ -1245,18 +1360,19 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         # so that they Hydrogens will be staggered but do not add it to those to be optimized.
         if len(bondedNeighborLists[neighbor]) == 3:
           try:
-            movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists))
+            movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists, hParameters))
             infoString += _VerboseCheck(1,"Added MoverAromaticMethylRotator "+str(len(movers))+" to "+resNameAndID+" "+aName+"\n")
+            moverInfo[movers[-1]] = "AromaticMethylRotator at "+resNameAndID+" "+aName;
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverAromaticMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
         else:
           try:
-            ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists)
+            ignored = Movers.MoverTetrahedralMethylRotator(a, bondedNeighborLists, hParameters)
             infoString += _VerboseCheck(1,"Used MoverTetrahedralMethylRotator to stagger "+resNameAndID+" "+aName+"\n")
           except Exception as e:
             infoString += _VerboseCheck(0,"Could not add MoverTetrahedralMethylRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
-    # See if we should insert a MoverNH2Flip here.
+    # See if we should insert a MoverAmideFlip here.
     # @todo Is there a more general way than looking for specific names?
     if addFlipMovers and ((aName == 'XD2' and resName == 'ASX') or (aName == 'XE2' and resName == 'GLX')):
       infoString += _VerboseCheck(1,"Not attempting to adjust "+resNameAndID+" "+aName+"\n")
@@ -1282,7 +1398,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           if n.element_is_positive_ion():
             dist = (Helpers.rvec3(oxygen.xyz) - Helpers.rvec3(n.xyz)).length()
             expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
-            infoString += _VerboseCheck(5,'Checking NH2Flip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+            infoString += _VerboseCheck(5,'Checking AmideFlip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
               ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
               ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
             # @todo Why are we using -0.65 here and -0.55 for Histidine?
@@ -1291,12 +1407,13 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
 
       if not foundIon:
         try:
-          movers.append(Movers.MoverNH2Flip(a, "CA", bondedNeighborLists))
-          infoString += _VerboseCheck(1,"Added MoverNH2Flip "+str(len(movers))+" to "+resNameAndID+"\n")
+          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists))
+          infoString += _VerboseCheck(1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName;
         except Exception as e:
-          infoString += _VerboseCheck(0,"Could not add MoverNH2Flip to "+resNameAndID+": "+str(e)+"\n")
+          infoString += _VerboseCheck(0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
-    # See if we should insert a MoverHistidineFlip here.
+    # See if we should insert a MoverHisFlip here.
     # @todo Is there a more general way than looking for specific names?
     if aName == 'NE2' and resName == 'HIS':
       try:
@@ -1304,7 +1421,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
         # locations.  If one or both of them are near enough to be ionically bound to an
         # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
         # rather than inserting the Mover into the list of those to be optimized.
-        hist = Movers.MoverHistidineFlip(a, bondedNeighborLists, extraAtomInfo)
+        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo)
 
         # Find the four positions to check for Nitrogen ionic bonds
         # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
@@ -1333,8 +1450,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
                 ', '+n.name.strip()+' rad = '+str(extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                # The first two elements come from configuration 0 and the second two from configuration 3
-                bondedConfig = (i // 2) * 3
+                # The first two elements in the enumeration come from Histidine configuration 0
+                # and the second two from configuration 4, so we figure out which one we should
+                # be in.
+                bondedConfig = (i // 2) * 4
                 infoString += _VerboseCheck(5,'Found ionic bond in coarse configuration '+str(bondedConfig)+'\n')
                 break
           if bondedConfig is not None:
@@ -1383,14 +1502,15 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, spatialQuery,
           _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1], infoString)
           _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
 
-          infoString += _VerboseCheck(1,"Set MoverHistidineFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
+          infoString += _VerboseCheck(1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
           movers.append(hist)
-          infoString += _VerboseCheck(1,"Added MoverHistidineFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+          infoString += _VerboseCheck(1,"Added MoverHisFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+          moverInfo[movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
       except Exception as e:
-        infoString += _VerboseCheck(0,"Could not add MoverHistidineFlip to "+resNameAndID+": "+str(e)+"\n")
+        infoString += _VerboseCheck(0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
-  return _PlaceMoversReturn(movers, infoString, deleteAtoms)
+  return _PlaceMoversReturn(movers, infoString, deleteAtoms, moverInfo)
 
 ##################################################################################
 # Private helper functions.
@@ -1547,7 +1667,6 @@ END
 
   #========================================================================
   # Unit tests for each type of Optimizer.
-  # @todo
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
@@ -1620,7 +1739,6 @@ END
   # Get the Cartesian positions of all of the atoms we're considering for this alternate
   # conformation.
   carts = flex.vec3_double()
-  maxVDWRad = 1
   for a in atoms:
     carts.append(a.xyz)
 
@@ -1634,6 +1752,7 @@ END
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
   for a in atoms:
     maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
 
@@ -1653,7 +1772,7 @@ END
   # Place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, sq, extra, maxVDWRad, True)
+                     bondedNeighborLists, None, sq, extra, maxVDWRad, True)
   movers = ret.moverList
   if len(movers) != 0:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
@@ -1670,7 +1789,11 @@ END
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
-  # Check a case where an NH2Flip would be locked down and have its Hydrogen removed.
+  # Check a case where a HisFlip would be flipped and locked down and have its Hydrogen removed.
+  # @todo
+
+  #========================================================================
+  # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
   # @todo
 
   #========================================================================

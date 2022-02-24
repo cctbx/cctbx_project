@@ -1018,6 +1018,22 @@ namespace {
       || ((e[0] == 'H' || e[0] == 'D') && (e[1] == ' ' || e[1] == '\0')));
   }
 
+
+  // Convert a fixed-length character array to a string.
+  // This makes it at most 2 characters long and also makes both characters upper case.
+  // We do this because some paths through CCTBX produced lower-case second letters and
+  // others produces upper-case second letters.
+  static std::string convertElementToString(char* a)
+  {
+    std::string ret;
+    for (size_t i = 0; i < 2; i++) {
+      if (a[i]) {
+        ret += toupper(a[i]);
+      }
+    }
+    return ret;
+  }
+
   bool
   atom::element_is_positive_ion() const
   {
@@ -1029,19 +1045,21 @@ namespace {
     // Thus, we have a twisty maze to get the set initialized.
     static const char* posi[] = {
       // Metallic atoms
-      "Li", "Na", "Al", "K",  "Mg", "Ca", "Mn", "Fe", "Co", "Ni"
-     ,"Cu", "Zn", "Rb", "Sr", "Mo", "Ag", "Cd", "In", "Cs", "Ba", "Au", "Hg", "Tl"
-     ,"Pb", "V",  "Cr", "Te", "Sm", "Gd", "Yb", "W",  "Pt", "U"
-     ,"Be", "Si", "Sc", "Ti", "Fa", "Ge", "Y",  "Zr", "Sn", "Sb", "La", "Ce", "Fr", "Ra", "Th"
-     ,"Nb", "Tc", "Ru", "Rh", "Pd", "Pr", "Nd", "Pm", "Eu", "Tb", "Dy", "Ho", "Er"
-     ,"Tm", "Lu", "Hf", "Ta", "Re", "Os", "Ir", "Bi", "Po", "At"
-     ,"Ac", "Pa", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"
+      "LI", "NA", "AL", "K",  "MG", "CA", "MN", "FE", "CO", "NI"
+     ,"CU", "ZN", "RB", "SR", "MO", "AG", "CD", "IN", "CS", "BA", "AU", "HG", "TL"
+     ,"PB", "V",  "CR", "TE", "SM", "GD", "YB", "W",  "PT", "U"
+     ,"BE", "SI", "SC", "TI", "FA", "GE", "Y",  "ZR", "SN", "SB", "LA", "CE", "FR", "RA", "TH"
+     ,"NB", "TC", "RU", "RH", "PD", "PR", "ND", "PM", "EU", "TB", "DY", "HO", "ER"
+     ,"TM", "LU", "HF", "TA", "RE", "OS", "IR", "BI", "PO", "AT"
+     ,"AC", "PA", "NP", "PU", "AM", "CM", "BK", "CF", "ES", "FM", "MD", "NO"
       // Other positive ions
      ,"B"
     };
     static std::set<std::string> positiveIons(&posi[0], &posi[sizeof(posi) / sizeof(posi[0])]);
 
-    return positiveIons.find(data->element.elems) != positiveIons.end();
+    // The element name is stored in a 2-character array that is not alwayszero terminated, so we
+    // need to put it into string form before we check it against the list above.
+    return positiveIons.find(convertElementToString(data->element.elems)) != positiveIons.end();
   }
 
   bool
@@ -1053,10 +1071,12 @@ namespace {
     // versions being used at the time this code was written, preventing direct
     // initialization from the const char * array.
     // Thus, we have a twisty maze to get the set initialized.
-    static const char* negi[] = { "F", "Cl", "Br", "I" };
+    static const char* negi[] = { "F", "CL", "BR", "I" };
     static std::set<std::string> negativeIons(&negi[0], &negi[sizeof(negi) / sizeof(negi[0])]);
 
-    return negativeIons.find(data->element.elems) != negativeIons.end();
+    // The element name is stored in a 2-character array that is not always zero terminated, so we
+    // need to put it into string form before we check it against the list above.
+    return negativeIons.find(convertElementToString(data->element.elems)) != negativeIons.end();
   }
 
   bool
