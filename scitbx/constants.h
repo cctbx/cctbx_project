@@ -29,6 +29,12 @@ namespace scitbx {
     static const double pi_2 = 2. * std::atan(1.);
     //! mathematical constant pi/180
     static const double pi_180 = std::atan(1.) / 45.;
+    //! mathematical constant the Planck constant
+    static const double Planck = 6.62607015e-34;
+    //! mathematical constant neutron mass
+    static const double neutron_mass = 1.67492749804e-27;
+    //! mathematical constant neutron mass
+    static const double m_n = 1.67492749804e-27;
 
     //! Factor for keV <-> Angstrom conversion.
     /*!
