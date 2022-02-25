@@ -364,7 +364,11 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.resetFactoryDefaultbtn = QPushButton()
     self.resetFactoryDefaultbtn.setText("Reset Settings")
     self.resetFactoryDefaultbtn.clicked.connect(self.onResetFactoryDefault)
-
+    # Set the rich text of the SpaceGrpUCellText here rather than in QtDesigner which on windows
+    # include MS Font in it. MS Font are not understood by MacOS
+    htmlstr = '''<html><head/><body><p><span style=" font-weight:600;">Space group: \t
+    </span>P21 21 21<span style=" font-weight:600;"><br/>Unit cell(s): \t</span>(98.371, 98.371, 263.131, 90, 90, 120)</p></body></html> '''
+    self.SpaceGrpUCellText.setText(htmlstr )
     self.ColourMapSelectDlg = MPLColourSchemes(self)
     self.select_millertable_column_dlg = MillerTableColumnHeaderDialog(self)
     self.ColourMapSelectDlg.setWindowTitle("HKLviewer Colour Gradient Maps")
@@ -1540,6 +1544,7 @@ clip_plane.normal_vector_length_scale = -1
 
   def onParallel_current_orientation_btn_click(self):
     self.clipplane_normal_vector_combo.setEnabled(False)
+    self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = -1
@@ -1549,6 +1554,7 @@ clip_plane.normal_vector = -1
 
   def onNormal_vec_btn_click(self):
     self.clipplane_normal_vector_combo.setEnabled(True)
+    self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
 viewer.is_parallel = False
 clip_plane.clipwidth = %f
@@ -1561,6 +1567,7 @@ clip_plane.normal_vector_length_scale = -1
 
   def onNormal_realspace_vec_btn_click(self):
     self.clipplane_normal_vector_combo.setEnabled(True)
+    self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
 viewer.is_parallel = False
 clip_plane.clipwidth = %f
@@ -1615,6 +1622,7 @@ clip_plane.normal_vector_length_scale = -1
     if self.ClipPlaneChkGroupBox.isChecked():
       if self.normal_realspace_vec_btn.isChecked():
         self.clipplane_normal_vector_combo.setEnabled(True)
+        self.RotateGroupBox.setEnabled(False)
         philstr = """viewer {
   slice_mode = False
   inbrowser = True
@@ -1628,6 +1636,7 @@ clip_plane.normal_vector_length_scale = -1
 """ %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
       elif self.normal_vec_btn.isChecked():
         self.clipplane_normal_vector_combo.setEnabled(True)
+        self.RotateGroupBox.setEnabled(False)
         philstr = """viewer {
   slice_mode = False
   inbrowser = True
@@ -1641,6 +1650,7 @@ clip_plane.normal_vector_length_scale = -1
 """ %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
       else:
         self.clipplane_normal_vector_combo.setEnabled(False)
+        self.RotateGroupBox.setEnabled(True)
         philstr = """viewer {
   slice_mode = False
   inbrowser = True

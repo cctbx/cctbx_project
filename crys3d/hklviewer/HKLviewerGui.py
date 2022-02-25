@@ -154,14 +154,12 @@ class Ui_MainWindow(object):
         self.SpaceGrpUCellText.setSizePolicy(sizePolicy6)
         self.SpaceGrpUCellText.setMinimumSize(QSize(0, 30))
         self.SpaceGrpUCellText.setMaximumSize(QSize(16777215, 16777215))
+        font = QFont()
+        font.setFamily(u"Arial")
+        self.SpaceGrpUCellText.setFont(font)
         self.SpaceGrpUCellText.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.SpaceGrpUCellText.setReadOnly(True)
-        self.SpaceGrpUCellText.setHtml(u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-size:8pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-weight:600;\">Space group: </span>P21 21 21<br /><span style=\" font-weight:600;\">Unit cell:</span> (98.371, 98.371, 263.131, 90, 90, 120)</p></body></html>")
         self.SpaceGrpUCellText.setOverwriteMode(True)
         self.SpaceGrpUCellText.setAcceptRichText(False)
         self.splitter_2.addWidget(self.SpaceGrpUCellText)
@@ -170,7 +168,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 434, 392))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, -3, 434, 392))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -388,22 +386,22 @@ class Ui_MainWindow(object):
 
         self.gridLayout_7.addWidget(self.ClipPlaneChkGroupBox, 0, 0, 1, 1)
 
-        self.groupBox = QGroupBox(self.tab_2)
-        self.groupBox.setObjectName(u"groupBox")
-        sizePolicy9.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
-        self.groupBox.setSizePolicy(sizePolicy9)
-        self.gridLayout_22 = QGridLayout(self.groupBox)
+        self.RotateGroupBox = QGroupBox(self.tab_2)
+        self.RotateGroupBox.setObjectName(u"RotateGroupBox")
+        sizePolicy9.setHeightForWidth(self.RotateGroupBox.sizePolicy().hasHeightForWidth())
+        self.RotateGroupBox.setSizePolicy(sizePolicy9)
+        self.gridLayout_22 = QGridLayout(self.RotateGroupBox)
         self.gridLayout_22.setSpacing(4)
         self.gridLayout_22.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_22.setObjectName(u"gridLayout_22")
         self.gridLayout_22.setContentsMargins(0, 3, 0, 0)
-        self.label_14 = QLabel(self.groupBox)
+        self.label_14 = QLabel(self.RotateGroupBox)
         self.label_14.setObjectName(u"label_14")
         self.label_14.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
 
         self.gridLayout_22.addWidget(self.label_14, 0, 0, 1, 1)
 
-        self.angleStepHKLrotSpinBox = QDoubleSpinBox(self.groupBox)
+        self.angleStepHKLrotSpinBox = QDoubleSpinBox(self.RotateGroupBox)
         self.angleStepHKLrotSpinBox.setObjectName(u"angleStepHKLrotSpinBox")
         sizePolicy16.setHeightForWidth(self.angleStepHKLrotSpinBox.sizePolicy().hasHeightForWidth())
         self.angleStepHKLrotSpinBox.setSizePolicy(sizePolicy16)
@@ -416,7 +414,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_22.addWidget(self.angleStepHKLrotSpinBox, 0, 1, 1, 1)
 
-        self.groupBox_2 = QGroupBox(self.groupBox)
+        self.groupBox_2 = QGroupBox(self.RotateGroupBox)
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.groupBox_2.setAlignment(Qt.AlignCenter)
         self.gridLayout_16 = QGridLayout(self.groupBox_2)
@@ -448,7 +446,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_22.addWidget(self.groupBox_2, 1, 0, 1, 1)
 
-        self.groupBox_4 = QGroupBox(self.groupBox)
+        self.groupBox_4 = QGroupBox(self.RotateGroupBox)
         self.groupBox_4.setObjectName(u"groupBox_4")
         self.groupBox_4.setAlignment(Qt.AlignCenter)
         self.gridLayout_19 = QGridLayout(self.groupBox_4)
@@ -474,7 +472,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_22.addWidget(self.groupBox_4, 1, 1, 1, 1)
 
-        self.groupBox_6 = QGroupBox(self.groupBox)
+        self.groupBox_6 = QGroupBox(self.RotateGroupBox)
         self.groupBox_6.setObjectName(u"groupBox_6")
         self.groupBox_6.setAlignment(Qt.AlignCenter)
         self.gridLayout_21 = QGridLayout(self.groupBox_6)
@@ -501,7 +499,7 @@ class Ui_MainWindow(object):
         self.gridLayout_22.addWidget(self.groupBox_6, 1, 2, 1, 1)
 
 
-        self.gridLayout_7.addWidget(self.groupBox, 1, 0, 1, 1)
+        self.gridLayout_7.addWidget(self.RotateGroupBox, 1, 0, 1, 1)
 
         self.functionTabWidget.addTab(self.tab_2, "")
         self.tab_3 = QWidget()
@@ -896,10 +894,10 @@ class Ui_MainWindow(object):
         sizePolicy28.setVerticalStretch(2)
         sizePolicy28.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
         self.textInfo.setSizePolicy(sizePolicy28)
-        font = QFont()
-        font.setFamily(u"Courier New")
-        font.setPointSize(9)
-        self.textInfo.setFont(font)
+        font1 = QFont()
+        font1.setFamily(u"Courier New")
+        font1.setPointSize(9)
+        self.textInfo.setFont(font1)
         self.textInfo.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
@@ -999,7 +997,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.label_13.setText(QCoreApplication.translate("MainWindow", u"Scale:", None))
         self.parallel_current_orientation_btn.setText(QCoreApplication.translate("MainWindow", u"uses current orientation", None))
-        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotate reflections around X, Y, Z axes", None))
+        self.RotateGroupBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotate reflections around X, Y, Z axes", None))
         self.label_14.setText(QCoreApplication.translate("MainWindow", u"Angular step of:", None))
         self.angleStepHKLrotSpinBox.setSuffix(QCoreApplication.translate("MainWindow", u"\u00ba", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Rotate around X", None))

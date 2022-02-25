@@ -2042,10 +2042,10 @@ in the space group %s\nwith unit cell %s\n""" \
         hklstr = "H,K,L: %d,%d,%d" %thkl
         if i < len(self.visual_symHKLs)-1:
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3,
-                           radius=0.1, labelpos=1.0)
+                           radius=0.1, labelpos=1.0, autozoom = False)
         else: # supplying a name for the vector last graphics primitive draws them all
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs",
-                           r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+                           r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom = False)
 
 
   def show_hkl(self, bigwireframe=True):
