@@ -1142,8 +1142,9 @@ class HKLViewFrame() :
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
       veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength ) )
-    self.viewer.all_vectors = self.viewer.all_vectors + self.uservectors
+      #self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength ) )
+      self.viewer.all_vectors = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )] + self.viewer.all_vectors
+    self.viewer.all_vectors = self.uservectors + self.viewer.all_vectors
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1155,7 +1156,7 @@ class HKLViewFrame() :
     hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
                         (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
                         (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
-    self.viewer.all_vectors = self.viewer.all_vectors + hklunit_vectors
+    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors
 
     for (opnr, label, order, cartvec, hkl_op, hkl, abc, length) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"

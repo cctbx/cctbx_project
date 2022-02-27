@@ -420,7 +420,7 @@ function RemovePrimitives(reprname)
 
 function CameraZoom(t, deltaX, deltaY) {
   let z = stage.viewer.camera.zoom;
-  z += (deltaX + deltaY) / 4.0;
+  z -= (deltaX + deltaY) / 4.0;
   if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
     stage.viewer.camera.zoom = z;
     stage.viewer.requestRender();
