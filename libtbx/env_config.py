@@ -1651,7 +1651,7 @@ Wait for the command to finish, then try again.""" % vars())
           + "   =%s\n" % reg
           + "    %s\n" % show_string(abs(source_file))
           + "   =%s" % source_file)
-    if abs(self.build_path) == get_conda_prefix() or \
+    if abs(self.build_path) == os.path.abspath(get_conda_prefix()) or \
       (os.name == "nt" and abs(self.build_path).lower().endswith('library')):
       action = self.write_conda_dispatcher
     elif (os.name == "nt"):

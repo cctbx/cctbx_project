@@ -281,6 +281,9 @@ def copy_modules(env, sp_dir=None, link=False):
                 dst = os.path.join(sp_dir, 'phenix', subdir)
                 print('  source:      ' + src)
                 print('  destination: ' + dst)
+                if os.path.exists(dst):
+                  print('  {dst} already exists'.format(dst=dst))
+                  continue
                 copy_cmd(src, dst, link)
             continue
           elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante']:
