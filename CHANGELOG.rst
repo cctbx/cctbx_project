@@ -1,3 +1,10 @@
+2022.2
+======
+
+* Added --quiet flag to CCTBXParser to suppress output
+* Updates to restraints based on quantum mechanics
+* Updates and bug fixes to cctbx.HKLviewer
+
 2022.1
 ======
 
