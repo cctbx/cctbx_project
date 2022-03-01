@@ -84,6 +84,7 @@ struct kokkos_detector{
 
   // all-panel packed GPU representation of the multi-panel metrology
   vector_cudareal_t m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
+  vector_cudareal_t a = vector_vec3_t("m_sdet_vector", 0);
   vector_cudareal_t m_fdet_vector = vector_cudareal_t("m_fdet_vector", 0);
   vector_cudareal_t m_odet_vector = vector_cudareal_t("m_odet_vector", 0);
   vector_cudareal_t m_pix0_vector = vector_cudareal_t("m_pix0_vector", 0);
