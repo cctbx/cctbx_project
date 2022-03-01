@@ -53,7 +53,7 @@ WAVELEN = ENERGY_CONV/ENERGY
 # dxtbx beam model description
 beam_descr = {'direction': (0.0, 0.0, 1.0),
              'divergence': 0.0,
-             'flux': 0,
+             'flux': 1e11,
              'polarization_fraction': 1.,
              'polarization_normal': (0.0, 1.0, 0.0),
              'sigma_divergence': 0.0,
