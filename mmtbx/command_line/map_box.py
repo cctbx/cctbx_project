@@ -72,6 +72,11 @@ master_phil = libtbx.phil.parse("""
      .help = Radius for masking around atoms
      .short_caption = Mask atoms atom radius
 
+  write_mask_file = False
+     .type = bool
+     .help = Write mask file
+     .short_caption = Write mask file
+
   set_outside_to_mean_inside = False
     .type = bool
     .help = Set value outside mask equal to mean inside
@@ -1071,6 +1076,13 @@ def run(args,
   elif (params.soft_mask):  # apply soft mask to outside of box
     mam = apply_mask_around_edge_of_box(mam, params = params, log = log)
 
+  if params.write_mask_file:
+    if not hasattr(mam.map_manager(),'_created_mask') or not \
+       mam.map_manager()._created_mask:
+      raise Sorry("Cannot create mask file if no mask has been created")
+    mask_map_manager = mam.map_manager()._created_mask.map_manager().deep_copy()
+  else:
+    mask_map_manager = None
 
   # Shift origin of output file if requested
   if params.output_origin_grid_units or params.output_unit_cell_grid or\
@@ -1207,6 +1219,15 @@ def run(args,
          map_manager, filename = filename)
       print("\nWriting map to %s" %( filename), file = log)
 
+    # Write ccp4 mask.
+    if("ccp4" in params.output_format and mask_map_manager):
+      if(params.output_file_name_prefix is None):
+        filename = "%s_mask_box.ccp4"%output_prefix
+      else:
+        filename = "%s_mask.ccp4"%params.output_file_name_prefix
+      dm.write_real_map_file(
+         mask_map_manager, filename = filename)
+      print("\nWriting mask to %s" %( filename), file = log)
 
     # Write xplor map.  Shift back if keep_origin = True
     if("xplor" in params.output_format):
