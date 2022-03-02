@@ -22,13 +22,13 @@ using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
 template<typename T> using view_1d_t = Kokkos::View<T*, MemSpace>;
 
-using vec3 = simtbx::kokkos::vec3<CUDAREAL>;
+using vector3 = simtbx::kokkos::vec3<CUDAREAL>;
 
 using vector_bool_t = view_1d_t<bool>;
 using vector_double_t = view_1d_t<double>;
 using vector_float_t = view_1d_t<float>;
 using vector_cudareal_t = view_1d_t<CUDAREAL>;
-using vector_vec3_t = view_1d_t<vec3>;
+using vector_vector3_t = view_1d_t<vector3>;
 using vector_int_t = view_1d_t<int>;
 using vector_size_t = view_1d_t<std::size_t>;
 using vector_ushort_t = view_1d_t<unsigned int short>;

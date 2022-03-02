@@ -13,8 +13,8 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     int roi_ymin, int roi_ymax, int oversample, int point_pixel,
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thickstep,
     int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
-    const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
-    const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
+    const vector_vector3_t sdet_vector, const vector_vector3_t fdet_vector,
+    const vector_vector3_t odet_vector, const vector_vector3_t pix0_vector,
     int curved_detector, CUDAREAL distance, CUDAREAL close_distance,
      const vector_cudareal_t beam_vector,
     CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep,
@@ -108,18 +108,18 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         //                      pixel_Z = Fdet-Xbeam;
                                         //CUDAREAL * pixel_pos = tmpVector1;
                                         CUDAREAL pixel_pos[4];
-                                        pixel_pos[1] = Fdet * fdet_vector(1)
-                                                     + Sdet * sdet_vector(1)
-                                                     + Odet * odet_vector(1)
-                                                            + pix0_vector(1); // X
-                                        pixel_pos[2] = Fdet * fdet_vector(2)
-                                                     + Sdet * sdet_vector(2)
-                                                     + Odet * odet_vector(2)
-                                                            + pix0_vector(2); // Y
-                                        pixel_pos[3] = Fdet * fdet_vector(3)
-                                                     + Sdet * sdet_vector(3)
-                                                     + Odet * odet_vector(3)
-                                                            + pix0_vector(3); // Z
+                                        pixel_pos[1] = Fdet * fdet_vector(0).x
+                                                     + Sdet * sdet_vector(0).x
+                                                     + Odet * odet_vector(0).x
+                                                            + pix0_vector(0).x; // X
+                                        pixel_pos[2] = Fdet * fdet_vector(0).y
+                                                     + Sdet * sdet_vector(0).y
+                                                     + Odet * odet_vector(0).y
+                                                            + pix0_vector(0).y; // Y
+                                        pixel_pos[3] = Fdet * fdet_vector(0).z
+                                                     + Sdet * sdet_vector(0).z
+                                                     + Odet * odet_vector(0).z
+                                                            + pix0_vector(0).z; // Z
 
                                         if (curved_detector) {
                                                 // construct detector pixel that is always "distance" from the sample
@@ -129,8 +129,10 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 dbvector[3] = distance * beam_vector(3);
                                                 // treat detector pixel coordinates as radians
                                                 CUDAREAL newvector[] = { 0.0, 0.0, 0.0, 0.0 };
-                                                rotate_axis(dbvector, newvector, sdet_vector, pixel_pos[2] / distance);
-                                                rotate_axis(newvector, pixel_pos, fdet_vector, pixel_pos[3] / distance);
+                                                CUDAREAL temp_sdet_vector[] = {0.0, sdet_vector(0).x, sdet_vector(0).y, sdet_vector(0).z};
+                                                CUDAREAL temp_fdet_vector[] = {0.0, fdet_vector(0).x, fdet_vector(0).y, fdet_vector(0).z};
+                                                rotate_axis(dbvector, newvector, temp_sdet_vector, pixel_pos[2] / distance);
+                                                rotate_axis(newvector, pixel_pos, temp_fdet_vector, pixel_pos[3] / distance);
                                                 // rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
                                         }
 
@@ -151,9 +153,9 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         if (detector_thick > 0.0 && detector_mu> 0.0) {
                                                 // inverse of effective thickness increase
                                                 CUDAREAL odet[4];
-                                                odet[1] = odet_vector(1);
-                                                odet[2] = odet_vector(2);
-                                                odet[3] = odet_vector(3);
+                                                odet[1] = odet_vector(0).x;
+                                                odet[2] = odet_vector(0).y;
+                                                odet[3] = odet_vector(0).z;
                                                 CUDAREAL parallax = dot_product(odet, diffracted);
                                                 capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
                                                                 - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
@@ -354,8 +356,8 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps,
     CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
     const int vec_len,
-    const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
-    const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
+    const vector_vector3_t sdet_vector, const vector_vector3_t fdet_vector,
+    const vector_vector3_t odet_vector, const vector_vector3_t pix0_vector,
     const vector_cudareal_t distance, const vector_cudareal_t close_distance,
     const vector_cudareal_t beam_vector,
     const vector_cudareal_t Xbeam, const vector_cudareal_t Ybeam, // not even used, after all the work
@@ -444,18 +446,18 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         //CUDAREAL * pixel_pos = tmpVector1;
                                         CUDAREAL pixel_pos[4];
                                         int iVL = vec_len * i_panel;
-                                        pixel_pos[1] = Fdet * fdet_vector(iVL+1)
-                                                     + Sdet * sdet_vector(iVL+1)
-                                                     + Odet * odet_vector(iVL+1)
-                                                                    + pix0_vector(iVL+1); // X
-                                        pixel_pos[2] = Fdet * fdet_vector(iVL+2)
-                                                     + Sdet * sdet_vector(iVL+2)
-                                                     + Odet * odet_vector(iVL+2)
-                                                            + pix0_vector(iVL+2); // Y
-                                        pixel_pos[3] = Fdet * fdet_vector(iVL+3)
-                                                     + Sdet * sdet_vector(iVL+3)
-                                                     + Odet * odet_vector(iVL+3)
-                                                            + pix0_vector(iVL+3); // Z
+                                        pixel_pos[1] = Fdet * fdet_vector(iVL).x
+                                                     + Sdet * sdet_vector(iVL).x
+                                                     + Odet * odet_vector(iVL).x
+                                                            + pix0_vector(iVL).x; // X
+                                        pixel_pos[2] = Fdet * fdet_vector(iVL).y
+                                                     + Sdet * sdet_vector(iVL).y
+                                                     + Odet * odet_vector(iVL).y
+                                                            + pix0_vector(iVL).y; // Y
+                                        pixel_pos[3] = Fdet * fdet_vector(iVL).z
+                                                     + Sdet * sdet_vector(iVL).z
+                                                     + Odet * odet_vector(iVL).z
+                                                            + pix0_vector(iVL).z; // Z
 
                                         // construct the diffracted-beam unit vector to this sub-pixel
                                         //CUDAREAL * diffracted = tmpVector2;
@@ -474,9 +476,9 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         if (detector_thick > 0.0 && detector_mu> 0.0) {
                                                 // inverse of effective thickness increase
                                                 CUDAREAL odet[4];
-                                                odet[1] = odet_vector(iVL+1);
-                                                odet[2] = odet_vector(iVL+2);
-                                                odet[3] = odet_vector(iVL+3);
+                                                odet[1] = odet_vector(iVL).x;
+                                                odet[2] = odet_vector(iVL).y;
+                                                odet[3] = odet_vector(iVL).z;
                                                 CUDAREAL parallax = dot_product(odet, diffracted);
                                                 capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
                                                                 - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
@@ -632,8 +634,8 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
-    const vector_cudareal_t  sdet_vector, const vector_cudareal_t  fdet_vector,
-    const vector_cudareal_t  odet_vector, const vector_cudareal_t  pix0_vector,
+    const vector_vector3_t  sdet_vector, const vector_vector3_t  fdet_vector,
+    const vector_vector3_t  odet_vector, const vector_vector3_t  pix0_vector,
     CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
     const vector_cudareal_t  source_X, const vector_cudareal_t  source_Y,
     const vector_cudareal_t  source_Z,
@@ -684,9 +686,9 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     CUDAREAL pixel_pos[4];
 
                     pixel_pos[0] = 0.0;
-                    pixel_pos[1] = Fdet * fdet_vector(1) + Sdet * sdet_vector(1) + Odet * odet_vector(1) + pix0_vector(1); // X
-                    pixel_pos[2] = Fdet * fdet_vector(2) + Sdet * sdet_vector(2) + Odet * odet_vector(2) + pix0_vector(2); // Y
-                    pixel_pos[3] = Fdet * fdet_vector(3) + Sdet * sdet_vector(3) + Odet * odet_vector(3) + pix0_vector(3); // Z
+                    pixel_pos[1] = Fdet * fdet_vector(0).x + Sdet * sdet_vector(0).x + Odet * odet_vector(0).x + pix0_vector(0).x; // X
+                    pixel_pos[2] = Fdet * fdet_vector(0).y + Sdet * sdet_vector(0).y + Odet * odet_vector(0).y + pix0_vector(0).y; // Y
+                    pixel_pos[3] = Fdet * fdet_vector(0).z + Sdet * sdet_vector(0).z + Odet * odet_vector(0).z + pix0_vector(0).z; // Z
 
                     // no curved detector option (future implementation)
                     // construct the diffracted-beam unit vector to this pixel
@@ -702,7 +704,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     CUDAREAL capture_fraction = 1.0;
                     if(detector_thick > 0.0){
                         // inverse of effective thickness increase
-                        CUDAREAL parallax = diffracted[1] * odet_vector(1) + diffracted[2] * odet_vector(2) + diffracted[3] * odet_vector(3);
+                        CUDAREAL parallax = diffracted[1] * odet_vector(0).x + diffracted[2] * odet_vector(0).y + diffracted[3] * odet_vector(0).z;
                         capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
                                             -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                     }

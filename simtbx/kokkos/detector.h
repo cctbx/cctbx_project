@@ -27,10 +27,10 @@ struct packed_metrology{
   packed_metrology(dxtbx::model::Detector const &,dxtbx::model::Beam const &);
   packed_metrology(const simtbx::nanoBragg::nanoBragg& nB);
   void show() const;
-  af::shared<double>sdet;
-  af::shared<double>fdet;
-  af::shared<double>odet;
-  af::shared<double>pix0;
+  af::shared<vector3>sdet;
+  af::shared<vector3>fdet;
+  af::shared<vector3>odet;
+  af::shared<vector3>pix0;
   af::shared<double>dists;
   af::shared<double>Xbeam;
   af::shared<double>Ybeam;
@@ -83,11 +83,10 @@ struct kokkos_detector{
   vector_float_t m_floatimage = vector_float_t("m_floatimage", 0);
 
   // all-panel packed GPU representation of the multi-panel metrology
-  vector_cudareal_t m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
-  vector_cudareal_t a = vector_vec3_t("m_sdet_vector", 0);
-  vector_cudareal_t m_fdet_vector = vector_cudareal_t("m_fdet_vector", 0);
-  vector_cudareal_t m_odet_vector = vector_cudareal_t("m_odet_vector", 0);
-  vector_cudareal_t m_pix0_vector = vector_cudareal_t("m_pix0_vector", 0);
+  vector_vector3_t m_sdet_vector = vector_vector3_t("m_sdet_vector", 0);
+  vector_vector3_t m_fdet_vector = vector_vector3_t("m_fdet_vector", 0);
+  vector_vector3_t m_odet_vector = vector_vector3_t("m_odet_vector", 0);
+  vector_vector3_t m_pix0_vector = vector_vector3_t("m_pix0_vector", 0);
   vector_cudareal_t m_distance = vector_cudareal_t("m_distance", 0);
   vector_cudareal_t m_Xbeam = vector_cudareal_t("m_Xbeam", 0);
   vector_cudareal_t m_Ybeam = vector_cudareal_t("m_Ybeam", 0);
