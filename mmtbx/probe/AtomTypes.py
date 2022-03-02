@@ -35,27 +35,6 @@ import mmtbx_probe_ext as probe
 ##################################################################################
 # Helper functions.
 
-# Gobble up all spaces from the end of the name after non-space characters
-def Unpad(n):
-  # Gobble up all spaces from the end of the name.
-  while n[-1] == ' ':
-    n = n[:-1]
-  return n
-
-# Is a carbon atom a Carbonyl from a standard amino acid?
-def IsSpecialAminoAcidCarbonyl(resName, atomName):
-  """Given a residue and atom name, determine whether that atom is a C=O.
-  This does not mark the ' C  ' atom that is always a Carbonyl; that is checked separately.
-  :param resName: String containing the 1-3-character residue name in all caps, including leading space.
-  :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
-  :returns True if the atom is a C=O in a standard residue, False if not.  Does not handle HET atoms.
-  """
-  if Unpad(atomName) == ' CG':
-    return resName in ['ASP','ASN','ASX']
-  if Unpad(atomName) == ' CD':
-    return resName in ['GLU','GLN','GLX']
-  return False
-
 # Table of aromatic-acceptor atoms by residue and atom name.  The first entry in each list element is
 # a list of residue names with trailing spaces trimmed.  The second is a list of atoms that qualify
 # for all of the entries in the residue names.  In both cases, the strings are stripped of all
@@ -124,18 +103,6 @@ def IsAromatic(resName, atomName):
 
 
 def Test(inFileName = None):
-
-  #========================================================================
-  # Check IsSpecialAminoAcidCarbonyl() to ensure it gives results when expected and not when not.
-  carbonylChecks = [
-      ['ASP', ' CG', True],
-      ['ASP', ' CG ', True],
-      ['GLU', ' CD ', True],
-      ['GLU', ' CG ', False],
-      ['ASN',   'O', False]
-    ]
-  for a in carbonylChecks:
-    assert IsSpecialAminoAcidCarbonyl(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as Carbonyl {}".format(a[0],a[1],a[2])
 
   #========================================================================
   # Check IsAromatic() to ensure it gives results when expected and not when not.
