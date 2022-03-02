@@ -2083,6 +2083,7 @@ clip_plane {
     self.settings.setValue("windowsize", self.window.size())
     self.settings.setValue("splitter1Sizes", self.splitter.saveState())
     self.settings.setValue("splitter2Sizes", self.splitter_2.saveState())
+    self.settings.setValue("splitter3Sizes", self.splitter_3.saveState())
 
     self.settings.beginGroup("DataTypesGroups")
     datatypesgroups = self.settings.childGroups()
@@ -2167,6 +2168,10 @@ clip_plane {
     self.windowsize = self.settings.value("windowsize", None)
     self.splitter1sizes = self.settings.value("splitter1Sizes", None)
     self.splitter2sizes = self.settings.value("splitter2Sizes", None)
+    self.splitter3sizes = self.settings.value("splitter3Sizes", None)
+    #self.splitter1sizes = None
+    #self.splitter2sizes = None
+    #self.splitter3sizes = None
     self.settings.endGroup()
     if use_factory_default_settings:
       # Revert to storing settings in the default Qsettings location such as
@@ -2212,12 +2217,14 @@ clip_plane {
       self.onShowTooltips(self.ttip_click_invoke)
       self.ttipClickradio.setChecked(self.ttip_click_invoke == "click")
       self.ttipHoverradio.setChecked(self.ttip_click_invoke == "hover")
-    if self.splitter1sizes is not None and self.splitter2sizes is not None and self.windowsize is not None:
+    if self.splitter1sizes is not None and self.splitter2sizes is not None and \
+       self.splitter3sizes is not None and self.windowsize is not None:
       self.window.resize(self.windowsize)
       if self.webpagedebugform and self.devmode:
         self.webpagedebugform.resize( self.window.size())
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
+      self.splitter_3.restoreState(self.splitter3sizes)
     self.setDatatypedict(self.datatypedict)
     if self.make_new_factory_default_settings:
       # Create a new Factory default settings .ini file to be stored alongside this source file.
