@@ -16,6 +16,8 @@ if sys.version_info[0] < 3:
   print("HKLviewer GUI must be run from Python 3")
   sys.exit(-42)
 
+os.environ['QT_MAC_WANTS_LAYER'] = '1'
+
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
