@@ -41,9 +41,7 @@ As mentioned above, the C++ classes can be imported using the **mmtbx_probe_ext*
 There are also a set of Python classes that provide support for applications that want to use the C++ classes.
 
 * **AtomTypes.py:** This contains classes and functions that help determine the characteristics of atoms, which is needed
-to know how to handle them during probe calculations.  Some of these tables contain information from the
-original Probe and Reduce code that has been superceded by the same information from various CCTBX tables,
-but one of them contains information not found elsewhere in CCTBX: the **IsAromatic()** function tells whether
+to know how to handle them during Probe2 calculations.  The **IsAromatic()** function tells whether
 a specified atom from a specified residue is part of an aromatic ring in a standard residue.
 
 * **Helpers.py.** This contains helper functions needed by both Probe2 and Reduce2.  See the file itself for a complete
@@ -51,7 +49,9 @@ list of functions and parameters.  **getBondedNeighborLists()** converts bond pr
 lists, providing a list of bonded atoms looked up by atom.  **compatibleConformations()** tells whether two atoms
 are in compatible conformations.  **getAtomsWithinNBonds()** returns the list of atoms from compatible conformations
 that are bonded within N hops from a specified atom.  **getExtraAtomInfo()** looks up extra information needed to
-determine interactions and returns it encapsulated in a C++ structure reference.
+determine interactions and returns it encapsulated in a C++ structure reference.  **dihedralChoicesForRotatableHydrogens()**
+determines which of the Hydrogens passed in should be paired with which of the potential dihedral-determining
+atoms passed in to compute the dihedral angle for the Hydrogen; this is used for placement and angle description.
 **getPhantomHydrogensFor()** produces a list of potential hydrogens for a water oxygen that point
 towards nearby acceptors (or all nearby atoms).  **fixupExplicitDonors()** adjusts the extra atom information for
 a set of atoms once hydrogens have been explicitly added to the model, adjusting the donor status.  **rvec3()**
@@ -68,4 +68,3 @@ file will impact other CCTBX programs that use atom radii.
 
 Regression tests were performed between Probe2 and the original Probe code in October 2021 before the release
 of Probe2:
-
