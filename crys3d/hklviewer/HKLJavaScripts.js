@@ -767,6 +767,7 @@ function onMessage(e)
       WebsockSendMsg('Fix mouse rotation' + pagename);
 
       stage.mouseControls.remove("drag-left");
+      stage.mouseControls.remove("scroll");
       stage.mouseControls.remove("scroll-ctrl");
       stage.mouseControls.remove("scroll-shift");
 
@@ -780,6 +781,7 @@ function onMessage(e)
     {
       WebsockSendMsg( 'Can mouse rotate ' + pagename );
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+      stage.mouseControls.add("scroll", NGL.MouseActions.zoomScroll);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
 
