@@ -61,7 +61,7 @@ of these built-in C++ types' methods from within Python.
 ## Testing
 
 Unit tests are implemented in each C++ class and Python module to verify that they perform as intended.
-The tests performed incklude the following:
+The tests performed include the following:
 * **AtomTypes.py:** When it is run as a script, this file will raise an assertion on failure or exit
 normally on success.  The **IsAromatic** function is tested by calling it with a small number of atoms
 within residues to ensure that it markes aromatic ones and does not mark others.
@@ -115,7 +115,7 @@ uses to determine which atoms are near a point in space:
     multiple bins, each of which includes an atom.
 
 
-A **tst_probe.py** script is located in the mmetbx/regression folder within this project.  this
+A **tst_probe.py** script is located in the mmtbx/regression folder within this project.  this
 script runs all of the unit tests described above and then computes a probe score on a generated
 small molecule (or on a PDB or CIF file is one is specified on the command line).  This program raises
 an assertion if it finds a problem and exits normally when everything is okay.  This verifies that
