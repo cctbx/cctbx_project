@@ -74,7 +74,7 @@ master_phil = libtbx.phil.parse("""
 
   write_mask_file = False
      .type = bool
-     .help = Write mask file
+     .help = Write mask file. Requires setting mask_atoms
      .short_caption = Write mask file
 
   set_outside_to_mean_inside = False
@@ -1472,6 +1472,8 @@ from libtbx import runtime_utils
 from wxGUI2 import utils
 
 def validate_params(params):
+  if params.write_mask_file and not params.mask_atoms:
+    raise Sorry("You need to set mask_atoms for write_mask_file")
   return True
 
 class launcher(runtime_utils.target_with_save_result):
