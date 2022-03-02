@@ -988,8 +988,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   for a in atoms:
     carts.append(a.xyz)
 
-  # Get the bond proxies for the atoms in the model and conformation we're using and
-  # use them to determine the bonded neighbor lists.
+  # Get the bond proxies for the atoms and use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
 
@@ -1041,7 +1040,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   for a in atoms:
     carts.append(a.xyz)
 
-  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # Get the bond proxies for the atoms and
   # use them to determine the bonded neighbor lists.
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
@@ -1118,9 +1117,6 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
   ret = getExtraAtomInfo(model, bondedNeighborLists)
-  # User code should check for and print any warnings.
-  #if len(ret.warnings) > 0:
-  #  print('Warnings returned by getExtraAtomInfo():\n'+ret.warnings)
 
   #========================================================================
   # Run unit tests on the dihedralChoicesForRotatableHydrogens class.  Both
