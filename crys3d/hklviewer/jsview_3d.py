@@ -493,7 +493,7 @@ class hklview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation in the browser
-      self.AddToBrowserMsgQueue("PrintInformation", msg) 
+      self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
