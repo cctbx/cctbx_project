@@ -1031,7 +1031,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.currentphilstringdict['clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "vector")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "*vector")
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1047,7 +1047,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:
       opnr, label, order, cartvec, hklop, hkls, abcs, length = self.all_vectors[idx]
-      if hkls == "":
+      if hkls == "" or not self.ClipPlaneChkGroupBox.isChecked():
         self.normal_realspace_vec_btn.setEnabled(False)
         self.normal_realspace_vec_label.setEnabled(False)
       else:
@@ -1450,7 +1450,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.send_message("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) #
-            self.send_message('viewer.fixorientation = "None"')
+            self.send_message('viewer.fixorientation = *None')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
@@ -1536,7 +1536,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onClipPlaneNormalVecSelchange(self):
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
-    philstr = """viewer.fixorientation = vector
+    philstr = """viewer.fixorientation = *vector
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
 clip_plane.normal_vector_length_scale = -1
@@ -1629,7 +1629,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = False
-  fixorientation = vector
+  fixorientation = *vector
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
@@ -1643,7 +1643,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = False
-  fixorientation = vector
+  fixorientation = *vector
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
@@ -1657,7 +1657,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = True
-  fixorientation = vector
+  fixorientation = *None
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = -1
@@ -1666,7 +1666,7 @@ clip_plane.normal_vector = -1
       philstr = """viewer {
   slice_mode = False
   inbrowser = True
-  fixorientation = "None"
+  fixorientation = *None
 }
 clip_plane {
   normal_vector = -1

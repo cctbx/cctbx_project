@@ -731,7 +731,7 @@ class HKLViewFrame() :
           self.hklfile_history = list(hkl_file._file_content.history())
           self.loaded_file_name = file_name
           for e in self.hklfile_history:
-            if "TNCS NMOL" in e and "VECTOR" in e:
+            if "TNCS" in e and "VECTOR" in e:
               svec = e.split()[-3:]
               t1 = float(svec[0])
               t2 = float(svec[1])

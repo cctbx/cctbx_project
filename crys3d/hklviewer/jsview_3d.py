@@ -305,7 +305,6 @@ class hklview_3d:
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
-                       "slice_mode",
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
@@ -327,7 +326,6 @@ class hklview_3d:
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
-                       "slice_mode",
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
@@ -452,7 +450,7 @@ class hklview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
 
-      if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
+      if self.params.clip_plane.clipwidth:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = self.params.clip_plane.hkldist
       msg = ""
@@ -495,7 +493,7 @@ class hklview_3d:
         hkldist = -self.params.clip_plane.hkldist * L *cosine
       self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
-      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+      if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
@@ -745,7 +743,6 @@ class hklview_3d:
                          self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                          self.viewerparams.inbrowser,
                          self.viewerparams.slice_axis,
-                         self.viewerparams.slice_mode,
                          self.viewerparams.slice_index,
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
@@ -785,7 +782,6 @@ class hklview_3d:
                                 self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                                 self.viewerparams.inbrowser,
                                 self.viewerparams.slice_axis,
-                                self.viewerparams.slice_mode,
                                 self.viewerparams.slice_index,
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
@@ -811,7 +807,6 @@ class hklview_3d:
                               self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                               self.viewerparams.inbrowser,
                               self.viewerparams.slice_axis,
-                              self.viewerparams.slice_mode,
                               self.viewerparams.slice_index,
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
@@ -855,7 +850,6 @@ class hklview_3d:
                               self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                               self.viewerparams.inbrowser,
                               self.viewerparams.slice_axis,
-                              self.viewerparams.slice_mode,
                               self.viewerparams.slice_index,
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
@@ -891,7 +885,6 @@ class hklview_3d:
                       self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
                       self.viewerparams.slice_index,
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
