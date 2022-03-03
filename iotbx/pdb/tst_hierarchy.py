@@ -5884,9 +5884,12 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert chain.as_padded_sequence() == "XXGNNQQNY"
   assert (chain.is_protein()) and (not chain.is_na())
+  assert pdb_hierarchy.chain_types() == ['PROTEIN']
+  assert pdb_hierarchy.chain_type() == 'PROTEIN'
   assert pdb_hierarchy.contains_protein()
   assert not pdb_hierarchy.contains_nucleic_acid()
   assert not pdb_hierarchy.contains_rna()
+  assert not pdb_hierarchy.contains_dna()
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM   1282  P     U A  75       8.046  10.090  17.379  1.00 20.97           P
 ATOM   1302  P     A A  76       3.836  12.353  14.321  1.00 22.14           P
@@ -5896,8 +5899,11 @@ ATOM   1367  P     U A  79      -6.043   2.064   7.771  1.00 35.59           P
 ATOM   1387  P     C A  80      -6.888  -3.348   8.809  1.00 52.93           P
 ATOM   1407  P     C A  81      -6.452  -7.275  14.101  1.00 67.04           P
 """).construct_hierarchy()
+  assert pdb_hierarchy.chain_types() == ['RNA']
+  assert pdb_hierarchy.chain_type() == 'RNA'
   assert pdb_hierarchy.contains_nucleic_acid()
   assert pdb_hierarchy.contains_rna()
+  assert not pdb_hierarchy.contains_dna()
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM    590  P    DG B  19       0.025   6.958  12.325  1.00  0.00           P
 ATOM    623  P    DC B  20      -6.245   5.331  12.090  1.00  0.00           P
@@ -5908,6 +5914,30 @@ ATOM    748  P    DG B  24     -15.074 -12.316  24.830  1.00  0.00           P
 """).construct_hierarchy()
   assert pdb_hierarchy.contains_nucleic_acid()
   assert not pdb_hierarchy.contains_rna()
+  assert pdb_hierarchy.contains_dna()
+  assert pdb_hierarchy.chain_types() == ['DNA']
+  assert pdb_hierarchy.chain_type() == 'DNA'
+
+  pdb_hierarchy = pdb.input(source_info=None, lines="""\
+ATOM   1282  P     U A  75       8.046  10.090  17.379  1.00 20.97           P
+ATOM   1302  P     A A  76       3.836  12.353  14.321  1.00 22.14           P
+ATOM   1324  P     U A  77      -0.490  11.589  11.092  1.00 27.25           P
+ATOM   1344  P     G A  78      -4.128   7.571   8.789  1.00 29.69           P
+ATOM   1367  P     U A  79      -6.043   2.064   7.771  1.00 35.59           P
+ATOM   1387  P     C A  80      -6.888  -3.348   8.809  1.00 52.93           P
+ATOM    590  P    DG B  19       0.025   6.958  12.325  1.00  0.00           P
+ATOM    623  P    DC B  20      -6.245   5.331  12.090  1.00  0.00           P
+ATOM    653  P    DC B  21     -10.927   0.678  11.688  1.00  0.00           P
+ATOM    683  P    DG B  22     -13.972  -4.787  13.859  1.00  0.00           P
+ATOM    716  P    DA B  23     -14.817 -10.233  18.166  1.00  0.00           P
+ATOM    748  P    DG B  24     -15.074 -12.316  24.830  1.00  0.00           P
+""").construct_hierarchy()
+  assert pdb_hierarchy.contains_nucleic_acid()
+  assert pdb_hierarchy.contains_rna()
+  assert pdb_hierarchy.contains_dna()
+  assert pdb_hierarchy.chain_types() == ['DNA','RNA']
+  assert pdb_hierarchy.chain_type() == None
+
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  UNK A   3      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  UNK A   4      -6.522   2.038   2.831  1.00 14.10           C

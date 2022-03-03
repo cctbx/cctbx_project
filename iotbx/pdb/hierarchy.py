@@ -1655,11 +1655,12 @@ class _():
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein(self, min_content=0):
+  def contains_protein(self, min_content=0, oc = None):
     """
     Inspect residue names and counts to determine if enough of them are protein.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     n_prot_residues = oc.get_n_residues_of_classes(
         classes=['common_amino_acid', 'modified_amino_acid'])
     n_water_residues = oc.get_n_residues_of_classes(
@@ -1668,12 +1669,13 @@ class _():
       return n_prot_residues / (oc.n_residues-n_water_residues) > min_content
     return n_prot_residues > min_content
 
-  def contains_nucleic_acid(self, min_content=0):
+  def contains_nucleic_acid(self, min_content=0, oc = None):
     """
     Inspect residue names and counts to determine if enough of
     them are RNA or DNA.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     n_na_residues = oc.get_n_residues_of_classes(
         classes=['common_rna_dna', 'modified_rna_dna'])
     n_water_residues = oc.get_n_residues_of_classes(
@@ -1682,17 +1684,57 @@ class _():
       return n_na_residues / (oc.n_residues-n_water_residues) > min_content
     return n_na_residues > min_content
 
-  def contains_rna(self):
+  def contains_rna(self, oc = None):
     """
     Inspect residue names and counts to determine if any of
     them are RNA.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     for resname, count in oc.resnames.items():
       if ( common_residue_names_get_class(resname) == "common_rna_dna"
           and "D" not in resname.upper() ):
         return True
     return False
+
+  def contains_dna(self, oc = None):
+    """
+    Inspect residue names and counts to determine if any of
+    them are DNA.
+    """
+    if not oc:
+      oc = self.overall_counts()
+    for resname, count in oc.resnames.items():
+      if ( common_residue_names_get_class(resname) == "common_rna_dna"
+          and "D" in resname.upper() ):
+        return True
+    return False
+
+  def chain_types(self):
+    """
+    Inspect residue names and counts to determine what chain types are present
+    """
+    oc = self.overall_counts()
+    chain_types = []
+    if self.contains_protein(oc = oc):
+      chain_types.append("PROTEIN")
+    if self.contains_dna(oc = oc):
+      chain_types.append("DNA")
+    if self.contains_rna(oc = oc):
+      chain_types.append("RNA")
+    return chain_types
+
+  def chain_type(self):
+    """
+    Inspect residue names and counts to determine what chain types are present
+    If only one chain type, return it. Otherwise return None
+    """
+    chain_types = self.chain_types()
+    if chain_types and len(chain_types) == 1:
+      return chain_types[0]
+    else:
+      return None
+    
 
   def remove_hd(self, reset_i_seq=False):
     """
