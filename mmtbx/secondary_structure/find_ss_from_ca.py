@@ -256,9 +256,7 @@ master_phil = iotbx.phil.parse("""
 master_params = master_phil
 
 def apply_atom_selection(atom_selection,hierarchy=None):
-  asc=hierarchy.atom_selection_cache()
-  sel = asc.selection(string = atom_selection)
-  return hierarchy.deep_copy().select(sel)  # deep copy is required
+  return hierarchy.apply_atom_selection(atom_selection)
 
 def get_pdb_hierarchy(text=None):
   return iotbx.pdb.input(
@@ -550,7 +548,7 @@ def get_last_chain_id_and_resno(hierarchy):
     return text
   for model in hierarchy.models():
     for chain in model.chains():
-      for rg in chain.residue_groups():
+      for rg in chain.residue_groups()[-1:]:
         text = "%s%s" %(chain.id,rg.resseq_as_int())
   return text
 
@@ -568,11 +566,8 @@ def get_chain_ids(hierarchy,unique_only=None):
   chain_ids=[]
   if not hierarchy:
     return chain_ids
-  for model in hierarchy.models():
-    for chain in model.chains():
-      if (not unique_only) or (not chain.id in chain_ids):
-        chain_ids.append(chain.id)
-  return chain_ids
+  else:
+    return hierarchy.chain_ids(unique_only=unique_only)
 
 def offset_residue_numbers(hierarchy, offset = 0):
   for model in hierarchy.models():
@@ -662,10 +657,11 @@ def set_chain_id(hierarchy, chain_id = None):
 def get_chain_id(hierarchy):
   if not hierarchy:
     return None
-  for model in hierarchy.models():
-    for chain in model.chains():
-      return chain.id
-  return None # nothing there
+  chain_ids = hierarchy.chain_ids()
+  if chain_ids:
+    return chain_ids[0]
+  else:
+    return None
 
 def get_sequence(hierarchy,one_letter_code=True):
   if not hierarchy:
@@ -742,7 +738,7 @@ def get_last_residue(hierarchy):
   for model in hierarchy.models():
     for chain in model.chains():
       for conformer in chain.conformers():
-        for residue in conformer.residues():
+        for residue in conformer.residues()[-1:]:
           last_residue=residue
   return last_residue
 
@@ -761,20 +757,12 @@ def has_atom(hierarchy,name=None):
 def get_first_resno(hierarchy):
   if not hierarchy:
     return None
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        return rg.resseq_as_int()
+  return hierarchy.first_resno_as_int()
 
 def get_last_resno(hierarchy):
   if not hierarchy:
     return None
-  last_resno=None
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        last_resno=rg.resseq_as_int()
-  return last_resno
+  return hierarchy.last_resno_as_int()
 
 def get_all_resno(hierarchy):
   resno_list=[]
@@ -801,8 +789,6 @@ def get_middle_resno(hierarchy,first_resno=None,last_resno=None):
         if middle_resno >= target_resno:
           return middle_resno
   return last_resno
-
-
 
 def verify_existence(hierarchy=None,
    prev_hierarchy=None,strand=None,registration=None,helix=None):
@@ -1267,13 +1253,7 @@ def sites_are_similar(sites1,sites2,max_rmsd=1):
 
 def is_ca_only_hierarchy(hierarchy):
   if not hierarchy: return None
-  asc=hierarchy.atom_selection_cache()
-  atom_selection="not (name ca)"
-  sel = asc.selection(string = atom_selection)
-  if sel.count(True)==0:
-    return True
-  else:
-    return False
+  return hierarchy.is_ca_only()
 
 def ca_n_and_o_always_present(hierarchy):
   if not hierarchy: return None

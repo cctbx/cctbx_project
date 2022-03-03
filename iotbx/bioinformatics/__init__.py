@@ -1902,8 +1902,8 @@ def get_chain_type(model=None, hierarchy=None, model_list = None,
   else:
     return hierarchy.chain_type()
 
-def get_sequence_from_hierarchy(hierarchy, 
-     remove_white_space=False, 
+def get_sequence_from_hierarchy(hierarchy,
+     remove_white_space=False,
      return_as_fasta = False):
   return get_sequence_from_pdb(hierarchy=hierarchy,
      remove_white_space=remove_white_space,

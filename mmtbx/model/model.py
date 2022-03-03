@@ -297,7 +297,8 @@ class manager(object):
     # Move this away from constructor
     self._update_atom_selection_cache()
     self.get_hierarchy().atoms().reset_i_seq()
-
+    ########### Allow access to methods from pdb_hierarchy directly ######
+    self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
 
   @classmethod
   def from_sites_cart(cls,
@@ -525,18 +526,29 @@ class manager(object):
       Also restraints_manager is not pickleable
       This method removes _ss_manager and restraints_manager
       Also removes log
+
+      Also remove all methods attached from pdb_hierarchy or other
+      locations and specified in self.attached_methods
     '''
 
     self_dc = self.deep_copy() # Avoid changing the model itself
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
     self_dc.log = None
+    if hasattr(self, 'attached_methods'):
+      for x in self.attached_methods:
+        delattr(self_dc, x) 
+      delattr(self_dc, 'attached_methods')
 
     state = self_dc.__dict__
     return state
 
   def __setstate__(self, state):
     self.__dict__.update(state)
+
+    # Restore methods from pdb hierarchy
+    if self._pdb_hierarchy:
+      self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
 
   def __repr__(self):
     """
@@ -4063,3 +4075,67 @@ class manager(object):
       minimum_identity=minimum_identity,
       ignore_hetatm=True
     )
+
+  ############################################################### 
+  ############################################################### 
+  #    Methods to allow access to methods of pdb_hierarchy without
+  #    having to specify model.get_hierarchy().  The methods are
+  #    accessed as:  model.contains_protein()
+  #    instead of:   model.get_hierarchy().contains_protein()
+  #    The full method is still available as well
+
+  #    NOTE: The methods to be included are specifed in "included_methods"
+  #    below.  They cannot be duplicates of a method of model manager and
+  #    they must exist in pdb_hierarchy
+
+  def get_methods(self, c = None):
+    methods = []
+    if not c:
+      c = self
+    for method_name in dir(c):
+      if method_name.startswith("_"): continue
+      methods.append(method_name)
+    return methods
+
+  def set_up_methods_from_hierarchy(self):
+    if hasattr(self, 'attached_methods'): # already done...skip
+      return
+    current_methods = self.get_methods()
+    included_methods = """chain_ids chain_type chain_types chains contains_dna contains_nucleic_acid contains_protein contains_rna convert_met_to_semet convert_semet_to_met first_resno_as_int flip_symmetric_amino_acids get_overall_counts is_ca_only is_similar_hierarchy last_resno_as_int remove_alt_confs remove_incomplete_main_chain_protein reset_atom_i_seqs reset_i_seq_if_necessary truncate_to_poly_ala truncate_to_poly_gly""".split()
+
+    aa = self.get_hierarchy()
+    assert aa is not None
+    self.attached_methods = []
+    aa_methods = self.get_methods(aa)
+    for method_name in included_methods:
+      if (method_name in current_methods):
+        raise AssertionError("\nAttempting to attach the method '%s' from " %(
+            method_name) + " from pdb_hierarchy to model manager but it is" +
+            " already present there. Please either rename the method or " +
+             "add it to 'included_methods' in model manager")
+      if not (method_name in aa_methods):
+        raise AssertionError("\nAttempting to attach the method '%s' from " %(
+            method_name) + " from pdb_hierarchy to model manager but it is" +
+            " nor present in pdb_hierarchy")
+      # all ok
+      setattr(self,method_name,
+        get_hierarchy_and_run_hierarchy_method(self,method_name))
+      self.attached_methods.append(method_name)
+
+    # Now you can run the hierarchy methods directly from model manager
+  ############################################################### 
+  ############################################################### 
+
+############################################################### 
+############################################################### 
+#  Class to access methods from pdb_hierarchy in model class
+
+class get_hierarchy_and_run_hierarchy_method:
+  ''' Class to access methods from model.get_hierarchy() directly from model
+      model is the model manager class
+  '''
+  def __init__(self, model, method_name):
+    self.method_name = method_name
+    self.model = model
+  def __call__(self, *args, **kw):
+    return getattr(self.model.get_hierarchy(), self.method_name)(*args, **kw)

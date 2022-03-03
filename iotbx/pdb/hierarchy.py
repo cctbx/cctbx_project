@@ -1431,6 +1431,12 @@ class _():
     return cache(root=self,
       special_position_settings=special_position_settings)
 
+  def apply_atom_selection(self, atom_selection):
+    ''' Apply atom selection string and return deep copy with selected atoms'''
+    asc=self.atom_selection_cache()
+    sel = asc.selection(string = atom_selection)
+    return self.deep_copy().select(sel)  # deep copy is required
+
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
                               always_group_adjacent=True,
                               ignore_hydrogens=True):
@@ -1734,7 +1740,39 @@ class _():
       return chain_types[0]
     else:
       return None
-    
+
+  def first_resno_as_int(self, chain_id = None):
+    ''' Return residue number of first residue in specified chain, as integer.
+        If chain not specified, first residue in hierarchy.
+    '''
+    for model in self.models():
+      for chain in model.chains():
+        if (chain_id is not None) and chain.id != chain_id: continue
+        for rg in chain.residue_groups():
+          return rg.resseq_as_int()
+
+  def last_resno_as_int(self, chain_id = None):
+    ''' Return residue number of last residue in specified chain, as integer.
+        If chain not specified, last residue in hierarchy.
+    '''
+    last_resno=None
+    for model in self.models():
+      for chain in model.chains():
+        if (chain_id is not None) and chain.id != chain_id: continue
+        for rg in chain.residue_groups():
+          last_resno=rg.resseq_as_int()
+    return last_resno
+ 
+
+  def chain_ids(self, unique_only = False):
+    ''' Get list of chain IDS, return unique set if unique_only=True'''
+    chain_ids=[]
+    for model in self.models():
+      for chain in model.chains():
+        if (not unique_only) or (not chain.id in chain_ids):
+          chain_ids.append(chain.id)
+    return chain_ids
+
 
   def remove_hd(self, reset_i_seq=False):
     """
@@ -2083,6 +2121,7 @@ class _():
       last_resseq = resseq
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
+
 
   def is_protein(self, min_content=0.8, ignore_water=True):
     """
