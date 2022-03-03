@@ -88,9 +88,9 @@ var Hlabelvec = new NGL.Vector3();
 var Klabelvec = new NGL.Vector3();
 var Llabelvec = new NGL.Vector3();
 var annodivs = [];
+var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
-//var negativeradiistr;
 
 
 function sleep(ms) {
@@ -782,6 +782,7 @@ function onMessage(e)
       stage.mouseControls.add("drag-shift-right", CameraZoom);
       stage.mouseControls.add("drag-shift-left", CameraZoom);
       stage.mouseControls.add("scroll", CameraZoom);
+      rotationdisabled = true;
     }
 
     if (msgtype === "EnableMouseRotation")
@@ -797,6 +798,7 @@ function onMessage(e)
       stage.mouseControls.remove("drag-shift-left");
       stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
       stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+      rotationdisabled = false;
     }
     
     if (msgtype === "RotateStage")
@@ -1910,7 +1912,8 @@ function HKLscene()
     m4.makeRotationAxis(axis, Math.PI);
     if (shapeComp != null)
       shapeComp.autoView(500);
-    stage.viewerControls.orient(m4);
+    if (!rotationdisabled)
+      stage.viewerControls.orient(m4);
   }
 
   SetDefaultOrientation();
