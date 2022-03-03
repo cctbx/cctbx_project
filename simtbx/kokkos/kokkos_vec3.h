@@ -188,6 +188,52 @@ namespace simtbx { namespace kokkos {
         }
         
     };
+
+    // polarization factor
+    /*template <typename NumType>
+    KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, const vec3<NumType>& incident, const vec3<NumType>& diffracted, const vec3<NumType>& axis) {
+        CUDAREAL cos2theta, cos2theta_sqr, sin2theta_sqr;
+        CUDAREAL psi = 0.0;
+        CUDAREAL E_in[4], B_in[4], E_out[4], B_out[4];
+
+        //  these are already unitized before entering this loop. Optimize this out.
+        //        unitize(incident, incident);
+        //        unitize(diffracted, diffracted);
+
+        // component of diffracted unit vector along incident beam unit vector
+        cos2theta = dot_product(incident, diffracted);
+        cos2theta_sqr = cos2theta * cos2theta;
+        sin2theta_sqr = 1 - cos2theta_sqr;
+
+        if (kahn_factor != 0.0) {
+                // tricky bit here is deciding which direciton the E-vector lies in for each source
+                // here we assume it is closest to the "axis" defined above
+
+                CUDAREAL unitAxis[] = { axis(0), axis(1), axis(2), axis(3) };
+                // this is already unitized. Optimize this out.
+                unitize(unitAxis, unitAxis);
+
+                // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+                cross_product(unitAxis, incident, B_in);
+                // make it a unit vector
+                unitize(B_in, B_in);
+
+                // cross product with incident beam to get E-vector direction
+                cross_product(incident, B_in, E_in);
+                // make it a unit vector
+                unitize(E_in, E_in);
+
+                // get components of diffracted ray projected onto the E-B plane
+                E_out[0] = dot_product(diffracted, E_in);
+                B_out[0] = dot_product(diffracted, B_in);
+
+                // compute the angle of the diffracted ray projected onto the incident E-B plane
+                psi = -atan2(B_out[0], E_out[0]);
+        }
+
+        // correction for polarized incident beam
+        return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
+    }*/
 } } // namespace scitbx::kokkos
 
 
