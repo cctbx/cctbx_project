@@ -729,7 +729,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True, gain = 1.0):
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True, gain = 1.0, flux = None):
   """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
   @ param wavelength Wavelength in angstroms
   @ param timestamp String formatted timestamp for the image
@@ -741,8 +741,12 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
 
    Post-sample treatment of the beam is described by data
    items in the DIFFRN_DETECTOR category."""
-  cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
-  cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray"])
+  if flux:
+    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe","beam_flux"])
+    cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray","%f"%flux])
+  else:
+    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
+    cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray"])
 
   """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
    the wavelength of the radiation used in measuring the diffraction
