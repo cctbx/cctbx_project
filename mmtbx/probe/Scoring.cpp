@@ -533,7 +533,7 @@ std::string DotScorer::test()
       return "DotScorer::test(): Did not find WorseOverlap when expected for dot_score()";
     }
     if (as.interaction_type(res.overlapType, res.gap, false) != DotScorer::Bump) {
-      return "DotScorer::test(): Found WorseOverlap when not expected for dot_score()";
+      return "DotScorer::test(): Found BadOverlap when not expected for dot_score()";
     }
 
     source.set_xyz(vec3( sourceRad + targetRad - 0.45,0,0 ));
@@ -586,7 +586,7 @@ std::string DotScorer::test()
   // Construct test cases with all combinations of charges and extra information, holding the
   // radii of the neighbor atom and probe atom constant.  Do this in combination with adding or
   // not adding an excluded atom that completely covers the neighbor atom.
-  // Run tests against all of these cases to ensure that the bahavior is as expected in each case.
+  // Run tests against all of these cases to ensure that the behavior is as expected in each case.
   // This tests the case logic within the code.
   // The target radius has to be large enough to get a bad bump even for hydrogen bond cases.
   double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
@@ -774,7 +774,7 @@ std::string DotScorer::test()
   }
   }
 
-  // Test behavior of weak hydrogen bonds and its interaction with dummy Hydrogens.
+  // Test behavior of weak hydrogen bonds and their interaction with dummy Hydrogens.
   for (std::vector<bool>::const_iterator weakHBonds = bools.begin();
        weakHBonds != bools.end(); weakHBonds++) {
     for (std::vector<bool>::const_iterator sourceDummy = bools.begin();
