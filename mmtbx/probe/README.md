@@ -113,6 +113,50 @@ uses to determine which atoms are near a point in space:
     atoms are returned for queries either inside the grid or outside the grid on all sides.
     * A test is run for the return of the correct number of neighbors when a query is made that includes
     multiple bins, each of which includes an atom.
+* **DotSpheres.cpp:** exposes a **DotSpheres_test()** function that returns an empty string on success
+and an error message on failure.  It calls the test() methods on the DotSphere and DotSphereCache classes
+that Probe2 uses to construct probe spheres around atoms, which test the following:
+    * Sphere creation should construct zero radius and no dots with negative density and radius parameters.
+    * Sphere with very small density should have a single dot.
+    * The number of dots produced is close to the number requested based no density and radius.  It scales
+    with the density.
+    * Sphere with reasonable density produces dots within all 8 octants around the origin.
+    * Cache creates a single sphere with the correct radius the first time it is called.
+    * Cache called a second time with the same radius returns the same sphere.
+    * Cache called a third time with a different radius gives a different sphere with correct radius.
+* **Scoring.cpp:** exposes a **Scoring_test()** function that returns an empty string on success
+and an error message on failure.  It tests the following:
+    * The **atom_charge()** function returns the correct polarity and
+    sign for the following values: "--", "-", "", "+", "++", "+2", "-1", "0".
+    * The **closest_contact()** function produces a distance above surface that properly scales
+    as the dot moves further from the atom center, negative inside and positive outside.
+    * The **closest_contact()** function applied to a dot and atom at the same non-origin location
+    with radius 1 produces a -1 distance and a projection that is 1 away from the atom center.
+    * The **closest_contact()** function produces the same projected contact distance for all points in the
+    cardinal and diagonal directions away an atom at the origin.
+    * **DotScorer.check_dot()** can detect clashes, determine the expected cause, for synthetic probe
+    locations finds only the expected type for various bumps: WorseOverlap, BadOverlap, Clash, SmallOverlap,
+    NoOverlap, CloseContact, WideContact.
+    * **DotScorer.check_dot()** reports Ignore overlap type and Invalid interaction type when the probe is
+    not near any atom.
+    * **DotScorer.score_dots()** Construct test cases with all combinations of charges and extra information,
+    holding the radii of the neighbor atom and probe atom constant.  Do this in combination with adding or
+    not adding an excluded atom that completely covers the neighbor atom.  Run tests against all of these
+    cases to ensure that the behavior is as expected in each case.
+    * **DotScorer.score_dots()** Test behavior of weak hydrogen bonds and their interaction with dummy Hydrogens
+    for all combination of weakHBonds, source and target being a dummy hydrogen.
+    * **DotScorer.score_dots()** Sweep an atom from just touching to far away and make sure the attract
+    curve is monotonically decreasing to 0.
+    * **DotScorer.score_dots()** Test the setting of weights for the various subscores: the ratio of scores matches
+    the ratio of weights for some entries and is linear for others.
+    * **DotScorer.score_dots()** Test the setting of bond-gap distances.  Testing for bad bumps present
+    exactly when expected.  Test with non-donor Hydrogens, uncharged donor Hydrogen, charged Hydrogen donor.
+    * **DotScorer.score_dots()** Test the control of occupancy level.
+    * **DotScorer.score_dots()** Test behavior when given invalid parameters.
+    * **DotScorer.count_surface_dots()** behaves as expected for non-overlapping, fully-overlapping,
+    and partially-overlapping atoms (partial overlap only tested to be between the others).
+    **@todo Not yet tested:** overlapScale parameter to DotScorer::check_dot().  **annularDots()** and
+    related functions.  Dummy hydrogen non-interaction with non-hydrogen bonds in **DotScorer::check_dot().**
 
 
 A **tst_probe.py** script is located in the mmtbx/regression folder within this project.  this
