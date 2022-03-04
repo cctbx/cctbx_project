@@ -1808,8 +1808,7 @@ Note:
 
           # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
           # a single water in it and asking about the hydrogen radius.
-          phantomHydrogenRadius = 1.0   # @Remove after regression tests are complete.
-          #phantomHydrogenRadius = 1.05
+          phantomHydrogenRadius = 1.05
           if self.params.use_neutron_distances:
             phantomHydrogenRadius = 1.0
 
@@ -1843,8 +1842,6 @@ Note:
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
                               adjustedHydrogenRadius)
-              phantomHydrogenRadius = 1.05  # @todo Remove these two lines after regression testing is complete.
-              adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
