@@ -1762,7 +1762,7 @@ class _():
         for rg in chain.residue_groups():
           last_resno=rg.resseq_as_int()
     return last_resno
- 
+
 
   def chain_ids(self, unique_only = False):
     ''' Get list of chain IDS, return unique set if unique_only=True'''

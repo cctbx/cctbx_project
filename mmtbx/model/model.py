@@ -537,7 +537,7 @@ class manager(object):
     self_dc.log = None
     if hasattr(self, 'attached_methods'):
       for x in self.attached_methods:
-        delattr(self_dc, x) 
+        delattr(self_dc, x)
       delattr(self_dc, 'attached_methods')
 
     state = self_dc.__dict__
@@ -4076,8 +4076,8 @@ class manager(object):
       ignore_hetatm=True
     )
 
-  ############################################################### 
-  ############################################################### 
+  ###############################################################
+  ###############################################################
   #    Methods to allow access to methods of pdb_hierarchy without
   #    having to specify model.get_hierarchy().  The methods are
   #    accessed as:  model.contains_protein()
@@ -4123,11 +4123,11 @@ class manager(object):
       self.attached_methods.append(method_name)
 
     # Now you can run the hierarchy methods directly from model manager
-  ############################################################### 
-  ############################################################### 
+  ###############################################################
+  ###############################################################
 
-############################################################### 
-############################################################### 
+###############################################################
+###############################################################
 #  Class to access methods from pdb_hierarchy in model class
 
 class get_hierarchy_and_run_hierarchy_method:
