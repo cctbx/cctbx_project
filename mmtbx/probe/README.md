@@ -5,6 +5,9 @@ It is named probe2 so that it can be built and used alongside the original probe
 a module) during regression testing.  It is intended that future development and maintenance will happen
 on Probe2 and not on the original code base.
 
+**Notes:**
+* Probe2 requires the chem_data modules from Phenix.
+
 ## C++ Classes
 
 The C++ classes, wrapped for use in Python, make use of CCTBX and Boost structures and define all of
@@ -94,8 +97,8 @@ following internal functions:
     * **rvec3()** and **lvec3()** are tested to ensure that they produce vectors that can be subtracted
     to form proper-length results.  These verify that the underlying scitbx.matrix classes are working
     as expected.
-* **SpatialQuery.cpp:** exposes a **SpatialQuery_test()** method that returns an empty string on success
-and an error message on failure.  It runs the following tests on the SpatialQuery structure that Probe2
+* **SpatialQuery.cpp:** exposes a **SpatialQuery_test()** function that returns an empty string on success
+and an error message on failure.  It runs the following tests on the SpatialQuery class that Probe2
 uses to determine which atoms are near a point in space:
     * Constructed number of bins in X, Y, and Z when creating a particular region in space with a
     specified bin size matches expectations.
@@ -141,7 +144,7 @@ and an error message on failure.  It tests the following:
     not near any atom.
     * **DotScorer.score_dots()** Construct test cases with all combinations of charges and extra information,
     holding the radii of the neighbor atom and probe atom constant.  Do this in combination with adding or
-    not adding an excluded atom that completely covers the neighbor atom.  Run tests against all of these
+    not adding an excluded atom that completely covers the neighbor atom.  Tests against all of these
     cases to ensure that the behavior is as expected in each case.
     * **DotScorer.score_dots()** Test behavior of weak hydrogen bonds and their interaction with dummy Hydrogens
     for all combination of weakHBonds, source and target being a dummy hydrogen.
@@ -155,9 +158,10 @@ and an error message on failure.  It tests the following:
     * **DotScorer.score_dots()** Test behavior when given invalid parameters.
     * **DotScorer.count_surface_dots()** behaves as expected for non-overlapping, fully-overlapping,
     and partially-overlapping atoms (partial overlap only tested to be between the others).
-    **@todo Not yet tested:** overlapScale parameter to DotScorer::check_dot().  **annularDots()** and
-    related functions.  Dummy hydrogen non-interaction with non-hydrogen bonds in **DotScorer::check_dot().**
 
+**@todo Not yet tested:**
+* overlapScale parameter to DotScorer::check_dot(); this impacts the visual appearance of spikes but no scores.
+* **annularDots()** and related functions.
 
 A **tst_probe.py** script is located in the mmtbx/regression folder within this project.  this
 script runs all of the unit tests described above and then computes a probe score on a generated
@@ -165,13 +169,27 @@ small molecule (or on a PDB or CIF file is one is specified on the command line)
 an assertion if it finds a problem and exits normally when everything is okay.  This verifies that
 the Python/C++ linkage is working correctly and that the code works on a standard model.
 
+The  **mmtbx/programs/probe2.py** script uses the probe library routines above to construct kinemages
+of interactions and surfaces and to generate summary scores for interactions within a model.  It is
+a replacement for the **mmtbx.probe** program, producing similar outputs but taking different
+command-line options.  The following tests are provided for this program:
+* There is a Test() function defined within the module that will test all of its non-class functions.
+To run it, the module can be imported and then probe2.Test() called.
+It will fail with an assertion failure if there is a problem with the tests:
+    * **_condense():** Verify that this method works when sorting and when sorting and condensing.
+    * **_totalInteractionCount():** Verify that this sums the counts of all interaction types.
+    * **_color_for_gap():** Verify that this returns the correct color for hydrogen bonds and for
+    a sample of values.
+    * **_color_for_atom_class():** Verify that this returns the correct color for a sample of values.
+* @todo
+
 The file **ener_lib_molprobity.cif** is a drop-in replacement for the ener_lib.cif file that is found in
 the chem_data/mon_lib directory under modules in a CCTBX build.  It has atomic radii consistent with
 the original Probe code to enable regression tests between Probe2 and Probe.  It should not be used in
-production once the CCTBX radii are adjusted (this is ongoing as of 10/5/2021).  Note that replacing this
+production once the CCTBX radii are adjusted (this is ongoing as of 3/4/2022).  Note that replacing this
 file will impact other CCTBX programs that use atom radii.
 
-Regression tests were performed between Probe2 and the original Probe code in October 2021 before the release
+Regression tests were performed between Probe2 and the original Probe code in March 2022 before the release
 of Probe2:
 
 **@todo**
