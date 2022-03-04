@@ -1431,6 +1431,12 @@ class _():
     return cache(root=self,
       special_position_settings=special_position_settings)
 
+  def apply_atom_selection(self, atom_selection):
+    ''' Apply atom selection string and return deep copy with selected atoms'''
+    asc=self.atom_selection_cache()
+    sel = asc.selection(string = atom_selection)
+    return self.deep_copy().select(sel)  # deep copy is required
+
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
                               always_group_adjacent=True,
                               ignore_hydrogens=True):
@@ -1655,11 +1661,12 @@ class _():
                   result.append(atom.i_seq)
     return result
 
-  def contains_protein(self, min_content=0):
+  def contains_protein(self, min_content=0, oc = None):
     """
     Inspect residue names and counts to determine if enough of them are protein.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     n_prot_residues = oc.get_n_residues_of_classes(
         classes=['common_amino_acid', 'modified_amino_acid'])
     n_water_residues = oc.get_n_residues_of_classes(
@@ -1668,12 +1675,13 @@ class _():
       return n_prot_residues / (oc.n_residues-n_water_residues) > min_content
     return n_prot_residues > min_content
 
-  def contains_nucleic_acid(self, min_content=0):
+  def contains_nucleic_acid(self, min_content=0, oc = None):
     """
     Inspect residue names and counts to determine if enough of
     them are RNA or DNA.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     n_na_residues = oc.get_n_residues_of_classes(
         classes=['common_rna_dna', 'modified_rna_dna'])
     n_water_residues = oc.get_n_residues_of_classes(
@@ -1682,17 +1690,89 @@ class _():
       return n_na_residues / (oc.n_residues-n_water_residues) > min_content
     return n_na_residues > min_content
 
-  def contains_rna(self):
+  def contains_rna(self, oc = None):
     """
     Inspect residue names and counts to determine if any of
     them are RNA.
     """
-    oc = self.overall_counts()
+    if not oc:
+      oc = self.overall_counts()
     for resname, count in oc.resnames.items():
       if ( common_residue_names_get_class(resname) == "common_rna_dna"
           and "D" not in resname.upper() ):
         return True
     return False
+
+  def contains_dna(self, oc = None):
+    """
+    Inspect residue names and counts to determine if any of
+    them are DNA.
+    """
+    if not oc:
+      oc = self.overall_counts()
+    for resname, count in oc.resnames.items():
+      if ( common_residue_names_get_class(resname) == "common_rna_dna"
+          and "D" in resname.upper() ):
+        return True
+    return False
+
+  def chain_types(self):
+    """
+    Inspect residue names and counts to determine what chain types are present
+    """
+    oc = self.overall_counts()
+    chain_types = []
+    if self.contains_protein(oc = oc):
+      chain_types.append("PROTEIN")
+    if self.contains_dna(oc = oc):
+      chain_types.append("DNA")
+    if self.contains_rna(oc = oc):
+      chain_types.append("RNA")
+    return chain_types
+
+  def chain_type(self):
+    """
+    Inspect residue names and counts to determine what chain types are present
+    If only one chain type, return it. Otherwise return None
+    """
+    chain_types = self.chain_types()
+    if chain_types and len(chain_types) == 1:
+      return chain_types[0]
+    else:
+      return None
+
+  def first_resno_as_int(self, chain_id = None):
+    ''' Return residue number of first residue in specified chain, as integer.
+        If chain not specified, first residue in hierarchy.
+    '''
+    for model in self.models():
+      for chain in model.chains():
+        if (chain_id is not None) and chain.id != chain_id: continue
+        for rg in chain.residue_groups():
+          return rg.resseq_as_int()
+
+  def last_resno_as_int(self, chain_id = None):
+    ''' Return residue number of last residue in specified chain, as integer.
+        If chain not specified, last residue in hierarchy.
+    '''
+    last_resno=None
+    for model in self.models():
+      for chain in model.chains():
+        if (chain_id is not None) and chain.id != chain_id: continue
+        for rg in chain.residue_groups():
+          last_resno=rg.resseq_as_int()
+    return last_resno
+
+
+  def chain_ids(self, unique_only = False):
+    ''' Get list of chain IDS, return unique set if unique_only=True'''
+    chain_ids=[]
+    for model in self.models():
+      for chain in model.chains():
+        if (not unique_only) or (not chain.id in chain_ids):
+          chain_ids.append(chain.id)
+    return chain_ids
+
 
   def remove_hd(self, reset_i_seq=False):
     """
@@ -2041,6 +2121,7 @@ class _():
       last_resseq = resseq
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
+
 
   def is_protein(self, min_content=0.8, ignore_water=True):
     """

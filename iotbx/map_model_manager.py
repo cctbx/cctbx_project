@@ -2990,11 +2990,9 @@ class map_model_manager(object):
 
     if residue_names_must_match:
       ca_residue_names = get_sequence_from_hierarchy(
-        target_model_ca.get_hierarchy(), remove_white_space=True,
-        chain_type = chain_type)
+        target_model_ca.get_hierarchy(), remove_white_space=True)
       cb_residue_names = get_sequence_from_hierarchy(
-        matching_model_ca.get_hierarchy(), remove_white_space=True,
-        chain_type = chain_type)
+        matching_model_ca.get_hierarchy(), remove_white_space=True)
       assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
       assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
     else:
@@ -3151,11 +3149,9 @@ class map_model_manager(object):
         if not local_target_model:
           continue # skip it
         target_seq = get_sequence_from_hierarchy(
-          local_target_model.get_hierarchy(), remove_white_space=True,
-            require_chain_type = False)
+          local_target_model.get_hierarchy(), remove_white_space=True)
         matching_seq = get_sequence_from_hierarchy(
-           local_matching_model.get_hierarchy(), remove_white_space=True,
-            require_chain_type = False)
+           local_matching_model.get_hierarchy(), remove_white_space=True)
         if not target_seq or not matching_seq:
           continue # skip it
         target_seq=list(target_seq)

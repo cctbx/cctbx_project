@@ -88,9 +88,9 @@ var Hlabelvec = new NGL.Vector3();
 var Klabelvec = new NGL.Vector3();
 var Llabelvec = new NGL.Vector3();
 var annodivs = [];
+var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
-//var negativeradiistr;
 
 
 function sleep(ms) {
@@ -419,14 +419,20 @@ function RemovePrimitives(reprname)
 
 
 function CameraZoom(t, deltaX, deltaY) {
+  let dx = 0;
+  if (Number.isInteger(deltaX))
+    dx = deltaX;
+  let dy = 0;
+  if (Number.isInteger(deltaY))
+    dy = deltaY;
   let z = stage.viewer.camera.zoom;
-  z -= (deltaX + deltaY) / 4.0;
+  z -= (dx+dy) / 4.0;
   if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
     stage.viewer.camera.zoom = z;
     stage.viewer.requestRender();
     ReturnClipPlaneDistances();
   }
-  let msg = "dx: " + deltaX.toString() + ", dy: " + deltaY.toString()
+  let msg = "dx: " + dx.toString() + ", dy: " + dy.toString()
     + ", zoom:" + stage.viewer.camera.zoom.toString();
   if (isdebug)
     console.log(msg);
@@ -767,6 +773,7 @@ function onMessage(e)
       WebsockSendMsg('Fix mouse rotation' + pagename);
 
       stage.mouseControls.remove("drag-left");
+      stage.mouseControls.remove("scroll");
       stage.mouseControls.remove("scroll-ctrl");
       stage.mouseControls.remove("scroll-shift");
 
@@ -774,12 +781,16 @@ function onMessage(e)
       stage.mouseControls.remove("drag-shift-left");
       stage.mouseControls.add("drag-shift-right", CameraZoom);
       stage.mouseControls.add("drag-shift-left", CameraZoom);
+      stage.mouseControls.add("scroll", CameraZoom);
+      rotationdisabled = true;
     }
 
     if (msgtype === "EnableMouseRotation")
     {
       WebsockSendMsg( 'Can mouse rotate ' + pagename );
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
+      //stage.mouseControls.add("scroll", NGL.MouseActions.zoomScroll);
+      stage.mouseControls.add("scroll", CameraZoom);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
 
@@ -787,6 +798,7 @@ function onMessage(e)
       stage.mouseControls.remove("drag-shift-left");
       stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
       stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+      rotationdisabled = false;
     }
     
     if (msgtype === "RotateStage")
@@ -1900,7 +1912,8 @@ function HKLscene()
     m4.makeRotationAxis(axis, Math.PI);
     if (shapeComp != null)
       shapeComp.autoView(500);
-    stage.viewerControls.orient(m4);
+    if (!rotationdisabled)
+      stage.viewerControls.orient(m4);
   }
 
   SetDefaultOrientation();
@@ -2009,6 +2022,11 @@ function HKLscene()
   stage.mouseControls.remove("drag-middle");
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
   stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
+
+  stage.mouseControls.remove("scroll");
+  stage.mouseControls.remove("scroll-ctrl");
+  stage.mouseControls.remove("scroll-shift");
+
 
   stage.viewer.requestRender();
   if (isdebug)

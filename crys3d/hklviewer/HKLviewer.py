@@ -22,7 +22,7 @@ from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
-    QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
+    QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
 from .qt import QColor, QFont, QCursor, QDesktopServices
@@ -231,8 +231,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.isembedded = isembedded
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
-    self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
-    self.ReadPersistedQsettings()
     self.lasttime = time.monotonic()
 
     if isembedded:
@@ -273,7 +271,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.menuHelp.addAction(self.actionAbout)
       self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
       self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
-
+    self.nsplitters = 0
+    for a in dir(self):
+      if isinstance( self.__getattribute__(a), QSplitter):
+        self.nsplitters += 1
+    self.ntabs = 0
+    for a in dir(self):
+      if isinstance( self.__getattribute__(a), QTabWidget):
+        self.ntabs += 1
+    self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
+    self.ReadPersistedQsettings()
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -971,7 +978,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.make_new_millertable()
-            self.UsePersistedQsettings
+            #self.UsePersistedQsettings
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
@@ -1031,7 +1038,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.currentphilstringdict['clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "vector")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "*vector")
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1047,7 +1054,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:
       opnr, label, order, cartvec, hklop, hkls, abcs, length = self.all_vectors[idx]
-      if hkls == "":
+      if hkls == "" or not self.ClipPlaneChkGroupBox.isChecked():
         self.normal_realspace_vec_btn.setEnabled(False)
         self.normal_realspace_vec_label.setEnabled(False)
       else:
@@ -1450,7 +1457,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.send_message("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
 }""" %(0, -1.0)) #
-            self.send_message('viewer.fixorientation = "None"')
+            self.send_message('viewer.fixorientation = *None')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
 
@@ -1536,7 +1543,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onClipPlaneNormalVecSelchange(self):
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
-    philstr = """viewer.fixorientation = vector
+    philstr = """viewer.fixorientation = *vector
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
 clip_plane.normal_vector_length_scale = -1
@@ -1629,7 +1636,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = False
-  fixorientation = vector
+  fixorientation = *vector
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
@@ -1643,7 +1650,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = False
-  fixorientation = vector
+  fixorientation = *vector
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = %d
@@ -1657,7 +1664,7 @@ clip_plane.normal_vector_length_scale = -1
   slice_mode = False
   inbrowser = True
   is_parallel = True
-  fixorientation = vector
+  fixorientation = *None
 }
 clip_plane.clipwidth = %f
 clip_plane.normal_vector = -1
@@ -1666,7 +1673,7 @@ clip_plane.normal_vector = -1
       philstr = """viewer {
   slice_mode = False
   inbrowser = True
-  fixorientation = "None"
+  fixorientation = *None
 }
 clip_plane {
   normal_vector = -1
@@ -2074,6 +2081,8 @@ clip_plane {
     self.settings.beginGroup(Qtversion )
     if not write_factory_default_settings: # don't store system specific value as a default
       self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
+    self.settings.setValue("QSplitter_number", self.nsplitters )
+    self.settings.setValue("QTabWidget_number", self.ntabs )
     self.settings.setValue("FontSize", self.fontsize )
     self.settings.setValue("WordWrapTextInfo", int(self.wraptextinfo ))
     self.settings.setValue("MouseSpeed", self.mousespeed )
@@ -2100,12 +2109,22 @@ clip_plane {
 
   def ReadPersistedQsettings(self):
     # Read the user's persisted settings from disc
-    # First see if there are any. If not then use factory defaults stored in .ini file
     self.settings.beginGroup(self.Qtversion)
     use_factory_default_settings = False
-    if len(self.settings.allKeys()) == 0: # no settings for this Qt version
+    # First see if there are any. If not then use factory defaults stored in .ini file
+    if len(self.settings.allKeys()) == 0:
+       # no settings for this Qt version. Use defaults then
+      use_factory_default_settings = True
+      # Numbers of splitters and tabs in the GUI are a very crude indication of
+      # GUI complexity. If numbers differs from what is stored in the settings on disk the
+      # settings are likely from a newer or older GUI version and should be ignored to prevent
+      # messing up GUI layout. Use the defaults instead
+    if self.nsplitters !=  self.settings.value("QSplitter_number", 0):
+      use_factory_default_settings = True
+    if self.ntabs != self.settings.value("QTabWidget_number", 0):
       use_factory_default_settings = True
     self.settings.endGroup()
+
     Qtversion = self.Qtversion
     if use_factory_default_settings:
       print("Reading factory defaults from " + self.factorydefaultfname)
@@ -2194,6 +2213,7 @@ clip_plane {
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+    return True
 
 
   def UsePersistedQsettings(self):
@@ -2240,7 +2260,7 @@ clip_plane {
 
 def run(isembedded=False, chimeraxsession=None):
   import time
-  #time.sleep(10) # enough time for attaching debugger
+  #time.sleep(15) # enough time for attaching debugger
   try:
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "

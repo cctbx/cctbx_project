@@ -1848,7 +1848,6 @@ def clear_empty_lines(text):
     new_lines.append(line)
   return "\n".join(new_lines)+"\n"
 
-
 def get_sequences(file_name=None,text=None,remove_duplicates=None):
   # return simple list of sequences in this file. duplicates included
   #  unless remove_duplicates=True
@@ -1870,24 +1869,6 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
     else: # take it
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
-
-def get_chain_type_of_chain(chain, return_rna_if_rna_or_dna = False):
-  ''' Get chain type of a single chain in a hierarchy
-      If ambiguous and can be rna or dna, return rna. this allows
-      getting a 1-letter sequence in cases where it is ambiguous'''
-
-  from iotbx.pdb import pdb_input, hierarchy
-  from scitbx.array_family import flex
-
-  cc = chain.detached_copy()
-  new_hierarchy = pdb_input(
-     source_info = "Model",
-     lines = flex.split_lines("")).construct_hierarchy()
-  mm = hierarchy.model()
-  new_hierarchy.append_model(mm)
-  mm.append_chain(cc)
-  return get_chain_type(hierarchy = new_hierarchy,
-     return_rna_if_rna_or_dna = return_rna_if_rna_or_dna)
 
 def get_chain_type(model=None, hierarchy=None, model_list = None,
      return_protein_if_present = False,
@@ -1912,82 +1893,27 @@ def get_chain_type(model=None, hierarchy=None, model_list = None,
   if not hierarchy:
     hierarchy = model.get_hierarchy()
 
-  asc1 = hierarchy.atom_selection_cache()
-  sel1 = asc1.selection(string = 'protein')
-
-  count_protein = hierarchy.select(sel1).atoms().extract_xyz().size()
-
-
-  # XXX on colab this can give the error:
-  #  RuntimeError: Another associated atom_tmp_sentinel instance still exists
-  try:
-    asc1 = hierarchy.atom_selection_cache()
-    sel1 = asc1.selection(string = '(not protein) and (not water) and (not hetero)')
-  except Exception as e:
-    hierarchy = hierarchy.deep_copy()
-    asc1 = hierarchy.atom_selection_cache()
-    sel1 = asc1.selection(string = '(not protein) and (not water) and (not hetero)')
-  hierarchy_rna_dna= hierarchy.select(sel1)
-  count_rna_dna= hierarchy_rna_dna.atoms().extract_xyz().size()
-
-  if count_protein and count_rna_dna:
-    if return_protein_if_present:
-      return "PROTEIN"
-    else:
-      raise Sorry(
-        "Model contains both protein "+
-       "(%s atoms) and rna/dna (%s atoms)...only one chain type allowed" %(
-       count_protein,count_rna_dna))
-  elif count_protein:
+  if return_protein_if_present and hierarchy.contains_protein():
     return "PROTEIN"
+
+  elif return_rna_if_rna_or_dna and hierarchy.contains_nucleic_acid():
+    return "RNA"
+
   else:
+    return hierarchy.chain_type()
 
-    # Determine if hierarchy contains O2' or U residue
-    sequence_as_rna = get_sequence_from_hierarchy(
-       hierarchy=hierarchy,chain_type="RNA")
-    if sequence_as_rna.upper().count("U") > 0:
-      return 'RNA'  # for sure RNA
-    sequence_as_dna = get_sequence_from_hierarchy(
-       hierarchy=hierarchy,chain_type="DNA")
-    if (not sequence_as_rna) and sequence_as_dna:
-      return 'DNA'  # for sure DNA
-    if len(sequence_as_rna) > len(sequence_as_dna):
-      return 'RNA'
-    if len(sequence_as_rna) < len(sequence_as_dna):
-      return 'DNA'
-
-    # Otherwise, look for O2'
-
-    asc1 = hierarchy_rna_dna.atom_selection_cache()
-    sel1 = asc1.selection(string = "name O2* or name O2'")
-    hierarchy_rna_dna_o_two = hierarchy_rna_dna.select(sel1)
-    count_rna = hierarchy_rna_dna_o_two.atoms().extract_xyz().size()
-
-    asc1 = hierarchy_rna_dna.atom_selection_cache()
-    sel1 = asc1.selection(string = "name p")
-    hierarchy_rna_dna_p = hierarchy_rna_dna.select(sel1)
-    count_rna_dna_p  = hierarchy_rna_dna_p.atoms().extract_xyz().size()
-    count_rna_dna_all = hierarchy_rna_dna.atoms().extract_xyz().size()
-    if count_rna_dna_p == count_rna_dna_all:
-      if return_rna_if_rna_or_dna:
-        return "RNA"
-      else:
-        return None # cannot tell
-    elif count_rna_dna_p and not count_rna:
-      return "DNA"
-    elif count_rna_dna_p and count_rna:
-      return "RNA"
-    else:
-      return None  # cannot tell (may be UNK residue)
-
-def get_sequence_from_hierarchy(hierarchy, chain_type=None,
-     remove_white_space=False, require_chain_type=True):
-  return get_sequence_from_pdb(hierarchy=hierarchy,chain_type=chain_type,
+def get_sequence_from_hierarchy(hierarchy,
+     remove_white_space=False,
+     return_as_fasta = False):
+  return get_sequence_from_pdb(hierarchy=hierarchy,
      remove_white_space=remove_white_space,
-      require_chain_type=require_chain_type)
+      return_as_fasta = return_as_fasta)
 
-def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
-    chain_type=None, remove_white_space=False, require_chain_type=True):
+def get_sequence_from_pdb(file_name=None,
+    text=None,
+    hierarchy=None,
+    remove_white_space=False,
+    return_as_fasta = False):
 
   if not hierarchy:
     # read from PDB
@@ -2000,48 +1926,29 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None,
         text = f.read()
     import iotbx.pdb
     pdb_inp = iotbx.pdb.input(lines=text.splitlines(),source_info="None")
-    import mmtbx.model
-    mm = mmtbx.model.manager(
-          model_input = pdb_inp,
-          stop_for_unknowns = False)
-    hierarchy=mm.get_hierarchy()
+    hierarchy = pdb_inp.construct_hierarchy()
 
   if hierarchy.overall_counts().n_residues == 0:
     return ""  # nothing there
 
   chain_sequences=[]
-  from iotbx.pdb import amino_acid_codes as aac
-  protein_one_letter_code_dict = aac.one_letter_given_three_letter
-  from iotbx.pdb.nucleic_acid_codes import rna_one_letter_code_dict,dna_one_letter_code_dict
-  one_letter_code_dicts={'PROTEIN':protein_one_letter_code_dict,
-    'DNA':dna_one_letter_code_dict,
-    'RNA':rna_one_letter_code_dict}
+  chain_names =[]
 
   for model in hierarchy.models():
     for chain in model.chains():
       # Get chain-type of this chain if not specified
-      chain_type_use = chain_type
-      if not chain_type_use:
-        chain_type_use = get_chain_type_of_chain(chain,
-          return_rna_if_rna_or_dna = True) # Allows sequence of e.g. ACAGAAG
-        if not chain_type_use:
-          if require_chain_type:
-            from libtbx.utils import Sorry
-            raise Sorry(
-            "Chain type could not be identified for chain %s" %(chain.id))
-          else:
-            continue
-      one_letter_code = one_letter_code_dicts[chain_type_use]
-      chain_sequence=""
-      for rg in chain.residue_groups():
-        for atom_group in rg.atom_groups():
-          chain_sequence+=one_letter_code.get(
-             atom_group.resname.strip().upper(),"")
-          break
-      chain_sequences.append(chain_sequence)
-  sequence_as_string="\n".join(chain_sequences)
-  if remove_white_space:
-    sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
+      chain_sequences.append("".join(chain.as_sequence()))
+      chain_names.append(chain.id)
+
+  if return_as_fasta:
+    seq_out = StringIO()
+    for s,n in zip(chain_sequences,chain_names):
+      print(">%s\n%s" %(n,s), file = seq_out)
+    sequence_as_string = seq_out.getvalue()
+  else: # usual
+    sequence_as_string="\n".join(chain_sequences)
+    if remove_white_space:
+      sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
   return sequence_as_string
 
 def guess_chain_types_from_sequences(file_name=None,text=None,
@@ -2076,7 +1983,8 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
       dd[chain_type].append(sequence)
       dd_n[chain_type]+=len(sequence.sequence)
       total_residues+=len(sequence.sequence)
-  if minimum_fraction and len(chain_types)>1 and total_residues>1: # remove anything < minimum_fraction
+  if minimum_fraction and len(chain_types)>1 and total_residues>1:
+    # remove anything < minimum_fraction
     new_chain_types=[]
     new_dd={}
     new_dd_n={}

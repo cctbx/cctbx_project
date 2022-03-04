@@ -173,6 +173,8 @@ class hklview_3d:
     self.binstrs = []
     self.rotation_operators = []
     self.all_vectors = []
+    self.cosine = 1
+    self.L = 1.0
     self.nuniqueval = 0
     self.bin_infotpls = []
     self.mapcoef_fom_dict = {}
@@ -305,7 +307,6 @@ class hklview_3d:
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
-                       "slice_mode",
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
@@ -327,7 +328,6 @@ class hklview_3d:
                        "show_only_missing",
                        "show_systematic_absences",
                        "slice_axis",
-                       "slice_mode",
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
@@ -452,15 +452,15 @@ class hklview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
 
-      if self.params.clip_plane.clipwidth and not self.viewerparams.slice_mode:
+      if self.params.clip_plane.clipwidth:
         clipwidth = self.params.clip_plane.clipwidth
-        hkldist = self.params.clip_plane.hkldist
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       msg = ""
       if self.params.clip_plane.normal_vector != -1:
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
-        L = self.all_vectors[ self.params.clip_plane.normal_vector ][7]
+        self.L = self.all_vectors[ self.params.clip_plane.normal_vector ][7]
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
@@ -483,19 +483,20 @@ class hklview_3d:
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
         if self.params.clip_plane.normal_vector_length_scale > 0:
-          scalefactor = L/self.params.clip_plane.normal_vector_length_scale
-          L = self.params.clip_plane.normal_vector_length_scale
+          scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
+          self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
         hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
-          %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
-          roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
-          #roundoff(self.params.clip_plane.hkldist * L))
-        cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
-        hkldist = -self.params.clip_plane.hkldist * L *cosine
+        if self.params.clip_plane.is_assoc_real_space_vector:
+          msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
+            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
+            roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
+        self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+      # show equation in the browser
       self.AddToBrowserMsgQueue("PrintInformation", msg)
       self.make_clip_plane(hkldist, clipwidth)
-      if self.viewerparams.inbrowser and not self.viewerparams.slice_mode:
+      if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
@@ -745,7 +746,6 @@ class hklview_3d:
                          self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                          self.viewerparams.inbrowser,
                          self.viewerparams.slice_axis,
-                         self.viewerparams.slice_mode,
                          self.viewerparams.slice_index,
                          self.viewerparams.show_missing,
                          self.viewerparams.show_only_missing,
@@ -785,7 +785,6 @@ class hklview_3d:
                                 self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                                 self.viewerparams.inbrowser,
                                 self.viewerparams.slice_axis,
-                                self.viewerparams.slice_mode,
                                 self.viewerparams.slice_index,
                                 self.viewerparams.show_missing,
                                 self.viewerparams.show_only_missing,
@@ -811,7 +810,6 @@ class hklview_3d:
                               self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                               self.viewerparams.inbrowser,
                               self.viewerparams.slice_axis,
-                              self.viewerparams.slice_mode,
                               self.viewerparams.slice_index,
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
@@ -855,7 +853,6 @@ class hklview_3d:
                               self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                               self.viewerparams.inbrowser,
                               self.viewerparams.slice_axis,
-                              self.viewerparams.slice_mode,
                               self.viewerparams.slice_index,
                               self.viewerparams.show_missing,
                               self.viewerparams.show_only_missing,
@@ -891,7 +888,6 @@ class hklview_3d:
                       self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
                       self.viewerparams.inbrowser,
                       self.viewerparams.slice_axis,
-                      self.viewerparams.slice_mode,
                       self.viewerparams.slice_index,
                       self.viewerparams.show_missing,
                       self.viewerparams.show_only_missing,
