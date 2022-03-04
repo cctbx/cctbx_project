@@ -2867,8 +2867,7 @@ class map_model_manager(object):
     If either model has multiple chains, run all pairwise combinations
     '''
 
-    from mmtbx.secondary_structure.find_ss_from_ca import \
-        get_chain_id, get_chain_ids
+    from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
 
 
     if one_to_one:
