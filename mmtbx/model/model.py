@@ -4101,7 +4101,10 @@ class manager(object):
     if hasattr(self, 'attached_methods'): # already done...skip
       return
     current_methods = self.get_methods()
-    included_methods = """chain_ids chain_type chain_types chains contains_dna contains_nucleic_acid contains_protein contains_rna convert_met_to_semet convert_semet_to_met first_resno_as_int flip_symmetric_amino_acids get_overall_counts is_ca_only is_similar_hierarchy last_resno_as_int remove_alt_confs remove_incomplete_main_chain_protein reset_atom_i_seqs reset_i_seq_if_necessary truncate_to_poly_ala truncate_to_poly_gly""".split()
+    included_methods = """chain_ids chain_type chain_types chains
+      contains_dna contains_nucleic_acid contains_protein contains_rna
+      first_resno_as_int get_overall_counts is_ca_only is_similar_hierarchy
+      last_resno_as_int""".split()
 
     aa = self.get_hierarchy()
     assert aa is not None
