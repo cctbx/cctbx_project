@@ -526,6 +526,30 @@ newarray._sigmas = sigs
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
 
+  """
+
+  presetbuttonsdeflist = [   ("tNCS", "Show TNCS", ""),
+    ("H_I", "Show Zone H for intensities", ""),
+    ("K_I", "Show Zone K for intensities", ""),
+    ("L_I", "Show Zone L for intensities", ""),
+    ("aniso", "Show Anisotropy", ""),
+  ]
+
+  """
+
+  def makePresetButtons(buttonsdeflist):
+    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+      self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
+      self.__getattribute__(btnname).setObjectName(btnname)
+      self.__getattribute__(btnname).setText(btnname)
+      self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
+      self.__dict__[label] = QLabel(self.PresetButtonsFrame)
+      self.__getattribute__(label)
+      self.__getattribute__(label).setObjectName(label)
+      self.__getattribute__(label).setText(label)
+      self.gridLayout_24.addWidget(self.__getattribute__(label), i, 1, 1, 1)
+
+
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
     self.closing = True
