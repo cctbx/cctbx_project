@@ -149,7 +149,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       } else {
         // If one of the atoms is a dummy Hydrogen, then we pretend that it does not exist
         // for non-Hydrogen-bond interactions.
-        /// @todo Test this
         if (sourceExtra.getIsDummyHydrogen() || bExtra.getIsDummyHydrogen()) { continue; }
 
         // This is not a hydrogen bond.

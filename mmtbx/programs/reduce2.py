@@ -140,8 +140,6 @@ NOTES:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
-    #if self.params.output.model_file_name is None:
-    #  raise Sorry("Must specify output.model_file_name")
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
 

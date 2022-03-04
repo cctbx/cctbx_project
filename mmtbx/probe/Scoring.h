@@ -256,7 +256,8 @@ namespace molprobity {
       ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
       ///             considered even if it is overlapping with an interacting atom.
       /// @param [in] overlapScale: The fraction of overlap to assign to each of the two atoms, scaling the
-      ///             spike drawn for each.
+      ///             spike drawn for each.  The default value of 0.5 draws half of the spike for one atom
+      ///             and the other half for the other.
       CheckDotResult check_dot(iotbx::pdb::hierarchy::atom sourceAtom,
         Point const& dotOffset, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
