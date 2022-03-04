@@ -487,9 +487,10 @@ class hklview_3d:
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
         hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
-        msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
-          %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
-          roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
+        if self.params.clip_plane.is_assoc_real_space_vector:
+          msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
+            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
+            roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation in the browser

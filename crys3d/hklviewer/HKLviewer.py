@@ -22,7 +22,7 @@ from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
-    QScrollBar, QSizePolicy, QSlider, QSpinBox, QStyleFactory, QStatusBar, QTableView, QTableWidget,
+    QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
 from .qt import QColor, QFont, QCursor, QDesktopServices
@@ -231,8 +231,6 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.isembedded = isembedded
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
-    self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
-    self.ReadPersistedQsettings()
     self.lasttime = time.monotonic()
 
     if isembedded:
@@ -273,7 +271,16 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
       self.menuHelp.addAction(self.actionAbout)
       self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
       self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
-
+    self.nsplitters = 0
+    for a in dir(self):
+      if isinstance( self.__getattribute__(a), QSplitter):
+        self.nsplitters += 1
+    self.ntabs = 0
+    for a in dir(self):
+      if isinstance( self.__getattribute__(a), QTabWidget):
+        self.ntabs += 1
+    self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
+    self.ReadPersistedQsettings()
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -971,7 +978,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.make_new_millertable()
-            self.UsePersistedQsettings
+            #self.UsePersistedQsettings
             self.NewFileLoaded = False
 
           if self.NewHKLscenes:
@@ -2074,6 +2081,8 @@ clip_plane {
     self.settings.beginGroup(Qtversion )
     if not write_factory_default_settings: # don't store system specific value as a default
       self.settings.setValue("QWebEngineViewFlags", self.QWebEngineViewFlags)
+    self.settings.setValue("QSplitter_number", self.nsplitters )
+    self.settings.setValue("QTabWidget_number", self.ntabs )
     self.settings.setValue("FontSize", self.fontsize )
     self.settings.setValue("WordWrapTextInfo", int(self.wraptextinfo ))
     self.settings.setValue("MouseSpeed", self.mousespeed )
@@ -2105,6 +2114,15 @@ clip_plane {
     if len(self.settings.allKeys()) == 0: # no settings for this Qt version
       use_factory_default_settings = True
     self.settings.endGroup()
+    # Numbers of splitters and tabs in the GUI are a very crude indication of
+    # GUI complexity. If numbers differs from what is stored in the settings on disk the
+    # settings are likely from a newer or older GUI version and should be ignored to prevent
+    # messing up GUI layout. Use the factory defaults instead
+    if self.nsplitters !=  self.settings.value("QSplitter_number", 0):
+      use_factory_default_settings = True
+    if self.ntabs != self.settings.value("QTabWidget_number", 0):
+      use_factory_default_settings = True
+
     Qtversion = self.Qtversion
     if use_factory_default_settings:
       print("Reading factory defaults from " + self.factorydefaultfname)
@@ -2189,6 +2207,7 @@ clip_plane {
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+    return True
 
 
   def UsePersistedQsettings(self):
