@@ -172,7 +172,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 // polarization factor
                                                 if (!nopolar) {
                                                         // need to compute polarization factor
-                                                        vector3 temp_polar_vector = {polar_vector[1], polar_vector[2], polar_vector[3]};
+                                                        vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
                                                         polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
                                                 } else {
                                                         polar = 1.0;
@@ -410,25 +410,16 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         //                      pixel_Y = Sdet-Ybeam;
                                         //                      pixel_Z = Fdet-Xbeam;
                                         //CUDAREAL * temp_pixel_pos = tmpVector1;
-                                        CUDAREAL temp_pixel_pos[4];
                                         int iVL = vec_len * i_panel;
-                                        temp_pixel_pos[1] = Fdet * fdet_vector(iVL).x
-                                                     + Sdet * sdet_vector(iVL).x
-                                                     + Odet * odet_vector(iVL).x
-                                                            + pix0_vector(iVL).x; // X
-                                        temp_pixel_pos[2] = Fdet * fdet_vector(iVL).y
-                                                     + Sdet * sdet_vector(iVL).y
-                                                     + Odet * odet_vector(iVL).y
-                                                            + pix0_vector(iVL).y; // Y
-                                        temp_pixel_pos[3] = Fdet * fdet_vector(iVL).z
-                                                     + Sdet * sdet_vector(iVL).z
-                                                     + Odet * odet_vector(iVL).z
-                                                            + pix0_vector(iVL).z; // Z
+                                        vector3 pixel_pos = Fdet * fdet_vector(iVL)
+                                                          + Sdet * sdet_vector(iVL)
+                                                          + Odet * odet_vector(iVL)
+                                                                 + pix0_vector(iVL);
 
                                         // construct the diffracted-beam unit vector to this sub-pixel
                                         //CUDAREAL * diffracted = tmpVector2;
-                                        CUDAREAL temp_diffracted[4];
-                                        CUDAREAL airpath = unitize(temp_pixel_pos, temp_diffracted);
+                                        vector3 diffracted = pixel_pos.get_unit_vector();
+                                        CUDAREAL airpath = pixel_pos.length();
 
                                         // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                                         CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance(i_panel) / airpath;
@@ -441,13 +432,9 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         CUDAREAL capture_fraction = 1.0;
                                         if (detector_thick > 0.0 && detector_mu> 0.0) {
                                                 // inverse of effective thickness increase
-                                                CUDAREAL odet[4];
-                                                odet[1] = odet_vector(iVL).x;
-                                                odet[2] = odet_vector(iVL).y;
-                                                odet[3] = odet_vector(iVL).z;
-                                                CUDAREAL parallax = dot_product(odet, temp_diffracted);
+                                                CUDAREAL parallax = odet_vector(iVL).dot(diffracted);
                                                 capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
-                                                                - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
+                                                                 - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
                                         }
 
                                         // loop over sources now
@@ -455,28 +442,20 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         for (source = 0; source < sources; ++source) {
 
                                                 // retrieve stuff from cache
-                                                CUDAREAL temp_incident[4];
-                                                temp_incident[1] = -source_X(source);
-                                                temp_incident[2] = -source_Y(source);
-                                                temp_incident[3] = -source_Z(source);
+                                                vector3 incident;
+                                                incident.x = -source_X(source);
+                                                incident.y = -source_Y(source);
+                                                incident.z = -source_Z(source);
                                                 CUDAREAL lambda = source_lambda(source);
                                                 CUDAREAL source_fraction = source_I(source);
 
                                                 // construct the incident beam unit vector while recovering source distance
                                                 // TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
-                                                unitize(temp_incident, temp_incident);
+                                                incident.normalize();
 
                                                 // construct the scattering vector for this pixel
-                                                CUDAREAL temp_scattering[4];
-                                                temp_scattering[1] = (temp_diffracted[1] - temp_incident[1]) / lambda;
-                                                temp_scattering[2] = (temp_diffracted[2] - temp_incident[2]) / lambda;
-                                                temp_scattering[3] = (temp_diffracted[3] - temp_incident[3]) / lambda;
-
-                                                #ifdef __CUDA_ARCH__
-                                                CUDAREAL stol = 0.5 * norm3d(temp_scattering[1], temp_scattering[2], temp_scattering[3]);
-                                                #else
-                                                CUDAREAL stol = 0.5 * sqrt(temp_scattering[1]*temp_scattering[1] + temp_scattering[2]*temp_scattering[2] + temp_scattering[3]*temp_scattering[3]);
-                                                #endif
+                                                vector3 scattering = (diffracted - incident) / lambda;
+                                                CUDAREAL stol = 0.5 * scattering.length();
 
                                                 // rough cut to speed things up when we aren't using whole detector
                                                 if (dmin > 0.0 && stol > 0.0) {
@@ -488,7 +467,8 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                 // polarization factor
                                                 if (!nopolar) {
                                                         // need to compute polarization factor
-                                                        polar = polarization_factor(polarization, temp_incident, temp_diffracted, polar_vector);
+                                                        vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
+                                                        polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
                                                 } else {
                                                         polar = 1.0;
                                                 }
@@ -497,22 +477,19 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                 for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
                                                         CUDAREAL phi = phistep * phi_tic + phi0;
 
-                                                        CUDAREAL ap[4];
-                                                        CUDAREAL bp[4];
-                                                        CUDAREAL cp[4];
-
+                                                        vector3 temp_a0 = {a0[1], a0[2], a0[3]};
+                                                        vector3 temp_b0 = {b0[1], b0[2], b0[3]};
+                                                        vector3 temp_c0 = {c0[1], c0[2], c0[3]};
+                                                        
                                                         // rotate about spindle if necessary
-                                                        rotate_axis(a0, ap, spindle_vector, phi);
-                                                        rotate_axis(b0, bp, spindle_vector, phi);
-                                                        rotate_axis(c0, cp, spindle_vector, phi);
+                                                        vector3 temp_spindle = {spindle_vector[1], spindle_vector[2], spindle_vector[3]};
+                                                        vector3 ap = temp_a0.rotate_around_axis(temp_spindle, phi);
+                                                        vector3 bp = temp_b0.rotate_around_axis(temp_spindle, phi);
+                                                        vector3 cp = temp_c0.rotate_around_axis(temp_spindle, phi);
 
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
                                                                 // apply mosaic rotation after phi rotation
-                                                                CUDAREAL a[4];
-                                                                CUDAREAL b[4];
-                                                                CUDAREAL c[4];
-
                                                                 CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
                                                                                    mosaic_umats(mos_tic * 9 + 1),
                                                                                    mosaic_umats(mos_tic * 9 + 2),
@@ -523,15 +500,14 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                                                    mosaic_umats(mos_tic * 9 + 7),
                                                                                    mosaic_umats(mos_tic * 9 + 8)};
 
-                                                                rotate_umat(ap, a, umat);
-                                                                rotate_umat(bp, b, umat);
-                                                                rotate_umat(cp, c, umat);
+                                                                vector3 a = ap.rotate_matrix(umat);
+                                                                vector3 b = bp.rotate_matrix(umat);
+                                                                vector3 c = cp.rotate_matrix(umat);
 
                                                                 // construct fractional Miller indicies
-
-                                                                CUDAREAL h = dot_product(a, temp_scattering);
-                                                                CUDAREAL k = dot_product(b, temp_scattering);
-                                                                CUDAREAL l = dot_product(c, temp_scattering);
+                                                                CUDAREAL h = a.dot(scattering);
+                                                                CUDAREAL k = b.dot(scattering);
+                                                                CUDAREAL l = c.dot(scattering);
 
                                                                 // round off to nearest whole index
                                                                 int h0 = ceil(h - 0.5);
@@ -649,17 +625,17 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                 for(int thick_tic=0; thick_tic<detector_thicksteps; ++thick_tic) {
                     // assume "distance" is to the front of the detector sensor layer
                     CUDAREAL Odet = thick_tic*detector_thickstep;
-                    CUDAREAL temp_pixel_pos[4];
+                    vector3 pixel_pos;
 
-                    temp_pixel_pos[0] = 0.0;
-                    temp_pixel_pos[1] = Fdet * fdet_vector(0).x + Sdet * sdet_vector(0).x + Odet * odet_vector(0).x + pix0_vector(0).x; // X
-                    temp_pixel_pos[2] = Fdet * fdet_vector(0).y + Sdet * sdet_vector(0).y + Odet * odet_vector(0).y + pix0_vector(0).y; // Y
-                    temp_pixel_pos[3] = Fdet * fdet_vector(0).z + Sdet * sdet_vector(0).z + Odet * odet_vector(0).z + pix0_vector(0).z; // Z
+                    pixel_pos = Fdet * fdet_vector(0)
+                              + Sdet * sdet_vector(0)
+                              + Odet * odet_vector(0)
+                                     + pix0_vector(0);
 
                     // no curved detector option (future implementation)
                     // construct the diffracted-beam unit vector to this pixel
-                    CUDAREAL temp_diffracted[4];
-                    CUDAREAL airpath = unitize(temp_pixel_pos, temp_diffracted);
+                    CUDAREAL airpath = pixel_pos.length();
+                    vector3 diffracted = pixel_pos.get_unit_vector();
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                     CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
@@ -670,32 +646,28 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     CUDAREAL capture_fraction = 1.0;
                     if(detector_thick > 0.0){
                         // inverse of effective thickness increase
-                        CUDAREAL parallax = temp_diffracted[1] * odet_vector(0).x + temp_diffracted[2] * odet_vector(0).y + temp_diffracted[3] * odet_vector(0).z;
+                        CUDAREAL parallax = odet_vector(0).dot(diffracted);
                         capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
-                                            -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
+                                          -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                     }
 
                     // loop over sources now
                     for(int source=source_start; source<sources; ++source) {
 
                         // retrieve stuff from cache
-                        CUDAREAL temp_incident[4];
-                        temp_incident[1] = -source_X(source);
-                        temp_incident[2] = -source_Y(source);
-                        temp_incident[3] = -source_Z(source);
+                        vector3 incident;
+                        incident.x = -source_X(source);
+                        incident.y = -source_Y(source);
+                        incident.z = -source_Z(source);
                         CUDAREAL lambda = source_lambda(source);
                         CUDAREAL source_fraction = source_I(source);
                         // construct the incident beam unit vector while recovering source distance
-                        unitize(temp_incident, temp_incident);
+                        incident.normalize();
 
                         // construct the scattering vector for this pixel
-                        CUDAREAL temp_scattering[4];
-                        temp_scattering[1] = (temp_diffracted[1]-temp_incident[1])/lambda;
-                        temp_scattering[2] = (temp_diffracted[2]-temp_incident[2])/lambda;
-                        temp_scattering[3] = (temp_diffracted[3]-temp_incident[3])/lambda;
-                        magnitude(temp_scattering);
+                        vector3 scattering = (diffracted - incident) / lambda;
                         // sin(theta)/lambda is half the temp_scattering vector length
-                        CUDAREAL stol = 0.5*temp_scattering[0];
+                        CUDAREAL stol = 0.5*scattering.length();
 
                         // now we need to find the nearest four "stol file" points
                         while(stol > stol_of(nearest) && nearest <= stols){ ++nearest; };
@@ -725,8 +697,8 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         CUDAREAL polar = 1.0;
                         if(! nopolar){
                             // need to compute polarization factor
-                            CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
-                            polar = polarization_factor(polarization, temp_incident, temp_diffracted, polar_vector);
+                            vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
+                            polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
                         }
 
                         // accumulate unscaled pixel intensity from this
