@@ -31,10 +31,6 @@ from cctbx.maptbx.box import shift_and_box_model
 version = "0.9.1"
 
 master_phil_str = '''
-run_tests = False
-  .type = bool
-  .help = Run unit tests before doing the requested operations
-
 profile = False
   .type = bool
   .help = Profile the performance of the entire run
@@ -237,6 +233,288 @@ citation {
 }
 ''')
 
+
+################################################################################
+# List of all of the keys for atom classes, including all elements and all
+# nucleic acid types.  These are in the order that the original Probe reported
+# them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
+_allAtomClasses = ['ignore',
+                      'H','C','N','O','P','S','As','Se','F','Cl','Br','I',
+                      'Li','Na','Al','K','Mg','Ca','Mn','Fe','Co','Ni','Cu','Zn',
+                      'Rb','Sr','Mo','Ag','Cd','In','Cs','Ba','Au','Hg','Tl','Pb',
+                      'V','Cr','Te','Sm','Gd','Yb','W','Pt','U',
+                      'He','Be','B','Ne','Se','Ar','Sc','Ti','Ga','Ge','Kr','Y','Zr',
+                      'Sn','Sb','Xe','La','Ce','Fr','Ra','Th',
+                      'Nb','Tc','Ru','Rh','Pd','Pr','Nd','Pm','Eu','Tb','Dy','Ho','Er',
+                      'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
+                      'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
+                      'a','c','t/u','g','other na','nonbase']
+
+################################################################################
+# Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
+# indexed by atom class and then by interaction type.  Fill in empty lists for all of
+# the possible classes and types.
+_interactionTypes = [
+    probeExt.InteractionType.WideContact,
+    probeExt.InteractionType.CloseContact,
+    probeExt.InteractionType.WeakHydrogenBond,
+    probeExt.InteractionType.SmallOverlap,
+    probeExt.InteractionType.Bump,
+    probeExt.InteractionType.BadBump,
+    probeExt.InteractionType.StandardHydrogenBond
+  ]
+
+# ------------------------------------------------------------------------------
+
+def _color_for_gap(gap, interactionType):
+  '''
+    Report the color associated with a gap (and interaction type).
+    :param gap: Size of the gap in Angstroms.
+    :param interactionType: InteractionType of the dot.
+    :return: Kinemage name of the color associated with the class.
+  '''
+
+  if interactionType == probeExt.InteractionType.StandardHydrogenBond:
+    return "greentint "
+  elif gap > 0.35:
+    return "blue "
+  elif gap > 0.25:
+    return "sky "
+  elif gap > 0.15:
+    return "sea "
+  elif gap > 0.0:
+    return "green "
+  elif gap > -0.1:
+    return "yellowtint "
+  elif gap > -0.2:
+    return "yellow "
+  elif gap > -0.3:
+    return "orange "
+  elif gap > -0.4:
+    return "red "
+  else:
+    return "hotpink "
+
+# ------------------------------------------------------------------------------
+
+def _color_for_atom_class(c):
+  '''
+    Report the color associated with an atom class.
+    Based on atomprops.h:INIT_ATOM_TABLE from original probe.
+    :param c: Class of the atom.
+    :return: Kinemage name of the color associated with the class.
+  '''
+
+  # Make sure the atom class is one that we know about
+  if not c in _allAtomClasses:
+    return 'magenta'
+
+  # Check to see if this atom belongs to one of the special colors.
+  if c in ['C','Ag','other na']:
+    return 'white'
+  elif c in ['N','He','t/u']:
+    return 'sky'
+  elif c in ['O']:
+    return 'red'
+  elif c in ['P','Ne','a']:
+    return 'pink'
+  elif c in ['S','c']:
+    return 'yellow'
+  elif c in ['Se','F','Cl']:
+    return 'green'
+  elif c in ['Br','I']:
+    return 'brown'
+  elif c in ['Co']:
+    return 'blue'
+  elif c in ['Cu','Ar']:
+    return 'orange'
+  elif c in ['Au']:
+    return 'gold'
+  elif c in ['Kr']:
+    return 'greentint'
+  elif c in ['Xe']:
+    return 'magenta'
+  elif c in ['Rn']:
+    return 'pinktint'
+  elif c in ['g']:
+    return 'sea'
+
+  # Most atom types, the default.
+  return 'grey'
+
+# ------------------------------------------------------------------------------
+
+def _condense(dotInfoList, condense):
+  '''
+    Condensing the list of dots for use in raw output, sorting and removing
+    duplicates.
+    :param dotInfoList: List of DotInfo structures to sort and perhaps condense.
+    :param condense: Boolean telling whether to condense the output, removing duplicates.
+    :return: Condensed dotlist.
+  '''
+
+  ret = []
+
+  # Handle all of the dots associated with each source atom as a group.
+  # This will be from curAtomIndex to curAtomEndIndex.
+  curAtomIndex = 0
+  while curAtomIndex < len(dotInfoList):
+
+    # Find the last dot in the current atom, which may be at the end of the list.
+    curAtomEndIndex = len(dotInfoList) - 1
+    for curAtomEndIndex in range(curAtomIndex+1, len(dotInfoList)):
+      if dotInfoList[curAtomIndex].src != dotInfoList[curAtomEndIndex].src:
+        curAtomEndIndex -= 1
+        break
+
+    # Sort the dots for the same source atom based on characteristics of their target atom.
+    # We include the XYZ position in the sort so that we get the same order and grouping each
+    # time even though the phantom H? atoms are otherwise identical.
+    # There may be no target atoms specified (they may be None), which will
+    # cause an attribute error.  If that happens, we don't sort.
+    try:
+      thisAtom = sorted(
+        dotInfoList[curAtomIndex:curAtomEndIndex+1],
+        key=lambda dot: "{}{:4.4s}{}{} {}{} {:.3f} {:.3f} {:.3f}".format(
+          dot.target.parent().parent().parent().id, # chain
+          str(dot.target.parent().parent().resseq_as_int()), # residue number
+          dot.target.parent().parent().icode, # insertion code
+          dot.target.parent().resname, # residue name
+          dot.target.name, # atom name
+          dot.target.parent().altloc, # alternate location
+          dot.target.xyz[0], dot.target.xyz[1], dot.target.xyz[2]
+        )
+      )
+    except AttributeError:
+      thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
+
+    # Remove duplicates (same target atom) if we've been asked to.
+    # We do this by scanning through and accumulating counts as long as the target
+    # atom is the same and by appending a new entry when the target atom is different.
+    # The result is a single entry for each target atom with a count of the number of
+    # dots that were associated with it in the resulting entry.
+    if condense and len(thisAtom) > 0:
+      thisAtom[0].dotCount = 1
+      condensed = [ thisAtom[0] ]
+      for i in range(1,len(thisAtom)):
+        if thisAtom[i-1].target.memory_id() == thisAtom[i].target.memory_id():
+          condensed[-1].dotCount += 1
+        else:
+          thisAtom[i].dotCount = 1
+          condensed.append(thisAtom[i])
+      thisAtom = condensed
+
+    # Append the sorted and potentially condensed list to the return list
+    ret.extend(thisAtom)
+
+    # Handle the chunk of dots on the next atom
+    curAtomIndex = curAtomEndIndex + 1
+
+  return ret
+
+# ------------------------------------------------------------------------------
+
+def _totalInteractionCount(chainCounts):
+  '''
+    Find the total count of interactions of any type for the specified chain-pair type.
+    :param chainCounts: One of the structures that hold the counts of interaction
+    types for a given pair of chain types: _MCMCCount, _SCSCCount, _MCSCCount, _otherCount,
+    or _sumCount.
+    :return: Sum of results across all interaction types.
+  '''
+  ret = 0
+  for v in chainCounts.values():
+    ret += v
+  return ret
+
+# ------------------------------------------------------------------------------
+
+class DotInfo:
+  # Dot class storing information about an individual dot.
+  def __init__(self, src, target, loc, spike, overlapType, gap, ptmaster, angle):
+    self.src = src                  # Source atom for the interaction
+    self.target = target            # Target atom for the interactions
+    self.loc = loc                  # Location of the dot start
+    self.spike = spike              # Location of the dot end
+    self.overlapType = overlapType  # Type of overlap the interaction represents
+    self.gap = gap                  # Gap between the atoms
+    self.ptmaster = ptmaster        # Main/side chain interaction type
+    self.angle = angle              # Angle associated with the bump
+    self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
+
+
+# ------------------------------------------------------------------------------
+
+def Test():
+  '''
+    Run tests on the functions that are not part of the program class.
+    Throw an assertion error if there is a problem with one of them.
+  '''
+
+  #=====================================================================================
+  # Test the _condense() method.
+
+  atoms = [ # Different atoms for different indices
+    pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
+  ]
+  # Name the atoms distinctly so that they will sort in order.
+  for i,a in enumerate(atoms):
+    a.name = str(i)
+  ag1 = pdb.hierarchy.atom_group()
+  for a in atoms:
+    ag1.append_atom(a)
+  rg1 = pdb.hierarchy.residue_group()
+  rg1.append_atom_group(ag1)
+  rg1.resseq = 1
+  c1 = pdb.hierarchy.chain()
+  c1.append_residue_group(rg1)
+
+  sourceTarget = [  # Index of source atom, target atom pairs to add into the dots list
+    (1,1), (1,2), (1,1), (1,2),
+    (2,1),
+    (3,1), (3,1), (3,1), (3,2), (3,2), (3,2)
+  ]
+  dots = [  # Construct a test dots list based on the sourceTarget tuples.
+    DotInfo(atoms[src],atoms[trg],(0,0,0), (0,0,0), probeExt.OverlapType.Ignore, 0.0, ' ', 0.0)
+      for (src,trg) in sourceTarget
+  ]
+
+  # Test when only sorting
+  inorder = _condense(dots, False)
+  assert len(inorder) == len(dots), "probe2:Test(): Unexpected length from _condense when not condensing"
+  assert inorder[0].target == inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
+  assert inorder[1].target != inorder[2].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
+
+  # Test when also condensing
+  inorder = _condense(dots, True)
+  assert len(inorder) == 5, "probe2:Test(): Unexpected length from _condense when condensing"
+  assert inorder[0].target != inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when condensing"
+  assert inorder[-1].dotCount == 3, "probe2:Test(): Unexpected dot count value from _condense when condensing"
+
+  #=====================================================================================
+  # Test the _totalInteractionCount() method.  We make stand-in dictionaries using a stand-in
+  # list.
+  interactionTypes = [0, 1, 2, 3, 4, 5, 6]
+  MCMCCount = {}
+  for t in interactionTypes:
+    MCMCCount[t] = 1
+
+  assert _totalInteractionCount(MCMCCount) == len(interactionTypes), "probe2:Test(): _totalInteractionCount(MCMCCount) failed"
+
+  #=====================================================================================
+  # Test the _color_for_gap() method.
+  table = [ [0.3, "sky "], [0.1, "green "], [-0.5, "hotpink "]]
+  hydro = "greentint "
+  for t in table:
+    assert _color_for_gap(t[0], probeExt.InteractionType.CloseContact) == t[1], "probe2:Test(): _color_for_gap("+str(t[0])+") failed to return "+t[1]
+    assert _color_for_gap(t[0], probeExt.InteractionType.StandardHydrogenBond) == hydro, "probe2:Test(): _color_for_gap() for a hydrogen bond failed to return "+hydro
+
+  #=====================================================================================
+  # Test the _color_for_atom_class() method.
+  table = [ ["Bob", "magenta"], ["Ag", "white"], ["Cu", "orange"], ["Rn","pinktint"] ]
+  for t in table:
+    assert _color_for_atom_class(t[0]) == t[1], "probe2:Test(): _color_for_atom_class("+str(t[0])+") failed to return "+t[1]
+
 # ------------------------------------------------------------------------------
 
 class Program(ProgramTemplate):
@@ -326,21 +604,6 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _totalInteractionCount(self, chainCounts):
-    '''
-      Find the total count of interactions of any type for the specified chain-pair type.
-      :param chainCounts: One of the structures that hold the counts of interaction
-      types for a given pair of chain types: _MCMCCount, _SCSCCount, _MCSCCount, _otherCount,
-      or _sumCount.
-      :return: Sum of results across all interaction types.
-    '''
-    ret = 0
-    for v in chainCounts.values():
-      ret += v
-    return ret
-
-# ------------------------------------------------------------------------------
-
   def _scaled_atom_radius(self, a):
     '''
       Find the scaled and offset radius for the specified atom.  This will be called on each
@@ -391,99 +654,6 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _color_for_gap(self, gap, interactionType):
-    '''
-      Report the color associated with a gap (and interaction type).
-      :param gap: Size of the gap in Angstroms.
-      :param interactionType: InteractionType of the dot.
-      :return: Kinemage name of the color associated with the class.
-    '''
-
-    if interactionType == probeExt.InteractionType.StandardHydrogenBond:
-      return "greentint "
-    elif gap > 0.35:
-      return "blue "
-    elif gap > 0.25:
-      return "sky "
-    elif gap > 0.15:
-      return "sea "
-    elif gap > 0.0:
-      return "green "
-    elif gap > -0.1:
-      return "yellowtint "
-    elif gap > -0.2:
-      return "yellow "
-    elif gap > -0.3:
-      return "orange "
-    elif gap > -0.4:
-      return "red "
-    else:
-      return "hotpink "
-
-# ------------------------------------------------------------------------------
-
-  def _color_for_atom_class(self, c):
-    '''
-      Report the color associated with an atom class.
-      Based on atomprops.h:INIT_ATOM_TABLE from original probe.
-      :param c: Class of the atom.
-      :return: Kinemage name of the color associated with the class.
-    '''
-
-    # Make sure the atom class is one that we know about
-    if not c in self._allAtomClasses:
-      return 'magenta'
-
-    # Check to see if this atom belongs to one of the special colors.
-    if c in ['C','Ag','other na']:
-      return 'white'
-    elif c in ['N','He','t/u']:
-      return 'sky'
-    elif c in ['O']:
-      return 'red'
-    elif c in ['P','Ne','a']:
-      return 'pink'
-    elif c in ['S','c']:
-      return 'yellow'
-    elif c in ['Se','F','Cl']:
-      return 'green'
-    elif c in ['Br','I']:
-      return 'brown'
-    elif c in ['Co']:
-      return 'blue'
-    elif c in ['Cu','Ar']:
-      return 'orange'
-    elif c in ['Au']:
-      return 'gold'
-    elif c in ['Kr']:
-      return 'greentint'
-    elif c in ['Xe']:
-      return 'magenta'
-    elif c in ['Rn']:
-      return 'pinktint'
-    elif c in ['g']:
-      return 'sea'
-
-    # Most atom types, the default.
-    return 'grey'
-
-# ------------------------------------------------------------------------------
-
-  class DotInfo:
-    # Dot class storing information about an individual dot.
-    def __init__(self, src, target, loc, spike, overlapType, gap, ptmaster, angle):
-      self.src = src                  # Source atom for the interaction
-      self.target = target            # Target atom for the interactions
-      self.loc = loc                  # Location of the dot start
-      self.spike = spike              # Location of the dot end
-      self.overlapType = overlapType  # Type of overlap the interaction represents
-      self.gap = gap                  # Gap between the atoms
-      self.ptmaster = ptmaster        # Main/side chain interaction type
-      self.angle = angle              # Angle associated with the bump
-      self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
-
-# ------------------------------------------------------------------------------
-
   def _save_dot(self, src, target, atomClass, loc, spike, overlapType, gap, ptmaster, angle):
     '''
       Generate and store a DotInfo entry with the specified parameters.  It will be stored
@@ -502,7 +672,7 @@ Note:
     '''
     self._results[atomClass][self._dotScorer.interaction_type(
         overlapType,gap, self.params.output.separate_worse_clashes)].append(
-      self.DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
+      DotInfo(src, target, loc, spike, overlapType, gap, ptmaster, angle)
     )
 
 # ------------------------------------------------------------------------------
@@ -818,76 +988,6 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _condense(self, dotInfoList):
-    '''
-      Condensing the list of dots for use in raw output, sorting and removing
-      duplicates.  Makes use of the self.params.output.condensed flag to control
-      whether to remove duplicates.
-      :param dotInfoList: List of DotInfo structures to condense.
-      :return: Condensed dotlist.
-    '''
-
-    ret = []
-
-    # Handle all of the dots associated with each source atom as a group.
-    # This will be from curAtomIndex to curAtomEndIndex.
-    curAtomIndex = 0
-    while curAtomIndex < len(dotInfoList):
-
-      # Find the last dot in the current atom, which may be at the end of the list.
-      curAtomEndIndex = len(dotInfoList) - 1
-      for curAtomEndIndex in range(curAtomIndex+1, len(dotInfoList)):
-        if dotInfoList[curAtomIndex].src != dotInfoList[curAtomEndIndex].src:
-          curAtomEndIndex -= 1
-          break
-
-      # Sort the dots for the same source atom based on characteristics of their target atom.
-      # We include the XYZ position in the sort so that we get the same order and grouping each
-      # time even though the phantom H? atoms are otherwise identical.
-      # There may be no target atoms specified (they may be None), which will
-      # cause an attribute error.  If that happens, we don't sort.
-      try:
-        thisAtom = sorted(
-          dotInfoList[curAtomIndex:curAtomEndIndex+1],
-          key=lambda dot: "{}{:4.4s}{}{} {}{} {:.3f} {:.3f} {:.3f}".format(
-            dot.target.parent().parent().parent().id, # chain
-            str(dot.target.parent().parent().resseq_as_int()), # residue number
-            dot.target.parent().parent().icode, # insertion code
-            dot.target.parent().resname, # residue name
-            dot.target.name, # atom name
-            dot.target.parent().altloc, # alternate location
-            dot.target.xyz[0], dot.target.xyz[1], dot.target.xyz[2]
-          )
-        )
-      except AttributeError:
-        thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
-
-      # Remove duplicates (same target atom) if we've been asked to.
-      # We do this by scanning through and accumulating counts as long as the target
-      # atom is the same and by appending a new entry when the target atom is different.
-      # The result is a single entry for each target atom with a count of the number of
-      # dots that were associated with it in the resulting entry.
-      if self.params.output.condensed and len(thisAtom) > 0:
-        thisAtom[0].dotCount = 1
-        condensed = [ thisAtom[0] ]
-        for i in range(1,len(thisAtom)):
-          if thisAtom[i-1].target.memory_id() == thisAtom[i].target.memory_id():
-            condensed[-1].dotCount += 1
-          else:
-            thisAtom[i].dotCount = 1
-            condensed.append(thisAtom[i])
-        thisAtom = condensed
-
-      # Append the sorted and potentially condensed list to the return list
-      ret.extend(thisAtom)
-
-      # Handle the chunk of dots on the next atom
-      curAtomIndex = curAtomEndIndex + 1
-
-    return ret
-
-# ------------------------------------------------------------------------------
-
   def _writeRawOutput(self, groupName, masterName):
     '''
       Describe raw summary counts for data of various kinds.
@@ -900,7 +1000,7 @@ Note:
 
     # Provide a short name for each interaction type
     mast = {}
-    for t in self._interactionTypes:
+    for t in _interactionTypes:
       mast[t] = probeExt.DotScorer.interaction_type_short_name(t)
 
     # Store values that we will need often
@@ -910,11 +1010,11 @@ Note:
     hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
 
     # Go through all atom types and contact types and report the contacts.
-    for atomClass in self._allAtomClasses:
-      for interactionType in self._interactionTypes:
+    for atomClass in _allAtomClasses:
+      for interactionType in _interactionTypes:
 
         # Condensed report all of the dots of this type.
-        condensed = self._condense(self._results[atomClass][interactionType])
+        condensed = _condense(self._results[atomClass][interactionType], self.params.output.condensed)
         for node in condensed:
 
           ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
@@ -993,7 +1093,7 @@ Note:
     ptm = ' '
     color = ''
     mast = {}
-    for t in self._interactionTypes:
+    for t in _interactionTypes:
       # Probe uses spaces in these names for this function but underscores for others, so we replace
       # underscores with spaces here.
       mast[t] = probeExt.DotScorer.interaction_type_name(t).replace("_"," ")
@@ -1038,13 +1138,13 @@ Note:
           ret += "@master {{{}}}\n".format(mast[probeExt.InteractionType.WeakHydrogenBond])
 
     # Report count legend if any counts are nonzero.
-    if self._totalInteractionCount(self._MCMCCount) > 0:
+    if _totalInteractionCount(self._MCMCCount) > 0:
       ret += "@pointmaster 'M' {{McMc contacts}}\n"
-    if self._totalInteractionCount(self._SCSCCount) > 0:
+    if _totalInteractionCount(self._SCSCCount) > 0:
       ret += "@pointmaster 'S' {{ScSc contacts}}\n"
-    if self._totalInteractionCount(self._MCSCCount) > 0:
+    if _totalInteractionCount(self._MCSCCount) > 0:
       ret += "@pointmaster 'P' {{McSc contacts}}\n"
-    if self._totalInteractionCount(self._otherCount) > 0:
+    if _totalInteractionCount(self._otherCount) > 0:
       ret += "@pointmaster 'O' {{Hets contacts}}\n"
 
     # Report binned gap legend if we're binning gaps
@@ -1053,8 +1153,8 @@ Note:
         ret += "@pointmaster '{}' {{gap {:3.2f}}}\n".format(gapNames[i],((i-11.0)/20.0)+0.05)
 
     # Go through all atom types and contact types and report the contacts.
-    for atomClass in self._allAtomClasses:
-      for interactionType in self._interactionTypes:
+    for atomClass in _allAtomClasses:
+      for interactionType in _interactionTypes:
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
@@ -1081,13 +1181,13 @@ Note:
           if self.params.output.atoms_are_masters:
             ret += "{} {{x}} color={} master={{{} dots}} master={{{}}}{}{}\n".format(
                     listType,
-                    self._color_for_atom_class(atomClass), atomClass, mast[interactionType], extraMaster,
+                    _color_for_atom_class(atomClass), atomClass, mast[interactionType], extraMaster,
                     lensDots
                    )
           else:
             ret += "{} {{x}} color={} master={{{}}}{}{}\n".format(
                       listType,
-                      self._color_for_atom_class(atomClass), mast[interactionType], extraMaster,
+                      _color_for_atom_class(atomClass), mast[interactionType], extraMaster,
                       lensDots
                     )
 
@@ -1115,7 +1215,7 @@ Note:
 
           if self.params.output.color_by_gap:
             if t is not None:
-              color = self._color_for_gap(node.gap, interactionType)
+              color = _color_for_gap(node.gap, interactionType)
               ret += "{}".format(color)
             else:
               ret += "{} ".format(self.params.output.default_point_color)
@@ -1198,8 +1298,8 @@ Note:
     # Compute the counts
     tgs = ths = thslen = tbs = tbslen = tsas = 0
     tGscore = tHscore = tBscore = tscore = 0
-    for c in self._allAtomClasses:
-      for t in self._interactionTypes:
+    for c in _allAtomClasses:
+      for t in _interactionTypes:
         res = self._results[c][t]
         if len(res) > 0:
 
@@ -1339,12 +1439,12 @@ Note:
       self._SCSCTotal = {}
       self._MCSCTotal = {}
       self._otherTotal = {}
-      for t in self._interactionTypes:
+      for t in _interactionTypes:
         self._MCMCTotal[t] = 0
         self._SCSCTotal[t] = 0
         self._MCSCTotal[t] = 0
         self._otherTotal[t] = 0
-    for t in self._interactionTypes:
+    for t in _interactionTypes:
       self._MCMCTotal[t] += self._MCMCCount[t]
       self._MCMCCount[t] = 0
       self._SCSCTotal[t] += self._SCSCCount[t]
@@ -1356,7 +1456,7 @@ Note:
 
     # Compute the sum of all subtypes per interaction type.
     sumTotal = {}
-    for t in self._interactionTypes:
+    for t in _interactionTypes:
       sumTotal[t] = self._MCMCTotal[t] + self._SCSCTotal[t] + self._MCSCTotal[t] + self._otherTotal[t]
 
     # If we're at the last pass, fill in our return string.
@@ -1365,7 +1465,7 @@ Note:
         # Report the file name that was read along with its summary data on one line
         ret += ": {} ".format(self.data_manager.get_model_names()[0])
         for c in [self._MCMCTotal, self._SCSCTotal, self._MCSCTotal, self._otherTotal]:
-          for t in self._interactionTypes:
+          for t in _interactionTypes:
             ret += ":{:9d} ".format(c[t])
         ret += ":\n"
       else:
@@ -1377,7 +1477,7 @@ Note:
                          (self._MCSCTotal, "MCSC"), (self._otherTotal, "OTHER"),
                          (sumTotal, "SUM")]:
           ret += ":{:7s}".format(name)
-          for t in self._interactionTypes:
+          for t in _interactionTypes:
             ret += ":{:9d} ".format(c[t])
           ret += ":\n"
 
@@ -1525,9 +1625,9 @@ Note:
   def _clear_results(self):
     # Initialize the results to empty.
     self._results = {}
-    for c in self._allAtomClasses:
+    for c in _allAtomClasses:
       interactionTypeDicts = {}
-      for i in self._interactionTypes:
+      for i in _interactionTypes:
         interactionTypeDicts[i] = []
       self._results[c] = interactionTypeDicts
 
@@ -1581,11 +1681,6 @@ Note:
 # ------------------------------------------------------------------------------
 
   def run(self):
-    # Run unit tests if we've been asked to
-    if self.params.run_tests:
-      make_sub_header('Run unit tests', out=self.logger)
-      self.Test()
-
     # String that will be output to the specified file.
     outString = ''
 
@@ -1932,46 +2027,16 @@ Note:
       self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self.params.probe)
 
       ################################################################################
-      # List of all of the keys for atom classes, including all elements and all
-      # nucleic acid types.  These are in the order that the original Probe reported
-      # them.  Based on atomprops.h:INIT_ATOM_TABLE from original probe.
-      self._allAtomClasses = ['ignore',
-                           'H','C','N','O','P','S','As','Se','F','Cl','Br','I',
-                           'Li','Na','Al','K','Mg','Ca','Mn','Fe','Co','Ni','Cu','Zn',
-                           'Rb','Sr','Mo','Ag','Cd','In','Cs','Ba','Au','Hg','Tl','Pb',
-                           'V','Cr','Te','Sm','Gd','Yb','W','Pt','U',
-                           'He','Be','B','Ne','Se','Ar','Sc','Ti','Ga','Ge','Kr','Y','Zr',
-                           'Sn','Sb','Xe','La','Ce','Fr','Ra','Th',
-                           'Nb','Tc','Ru','Rh','Pd','Pr','Nd','Pm','Eu','Tb','Dy','Ho','Er',
-                           'Tm','Lu','Hf','Ta','Re','Os','Ir','Bi','Po','At','Rn','Ac','Pa',
-                           'Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',
-                           'a','c','t/u','g','other na','nonbase']
-
-      ################################################################################
-      # Dictionary of dictionaries of lists structure holding lists of DotInfo class objects,
-      # indexed by atom class and then by interaction type.  Fill in empty lists for all of
-      # the possible classes and types.
-      self._interactionTypes = [
-          probeExt.InteractionType.WideContact,
-          probeExt.InteractionType.CloseContact,
-          probeExt.InteractionType.WeakHydrogenBond,
-          probeExt.InteractionType.SmallOverlap,
-          probeExt.InteractionType.Bump,
-          probeExt.InteractionType.BadBump,
-          probeExt.InteractionType.StandardHydrogenBond
-        ]
-      self._clear_results();
-
-      ################################################################################
       # Sums of interaction types of dots based on whether their source and/or target
       # were mainchain, sidechain, both, or neither.  There is another place to store
       # the sum of multiple passes.
       # Each contains an entry for each InteractionType and for the total.
+      self._clear_results();
       self._MCMCCount = {}
       self._SCSCCount = {}
       self._MCSCCount = {}
       self._otherCount = {}
-      for t in self._interactionTypes:
+      for t in _interactionTypes:
         self._MCMCCount[t] = 0
         self._SCSCCount[t] = 0
         self._MCSCCount[t] = 0
@@ -2200,75 +2265,6 @@ Note:
       self._pr.disable()
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
-
-# ------------------------------------------------------------------------------
-
-  def Test(self):
-    '''
-      Run tests on the methods of the class.  Throw an assertion error if there is a problem with
-      one of them and return normally if there is not a problem.
-    '''
-
-    #=====================================================================================
-    # Test the _condense() method.
-
-    atoms = [ # Different atoms for different indices
-      pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom(), pdb.hierarchy.atom()
-    ]
-    # Name the atoms distinctly so that they will sort in order.
-    for i,a in enumerate(atoms):
-      a.name = str(i)
-    ag1 = pdb.hierarchy.atom_group()
-    for a in atoms:
-      ag1.append_atom(a)
-    rg1 = pdb.hierarchy.residue_group()
-    rg1.append_atom_group(ag1)
-    rg1.resseq = 1
-    c1 = pdb.hierarchy.chain()
-    c1.append_residue_group(rg1)
-
-    sourceTarget = [  # Index of source atom, target atom pairs to add into the dots list
-      (1,1), (1,2), (1,1), (1,2),
-      (2,1),
-      (3,1), (3,1), (3,1), (3,2), (3,2), (3,2)
-    ]
-    dots = [  # Construct a test dots list based on the sourceTarget tuples.
-      self.DotInfo(atoms[src],atoms[trg],(0,0,0), (0,0,0), probeExt.OverlapType.Ignore, 0.0, ' ', 0.0)
-        for (src,trg) in sourceTarget
-    ]
-
-    # Store state that we need to put back
-    stored = self.params.output.condensed
-
-    # Test when only sorting
-    self.params.output.condensed = False
-    inorder = self._condense(dots)
-    assert len(inorder) == len(dots), "probe2:Test(): Unexpected length from _condense when not condensing"
-    assert inorder[0].target == inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
-    assert inorder[1].target != inorder[2].target, "probe2:Test(): Unexpected sorted value from _condense when not condensing"
-
-    # Test when also condensing
-    self.params.output.condensed = True
-    inorder = self._condense(dots)
-    assert len(inorder) == 5, "probe2:Test(): Unexpected length from _condense when condensing"
-    assert inorder[0].target != inorder[1].target, "probe2:Test(): Unexpected sorted value from _condense when condensing"
-    assert inorder[-1].dotCount == 3, "probe2:Test(): Unexpected dot count value from _condense when condensing"
-
-    # Restore state
-    self.params.output.condensed = stored
-
-    #=====================================================================================
-    # Test the _totalInteractionCount() method.  We make stand-in dictionaries using a stand-in
-    # list.
-    interactionTypes = [0, 1, 2, 3, 4, 5, 6]
-    MCMCCount = {}
-    for t in interactionTypes:
-      MCMCCount[t] = 1
-
-    assert self._totalInteractionCount(MCMCCount) == len(interactionTypes), "probe2:Test(): _totalInteractionCount(MCMCCount) failed"
-
-    #=====================================================================================
-    # @todo Unit tests for other methods
 
 # ------------------------------------------------------------------------------
 
