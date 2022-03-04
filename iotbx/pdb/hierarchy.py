@@ -1773,6 +1773,13 @@ class _():
           chain_ids.append(chain.id)
     return chain_ids
 
+  def first_chain_id(self):
+    ''' Get first chain ID '''
+    chain_ids = self.chain_ids()
+    if chain_ids:
+      return chain_ids[0]
+    else:
+      return None
 
   def remove_hd(self, reset_i_seq=False):
     """

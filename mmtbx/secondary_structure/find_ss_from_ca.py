@@ -657,11 +657,8 @@ def set_chain_id(hierarchy, chain_id = None):
 def get_chain_id(hierarchy):
   if not hierarchy:
     return None
-  chain_ids = hierarchy.chain_ids()
-  if chain_ids:
-    return chain_ids[0]
   else:
-    return None
+    return hierarchy.first_chain_id()
 
 def get_sequence(hierarchy,one_letter_code=True):
   if not hierarchy:
@@ -754,16 +751,6 @@ def has_atom(hierarchy,name=None):
               return True
   return False
 
-def get_first_resno(hierarchy):
-  if not hierarchy:
-    return None
-  return hierarchy.first_resno_as_int()
-
-def get_last_resno(hierarchy):
-  if not hierarchy:
-    return None
-  return hierarchy.last_resno_as_int()
-
 def get_all_resno(hierarchy):
   resno_list=[]
   if not hierarchy:
@@ -778,9 +765,9 @@ def get_middle_resno(hierarchy,first_resno=None,last_resno=None):
   if not hierarchy:
     return None
   if first_resno is None:
-     first_resno=get_first_resno(hierarchy)
+     first_resno=hierarchy.first_resno_as_int()
   if last_resno is None:
-     last_resno=get_last_resno(hierarchy)
+     last_resno=hierarchy.last_resno_as_int()
   target_resno=int(0.5+(first_resno+last_resno)/2)
   for model in hierarchy.models():
     for chain in model.chains():
@@ -1306,8 +1293,8 @@ def sites_and_seq_from_hierarchy(hierarchy):
     sites=sele.extract_xray_structure(min_distance_sym_equiv=0 # REQUIRED
         ).sites_cart()
     sequence=sequence_from_hierarchy(sele)
-  start_resno=get_first_resno(sele)
-  end_resno=get_last_resno(sele)
+  start_resno=sele.first_resno_as_int()
+  end_resno=sele.last_resno_as_int()
   return sites,sequence,start_resno,end_resno
 
 class model_info: # mostly just a holder
@@ -1337,10 +1324,10 @@ class model_info: # mostly just a holder
     return has_atom(self.hierarchy,name="O")
 
   def first_residue(self):
-    return get_first_resno(self.hierarchy)
+    return self.hierarchy.first_resno_as_int()
 
   def last_residue(self):
-    return get_last_resno(self.hierarchy)
+    return self.hierarchy.last_resno_as_int()
 
   def length(self):
     return self.last_residue()-self.first_residue()+1
@@ -1414,7 +1401,7 @@ class segment:  # object for holding a helix or a strand or other
     if start_resno is not None:
       self.start_resno=start_resno
     elif self.hierarchy:
-      self.start_resno=get_first_resno(self.hierarchy)
+      self.start_resno=self.hierarchy.first_resno_as_int()
       assert start_resno is None
     else:
       start_resno=1
@@ -1961,7 +1948,7 @@ class find_segment: # class to look for a type of segment
       self.last_residue_offset=0
 
     # set start residue number if not set.
-    self.start_resno=get_first_resno(self.model.hierarchy)
+    self.start_resno=self.model.hierarchy.first_resno_as_int()
 
     self.segments=[]
 

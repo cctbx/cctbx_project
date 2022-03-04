@@ -2868,7 +2868,7 @@ class map_model_manager(object):
     '''
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
-       get_first_resno,get_last_resno, get_chain_id, get_chain_ids
+        get_chain_id, get_chain_ids
 
 
     if one_to_one:
@@ -3167,23 +3167,21 @@ class map_model_manager(object):
         local_target_model = target_model
         local_matching_model = matching_model
 
+      t_chain_ids = local_target_model.chain_ids()
+      t_chain_id = t_chain_ids[0] if t_chain_ids else None
+      m_chain_ids = local_matching_model.chain_ids()
+      m_chain_id = m_chain_ids[0] if m_chain_ids else None
       target_and_matching = group_args(
         group_args_type = 'target and matching residues from other',
           id = len(target_and_matching_list),
           target_model = local_target_model,
-          target_model_chain_id = get_chain_id(
-            local_target_model.get_hierarchy()),
-          target_model_start_resseq = get_first_resno(
-            local_target_model.get_hierarchy()),
-          target_model_end_resseq = get_last_resno(
-            local_target_model.get_hierarchy()),
+          target_model_chain_id = t_chain_id,
+          target_model_start_resseq = local_target_model.first_resno_as_int(),
+          target_model_end_resseq =  local_target_model.last_resno_as_int(),
           matching_model = local_matching_model,
-          matching_model_chain_id = get_chain_id(
-            local_matching_model.get_hierarchy()),
-          matching_model_start_resseq = get_first_resno(
-            local_matching_model.get_hierarchy()),
-          matching_model_end_resseq = get_last_resno(
-            local_matching_model.get_hierarchy()),
+          matching_model_chain_id = m_chain_id,
+          matching_model_start_resseq =  local_matching_model.first_resno_as_int(),
+          matching_model_end_resseq =  local_matching_model.last_resno_as_int(),
           chain_type = chain_type,
           atom_name = atom_name,
           element = element,

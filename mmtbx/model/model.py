@@ -4103,8 +4103,8 @@ class manager(object):
     current_methods = self.get_methods()
     included_methods = """chain_ids chain_type chain_types chains
       contains_dna contains_nucleic_acid contains_protein contains_rna
-      first_resno_as_int get_overall_counts is_ca_only is_similar_hierarchy
-      last_resno_as_int""".split()
+      first_chain_id first_resno_as_int get_overall_counts is_ca_only
+      is_similar_hierarchy last_resno_as_int""".split()
 
     aa = self.get_hierarchy()
     assert aa is not None
