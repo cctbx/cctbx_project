@@ -17,7 +17,6 @@ from scitbx.matrix import col
 from libtbx import group_args
 from cctbx.maptbx.segment_and_split_map import get_co
 import iotbx.phil
-from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
 
 ################################################################################
 ####################   process_predicted_model  ################################
@@ -268,9 +267,9 @@ def process_predicted_model(
   assert isinstance(model, mmtbx.model.manager)
 
   # Make sure we have just 1 chain or a chain ID supplied
-  chain_ids = get_chain_ids(model.get_hierarchy())
+  chain_ids = model.chain_ids()
   if len(chain_ids) != 1:
-    chain_id = get_chain_id(model, None, log = log)
+    chain_id = model.first_chain_id()
     model.add_crystal_symmetry_if_necessary()
     model = model.apply_selection_string('chain %s' %(chain_id))
 
@@ -477,23 +476,6 @@ def split_model_by_chainid(m, chainid_list,
       atoms.set_occ(occupancies)
     split_model_list.append(m1)
   return split_model_list
-
-
-def get_chain_id(model, chain_id, log = sys.stdout):
-  chain_ids = get_chain_ids(model.get_hierarchy())
-  if len(chain_ids) == 1:
-    chain_id = chain_ids[0]
-  elif chain_id is not None:
-    if chain_id in chain_ids:
-      print("Working on chain '%s' only" %(chain_id), file = log)
-    else:
-      raise Sorry("Chain %s is not in the chains present (%s)" %(
-        chain_id, " ".join(chain_ids)))
-  else:
-    chain_id = chain_ids[0]
-    print("Working on chain '%s' only (skipping other chains: %s)" %(
-      chain_id, " ".join(chain_ids[1:])), file = log)
-  return chain_id
 
 def get_cutoff_b_value(
     maximum_rmsd,
@@ -911,8 +893,7 @@ def split_model_into_compact_units(
 def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}
   chainid_list = []
-  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_id
-  chainid = get_chain_id(m.get_hierarchy()).strip()
+  chainid = m.first_chain_id().strip()
   if not keep_list:
     keep_list = len(unique_regions) * [True]
   assert len(keep_list) == len(unique_regions)
@@ -1484,8 +1465,7 @@ def add_model(s1, s2):
   ''' add chains from s2 to existing s1'''
   s1 = s1.deep_copy()
   s1_ph = s1.get_hierarchy() # working hierarchy
-  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
-  existing_chain_ids = get_chain_ids(s1_ph)
+  existing_chain_ids = s1_ph.chain_ids()
   for model_mm_2 in s2.get_hierarchy().models()[:1]:
     for chain in model_mm_2.chains():
       assert chain.id not in existing_chain_ids # duplicate chains in add_model

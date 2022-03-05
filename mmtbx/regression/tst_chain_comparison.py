@@ -783,7 +783,6 @@ MATCHING 136
 def tst_05():
   from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_hierarchy as euph
-  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
 
   print("Testing extraction of unique part and unique matching")
   for m in [modela,modelb,modelaa,modelaab,modelaabaab]:
@@ -799,7 +798,7 @@ def tst_05():
     query_hierarchy=iotbx.pdb.input(source_info='query',
          lines=flex.split_lines(target)).construct_hierarchy()
     unique_hierarchy=euph(model_hierarchy,target_ph=query_hierarchy)
-    print("FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy))))
+    print("FINAL chain ids: %s \n" %(" ".join(unique_hierarchy.chain_ids())))
   print("OK")
 
 def tst_06():

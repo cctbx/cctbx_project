@@ -562,13 +562,6 @@ def remove_all_models_except_first(hierarchy):
   return new_hierarchy
 
 
-def get_chain_ids(hierarchy,unique_only=None):
-  chain_ids=[]
-  if not hierarchy:
-    return chain_ids
-  else:
-    return hierarchy.chain_ids(unique_only=unique_only)
-
 def offset_residue_numbers(hierarchy, offset = 0):
   for model in hierarchy.models():
     for chain in model.chains():
@@ -653,12 +646,6 @@ def set_chain_id(hierarchy, chain_id = None):
       n_chains+=1
       chain.id = chain_id
 
-
-def get_chain_id(hierarchy):
-  if not hierarchy:
-    return None
-  else:
-    return hierarchy.first_chain_id()
 
 def get_sequence(hierarchy,one_letter_code=True):
   if not hierarchy:
@@ -900,10 +887,7 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
   ca_ph=apply_atom_selection("name ca", hierarchy = hierarchy)
   if chain_id:
     ca_ph=apply_atom_selection("chain %s" %(chain_id), hierarchy = ca_ph)
-  unique_chain_ids = []
-  for x in get_chain_ids(ca_ph):
-    if not x in unique_chain_ids:
-      unique_chain_ids.append(x)
+  unique_chain_ids = ca_ph.chain_ids(unique_only = True)
   if len(unique_chain_ids) != 1:
     raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(
       " ".join(unique_chain_ids)))
@@ -2395,7 +2379,7 @@ class find_helix(find_segment):
       number_of_poor_h_bonds+=n_poor
       start=get_first_residue(s.hierarchy)
       end=get_last_residue(s.hierarchy)
-      chain_id=get_chain_id(s.hierarchy)
+      chain_id=s.hierarchy.first_chain_id()
       k=k+1
       record = secondary_structure.pdb_helix(
         serial=k,
@@ -2463,12 +2447,12 @@ class find_helix(find_segment):
         new_h_bond=h_bond(
            prev_atom=cur_atom,
            prev_resname=cur_residue.resname,
-           prev_chain_id=get_chain_id(segment.hierarchy),
+           prev_chain_id=segment.hierarchy.first_chain_id(),
            prev_resseq=cur_residue.resseq,
            prev_icode=cur_residue.icode,
            cur_atom=next_atom,
            cur_resname=next_residue.resname,
-           cur_chain_id=get_chain_id(segment.hierarchy),
+           cur_chain_id=segment.hierarchy.first_chain_id(),
            cur_resseq=next_residue.resseq,
            cur_icode=next_residue.icode,
            dist=dist,
@@ -2518,7 +2502,7 @@ class find_beta_strand(find_segment):
     if start is None or end is None:
       return None
 
-    chain_id=get_chain_id(segment.hierarchy)
+    chain_id=segment.hierarchy.first_chain_id()
     pdb_strand = secondary_structure.pdb_strand(
         sheet_id=sheet_id,
         strand_id=strand_id,
@@ -2819,12 +2803,12 @@ class find_beta_strand(find_segment):
         new_h_bond=h_bond(
              prev_atom=local_prev_atom,
              prev_resname=local_prev_residue.resname,
-             prev_chain_id=get_chain_id(previous_segment.hierarchy),
+             prev_chain_id=previous_segment.hierarchy.first_chain_id(),
              prev_resseq=local_prev_residue.resseq,
              prev_icode=local_prev_residue.icode,
              cur_atom=local_cur_atom,
              cur_resname=local_cur_residue.resname,
-             cur_chain_id=get_chain_id(segment.hierarchy),
+             cur_chain_id=segment.hierarchy.first_chain_id(),
              cur_resseq=local_cur_residue.resseq,
              cur_icode=local_cur_residue.icode,
              dist=dist,

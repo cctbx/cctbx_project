@@ -2867,9 +2867,6 @@ class map_model_manager(object):
     If either model has multiple chains, run all pairwise combinations
     '''
 
-    from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
-
-
     if one_to_one:
        max_gap = 0
 
@@ -2898,10 +2895,8 @@ class map_model_manager(object):
         print("No target model...skipping comparison", file = self.log)
       return []
 
-    target_model_chain_ids = get_chain_ids(target_model.get_hierarchy(),
-      unique_only=True)
-    matching_model_chain_ids = get_chain_ids(matching_model.get_hierarchy(),
-      unique_only=True)
+    target_model_chain_ids = target_model.chain_ids(unique_only=True)
+    matching_model_chain_ids = matching_model.chain_ids(unique_only=True)
     if len(target_model_chain_ids) > 1 or len(matching_model_chain_ids) > 1:
       target_and_matching_list = []
       for target_model_chain_id in target_model_chain_ids:
@@ -9249,8 +9244,7 @@ def get_selections_and_boxes_to_split_model(
       box_info.selection_list = [selection]
       box_info.selection_as_text_list=[info.no_water_or_het]
   elif selection_method == 'by_chain':
-    from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
-    for chain_id in get_chain_ids(model.get_hierarchy(), unique_only=True):
+    for chain_id in model.chain_ids(unique_only=True):
       if chain_id.replace(" ",""):
         selection_as_text = " %s (chain %s) " %(
          info.no_water_or_het_with_and,chain_id)

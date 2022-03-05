@@ -15,7 +15,7 @@ from scitbx.array_family import flex
 from mmtbx.secondary_structure.find_ss_from_ca import \
    find_secondary_structure, \
    find_helix,find_beta_strand,find_other_structure,helix,strand,other,\
-   get_sequence,get_chain_id,get_atom_list,\
+   get_sequence,get_atom_list,\
    apply_atom_selection,model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
 from six.moves import zip
@@ -921,7 +921,7 @@ class connected_group:
     sequence=[]
     sequences=[]  # list of sequences, one for each model
     if model_to_match:
-      chain_id=get_chain_id(model_to_match.hierarchy)
+      chain_id=model_to_match.hierarchy.first_chain_id()
     else:
       chain_id='A'
     overall_start_resno=None
@@ -1509,7 +1509,7 @@ class replacement_segment_summary:
   def __init__(self,model=None):
     self.model=model
     self.id=model.info['chain_number']
-    self.chain_id=get_chain_id(self.model.hierarchy)
+    self.chain_id=self.model.hierarchy.first_chain_id()
     self.replacement_model=None
     self.model_is_complete=None
     self.connected_groups=None
