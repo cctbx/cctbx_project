@@ -41,8 +41,11 @@ SOFTWARE.
 def parse_pae_file(pae_json_file):
     import json, numpy
 
-    with open(pae_json_file, 'rt') as f:
+    try:
+      with open(pae_json_file, 'rt') as f:
         data = json.load(f)[0]
+    except Exception as e:
+      raise Sorry("Unable to read the json file %s" %(pae_json_file))
 
     r1, d = data['residue1'],data['distance']
 

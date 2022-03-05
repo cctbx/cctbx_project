@@ -16,7 +16,7 @@ from mmtbx.secondary_structure.find_ss_from_ca import \
    find_secondary_structure, \
    find_helix,find_beta_strand,find_other_structure,helix,strand,other,\
    get_sequence,get_atom_list,\
-   apply_atom_selection,model_info,split_model,merge_hierarchies_from_models, \
+   model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
 from six.moves import zip
 from six.moves import range
@@ -615,13 +615,13 @@ class segment_library:
       atom_selection=\
          "resid %s through %s and (name n or name c or name ca or name o)" %(
           resseq_encode(i),resseq_encode(i))
-      model_res_hierarchy=apply_atom_selection(
-        atom_selection,hierarchy=model_segment.hierarchy)
+      model_res_hierarchy=model_segment.hierarchy.apply_atom_selection(
+        atom_selection)
       atom_selection=\
          "resid %s through %s and (name n or name c or name ca or name o)" %(
           resseq_encode(j),resseq_encode(j))
-      other_res_hierarchy=apply_atom_selection(
-        atom_selection,hierarchy=placed_other_hierarchy)
+      other_res_hierarchy=placed_other_hierarchy.apply_atom_selection(
+        atom_selection)
       xyz1=model_res_hierarchy.atoms().extract_xyz()
       xyz2=other_res_hierarchy.atoms().extract_xyz()
       assert xyz1.size()==xyz2.size()
@@ -964,19 +964,19 @@ class connected_group:
 
       atom_selection="resid %s through %s" %(resseq_encode(start_resno),
        resseq_encode(end_resno))
-      h=apply_atom_selection(atom_selection,hierarchy=cgs.segment.hierarchy)
+      h=cgs.segment.hierarchy.apply_atom_selection(atom_selection)
 
       if model_to_match: # get comparison and sequence
         atom_selection="name ca and resid %s through %s" %(
          resseq_encode(target_start_resno),
          resseq_encode(target_end_resno))
-        original_ca=apply_atom_selection(atom_selection,
-          hierarchy=model_to_match.hierarchy)
+        original_ca=model_to_match.hierarchy.apply_atom_selection(
+         atom_selection)
         original_xyz=original_ca.atoms().extract_xyz()
         original_sequence=get_sequence(original_ca,one_letter_code=False)
 
         atom_selection="name ca "
-        replacement_ca=apply_atom_selection(atom_selection,hierarchy=h)
+        replacement_ca=h.apply_atom_selection(atom_selection)
         replacement_xyz=replacement_ca.atoms().extract_xyz()
         replacement_sequence=get_sequence(replacement_ca,one_letter_code=False)
 
@@ -1471,7 +1471,7 @@ class connected_group:
     atom_selection="resseq %s and (name ca or name c or name o or name n)"  %(
      resseq_encode(resno))
 
-    sele=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+    sele=hierarchy.apply_atom_selection(atom_selection)
     return sele.atoms().extract_xyz()
 
 
@@ -2154,8 +2154,8 @@ class replace_with_segments_from_pdb:
             resseq_encode(i),resseq_encode(i+2*target_overlap-1))
           segment_list.append(other(params=params.other,
             start_resno=i,
-            hierarchy= apply_atom_selection(
-            atom_selection,hierarchy=combined_model.hierarchy)))
+            hierarchy= combined_model.hierarchy.apply_atom_selection(
+            atom_selection)))
         for segment in segment_list:
           # now find replacements for this segment
           rs,rms,log_frequency,lc,rc,lc_other,rc_other=\

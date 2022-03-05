@@ -255,9 +255,6 @@ master_phil = iotbx.phil.parse("""
 """, process_includes=True)
 master_params = master_phil
 
-def apply_atom_selection(atom_selection,hierarchy=None):
-  return hierarchy.apply_atom_selection(atom_selection)
-
 def get_pdb_hierarchy(text=None):
   return iotbx.pdb.input(
      source_info=None,lines=flex.split_lines(text)).construct_hierarchy()
@@ -504,7 +501,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   if trim_side_chains:
     atom_selection=\
       "name ca or name c or name o or name n or (name cb and not resname gly)"
-    new_hierarchy=apply_atom_selection(atom_selection,hierarchy=new_hierarchy)
+    new_hierarchy=new_hierarchy.apply_atom_selection(atom_selection)
 
   if remove_ter_records or remove_break_records:
     new_records=flex.split_lines("")
@@ -884,9 +881,9 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
    chain_id = None,
    out = sys.stdout):
   print("\nEvaluating sheet topology", file = out)
-  ca_ph=apply_atom_selection("name ca", hierarchy = hierarchy)
+  ca_ph=hierarchy.apply_atom_selection("name ca")
   if chain_id:
-    ca_ph=apply_atom_selection("chain %s" %(chain_id), hierarchy = ca_ph)
+    ca_ph=ca_ph.apply_atom_selection("chain %s" %(chain_id))
   unique_chain_ids = ca_ph.chain_ids(unique_only = True)
   if len(unique_chain_ids) != 1:
     raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(
@@ -925,16 +922,15 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
       s2 = strand_list[jj]
       if s2.get_start_resseq_as_int() - s1.get_end_resseq_as_int() < 3:
         continue  # just a continuation
-      sites_1 =apply_atom_selection("resseq %s:%s" %(
+      sites_1 =ca_ph.apply_atom_selection("resseq %s:%s" %(
         s1.get_start_resseq_as_int(),
-        s1.get_end_resseq_as_int()), hierarchy = ca_ph).atoms().extract_xyz()
-      sites_2 =apply_atom_selection("resseq %s:%s" %(
+        s1.get_end_resseq_as_int())).atoms().extract_xyz()
+      sites_2 =ca_ph.apply_atom_selection("resseq %s:%s" %(
         s2.get_start_resseq_as_int(),
-        s2.get_end_resseq_as_int()), hierarchy = ca_ph).atoms().extract_xyz()
-      sites_between = apply_atom_selection("resseq %s:%s" %(
+        s2.get_end_resseq_as_int())).atoms().extract_xyz()
+      sites_between = ca_ph.apply_atom_selection("resseq %s:%s" %(
         s1.get_end_resseq_as_int() + 1,
-        s2.get_start_resseq_as_int() - 1),
-          hierarchy = ca_ph).atoms().extract_xyz()
+        s2.get_start_resseq_as_int() - 1)).atoms().extract_xyz()
       if sites_1.size() < 2 or sites_2.size()< 2 or sites_between.size()<2:
         continue  # nothing to do
 
@@ -1100,9 +1096,8 @@ def remove_bad_annotation(annotation,hierarchy=None,
   deleted_something=False
   new_helices=[]
   for helix in new_annotation.helices:
-    ph=apply_atom_selection(
-      get_string_or_first_element_of_list(helix.as_atom_selections()),
-         hierarchy=hierarchy)
+    ph=hierarchy.apply_atom_selection(get_string_or_first_element_of_list(
+       helix.as_atom_selections()))
     try:
         verify_existence(hierarchy=ph,helix=helix)
         new_helices.append(helix)
@@ -1119,9 +1114,8 @@ def remove_bad_annotation(annotation,hierarchy=None,
     registrations_ok=True
     for strand,registration in zip(sheet.strands,sheet.registrations):
       # verify that first and last atom selections in strand exist
-      ph=apply_atom_selection(
-         get_string_or_first_element_of_list(strand.as_atom_selections()),
-         hierarchy=hierarchy)
+      ph=hierarchy.apply_atom_selection(
+         get_string_or_first_element_of_list(strand.as_atom_selections()))
       try:
         verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
          strand=strand)
@@ -1262,14 +1256,14 @@ def choose_ca_or_complete_backbone(hierarchy, params=None):
   if fraction_complete_backbone < \
        params.find_ss_structure.min_ca_n_o_completeness:
     # just use CA-only
-    return apply_atom_selection('name CA',hierarchy=hierarchy)
+    return hierarchy.apply_atom_selection('name CA')
   else:  # remove CA-only residues
     hierarchy.remove_incomplete_main_chain_protein()
     return hierarchy
 
 def sites_and_seq_from_hierarchy(hierarchy):
   atom_selection="name ca"
-  sele=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+  sele=hierarchy.apply_atom_selection(atom_selection)
   if sele.overall_counts().n_residues==0:
     sites=flex.vec3_double()
     sequence=""
@@ -1425,7 +1419,7 @@ class segment:  # object for holding a helix or a strand or other
     atom_selection="resid %s through %s" %(resseq_encode(start_res),
        resseq_encode(end_res))
 
-    self.hierarchy=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
+    self.hierarchy=self.hierarchy.apply_atom_selection(atom_selection)
     self.start_resno=self.start_resno+start_pos
     self.get_sites_from_hierarchy()
     if self.optimal_delta_length:
@@ -1446,7 +1440,7 @@ class segment:  # object for holding a helix or a strand or other
 
   def get_sites_from_hierarchy(self):
     atom_selection="name ca"
-    sele=apply_atom_selection(atom_selection,hierarchy=self.hierarchy)
+    sele=self.hierarchy.apply_atom_selection(atom_selection)
     if sele.overall_counts().n_residues==0:
       self.sites=flex.vec3_double()
     else:
@@ -1638,7 +1632,7 @@ class segment:  # object for holding a helix or a strand or other
      start_res=None,end_res=None):
     atom_selection="resid %s through %s" %(resseq_encode(start_res),
        resseq_encode(end_res))
-    sele=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+    sele=hierarchy.apply_atom_selection(atom_selection)
 
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
@@ -2050,8 +2044,7 @@ class find_segment: # class to look for a type of segment
         atom_selection="resseq %s:%s" %(
            resseq_encode(start_resno).replace(" ",""),
            resseq_encode(end_resno).replace(" ",""))
-        hierarchy=apply_atom_selection(
-           atom_selection,hierarchy=self.model.hierarchy)
+        hierarchy=self.model.hierarchy.apply_atom_selection(atom_selection)
         if hierarchy.overall_counts().n_residues==0:
           return False # did not find anything here and needed to
       else:
@@ -2072,7 +2065,7 @@ class find_segment: # class to look for a type of segment
 
   def get_sites(self):
     atom_selection="name ca"
-    sele=apply_atom_selection(atom_selection,hierarchy=self.model.hierarchy)
+    sele=self.model.hierarchy.apply_atom_selection(atom_selection)
     if not sele.overall_counts().n_residues:
       return []
     else:
@@ -3803,7 +3796,7 @@ class find_secondary_structure: # class to look for secondary structure
       hierarchy.remove_alt_confs(always_keep_one_conformer=False)
       atom_selection="protein"
       try:
-        hierarchy=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+        hierarchy=hierarchy.apply_atom_selection(atom_selection)
       except Exception as e:
         hierarchy=None
 
@@ -4219,9 +4212,8 @@ class find_secondary_structure: # class to look for secondary structure
 
     # Helix classes:   'alpha', 'pi', '3_10',
     for helix in user_annotation.helices:
-      ph=apply_atom_selection(
-       get_string_or_first_element_of_list(helix.as_atom_selections()),
-       hierarchy=hierarchy)
+      ph=hierarchy.apply_atom_selection(
+       get_string_or_first_element_of_list(helix.as_atom_selections()))
       model=model_info(hierarchy=ph,info={'class':helix.helix_class})
       self.user_models.append(model)
       if helix.helix_class=='alpha':
@@ -4263,9 +4255,8 @@ class find_secondary_structure: # class to look for secondary structure
         else:
           is_parallel=None
 
-        ph=apply_atom_selection(
-         get_string_or_first_element_of_list(strand.as_atom_selections()),
-         hierarchy=hierarchy)
+        ph=hierarchy.apply_atom_selection(
+         get_string_or_first_element_of_list(strand.as_atom_selections()))
 
         model=model_info(hierarchy=ph,info={'class':'strand'})
         self.user_models.append(model)

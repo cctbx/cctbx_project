@@ -435,12 +435,6 @@ def convert_to_reduced_set(sequence,params=None):
     return text
 
 
-def apply_atom_selection(atom_selection,hierarchy=None):
-  asc=hierarchy.atom_selection_cache()
-  sel = asc.selection(string = atom_selection)
-  return hierarchy.deep_copy().select(sel)  # deep copy is required
-  #return hierarchy.select(sel)
-
 def extract_representative_chains_from_hierarchy(ph,
     min_similarity=0.90,
     allow_extensions=False,
@@ -1315,8 +1309,8 @@ def run(args=None,
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
     target_hierarchy=target_pdb_inp.construct_hierarchy()
     # remove hetero atoms as they are not relevant
-    chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
-    target_hierarchy=apply_atom_selection('not hetero',target_hierarchy)
+    chain_hierarchy=chain_hierarchy.apply_atom_selection('not hetero')
+    target_hierarchy=target_hierarchy.apply_atom_selection('not hetero')
 
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
@@ -1324,8 +1318,8 @@ def run(args=None,
   else:
     atom_selection="name ca and (not element Ca)"
 
-  chain_hierarchy=apply_atom_selection(atom_selection,chain_hierarchy)
-  target_hierarchy=apply_atom_selection(atom_selection,target_hierarchy)
+  chain_hierarchy=chain_hierarchy.apply_atom_selection(atom_selection)
+  target_hierarchy=target_hierarchy.apply_atom_selection(atom_selection)
 
   # remove alt conformations if necessary
   if params.comparison.remove_alt_conf:
