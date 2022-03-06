@@ -29,11 +29,11 @@ from .qt import QColor, QFont, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 from . import HKLviewerGui
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import HKLviewerGui
+  from crys3d.hklview import HKLviewerGui, PresetButtons
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
                                      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from . import HKLviewerGui
+  from . import HKLviewerGui, PresetButtons
   from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 
@@ -146,6 +146,8 @@ class SettingsForm(QDialog):
     mainLayout.addWidget(myGroupBox,                       0, 0, 1, 3)
     mainLayout.addWidget(parent.resetlabeltxt,             1, 0, 1, 2)
     mainLayout.addWidget(parent.resetFactoryDefaultbtn,    1, 2, 1, 1)
+    mainLayout.addWidget(parent.showphillabeltxt,          2, 0, 1, 2)
+    mainLayout.addWidget(parent.showphilbtn,               2, 2, 1, 1)
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
 
@@ -281,6 +283,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
     self.ReadPersistedQsettings()
+    self.makePresetButtons()
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -373,6 +376,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.resetFactoryDefaultbtn = QPushButton()
     self.resetFactoryDefaultbtn.setText("Reset Settings")
     self.resetFactoryDefaultbtn.clicked.connect(self.onResetFactoryDefault)
+    self.showphillabeltxt = QLabel()
+    self.showphillabeltxt.setWordWrap(True)
+    self.showphillabeltxt.setText("Show current non-default phil parameters")
+    self.showphilbtn = QPushButton()
+    self.showphilbtn.setText("Show phil")
+    self.showphilbtn.clicked.connect(self.onDebugShowPhil)
     # Set the rich text of the SpaceGrpUCellText here rather than in QtDesigner which on windows
     # include MS Font in it. MS Font are not understood by MacOS
     htmlstr = '''<html><head/><body><p><span style=" font-weight:600;">Space group: \t
@@ -526,19 +535,8 @@ newarray._sigmas = sigs
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
 
-  """
-
-  presetbuttonsdeflist = [   ("tNCS", "Show TNCS", ""),
-    ("H_I", "Show Zone H for intensities", ""),
-    ("K_I", "Show Zone K for intensities", ""),
-    ("L_I", "Show Zone L for intensities", ""),
-    ("aniso", "Show Anisotropy", ""),
-  ]
-
-  """
-
-  def makePresetButtons(buttonsdeflist):
-    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+  def makePresetButtons(self):
+    for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
       self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
       self.__getattribute__(btnname).setObjectName(btnname)
       self.__getattribute__(btnname).setText(btnname)
@@ -1171,6 +1169,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onClearTextBuffer(self):
     self.textInfo.clear()
     self.infostr = ""
+
+
+  def onDebugShowPhil(self):
+    return self.send_message("", msgtype="debug_show_phil")
 
 
   def onResetFactoryDefault(self):

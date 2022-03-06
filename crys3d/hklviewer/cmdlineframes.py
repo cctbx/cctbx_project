@@ -147,6 +147,8 @@ class HKLViewFrame() :
           continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
         msgtype, mstr = eval(msgstr)
+        if msgtype=="debug_show_phil":
+          self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
           self.viewer.datatypedict = eval(mstr)
         if msgtype=="clipper_crystdict":
@@ -231,6 +233,11 @@ class HKLViewFrame() :
   def SetCurrentPhilAsPython(self, pyphil):
     newphil = master_phil.format(python_object= pyphil)
     currphil = master_phil.fetch(source = newphil)
+
+
+  def show_current_phil(self):
+    return "\nCurrent non-default phil parameters:\n\n" + \
+     self.master_phil.fetch_diff(source = self.currentphil).as_str()
 
 
   def update_settings(self, new_phil=None):
