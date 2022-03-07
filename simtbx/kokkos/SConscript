@@ -42,7 +42,18 @@ cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
 cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
-
+cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
+cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
+cfg_default.env['Kokkos_ARCH_VEGA908'] = "OFF"
+cfg_default.env['Kokkos_ARCH_VEGA90A'] = "OFF"
+cfg_default.env['Kokkos_ENABLE_CUDA'] = "OFF"
+cfg_default.env['Kokkos_ENABLE_CUDA_UVM'] = "OFF"
+cfg_default.env['Kokkos_ENABLE_HIP'] = "OFF"
+cfg_default.env['KokkosKernels_ADD_DEFAULT_ETI'] = "OFF"
+cfg_default.env['KokkosKernels_INST_LAYOUTLEFT:BOOL'] = "OFF"
+cfg_default.env['KokkosKernels_INST_LAYOUTRIGHT:BOOL'] = "OFF"
+cfg_default.env['KokkosKernels_ENABLE_TPL_CUBLAS'] = "OFF"
+cfg_default.env['KokkosKernels_ENABLE_TPL_CUSPARSE'] = "OFF"
 list_cfg = []
 
 cfg_corigpu = cfg_default.get_copy()
@@ -51,6 +62,9 @@ cfg_corigpu.host_name = 'cori'
 cfg_corigpu.env['KOKKOS_DEVICES'] = "Cuda"
 cfg_corigpu.env['KOKKOS_ARCH'] = "Volta70"
 cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+cfg_corigpu.env['Kokkos_ARCH_VOLTA70'] = "ON"
+cfg_corigpu.env['Kokkos_ENABLE_CUDA'] = "ON"
+cfg_corigpu.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
 cfg_corigpu.env['LDFLAGS'] += " -L$(CUDA_HOME)/lib64"
 cfg_corigpu.env['LDLIBS'] += " -lcudart -lcuda"
 cfg_corigpu.env['CXX'] = ''
@@ -59,6 +73,8 @@ list_cfg.append(cfg_corigpu)
 cfg_perlmutter = cfg_corigpu.get_copy()
 cfg_perlmutter.host_name = 'perlmutter'
 cfg_perlmutter.env['KOKKOS_ARCH'] = 'Ampere80'
+cfg_perlmutter.env['Kokkos_ARCH_VOLTA70'] = "OFF"
+cfg_perlmutter.env['Kokkos_ARCH_AMPERE80'] = "ON"
 list_cfg.append(cfg_perlmutter)
 
 cfg_spock = cfg_default.get_copy()
@@ -66,13 +82,38 @@ cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
 cfg_spock.host_name = 'spock'
 cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
 cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
+cfg_spock.env['Kokkos_ARCH_VEGA908'] = "ON"
+cfg_spock.env['Kokkos_ENABLE_HIP'] = "ON"
 cfg_spock.env['CXX'] = 'hipcc'
 list_cfg.append(cfg_spock)
 
 cfg_crusher = cfg_spock.get_copy()
 cfg_crusher.host_name = 'crusher'
 cfg_crusher.env['KOKKOS_ARCH'] = "Vega90A"
+cfg_crusher.env['Kokkos_ARCH_VEGA908'] = "OFF"
+cfg_crusher.env['Kokkos_ARCH_VEGA90A'] = "ON"
 list_cfg.append(cfg_crusher)
+
+cfg_darwin_volta = cfg_default.get_copy()
+cfg_darwin_volta.host_variable = 'SLURM_JOB_PARTITION'
+cfg_darwin_volta.host_name = 'volta-x86'
+cfg_darwin_volta.env['KOKKOS_DEVICES'] = "Cuda"
+cfg_darwin_volta.env['KOKKOS_ARCH'] = "Volta70"
+cfg_darwin_volta.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+cfg_darwin_volta.env['Kokkos_ARCH_VOLTA70'] = "ON"
+cfg_darwin_volta.env['Kokkos_ENABLE_CUDA'] = "ON"
+cfg_darwin_volta.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
+cfg_darwin_volta.env['LDFLAGS'] += "-L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/compat"
+cfg_darwin_volta.env['LDLIBS'] += " -lcudart -lcuda"
+cfg_darwin_volta.env['CXX'] = ''
+list_cfg.append(cfg_darwin_volta)
+
+cfg_darwin_ampere = cfg_darwin_volta.get_copy()
+cfg_darwin_ampere.host_name = 'shared-gpu-ampere'
+cfg_darwin_ampere.env['KOKKOS_ARCH'] = 'Ampere80'
+cfg_darwin_ampere.env['Kokkos_ARCH_VOLTA70'] = "OFF"
+cfg_darwin_ampere.env['Kokkos_ARCH_AMPERE80'] = "ON"
+list_cfg.append(cfg_darwin_ampere)
 
 host_message = "not found, using default settings"
 system_settings = cfg_default.env
@@ -96,6 +137,8 @@ if os.getenv('KOKKOS_DEVICES') is None:
   os.environ['KOKKOS_DEVICES'] = system_settings['KOKKOS_DEVICES']
 if os.getenv('KOKKOS_PATH') is None:
   os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+if os.getenv('KOKKOSKERNELS_PATH') is None:
+  os.environ['KOKKOSKERNELS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
 if os.getenv('KOKKOS_ARCH') is None:
   os.environ['KOKKOS_ARCH'] = system_settings['KOKKOS_ARCH']
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
@@ -171,32 +214,49 @@ if cmake_is_available:
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ENABLE_SERIAL=ON',
-      '-DKokkos_ENABLE_OPENMP=ON'
+      '-DKokkos_ENABLE_OPENMP=ON',
+      '-DKokkos_ARCH_VOLTA70={}'.format(system_settings['Kokkos_ARCH_VOLTA70']),
+      '-DKokkos_ARCH_AMPERE80={}'.format(system_settings['Kokkos_ARCH_AMPERE80']),
+      '-DKokkos_ARCH_VEGA908={}'.format(system_settings['Kokkos_ARCH_VEGA908']),
+      '-DKokkos_ARCH_VEGA90A={}'.format(system_settings['Kokkos_ARCH_VEGA90A']),
+      '-DKokkos_ENABLE_CUDA={}'.format(system_settings['Kokkos_ENABLE_CUDA']),
+      '-DKokkos_ENABLE_CUDA_UVM={}'.format(system_settings['Kokkos_ENABLE_CUDA_UVM']),
+      '-DKokkos_ENABLE_HIP={}'.format(system_settings['Kokkos_ENABLE_HIP'])
     ],
     cwd=kokkos_build_dir)
   returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
 
-  # -----------------------------------------------------------------------------
-  # Build kokkos-kernels with CMake
+# -----------------------------------------------------------------------------
+# Build kokkos-kernels with CMake.
+# Turn off all ETI builds for now, until needed, for maximum machine compatibility
   print('='*79)
   print('Building kokkos_kernels')
   print('-'*79)
-  kokkos_kernels_dir = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
+  kokkos_kernels_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos-kernels/build')
+  if not os.path.isdir(kokkos_kernels_build_dir):
+    os.mkdir(kokkos_kernels_build_dir)
   returncode = subprocess.call([
       'cmake',
-      '.',
+      os.environ['KOKKOSKERNELS_PATH'],
       '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
-      '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.'))
+      '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
+      '-DKokkosKernels_ADD_DEFAULT_ETI={}'.format(system_settings['KokkosKernels_ADD_DEFAULT_ETI']),
+      '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(system_settings['KokkosKernels_INST_LAYOUTLEFT:BOOL']),
+      '-DKokkosKernels_INST_LAYOUTRIGHT:BOOL={}'.format(system_settings['KokkosKernels_INST_LAYOUTRIGHT:BOOL']),
+      '-DKokkosKernels_ENABLE_TPL_CUBLAS={}'.format(system_settings['KokkosKernels_ENABLE_TPL_CUBLAS']),
+      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(system_settings['KokkosKernels_ENABLE_TPL_CUSPARSE'])
     ],
-    cwd=kokkos_kernels_dir)
-  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_kernels_dir)
+    cwd=kokkos_kernels_build_dir)
+  returncode = subprocess.call(['make', '-j', '4'], cwd=kokkos_kernels_build_dir)
+  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_kernels_build_dir)
 else:
   print('*'*79)
   print('cmake was not found')
   print('Skipping builds of kokkos and kokkos-kernels')
   print('*'*79)
+  
 # =============================================================================
 
 print('Getting environment variables')
@@ -252,6 +312,7 @@ if not env_etc.no_boost_python:
     "kokkos"]
   if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+    kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'compat')])
     kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["cudart", "cuda"])
   elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
