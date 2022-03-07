@@ -351,7 +351,9 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # for Carbonyls and remove this if so.  It needs to stay with these values
                 # to avoid spurious collisions per experiments run by the Richardsons in
                 # September 2021.
-                if a.name.strip().upper() == 'C':
+                if (a.name.strip().upper() == 'C'
+                    or AtomTypes.IsSpecialAminoAcidCarbonyl(a.parent().resname.strip().upper(),
+                        a.name.upper()) ):
                   if useImplicitHydrogenDistances:
                     extra.vdwRadius = 1.80
                   else:
