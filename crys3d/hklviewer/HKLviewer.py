@@ -539,13 +539,16 @@ newarray._sigmas = sigs
     for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
       self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
       self.__getattribute__(btnname).setObjectName(btnname)
-      self.__getattribute__(btnname).setText(btnname)
+      self.__getattribute__(btnname).setText(label)
+      self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
       self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
-      self.__dict__[label] = QLabel(self.PresetButtonsFrame)
-      self.__getattribute__(label)
-      self.__getattribute__(label).setObjectName(label)
-      self.__getattribute__(label).setText(label)
-      self.gridLayout_24.addWidget(self.__getattribute__(label), i, 1, 1, 1)
+
+
+  def onPresetbtn_click(self):
+    for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+      if self.__getattribute__(btnname).isChecked():
+        self.send_message(philstr, msgtype = "preset_philstr")
+        break
 
 
   def closeEvent(self, event):

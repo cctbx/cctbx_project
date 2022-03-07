@@ -418,6 +418,23 @@ function RemovePrimitives(reprname)
 }
 
 
+function SetDefaultOrientation() {
+  let m4 = new NGL.Matrix4();
+  let axis = new NGL.Vector3();
+  axis.x = 0.0;
+  axis.y = 1.0;
+  axis.z = 0.0;
+  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+  // But we want x-axis pointing right and z-axis pointing out of the screen. 
+  // Rotate coordinate system to that effect
+  m4.makeRotationAxis(axis, Math.PI);
+  if (shapeComp != null)
+    shapeComp.autoView(500);
+  if (!rotationdisabled)
+    stage.viewerControls.orient(m4);
+}
+
+
 function CameraZoom(t, deltaX, deltaY) {
   let dx = 0;
   if (Number.isInteger(deltaX))
@@ -931,6 +948,8 @@ function onMessage(e)
           theta = (theta + deltaTime * animationspeed) % 360;
         else
           theta = 0.0;
+        if (shapeComp == null)
+          return;
 
         m4.makeRotationAxis(axis, theta);
         shapeComp.setTransform(m4);
@@ -947,8 +966,10 @@ function onMessage(e)
         requestAnimationFrame(render);
 
       sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+        if (shapeComp != null) {
+          let msg = String(shapeComp.matrix.elements);
+          WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+        }
       }
       );
     }
@@ -1230,6 +1251,12 @@ function onMessage(e)
       repr = shapeComp.addRepresentation('buffer');
       RenderRequest();
       WebsockSendMsg('Drawing new reflections');
+    }
+
+    if (msgtype == "SetDefaultOrientation")
+    {
+      SetDefaultOrientation();
+      WebsockSendMsg('DefaultOrientSet ' + pagename); 
     }
 
     if (msgtype === "SetAutoView")
@@ -1897,24 +1924,6 @@ function HKLscene()
   stage.viewer.container.appendChild(tooltip);
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
-
-  function SetDefaultOrientation() {
-    //if (shapeComp == null)
-    //  return;
-    let m4 = new NGL.Matrix4();
-    let axis = new NGL.Vector3();
-    axis.x = 0.0;
-    axis.y = 1.0;
-    axis.z = 0.0;
-    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
-    // But we want x-axis pointing right and z-axis pointing out of the screen. 
-    // Rotate coordinate system to that effect
-    m4.makeRotationAxis(axis, Math.PI);
-    if (shapeComp != null)
-      shapeComp.autoView(500);
-    if (!rotationdisabled)
-      stage.viewerControls.orient(m4);
-  }
 
   SetDefaultOrientation();
 

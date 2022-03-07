@@ -158,6 +158,11 @@ class HKLViewFrame() :
         if msgtype=="philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil)
+        if msgtype=="preset_philstr":
+          new_phil = libtbx.phil.parse(mstr)
+          self.ResetPhil()
+          self.viewer.SetDefaultOrientation()
+          self.update_settings(new_phil)
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
@@ -166,6 +171,25 @@ class HKLViewFrame() :
 
 
   def ResetPhilandViewer(self, extraphil=None):
+    self.ResetPhil(extraphil)
+    self.viewer.symops = []
+    self.viewer.sg = None
+    self.viewer.proc_arrays = []
+    self.viewer.HKLscenedict = {}
+    self.uservectors = []
+    self.viewer.visual_symmxs = []
+    self.visual_symHKLs = []
+    self.viewer.sceneisdirty = True
+    self.viewer.isnewfile = True
+    if self.viewer.miller_array:
+      self.viewer.params.viewer.scene_id = None
+      self.viewer.RemoveStageObjects()
+    self.viewer.miller_array = None
+    self.viewer.lastviewmtrx = None
+    return self.viewer.params
+
+
+  def ResetPhil(self, extraphil=None):
     self.master_phil = libtbx.phil.parse( masterphilstr )
     self.currentphil = self.master_phil
     if extraphil:
@@ -183,21 +207,6 @@ class HKLViewFrame() :
     self.params.nbins = 1
     self.params.scene_bin_thresholds = ""
     self.params.using_space_subgroup = False
-    self.viewer.symops = []
-    self.viewer.sg = None
-    self.viewer.proc_arrays = []
-    self.viewer.HKLscenedict = {}
-    self.uservectors = []
-    self.viewer.visual_symmxs = []
-    self.visual_symHKLs = []
-    self.viewer.sceneisdirty = True
-    self.viewer.isnewfile = True
-    if self.viewer.miller_array:
-      self.viewer.params.viewer.scene_id = None
-      self.viewer.RemoveStageObjects()
-    self.viewer.miller_array = None
-    self.viewer.lastviewmtrx = None
-    return self.viewer.params
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):

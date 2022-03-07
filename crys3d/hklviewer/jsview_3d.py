@@ -1473,7 +1473,9 @@ class hklview_3d:
           imgfile.write( message)
 
       if isinstance(message, ustr) and message != "":
-        if "Orientation" in message:
+        if "JavaScriptError" in message:
+          self.mprint( message, verbose=0)
+        elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=2)
@@ -2356,6 +2358,10 @@ in the space group %s\nwith unit cell %s\n""" \
   def ReOrientStage(self):
     if self.viewmtrx:
       self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
+
+
+  def SetDefaultOrientation(self):
+    self.AddToBrowserMsgQueue("SetDefaultOrientation")
 
 
   def Euler2RotMatrix(self, eulerangles):
