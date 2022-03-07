@@ -11,6 +11,7 @@
 #  included in the root directory of this package.
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence2
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.detector_congruence
 #
 from __future__ import absolute_import, division, print_function
 from six.moves import range
@@ -193,16 +194,18 @@ class Script(object):
 
   def run(self):
     ''' Parse the options. '''
-    from dials.util.options import flatten_experiments, flatten_reflections
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
-    experiments = flatten_experiments(params.input.experiments)
-    reflections = flatten_reflections(params.input.reflections)
+    experiments = [wrapper.data for wrapper in params.input.experiments]
+    reflections = [wrapper.data for wrapper in params.input.reflections]
 
     # Find all detector objects
     detectors = []
-    detectors.extend(experiments.detectors())
+    beams = []
+    for expts in experiments:
+      detectors.extend(expts.detectors())
+      beams.extend(expts.beams())
 
     # Verify inputs
     if len(detectors) != 2:
@@ -238,12 +241,12 @@ class Script(object):
       tmp.append(refls)
     reflections = tmp
 
-    s0 = col(flex.vec3_double([col(b.get_s0()) for b in experiments.beams()]).mean())
+    s0 = col(flex.vec3_double([col(b.get_s0()) for b in beams]).mean())
 
     # Compute a set of radial and transverse displacements for each reflection
     print("Setting up stats...")
     tmp_refls = []
-    for refls, expts in zip(reflections, [wrapper.data for wrapper in params.input.experiments]):
+    for refls, expts in zip(reflections, experiments):
       tmp = flex.reflection_table()
       assert len(expts.detectors()) == 1
       dect = expts.detectors()[0]
