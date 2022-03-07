@@ -159,10 +159,6 @@ and an error message on failure.  It tests the following:
     * **DotScorer.count_surface_dots()** behaves as expected for non-overlapping, fully-overlapping,
     and partially-overlapping atoms (partial overlap only tested to be between the others).
 
-**@todo Not yet tested:**
-* overlapScale parameter to DotScorer::check_dot(); this impacts the visual appearance of spikes but no scores.
-* **annularDots()** and related functions.
-
 A **tst_probe.py** script is located in the mmtbx/regression folder within this project.  this
 script runs all of the unit tests described above and then computes a probe score on a generated
 small molecule (or on a PDB or CIF file is one is specified on the command line).  This program raises
@@ -183,8 +179,14 @@ It will fail with an assertion failure if there is a problem with the tests:
     * **_color_for_atom_class():** Verify that this returns the correct color for a sample of values.
 * @todo
 
+**@todo Not yet tested:**
+* **annularDots()** and related functions.
+* **overlapScale** parameter to DotScorer::check_dot(); this impacts the visual appearance of spikes but no scores.
+
+## Regression testing
+
 The file **ener_lib_molprobity.cif** is a drop-in replacement for the ener_lib.cif file that is found in
-the chem_data/mon_lib directory under modules in a CCTBX build.  It has atomic radii consistent with
+the chem_data/geostd and chem_data/mon_lib directories under modules in a CCTBX build.  It has atomic radii consistent with
 the original Probe code to enable regression tests between Probe2 and Probe.  It should not be used in
 production once the CCTBX radii are adjusted (this is ongoing as of 3/4/2022).  Note that replacing this
 file will impact other CCTBX programs that use atom radii.
