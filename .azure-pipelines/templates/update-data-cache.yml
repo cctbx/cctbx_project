@@ -1,6 +1,10 @@
 # Template for updating data cache artifacts
+# For git repositories, the .artifactignore file (containing "!.git")
+# is required to prevent Azure Pipelines from deleting the .git directory.
+# when creating the artifact.
 #   - miniforge
 #   - chem_data
+#   - geostd
 #   - phenix_regression
 #   - phenix_examples
 #   - xfel_regression
@@ -46,7 +50,9 @@ jobs:
     continueOnError: true
 
   - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data" ]; then
+      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.svn" ]; then
+        rm -fr $(System.DefaultWorkingDirectory)/chem_data
+        cd $(System.DefaultWorkingDirectory)
         svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
       fi
       cd $(System.DefaultWorkingDirectory)/chem_data
@@ -56,6 +62,33 @@ jobs:
 
   - publish: $(System.DefaultWorkingDirectory)/chem_data
     artifact: chem_data
+
+  # geostd
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      source: 'specific'
+      project: '$(resources.pipeline.data_cache.projectID)'
+      pipeline: '$(resources.pipeline.data_cache.pipelineID)'
+      allowPartiallySucceededBuilds: true
+      artifact: 'geostd'
+      path: $(System.DefaultWorkingDirectory)/geostd
+    displayName: Download geostd
+    continueOnError: true
+
+  - script: |
+      if [ ! -d "$(System.DefaultWorkingDirectory)/geostd/.git" ]; then
+        rm -fr $(System.DefaultWorkingDirectory)/geostd
+        cd $(System.DefaultWorkingDirectory)
+        git clone https://github.com/phenix-project/geostd.git
+      fi
+      cd $(System.DefaultWorkingDirectory)/geostd
+      git reset --hard origin/master
+      git pull --rebase
+    displayName: Update geostd
+    continueOnError: true
+
+  - publish: $(System.DefaultWorkingDirectory)/geostd
+    artifact: geostd
 
   # phenix_regression
   - task: DownloadPipelineArtifact@2
@@ -70,7 +103,9 @@ jobs:
     continueOnError: true
 
   - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_regression" ]; then
+      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_regression/.git" ]; then
+        rm -fr $(System.DefaultWorkingDirectory)/phenix_regression
+        cd $(System.DefaultWorkingDirectory)
         git clone https://gitlab.com/phenix_project/phenix_regression.git
       fi
       cd $(System.DefaultWorkingDirectory)/phenix_regression
@@ -97,7 +132,9 @@ jobs:
     continueOnError: true
 
   - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_examples" ]; then
+      if [ ! -d "$(System.DefaultWorkingDirectory)/phenix_examples/.git" ]; then
+        rm -fr $(System.DefaultWorkingDirectory)/phenix_examples
+        cd $(System.DefaultWorkingDirectory)
         git clone https://gitlab.com/phenix_project/phenix_examples.git
       fi
       cd $(System.DefaultWorkingDirectory)/phenix_examples
@@ -124,7 +161,9 @@ jobs:
     continueOnError: true
 
   - script: |
-      if [ ! -d "$(System.DefaultWorkingDirectory)/xfel_regression" ]; then
+      if [ ! -d "$(System.DefaultWorkingDirectory)/xfel_regression/.git" ]; then
+        rm -fr $(System.DefaultWorkingDirectory)/xfel_regression
+        cd $(System.DefaultWorkingDirectory)
         git clone https://gitlab.com/cctbx/xfel_regression.git
       fi
       cd $(System.DefaultWorkingDirectory)/xfel_regression
