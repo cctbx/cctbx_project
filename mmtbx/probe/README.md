@@ -185,13 +185,8 @@ It will fail with an assertion failure if there is a problem with the tests:
 
 ## Regression testing
 
-The file **ener_lib_molprobity.cif** is a drop-in replacement for the ener_lib.cif file that is found in
-the chem_data/geostd and chem_data/mon_lib directories under modules in a CCTBX build.  It has atomic radii consistent with
-the original Probe code to enable regression tests between Probe2 and Probe.  It should not be used in
-production once the CCTBX radii are adjusted (this is ongoing as of 3/4/2022).  Note that replacing this
-file will impact other CCTBX programs that use atom radii.
-
 Regression tests were performed between Probe2 and the original Probe code in March 2022 before the release
 of Probe2:
 
 **@todo**
+
