@@ -1,19 +1,26 @@
 """
-Interface for ChimeraX using ISOLDE REST API client
+Interface for ChimeraX using REST API
 
 https://www.cgl.ucsf.edu/chimerax/
-https://isolde.cimr.cam.ac.uk/what-isolde/
+https://www.cgl.ucsf.edu/chimerax/docs/user/commands/remotecontrol.html
 
 """
 
 from __future__ import absolute_import, division, print_function
 
-import os
+import glob
+import random
+import requests
 import subprocess
 import sys
-import tempfile
+import time
 
-from libtbx.utils import to_str, Sorry
+try:
+  from urllib.parse import unquote
+except ImportError:
+  from urllib import unquote
+
+from libtbx.utils import Sorry
 from qttbx.viewers import ModelViewer
 
 # =============================================================================
@@ -22,76 +29,135 @@ class ChimeraXViewer(ModelViewer):
   viewer_name = 'ChimeraX'
 
   # ---------------------------------------------------------------------------
-  def start_viewer(self):
+  def start_viewer(self, timeout=60):
+    '''
+    Function for starting the ChimeraX REST server
+
+    Parameters
+    ----------
+      timeout: int
+        The number of seconds to wait for the REST server to become
+        available before raising a Sorry
+
+    Returns
+    -------
+      Nothing
+    '''
+
+    # set some standard search locations for each platform
+    if self.command is None:
+      search_paths = []
+      if sys.platform == 'darwin':
+        search_paths = glob.glob('/Applications/ChimeraX*.app/Contents/MacOS')
+        search_paths.sort(reverse=True)
+
+      if len(search_paths) > 0:
+        self.command = self.find_command(cmd=self.viewer_name, path=search_paths)
+
+    # randomly select port
+    if self.port is None:
+      self.port = random.randint(49152, 65535)
+
+    # set REST server information
+    self.flags = ['--cmd', 'remotecontrol rest start port {}'.format(self.port)]
+    self.url = "http://127.0.0.1:{}/".format(self.port)
+
     self.run_basic_checks()
 
-    # write script
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.cxc', delete=False) as self.script:
-      self.script.write('isolde remote rest start port {port}'.format(port=self.port))
+    # construct ChimeraX command
+    # ChimeraX --cmd "remotecontrol rest start port <port>"
+    cmd = [self.command] + self.flags
 
-    # start viewer
-    command = [self.command, self.script.name]
-    self.process = subprocess.Popen(args=command, stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE, shell=False)
+    self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    # connect to viewer
-    #self._connect()
+    # start ChimeraX server and wait until it is ready
+    print()
+    print('-'*79)
+    print('Starting ChimeraX REST server')
+    print(self.url)
+    counter = 0
+    while True and counter<timeout:
+      output = self._check_status()
+      if self._connected:
+        break
+      counter += 1
+      time.sleep(1)
+    if counter >= timeout:
+      raise Sorry('The ChimeraX REST server is not reachable at {} after '
+                  '{} seconds.'.format(self.url, counter))
+    print('ChimeraX is ready')
+    print('-'*79)
+    print()
+
+  # ---------------------------------------------------------------------------
+  def _check_status(self):
+    '''
+    Check if the REST server is available
+    '''
+    output = None
+    try:
+      output = requests.get(url=self.url + 'cmdline.html')
+      if output.status_code == 200:
+        self._connected = True
+    except requests.exceptions.ConnectionError:
+      self._connected = False
+    return output
+
+  # ---------------------------------------------------------------------------
+  def _run_command(self, params):
+    '''
+    Make requests call to REST server
+    https://www.cgl.ucsf.edu/chimerax/docs/user/commands/remotecontrol.html
+    '''
+    output = None
+    try:
+      r = requests.Request('GET', self.url + 'run', params=params)
+      p = r.prepare()
+      p.url = unquote(p.url)
+      s = requests.Session()
+      output = s.send(p)
+      # output = requests.get(url=self.url + 'run', params=params)
+    except requests.exceptions.ConnectionError:
+      pass
+    return output
 
   # ---------------------------------------------------------------------------
   def close_viewer(self):
-    if os.path.isfile(self.script.name):
-      os.remove(self.script.name)
+    print('='*79)
+    if self._connected:
+      print('Shutting down ChimeraX')
+      params = {'command': 'quit'}
+      self._run_command(params)
+    else:
+      print('ChimeraX already shut down')
+    rc = self.process.returncode
+    stdout, stderr = self.process.communicate()
+    # print('-'*79)
+    # print(stdout)
+    # print('-'*79)
+    # print(stderr)
+    print('='*79)
+
+  # ---------------------------------------------------------------------------
+  def _load_file(self, filename=None):
+    params = {'command': 'open+{}'.format(filename) }
+    return self._run_command(params)
 
   # ---------------------------------------------------------------------------
   def load_model(self, filename=None):
-    model_id = None
-    if os.path.isfile(filename):
-      model_id = self._client.load_model(filename)
-    else:
-      raise Sorry('Model file ({filename}) is not found.'.format(filename=filename))
-    return model_id
+    return self._load_file(filename)
 
   # ---------------------------------------------------------------------------
-  def _connect(self):
-    # find client.py in ISOLDE
-    client_path = None
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as python_script:
-      python_script.write("""\
-from chimerax import isolde
-print(isolde.__file__)
-""")
-    command = [self.command, '--nogui', '--exit', '--script', python_script.name]
-    python_process = subprocess.Popen(args=command, stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE, shell=False)
-    stdout, stderr = python_process.communicate()
-    python_process.wait()
-    if python_process.returncode != 0:
-      raise Sorry('The ISOLDE installation location could not be found.')
-    else:
-      if os.path.isfile(python_script.name):
-        try:
-          os.remove(python_script.name)
-        except IOError:
-          pass
-      stdout = to_str(stdout).split('\n')
-      line = None
-      for line in stdout:
-        if 'isolde' in line:
-          break
-      client_path = os.path.abspath(
-        os.path.join(line, '..', 'remote_control', 'rest_server', 'client.py'))
-    if client_path is not None and os.path.isfile(client_path):
-      # import from file
-      if sys.version_info.major > 2:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location('client', client_path)
-        client = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(client)
-      else:
-        import imp
-        client = imp.load_source('client', client_path)
-      self._client = client.IsoldeRESTClient('localhost', self.port)
-      self._client.connect()
-      self._connected = True
+  def load_map(self, filename=None):
+    return self._load_file(filename)
+
+  # ---------------------------------------------------------------------------
+  # functions for wxPython GUI
+  def is_alive(self):
+    self._check_status()
+    return self._connected
+
+  def quit(self):
+    return self.close_viewer()
 
 # =============================================================================

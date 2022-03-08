@@ -5,6 +5,8 @@ Define basic interfaces for communicating with various viewers
 from __future__ import absolute_import, division, print_function
 
 import os
+import shutil
+import sys
 
 from libtbx.utils import Sorry
 
@@ -25,13 +27,14 @@ class ModelViewer(object):
   viewer_name = None
 
   def __init__(self):
-    self.command = None # path to viewer executable
-    self.flags = None   # flags to pass to executable
-    self.script = None  # startup script for connecting with viewer
-    self.port = None    # port for communicating with viewer
-    self.process = None # viewer process
+    self.command = None       # path to viewer executable
+    self.search_paths = None  # paths to search for viewer executable
+    self.flags = None         # flags to pass to executable
+    self.script = None        # startup script for connecting with viewer
+    self.port = None          # port for communicating with viewer
+    self.process = None       # viewer process
+    self.url = None           # URL for viewer
 
-    self._client = None
     self._connected = False
 
   def run_basic_checks(self):
@@ -42,7 +45,7 @@ class ModelViewer(object):
       raise Sorry('The command for {viewer_name} is not set.'
                   .format(viewer_name=self.viewer_name))
     if not os.path.isfile(self.command):
-      raise Sorry('The command for {viewer_name} is not available.'
+      raise Sorry('The command for {viewer_name} is not available. '
                   'Please check that {command} exists.'
                   .format(viewer_name=self.viewer_name, command=self.command))
     if self.port is None:
@@ -54,6 +57,38 @@ class ModelViewer(object):
 
   # ---------------------------------------------------------------------------
   # Viewer functions
+  def find_command(self, cmd=None, path=None):
+    """
+    Function for finding the program executable. This function can be
+    used to set self.command
+
+    Parameters
+    ----------
+      cmd: str
+        The name of the command. If not set, the viewer_name is used.
+      path: str or list
+        The path or paths to search for the command. The shutil.which
+        function is used to search the existing path if this is not set.
+
+    Returns
+    -------
+      command: str
+        The full path to the command
+    """
+    if cmd is None:
+      cmd = self.viewer_name
+    if isinstance(path, list):
+      path = ':'.join(path)
+    if sys.version_info.major == 3:
+      return shutil.which(cmd=cmd, path=path)
+    else:
+      for p in path.split(':'):
+        f = os.path.join(p, cmd)
+        if os.path.isfile(f):
+          return f
+        else:
+          return None
+
   def start_viewer(self):
     raise NotImplementedError
 
