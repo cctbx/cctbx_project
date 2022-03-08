@@ -190,20 +190,14 @@ namespace simtbx { namespace kokkos {
         // rotate a vector using a 9-element unitary matrix
         KOKKOS_INLINE_FUNCTION vec3<NumType> rotate_matrix(const NumType * __restrict__ umat) {
             // for convenience, assign matrix x-y coordinate
-            NumType uxx = umat[0];
-            NumType uxy = umat[1];
-            NumType uxz = umat[2];
-            NumType uyx = umat[3];
-            NumType uyy = umat[4];
-            NumType uyz = umat[5];
-            NumType uzx = umat[6];
-            NumType uzy = umat[7];
-            NumType uzz = umat[8];
+            vec3<NumType> ux = {umat[0], umat[1], umat[2]};
+            vec3<NumType> uy = {umat[3], umat[4], umat[5]};
+            vec3<NumType> uz = {umat[6], umat[7], umat[8]};
 
-            // rotate the vector (x=1,y=2,z=3)
-            NumType newx = uxx * x + uxy * y + uxz * z;
-            NumType newy = uyx * x + uyy * y + uyz * z;
-            NumType newz = uzx * x + uzy * y + uzz * z;
+            // rotate the vector
+            NumType newx = ux.dot(*this);
+            NumType newy = uy.dot(*this);
+            NumType newz = uz.dot(*this);
 
             return vec3<NumType>(newx, newy, newz);
         }
