@@ -63,13 +63,14 @@ class Stats(object):
                JOIN `%s_event` evt ON evt.id = ie.event_id
                JOIN `%s_run` run ON run.id = evt.run_id
                JOIN `%s_rungroup` rg ON rg.id = evt.rungroup_id
-               JOIN `%s_trial` trial ON trial.id = evt.trial_id
+               JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
+               JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE run.id IN %s
                      AND cell_bin.avg_intensity > 0
                      AND trial.id = %d
                      AND rg.active = True
                      """ % (
-      tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, runs_str, self.trial.id)
+      tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, runs_str, self.trial.id)
 
     if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
       query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
