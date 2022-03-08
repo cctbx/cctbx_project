@@ -2120,7 +2120,7 @@ class RunStatsTab(SpotfinderTab):
     self.d_min = 2.5
     self.n_multiples = 2
     self.ratio = 1
-    self.n_strong = 40
+    self.n_strong = 16
     self.i_sigi = 1
     self.n_dump = 10
     self.should_have_indexed_image_paths = None
@@ -2189,7 +2189,7 @@ class RunStatsTab(SpotfinderTab):
                                            sub_labels=[''],
                                            label_size=(160, -1),
                                            ctrl_size=(30, -1),
-                                           items=[('n_strong', 40)])
+                                           items=[('n_strong', 16)])
     self.i_sigi_cutoff = gctr.OptionCtrl(self.options_box,
                                          name='rs_isigi',
                                          label='I/sig(I) cutoff:',

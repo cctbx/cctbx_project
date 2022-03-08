@@ -14,7 +14,7 @@ use this script to print all the file paths of all the hits.
 phil_str = """
   trial = None
     .type = int
-  hit_cutoff = 40
+  hit_cutoff = 16
     .type = int
     .help = Number of reflections to consider an image a hit. Estimate by looking at plot of strong reflections/image.
   output_folder = None

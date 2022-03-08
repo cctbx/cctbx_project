@@ -30,7 +30,7 @@ def get_should_have_indexed_timestamps(timestamps,
 def get_multirun_should_have_indexed_timestamps(stats_by_run,
                                                 run_numbers,
                                                 d_min,
-                                                n_strong_cutoff=40,
+                                                n_strong_cutoff=16,
                                                 indexed=False):
   timestamps = []
   for idx in range(len(stats_by_run)):
@@ -101,7 +101,7 @@ def get_run_stats(timestamps,
                    run_numbers,
                    n_multiples=2,
                    ratio_cutoff=1,
-                   n_strong_cutoff=40,
+                   n_strong_cutoff=16,
                    i_sigi_cutoff=1,
                    d_min=2,
                    ):
