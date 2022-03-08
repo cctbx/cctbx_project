@@ -15,11 +15,11 @@ namespace simtbx { namespace kokkos {
 
         // CONSTRUCTOR
         KOKKOS_FUNCTION vec3() = default;
-        
+
         KOKKOS_FUNCTION vec3(NumType a) : x(a), y(a), z(a) {}
 
         KOKKOS_FUNCTION vec3(NumType a[3]) : x(a[0]), y(a[1]), z(a[2]) {}
-        
+
         KOKKOS_FUNCTION vec3(NumType a, NumType b, NumType c) : x(a), y(b), z(c) {}
 
         // OPERATORS
@@ -50,7 +50,7 @@ namespace simtbx { namespace kokkos {
         KOKKOS_INLINE_FUNCTION friend vec3<NumType> operator+(NumType lhs, const vec3<NumType>& rhs) {
             return rhs + lhs;
         }
-        
+
         KOKKOS_INLINE_FUNCTION void operator+=(const vec3<NumType>& v) {
             x += v.x;
             y += v.y;
@@ -152,7 +152,7 @@ namespace simtbx { namespace kokkos {
         }
 
         KOKKOS_INLINE_FUNCTION vec3<NumType> cross(const vec3<NumType>& v) const {
-            return vec3<NumType>(y*v.z - z*v.y, 
+            return vec3<NumType>(y*v.z - z*v.y,
                                 z*v.x - x*v.z,
                                 x*v.y - y*v.x);
         }
@@ -180,7 +180,7 @@ namespace simtbx { namespace kokkos {
             NumType sinphi = ::Kokkos::Experimental::sin(angle);
             NumType cosphi = ::Kokkos::Experimental::cos(angle);
             NumType dot_factor = axis.dot(*this) * (1.0-cosphi);
-            
+
             vec3<NumType> vector_rot = axis.cross(*this) * sinphi;
             vector_rot += axis * dot_factor;
             vector_rot += (*this) * cosphi;

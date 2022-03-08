@@ -110,7 +110,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                           + Sdet * sdet_vector(0)
                                                           + Odet * odet_vector(0)
                                                                  + pix0_vector(0);
-                                        
+
                                         if (curved_detector) {
                                                 // construct detector pixel that is always "distance" from the sample
                                                 vector3 dbvector;
@@ -480,7 +480,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                         vector3 temp_a0 = {a0[1], a0[2], a0[3]};
                                                         vector3 temp_b0 = {b0[1], b0[2], b0[3]};
                                                         vector3 temp_c0 = {c0[1], c0[2], c0[3]};
-                                                        
+
                                                         // rotate about spindle if necessary
                                                         vector3 temp_spindle = {spindle_vector[1], spindle_vector[2], spindle_vector[3]};
                                                         vector3 ap = temp_a0.rotate_around_axis(temp_spindle, phi);

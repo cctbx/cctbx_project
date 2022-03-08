@@ -20,7 +20,7 @@ KOKKOS_FUNCTION CUDAREAL polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL
     return t0 + t1 + t2 + t3;
 }
 
-namespace simtbx { namespace kokkos { 
+namespace simtbx { namespace kokkos {
     // polarization factor
     template <typename NumType>
     KOKKOS_FUNCTION CUDAREAL polarization_factor(NumType kahn_factor, const vec3<NumType>& incident, const vec3<NumType>& diffracted, const vec3<NumType>& axis) {
