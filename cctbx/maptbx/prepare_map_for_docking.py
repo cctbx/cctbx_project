@@ -1233,12 +1233,18 @@ def run_refine_cryoem_errors(
   mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
   mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_2_id)
 
-  # Use bins of equal width in d_star_sq, which works well with cubic cell
-  mc1.setup_binner_d_star_sq_bin_size()
+  # Default binner may be preferable, but probably needs wider tests.
+  # Could use bins of equal width in d_star_sq instead.
+  # mc1.setup_binner_d_star_sq_bin_size()
+  nref = mc1.size()
+  num_per_bin = 1000
+  max_bins = 50
+  min_bins = 6
+  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
+  mc1.setup_binner(n_bins=n_bins)
   mc2.use_binner_of(mc1)
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
-  nref = mc1.size()
 
   # Initialise parameters.  This requires slope and intercept of Wilson plot,
   # plus mapCC per bin.
@@ -1288,21 +1294,15 @@ def run_refine_cryoem_errors(
       sys.stdout.flush()
       exit
     ssqr_prior = tuple(prior_params['ssqr_bins'])
-    sigmaT_prior = tuple(prior_params['sigmaT_bins'])
     sigmaE_prior = tuple(prior_params['sigmaE_bins'])
-    sTinterp = interpolate.interp1d(ssqr_prior,sigmaT_prior,fill_value="extrapolate")
     sEinterp = interpolate.interp1d(ssqr_prior,sigmaE_prior,fill_value="extrapolate")
-    sigmaT_bins = flex.double(sTinterp(ssqr_bins))
-    # Start sigmaE_scale at 1 after rescaling sigmaE_bins by volume comparison.
-    # This is then refined because of uncertainty in weighting of volume and
-    # also about whether masking might have been applied to the periphery of the
-    # map used to obtained prior parameters.
+    # Set sigmaE_scale to 1 after rescaling sigmaE_bins by volume comparison.
+    # In principle just this could be refined instead of the bins.
     sigmaE_scale = 1.
     sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(weighted_points/prior_params['weighted_points'])
     sigmaE_baniso = prior_params['sigmaE_baniso']
     sigmaE_beta = adptbx.u_star_as_beta(adptbx.u_cart_as_u_star(mc1.unit_cell(),adptbx.b_as_u(sigmaE_baniso)))
   else:
-    sigmaT_bins = [1.]*n_bins  # SigmaT_bins correction term for BEST in SigmaT
     sigmaE_scale = 1. # Fix at 1
     sigmaE_bins = []
     for i_bin in range(n_bins):
@@ -1310,6 +1310,7 @@ def run_refine_cryoem_errors(
       sigmaE_bins.append(sigmaE)  # Error bin parameter
     sigmaE_beta = list(adptbx.u_iso_as_beta(mc1.unit_cell(), 0.))
 
+  sigmaT_bins = [1.]*n_bins
   start_params = []
   start_params.append(wilson_scale_intensity/3.5) # Asqr_scale, factor out low-res BEST value
   start_params.extend(sigmaT_bins)
@@ -1321,8 +1322,12 @@ def run_refine_cryoem_errors(
   start_params.extend(sigmaE_beta)
 
   # create inputs for the minimizer's run method
+  # Constrained refinement using prior parameters could be revisited later.
+  # However, this would require all cryo-EM maps to obey the assumption
+  # that half-maps are completely unmasked.
   if prior_params is not None:
-    macro = ["Eprior"]        # protocol: fix error terms using prior
+    # macro = ["Eprior"]        # protocol: fix error terms using prior
+    macro = ["default"]
   else:
     macro = ["default"]       # protocol: refine sigmaE terms too
   protocol = [macro, macro]   # overall minimization protocol
@@ -1455,6 +1460,7 @@ def run_refine_cryoem_errors(
   # The following code could be used if we wanted to return a map_model_manager
   # wEmean = dobs*expectE
   # working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
   # working_mmm.remove_map_manager_by_id(map_1_id)
   # working_mmm.remove_map_manager_by_id(map_2_id)
 
