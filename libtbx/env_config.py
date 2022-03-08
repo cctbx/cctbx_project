@@ -2090,7 +2090,7 @@ selfx:
       import pkg_resources
     except ImportError:
       return
-    if self.build_options.use_conda:
+    if self.build_options.use_conda and os.name != "nt":
       paths = {
         os.path.normpath(os.path.join(sys.prefix, "bin")),
         os.path.normpath(os.path.join(get_conda_prefix(), "bin")),
