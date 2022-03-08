@@ -383,7 +383,25 @@ class xfel_db_application(db_application):
         print("Web service query to list runs failed")
         return []
 
-      return [{'run':str(int(r['run_num']))} for r in sorted(j['value'], key=lambda x:x['run_num']) if r['all_present']]
+      present_runs = []
+      for r in sorted(j['value'], key=lambda x:x['run_num']):
+        if r['all_present']:
+          is_good = True
+        else:
+          if not self.params.facility.lcls.web.enforce80:
+            for item_idx, item in enumerate(r['files']):
+              if '-s80-' in item['path']:
+                item['is_present'] = True
+          if not self.params.facility.lcls.web.enforce81:
+            for item_idx, item in enumerate(r['files']):
+              if '-s81-' in item['path']:
+                item['is_present'] = True
+          is_good = all([f['is_present'] for f in r['files']])
+        if is_good:
+          present_runs.append({'run':str(int(r['run_num']))})
+
+      return present_runs
+
 
   def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
     # d_min and n_bins only used if isoforms are in this trial
