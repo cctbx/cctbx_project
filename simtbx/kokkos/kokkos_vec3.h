@@ -203,44 +203,6 @@ namespace simtbx { namespace kokkos {
         }
     };
 
-// polarization factor
-template <typename NumType>
-KOKKOS_FUNCTION CUDAREAL polarization_factor2(NumType kahn_factor, const vec3<NumType>& incident, const vec3<NumType>& diffracted, const vec3<NumType>& axis) {
-    NumType psi = 0.0;
-
-    // component of diffracted unit vector along incident beam unit vector
-    NumType cos2theta = incident.dot(diffracted);
-    NumType cos2theta_sqr = cos2theta * cos2theta;
-    NumType sin2theta_sqr = 1 - cos2theta_sqr;
-
-    if (kahn_factor != 0.0) {
-        // tricky bit here is deciding which direction the E-vector lies in for each source
-        // here we assume it is closest to the "axis" defined above
-
-        // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-        vec3<NumType> unitAxis = axis.get_unit_vector();
-        vec3<NumType> B_in = unitAxis.cross(incident);
-        B_in.normalize();
-
-        // cross product with incident beam to get E-vector direction
-        vec3<NumType> E_in = incident.cross(B_in);
-        E_in.normalize();
-
-        // get components of diffracted ray projected onto the E-B plane
-        CUDAREAL E_out = diffracted.dot(E_in);
-        CUDAREAL B_out = diffracted.dot(B_in);
-
-        // compute the angle of the diffracted ray projected onto the incident E-B plane
-        psi = -atan2(B_out, E_out);
-    }
-
-    // correction for polarized incident beam
-    return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
-}
-
-} } // namespace scitbx::kokkos
-
-
-
+} } // namespace simtbx::kokkos
 
 #endif // SIMTBX_KOKKOS_VEC3_H

@@ -173,7 +173,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 if (!nopolar) {
                                                         // need to compute polarization factor
                                                         vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
-                                                        polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
+                                                        polar = polarization_factor(polarization, incident, diffracted, temp_polar_vector);
                                                 } else {
                                                         polar = 1.0;
                                                 }
@@ -468,7 +468,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                 if (!nopolar) {
                                                         // need to compute polarization factor
                                                         vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
-                                                        polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
+                                                        polar = polarization_factor(polarization, incident, diffracted, temp_polar_vector);
                                                 } else {
                                                         polar = 1.0;
                                                 }
@@ -674,7 +674,6 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         while(stol < stol_of(nearest) && nearest >= 2){ --nearest; };
 
                         // cubic spline interpolation
-                        CUDAREAL Fbg;
                         CUDAREAL stol_points[4], Fbg_points[4];
                         stol_points[0] = stol_of(nearest-1);
                         stol_points[1] = stol_of(nearest-1+1);
@@ -685,7 +684,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         Fbg_points[2] = Fbg_of(nearest-1+2);
                         Fbg_points[3] = Fbg_of(nearest-1+3);
 
-                        polint(stol_points, Fbg_points, stol, &Fbg);
+                        CUDAREAL Fbg = polint(stol_points, Fbg_points, stol);
 
                         // allow negative F values to yield negative intensities
                         CUDAREAL sign=1.0;
@@ -698,7 +697,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         if(! nopolar){
                             // need to compute polarization factor
                             vector3 temp_polar_vector = {polar_vector(1), polar_vector(2), polar_vector(3)};
-                            polar = polarization_factor2(polarization, incident, diffracted, temp_polar_vector);
+                            polar = polarization_factor(polarization, incident, diffracted, temp_polar_vector);
                         }
 
                         // accumulate unscaled pixel intensity from this
