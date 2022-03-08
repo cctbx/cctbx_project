@@ -366,14 +366,13 @@ def process_predicted_model(
     removed_ph = ph.select(~sel)
     from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
        split_model
-    from iotbx.bioinformatics import get_sequence_from_hierarchy
     remainder_sequence_str = ""
     for m in split_model(model_info(removed_ph)):
-      seq = get_sequence_from_hierarchy(m.hierarchy)
+      seq = m.hierarchy.as_sequence(as_string = True)
       if len(seq) >= p.minimum_remainder_sequence_length:
         remainder_sequence_str += "\n> fragment sequence "
         remainder_sequence_str += "\n%s\n" %(
-          get_sequence_from_hierarchy(m.hierarchy))
+          m.hierarchy.as_sequence(as_string = True))
     ph = new_ph
   else:
     remainder_sequence_str = None

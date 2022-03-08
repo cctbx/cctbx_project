@@ -689,6 +689,68 @@ class _():
 
 # END_MARKED_FOR_DELETION_OLEG
 
+  def as_list_of_residue_names(self):
+    sequence=[]
+    for model in self.models():
+      for chain in model.chains():
+        seq = chain.as_list_of_residue_names()
+        if seq:
+          sequence += seq
+    return sequence
+
+  def as_sequence(self,
+      substitute_unknown='X',
+      substitute_unknown_na = 'N',
+      ignore_all_unknown = None,
+      as_string = False):
+    ''' Uses chain.as_sequence() for all chains and returns the catenation
+    :param substitute_unknown: character to use for unrecognized 3-letter codes
+    :param substitute_unknown_na: character to use for unrecognized na codes
+    :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
+    :param as_string: return string (default is to return list)
+    '''
+
+    seq =  []
+    for m in self.models():
+      for c in m.chains():
+        new_seq = c.as_sequence(
+          substitute_unknown =substitute_unknown,
+          substitute_unknown_na = substitute_unknown_na,
+          ignore_all_unknown =ignore_all_unknown,
+         )
+        if new_seq:
+          seq += new_seq
+    if as_string:
+      return "".join(seq)
+    else: # usual
+      return seq
+
+  def format_fasta(self,
+      substitute_unknown='X',
+      substitute_unknown_na = 'N',
+      ignore_all_unknown = None,
+      as_string = False):
+    ''' uses format_fasta for all chains and returns catenation
+    :param substitute_unknown: character to use for unrecognized 3-letter codes
+    :param substitute_unknown_na: character to use for unrecognized na codes
+    :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
+    :param as_string: return string (default is to return list of lines)
+    '''
+    seq_fasta_lines = []
+    for m in self.models():
+      for c in m.chains():
+        new_lines = c.format_fasta(
+          substitute_unknown =substitute_unknown,
+          substitute_unknown_na = substitute_unknown_na,
+          ignore_all_unknown =ignore_all_unknown,
+         )
+        if new_lines:
+          seq_fasta_lines += new_lines
+    if as_string:
+      return "\n".join(seq_fasta_lines)
+    else: # usual
+      return seq_fasta_lines
+
   def extract_xray_structure(self, crystal_symmetry=None,
      min_distance_sym_equiv=None):
     """
@@ -2005,15 +2067,33 @@ class _():
       residue_classes[c] += 1
     return (rn_seq, residue_classes)
 
-  def as_sequence(self, substitute_unknown='X'):
+  def as_list_of_residue_names(self):
+    sequence=[]
+    for rg in self.residue_groups():
+      for atom_group in rg.atom_groups():
+        sequence.append(atom_group.resname)
+        break
+    return sequence
+
+  def as_sequence(self, substitute_unknown='X',
+     substitute_unknown_na = 'N',
+     ignore_all_unknown = None):
     """
     Naively extract single-character protein or nucleic acid sequence, without
     accounting for residue numbering.
 
     :param substitute_unknown: character to use for unrecognized 3-letter codes
+    :param substitute_unknown_na: character to use for unrecognized na codes
+    :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
     """
+
+    if ignore_all_unknown:
+      substitute_unknown = ''
+      substitute_unknown_na = ''
     assert ((isinstance(substitute_unknown, str)) and
             (len(substitute_unknown) == 1))
+    assert ((isinstance(substitute_unknown_na, str)) and
+            (len(substitute_unknown_na) == 1))
     common_rna_dna_codes = {
       "A": "A",
       "C": "C",
@@ -2040,6 +2120,43 @@ class _():
           rn = na_3_as_1_mod.get(rn, "N")
         seq.append(common_rna_dna_codes.get(rn, "N"))
     return seq
+
+  def format_fasta(self,
+      max_line_length=79,
+      substitute_unknown='X',
+      substitute_unknown_na = 'N',
+      ignore_all_unknown = None,
+      as_string = False):
+    ''' Format this chain as Fasta
+    :param max_line_length: length of lines in formatted output
+    :param substitute_unknown: character to use for unrecognized 3-letter codes
+    :param substitute_unknown_na: character to use for unrecognized na codes
+    :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
+    :param as_string: return string (default is to return list of lines)
+    '''
+    print("ZZ format chain as fasta")
+    seq = self.as_sequence(
+          substitute_unknown =substitute_unknown,
+          substitute_unknown_na = substitute_unknown_na,
+          ignore_all_unknown =ignore_all_unknown,
+    )
+    n = len(seq)
+    if (n == 0): return None
+    comment = [">"]
+    comment.append('chain "%2s"' % self.id)
+    seq_lines = [" ".join(comment)]
+    i = 0
+    while True:
+      j = min(n, i+max_line_length)
+      if (j == i): break
+      seq_lines.append("".join(seq[i:j]))
+      i = j
+
+    print("ZZ format chain as fasta",seq_lines)
+    if as_string:
+      return "\n".join(seq_lines)
+    else:
+      return seq_lines
 
   def _residue_is_aa_or_na(self, residue_name, include_modified=True):
     """

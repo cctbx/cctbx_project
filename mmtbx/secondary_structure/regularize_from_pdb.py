@@ -15,7 +15,7 @@ from scitbx.array_family import flex
 from mmtbx.secondary_structure.find_ss_from_ca import \
    find_secondary_structure, \
    find_helix,find_beta_strand,find_other_structure,helix,strand,other,\
-   get_sequence,get_atom_list,\
+   get_atom_list,\
    model_info,split_model,merge_hierarchies_from_models, \
    get_pdb_hierarchy
 from six.moves import zip
@@ -973,12 +973,12 @@ class connected_group:
         original_ca=model_to_match.hierarchy.apply_atom_selection(
          atom_selection)
         original_xyz=original_ca.atoms().extract_xyz()
-        original_sequence=get_sequence(original_ca,one_letter_code=False)
+        original_sequence=original_ca.as_list_of_residue_names()
 
         atom_selection="name ca "
         replacement_ca=h.apply_atom_selection(atom_selection)
         replacement_xyz=replacement_ca.atoms().extract_xyz()
-        replacement_sequence=get_sequence(replacement_ca,one_letter_code=False)
+        replacement_sequence=replacement_ca.as_list_of_residue_names()
 
         if original_xyz.size()==replacement_xyz.size():
           diffs.extend(original_xyz-replacement_xyz)

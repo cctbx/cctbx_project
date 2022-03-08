@@ -5895,6 +5895,13 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert not pdb_hierarchy.contains_nucleic_acid()
   assert not pdb_hierarchy.contains_rna()
   assert not pdb_hierarchy.contains_dna()
+  assert pdb_hierarchy.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  assert pdb_hierarchy.as_sequence(as_string = True) == 'GNNQQNY'
+  assert pdb_hierarchy.format_fasta() == ['> chain " A"', 'GNNQQNY']
+  assert pdb_hierarchy.format_fasta(as_string = True) == \
+    """> chain " A"
+GNNQQNY"""
+
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM   1282  P     U A  75       8.046  10.090  17.379  1.00 20.97           P
 ATOM   1302  P     A A  76       3.836  12.353  14.321  1.00 22.14           P
@@ -5909,6 +5916,12 @@ ATOM   1407  P     C A  81      -6.452  -7.275  14.101  1.00 67.04           P
   assert pdb_hierarchy.contains_nucleic_acid()
   assert pdb_hierarchy.contains_rna()
   assert not pdb_hierarchy.contains_dna()
+  assert pdb_hierarchy.as_sequence() == ['U', 'A', 'U', 'G', 'U', 'C', 'C']
+  assert pdb_hierarchy.as_sequence(as_string = True) == 'UAUGUCC'
+  assert pdb_hierarchy.format_fasta() == ['> chain " A"', 'UAUGUCC']
+  assert pdb_hierarchy.format_fasta(as_string = True) == \
+    """> chain " A"
+UAUGUCC"""
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM    590  P    DG B  19       0.025   6.958  12.325  1.00  0.00           P
 ATOM    623  P    DC B  20      -6.245   5.331  12.090  1.00  0.00           P
@@ -5922,6 +5935,12 @@ ATOM    748  P    DG B  24     -15.074 -12.316  24.830  1.00  0.00           P
   assert pdb_hierarchy.contains_dna()
   assert pdb_hierarchy.chain_types() == ['DNA']
   assert pdb_hierarchy.chain_type() == 'DNA'
+  assert pdb_hierarchy.as_sequence() == ['G', 'C', 'C', 'G', 'A', 'G']
+  assert pdb_hierarchy.as_sequence(as_string = True) == 'GCCGAG'
+  assert pdb_hierarchy.format_fasta() == ['> chain " B"', 'GCCGAG']
+  assert pdb_hierarchy.format_fasta(as_string = True) == \
+    """> chain " B"
+GCCGAG"""
 
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM   1282  P     U A  75       8.046  10.090  17.379  1.00 20.97           P
@@ -5942,6 +5961,14 @@ ATOM    748  P    DG B  24     -15.074 -12.316  24.830  1.00  0.00           P
   assert pdb_hierarchy.contains_dna()
   assert pdb_hierarchy.chain_types() == ['DNA','RNA']
   assert pdb_hierarchy.chain_type() == None
+  assert pdb_hierarchy.as_sequence() == ['U', 'A', 'U', 'G', 'U', 'C', 'G', 'C', 'C', 'G', 'A', 'G']
+  assert pdb_hierarchy.as_sequence(as_string = True) == 'UAUGUCGCCGAG'
+  assert pdb_hierarchy.format_fasta() == ['> chain " A"', 'UAUGUC','> chain " B"','GCCGAG']
+  assert pdb_hierarchy.format_fasta(as_string = True) == \
+    """> chain " A"
+UAUGUC
+> chain " B"
+GCCGAG"""
 
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 ATOM      2  CA  UNK A   3      -9.052   4.207   4.651  1.00 16.57           C
@@ -5961,6 +5988,13 @@ HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
   assert pdb_hierarchy.only_model().only_chain().is_protein()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
+
+  assert pdb_hierarchy.as_sequence() == []
+  assert pdb_hierarchy.as_sequence(as_string = True) == ''
+  print(pdb_hierarchy.format_fasta())
+  assert pdb_hierarchy.format_fasta() == []
+  assert pdb_hierarchy.format_fasta(as_string = True) == ''
+
   pdb_hierarchy = pdb.input(source_info=None, lines="""\
 HETATM   48  O   HOH A  10       0.000  20.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  11       2.000  16.000   7.299  1.00 15.18           O
@@ -6005,6 +6039,7 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert main_conf.as_sequence() == ['G', 'N', 'N', 'Q', 'A', 'G', 'Q', 'N', 'Y']
   assert (main_conf.as_padded_sequence() == "XXGNNQAGQNY")
   assert (main_conf.as_padded_sequence(skip_insertions=True) == "XXGNNQQNY")
+  assert pdb_hierarchy.as_sequence() == ['G', 'N', 'N', 'Q', 'A', 'G', 'Q', 'N', 'Y']
   resids = main_conf.get_residue_ids()
   assert (len(resids) == 11)
   assert (resids[0] == resids[1] == None)
@@ -6067,6 +6102,8 @@ ATOM    854  CA  GLY A  12      25.907  28.394  28.320  1.00 38.88           C
     {'common_amino_acid': 10})
   assert chain.as_sequence() == ['N', 'G', 'M', 'I', 'S', 'A', 'A', 'M', 'E', 'G']
   assert chain.as_padded_sequence() == 'NGMISXXAAMEG'
+  print(pdb_hierarchy.as_sequence())
+  assert "".join(pdb_hierarchy.as_sequence()) == 'NGMISAAMEG'
   assert chain.get_residue_ids() == [
     '   1 ', '   2 ', '   3 ', '   4 ', '   5 ', None, None,
     '   8 ', '   9 ', '  10 ', '  11 ', '  12 ']

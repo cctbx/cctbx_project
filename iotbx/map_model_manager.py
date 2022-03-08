@@ -16,7 +16,6 @@ from libtbx.test_utils import approx_equal
 from copy import deepcopy
 from cctbx import adptbx
 from mmtbx_tls_ext import tlso, uaniso_from_tls_one_group
-from iotbx.bioinformatics import get_sequence_from_hierarchy
 
 # Reserved phil scope for MapModelManager
 map_model_phil_str = '''
@@ -2614,8 +2613,7 @@ class map_model_manager(object):
     if selection_string:
       model = model.apply_selection_string(selection_string)
 
-    return get_sequence_from_hierarchy(
-        model.get_hierarchy(), remove_white_space=True)
+    return model.as_sequence(as_string = True)
 
   def rmsd_of_matching_residues(self,
       target_model_id = 'model',
@@ -2919,14 +2917,9 @@ class map_model_manager(object):
 
     # Get the chain type
     if chain_type is None:
-      from iotbx.bioinformatics import get_chain_type
-      try:
-        chain_type = get_chain_type(model = target_model)
-      except Exception as e:
-        try:
-          chain_type = get_chain_type(model = matching_model)
-        except Exception as e:
-          chain_type = None
+      chain_type = target_model.chain_type()
+      if not chain_type:
+        chain_type = matching_model.chain_type()
     if not chain_type:
       print("Unable to identify chain_type of '%s' ... please set chain_type" %(
         target_model_id), file = self.log)
@@ -2983,10 +2976,8 @@ class map_model_manager(object):
          item = matching_model_ca.size())
 
     if residue_names_must_match:
-      ca_residue_names = get_sequence_from_hierarchy(
-        target_model_ca.get_hierarchy(), remove_white_space=True)
-      cb_residue_names = get_sequence_from_hierarchy(
-        matching_model_ca.get_hierarchy(), remove_white_space=True)
+      ca_residue_names = target_model_ca.as_sequence(as_string = True)
+      cb_residue_names = matching_model_ca.as_sequence(as_string = True)
       assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
       assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
     else:
@@ -3142,10 +3133,8 @@ class map_model_manager(object):
          target_model.apply_selection_string(ca_selection_string)
         if not local_target_model:
           continue # skip it
-        target_seq = get_sequence_from_hierarchy(
-          local_target_model.get_hierarchy(), remove_white_space=True)
-        matching_seq = get_sequence_from_hierarchy(
-           local_matching_model.get_hierarchy(), remove_white_space=True)
+        target_seq = local_target_model.as_sequence(as_string = True)
+        matching_seq = local_matching_model.as_sequence(as_string = True)
         if not target_seq or not matching_seq:
           continue # skip it
         target_seq=list(target_seq)

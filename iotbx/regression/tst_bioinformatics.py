@@ -1795,8 +1795,7 @@ class test_hhalign_parser(unittest.TestCase):
 
 def exercise_guess_chain_types():
   from iotbx.bioinformatics import \
-     guess_chain_types_from_sequences,text_from_chains_matching_chain_type,\
-     get_sequence_from_pdb
+     guess_chain_types_from_sequences,text_from_chains_matching_chain_type
   print("Testing guess_chain_types ...", end=' ')
   text_rna="""
 >4a17.pdb|Chain=2
@@ -1917,12 +1916,6 @@ ATOM    222  P     a V   5      15.160   3.698  14.124  1.00  0.00
 ATOM    242  P     c V   6      19.171   5.322  17.832  1.00  0.00
 """
 
-  assert get_sequence_from_pdb(text=text_protein_pdb)=='GDPVTRVLDD'
-  assert get_sequence_from_pdb(text=text_rna_pdb).replace("\n","").replace(" ","").strip()=='GUGGUGACCAC'
-  assert get_sequence_from_pdb(text=text_rna_pdb_o_two).replace("\n","").replace(" ","").strip()=='GUGGUGACCAC'
-  assert get_sequence_from_pdb(text=text_dna_pdb).replace("\n","").replace(" ","").strip()=='GTGGTGACCAC'
-  get_sequence_from_pdb(text=text_dna_pdb_lc).replace("\n","").replace(" ","").strip().upper()=='GTGGTGACCAC'
-  assert get_sequence_from_pdb(text=text_dna_pdb_lc).replace("\n","").replace(" ","").strip().upper()=='GTGGTGACCAC'
   assert guess_chain_types_from_sequences(text=text_protein)==["PROTEIN"]
   assert guess_chain_types_from_sequences(text=text_dna)==["DNA"]
   assert guess_chain_types_from_sequences(text=text_rna)==["RNA"]

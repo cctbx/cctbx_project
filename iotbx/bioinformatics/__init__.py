@@ -1870,87 +1870,9 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
 
-def get_chain_type(model=None, hierarchy=None, model_list = None,
-     return_protein_if_present = False,
-     return_rna_if_rna_or_dna = False):
-  '''
-   Identify chain type in a hierarchy or model and require only one chain type.
-   if return_protein_if_present and protein is present, return PROTEIN.
-
-   If model_list, return list of chain_types present
-  '''
-
-  if model_list is not None:
-    chain_type_list = []
-    for m in model_list:
-      ct = get_chain_type(model = m,
-       return_protein_if_present = return_protein_if_present,
-       return_rna_if_rna_or_dna = return_rna_if_rna_or_dna)
-      if ct is not None and not ct in chain_type_list:
-        chain_type_list.append(ct)
-    return chain_type_list
-
-  if not hierarchy:
-    hierarchy = model.get_hierarchy()
-
-  if return_protein_if_present and hierarchy.contains_protein():
-    return "PROTEIN"
-
-  elif return_rna_if_rna_or_dna and hierarchy.contains_nucleic_acid():
-    return "RNA"
-
-  else:
-    return hierarchy.chain_type()
-
-def get_sequence_from_hierarchy(hierarchy,
-     remove_white_space=False,
-     return_as_fasta = False):
-  return get_sequence_from_pdb(hierarchy=hierarchy,
-     remove_white_space=remove_white_space,
-      return_as_fasta = return_as_fasta)
-
-def get_sequence_from_pdb(file_name=None,
-    text=None,
-    hierarchy=None,
-    remove_white_space=False,
-    return_as_fasta = False):
-
-  if not hierarchy:
-    # read from PDB
-    if not text:
-      if not file_name:
-        from libtbx.utils import Sorry
-        raise Sorry("Missing file for get_sequence_from_pdb: %s" %(
-          file_name))
-      with open(file_name) as f:
-        text = f.read()
-    import iotbx.pdb
-    pdb_inp = iotbx.pdb.input(lines=text.splitlines(),source_info="None")
-    hierarchy = pdb_inp.construct_hierarchy()
-
-  if hierarchy.overall_counts().n_residues == 0:
-    return ""  # nothing there
-
-  chain_sequences=[]
-  chain_names =[]
-
-  for model in hierarchy.models():
-    for chain in model.chains():
-      # Get chain-type of this chain if not specified
-      chain_sequences.append("".join(chain.as_sequence()))
-      chain_names.append(chain.id)
-
-  if return_as_fasta:
-    seq_out = StringIO()
-    for s,n in zip(chain_sequences,chain_names):
-      print(">%s\n%s" %(n,s), file = seq_out)
-    sequence_as_string = seq_out.getvalue()
-  else: # usual
-    sequence_as_string="\n".join(chain_sequences)
-    if remove_white_space:
-      sequence_as_string = sequence_as_string.replace("\n","").replace(" ","")
-  return sequence_as_string
-
+#####################################################################
+####   Methods to try and guess chain types from sequences ##########
+#####################################################################
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False,minimum_fraction=None,
     likely_chain_types=None):
@@ -2136,6 +2058,10 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   else:
     return ok_list[0],residues
 
+#####################################################################
+####   END OF methods to try and guess chain types from sequences ###
+#####################################################################
+
 def random_sequence(n_residues=None,residue_basket=None,
    chain_type = 'PROTEIN'):
   assert n_residues and (residue_basket or chain_type)
@@ -2159,3 +2085,4 @@ def random_sequence(n_residues=None,residue_basket=None,
     id=random.randint(0,nn)
     s+=residue_basket[id]
   return s
+
