@@ -30,6 +30,8 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 0"],
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 1"],
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 2"],
+    ["$D/diffBragg/tests/tst_diffBragg_unitcell_property.py", "--crystalsystem tetragonal" ],
+    ["$D/diffBragg/tests/tst_diffBragg_unitcell_property.py", "--crystalsystem monoclinic" ],
     ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 0"],
     ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 1"],
     "$D/diffBragg/tests/tst_diffBragg_regions_of_interest.py",
