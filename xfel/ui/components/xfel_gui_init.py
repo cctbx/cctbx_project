@@ -33,7 +33,7 @@ from xfel.ui.db.xfel_db import xfel_db_application
 
 from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
-from iota.components import iota_utils as util
+from iota.utils.utils import Capturing, set_base_dir
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
@@ -3246,7 +3246,7 @@ class MergeTab(BaseTab):
 
     # Generate text of params
     final_phil = master_phil.format(python_object=self.pparams)
-    with util.Capturing() as txt_output:
+    with Capturing() as txt_output:
       final_phil.show()
     txt_out = ''
     for one_output in txt_output:
@@ -3294,7 +3294,7 @@ class MergeTab(BaseTab):
 
     self.pparams = self.prime_panel.pparams
     self.pparams.data = [self.pickle_path_file]
-    self.pparams.run_no = util.set_base_dir(out_dir=self.working_dir)
+    self.pparams.run_no = set_base_dir(out_dir=self.working_dir)
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
     if str(self.prime_panel.ref_box.ctr.GetValue()).lower() != '':
@@ -3322,7 +3322,7 @@ class MergeTab(BaseTab):
     self.init_settings()
     prime_phil = master_phil.format(python_object=self.pparams)
 
-    with util.Capturing() as output:
+    with Capturing() as output:
       prime_phil.show()
 
     txt_out = ''
