@@ -949,13 +949,13 @@ class map_manager(map_reader, write_ccp4_map):
     full_size_minus_working=subtract_tuples_int(self.unit_cell_grid,
       self.map_data().all())
 
-    # Must not be bigger than full size already
-    assert flex.double(full_size_minus_working).min_max_mean().min >= 0
 
-    if full_size_minus_working == (0, 0, 0): # Exactly full size already. Done
+    if full_size_minus_working in [(-1,-1,-1),(0, 0, 0)]: # Exactly full size already. Done
       assert self.origin_shift_grid_units == (0, 0, 0)
       assert self.map_data().origin() == (0, 0, 0)
       return self
+    # Must not be bigger than full size already
+    assert flex.double(full_size_minus_working).min_max_mean().min >= -1
     working_lower_bounds = self.origin_shift_grid_units
     working_upper_bounds = tuple([i+j-1 for i, j in zip(working_lower_bounds,
       self.map_data().all())])
