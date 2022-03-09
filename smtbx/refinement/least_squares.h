@@ -378,11 +378,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
             for (int i = 0; i < ch.size; i++) {
               int i_h = ch.idx + i;;
               miller::index<> const& h = reflections.index(i_h);
+              const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
               if (f_mask.size()) {
-                f_calc_function.compute(h, f_mask[i_h], compute_grad);
+                f_calc_function.compute(h, f_mask[i_h], fraction, compute_grad);
               }
               else {
-                f_calc_function.compute(h, boost::none, compute_grad);
+                f_calc_function.compute(h, boost::none, fraction, compute_grad);
               }
               f_calc[i_h] = f_calc_function.get_f_calc();
               if (compute_grad) {

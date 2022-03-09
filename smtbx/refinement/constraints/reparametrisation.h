@@ -7,6 +7,7 @@
 #include <cctbx/uctbx.h>
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/xray/twin_component.h>
+#include <cctbx/xray/thickness.h>
 #include <cctbx/xray/extinction.h>
 #include <smtbx/import_cctbx.h>
 #include <smtbx/error.h>
@@ -327,9 +328,10 @@ class extinction_parameter : public independent_scalar_parameter {
 public:
   extinction_parameter(extinction_correction_t *_exti)
   :
-  parameter(0), exti(_exti),
+  parameter(0),
   independent_scalar_parameter(
-    _exti->get_value(), _exti->grad_value())
+    _exti->get_value(), _exti->grad_value()),
+    exti(_exti)
   {}
 
   virtual af::ref<double> components();
@@ -337,6 +339,23 @@ public:
 
 protected:
   extinction_correction_t *exti;
+};
+
+/// Thickness parameter
+class thickness_parameter : public independent_scalar_parameter {
+  typedef cctbx::xray::thickness<double> thickness_t;
+public:
+  thickness_parameter(thickness_t * thickness)
+    :
+    parameter(0),
+    independent_scalar_parameter(thickness->value, thickness->grad),
+    thickness(thickness)
+  {}
+
+  virtual af::ref<double> components();
+  virtual void validate();
+protected:
+  thickness_t* thickness;
 };
 
 template <int N>

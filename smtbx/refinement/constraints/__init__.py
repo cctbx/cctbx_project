@@ -105,6 +105,7 @@ class reparametrisation(ext.reparametrisation):
   temperature = 20 # Celsius
   twin_fractions = None
   extinction = None
+  thickness = None
   directions = None
 
   def __init__(self,
@@ -198,6 +199,9 @@ class reparametrisation(ext.reparametrisation):
     if self.extinction is not None and self.extinction.grad:
       p = self.add(extinction_parameter, self.extinction)
       self.independent_scalar_parameters.append(p)
+    if self.thickness is not None and self.thickness.grad:
+      p = self.add(thickness_parameter, self.thickness)
+      self.independent_scalar_parameters.append(p)
     self.finalise()
 
   def finalise(self):
@@ -217,6 +221,8 @@ class reparametrisation(ext.reparametrisation):
           independent_grad_cnt += 1
     if self.extinction is not None and self.extinction.grad:
       independent_grad_cnt += 1
+    if self.thickness is not None and self.thickness.grad:
+      independent_grad_cnt += 1
     # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
     if self.twin_fractions is not None:
@@ -226,6 +232,9 @@ class reparametrisation(ext.reparametrisation):
           independent_grad_i += 1
     if self.extinction is not None and self.extinction.grad:
       self.extinction.grad_index = independent_grad_i
+      independent_grad_i += 1
+    if self.thickness is not None and self.thickness.grad:
+      self.thickness.grad_index = independent_grad_i
       independent_grad_i += 1
 
   def apply_shifts(self, shifts):
@@ -361,5 +370,7 @@ class reparametrisation(ext.reparametrisation):
         if fraction.grad:
           rv.add_independent_scalar()
     if self.extinction is not None and self.extinction.grad:
+      rv.add_independent_scalar()
+    if self.thickness is not None and self.thickness.grad:
       rv.add_independent_scalar()
     return rv

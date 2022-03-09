@@ -175,6 +175,22 @@ namespace boost_python {
     }
   };
 
+  struct thickness_parameter_wrapper {
+    typedef thickness_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      class_<wt,
+        bases<independent_scalar_parameter>,
+        std::auto_ptr<wt> >("thickness_parameter", no_init)
+        .def(init<cctbx::xray::thickness<double>*>
+          (arg("thickness")))
+        ;
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
   template <int N>
   struct small_vector_parameter_wrapper
   {
@@ -595,6 +611,8 @@ namespace boost_python {
     twin_fraction_parameter_wrapper::wrap();
 
     extinction_parameter_wrapper::wrap();
+
+    thickness_parameter_wrapper::wrap();
 
     small_vector_parameter_wrapper<3>::wrap();
     independent_small_vector_parameter_wrapper<3>::wrap();

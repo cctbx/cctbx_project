@@ -1,13 +1,14 @@
 #ifndef SMTBX_REFINEMENT_LEAST_SQUARES_FC_H
 #define SMTBX_REFINEMENT_LEAST_SQUARES_FC_H
 
+#include <cctbx/xray/twin_component.h>
 #include <scitbx/array_family/ref_reductions.h>
 #include <boost/shared_ptr.hpp>
 
 namespace smtbx {
   namespace refinement {
     namespace least_squares {
-
+      using namespace cctbx::xray;
       /* Need inheritance to achive more flexibility */
       template <typename FloatType>
       struct f_calc_function_base {
@@ -17,32 +18,42 @@ namespace smtbx {
         virtual void compute(
           miller::index<> const& h,
           boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true) = 0;
+
+        void compute(
+          miller::index<> const& h,
+          twin_fraction<FloatType> const& fraction,
+          std::complex<FloatType> const& f_mask,
+          bool compute_grad = true)
+        {
+          compute(h, f_mask, &fraction, compute_grad);
+        }
 
         /// Evaluate the structure factors
         void evaluate(miller::index<> const& h)
         {
-          compute(h, boost::none, false);
+          compute(h, boost::none, 0, false);
         }
 
         /// Evaluate the structure factors
         void evaluate(miller::index<> const& h,
           std::complex<FloatType> const& f_mask)
         {
-          compute(h, f_mask, false);
+          compute(h, f_mask, 0, false);
         }
 
         /// Linearise the structure factors
         void linearise(miller::index<> const& h)
         {
-          compute(h, boost::none, true);
+          compute(h, boost::none, 0, true);
         }
 
         /// Linearise the structure factors
         void linearise(miller::index<> const& h,
           std::complex<FloatType> const& f_mask)
         {
-          compute(h, f_mask, true);
+          compute(h, f_mask, 0, true);
         }
 
         virtual boost::shared_ptr<f_calc_function_base> fork() const = 0;
@@ -67,6 +78,7 @@ namespace smtbx {
         virtual void compute(
           miller::index<> const& h,
           boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true)
         {
           f_calc_function->compute(h, f_mask, compute_grad);
@@ -133,10 +145,11 @@ namespace smtbx {
         virtual void compute(
           miller::index<> const& h,
           boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true)
         {
           if (!use_cache) {
-            f_calc_function->compute(h, f_mask, compute_grad);
+            f_calc_function->compute(h, f_mask, fraction, compute_grad);
             observable = f_calc_function->get_observable();
             grad_observable = f_calc_function->get_grad_observable();
             f_calc = f_calc_function->get_f_calc();
@@ -149,7 +162,7 @@ namespace smtbx {
             }
             typename cache_t::iterator iter = cache.find(h);
             if (iter == cache.end()) {
-              f_calc_function->compute(h, f_mask, compute_grad);
+              f_calc_function->compute(h, f_mask, fraction, compute_grad);
               observable = f_calc_function->get_observable();
               grad_observable = f_calc_function->get_grad_observable();
               f_calc = f_calc_function->get_f_calc();

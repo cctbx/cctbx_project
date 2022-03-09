@@ -126,12 +126,13 @@ struct accumulate_reflection_chunk_omp {
             }
             const int refl_i = start + run;
             miller::index<> const& h = reflections.index(refl_i);
+            const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
             try {
               if (f_mask.size()) {
-                f_calc_threads[thread]->compute(h, f_mask[refl_i], compute_grad);
+                f_calc_threads[thread]->compute(h, f_mask[refl_i], fraction, compute_grad);
               }
               else {
-                f_calc_threads[thread]->compute(h, boost::none, compute_grad);
+                f_calc_threads[thread]->compute(h, boost::none, fraction, compute_grad);
               }
             }
             catch (smtbx::error const& e) {
