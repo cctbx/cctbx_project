@@ -77,10 +77,11 @@ buttonsdeflist = [
                                               animate_rotation_around_vector = "[0, -1.000000]"
                                               normal_vector = 3
                                               normal_vector_length_scale = 0.87128
+                                              is_assoc_real_space_vector = False
                                               clipwidth = 0.35
                                             }
                                             viewer {
-                                              scene_id = 19
+                                              scene_id = 5
                                               show_vector = "[3, False]"
                                               fixorientation = *vector None
                                               nth_power_scale_radii = 0.1
@@ -97,10 +98,11 @@ buttonsdeflist = [
                                               clip_plane {
                                                 angle_around_vector = "[3, 0.0]"
                                                 animate_rotation_around_vector = "[3, 6.000000]"
+                                                is_assoc_real_space_vector = False
                                                 clipwidth = 3
                                               }
                                               viewer {
-                                                scene_id = 19
+                                                scene_id = 5
                                                 show_vector = "[3, True]"
                                                 is_parallel = True
                                                 fixorientation = *vector None

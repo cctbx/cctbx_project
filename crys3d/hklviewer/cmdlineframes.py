@@ -161,7 +161,9 @@ class HKLViewFrame() :
         if msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.ResetPhil()
-          self.viewer.SetDefaultOrientation()
+          self.viewer.sceneisdirty = True
+          #self.update_settings()
+          #self.viewer.SetDefaultOrientation()
           self.update_settings(new_phil)
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -355,9 +357,9 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      self.params = self.viewer.update_settings(diff_phil, phl)
       if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice"):
         self.list_vectors()
+      self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
       self.currentphil = self.master_phil.format(python_object = self.params)
       self.NewFileLoaded = False

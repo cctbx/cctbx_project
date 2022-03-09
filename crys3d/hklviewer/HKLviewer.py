@@ -554,7 +554,7 @@ newarray._sigmas = sigs
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
     self.closing = True
-    #self.window.setVisible(False)
+    self.window.setVisible(False)
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKLviewer closing down")

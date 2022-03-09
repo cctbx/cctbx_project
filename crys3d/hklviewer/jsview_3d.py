@@ -256,6 +256,7 @@ class hklview_3d:
     self.boundingbox_msg_sem = threading.Semaphore()
     self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.Semaphore()
+    self.hkls_drawn_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     self.WBmessenger.StartWebsocket()
@@ -1440,12 +1441,13 @@ class hklview_3d:
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
-
+      #"""
       if self.WaitforHandshake():
         nwait = 0
         while self.viewmtrx is None and nwait < self.handshakewait:
           time.sleep(self.sleeptime)
           nwait += self.sleeptime
+      #"""
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
       self.OrigClipFar = self.clipFar
@@ -1478,9 +1480,9 @@ class hklview_3d:
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
-          self.mprint( message, verbose=2)
+          self.mprint( message, verbose=3)
         elif 'Browser: Got' in message:
-          self.mprint( message, verbose=2)
+          self.mprint( message, verbose=3)
         elif "websocket" in message:
           self.mprint( message, verbose=1)
         elif "Refreshing" in message or "disconnecting" in message:
@@ -1515,7 +1517,9 @@ class hklview_3d:
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
           self.zoom = flst[3]
-          self.clipplane_msg_sem.release()
+          onrequest = flst[4]
+          if onrequest: # only unlock if requested by GetClipPlaneDistances()
+            self.clipplane_msg_sem.release()
         elif "ReturnBoundingBox:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1553,7 +1557,8 @@ class hklview_3d:
           sceneid = int(message.split(":")[1])
           self.parent.SetScene(sceneid)
         elif "InFrustum:" in message:
-          # if GetReflectionsInFrustum() finds no reflections then message=="InFrustum::" which crashes eval()
+          # if GetReflectionsInFrustum() finds no reflections 
+          # then message=="InFrustum::" which crashes eval(). Avoid this
           if "InFrustum::" not in message:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
@@ -1561,8 +1566,10 @@ class hklview_3d:
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
               visiblehkls.append(hkl)
-            self.mprint( "visible hkls: " + str(list(set(visiblehkls))))
-          self.mprint( message, verbose=2)
+            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose=3)
+          self.mprint( message, verbose=3)
+        elif "Drawing new reflections" in message:
+          self.hkls_drawn_sem.release()
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -2234,13 +2241,18 @@ in the space group %s\nwith unit cell %s\n""" \
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemovePrimitives("clip_vector")
-    if self.cameraPosZ is None and self.viewmtrx is not None:
-      self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
+    if self.cameraPosZ is None:
+      self.hkls_drawn_sem.acquire(blocking=True, timeout=5)
+      self.GetClipPlaneDistances()
+      self.hkls_drawn_sem.release()
+      #self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=5)
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.clipplane_msg_sem.release()
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s" %(clipNear, clipFar, -self.cameraPosZ), verbose=1)
 
@@ -2272,15 +2284,18 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def GetMouseSpeed(self):
+    self.mousespeed_msg_sem.acquire(blocking=True, timeout=5)
     self.ngl_settings.mouse_sensitivity = None
-    self.mousespeed_msg_sem.acquire()
+    #self.mousespeed_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
+    """
     if self.WaitforHandshake():
       nwait = 0
       if not self.mousespeed_msg_sem.acquire(blocking=False) and nwait < 5:
         nwait += self.sleeptime
         self.mprint("mousespeed_msg_sem, wait= %s" %nwait, verbose=2)
     self.mousespeed_msg_sem.release()
+    """
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None, zoom=None):
@@ -2293,29 +2308,22 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def GetClipPlaneDistances(self):
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=5)
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.clipplane_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
-    if self.WaitforHandshake():
-      nwait = 0
-      if not self.clipplane_msg_sem.acquire(blocking=False) and nwait < 5:
-        nwait += self.sleeptime
-        self.mprint("clipplane_msg_sem, wait= %s" %nwait, verbose=2)
-      self.mprint("clipnear, clipfar, cameraPosZ, zoom: %s, %s, %s, %s" \
-                 %(self.clipNear, self.clipFar, self.cameraPosZ, self.zoom), 2)
-    self.clipplane_msg_sem.release()
-    return (self.clipNear, self.clipFar, self.cameraPosZ, self.zoom)
 
 
   def GetBoundingBox(self):
+    self.boundingbox_msg_sem.acquire(blocking=True, timeout=5)
     self.boundingX = 0.0
     self.boundingY = 0.0
     self.boundingZ = 0.0
-    self.boundingbox_msg_sem.acquire()
+    #self.boundingbox_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetBoundingBox", "")
+    """
     if self.WaitforHandshake():
       nwait = 0
       if not self.boundingbox_msg_sem.acquire(blocking=False) and nwait < 5:
@@ -2325,6 +2333,7 @@ in the space group %s\nwith unit cell %s\n""" \
          %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
     self.boundingbox_msg_sem.release()
     return (self.boundingX, self.boundingY, self.boundingZ)
+    """
 
 
   def RemovePrimitives(self, reprname=""):
@@ -2335,7 +2344,10 @@ in the space group %s\nwith unit cell %s\n""" \
     rotmx = self.Euler2RotMatrix( ( 0.0, 0.0, 0.0 ) )
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
+    self.hkls_drawn_sem.acquire(blocking=True, timeout=5)
     self.AddToBrowserMsgQueue("SetAutoView" )
+    self.hkls_drawn_sem.release()
+    
 
 
   def TestNewFunction(self):
@@ -2374,17 +2386,18 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
-    if self.cameraPosZ is None:
-      return
-    scaleRot = rotmx * self.cameraPosZ
-    ortrot = scaleRot.as_mat3()
-    str_rot = str(ortrot)
-    str_rot = str_rot.replace("(", "")
-    str_rot = str_rot.replace(")", "")
-    msg = str_rot + ", quiet\n"
-    if not quietbrowser:
-      msg = str_rot + ", verbose\n"
-    self.AddToBrowserMsgQueue("RotateStage", msg)
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=5)
+    if self.cameraPosZ is not None:
+      scaleRot = rotmx * self.cameraPosZ
+      ortrot = scaleRot.as_mat3()
+      str_rot = str(ortrot)
+      str_rot = str_rot.replace("(", "")
+      str_rot = str_rot.replace(")", "")
+      msg = str_rot + ", quiet\n"
+      if not quietbrowser:
+        msg = str_rot + ", verbose\n"
+      self.AddToBrowserMsgQueue("RotateStage", msg)
+    self.clipplane_msg_sem.release()
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
@@ -2489,6 +2502,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def RenderStageObjects(self):
+    self.hkls_drawn_sem.acquire(blocking=True, timeout=5)
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
 

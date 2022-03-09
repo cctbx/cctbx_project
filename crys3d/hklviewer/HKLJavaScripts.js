@@ -358,8 +358,11 @@ Object.assign(debugmessage.style, {
 });
 
 
-function ReturnClipPlaneDistances()
-{
+function ReturnClipPlaneDistances(onrequest = false)
+{ // If onrequest=true then jsview.py will increase the semaphore 
+  // count by calling clipplane_msg_sem.release().
+  // Only do this in response to a explicit message like "GetClipPlaneDistances"
+  // from where the sempahore has been acquired
   let cameradist;
   if (stage.viewer.parameters.clipScale == 'relative')
     cameradist = stage.viewer.cDist;
@@ -379,7 +382,7 @@ function ReturnClipPlaneDistances()
 
   let msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
-                  cameradist, stage.viewer.camera.zoom ] )
+                  cameradist, stage.viewer.camera.zoom, Number(onrequest) ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
@@ -1177,7 +1180,7 @@ function onMessage(e)
     }
 
     if (msgtype === "GetClipPlaneDistances")
-      ReturnClipPlaneDistances();
+      ReturnClipPlaneDistances(true);
 
     if (msgtype === "GetBoundingBox")
     {
