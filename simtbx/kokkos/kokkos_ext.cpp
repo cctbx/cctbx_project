@@ -77,6 +77,9 @@ namespace simtbx { namespace Kokkos {
         .def("print_Fhkl", &simtbx::Kokkos::kokkos_energy_channels::print_Fhkl,
              (arg_("channel"), arg_("first_element"), arg_("last_element"))
             )
+        .def("clear", &simtbx::Kokkos::kokkos_energy_channels::clear,
+             "erase all structure factor sets from the data structure"
+            )
         ;
     }
   };
