@@ -6,6 +6,7 @@
 #include <smtbx/refinement/least_squares.h>
 #include <smtbx/refinement/weighting_schemes.h>
 #include <smtbx/refinement/least_squares_fc_ed.h>
+#include <smtbx/refinement/least_squares_fc_ed_two_beam.h>
 
 
 namespace smtbx { namespace refinement { namespace least_squares {
@@ -131,18 +132,25 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef void (wt::* evaluate_t2) (miller::index<> const&, std::complex<FloatType> const&);
         typedef void (wt::* linearise_t1) (miller::index<> const&);
         typedef void (wt::* linearise_t2) (miller::index<> const&, std::complex<FloatType> const&);
+        typedef void (wt::* compute_t1)(miller::index<> const&,
+          boost::optional<std::complex<FloatType> > const&, twin_fraction<FloatType> const*, bool);
+        typedef void (wt::* compute_t2)(miller::index<> const&, twin_fraction<FloatType> const&,
+          std::complex<FloatType> const&, bool);
         class_<wt, boost::noncopyable>("f_calc_function_base", no_init)
-          .def("compute", &wt::compute,
-            (arg("index"), arg("f_mask"), arg("cumpute_grad")=false))
+          .def("compute", (compute_t1)&wt::compute,
+            (arg("index"), arg("f_mask"), arg("fraction"), arg("cumpute_grad") = false))
+          .def("compute", (compute_t2)&wt::compute,
+            (arg("index"), arg("f_mask"), arg("fraction"), arg("cumpute_grad") = false))
           .def("evaluate", (evaluate_t1)&wt::evaluate,
             (arg("index")))
-          .def("evaluate", (evaluate_t2) &wt::evaluate,
+          .def("evaluate", (evaluate_t2)&wt::evaluate,
             (arg("index"), arg("f_mask")))
           .def("linearise", (linearise_t1)&wt::linearise,
             (arg("index")))
-          .def("linearise", (linearise_t2) &wt::linearise,
+          .def("linearise", (linearise_t2)&wt::linearise,
             (arg("index"), arg("f_mask")))
           .add_property("f_calc", &wt::get_f_calc)
+          .add_property("observable", &wt::get_observable)
           ;
       }
 
@@ -174,12 +182,40 @@ namespace smtbx { namespace refinement { namespace least_squares {
         typedef f_calc_function_base<FloatType> at;
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed", no_init)
-          .def(init<builder_base<FloatType> &,
+          .def(init<builder_base<FloatType> const&,
+            sgtbx::space_group const&, FloatType,
+            bool,
             scitbx::mat3<FloatType> const&,
             af::shared<FrameInfo<FloatType> >,
-            af::shared<BeamInfo<FloatType> > >(
-            (arg("data"),
-              arg("UB"), arg("frames"), arg("beams"))))
+            af::shared<BeamInfo<FloatType> >,
+            cctbx::xray::thickness<FloatType> const&,
+            FloatType>(
+              (arg("data"),
+                arg("space_group"), arg("wavelength"), arg("anomalous_flag"),
+                arg("UB"), arg("frames"), arg("beams"), arg("thickness"),
+                arg("maxSg"))))
+          ;
+      }
+
+      static void wrap_ed_two_beam() {
+        using namespace boost::python;
+        typedef f_calc_function_ed_two_beam<FloatType> wt;
+        typedef f_calc_function_base<FloatType> at;
+        class_<wt, bases<f_calc_function_base<FloatType> >,
+          std::auto_ptr<wt> >("f_calc_function_ed_two_beam", no_init)
+          .def(init<builder_base<FloatType> const&,
+            sgtbx::space_group const&, FloatType,
+            bool,
+            scitbx::mat3<FloatType> const&,
+            af::shared<FrameInfo<FloatType> >,
+            af::shared<BeamInfo<FloatType> >,
+            cctbx::xray::thickness<FloatType> const&,
+            FloatType>(
+              (arg("data"),
+                arg("space_group"), arg("wavelength"), arg("anomalous_flag"),
+                arg("UB"), arg("frames"), arg("beams"), arg("thickness"),
+                arg("maxSg"))))
+          .add_property("ratio", &wt::get_ratio)
           ;
       }
 
@@ -188,6 +224,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         wrap_default();
         wrap_caching();
         wrap_ed();
+        wrap_ed_two_beam();
       }
     };
   };

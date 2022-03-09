@@ -38,7 +38,6 @@ namespace smtbx { namespace refinement { namespace constraints {
   }
 
   // extinction_correction_parameter
-
   af::ref<double> extinction_parameter::components() {
     return af::ref<double>(&exti->get_value(), 1);
   }
@@ -46,6 +45,17 @@ namespace smtbx { namespace refinement { namespace constraints {
   void extinction_parameter::validate() {
     if (exti->get_value() < 0) {
       exti->get_value() = 0;
+    }
+  }
+
+  // thickness parameter
+  af::ref<double> thickness_parameter::components() {
+    return af::ref<double>(&thickness->value, 1);
+  }
+
+  void thickness_parameter::validate() {
+    if (thickness->value <= 0) {
+      thickness->value = 1e-3;
     }
   }
   // single_scatterer_parameter

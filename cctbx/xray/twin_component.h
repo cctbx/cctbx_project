@@ -11,11 +11,21 @@ namespace cctbx { namespace xray {
     FloatType value;
     bool grad;
     int grad_index;
+    /* a generic attribute that allows to pass information about this particular
+    fraction. In the case of ED will keep index to the associated zone/frame
+    index
+    */
+    int tag;
+
     twin_fraction(const twin_fraction& tf)
-      : value(tf.value), grad(tf.grad), grad_index(tf.grad_index)
+      : value(tf.value), grad(tf.grad), grad_index(tf.grad_index),
+      tag(tf.tag)
     {}
     twin_fraction(FloatType value_, bool grad_=false)
-      : value(value_), grad(grad_), grad_index(-1)
+      : value(value_), grad(grad_), grad_index(-1), tag(-1)
+    {}
+    twin_fraction(FloatType value_, int tag, bool grad_=false)
+      : value(value_), grad(grad_), grad_index(-1), tag(tag)
     {}
     twin_fraction deep_copy() { return twin_fraction(*this); }
   };
