@@ -56,6 +56,8 @@ namespace smtbx {
           af::shared<FloatType>& gradients) const
         {
           FloatType obs = f_calc_function.get_observable();
+          // this is the same for all components - not much useful with real twinning
+          const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
           if (reflections.has_twin_components()) {
             itr_t itr = reflections.iterate(i_h);
             FloatType measured_part = obs,
@@ -78,7 +80,7 @@ namespace smtbx {
                 SMTBX_ASSERT(l != mi_lookup.end())(twc.h.as_string());
                 f_mask = l->second;
               }
-              f_calc_function.compute(twc.h, f_mask, compute_grad);
+              f_calc_function.compute(twc.h, f_mask, fraction, compute_grad);
               obs += twc.scale() * f_calc_function.get_observable();
               if (compute_grad) {
                 if (f_calc_function.raw_gradients()) {
