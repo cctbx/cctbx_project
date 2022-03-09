@@ -4101,10 +4101,11 @@ class manager(object):
     if hasattr(self, 'attached_methods'): # already done...skip
       return
     current_methods = self.get_methods()
-    included_methods = """as_sequence as_list_of_residue_names chain_ids chain_type chain_types chains
+    included_methods = """as_sequence as_list_of_residue_names chain_ids
+      chain_type chain_types chains
       contains_dna contains_nucleic_acid contains_protein contains_rna
       format_fasta
-      first_chain_id first_resno_as_int get_overall_counts is_ca_only
+      first_chain_id first_resno_as_int overall_counts is_ca_only
       is_similar_hierarchy last_resno_as_int""".split()
 
     aa = self.get_hierarchy()
