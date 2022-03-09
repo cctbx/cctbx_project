@@ -218,8 +218,8 @@ class WBmessenger(object):
       self.parent.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.parent.lastviewmtrx)
-    else:
-      self.parent.SetAutoView()
+    #else:
+    #  self.parent.SetAutoView()
 
 
   def OnLostConnectWebsocketClient(self, client, close_code, close_reason):

@@ -1059,11 +1059,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['viewer.show_missing'])
     self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['viewer.show_missing'] )
+    if self.currentphilstringdict['viewer.scene_id'] is not None:
+      self.functionTabWidget.setEnabled(True)
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL.camera_type'])
     if self.currentphilstringdict['clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "*vector")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation'] == "vector" )
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1643,9 +1645,9 @@ clip_plane.normal_vector_length_scale = -1
   def onAlignedVector(self):
     if self.unfeedback:
       return
-    val = "None"
+    val = "*None"
     if self.AlignVectorGroupBox.isChecked():
-      val = "vector"
+      val = "*vector"
     philstr = """viewer {
         is_parallel = %s
         fixorientation = "%s"

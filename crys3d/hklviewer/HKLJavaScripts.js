@@ -459,12 +459,16 @@ function CameraZoom(t, deltaX, deltaY) {
 };
 
 
-async function RenderRequest()
+async function RenderRequest(note = "")
 {
   await sleep(100);
+  if (note != "")
+    WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
+  if (note != "")
+    WebsockSendMsg(note + '_AfterRendering');
   if (isdebug)
-    WebsockSendMsg( 'RenderRequest ' + pagename );
+    WebsockSendMsg('RenderRequest ' + pagename);
 }
 
 // Log errors to debugger of your browser
@@ -1252,8 +1256,8 @@ function onMessage(e)
       MakeHKL_Axis();
       MakeXYZ_Axis();
       repr = shapeComp.addRepresentation('buffer');
-      RenderRequest();
-      WebsockSendMsg('Drawing new reflections');
+      RenderRequest("notify_cctbx");
+      WebsockSendMsg('RenderStageObjects');
     }
 
     if (msgtype == "SetDefaultOrientation")

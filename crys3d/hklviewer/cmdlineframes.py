@@ -60,10 +60,14 @@ class HKLViewFrame() :
     self.settings = display.settings()
     self.verbose = 0
     if 'verbose' in kwds:
-      self.verbose = eval(kwds['verbose'])
+      try:
+        self.verbose = eval(kwds['verbose'])
+      except Exception as e:
+        self.verbose = kwds['verbose']
     self.guiSocketPort=None
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
+    self.outputmsgtypes = []
     self.infostr = ""
     self.hklfile_history = []
     self.tncsvec = None
@@ -121,7 +125,8 @@ class HKLViewFrame() :
 
 
   def mprint(self, msg, verbose=0):
-    if verbose <= self.verbose:
+    if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose <= self.verbose) \
+     or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
       if self.guiSocketPort:
         self.SendInfoToGUI( { "info": msg } )
       else:
@@ -162,8 +167,6 @@ class HKLViewFrame() :
           new_phil = libtbx.phil.parse(mstr)
           self.ResetPhil()
           self.viewer.sceneisdirty = True
-          #self.update_settings()
-          #self.viewer.SetDefaultOrientation()
           self.update_settings(new_phil)
         time.sleep(self.zmqsleeptime)
       except Exception as e:

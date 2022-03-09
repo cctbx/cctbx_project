@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 buttonsdeflist = [
-  ("H_I", "Show Zone H for intensities", """ 
+  ("H_I", "Show Zone H for intensities", """
                                               clip_plane {
                                                 hkldist = 0
                                                 normal_vector = 0
@@ -22,9 +22,9 @@ buttonsdeflist = [
                                                 fontsize = 7
                                                 show_tooltips = none click *hover
                                               }
-  
+
   """),
-  ("K_I", "Show Zone K for intensities", """ 
+  ("K_I", "Show Zone K for intensities", """
                                               clip_plane {
                                                 hkldist = 0
                                                 normal_vector = 1
@@ -45,9 +45,9 @@ buttonsdeflist = [
                                                 fontsize = 7
                                                 show_tooltips = none click *hover
                                               }
-  
+
   """),
-  ("L_I", "Show Zone L for intensities", """ 
+  ("L_I", "Show Zone L for intensities", """
                                                 clip_plane {
                                                   hkldist = 0
                                                   normal_vector = 2
@@ -81,7 +81,7 @@ buttonsdeflist = [
                                               clipwidth = 0.35
                                             }
                                             viewer {
-                                              scene_id = 5
+                                              scene_id = 10
                                               show_vector = "[3, False]"
                                               fixorientation = *vector None
                                               nth_power_scale_radii = 0.1
@@ -102,7 +102,7 @@ buttonsdeflist = [
                                                 clipwidth = 3
                                               }
                                               viewer {
-                                                scene_id = 5
+                                                scene_id = 10
                                                 show_vector = "[3, True]"
                                                 is_parallel = True
                                                 fixorientation = *vector None
