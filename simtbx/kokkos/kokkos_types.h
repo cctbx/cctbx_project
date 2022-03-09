@@ -20,18 +20,25 @@
 using ExecSpace = MemSpace::execution_space;
 using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
-template<typename T> using view_1d_t = Kokkos::View<T*, MemSpace>;
-
 using vector3 = simtbx::kokkos::vec3<CUDAREAL>;
 
+struct source_container {
+  vector3 position;
+  // CUDAREAL wavelength;
+  // CUDAREAL intensity;
+};
+
+template<typename T> using view_1d_t = Kokkos::View<T*, MemSpace>;
 using vector_bool_t = view_1d_t<bool>;
 using vector_double_t = view_1d_t<double>;
 using vector_float_t = view_1d_t<float>;
 using vector_cudareal_t = view_1d_t<CUDAREAL>;
-using vector_vector3_t = view_1d_t<vector3>;
 using vector_int_t = view_1d_t<int>;
 using vector_size_t = view_1d_t<std::size_t>;
 using vector_ushort_t = view_1d_t<unsigned int short>;
+
+using vector_vector3_t = view_1d_t<vector3>;
+using vector_sources_t = view_1d_t<source_container>;
 
 template <typename T>
 void print_view(const view_1d_t<T> &arg_view, size_t arg_first, size_t arg_last) {

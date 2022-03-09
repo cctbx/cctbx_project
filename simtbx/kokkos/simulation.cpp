@@ -103,9 +103,9 @@ namespace Kokkos {
 
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
-    int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+    int sources_count = SIM.sources;
+    transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
 
@@ -135,7 +135,7 @@ namespace Kokkos {
       SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
       kdt.metrology.Xbeam[panel_id], kdt.metrology.Ybeam[panel_id],
       SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
-      SIM.sources, m_source_X, m_source_Y, m_source_Z,
+      SIM.sources, m_source_list,
       m_source_I, m_source_lambda, m_a0, m_b0,
       m_c0, SIM.xtal_shape, SIM.mosaic_spread, SIM.mosaic_domains, m_mosaic_umats,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
@@ -192,9 +192,9 @@ namespace Kokkos {
 
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
-    int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
+    int sources_count = SIM.sources;
+    transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
+    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(m_source_lambda, SIM.source_lambda, SIM.sources));
 
@@ -223,7 +223,7 @@ namespace Kokkos {
       kdt.m_distance, kdt.m_distance, m_beam_vector,
       kdt.m_Xbeam, kdt.m_Ybeam,
       SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
-      SIM.sources, m_source_X, m_source_Y, m_source_Z,
+      SIM.sources, m_source_list,
       m_source_I, m_source_lambda, m_a0, m_b0,
       m_c0, SIM.xtal_shape, SIM.mosaic_domains, m_mosaic_umats,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
@@ -309,7 +309,7 @@ namespace Kokkos {
           extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
           extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
           kdt.metrology.dists[panel_id], SIM.point_pixel, SIM.detector_thick,
-          m_source_X, m_source_Y, m_source_Z,
+          m_source_list,
           m_source_lambda, m_source_I,
           SIM.stols, stol_of, Fbg_of,
           SIM.nopolar, SIM.polarization, m_polar_vector,
@@ -355,8 +355,6 @@ namespace Kokkos {
     m_water_F = water_F;
     m_water_MW = water_MW;
 
-    //const int vector_length = 4;
-
     transfer_double2kokkos(m_beam_vector, SIM.beam_vector, m_vector_length);
     transfer_double2kokkos(m_spindle_vector, SIM.spindle_vector, m_vector_length);
     transfer_double2kokkos(m_a0, SIM.a0, m_vector_length);
@@ -385,9 +383,15 @@ namespace Kokkos {
     transfer_double2kokkos(m_polar_vector, polar_vector_unitized, m_vector_length);
 
     int sources_count = SIM.sources;
-    transfer_double2kokkos(m_source_X, SIM.source_X, sources_count);
-    transfer_double2kokkos(m_source_Y, SIM.source_Y, sources_count);
-    transfer_double2kokkos(m_source_Z, SIM.source_Z, sources_count);
+    af::shared<source_container> tmp_source_list;
+    for (int i=0; i<sources_count; ++i) {
+      source_container src;
+      src.position = {SIM.source_X[i], SIM.source_Y[i], SIM.source_Z[i]};
+      // src.wavelength = SIM.source_lambda[i];
+      // src.intensity = SIM.source_I[i];
+      tmp_source_list.push_back(src);
+    }
+    transfer_shared2kokkos(m_source_list, tmp_source_list);
     transfer_double2kokkos(m_source_I, SIM.source_I, sources_count);
     transfer_double2kokkos(m_source_lambda, SIM.source_lambda, sources_count);
 

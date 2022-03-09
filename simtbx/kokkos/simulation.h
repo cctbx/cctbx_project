@@ -47,9 +47,7 @@ struct exascale_api {
   vector_cudareal_t m_b0 = vector_cudareal_t("m_b0", m_vector_length);
   vector_cudareal_t m_c0 = vector_cudareal_t("m_c0", m_vector_length);
   vector_cudareal_t m_polar_vector = vector_cudareal_t("m_polar_vector", m_vector_length);
-  vector_cudareal_t m_source_X = vector_cudareal_t("m_source_X", 0);
-  vector_cudareal_t m_source_Y = vector_cudareal_t("m_source_Y", 0);
-  vector_cudareal_t m_source_Z = vector_cudareal_t("m_source_Z", 0);
+  vector_sources_t m_source_list = vector_sources_t("m_source_list", 0);
   vector_cudareal_t m_source_I = vector_cudareal_t("m_source_I", 0);
   vector_cudareal_t m_source_lambda = vector_cudareal_t("m_source_lambda", 0);
   vector_cudareal_t m_mosaic_umats = vector_cudareal_t("m_mosaic_umats", 0);

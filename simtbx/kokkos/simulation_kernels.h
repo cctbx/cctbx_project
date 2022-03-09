@@ -19,8 +19,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
      const vector_cudareal_t beam_vector,
     CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep,
     int phisteps, const vector_cudareal_t spindle_vector, int sources,
-    const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
-    const vector_cudareal_t source_Z,
+    const vector_sources_t source_list,
     const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
     const vector_cudareal_t a0, const vector_cudareal_t b0,
     const vector_cudareal_t c0, shapetype xtal_shape, CUDAREAL mosaic_spread,
@@ -143,16 +142,12 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         }
 
                                         // loop over sources now
-                                        int source;
-                                        for (source = 0; source < sources; ++source) {
+                                        for (int i_source = 0; i_source < sources; ++i_source) {
 
                                                 // retrieve stuff from cache
-                                                vector3 incident;
-                                                incident.x = -source_X(source);
-                                                incident.y = -source_Y(source);
-                                                incident.z = -source_Z(source);
-                                                CUDAREAL lambda = source_lambda(source);
-                                                CUDAREAL source_fraction = source_I(source);
+                                                vector3 incident = -source_list(i_source).position;
+                                                CUDAREAL lambda = source_lambda(i_source);
+                                                CUDAREAL source_fraction = source_I(i_source);
 
                                                 // construct the incident beam unit vector while recovering source distance
                                                 // TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
@@ -329,8 +324,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     const vector_cudareal_t Xbeam, const vector_cudareal_t Ybeam, // not even used, after all the work
     CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps,
     const vector_cudareal_t spindle_vector, int sources,
-    const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
-    const vector_cudareal_t source_Z,
+    const vector_sources_t source_list,
     const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
     const vector_cudareal_t a0, const vector_cudareal_t b0,
     const vector_cudareal_t c0, shapetype xtal_shape,
@@ -438,16 +432,12 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                         }
 
                                         // loop over sources now
-                                        int source;
-                                        for (source = 0; source < sources; ++source) {
+                                        for (int i_source = 0; i_source < sources; ++i_source) {
 
                                                 // retrieve stuff from cache
-                                                vector3 incident;
-                                                incident.x = -source_X(source);
-                                                incident.y = -source_Y(source);
-                                                incident.z = -source_Z(source);
-                                                CUDAREAL lambda = source_lambda(source);
-                                                CUDAREAL source_fraction = source_I(source);
+                                                vector3 incident = -source_list(i_source).position;
+                                                CUDAREAL lambda = source_lambda(i_source);
+                                                CUDAREAL source_fraction = source_I(i_source);
 
                                                 // construct the incident beam unit vector while recovering source distance
                                                 // TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
@@ -579,8 +569,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     const vector_vector3_t  sdet_vector, const vector_vector3_t  fdet_vector,
     const vector_vector3_t  odet_vector, const vector_vector3_t  pix0_vector,
     CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
-    const vector_cudareal_t  source_X, const vector_cudareal_t  source_Y,
-    const vector_cudareal_t  source_Z,
+    const vector_sources_t  source_list,
     const vector_cudareal_t  source_lambda, const vector_cudareal_t  source_I,
     int stols, const vector_cudareal_t stol_of, const vector_cudareal_t Fbg_of,
     int nopolar, CUDAREAL polarization, const vector_cudareal_t  polar_vector,
@@ -652,15 +641,12 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     }
 
                     // loop over sources now
-                    for(int source=source_start; source<sources; ++source) {
+                    for(int i_source=source_start; i_source<sources; ++i_source) {
 
                         // retrieve stuff from cache
-                        vector3 incident;
-                        incident.x = -source_X(source);
-                        incident.y = -source_Y(source);
-                        incident.z = -source_Z(source);
-                        CUDAREAL lambda = source_lambda(source);
-                        CUDAREAL source_fraction = source_I(source);
+                        vector3 incident = -source_list(i_source).position;
+                        CUDAREAL lambda = source_lambda(i_source);
+                        CUDAREAL source_fraction = source_I(i_source);
                         // construct the incident beam unit vector while recovering source distance
                         incident.normalize();
 
