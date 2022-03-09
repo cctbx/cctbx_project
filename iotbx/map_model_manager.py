@@ -4518,6 +4518,7 @@ class map_model_manager(object):
     del kw['remove_overall_anisotropy']  # REQUIRED
     del kw['model_map_ids_to_leave_as_is']  # REQUIRED
 
+    aniso_info = None
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
@@ -4656,6 +4657,12 @@ class map_model_manager(object):
 
           self.add_map_manager_by_id(map_manager = sharpened_local_mm,
             map_id = id)
+
+          # Get anisotropy (overall B) before scaling
+          aniso_info = self._get_aniso_before_and_after(d_min = d_min,
+            map_id = id, previous_map_id = previous_id)
+          print(aniso_info.text, file = self.log)
+
         else:
           print("No local-sharpened map obtained "+
             "in '%s' from map_model_manager '%s'" %(
@@ -4759,6 +4766,9 @@ class map_model_manager(object):
         new_map_manager.file_name = self.get_map_manager_by_id(id).file_name
         self.add_map_manager_by_id(map_manager = new_map_manager,
           map_id = new_id)
+        # Get anisotropy (overall B) before scaling
+        aniso_info = self._get_aniso_before_and_after(d_min = d_min,
+            map_id = new_id, previous_map_id = id)
 
 
 
@@ -4772,7 +4782,40 @@ class map_model_manager(object):
       aniso_b_cart = aniso_b_cart,
       b_iso = b_iso,
      )
+    if aniso_info:
+      print(aniso_info.text, file = self.log)
+
     return tls_info
+
+  def _get_aniso_before_and_after(self, d_min = None,
+    map_id = None, previous_map_id = None):
+    prev_b_cart = self._get_aniso_of_map(d_min = d_min,
+      map_id = previous_map_id)
+    new_b_cart = self._get_aniso_of_map(d_min = d_min,
+      map_id = map_id)
+    b_sharpen = tuple(flex.double(prev_b_cart) - flex.double(new_b_cart))
+
+    from six.moves import StringIO
+    f = StringIO()
+    print("\nSummary of anisotropic scaling applied for %s" %(
+      self.get_map_manager_by_id(map_id).file_name), file = f)
+    print("Original B-cart:    (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+     tuple(prev_b_cart)), file = f)
+    print("New B-cart:         (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+     tuple(new_b_cart)), file = f)
+    print("Effective B-sharpen:(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+     tuple(b_sharpen)), file = f)
+    print("Effective average B-sharpen: %.2f A**2" %(
+      flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
+
+    result = group_args(
+     group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
+     text = f.getvalue(),
+     prev_b_cart = prev_b_cart,
+     new_b_cart = new_b_cart,
+     b_sharpen = b_sharpen,)
+    return result
+
 
   def remove_anisotropy(self,
         d_min = None,
