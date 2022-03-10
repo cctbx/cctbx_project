@@ -86,7 +86,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
-tout=15
+tout=5
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
@@ -104,7 +104,6 @@ class hklview_3d:
     self.scene = None
     self.lastscene_id = None
     self.merge = False
-    self.primitivetype = "SphereBuffer"
     self.url = ""
     self.bin_labels_type_idxs = []
     self.colour_scene_id = None
@@ -309,6 +308,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
+                       "data_array",
                        "color_scheme",
                        "color_powscale",
                        "scale",
@@ -330,6 +330,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
+                       "data_array",
                        "use_provided_miller_arrays",
                        "color_scheme",
                        "color_powscale",
@@ -418,6 +419,7 @@ class hklview_3d:
                       "binner_idx",
                       "nbins",
                       "fontsize",
+                      "data_array",
                       "miller_array_operations",
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
@@ -964,8 +966,6 @@ class hklview_3d:
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
     for k,proc_array in enumerate(self.proc_arrays):
-      #if not proc_array.is_complex_array() or not proc_array.is_real_array():
-      #  continue
       fom_arrays_idx = []
       array_scene_ids = [(k,k)]
       for i,foms_array in enumerate(self.proc_arrays):
@@ -979,6 +979,20 @@ class hklview_3d:
         array_scene_ids.append((k,i))
       self.sceneid_from_arrayid.extend( array_scene_ids)
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
+
+
+  def get_scene_id_from_label_or_type(self, datalabel, datatype):
+    """ Try finding a matching sceneid to the datalabel provided. As a fallback
+    try finding a sceneid for the first matching datatype regardless of its label
+    """
+    assert datatype is not None
+    for i,e in enumerate(self.hkl_scenes_infos):
+      if e[3] == datalabel:
+        return i
+    for i,e in enumerate(self.hkl_scenes_infos):
+      if e[4] == datatype:
+        return i
+    return -1
 
 
   def scene_id_to_array_id(self, scene_id):

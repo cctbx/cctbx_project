@@ -271,6 +271,13 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      if view_3d.has_phil_path(diff_phil, "data_array"):
+        phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
+                                                                          phl.viewer.data_array.datatype)
+      elif view_3d.has_phil_path(diff_phil, "scene_id"):
+        phl.viewer.data_array.label = None
+        phl.viewer.data_array.datatype = None
+
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         #phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_miller_arrays():
@@ -286,7 +293,7 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
-         "scene_bin_thresholds"):
+         "scene_bin_thresholds", "data_array"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
@@ -294,7 +301,6 @@ class HKLViewFrame() :
                                          nbins=phl.nbins )
       if phl.spacegroup_choice == None:
         self.mprint("! spacegroup_choice == None")
-        #time.sleep(15)
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -360,7 +366,7 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice"):
+      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
       self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
@@ -1454,6 +1460,16 @@ masterphilstr = """
   shape_primitive = *'spheres' 'points'
     .type = choice
   viewer {
+    data_array {
+      label = none
+        .type = str
+        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+                   "order the miller array with this label is found in the reflection data file."
+      datatype = None
+        .type = str
+        .caption = "In case label is not found this assigns scene_id with a value corresponding to " \
+                   "the first miller array of this data type found in the reflection data file."
+      }
     scene_id = None
       .type = int
     ncolourlabels = 6

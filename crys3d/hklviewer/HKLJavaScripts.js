@@ -471,6 +471,31 @@ async function RenderRequest(note = "")
     WebsockSendMsg('RenderRequest ' + pagename);
 }
 
+
+async function SendComponentRotationMatrixMsg() {
+  await sleep(100);
+  try {
+    let msg = String(shapeComp.matrix.elements);
+    WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+  }
+  catch (err) {
+    WebsockSendMsg('JavaScriptError: ' + err.stack);
+  }
+};
+
+
+async function SendOrientationMsg() {
+  await sleep(100);
+  try {
+    let msg = getOrientMsg();
+    WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+  }
+  catch (err) {
+    WebsockSendMsg('JavaScriptError: ' + err.stack);
+  }
+};
+
+
 // Log errors to debugger of your browser
 function onError(e)
 {
@@ -528,7 +553,6 @@ function onMessage(e)
           mysocket.close(4242, 'Refreshing ' + pagename);
           ready_for_closing = true;
           window.location.reload(true);
-          // In 200ms we are gone. A new javascript file will be loaded in the browser
         }
       );
     }
@@ -618,8 +642,7 @@ function onMessage(e)
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
       RenderRequest();
-      let msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+      SendOrientationMsg();
     }
 
     if (msgtype.includes("Expand") && shapeComp != null)
@@ -846,11 +869,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "RotateAxisStage")
@@ -870,11 +889,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "RotateComponents" && shapeComp != null)
@@ -899,11 +914,7 @@ function onMessage(e)
       if (val[9] == "verbose")
         postrotmxflag = true;
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null) {
@@ -926,11 +937,7 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
@@ -971,14 +978,7 @@ function onMessage(e)
       }
       if (animationspeed > 0)
         requestAnimationFrame(render);
-
-      sleep(100).then(() => {
-        if (shapeComp != null) {
-          let msg = String(shapeComp.matrix.elements);
-          WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-        }
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "TranslateHKLpoints" && shapeComp != null)
@@ -991,11 +991,7 @@ function onMessage(e)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       RenderRequest();
-      sleep(100).then(()=> {
-          let msg = getOrientMsg();
-          WebsockSendMsg('CurrentViewOrientation:\n' + msg );
-        }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "DrawSphere") {
@@ -2054,11 +2050,7 @@ function HKLscene()
     onclick: function () {
       SetDefaultOrientation();
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
+      SendOrientationMsg();
     },
   }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fontsize);
   addElement(ResetViewBtn);
@@ -2086,7 +2078,7 @@ function PageLoad()
     document.addEventListener('scroll', function (e) { OnUpdateOrientation(); }, false );
     // mitigate flickering on some PCs when resizing
     document.addEventListener('resize', function () { RenderRequest(); }, false);
- }
+  }
   catch(err)
   {
     WebsockSendMsg('JavaScriptError: ' + err.stack );

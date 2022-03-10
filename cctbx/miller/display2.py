@@ -627,7 +627,7 @@ philstr = """
   slice_index = 0
     .type = int
   color_scheme = %s
-    .type = choice
+    .type = choice(multi=False)
   color_powscale = 1.0
     .type = float
   show_labels = True
