@@ -450,13 +450,20 @@ class _():
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def overall_counts(self):
+  def overall_counts(self,
+    only_one_model = None):
     """
     Calculate basic statistics for contents of the PDB hierarchy, including
     number of residues of each type.
 
+    :parameter only_one_model:  return results for first model only
     :returns: iotbx.pdb.hierarchy.overall_counts object
     """
+    if only_one_model and len(list(self.models())) > 1:
+      one_model_ph = iotbx.pdb.hierarchy.root()
+      one_model_ph.append_model(self.models()[0].detached_copy())
+      return one_model_ph.overall_counts()
+
     result = overall_counts()
     self.get_overall_counts(result)
     return result
@@ -702,16 +709,19 @@ class _():
       substitute_unknown='X',
       substitute_unknown_na = 'N',
       ignore_all_unknown = None,
-      as_string = False):
+      as_string = False,
+      only_one_model = False):
     ''' Uses chain.as_sequence() for all chains and returns the catenation
     :param substitute_unknown: character to use for unrecognized 3-letter codes
     :param substitute_unknown_na: character to use for unrecognized na codes
     :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
     :param as_string: return string (default is to return list)
+    :param only_one_model: Only use the first model if more than one
     '''
 
+    max_models = 1 if only_one_model else len(list(self.models()))
     seq =  []
-    for m in self.models():
+    for m in self.models()[:max_models]:
       for c in m.chains():
         new_seq = c.as_sequence(
           substitute_unknown =substitute_unknown,
