@@ -1257,8 +1257,14 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         gnorm = np.linalg.norm(g)
 
     if verbose:
-        MAIN_LOGGER.debug("F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
-              % (f, zscore_sigma, restraint_debug_s, gnorm))
+        debug_string = "F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
+              % (f, zscore_sigma, restraint_debug_s, gnorm)
+        if params.logging.log_refined_params:
+            for name, p in SIM.P.items():
+                if not p.refine: continue
+                val = p.get_val(x[p.xpos])
+                debug_string += ", %s: %f" % (name, val)
+        MAIN_LOGGER.debug(debug_string)
 
     return f, g, model_bragg, Jac
 

@@ -607,6 +607,9 @@ logging
     .type = str
     .help = if logfiles=True, then write the log to this file, stored in the folder specified by outdir
     .help = if None, then defaults to main_stage1.log for hopper, main_pred.log for prediction, main_stage2.log for stage_two
+  log_refined_params = False
+    .type = bool
+    .help = Log refined parameters each cycle
 }
 profile = False
   .type = bool
