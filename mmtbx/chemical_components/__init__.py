@@ -275,13 +275,19 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
     assert not split_l_d
     return 'sugar'
   elif t in amino_types:
-    assert not split_l_d
+    if split_l_d:
+      if t in l_amino_types:
+        return 'L-peptide'
+      elif t in d_amino_types:
+        return 'D-peptide'
+      else:
+        return 'amino_acid'
     return 'amino_acid'
   elif t in terminii:
     assert not split_l_d
     return 'amino_acid_terminal'
   elif t in rna_dna_types:
-    assert not split_l_d
+    assert not split_rna_dna
     if split_rna_dna:
       if t in rna_types:
         return 'rna'
@@ -295,6 +301,18 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
             ]:
     return t.lower()
   print(t)
+  assert 0
+
+def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
+  g = get_group(code, split_rna_dna, split_l_d)
+  print(g)
+  if g in ['L-peptide', 'D-peptide', 'peptide',
+           # 'non-polymer',
+          ]:
+    return g
+  return {'amino_acid' : 'peptide',
+          'non-polymer': 'ligand',
+          }[g]
   assert 0
 
 if __name__=="__main__":
