@@ -483,7 +483,6 @@ async function SendComponentRotationMatrixMsg() {
   }
 };
 
-
 async function SendOrientationMsg() {
   await sleep(100);
   try {
@@ -1124,7 +1123,7 @@ function onMessage(e)
     if (msgtype === "SetFontSize")
     {
       fontsize = parseFloat(val[0]);
-      RenderRequest();
+      //RenderRequest();
     }
 
     if (msgtype === "SetMouseSpeed")
@@ -1248,12 +1247,14 @@ function onMessage(e)
 
     if (msgtype ==="RenderStageObjects")
     {
-      shapeComp = stage.addComponentFromObject(shape);
-      MakeHKL_Axis();
-      MakeXYZ_Axis();
-      repr = shapeComp.addRepresentation('buffer');
-      RenderRequest("notify_cctbx");
-      WebsockSendMsg('RenderStageObjects');
+      if (shape != null) {
+        shapeComp = stage.addComponentFromObject(shape);
+        MakeHKL_Axis();
+        MakeXYZ_Axis();
+        repr = shapeComp.addRepresentation('buffer');
+        RenderRequest("notify_cctbx");
+        WebsockSendMsg('RenderStageObjects');
+      }
     }
 
     if (msgtype == "SetDefaultOrientation")

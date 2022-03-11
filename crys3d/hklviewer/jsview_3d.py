@@ -347,6 +347,7 @@ class hklview_3d:
                       "show_only_missing",
                       "show_systematic_absences",
                       "binner_idx",
+                      "binlabel",
                       "nbins",
                       )
        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
@@ -417,6 +418,7 @@ class hklview_3d:
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
                       "binner_idx",
+                      "binlabel",
                       "nbins",
                       "fontsize",
                       "data_array",
@@ -462,7 +464,7 @@ class hklview_3d:
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       msg = ""
-      if self.params.clip_plane.normal_vector != -1:
+      if self.params.clip_plane.normal_vector != -1: # then we are clipping
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
@@ -1450,7 +1452,7 @@ class hklview_3d:
           continue
         if self.debug == "debug":
           self.SetBrowserDebug("true")
-        self.SetFontSize(self.ngl_settings.fontsize)
+        #self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend),
@@ -1458,6 +1460,7 @@ class hklview_3d:
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin],
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
+      self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       self.GetBoundingBox()
@@ -1508,7 +1511,7 @@ class hklview_3d:
         elif "JavaScriptError:" in message:
           self.mprint( message, verbose=0)
         elif "Expanded rotation operator" in message:
-          self.mprint( message, verbose=1)
+          self.mprint( message, verbose="expansionmsg")
         elif "Expand" in message:
           self.mprint( message, verbose=2)
         elif "Connection lost" in message:
@@ -2275,9 +2278,17 @@ in the space group %s\nwith unit cell %s\n""" \
       self.mprint("%d, %s" %(i, e[0]))
 
 
+  def get_binner_idx_from_label(self, binlabel):
+    for i,e in enumerate(self.bin_labels_type_idxs):
+      if binlabel == e[0]:
+        return i
+    return -1
+
+
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
+    #self.RenderStageObjects()
 
 
   def SetBrowserDebug(self, isdebug):

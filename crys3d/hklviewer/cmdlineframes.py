@@ -274,6 +274,10 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "data_array"):
         phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
                                                                           phl.viewer.data_array.datatype)
+
+      if view_3d.has_phil_path(diff_phil, "binlabel"):
+        phl.binner_idx = self.viewer.get_binner_idx_from_label(phl.binlabel)
+
       elif view_3d.has_phil_path(diff_phil, "scene_id"):
         phl.viewer.data_array.label = None
         phl.viewer.data_array.datatype = None
@@ -1455,6 +1459,10 @@ masterphilstr = """
     .type = str
   binner_idx = 0
     .type = int
+    .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+  binlabel = None
+    .type = str
+    .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
   nbins = 1
     .type = int(value_min=1, value_max=40)
   shape_primitive = *'spheres' 'points'

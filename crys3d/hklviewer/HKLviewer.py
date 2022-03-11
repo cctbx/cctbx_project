@@ -1078,6 +1078,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
+    self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.normal_vector'] != -1)
+
+    if self.currentphilstringdict['viewer.fixorientation'] is not None:
+      self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'])
+      self.normal_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
+        not self.currentphilstringdict['viewer.is_parallel'] and \
+        not self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
+      self.normal_realspace_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
+        not self.currentphilstringdict['viewer.is_parallel'] and \
+        self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
+
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:
       opnr, label, order, cartvec, hklop, hkls, abcs, length = self.all_vectors[idx]
