@@ -141,8 +141,17 @@ def label_weak_predictions(predictions, strong, q_cutoff=0.005, col="rlp"):
 
     is_weak = flex.bool(len(predictions), True)
     xyz_obs = [(-1,-1,-1)]*len(predictions)
+    indexed_sel = flex.bool(np.zeros(len(strong), bool))
+    miller_inds = flex.miller_index()
+    xyz_cal_mm = flex.vec3_double()
+    xyz_cal_px = flex.vec3_double()
+    s1 =flex.vec3_double()
     for i_idx, cands in enumerate(pred_idx_candidates):
         if not cands:
+            miller_inds.append([0,0,0])
+            xyz_cal_mm.append((0,0,0))
+            xyz_cal_px.append((0,0,0))
+            s1.append((0,0,0))
             continue
         if len(cands) == 1:
             # if 1 spot is within q_cutoff , then its the closest
@@ -156,8 +165,20 @@ def label_weak_predictions(predictions, strong, q_cutoff=0.005, col="rlp"):
             pred_idx = cands[np.argmin(dists)]
         is_weak[pred_idx] = False
         xyz_obs[pred_idx] = strong["xyzobs.px.value"][i_idx]
+        indexed_sel[i_idx] = True
+        miller_inds.append(predictions["miller_index"][pred_idx])
+        xyz_cal_mm.append(predictions["xyzcal.mm"][pred_idx])
+        xyz_cal_px.append(predictions["xyzcal.px"][pred_idx])
+        s1.append(predictions["s1"][pred_idx])
     predictions["is_weak"] = is_weak
     predictions["orig.xyzobs.px"] = flex.vec3_double(xyz_obs)
+    strong['miller_index'] = miller_inds
+    strong['xyzcal.mm'] = xyz_cal_mm
+    strong['xyzcal.px'] = xyz_cal_px
+    strong['entering'] = flex.bool(len(strong), False)
+    strong['s1'] = s1
+    strong.set_flags(indexed_sel, strong.flags.indexed)
+    strong["indexed"] = indexed_sel
 
 
 def label_weak_spots_for_integration(fraction, predictions, num_res_bins=10):
