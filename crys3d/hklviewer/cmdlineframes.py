@@ -105,6 +105,7 @@ class HKLViewFrame() :
     self.clipper_crystdict = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
+    self.validated_preset_buttons = False
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
@@ -167,7 +168,9 @@ class HKLViewFrame() :
           new_phil = libtbx.phil.parse(mstr)
           self.ResetPhil()
           self.viewer.sceneisdirty = True
+          self.viewer.executing_preset_btn = True
           self.update_settings(new_phil)
+          self.viewer.executing_preset_btn = False
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
@@ -186,6 +189,7 @@ class HKLViewFrame() :
     self.visual_symHKLs = []
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
+    self.validated_preset_buttons = False
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
       self.viewer.RemoveStageObjects()
@@ -377,6 +381,7 @@ class HKLViewFrame() :
       self.currentphil = self.master_phil.format(python_object = self.params)
       self.NewFileLoaded = False
       phl.mouse_moved = False
+      self.validate_preset_buttons()
       self.SendCurrentPhilValues()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
@@ -877,6 +882,37 @@ class HKLViewFrame() :
       self.mprint("Can only save file in MTZ or CIF format. Sorry!")
 
 
+  def validate_preset_buttons(self):
+    if not self.validated_preset_buttons:
+      try:
+        from . import PresetButtons
+        activebtns = []
+        # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
+        for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+          rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+          rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+          if len(rlbl) == 1:
+            labelfound = False; typefound= False
+            for infos in self.viewer.hkl_scenes_infos:
+              if infos[3] == rlbl[0]:
+                labelfound = True
+                self.mprint("Preset button, %s, assigned to data column %s" %(btnname,infos[3]) )
+                break
+              if len(rtype) == 1 and infos[4] == rtype[0]:
+                typefound = True
+                self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,infos[4],infos[3]) )
+                break
+          if not (labelfound or typefound):
+            self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
+            activebtns.append(False)
+          else:
+            activebtns.append(True)
+        self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
+      except Exception as e:
+        pass
+    self.validated_preset_buttons = True
+
+
   def convert_clipperdict_to_millerarrays(self, crystdict):
     """
     Called in zmq_listen() when Chimerax with Isolde sends clipper arrays to
@@ -1166,6 +1202,7 @@ class HKLViewFrame() :
 
 
   def list_vectors(self):
+    self.viewer.calc_rotation_axes()
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     uc = self.viewer.miller_array.unit_cell()
     if self.tncsvec is not None:
@@ -1449,6 +1486,7 @@ masterphilstr = """
       .caption = "If value is negative the length of the normal vector is used as the scale."
     clipwidth = None
       .type = float
+      .caption = "If value is not None then we are clipping"
     fractional_vector = reciprocal *realspace
       .type = choice
     bequiet = False

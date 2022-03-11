@@ -177,6 +177,7 @@ class hklview_3d:
     self.L = 1.0
     self.nuniqueval = 0
     self.bin_infotpls = []
+    self.executing_preset_btn = False
     self.mapcoef_fom_dict = {}
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.datatypedefault = ["brg", 1.0, 1.0, 1.0]
@@ -460,11 +461,11 @@ class hklview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
 
-      if self.params.clip_plane.clipwidth:
+      if self.params.clip_plane.clipwidth: # then we are clipping
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       msg = ""
-      if self.params.clip_plane.normal_vector != -1: # then we are clipping
+      if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
@@ -987,7 +988,7 @@ class hklview_3d:
     """ Try finding a matching sceneid to the datalabel provided. As a fallback
     try finding a sceneid for the first matching datatype regardless of its label
     """
-    assert datatype is not None
+    assert datalabel is not None
     for i,e in enumerate(self.hkl_scenes_infos):
       if e[3] == datalabel:
         return i
@@ -1327,7 +1328,7 @@ class hklview_3d:
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
-    if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
+    if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data

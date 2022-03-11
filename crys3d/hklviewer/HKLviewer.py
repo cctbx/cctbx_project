@@ -974,6 +974,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("datatype_dict"):
             self.datatypedict = self.infodict.get("datatype_dict", {} )
 
+          if self.infodict.get("enable_disable_preset_buttons"):
+            activebtns = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
+            for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+              self.__getattribute__(btnname).setEnabled(activebtns[i])
+
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
             unitcell_info = self.infodict.get("unitcell_info",False)
@@ -1078,7 +1083,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
-    self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.normal_vector'] != -1)
+    self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clipwidth'] != None)
 
     if self.currentphilstringdict['viewer.fixorientation'] is not None:
       self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'])
@@ -1088,6 +1093,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.normal_realspace_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
         not self.currentphilstringdict['viewer.is_parallel'] and \
         self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
+      self.clipplane_normal_vector_combo.setCurrentIndex(self.currentphilstringdict['clip_plane.normal_vector'] )
 
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:
@@ -1574,16 +1580,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onClipwidthNormalVecLengthEditFinished(self):
-    if not self.unfeedback:
-      try:
-        val = eval(self.clipplane_normal_vector_length.text())
-        philstr = "clip_plane.normal_vector_length_scale = %s"  %val
-        self.send_message(philstr)
-      except Exception as e:
-        print( str(e) )
+    if self.unfeedback:
+      return
+    try:
+      val = eval(self.clipplane_normal_vector_length.text())
+      philstr = "clip_plane.normal_vector_length_scale = %s"  %val
+      self.send_message(philstr)
+    except Exception as e:
+      print( str(e) )
 
 
   def onClipPlaneNormalVecSelchange(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
     philstr = """viewer.fixorientation = *vector
 clip_plane.clipwidth = %f
@@ -1594,6 +1603,8 @@ clip_plane.normal_vector_length_scale = -1
 
 
   def onParallel_current_orientation_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(False)
     self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
@@ -1604,6 +1615,8 @@ clip_plane.normal_vector = -1
 
 
   def onNormal_vec_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(True)
     self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
@@ -1617,6 +1630,8 @@ clip_plane.normal_vector_length_scale = -1
 
 
   def onNormal_realspace_vec_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(True)
     self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
