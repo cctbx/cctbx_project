@@ -16,7 +16,7 @@ dependencies:
  - openmpi
 
  # psana
- - psana
+ - psana<=4.0.36 # https://github.com/cctbx/cctbx_project/issues/744
 
  # python
  - biopython
