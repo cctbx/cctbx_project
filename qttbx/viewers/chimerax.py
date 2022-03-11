@@ -76,13 +76,13 @@ class ChimeraXViewer(ModelViewer):
     print('Starting ChimeraX REST server')
     print(self.url)
     counter = 0
-    while True and counter<timeout:
+    while counter<timeout:
       output = self._check_status()
       if self._connected:
         break
       counter += 1
       time.sleep(1)
-    if counter >= timeout:
+    if not self._connected:
       raise Sorry('The ChimeraX REST server is not reachable at {} after '
                   '{} seconds.'.format(self.url, counter))
     print('ChimeraX is ready')
