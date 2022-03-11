@@ -2,16 +2,6 @@
 #   modules: <modules artifact name>
 
 jobs:
-  # - template: ./conda-win.yml
-  #   parameters:
-  #     vmImage: vs2017-win2016
-  #     vs: vs2015
-  #     modules: ${{ parameters.modules }}
-  - template: ./conda-win.yml
-    parameters:
-      vmImage: vs2017-win2016
-      vs: vs2017
-      modules: ${{ parameters.modules }}
   - template: ./conda-win.yml
     parameters:
       vmImage: windows-2019

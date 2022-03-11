@@ -4,8 +4,8 @@
 # https://github.com/actions/virtual-environments/blob/master/images/win/Windows2019-Readme.md
 #
 # Parameters:
-#   vmImage: vs2017-win2016, windows-2019
-#   vs: vs2017, vs2019
+#   vmImage: windows-2019
+#   vs: vs2019
 #   modules: <modules artifact name>
 
 jobs:
@@ -161,21 +161,6 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
-      call .\build\setpaths.bat
-      call libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
-      cd build
-      call libtbx.scons -j 4
-      call libtbx.scons -j 4
-    displayName: Configure and Build (Python 3, vs2017)
-    condition: >
-      and(eq('${{ parameters.vs }}', 'vs2017'),
-          ne(variables['PYTHON_VERSION'], 'py310'))
-
-  - script: |
-      cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
@@ -188,29 +173,6 @@ jobs:
     condition: >
       and(eq('${{ parameters.vs }}', 'vs2019'),
           ne(variables['PYTHON_VERSION'], 'py310'))
-
-  - script: |
-      cd $(Pipeline.Workspace)
-
-      cd modules
-      rmdir /S /Q cbflib
-      rmdir /S /Q dxtbx
-      rmdir /S /Q boost
-      git clone https://github.com/cctbx/boost.git -b py310
-      cd ..
-
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
-      call .\build\setpaths.bat
-      call libtbx.configure annlib cma_es crys3d fable phenix_regression phenix_examples
-      cd build
-      call libtbx.scons -j 4
-      call libtbx.scons -j 4
-    displayName: Configure and Build (Python 3, vs2017)
-    condition: >
-      and(eq('${{ parameters.vs }}', 'vs2017'),
-          eq(variables['PYTHON_VERSION'], 'py310'))
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -239,20 +201,6 @@ jobs:
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-      call .\build\setpaths.bat
-      mkdir tests
-      cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=rstbx module=scitbx module=smtbx module=spotfinder module=annlib_adaptbx module=cbflib_adaptbx module=crys3d nproc=4
-    failOnStderr: false
-    displayName: Test (Python 3, vs2017)
-    condition: >
-      and(eq('${{ parameters.vs }}', 'vs2017'),
-          ne(variables['PYTHON_VERSION'], 'py310'))
-
-  - script: |
-      SET PYTHONLEGACYWINDOWSSTDIO=1
-      cd $(Pipeline.Workspace)
       call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       call .\build\setpaths.bat
       mkdir tests
@@ -263,20 +211,6 @@ jobs:
     condition: >
       and(eq('${{ parameters.vs }}', 'vs2019'),
           ne(variables['PYTHON_VERSION'], 'py310'))
-
-  - script: |
-      SET PYTHONLEGACYWINDOWSSTDIO=1
-      cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-      call .\build\setpaths.bat
-      mkdir tests
-      cd tests
-      call libtbx.run_tests_parallel module=boost_adaptbx module=cctbx module=cctbx_website module=cma_es module=fable module=gltbx module=iotbx module=libtbx module=scitbx module=smtbx module=annlib_adaptbx module=crys3d nproc=4
-    failOnStderr: false
-    displayName: Test (Python 3, vs2017)
-    condition: >
-      and(eq('${{ parameters.vs }}', 'vs2017'),
-          eq(variables['PYTHON_VERSION'], 'py310'))
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
