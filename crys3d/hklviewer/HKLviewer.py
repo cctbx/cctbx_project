@@ -33,9 +33,15 @@ try: # if invoked by cctbx.python or some such
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
                                      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from . import HKLviewerGui, PresetButtons
+  from . import HKLviewerGui
   from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
+
+try:
+  from .PresetButtons import buttonsdeflist
+except Exception as e: # if the user provides their own customised radio buttons
+  buttonsdeflist = []
+
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -536,7 +542,7 @@ newarray._sigmas = sigs
 
 
   def makePresetButtons(self):
-    for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
       self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
       self.__getattribute__(btnname).setObjectName(btnname)
       self.__getattribute__(btnname).setText(label)
@@ -545,7 +551,7 @@ newarray._sigmas = sigs
 
 
   def onPresetbtn_click(self):
-    for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
       if self.__getattribute__(btnname).isChecked():
         self.send_message(philstr, msgtype = "preset_philstr")
         break
@@ -976,7 +982,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.infodict.get("enable_disable_preset_buttons"):
             activebtns = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
-            for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
+            for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
               self.__getattribute__(btnname).setEnabled(activebtns[i])
 
           if self.infodict.get("spacegroup_info"):
@@ -1094,6 +1100,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         not self.currentphilstringdict['viewer.is_parallel'] and \
         self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
       self.clipplane_normal_vector_combo.setCurrentIndex(self.currentphilstringdict['clip_plane.normal_vector'] )
+      if self.clipplane_normal_vector_combo.currentData() == float:
+        self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
 
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:

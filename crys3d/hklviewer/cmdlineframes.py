@@ -20,6 +20,10 @@ import libtbx
 import libtbx.load_env
 import traceback
 import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
+try:
+  from .PresetButtons import buttonsdeflist
+except Exception as e: # if the user provides their own customised radio buttons for the GUI
+  buttonsdeflist = []
 
 
 NOREFLDATA = "No reflection data has been selected"
@@ -884,33 +888,29 @@ class HKLViewFrame() :
 
   def validate_preset_buttons(self):
     if not self.validated_preset_buttons:
-      try:
-        from . import PresetButtons
-        activebtns = []
-        # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
-        for i,(btnname, label, philstr) in enumerate(PresetButtons.buttonsdeflist):
-          rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
-          rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
-          if len(rlbl) == 1:
-            labelfound = False; typefound= False
-            for infos in self.viewer.hkl_scenes_infos:
-              if infos[3] == rlbl[0]:
-                labelfound = True
-                self.mprint("Preset button, %s, assigned to data column %s" %(btnname,infos[3]) )
-                break
-              if len(rtype) == 1 and infos[4] == rtype[0]:
-                typefound = True
-                self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,infos[4],infos[3]) )
-                break
-          if not (labelfound or typefound):
-            self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
-            activebtns.append(False)
-          else:
-            activebtns.append(True)
-        self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
-      except Exception as e:
-        pass
-    self.validated_preset_buttons = True
+      activebtns = []
+      # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
+      for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+        rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+        rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+        if len(rlbl) == 1:
+          labelfound = False; typefound= False
+          for infos in self.viewer.hkl_scenes_infos:
+            if infos[3] == rlbl[0]:
+              labelfound = True
+              self.mprint("Preset button, %s, assigned to data column %s" %(btnname,infos[3]) )
+              break
+            if len(rtype) == 1 and infos[4] == rtype[0]:
+              typefound = True
+              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,infos[4],infos[3]) )
+              break
+        if not (labelfound or typefound):
+          self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
+          activebtns.append(False)
+        else:
+          activebtns.append(True)
+      self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
+      self.validated_preset_buttons = True
 
 
   def convert_clipperdict_to_millerarrays(self, crystdict):

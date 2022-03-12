@@ -83,7 +83,7 @@
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                 <horstretch>1</horstretch>
-                <verstretch>2</verstretch>
+                <verstretch>0</verstretch>
                </sizepolicy>
               </property>
               <property name="currentIndex">
@@ -94,11 +94,17 @@
               </property>
               <widget class="QWidget" name="tab_6">
                <attribute name="title">
-                <string>Summary</string>
+                <string>Overview</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_25">
                 <item row="0" column="0">
                  <widget class="QFrame" name="PresetButtonsFrame">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>1</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="frameShape">
                    <enum>QFrame::StyledPanel</enum>
                   </property>
@@ -112,7 +118,7 @@
               </widget>
               <widget class="QWidget" name="tab_7">
                <attribute name="title">
-                <string>Advanced</string>
+                <string>Details</string>
                </attribute>
                <layout class="QGridLayout" name="gridLayout_23">
                 <property name="leftMargin">
@@ -253,8 +259,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>467</width>
-                      <height>392</height>
+                      <width>567</width>
+                      <height>364</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_4">
@@ -279,7 +285,7 @@
                         </sizepolicy>
                        </property>
                        <property name="currentIndex">
-                        <number>1</number>
+                        <number>0</number>
                        </property>
                        <widget class="QWidget" name="tab">
                         <attribute name="title">
