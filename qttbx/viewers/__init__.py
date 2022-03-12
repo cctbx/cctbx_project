@@ -78,7 +78,10 @@ class ModelViewer(object):
     if cmd is None:
       cmd = self.viewer_name
     if isinstance(path, list):
-      path = ':'.join(path)
+      if sys.platform == 'win32':
+        path = ';'.join(path)
+      else:
+        path = ':'.join(path)
     if sys.version_info.major == 3:
       return shutil.which(cmd=cmd, path=path)
     else:

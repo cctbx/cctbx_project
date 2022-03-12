@@ -9,6 +9,7 @@ https://www.cgl.ucsf.edu/chimerax/docs/user/commands/remotecontrol.html
 from __future__ import absolute_import, division, print_function
 
 import glob
+import os
 import random
 import requests
 import subprocess
@@ -44,15 +45,35 @@ class ChimeraXViewer(ModelViewer):
       Nothing
     '''
 
-    # set some standard search locations for each platform
+    # append some standard search locations for each platform
+    # the existing $PATH is searched first
     if self.command is None:
-      search_paths = []
+      search_paths = os.getenv('PATH')
+      search_command = self.viewer_name
+      if search_paths is not None:
+        if sys.platform == 'win32':
+          search_paths = search_paths.split(';')
+        else:
+          search_paths = search_paths.split(':')
+
+      # /Applications/ChimeraX<version>.app
       if sys.platform == 'darwin':
-        search_paths = glob.glob('/Applications/ChimeraX*.app/Contents/MacOS')
-        search_paths.sort(reverse=True)
+        known_paths = glob.glob('/Applications/ChimeraX*.app/Contents/MacOS')
+        known_paths.sort(reverse=True)
+        search_paths += known_paths
+      # /usr/bin/chimerax
+      elif sys.platform.startswith('linux'):
+        search_paths += ['/usr/bin']
+        search_command = 'chimerax'
+      # C:\Program Files\ChimeraX <version>\bin
+      elif sys.platform == 'win32':
+        known_paths = glob.glob('C:\\Program Files\\ChimeraX*\\bin')
+        known_paths.sort(reverse=True)
+        search_paths += known_paths
+        search_command = 'ChimeraX.exe'
 
       if len(search_paths) > 0:
-        self.command = self.find_command(cmd=self.viewer_name, path=search_paths)
+        self.command = self.find_command(cmd=search_command, path=search_paths)
 
     # randomly select port
     if self.port is None:
@@ -68,12 +89,18 @@ class ChimeraXViewer(ModelViewer):
     # ChimeraX --cmd "remotecontrol rest start port <port>"
     cmd = [self.command] + self.flags
 
-    self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # clean environment for launching ChimeraX
+    env = os.environ.copy()
+    for v in ['PYTHONPATH', 'LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']:
+      env.pop(v, None)
 
     # start ChimeraX server and wait until it is ready
+    self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+
     print()
     print('-'*79)
     print('Starting ChimeraX REST server')
+    print(self.command)
     print(self.url)
     counter = 0
     while counter<timeout:
