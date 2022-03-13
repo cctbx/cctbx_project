@@ -86,7 +86,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
-tout=5
+tout=10
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
@@ -121,9 +121,6 @@ class hklview_3d:
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.boundingX = None
-    self.boundingY = None
-    self.boundingZ = None
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
@@ -251,7 +248,7 @@ class hklview_3d:
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
-    self.boundingbox_msg_sem = threading.Semaphore()
+    #self.boundingbox_msg_sem = threading.Semaphore()
     self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.Semaphore()
     self.hkls_drawn_sem = threading.Semaphore()
@@ -1464,7 +1461,6 @@ class hklview_3d:
       self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
-      self.GetBoundingBox()
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
@@ -1535,15 +1531,6 @@ class hklview_3d:
           if onrequest: # only unlock if requested by GetClipPlaneDistances()
             self.clipplane_msg_sem.release()
             self.mprint("ProcessBrowserMessage release clipplane_msg_sem", verbose="threadingmsg")
-        elif "ReturnBoundingBox:" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          lst = datastr.split(",")
-          flst = [float(e) for e in lst]
-          self.boundingX = flst[0]
-          self.boundingY = flst[1]
-          self.boundingZ = flst[2]
-          self.boundingbox_msg_sem.release()
-          self.mprint("ProcessBrowserMessage release boundingbox_msg_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1807,7 +1794,6 @@ Distance: %s
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
-    self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
     #self.SetAutoView()
 
 
@@ -2329,16 +2315,6 @@ in the space group %s\nwith unit cell %s\n""" \
     self.cameraPosZ = None
     self.zoom = None
     self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
-
-
-  def GetBoundingBox(self):
-    self.mprint("GetBoundingBox waiting for boundingbox_msg_sem.acquire", verbose="threadingmsg")
-    self.boundingbox_msg_sem.acquire(blocking=True, timeout=tout)
-    self.mprint("GetBoundingBox got boundingbox_msg_sem", verbose="threadingmsg")
-    self.boundingX = 0.0
-    self.boundingY = 0.0
-    self.boundingZ = 0.0
-    self.AddToBrowserMsgQueue("GetBoundingBox", "")
 
 
   def RemovePrimitives(self, reprname=""):

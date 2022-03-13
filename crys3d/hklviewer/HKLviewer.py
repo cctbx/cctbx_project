@@ -1092,7 +1092,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clipwidth'] != None)
 
     if self.currentphilstringdict['viewer.fixorientation'] is not None:
-      self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'])
+      self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'] \
+         or self.currentphilstringdict['viewer.is_parallel'] )
       self.normal_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
         not self.currentphilstringdict['viewer.is_parallel'] and \
         not self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
@@ -1100,7 +1101,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         not self.currentphilstringdict['viewer.is_parallel'] and \
         self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
       self.clipplane_normal_vector_combo.setCurrentIndex(self.currentphilstringdict['clip_plane.normal_vector'] )
-      if self.clipplane_normal_vector_combo.currentData() == float:
+      if isinstance(self.clipplane_normal_vector_combo.currentData(), float) or isinstance(self.clipplane_normal_vector_combo.currentData(), int):
         self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
 
     idx = self.clipplane_normal_vector_combo.currentIndex()

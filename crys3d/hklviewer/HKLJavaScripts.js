@@ -1181,15 +1181,6 @@ function onMessage(e)
     if (msgtype === "GetClipPlaneDistances")
       ReturnClipPlaneDistances(true);
 
-    if (msgtype === "GetBoundingBox")
-    {
-      let msg = String( [stage.viewer.boundingBoxSize.x,
-                     stage.viewer.boundingBoxSize.y,
-                     stage.viewer.boundingBoxSize.z]
-                  )
-      WebsockSendMsg('ReturnBoundingBox:\n' + msg );
-    }
-
     if (msgtype ==="JavaScriptCleanUp")
     {
       RemoveStageObjects();

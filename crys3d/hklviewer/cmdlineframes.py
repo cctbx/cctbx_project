@@ -1209,8 +1209,9 @@ class HKLViewFrame() :
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      #self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength ) )
+      # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
+      # of relfections in the GUI when orienting clip plane perpendicular to the tncs vector
+      veclength = self.viewer.scene.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       self.viewer.all_vectors = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )] + self.viewer.all_vectors
     self.viewer.all_vectors = self.uservectors + self.viewer.all_vectors
 
