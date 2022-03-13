@@ -248,8 +248,49 @@ However nothing happens to the original map because the <code>map_model_manager<
 
 <h3 class="mt-3">Shifting a new model to match an existing map_manager with shift_model_to_match_map()</h3>
 
-<p>If you have a <code>map_manager</code> and you have a new model that you want to match, use the function <code>shift_model_to_match_map(new_model)</code> which will shift the new model (in place, changing new_model) to match this map.</p>
+<p>If you have a <code>map_manager</code> and you have a new model that you want to match, use the function <code>shift_model_to_match_map(new_model)</code> which will shift the new model (in place, changing new_model) to match this map. </p>
 
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4"> When to use <code>shift_any_model_to_match</code> and when to use <code>set_model_symmetries_and_shift_cart_to_match_map</code> </h3>
+
+<p> When you work with a model and a map_model_manager, you may want to adjust the origin for the model (the reference frame that it is in) to match the origin
+of the map_model_manager.</p>
+
+<p>If you load the model into the map_model_manager, this will happen automatically.  Suppose we take the model from our boxed map_model_manager:</p>
+<pre class="codeDL"><code>m = boxed_mmm.model()  # get the model
+print(m)   # prints info about the model including origin shift
+</code></pre>
+
+<p>Now let's shift this model back to its original location (as we would have when we read in a model with the DataManager):</p>
+<pre class="codeDL"><code>shift_cart = m.shift_cart()  # current origin shift
+shift_to_apply = tuple([-x for x in shift_cart])  # opposite shift (to apply()
+m.shift_model_and_set_crystal_symmetry(shift_to_apply)  # shift the model
+print(m)  # now the origin shift is zero (original location)
+</code></pre>
+
+<p>Let's put this model into our boxed map_model_manager:</p>
+<pre class="codeDL"><code>boxed_mmm.add_model_by_id(model_id = 'model',
+    model = m)  # load the model in
+print(m)  #  automatically shifted to match the map_model_manager origin
+</code></pre>
+
+<p>We could have shifted the model without loading it into the map_model_manager if we wanted to.  We use the function:<code>shift_any_model_to_match</code>:</p>
+<p>First let's create a model with an origin shift of zero:</p>
+<pre class="codeDL"><code>m.shift_model_and_set_crystal_symmetry(shift_to_apply)  # shift the model again
+print(m)  # now the origin shift is zero (original location)
+</code></pre>
+<p>Now let's use <code>shift_any_model_to_match</code> to shift it to match the 
+<code>boxed_mmm</code> map_model_manager:</p>
+<pre class="codeDL"><code> boxed_mmm.shift_any_model_to_match(m)  # shift this model to match the map_model_manager
+print(m)  #  automatically shifted to match the map_model_manager origin
+</code></pre>
+
+
+<p>There are some situations where we we want to keep the coordinates in a model exactly the same, but specify that there is an origin shift that matches a particular map_manager.  This could happen if we use the map_data from a map_manager to create some coordinates (relative to the origin of that map) and create a model from these coordinates.  Now that model has an origin of (0,0,0) but the map_manager may have some other origin.  We just want to say that the model refers to the same origin as the map_manager.  We can use the <code>set_model_symmetries_and_shift_cart_to_match_map</code> method to do this:</p>
+<pre class="codeDL"><code>mm = boxed_mmm.map_manager()  # get a map manager
+mm.set_model_symmetries_and_shift_cart_to_match_map(m)  # set the symmetry and origin
+</code></pre>
+<p>Keep in mind that the <code>set_model_symmetries_and_shift_cart_to_match_map</code> function should rarely be used.  Most of the time you want to shift the origin and the coordinates at the same time with <code>shift_any_model_to_match</code></p>
 <!-------------------------------------------------------------------------- -->
 
 <h3 class="mt-3">Wrapping</h3>

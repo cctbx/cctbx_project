@@ -1,0 +1,265 @@
+{% extends "cctbx/header.html" %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="col-sm-9 main">
+<!-- DO NOT EDIT ANYTHING ABOVE!!!! -->
+<!----------------------- EDIT START ---------------------------->
+
+<h2><center>Helpful CCTBX and Python hints</center></h2>
+
+<p class="lead mt-4">This tutorial describes how to take advantage of features of python and of the cctbx.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">How to add the values in two tuples together</h3>
+
+<p>You might want to add the values in two tuples together:</p>
+
+<pre class="codeDL"><code>a = (1,2,3)  # a tuple of values
+b = (6,6,6) # another tuple of the same length
+</code></pre>
+
+<p>but there is no standard operation that will do this for you.  A simple solution is to use the cctbx "col" method:</p>
+<pre class="codeDL"><code>from scitbx.matrix import col  # import the col methods
+c = col(a) + col(b)  #  col objects of the same length can be added together
+d = tuple(c)  # now d is a tuple again
+print(d)   #  now we get (7,8,9)
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Using the tuple() method to display cctbx arrays</h3>
+<p>If you try to print out a cctbx array, usually you will get something that is not so useful:</p>
+<pre class="codeDL"><code>from scitbx.array_family import flex # import the flex methods
+a = flex.double((1,2,3))  # make a flex array
+print(a)  # print it  # you get something like <scitbx_array_family_flex_ext.double object at 0x7ff5803bb940>
+print(tuple(a))  # now you can see what is in it: (1.0, 2.0, 3.0)
+</code></pre>
+</p>
+
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Carrying out vector operations with the col method</h3>
+
+<p>The scitbx method "col" has many handy vector operations. Here are some ways to use them</p>
+
+<p>  Let's get the dot product of two vectors:</p>
+<pre class="codeDL"><code>from scitbx.matrix import col  # import the col methods
+a = (1,2,3)   # a tuple
+b = (5,3,9)   #  another tuple
+d = col(a).dot(col(b))  # dot product of a and b
+print(d)     # dot product is 38
+</code></pre>
+
+<p> There are other handy operators:</p>
+<pre class="codeDL"><code>from scitbx.matrix import col  # import the col methods
+a = (1,2,3)  # a tuple
+b = (5,3,9)  # another tuple
+ca = col(a)  # col object based on a
+cb = col(b)  # col object based on b
+print( ca.dot(cb))  # dot product = 38
+print( tuple(ca.cross(cb)))  # cross product = (9, 6, -7)
+</code></pre>
+<p>Note the use of tuple() to convert the cross product to a tuple.</p> 
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Using the <code>parts()</code> function to access parts of a complicated object </h3>
+
+<p>A number of low-level cctbx objects have a member function called <code>parts()</code> that returns individual flex arrays corresponding to specific parts of the overall object.  For example, <code>parts()</code> allows access to the real and imaginary parts of a complex array:</p>
+
+<pre class="codeDL"><code>complex_array = flex.complex_double() # a complex double array
+complex_array.append((1+2j))   # append the complex number (1+2i)
+complex_array.append((23-6j))   # append the complex number (23-6i)
+a,b = complex_array.parts()  # pointers a and b to the real and imaginary parts
+print(list(complex_array))  # print out the array: [(1+2j), (23-6j)]
+print(list(a), list(b))  # prints ([1.0, 23.0], [2.0, -6.0])
+</code></pre>
+<p>Let’s set up a map_model_manager object that we can use as an example..:</p>
+<pre class="codeDL"><code>from iotbx.map_model_manager import map_model_manager # load map_model_manager
+mmm=map_model_manager() # get an initialized instance of the map_model_manager
+mmm.generate_map()# get a model from a small library model and calculate a map
+map_coeffs = mmm.map_manager().map_as_fourier_coefficients() # get map coeffs
+complex_double_array = flex.complex_double()  # a complex double array
+indices = map_coeffs.indices()  #  array of indices
+sites_cart = mmm.model().get_sites_cart()  # coordinates
+</code></pre>
+
+<p>Some cctbx objects with a <code>parts()</code> member function include:<p>
+<ul>
+<li><code>a,b = complex_double_array.parts()</code>  # real and imaginary arrays
+<li><code>x,y,z = sites_cart.parts()</code> # individual arrays for x, y, z
+<li><code>x,y,z = flex.vec3_double().parts()</code> # any vec3_double_array 
+</ul>
+
+<p> Some other cctbx objects have specific methods to get individual parts:<p>
+<ul>
+<li><code>phases = map_coeffs.phases(deg=True)</code>  # phases
+<li><code>amplitudes = map_coeffs.amplitudes()</code>  # amplitides 
+<li><code>indices = map_coeffs.indices()</code>  # indices of Fourier coeffs
+<li><code>h,k,l = indices.as_vec3_double().parts()</code> # individual arrays for indices h,k,l
+<li><code>fourier_data = map_coeffs.data()</code>  # Fourier coefficients (complex)
+</ul>
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Always return a <code>group_args</code> object if your method returns more than one item</h3>
+
+<p>If you have a method that returns a couple items, you might be tempted to just return them by themselves:</p>
+<pre class="codeDL"><code>def return_a_and_b(a,b): # simple function
+  return a,b   # just return a couple values
+</code></pre>
+
+<p>Don't be tempted. Return instead a <code>group_args</code> object:</p>
+<pre class="codeDL"><code>def return_a_and_b(a,b): # simple function
+  from libtbx import group_args   #  import group_args
+  result = group_args(              #
+    group_args_type = 'just returning a and b',  # a name for this group_args
+    a = a,   #   can refer to a as result.a
+    b = b)   #   and to b as result.b
+  return result  #
+</code></pre>
+
+<p>Why?  Because you are going to add a third, a fourth, a tenth...return item and then it is a mess if you return them as a list.  Return a group_args object and they are all packaged together nicely and they even have a label:</p>
+
+<pre class="codeDL"><code>result = return_a_and_b(1,2)   # call our function
+print(result)   # prints out value of a and b and the label
+print(result.a)   # print out value of a
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Use flex arrays to speed up operations on elements of an array</h3>
+
+<p>Flex arrays operate using optimixed C++ code, while Python loops are run without much optimization and take as much as 100 times as long.  Try to take advantage of flex arrays whenever you can.  Here is an example of a little method to find the furthest distance from the center of a set of points:</p>
+<pre class="codeDL"><code>def furthest(sites_cart):  # furthest from center
+  center = sites_cart.mean()   # flex method to get mean of vec3_double() array
+  diffs = sites_cart - center  # subtract a vector from a vec3_double() array
+  norms = diffs.norms()        # get an array of lengths of the diffs array
+  return norms.min_max_mean().max  # get maximum value
+
+print(furthest(sites_cart))  # print the result
+</code></pre>
+<p>Note that this carries out all the little summations and squaring in C++, not Python, so that it is very fast.
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Using the min_distance_between_any_pair_with_id method to get the closest pair of atoms in two sets of coordinates</h3>
+
+<p>You might have two sets of coordinates (maybe two sets of CA positions) and you want to identify the closet pair taking one from each set of coordinates. There is a handy function for this:</p>
+<pre class="codeDL"><code>from scitbx.array_family import flex # import the flex methods
+a = flex.vec3_double(((1,1,1),(2,2,2), (3,3,3)))  # make a flex array
+b = flex.vec3_double(((3,2,2),(1.1,1.2,1.2),(3,2,2), (4,3,3)))  # make a flex array
+dist, i, j = a.min_distance_between_any_pair_with_id(b)  # find closest pair
+print(dist, i, j)  # prints  (0.29999999999999993, 0, 1)   
+</code></pre>
+<p>...the first element of array a is close to the second (index 1) of array b</p>
+
+<p>Then you might want to do something with these two coordinates that are close:</p>
+print(a[i], b[j])  # prints  ((1.0, 1.0, 1.0), (1.1, 1.2, 1.2))
+</code></pre>
+
+<!-- ----------------------------------------------------------------------- -->
+<h3 class="mt-4">Indexing python and cctbx arrays</h3>
+
+<p>You often will want to extract one element from a python or cctbx array.  This section gives some helpful hints on doing this. Python and cctbx work the same way for arrays. Suppose we have a very small array:</p>
+
+<pre class="codeDL"><code>a = [5,6,7]  # a list of 3 values
+</code></pre>
+
+<p>Now we might want the first element of this array:</p>
+<pre class="codeDL"><code>print(a[0])  # prints 5 (indexing starts at zero)
+</code></pre>
+
+<p>Or the third element of this array:</p>
+<pre class="codeDL"><code>print(a[2])  # prints 7
+</code></pre>
+
+<p>You can also get the third element of this array by counting backwards from the end, where the "-1" index is the last one:</p>
+<pre class="codeDL"><code>print(a[-1])  # prints 7
+</code></pre>
+<p>The way this works is that the index "-1" is first added to the number of elements in the array and then that is the new index:</p>
+<pre class="codeDL"><code>index = -1
+index_to_use = len(a) + index   # this is done in the background
+print( index, index_to_use, a[index],a[index_to_use]) # prints (-1, 2, 7, 7)
+</code></pre>
+
+
+<p>As you would expect, you can count backwards to the first element in the array:</p>
+<pre class="codeDL"><code>print(a[-3])  # prints 5
+</code></pre>
+
+<p>What happens if you count back too far (taking the fourth from the end)?  You get an error:</p>
+<pre class="codeDL"><code>print(a[-4])  # prints IndexError: list index out of range
+</code></pre>
+
+<p>Hint:  if you use negative indices, always think of them as their values plus the length of the array.  Any resulting value less than zero or equal to or larger than the length of the array is not allowed.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-4">Slicing python and cctbx arrays</h3>
+
+<p>You often will also want to extract more than one element from a python or cctbx array.  This can be non-intuitive in some situations. This section gives some helpful hints on doing this. Python and cctbx work the same way for arrays. Suppose we have a very small array:</p>
+
+<pre class="codeDL"><code>a = [5,6,7]  # a list of 3 values
+</code></pre>
+
+<p>Now we might want the first two elements of this array. You get them with a slice:</p>
+<pre class="codeDL"><code>print(a[:2])  # prints [5,6]
+</code></pre>
+
+<p>... or all the elements after the first two elements of this array:</p>
+<pre class="codeDL"><code>print(a[2:])  # prints [7]
+</code></pre>
+<p>Note that you can conveniently split up the array with the first k elements in one new array and the remaining elements in another:</p>
+<pre class="codeDL"><code>k = 2
+print(a[:k],a[k:])  # prints ([5, 6], [7])
+</code></pre>
+
+<p>Note that if you slice starting at element k:</p>
+<pre class="codeDL"><code>print( a[k:])  # prints [7]
+</code></pre>
+<p> the resulting array starts with the same value you would get if you asked for element k:</p>
+<pre class="codeDL"><code>print( a[k])  # prints 7
+</code></pre>
+
+<p>You can ask for a range of indices as well:</p>
+<pre class="codeDL"><code>print( a[k:k+1])  # prints [7]
+</code></pre>
+
+<p>This can lead to some non-obvious behaviour if you are using negative indices to count backwards from the end of the array.  Let's ask for a slice starting at index -1:</p>
+<pre class="codeDL"><code>print( a[-1:])  # prints [7]
+</code></pre>
+<p>You get the last value of the original array.   Now let's ask for a slice from -1 to 1.  You might think that this would give you the first element of the array, but it gives you an empty array:</p>
+<pre class="codeDL"><code>print( a[-1:1])  # prints []
+</code></pre>
+<p>Think of negative indices as the index plus the length of the array. So the -1 value is converted to the length of the array (3) plus -1, or 2.  The expression we just used is equivalent to:</p>
+<pre class="codeDL"><code>print( a[2:1])  # prints []
+</code></pre>
+<p>which is an empty array because there are no elements that are after the first two elements in the array and in the first one element of the array.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-4">Using the <code>approx_equal()</code> function to compare numbers or arrays</h3>
+
+<p>The <code>approx_equal()</code> function is a very handy tool for comparing results of calculations. You can use it in your tests to make sure that the results are about the same as you expect, or in regular code to compare numbers or arrays. Here are some examples:</p>
+
+<pre class="codeDL"><code>from libtbx.test_utils import approx_equal # import it
+print( approx_equal(1,1.001))  # prints False (not same within machine precision)
+print( approx_equal(1,1.+1.e-50))  # prints True (within machine precision)
+print( approx_equal(1,1.001, eps = 0.1)) # prints True (within 0.1)
+a=flex.double((1,2,3))  #  set up an array
+b = a + 0.0001   # another array that is just a little different
+print( approx_equal(a,b) )  #prints False and lists differences
+print(  approx_equal(a,b, eps=0.001))  # prints True (all elements within 0.001)
+</code></pre>
+
+<!----------------------- EDIT END ---------------------------->
+<!-- DO NOT EDIT ANYTHING BELOW!!!! -->
+</div> <!-- end col-sm-9 -->
+
+<!-- automatic table of contents
+     located in the sidebar; will move to the top on a small screen -->
+<div class="col-sm-3 mt-5">
+  <nav id="toc" data-toggle="toc"></nav>
+</div> <!-- end col-sm-3 -->
+
+
+{% endblock %}

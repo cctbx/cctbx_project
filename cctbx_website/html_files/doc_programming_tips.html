@@ -211,7 +211,7 @@ print(map_coeffs.data()[0])  # prints (10+6j)
 
 <p>The contents of <code>phases.data()</code> have been calculated from map_coeffs.data() and changing the information in phases.data() has no effect on the values in map_coeffs.data().</p>
 
-<p>A final example is a comparison of the member functions <code>as_1d()</code> and <code>as_float()</code> for a 3D flex array. The <code>as_1d()</code> function returns a new object in which the data is just a pointer to the original. The <code>as_float()</code> function that seems similar has a different behavior: it performs a calculation and returns a new object in which the data are completely separate from the original data:</p>
+<p>A final example is a comparison of the member functions <code>as_1d()</code> and <code>as_float()</code> for a 3D flex array. The <code>as_1d()</code> function returns a new object in which the data is just a pointer to the original. The <code>as_float()</code> function that seems similar but which has a different behavior: it performs a calculation and returns a new object in which the data are completely separate from the original data:</p>
 
 <pre class="codeDL"><code>map_data = mmm.map_manager().map_data()  # 3D flex.double array
 map_data_as_1d = map_data.as_1d()  # new object, data are shared
@@ -272,6 +272,27 @@ print(map_data_deep_copy[27])  # prints original value of -0.0131240713008
 </code></pre>
 
 <p>Note that making a deep_copy uses as much new memory as the original array, while using a pointer uses almost no memory. Therefore you want to make a deep_copy only when it is necessary.</p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+<h3 class="mt-5">Do not use <code>if (not x)</code> or <code>if (x)</code> expressions to test whether x is defined.  Use <code>if (x is not None)</code></h3>
+
+<p>In many cases you can get away with saying:</p>
+<pre class="codeDL"><code>x = None
+if (not x):  # don't use this
+  print("""not x can be 0, None, False, "", [], {}, (),...""")   # happens if x is (0, None, False, "", [], {}, (), ...)
+</code></pre>
+<p>but you should not use this construction because it is not clear whether you really meant to do something if x is zero, or if you meant to do it if x is None, or if you meant to do it if any of these occur. </p>
+<p>Instead be clear and say:</p>
+<pre class="codeDL"><code>if (x is None):  # Use this instead
+  print("x is None")   # happens if x is None (only)
+</code></pre>
+
+<p>Similarly be clear and say:</p>
+<pre class="codeDL"><code>if (x is not None):  # Use this too
+  print("x is not None")   # happens unless x is None (only)
+</code></pre>
+
 
 <!-- ----------------------------------------------------------------------- -->
 

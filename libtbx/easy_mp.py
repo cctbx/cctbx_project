@@ -854,6 +854,7 @@ Parameters:
   nproc:  number of processors
   run_in_batches: If None or True, run nproc jobs, grouping as necessary
   log:  optional log stream
+  verbose:  optional control of log stream
   any other kw items:  passed directly to function
 
 Sample use:
@@ -863,6 +864,7 @@ Sample use:
     nproc = nproc,        # number of processors
     other_kw1 = other_kw1,  # any other keywords used by run_something
     other_kw2 = other_kw2,  # any other keywords used by run_something
+    verbose = False,  # normal log stream
     log = log,            # pass log stream if used
      )
 
@@ -910,6 +912,7 @@ def run_parallel(): # run in parallel
   nproc = kw.get('nproc',None)
   run_info = kw.get('run_info',None)
   log = kw.get('log',None)
+  verbose = kw.get('verbose',None)
 
   if function is not None: del kw['function']
   if run_in_batches is not None: del kw['run_in_batches']
@@ -917,7 +920,8 @@ def run_parallel(): # run in parallel
   if nproc is not None: del kw['nproc']
   if log is not None: del kw['log']
   if run_info is not None: del kw['run_info']
-
+  if 'verbose' in list(kw.keys()):
+    del kw['verbose'] # never passed to function
 
   if function is not None and iteration_list is not None and nproc is not None:
     n_tot = len(list(iteration_list))
@@ -954,7 +958,7 @@ def run_parallel(): # run in parallel
     from libtbx.easy_mp import run_jobs_with_large_fixed_objects
     runs_carried_out = run_jobs_with_large_fixed_objects(
       nproc = nproc,
-      verbose = False,
+      verbose = verbose,
       kw_dict = kw_dict,
       run_info_list = runs_to_carry_out,
       job_to_run = simple_parallel,
@@ -1059,7 +1063,6 @@ def run_jobs_with_large_fixed_objects(
     local_log = log
   else:
     local_log = None
-
   from libtbx.easy_mp import run_parallel
   result_run_info_list = run_parallel(
      method = multiprocessing_method,
