@@ -41,7 +41,7 @@
 print(result_list)  # prints list of values  [10, 14, 18]
 </code></pre>
 
-<p>Now let's convert the <code>run_one_by_one</code> method to run with multiprocessing. 
+<p>Now let's convert the <code>run_one_by_one</code> method to run with multiprocessing.
 </p><pre class="codeDL"><code>def run_in_parallel(iteration_list, nproc = 4): #
   from libtbx.easy_mp import simple_parallel  # import the simple_parallel code
   result_list = simple_parallel(      # run in parallel
@@ -67,7 +67,7 @@ print(result_list)  # prints list of values  [10, 14, 18]
 <pre class="codeDL"><code>import sys        # import sys
 from __future__ import print_function  # so we can use print function easily
 from libtbx import group_args #  group_args function we will use to return items
-def run_advanced(info, big_object = None,  # 
+def run_advanced(info, big_object = None,  #
      log = sys.stdout):   #  we can specify the log in this method if we want
   output_value = info.value * 2 + big_object[info.index]   # our result
   print("Value: %s Index: %s Output value: %s" %(info.value, info.index, output_value), file = log)
@@ -101,7 +101,7 @@ big_object = [0,1,2,3]  # just some supposedly big object
      log = sys.stdout): # run in usual way
   result_list = []   # initialize
   for i in range(len(iteration_list)):     #  iterate through jobs
-    result = run_advanced(iteration_list[i], 
+    result = run_advanced(iteration_list[i],
       big_object = big_object,
       log = log)  # run job
     result_list.append(result)   #

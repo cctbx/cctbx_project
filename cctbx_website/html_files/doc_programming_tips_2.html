@@ -61,7 +61,7 @@ cb = col(b)  # col object based on b
 print( ca.dot(cb))  # dot product = 38
 print( tuple(ca.cross(cb)))  # cross product = (9, 6, -7)
 </code></pre>
-<p>Note the use of tuple() to convert the cross product to a tuple.</p> 
+<p>Note the use of tuple() to convert the cross product to a tuple.</p>
 
 <!-- ----------------------------------------------------------------------- -->
 <h3 class="mt-4">Using the <code>parts()</code> function to access parts of a complicated object </h3>
@@ -89,13 +89,13 @@ sites_cart = mmm.model().get_sites_cart()  # coordinates
 <ul>
 <li><code>a,b = complex_double_array.parts()</code>  # real and imaginary arrays
 <li><code>x,y,z = sites_cart.parts()</code> # individual arrays for x, y, z
-<li><code>x,y,z = flex.vec3_double().parts()</code> # any vec3_double_array 
+<li><code>x,y,z = flex.vec3_double().parts()</code> # any vec3_double_array
 </ul>
 
 <p> Some other cctbx objects have specific methods to get individual parts:<p>
 <ul>
 <li><code>phases = map_coeffs.phases(deg=True)</code>  # phases
-<li><code>amplitudes = map_coeffs.amplitudes()</code>  # amplitides 
+<li><code>amplitudes = map_coeffs.amplitudes()</code>  # amplitides
 <li><code>indices = map_coeffs.indices()</code>  # indices of Fourier coeffs
 <li><code>h,k,l = indices.as_vec3_double().parts()</code> # individual arrays for indices h,k,l
 <li><code>fourier_data = map_coeffs.data()</code>  # Fourier coefficients (complex)
@@ -148,7 +148,7 @@ print(furthest(sites_cart))  # print the result
 a = flex.vec3_double(((1,1,1),(2,2,2), (3,3,3)))  # make a flex array
 b = flex.vec3_double(((3,2,2),(1.1,1.2,1.2),(3,2,2), (4,3,3)))  # make a flex array
 dist, i, j = a.min_distance_between_any_pair_with_id(b)  # find closest pair
-print(dist, i, j)  # prints  (0.29999999999999993, 0, 1)   
+print(dist, i, j)  # prints  (0.29999999999999993, 0, 1)
 </code></pre>
 <p>...the first element of array a is close to the second (index 1) of array b</p>
 
