@@ -501,7 +501,7 @@ class hklview_3d:
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation in the browser
       self.AddToBrowserMsgQueue("PrintInformation", msg)
-      self.make_clip_plane(hkldist, clipwidth)
+      #self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
@@ -518,6 +518,12 @@ class hklview_3d:
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
+      #time.sleep(20)
+      if not self.isnewfile:
+        self.make_clip_plane(hkldist, clipwidth)
+      if self.isnewfile:
+        self.SetAutoView()
+      self.isnewfile = False
 
 
   def set_scene(self):
@@ -1461,12 +1467,17 @@ class hklview_3d:
       self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
+      self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+      self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
+      self.clipplane_msg_sem.release()
+      self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
-      if self.isnewfile:
-        self.SetAutoView()
-      self.isnewfile = False
+      #if self.isnewfile:
+      #  self.SetAutoView()
+      #self.isnewfile = False
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
@@ -1592,7 +1603,7 @@ class hklview_3d:
                           )
     )
     cameratranslation = (flst[12], flst[13], flst[14])
-    self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose=3)
+    self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose="orientmsg")
     alllst = roundoff(flst)
     self.mprint("""OrientationMatrix matrix:
   %s,  %s,  %s,  %s
@@ -1600,7 +1611,7 @@ class hklview_3d:
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
 Distance: %s
-    """ %tuple(alllst), verbose=4)
+    """ %tuple(alllst), verbose="orientmsg")
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
       self.mprint("Negative orientation matrix determinant!!", verbose=1)
@@ -1608,7 +1619,7 @@ Distance: %s
       return self.cameraPosZ, self.currentRotmx, self.cameratranslation
     else:
       cameradist = math.pow(rotdet, 1.0/3.0)
-    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
+    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose="orientmsg")
     currentRotmx = matrix.identity(3)
     if cameradist > 0.0:
       currentRotmx = ScaleRotMx/cameradist
@@ -1633,7 +1644,7 @@ Distance: %s
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
-    """ %rotlst, verbose=3)
+    """ %rotlst, verbose="orientmsg")
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.fractionalization_matrix() )
     InvMx = OrtMx.inverse()
@@ -2252,7 +2263,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.clipplane_msg_sem.release()
     self.mprint("make_clip_plane release clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
-    self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s" %(clipNear, clipFar, -self.cameraPosZ), verbose=1)
+    self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 
 
   def set_camera_type(self):

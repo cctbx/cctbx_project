@@ -29,7 +29,7 @@ from .qt import QColor, QFont, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 from . import HKLviewerGui
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import HKLviewerGui, PresetButtons
+  from crys3d.hklview import HKLviewerGui
   from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
                                      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
