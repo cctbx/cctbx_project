@@ -63,6 +63,8 @@ reference_reflection = 20
 bandpass = None
   .type = float
   .help = Full width
+show_plots=True
+  .type = bool
 """)
 
 def run(args):
@@ -189,17 +191,18 @@ def run(args):
     (intersecting_rays.count(True), len(intersecting_rays), params.d_min, d_max, intersecting_rays.count(True)*100/len(intersecting_rays)))
 
   resolutions[0].set_selected(resolutions[0] > 50, 50)
-  plt.imshow(resolutions[0].as_numpy_array(), cmap='gray')
-  plt.colorbar()
+  if params.show_plots:
+    plt.imshow(resolutions[0].as_numpy_array(), cmap='gray')
+    plt.colorbar()
 
-  plt.figure()
-  r = resolutions[0]
-  sel = (r.as_1d()>=params.d_min) & (r.as_1d() <= d_max)
-  r.as_1d().set_selected(~sel, 0)
-  plt.imshow(r.as_numpy_array(), cmap='gray')
-  plt.colorbar()
+    plt.figure()
+    r = resolutions[0]
+    sel = (r.as_1d()>=params.d_min) & (r.as_1d() <= d_max)
+    r.as_1d().set_selected(~sel, 0)
+    plt.imshow(r.as_numpy_array(), cmap='gray')
+    plt.colorbar()
 
-  plt.show()
+    plt.show()
 
 if __name__ == "__main__":
   run(sys.argv[1:])
