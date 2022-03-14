@@ -290,7 +290,7 @@ class map_model_manager(object):
         set_model_log_to_null = False,
         ) # keep the log
       mmmn._model = None # throw it away just wanted to check it
- 
+
     if model:  # Now add model for real.
       mmmn.add_model(model,
         set_model_log_to_null = False,
