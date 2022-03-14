@@ -286,6 +286,8 @@ class map_model_manager(object):
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
     mmmn.add_map_manager(any_map_manager)
     for m in ([model] if model else []) + extra_model_list:
+      if mmmn._model:
+        mmmn._model = None # we are just using this to set model symmetry
       mmmn.add_model(m,
         set_model_log_to_null = False,
         ) # keep the log
