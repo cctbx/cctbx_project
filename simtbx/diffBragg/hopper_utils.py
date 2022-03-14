@@ -714,7 +714,7 @@ class DataModeler:
                         beta = betas.ucell_b
                     else:
                         cent = centers.ucell_c
-                        beta = centers.ucell_c
+                        beta = betas.ucell_c
                     assert cent is not None, "Set the center restraints properly!"
                     assert beta is not None
             else:
@@ -730,10 +730,10 @@ class DataModeler:
                         beta = betas.ucell_alpha
                     elif name=='beta_rad':
                         cent = centers.ucell_beta
-                        beta = centers.ucell_beta
+                        beta = betas.ucell_beta
                     else:
                         cent = centers.ucell_gamma
-                        beta = centers.ucell_beta
+                        beta = betas.ucell_gamma
                     assert cent is not None
                     assert beta is not None
                     cent = cent*np.pi / 180.
@@ -1205,7 +1205,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     if params.use_restraints:
         # scale factor restraint
         for name in SIM.P:
-            if name.startswith("roi_scale"):
+            if name.startswith("scale_roi"):
                 continue  # No restraints for the per-spot roi scale factors
             p = SIM.P[name]
             val = p.get_restraint_val(x[p.xpos])
