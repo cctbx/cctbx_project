@@ -80,17 +80,20 @@ class NBbeam(object):
 
     beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
 
-    # dont think this matters, but set the nominal beam to have the average wavelength
+    # set the nominal beam to have the average wavelength and the total flux
     num = 0
     den = 0
+    flux = 0
     for b in self.xray_beams:
       wave = b.get_wavelength()
       wt = b.get_flux()
       num += wave * wt
       den += wt
+      flux += b.get_flux()
     ave_wave = num / den
 
     beam.set_wavelength(ave_wave * 1e10)
+    beam.set_flux(flux)
     return beam
 
   @property
