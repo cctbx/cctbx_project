@@ -260,6 +260,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
     if has_xyzcal:
         new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+    per_refl_scales = flex.double(len(new_refls),1)
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan,np.nan,np.nan))
     h5_roi_id = flex.int(len(Modeler.refls), -1)
     with h5py.File(img_path, "w") as h5:
@@ -291,6 +292,8 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
                     ref_idx = Modeler.refls_idx[i_roi]
                     h5_roi_id[ref_idx] = i_roi
                     new_xycalcs[ref_idx] = com
+                    scale_p = Modeler.SIM.P["scale_roi%d" % i_roi]
+                    per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
 
         h5.create_dataset("rois", data=Modeler.rois)
         h5.create_dataset("pids", data=Modeler.pids)
@@ -300,6 +303,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
             h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
 
     new_refls["xyzcal.px"] = new_xycalcs
+    new_refls["scale_factor"] = per_refl_scales
     new_refls["h5_roi_idx"] = h5_roi_id
     if Modeler.params.filter_unpredicted_refls_in_output:
         sel = [not np.isnan(x) for x,y,z in new_xycalcs]
@@ -439,6 +443,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_exp_list.append(expt)
     new_exp_list.as_file(opt_exp_path)
     LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
+    _,flux_vals = zip(*SIM.beam.spectrum)
 
     df = single_expt_pandas(xtal_scale=scale, Amat=Amat,
         ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
@@ -455,7 +460,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         lam0_lam1 = (lam0, lam1),
         spec_file=params.simulator.spectrum.filename,
         spec_stride=params.simulator.spectrum.stride,
-        flux=SIM.D.flux, beamsize_mm=SIM.beam.size_mm,
+        flux=sum(flux_vals), beamsize_mm=SIM.beam.size_mm,
         orig_exp_name=orig_exp_name, opt_exp_name=opt_exp_path,
         spec_from_imageset=params.spectrum_from_imageset,
         oversample=params.simulator.oversample,
