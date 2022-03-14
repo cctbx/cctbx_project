@@ -198,7 +198,6 @@ class map_model_manager(object):
             m, map_manager = any_map_manager)
         self.shift_any_model_to_match(m, map_manager = any_map_manager)
 
-
     if any_map_manager and ignore_symmetry_conflicts:
       # Take all symmetry information from
       #  any_map_manager and apply it to everything
@@ -286,8 +285,8 @@ class map_model_manager(object):
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
     mmmn.add_map_manager(any_map_manager)
-    if model:
-      mmmn.add_model(model,
+    for m in ([model] if model else []) + extra_model_list:
+      mmmn.add_model(m,
         set_model_log_to_null = False,
         ) # keep the log
     if ncs_object:
