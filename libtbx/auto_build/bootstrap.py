@@ -1917,6 +1917,9 @@ environment exists in or is defined by {conda_env}.
     self.add_command('mmtbx.rebuild_rotarama_cache',
                      name="rebuild rotarama",
     )
+    self.add_command('mmtbx.rebuild_cablam_cache',
+                     name="rebuild cablam",
+    )
 
   def add_tests(self):
     """Run the unit tests."""

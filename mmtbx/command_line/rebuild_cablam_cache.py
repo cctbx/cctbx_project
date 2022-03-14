@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 from libtbx import easy_pickle, dlite
-from libtbx.utils import Sorry
 from libtbx.utils import format_cpu_times
 from libtbx.str_utils import show_string
 from mmtbx.rotamer.n_dim_table import NDimTable
@@ -37,10 +36,8 @@ def run():
       cablam_dir = libtbx.env.find_in_repositories(
         os.path.join('ext_ref_files','cablam_data'))
       if cablam_dir is None:
-        raise Sorry("""\
-Cannot find chem_data/cablam_data directory.
-  CaBLAM contours not rebuilt.
-""")
+        print('  Rebuilding CaBLAM contours skipped. Needs chem_data/cablam_data directory.')
+        return
   #---end find cablam_data_dir---
   rebuild_pickle_files(
     data_dir=cablam_dir,
