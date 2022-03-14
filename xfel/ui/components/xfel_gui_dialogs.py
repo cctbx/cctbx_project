@@ -177,6 +177,7 @@ class SettingsDialog(BaseDialog):
     #self.btn_mp = wx.Button(self, label='Multiprocessing...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
+    self.btn_OK.SetDefault()
     self.btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
 
     button_sizer = wx.FlexGridSizer(1, 4, 0, 10)
@@ -2918,7 +2919,7 @@ class TaskDialog(BaseDialog):
                                  ctrl_size=(150, -1),
                                  choices=self.all_trial_numbers)
 
-    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+    self.phil_box = gctr.RichTextCtrl(self, style=wx.VSCROLL, size=(550, 400))
 
     self.main_sizer.Add(self.type,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,

@@ -44,6 +44,7 @@ class MainApp(wx.App):
         self.frame.SetTitle('CCTBX.XFEL {} {}'.format(self.exp, self.exp_tag))
         self.frame.Show(True)
         self.SetTopWindow(self.frame)
+        self.frame.onTabChange(None)
         #self.frame.start_run_sentinel()
         #self.frame.start_job_monitor()
         #self.frame.start_prg_sentinel()

@@ -11,6 +11,10 @@ dry_run = False
   .type = bool
   .help = If True, the program will create the trial directory but not submit the job, \
           and will show the command that would have been executed.
+monitoring_mode = False
+  .type = bool
+  .help = If True, will hide the submit jobs buttons and remove tabs for configuring \
+          Trials and Datasets.
 facility {
   name = lcls *standalone
     .type = choice

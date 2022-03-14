@@ -1061,39 +1061,39 @@ class MainWindow(wx.Frame):
                        shortHelp='Quit',
                        longHelp='Exit CCTBX.XFEL')
     self.toolbar.AddSeparator()
-    self.tb_btn_watch_new_runs = self.toolbar.AddTool(wx.ID_ANY,
-                                 label='Watch for new runs',
-                                 bitmap=wx.Bitmap('{}/32x32/quick_restart.png'.format(icons)),
-                                 bmpDisabled=wx.NullBitmap,
-                                 shortHelp='Watch for new runs',
-                                 longHelp='Watch for new runs')
-    self.tb_btn_auto_submit = self.toolbar.AddTool(wx.ID_ANY,
-                              label='Auto-submit jobs',
-                              bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
-                              bmpDisabled=wx.NullBitmap,
-                              shortHelp='Auto-submit jobs',
-                              longHelp='Auto-submit all pending jobs')
-    self.toolbar.AddSeparator()
-    #self.tb_btn_calibrate = self.toolbar.AddTool(wx.ID_ANY,
-    #                    label='Calibration',
-    #                    bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
-    #                    bmpDisabled=wx.NullBitmap,
-    #                    shortHelp='Calibration',
-    #                    longHelp='Detector geometry calibration')
-    #self.toolbar.AddSeparator()
-    self.tb_btn_settings = self.toolbar.AddTool(wx.ID_ANY,
-                        label='Settings',
-                        bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
-                        bmpDisabled=wx.NullBitmap,
-                        shortHelp='Settings',
-                        longHelp='Database, user and experiment settings')
-    self.tb_btn_zoom = self.toolbar.AddTool(wx.ID_ANY,
+    if not self.params.monitoring_mode:
+      self.tb_btn_watch_new_runs = self.toolbar.AddTool(wx.ID_ANY,
+                                   label='Watch for new runs',
+                                   bitmap=wx.Bitmap('{}/32x32/quick_restart.png'.format(icons)),
+                                   bmpDisabled=wx.NullBitmap,
+                                   shortHelp='Watch for new runs',
+                                   longHelp='Watch for new runs')
+      self.tb_btn_auto_submit = self.toolbar.AddTool(wx.ID_ANY,
+                                label='Auto-submit jobs',
+                                bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
+                                bmpDisabled=wx.NullBitmap,
+                                shortHelp='Auto-submit jobs',
+                                longHelp='Auto-submit all pending jobs')
+      self.toolbar.AddSeparator()
+      #self.tb_btn_calibrate = self.toolbar.AddTool(wx.ID_ANY,
+      #                    label='Calibration',
+      #                    bitmap=wx.Bitmap('{}/32x32/calib.png'.format(icons)),
+      #                    bmpDisabled=wx.NullBitmap,
+      #                    shortHelp='Calibration',
+      #                    longHelp='Detector geometry calibration')
+      #self.toolbar.AddSeparator()
+      self.tb_btn_settings = self.toolbar.AddTool(wx.ID_ANY,
+                          label='Settings',
+                          bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
+                          bmpDisabled=wx.NullBitmap,
+                          shortHelp='Settings',
+                          longHelp='Database, user and experiment settings')
+    self.tb_btn_zoom = self.toolbar.AddCheckTool(wx.ID_ANY,
                                                  label='Large text',
-                                                 bitmap=wx.Bitmap('{}/32x32/search.png'.format(icons)),
+                                                 bitmap1=wx.Bitmap('{}/32x32/search.png'.format(icons)),
                                                  bmpDisabled=wx.NullBitmap,
                                                  shortHelp='Change text size',
                                                  longHelp='Change text size for plots')
-
     self.toolbar.Realize()
 
     # Status bar
@@ -1124,10 +1124,11 @@ class MainWindow(wx.Frame):
 
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
-    self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
-    self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
-    #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
-    self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
+    if not self.params.monitoring_mode:
+      self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
+      self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
+      #self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
+      self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
               self.run_window.main_nbook)
@@ -1143,9 +1144,10 @@ class MainWindow(wx.Frame):
     return True
 
   def stop_sentinels(self):
-    self.stop_run_sentinel()
-    self.stop_job_sentinel()
-    self.stop_job_monitor()
+    if not self.params.monitoring_mode:
+      self.stop_run_sentinel()
+      self.stop_job_sentinel()
+      self.stop_job_monitor()
     #self.stop_spotfinder_sentinel()
     self.stop_runstats_sentinel()
     self.stop_unitcell_sentinel()
@@ -1331,7 +1333,7 @@ class MainWindow(wx.Frame):
     elif name == self.run_window.trials_tab.name:
       self.run_window.trials_tab.refresh_trials()
     elif name == self.run_window.runstats_tab.name:
-      if self.job_monitor is None or not self.job_monitor.active:
+      if not self.params.monitoring_mode and (self.job_monitor is None or not self.job_monitor.active):
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
       if self.run_window.runstats_tab.auto_update and (self.runstats_sentinel is None or not self.runstats_sentinel.active):
@@ -1366,7 +1368,7 @@ class MainWindow(wx.Frame):
     #    self.stop_spotfinder_sentinel(block = False)
     #    self.run_window.spotfinder_light.change_status('off')
     elif name == self.run_window.runstats_tab.name:
-      if self.job_monitor.active:
+      if not self.params.monitoring_mode and self.job_monitor.active:
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
       if self.runstats_sentinel.active:
@@ -1441,6 +1443,16 @@ class RunWindow(wx.Panel):
     main_sizer = wx.BoxSizer(wx.VERTICAL)
     main_sizer.Add(self.main_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
     self.SetSizer(main_sizer)
+
+    if self.parent.params.monitoring_mode:
+      self.runs_tab.Hide()
+      self.trials_tab.Hide()
+      self.jobs_tab.Hide()
+      self.datasets_tab.Hide()
+      self.run_light.Hide()
+      self.job_light.Hide()
+      self.jmn_light.Hide()
+
 
 
 # --------------------------------- UI Tabs ---------------------------------- #
