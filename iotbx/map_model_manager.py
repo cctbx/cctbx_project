@@ -285,10 +285,14 @@ class map_model_manager(object):
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
     mmmn.add_map_manager(any_map_manager)
-    for m in ([model] if model else []) + extra_model_list:
-      if mmmn._model:
-        mmmn._model = None # we are just using this to set model symmetry
-      mmmn.add_model(m,
+    for m in extra_model_list: # Check all extra models
+      mmmn.add_model(m.deep_copy(),
+        set_model_log_to_null = False,
+        ) # keep the log
+      mmmn._model = None # throw it away just wanted to check it
+ 
+    if model:  # Now add model for real.
+      mmmn.add_model(model,
         set_model_log_to_null = False,
         ) # keep the log
     if ncs_object:
@@ -326,7 +330,7 @@ class map_model_manager(object):
       if m and (not m is any_map_manager):
         m.shift_origin()
 
-    # Shift origins of all the extra models:
+    # Shift origins of all the extra models if not already done:
     for m in extra_model_list:
       m.shift_model_and_set_crystal_symmetry(
           shift_cart=any_map_manager.shift_cart(),
