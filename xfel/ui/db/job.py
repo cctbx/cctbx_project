@@ -155,6 +155,19 @@ class IndexingJob(Job):
         trial_params.format.file_format = image_format
         trial_params.format.cbf.mode = mode
 
+      if hasattr(trial_params.indexing.stills, 'known_orientations') and \
+         len(trial_params.indexing.stills.known_orientations) == 1:
+        try:
+          ko_trial, ko_rungroup = trial_params.indexing.stills.known_orientations[0].split('_')
+          ko_trial = self.app.get_trial(trial_number=int(ko_trial))
+          ko_rungroup = self.app.get_rungroup(int(ko_rungroup.lstrip('rg')))
+        except (IndexError, ValueError):
+          pass
+        else:
+          ko_run_path = get_run_path(self.app.params.output_folder, ko_trial, ko_rungroup, self.run)
+          ko_wildcard = trial_params.output.refined_experiments_filename.replace('%s', '*')
+          trial_params.indexing.stills.known_orientations[0] = os.path.join(ko_run_path, 'out', ko_wildcard)
+
     if self.rungroup.calib_dir is not None or self.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
       config_path = os.path.join(configs_dir, identifier_string + ".cfg")
     else:
