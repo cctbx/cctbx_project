@@ -430,6 +430,7 @@ class hklview_3d:
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
+      #time.sleep(25)
       self.set_volatile_params()
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
@@ -518,12 +519,10 @@ class hklview_3d:
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
-      #time.sleep(20)
-      if not self.isnewfile:
-        self.make_clip_plane(hkldist, clipwidth)
       if self.isnewfile:
-        self.SetAutoView()
+        self.SetDefaultOrientation()
       self.isnewfile = False
+      self.make_clip_plane(hkldist, clipwidth)
 
 
   def set_scene(self):
@@ -2246,7 +2245,8 @@ in the space group %s\nwith unit cell %s\n""" \
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemovePrimitives("clip_vector")
-    if self.cameraPosZ is None:
+    if self.cameraPosZ is None or self.cameraPosZ == 1.0:
+      time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
       self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
       self.hkls_drawn_sem.acquire(blocking=True, timeout=tout)
       self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")

@@ -78,7 +78,12 @@ buttonsdeflist = [
                                                   fontsize = 7
                                                 }
   """),
-  ("EINFO", "Show Information in bits", ""),
+  ("Test", "I,SIGI test", """
+                                                viewer {
+                                                  data_array.label = "I,SIGI"
+                                                  data_array.datatype = "Intensity"
+                                                }
+  """),
   ("TNCS", "Show TNCS normal", """
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0]"

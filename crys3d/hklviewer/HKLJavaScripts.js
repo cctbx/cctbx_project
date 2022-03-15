@@ -57,9 +57,6 @@ var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var oldmsg = "";
 var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
 var nbins = 0;
 var rerendered = false;
 var expstate = "";
@@ -431,8 +428,10 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  if (shapeComp != null)
+  if (shapeComp != null) {
     shapeComp.autoView(500);
+    //WebsockSendMsg('AutoViewSet ' + pagename);
+  }
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -1148,7 +1147,7 @@ function onMessage(e)
     {
       let near = parseFloat(val[0]);
       let far = parseFloat(val[1]);
-      origcameraZpos = parseFloat(val[2]);
+      let origcameraZpos = parseFloat(val[2]);
       let zoom = parseFloat(val[3]);
       stage.viewer.parameters.clipMode =  'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
@@ -1163,12 +1162,14 @@ function onMessage(e)
         near = 0;
         far = 100;
       }
-      else
-        stage.viewer.camera.position.z = origcameraZpos;
+      
       stage.viewer.parameters.clipNear = near;
       stage.viewer.parameters.clipFar = far;
-      origclipnear = near;
-      origclipfar = far;
+      if (clipFixToCamPosZ === true) {
+        stage.viewer.parameters.clipNear = near + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = far + (origcameraZpos - stage.viewer.camera.position.z);
+      }
+
       if (stage.viewer.parameters.clipScale == 'absolute')
         GetReflectionsInFrustum();
 
@@ -1256,8 +1257,9 @@ function onMessage(e)
 
     if (msgtype === "SetAutoView")
     {
-      if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
+      if (shapeComp != null) {// workaround for QTWebEngine bug sometimes failing to render scene
         shapeComp.autoView(500); // half a second animation
+      }
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
@@ -1926,12 +1928,6 @@ function HKLscene()
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
       let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
@@ -1942,15 +1938,6 @@ function HKLscene()
         timenow = timefunc();
       }
       tooltip.style.display = "none";
-      /*
-      let dim = stage.viewer.parameters.clipNear + stage.viewer.parameters.clipFar + stage.viewer.camera.position.z;
-      let msg2 = "clips: " + stage.viewer.parameters.clipNear.toString() + ", " +
-        stage.viewer.parameters.clipFar.toString() + ", origcamZ: " + origcameraZpos.toString() +
-        ", cameraZ: " + stage.viewer.camera.position.z.toString() + ", dim: " + dim.toString();
-      //msg2 = "dx: " + deltaX.toString() + ", dy: " + deltaY.toString()
-      if (isdebug)
-        console.log(msg2);
-     */ 
     }
   );
 
@@ -1967,16 +1954,12 @@ function HKLscene()
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
     {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
       let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
+        postrotmxflag = true;
+        ReturnClipPlaneDistances();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         timenow = timefunc();
       }
