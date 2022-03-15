@@ -89,8 +89,6 @@ struct accumulate_reflection_chunk_omp {
       if (compute_grad && !build_design_matrix && size < n) {
         gradients.resize(size * n_rows);
       }
-      twinning_processor<FloatType> twp(reflections, f_mask, compute_grad,
-        jacobian_transpose_matching_grad_fc);
       for (int i_h = 0; i_h * size < n; i_h++) {
         const int start = i_h * size;
         //check whetehr last chunk is smaller
