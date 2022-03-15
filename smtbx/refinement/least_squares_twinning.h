@@ -7,7 +7,6 @@
 #include <scitbx/sparse/matrix.h>
 
 #include <cctbx/xray/observations.h>
-#include <cctbx/miller/lookup_utils.h>
 
 #include <smtbx/error.h>
 #include <smtbx/refinement/least_squares_fc.h>
@@ -17,39 +16,57 @@ namespace smtbx {
   namespace refinement {
     namespace least_squares {
       template <typename FloatType>
+      struct MaskData {
+        typedef std::complex<FloatType> complex_type;
+
+        MaskData(af::const_ref<complex_type> const& f_mask)
+          : f_mask(f_mask)
+        {
+          SMTBX_ASSERT(f_mask.size() == 0);
+        }
+
+        MaskData(cctbx::xray::observations<FloatType> const& reflections,
+          sgtbx::space_group const& space_group,
+          bool anomalous_flag,
+          af::const_ref<complex_type> const& f_mask)
+          : f_mask(f_mask)
+        {
+          mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
+            reflections.indices().const_ref(), space_group, anomalous_flag);
+        }
+
+        complex_type find(miller::index<> const& h) const {
+          long index = mi_lookup.find_hkl(h);
+          SMTBX_ASSERT(index >= 0 && index < f_mask.size())(h.as_string());
+          return f_mask[index];
+        }
+
+        int size() const {
+          return f_mask.size();
+        }
+        af::const_ref<std::complex<FloatType> > f_mask;
+        miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
+      };
+
+      template <typename FloatType>
       class twinning_processor {
       public:
         typedef typename cctbx::xray::observations<FloatType>::iterator itr_t;
         typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
         typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
         typedef std::complex<FloatType> complex_type;
-        typedef std::map<cctbx::miller::index<>, complex_type,
-          cctbx::miller::fast_less_than<> > lookup_t;
-
+        
         twinning_processor(
           cctbx::xray::observations<FloatType> const& reflections,
-          af::const_ref<complex_type> const& f_mask,
+          MaskData<FloatType> const& f_mask_data,
           bool compute_grad,
           scitbx::sparse::matrix<FloatType> const&
             jacobian_transpose_matching_grad_fc)
           : reflections(reflections),
+          f_mask_data(f_mask_data),
           compute_grad(compute_grad),
           jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc)
-        {
-          if (f_mask.size() > 0 && reflections.has_twin_components()) {
-            scitbx::af::shared<miller::index<> > const& indices = reflections.indices();
-            for (int i_h = 0, i=0; i_h < reflections.size(); i_h++, i++) {
-              mi_lookup[indices[i_h]] = f_mask[i];
-              itr_t itr = reflections.iterate(i_h);
-              while (itr.has_next()) {
-                twc_t twc = itr.next();
-                i++;
-                SMTBX_ASSERT(i < f_mask.size())(i)(f_mask.size());
-                mi_lookup[twc.h] = f_mask[i];
-              }
-            }
-          }
-        }
+        {}
 
         FloatType process(int i_h,
           f_calc_function_base<FloatType>& f_calc_function,
@@ -75,10 +92,8 @@ namespace smtbx {
             while (itr.has_next()) {
               twc_t twc = itr.next();
               boost::optional<complex_type> f_mask = boost::none;
-              if (mi_lookup.size()) {
-                typename lookup_t::const_iterator l = mi_lookup.find(twc.h);
-                SMTBX_ASSERT(l != mi_lookup.end())(twc.h.as_string());
-                f_mask = l->second;
+              if (f_mask_data.f_mask.size() > 0) {
+                f_mask = f_mask_data.find(twc.h);
               }
               f_calc_function.compute(twc.h, f_mask, fraction, compute_grad);
               obs += twc.scale() * f_calc_function.get_observable();
@@ -128,10 +143,10 @@ namespace smtbx {
         }
       private:
         cctbx::xray::observations<FloatType> const& reflections;
+        MaskData<FloatType> const& f_mask_data;
         bool compute_grad;
         scitbx::sparse::matrix<FloatType> const&
           jacobian_transpose_matching_grad_fc;
-        lookup_t mi_lookup;
       };
     }
   }

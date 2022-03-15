@@ -22,7 +22,6 @@ namespace {
     static void wrap() {
       typedef twin_fraction<FloatType> wt;
       using namespace boost::python;
-      return_internal_reference<> rir;
       class_<wt>("twin_fraction", no_init)
         .def(init<FloatType, optional<bool> >
              ((arg("value"), arg("grad"))))

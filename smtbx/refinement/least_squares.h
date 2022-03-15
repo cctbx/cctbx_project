@@ -68,8 +68,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static int available = -1;
       return available;
     }
-
   };
+
 
   /** \brief Build normal equations for the given data, model, weighting
   and constraints. Optionally builds the design matrix.
@@ -91,7 +91,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     build_design_matrix_and_normal_equations(
       cctbx::xray::observations<FloatType> const& reflections,
-      af::const_ref<std::complex<FloatType> > const& f_mask,
+      MaskData<FloatType> const& f_mask_data,
       boost::optional<FloatType> scale_factor,
       f_calc_function_base_t& f_calc_function,
       scitbx::sparse::matrix<FloatType> const&
@@ -103,7 +103,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       int max_memory = 300)
       :
       reflections_(reflections),
-      f_mask(f_mask),
+      f_mask_data(f_mask_data),
       scale_factor(scale_factor),
       f_calc_function(f_calc_function),
       jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
@@ -125,7 +125,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     build_design_matrix_and_normal_equations(
       NormalEquations& normal_equations,
       cctbx::xray::observations<FloatType> const& reflections,
-      af::const_ref<std::complex<FloatType> > const& f_mask,
+      MaskData<FloatType> const& f_mask_data,
       WeightingScheme<FloatType> const& weighting_scheme,
       boost::optional<FloatType> scale_factor,
       f_calc_function_base_t &f_calc_function,
@@ -138,7 +138,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       int max_memory = 300)
       :
       reflections_(reflections),
-      f_mask(f_mask),
+      f_mask_data(f_mask_data),
       scale_factor(scale_factor),
       f_calc_function(f_calc_function),
       jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
@@ -173,11 +173,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
         return;
       }
       // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT((!f_mask.size() || f_mask.size() == reflections_.size()))
-                  (f_mask.size())(reflections_.size());
+      SMTBX_ASSERT((!f_mask_data.f_mask.size() || f_mask_data.f_mask.size() == reflections_.size()))
+                  (f_mask_data.f_mask.size())(reflections_.size());
 
       reflections_.update_prime_fraction();
-      twinning_processor<FloatType> twp(reflections_, f_mask, !objective_only,
+      twinning_processor<FloatType> twp(reflections_, f_mask_data, !objective_only,
         jacobian_transpose_matching_grad_fc);
       if (may_parallelise) {
         //!!
@@ -189,7 +189,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             accumulate_reflection_chunk_omp_t;
           accumulate_reflection_chunk_omp_t job(
             normal_equations_ptr_t(&normal_equations, null_deleter()),
-            reflections_, f_mask, twp, weighting_scheme, scale_factor,
+            reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
             one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
             jacobian_transpose_matching_grad_fc,
             exti, objective_only,
@@ -216,7 +216,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             new accumulate_reflection_chunk_t(
               scheduler,
               chunk_normal_equations,
-              reflections_, f_mask, twp, weighting_scheme, scale_factor,
+              reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
               one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
               jacobian_transpose_matching_grad_fc,
               exti, objective_only,
@@ -241,7 +241,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         accumulate_reflection_chunk_t job(
           scheduler,
           normal_equations_ptr_t(&normal_equations, null_deleter()),
-          reflections_, f_mask, twp, weighting_scheme, scale_factor,
+          reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
           one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
           jacobian_transpose_matching_grad_fc,
           exti, objective_only,
@@ -449,7 +449,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
   protected:
     cctbx::xray::observations<FloatType> const& reflections_;
-    af::const_ref<std::complex<FloatType> > const& f_mask;
+    MaskData<FloatType> const& f_mask_data;
     boost::optional<FloatType> scale_factor;
     f_calc_function_base_t& f_calc_function;
     scitbx::sparse::matrix<FloatType> const&
@@ -480,7 +480,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     typedef build_design_matrix_and_normal_equations<FloatType, false> parent_t;
     build_normal_equations(
       cctbx::xray::observations<FloatType> const& reflections,
-      af::const_ref<std::complex<FloatType> > const& f_mask,
+      MaskData<FloatType> const& f_mask_data,
       boost::optional<FloatType> scale_factor,
       f_calc_function_base<FloatType>& f_calc_function,
       scitbx::sparse::matrix<FloatType> const
@@ -490,7 +490,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       bool may_parallelise = false,
       bool use_openmp = false)
       : parent_t(
-        reflections, f_mask, scale_factor, f_calc_function,
+        reflections, f_mask_data, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp)
     {}
@@ -500,7 +500,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     build_normal_equations(
        NormalEquations &normal_equations,
        cctbx::xray::observations<FloatType> const &reflections,
-       af::const_ref<std::complex<FloatType> > const &f_mask,
+       MaskData<FloatType> const& f_mask_data,
        WeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
        f_calc_function_base<FloatType> &f_calc_function,
@@ -513,7 +513,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        int max_memory = 300)
        : parent_t(
         normal_equations,
-        reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
+        reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp, max_memory)
     {}
@@ -537,7 +537,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     typedef build_design_matrix_and_normal_equations<FloatType, true> parent_t;
     build_design_matrix(
       cctbx::xray::observations<FloatType> const& reflections,
-      af::const_ref<std::complex<FloatType> > const& f_mask,
+      MaskData<FloatType> const& f_mask_data,
       boost::optional<FloatType> scale_factor,
       f_calc_function_base<FloatType>& f_calc_function,
       scitbx::sparse::matrix<FloatType> const
@@ -547,7 +547,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       bool may_parallelise = false,
       bool use_openmp = false)
       : parent_t(
-        reflections, f_mask, scale_factor, f_calc_function,
+        reflections, f_mask_data, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp)
     {}
@@ -557,7 +557,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     build_design_matrix(
        NormalEquations &normal_equations,
        cctbx::xray::observations<FloatType> const &reflections,
-       af::const_ref<std::complex<FloatType> > const &f_mask,
+      MaskData<FloatType> const& f_mask_data,
        WeightingScheme<FloatType> const &weighting_scheme,
        boost::optional<FloatType> scale_factor,
        f_calc_function_base<FloatType> &f_calc_function,
@@ -570,7 +570,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        int max_memory = 300)
        : parent_t(
         normal_equations,
-        reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
+        reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only, may_parallelise, use_openmp, max_memory)
     {}
