@@ -578,6 +578,9 @@ statistics {
   report_ML = True
     .type = bool
     .help = Report statistics on per-frame attributes modeled by max-likelihood fit (expert only).
+  uc_precision = 2
+    .type = int
+    .help = Decimal places for unit cell statistics
 }
 """
 
