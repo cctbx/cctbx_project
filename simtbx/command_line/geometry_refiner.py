@@ -567,6 +567,7 @@ def write_output_files(params, Xopt, LMP, launcher):
             scale_p = LMP["rank%d_shot%d_Scale" %(COMM.rank, i_shot)]
             scale = scale_p.get_val(Xopt[scale_p.xpos])
 
+            _,fluxes = zip(*launcher.SIM.beam.spectrum)
             eta_a = eta_b = eta_c = np.nan
             df= single_expt_pandas(xtal_scale=scale, Amat=new_crystal.get_A(),
                 ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
@@ -583,7 +584,7 @@ def write_output_files(params, Xopt, LMP, launcher):
                 lam0_lam1 = (np.nan, np.nan),
                 spec_file=Modeler.spec_name,
                 spec_stride=params.simulator.spectrum.stride,
-                flux=launcher.SIM.D.flux, beamsize_mm=launcher.SIM.beam.size_mm,
+                flux=sum(fluxes), beamsize_mm=launcher.SIM.beam.size_mm,
                 orig_exp_name=Modeler.exper_name,
                 opt_exp_name=os.path.abspath(new_expt_fname),
                 spec_from_imageset=params.spectrum_from_imageset,
