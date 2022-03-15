@@ -3,9 +3,7 @@
 #SBATCH --job-name=<jobname>
 #SBATCH --reservation=<reservation>
 #SBATCH --time=<walltime>
-#SBATCH --nodes=1
-#SBATCH --tasks-per-node=1
-#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=2
 #SBATCH --constraint=<constraint>
 #SBATCH --mail-type=NONE
 #SBATCH -A <project>
