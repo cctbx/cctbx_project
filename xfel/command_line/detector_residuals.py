@@ -56,7 +56,7 @@ repredict_input_reflections = True
   .help = Whether to use the input models to repredict reflection positions \
           prior to making plots
 residuals {
-  plot_max=None
+  plot_max=0.3
     .type = float
     .help = Maximum residual value to be shown in the detector plot
   histogram_max=None
