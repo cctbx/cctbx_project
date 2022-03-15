@@ -140,7 +140,7 @@ class PopUpCharts(object):
     #print "Rejecting", outliers.count(True), "out of", len(outliers)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -341,8 +341,9 @@ class PopUpCharts(object):
     fig.suptitle(title + " (%d xtals)" % total)
 
     if not self.interactive:
+      image_fname = image_fname or "ucell_tmp.png"
       fig.set_size_inches(xsize*1.05+.5, ysize*.95)
-      fig.savefig("ucell_tmp.png", bbox_inches='tight', dpi=100)
+      fig.savefig(image_fname, bbox_inches='tight', dpi=100)
       plt.close(fig)
       return "ucell_tmp.png"
 

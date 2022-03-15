@@ -37,6 +37,8 @@ phil_str = """
     .type = bool
     .help = If True, write a list of cells such that gnuplot can read them. Start gnuplot then use \
             splot "uccloud.dat".
+  output.image_file = None
+    .type = str
 """
 phil_scope = parse(phil_str)
 
@@ -112,13 +114,15 @@ class Script(object):
       gnuplot.close()
 
     import xfel.ui.components.xfel_gui_plotter as pltr
-    plotter = pltr.PopUpCharts()
+    interactive = params.output.image_file is None
+    plotter = pltr.PopUpCharts(interactive=interactive)
     plotter.plot_uc_histogram(
       info_list=info_list,
       legend_list=experiments_tags,
       iqr_ratio = params.iqr_ratio,
       ranges = params.ranges,
-      title = params.title)
+      title = params.title,
+      image_fname = params.output.image_file)
     plotter.plt.show()
 
 if __name__ == '__main__':
