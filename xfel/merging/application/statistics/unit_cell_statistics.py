@@ -11,10 +11,12 @@ class unit_cell_distribution(object):
   """Container for collecting unit cell statistics"""
   # TODO make this more general - currently assumes that angles are fixed,
   # which is true for the systems studied so far
-  def __init__(self, reference_unit_cell, logger, mpi_helper):
+  def __init__(self, reference_unit_cell, logger, mpi_helper, precision=None):
     self.reference_unit_cell = reference_unit_cell
     self.logger = logger
     self.mpi_helper = mpi_helper
+    if precision is None: self.uc_precision = 2
+    else: self.uc_precision = precision
 
     # this rank cell values
     self.uc_a_values = flex.double()
@@ -80,13 +82,16 @@ class unit_cell_distribution(object):
         stats = flex.mean_and_variance(edge)
 
         self.logger.main_log("  %s edge"%label)
-        self.logger.main_log("     range:     %6.2f - %.2f"%(smin, smax))
-        self.logger.main_log("     mean:      %6.2f +/- %6.2f on N = %d" %(stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size()))
+        range_template = "     range:     %6.{0}f - %.{0}f".format(self.uc_precision)
+        self.logger.main_log(range_template %(smin, smax))
+        mean_template = "     mean:      %6.{0}f +/- %6.{0}f on N = %d".format(self.uc_precision)
+        self.logger.main_log(mean_template %(stats.mean(), stats.unweighted_sample_standard_deviation(), edge.size()))
         if ref_edge is not None:
-          self.logger.main_log("     reference: %6.2f"%ref_edge)
+          ref_template = "     reference: %6.{}f".format(self.uc_precision)
+          self.logger.main_log(ref_template %ref_edge)
 
         out = StringIO()
-        h.show(f=out, prefix="    ", format_cutoffs="%6.2f")
+        h.show(f=out, prefix="    ", format_cutoffs="%6.{}f".format(self.uc_precision))
         self.logger.main_log(out.getvalue() + '\n')
 
     edges = [self.all_uc_a_values, self.all_uc_b_values, self.all_uc_c_values]
@@ -113,7 +118,12 @@ class unit_cell_statistics(worker):
 
   def run(self, experiments, reflections):
     self.logger.log_step_time("UNIT_CELL_STATISTICS")
-    ucd = unit_cell_distribution(self.params.scaling.unit_cell, self.logger, self.mpi_helper)
+    ucd = unit_cell_distribution(
+        self.params.scaling.unit_cell,
+        self.logger,
+        self.mpi_helper,
+        precision=self.params.statistics.uc_precision
+        )
     for experiment in experiments:
       ucd.add_cell(experiment.crystal.get_unit_cell())
     ucd.collect_from_all_ranks()
