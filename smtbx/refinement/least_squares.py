@@ -40,7 +40,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
     weighting_scheme = "default"
     origin_fixing_restraints_type = (
       origin_fixing_restraints.atomic_number_weighting)
-    f_mask_data = None
+    f_mask = None
     restraints_manager=None
     n_restraints = None
     initial_scale_factor = None
@@ -54,8 +54,8 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       self.observations = observations
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)
-      if self.f_mask_data is not None:
-        assert self.f_mask_data.size() == observations.fo_sq.size()
+      if self.f_mask is not None:
+        assert self.f_mask.size() == observations.fo_sq.size()
       self.one_h_linearisation = one_h_linearisation
       if not self.one_h_linearisation:
         self.one_h_linearisation = f_calc_function_default(direct.f_calc_modulus_squared(
@@ -76,10 +76,11 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       return self.reparametrisation.twin_fractions
 
     def build_up(self, objective_only=False):
-      if self.f_mask_data is None:
+      if self.f_mask is None:
         f_mask_data = MaskData(flex.complex_double())
       else:
-        f_mask_data = self.f_mask_data
+        f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
+          self.observations.fo_sq.anomalous_flag(), self.f_mask.data())
 
       extinction_correction = self.reparametrisation.extinction
       if extinction_correction is None:
