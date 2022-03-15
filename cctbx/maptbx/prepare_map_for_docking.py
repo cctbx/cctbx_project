@@ -1022,6 +1022,58 @@ def add_local_squared_deviation_map(
     offset = -min_map_value
     mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
+def auto_sharpen_isotropic(mmm, d_min):
+  working_mmm = mmm.deep_copy()
+
+  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min,
+      map_id='map_manager_1')
+  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min,
+      map_id='map_manager_2')
+
+  nref = mc1.size()
+  num_per_bin = 1000
+  max_bins = 50
+  min_bins = 6
+  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
+  mc1.setup_binner(n_bins=n_bins)
+  mc2.use_binner_of(mc1)
+
+  sumw = 0
+  sumwx = 0.
+  sumwy = 0.
+  sumwx2 = 0.
+  sumwxy = 0.
+  for i_bin in mc1.binner().range_used():
+    sel = mc1.binner().selection(i_bin)
+    mc1sel = mc1.select(sel)
+    mc2sel = mc2.select(sel)
+    mapCC = mc1sel.map_correlation(other=mc2sel)
+    assert (mapCC < 1.) # Ensure these are really independent half-maps
+    mapCC = max(mapCC,0.001) # Avoid zero or negative values
+    FSCref = math.sqrt(2./(1.+1./mapCC))
+    ssqr = mc1sel.d_star_sq().data()
+    x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
+    fsq = flex.pow2(flex.abs(mc1sel.data()))
+    meanfsq = flex.mean_default(fsq, 0)
+    y = math.log(meanfsq/(FSCref*FSCref))
+    w = fsq.size()
+    sumw += w
+    sumwx += w * x
+    sumwy += w * y
+    sumwx2 += w * x**2
+    sumwxy += w * x * y
+
+  assert (nref == sumw) # Check no Fourier terms lost outside bins
+  slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
+  b_sharpen = 2 * slope
+  all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
+  b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
+  mc1 = mc1.customized_copy(data = mc1.data()*b_terms_miller.data())
+  working_mmm.add_map_from_fourier_coefficients(mc1, map_id='map_manager_1')
+  mc2 = mc2.customized_copy(data = mc2.data()*b_terms_miller.data())
+  working_mmm.add_map_from_fourier_coefficients(mc2, map_id='map_manager_2')
+  return working_mmm
+
 def add_ordered_volume_mask(
     mmm, d_min, rad_factor=1.5, protein_mw=None, nucleic_mw=None,
     map_id_out='ordered_volume_mask'):
@@ -1052,7 +1104,7 @@ def add_ordered_volume_mask(
   # 4*Pi/3 * (2*1.5)^3 or about 113 independent points for the average.
   radius = max(d_min*rad_factor, 5.)
 
-  working_mmm = mmm.deep_copy()
+  working_mmm = auto_sharpen_isotropic(mmm,d_min)
   wmm1 = working_mmm.map_manager_1()
   wmm2 = working_mmm.map_manager_2()
   # Input map_manager may contain arbitrarily filtered map that is not the
