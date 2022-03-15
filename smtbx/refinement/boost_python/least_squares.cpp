@@ -28,7 +28,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         init<
         NormalEquations&, // normal_equations
         cctbx::xray::observations<FloatType> const&, // reflections
-        af::const_ref<std::complex<FloatType> > const&, // f_mask
+        MaskData<FloatType> const&, // f_mask_data
         WeightingSchemeType<FloatType> const&, // weighting_scheme
         boost::optional<FloatType>, // scale_factor
         f_calc_function_base<FloatType> &, // f_calc_function
@@ -37,7 +37,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         cctbx::xray::extinction_correction<FloatType> const&, // exti
         // objective_only=false, may_parallelise_=false, use_openmp=false, max_mem=300
         optional<bool, bool, bool, int>
-        >((arg("normal_equations"), arg("reflections"), arg("f_mask"),
+        >((arg("normal_equations"), arg("reflections"), arg("f_mask_data"),
           arg("weighting_scheme"), arg("scale_factor"),
           arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
           arg("extinction"), arg("objective_only") = false,
@@ -47,7 +47,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         .def(
           init<
           cctbx::xray::observations<FloatType> const&, // reflections
-          af::const_ref<std::complex<FloatType> > const&, // f_mask
+          MaskData<FloatType> const&, // f_mask_data
           boost::optional<FloatType>, // scale_factor
           f_calc_function_base<FloatType>&, // f_calc_function
           scitbx::sparse::matrix<FloatType> const&,
@@ -55,7 +55,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           cctbx::xray::extinction_correction<FloatType> const&, // exti
           // objective_only=false, may_parallelise_=false, use_openmp
           optional<bool, bool, bool>
-          >((arg("reflections"), arg("f_mask"), arg("scale_factor"),
+          >((arg("reflections"), arg("f_mask_data"), arg("scale_factor"),
             arg("f_calc_function"), arg("jacobian_transpose_matching_grad_fc"),
             arg("extinction"), arg("objective_only") = false,
             arg("may_parallelise") = false, 
@@ -219,12 +219,29 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
+      static void wrap_mask_data() {
+        using namespace boost::python;
+        typedef MaskData<FloatType> wt;
+        class_<wt>("MaskData", no_init)
+          .def(init<af::const_ref<typename wt::complex_type> const&>((arg("f_mask"))))
+          .def(init<cctbx::xray::observations<FloatType> const&,
+            sgtbx::space_group const&,
+            bool,
+            af::const_ref<typename wt::complex_type> const&>(
+              (arg("observations"),
+                arg("space_group"), arg("anomalous_flag"),
+                arg("f_mask"))))
+          .def("size", &wt::size)
+          ;
+      }
+
       static void wrap() {
         wrap_base();
         wrap_default();
         wrap_caching();
         wrap_ed();
         wrap_ed_two_beam();
+        wrap_mask_data();
       }
     };
   };

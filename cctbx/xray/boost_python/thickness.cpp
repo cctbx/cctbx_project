@@ -14,7 +14,6 @@ namespace {
     static void wrap() {
       typedef thickness<FloatType> wt;
       using namespace boost::python;
-      return_internal_reference<> rir;
       class_<wt>("thickness", no_init)
         .def(init<FloatType, optional<bool> >
              ((arg("value"), arg("grad"))))
