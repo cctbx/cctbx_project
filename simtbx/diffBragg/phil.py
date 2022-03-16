@@ -930,6 +930,12 @@ refiner {
 
 roi_phil = """
 roi {
+  centroid = *obs cal
+    .type = choice
+    .help = Determines which refl table column contains the spot centroids
+    .help = Shoeboxes are drawn around the centroids, and refinement uses pixels
+    .help = within those shoeboxes.
+    .help = obs: xyz.px.value  cal: xyzcal.px
   mask_all_if_any_outside_trusted_range = True
     .type = bool
     .help = If a reflection has any pixels which are outside the detectors
@@ -1023,9 +1029,12 @@ geometry {
   optimize = False
     .type = bool
     .help = flag to specify whether to optimize the geometry
+  save_optimized_det_freq = 1
+    .type = int
+    .help = Save the optimzied detector model every X iterations
   optimized_detector_name = "diffBragg_detector.expt"
     .type = str
-    .help = name of the experiment which will be written, and will contain the optimized detector
+    .help = basename of the experiment which will be written, and will contain the optimized detector. Note, this should be a basename only (not to be prefixed with a directory path). If a directory path is include, it will be stripped. The file will be stored in the output folder (pandas_dir)
   min {
     panel_rotations = -1,-1,-1
       .type = floats(size=3)
