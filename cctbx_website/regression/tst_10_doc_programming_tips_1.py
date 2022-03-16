@@ -3,7 +3,7 @@ import sys
 from cctbx_website.regression.exercise import exercise
 
 def run():
-  return_code = exercise(script   = "doc_programming_tips.py",
+  return_code = exercise(script   = "doc_programming_tips_1.py",
                          tmp_path = 'tmp_files_10')
   return return_code
 
