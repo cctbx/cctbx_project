@@ -47,8 +47,8 @@ class RangedParameter:
     # TODO use _rescaled_val in get_restraint_term and get_deriv in order to limit the valls to get_val
     self.xpos = 0  # position of parameter in list of params
     if fix:
-      self.minval = init - 1e-10
-      self.maxval = init + 1e-10
+      self.minval = init - 1e-6
+      self.maxval = init + 1e-6
     self._arcsin_term = None
 
   def get_restraint_deriv(self, reparam_val):
