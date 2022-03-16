@@ -24,6 +24,8 @@ tst_list = [
   "$D/regression/tst_15_doc_models_hierarchy.py",
   "$D/regression/tst_16_script_lbfgs_with_curvature.py",
   "$D/regression/tst_17_script_rfactors.py",
+  "$D/regression/tst_18_doc_programming_tips_2.py",
+  "$D/regression/tst_19_doc_programming_tips_3.py",
   ]
 
 def run():
