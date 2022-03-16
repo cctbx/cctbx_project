@@ -3,10 +3,13 @@ from __future__ import print_function, division
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.geometry_refiner
 
 import numpy as np
+import sys
+import time
 from simtbx.command_line.hopper import single_expt_pandas
 from copy import deepcopy
 import os
 from libtbx.mpi4py import  MPI
+from dials.array_family import flex
 COMM = MPI.COMM_WORLD
 
 import logging
@@ -19,6 +22,8 @@ from simtbx.diffBragg import hopper_utils, ensemble_refine_launcher
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 import pandas
 from scipy.optimize import basinhopping
+if COMM.rank > 0:
+    sys.tracebacklimit = 0
 
 # diffBragg internal indices for derivative manager
 ROTXYZ_ID = hopper_utils.ROTXYZ_IDS
@@ -99,6 +104,24 @@ class CrystalParameters:
         for i_shot in data_modelers:
             Mod = data_modelers[i_shot]
 
+            # set the per-spot scale factors, per pixel...
+            Mod.set_slices("roi_id")
+            Mod.per_roi_scales_per_pix = np.ones_like(Mod.all_data)
+            for roi_id, ref_idx in enumerate(Mod.refls_idx):
+                if "scale_factor" in list(Mod.refls[0].keys()):
+                    slcs = Mod.roi_id_slices[roi_id]
+                    assert len(slcs)==1
+                    slc = slcs[0]
+                    init_scale = Mod.refls[ref_idx]["scale_factor"]
+                    Mod.per_roi_scales_per_pix[slc] =init_scale
+                else:
+                    init_scale = 1
+
+                p = RangedParameter(name="rank%d_shot%d_scale_roi%d" % (COMM.rank, i_shot, roi_id),
+                    minval=0, maxval=1e12, fix=self.phil.fix.perRoiScale,
+                    center=1, beta=1e12, init=init_scale)
+                self.parameters.append(p)
+
             for i_N in range(3):
                 p = Mod.PAR.Nabc[i_N]
                 ref_p = RangedParameter(name="rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i_N),
@@ -144,7 +167,7 @@ class Target:
 
         f, self.g, self.sigmaZ = target_and_grad(self.x0, self.ref_params, *args, **kwargs)
         if COMM.rank==0:
-            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (self.iternum, f, self.sigmaZ))
+            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (self.iternum, f, self.sigmaZ), flush=True)
         return f
 
     def jac(self, x, *args):
@@ -210,13 +233,32 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
 
     # calculate the forward Bragg scattering and gradients
     SIM.D.add_diffBragg_spots(Modeler.pan_fast_slow)
+
+    # set the scale factors per ROI
+    perRoiScaleFactors = {}
+    for roi_id, ref_idx in enumerate(Modeler.refls_idx):
+        p = ref_params["rank%d_shot%d_scale_roi%d" % (COMM.rank, i_shot, roi_id )]
+        slc = Modeler.roi_id_slices[roi_id][0]  # Note, there's always just one slice for roi_id
+        if not p.refine:
+            break
+        scale_fac = p.get_val(x[p.xpos])
+        Modeler.per_roi_scales_per_pix[slc] = scale_fac
+        perRoiScaleFactors[roi_id] = (scale_fac, p)
+
     bragg_no_scale = (SIM.D.raw_pixels_roi[:npix]).as_numpy_array()
 
-    # apply the per-shot scale factor
+    # get the per-shot scale factor
     scale = G.get_val(x[G.xpos])
-    bragg = scale*bragg_no_scale
 
+    #combined the per-shot scale factor with the per-roi scale factors
+    all_bragg_scales = scale*Modeler.per_roi_scales_per_pix
+
+    # scale the bragg scattering
+    bragg = all_bragg_scales*bragg_no_scale
+
+    # this is the total forward model:
     model_pix = bragg + Modeler.all_background
+
     if return_model:
         return model_pix
 
@@ -234,9 +276,22 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
     # this term is a common factor in all of the gradients
     common_grad_term = (0.5 / V * (1 - 2 * resid - resid_square / V))
 
+    if perRoiScaleFactors:
+        # the gradient in this case is the bragg scattering, scaled by only the total shot scale (G in the literature)
+        bragg_no_roi = bragg_no_scale*scale
+
+        for roi_id in perRoiScaleFactors:
+            scale_fac, p = perRoiScaleFactors[roi_id]
+            slc = Modeler.roi_id_slices[roi_id][0]  # theres just one slice for each roi_id
+            d = p.get_deriv(x[p.xpos], bragg_no_roi[slc])
+            d_trusted = Modeler.all_trusted[slc]
+            common_term_slc = common_grad_term[slc]
+            J[p.name] = (common_term_slc*d)[d_trusted].sum()
+
     # scale factor gradients
     if not G.fix:
-        scale_grad = G.get_deriv(x[G.xpos], bragg_no_scale)
+        bragg_no_roi_scale = bragg_no_scale*Modeler.per_roi_scales_per_pix
+        scale_grad = G.get_deriv(x[G.xpos], bragg_no_roi_scale)
         J[G.name] = (common_grad_term*scale_grad)[Modeler.all_trusted].sum()
 
     # Umat gradients
@@ -309,37 +364,68 @@ def set_group_id_slices(Modeler, group_id_from_panel_id):
     Modeler.group_id_slices = group_id_slices
 
 
-def update_detector(x, ref_params, SIM):
+def update_detector(x, ref_params, SIM, save=None):
     """
     Update the internal geometry of the diffBragg instance
     :param x: refinement parameters as seen by scipy.optimize (e.g. rescaled floats)
     :param ref_params: diffBragg.refiners.Parameters (dict of RangedParameters)
     :param SIM: SIM instance (instance of nanoBragg.sim_data.SimData)
+    :param save: optional name to save the detector
     """
     det = SIM.detector
+    if save is not None:
+        new_det = Detector()
     for pid in range(len(det)):
+        panel = det[pid]
+        panel_dict = panel.to_dict()
+
         group_id = SIM.panel_group_from_id[pid]
         if group_id not in SIM.panel_groups_refined:
-            continue
-        Oang_p = ref_params["group%d_RotOrth" % group_id]
-        Fang_p = ref_params["group%d_RotFast" % group_id]
-        Sang_p = ref_params["group%d_RotSlow" % group_id]
-        Xdist_p = ref_params["group%d_ShiftX" % group_id]
-        Ydist_p = ref_params["group%d_ShiftY" % group_id]
-        Zdist_p = ref_params["group%d_ShiftZ" % group_id]
+            fdet = panel.get_fast_axis()
+            sdet = panel.get_slow_axis()
+            origin = panel.get_origin()
+        else:
 
-        Oang = Oang_p.get_val(x[Oang_p.xpos])
-        Fang = Fang_p.get_val(x[Fang_p.xpos])
-        Sang = Sang_p.get_val(x[Sang_p.xpos])
-        Xdist = Xdist_p.get_val(x[Xdist_p.xpos])
-        Ydist = Ydist_p.get_val(x[Ydist_p.xpos])
-        Zdist = Zdist_p.get_val(x[Zdist_p.xpos])
+            Oang_p = ref_params["group%d_RotOrth" % group_id]
+            Fang_p = ref_params["group%d_RotFast" % group_id]
+            Sang_p = ref_params["group%d_RotSlow" % group_id]
+            Xdist_p = ref_params["group%d_ShiftX" % group_id]
+            Ydist_p = ref_params["group%d_ShiftY" % group_id]
+            Zdist_p = ref_params["group%d_ShiftZ" % group_id]
 
-        origin_of_rotation = SIM.panel_reference_from_id[pid]
-        SIM.D.reference_origin = origin_of_rotation
-        SIM.D.update_dxtbx_geoms(det, SIM.beam.nanoBragg_constructor_beam, pid,
-                                  Oang, Fang, Sang, Xdist, Ydist, Zdist,
-                                  force=False)
+            Oang = Oang_p.get_val(x[Oang_p.xpos])
+            Fang = Fang_p.get_val(x[Fang_p.xpos])
+            Sang = Sang_p.get_val(x[Sang_p.xpos])
+            Xdist = Xdist_p.get_val(x[Xdist_p.xpos])
+            Ydist = Ydist_p.get_val(x[Ydist_p.xpos])
+            Zdist = Zdist_p.get_val(x[Zdist_p.xpos])
+
+            origin_of_rotation = SIM.panel_reference_from_id[pid]
+            SIM.D.reference_origin = origin_of_rotation
+            SIM.D.update_dxtbx_geoms(det, SIM.beam.nanoBragg_constructor_beam, pid,
+                                      Oang, Fang, Sang, Xdist, Ydist, Zdist,
+                                      force=False)
+            fdet = SIM.D.fdet_vector
+            sdet = SIM.D.sdet_vector
+            origin = SIM.D.get_origin()
+
+        if save is not None:
+            panel_dict["fast_axis"] = fdet
+            panel_dict["slow_axis"] = sdet
+            panel_dict["origin"] = origin
+            new_det.add_panel(Panel.from_dict(panel_dict))
+
+    if save is not None and COMM.rank==0:
+        t = time.time()
+        El = ExperimentList()
+        E = Experiment()
+        E.detector = new_det
+        El.append(E)
+        El.as_file(save)
+        t = time.time()-t
+        print("Saved detector model to %s (took %.4f sec)" % (save, t), flush=True )
+
+
 
 
 def target_and_grad(x, ref_params, data_modelers, SIM, params):
@@ -355,7 +441,8 @@ def target_and_grad(x, ref_params, data_modelers, SIM, params):
     target_functional = 0
     grad = np.zeros(len(x))
 
-    update_detector(x, ref_params, SIM)
+    save_name = params.geometry.optimized_detector_name
+    update_detector(x, ref_params, SIM, save_name)
 
     all_shot_sigZ = []
     for i_shot in data_modelers:
@@ -416,16 +503,20 @@ def geom_min(params):
         df = df.iloc[params.skip:]
     if params.geometry.first_n is not None:
         df = df.iloc[:params.geometry.first_n]
-    #if len(set(df.detz_shift_mm.values))> 1:
-    #    s = ""
-    #    if COMM.rank==0:
-    #        s = "Can only do ensemble refinement when input experiments all have the same detector distance"
-    #        s +="\n Suggested protocol: do stage 1 while fixing detz, then do ensemble refinement to get the optimized detector model"
-    #        s += "\n Then do another round of stage 1 with optimized detector model, and allow detz shift to refine per shot"
-    #    raise NotImplementedError(s)
+
+    pdir = params.geometry.pandas_dir
+    assert pdir is not None, "provide a pandas_dir where output files will be generated"
+    params.geometry.optimized_detector_name = os.path.join(pdir, os.path.basename(params.geometry.optimized_detector_name))
+    if COMM.rank==0:
+        if not os.path.exists(pdir):
+            os.makedirs(pdir)
     if COMM.rank == 0:
         print("Will optimize using %d experiments" %len(df))
     launcher.load_inputs(df, refls_key=params.geometry.refls_key)
+
+    for i_shot in launcher.Modelers:
+        Modeler = launcher.Modelers[i_shot]
+        set_group_id_slices(Modeler, launcher.panel_group_from_id)
 
     # same on every rank:
     det_params = DetectorParameters(params, launcher.panel_groups_refined, launcher.n_panel_groups)
@@ -437,10 +528,6 @@ def geom_min(params):
     LMP = Parameters()
     for p in crystal_params.parameters + det_params.parameters:
         LMP.add(p)
-
-    for i_shot in launcher.Modelers:
-        Modeler = launcher.Modelers[i_shot]
-        set_group_id_slices(Modeler, launcher.panel_group_from_id)
 
     # attached some objects to SIM for convenience
     launcher.SIM.panel_reference_from_id = launcher.panel_reference_from_id
@@ -513,6 +600,11 @@ def write_output_files(params, Xopt, LMP, launcher):
     if params.geometry.pandas_dir is not None and COMM.rank == 0:
         if not os.path.exists(params.geometry.pandas_dir):
             os.makedirs(params.geometry.pandas_dir)
+        refdir = os.path.join(params.geometry.pandas_dir, "refls")
+        expdir = os.path.join(params.geometry.pandas_dir, "expts")
+        for dname in [refdir, expdir]:
+            if not os.path.exists(dname):
+                os.makedirs(dname)
 
     for i_shot in launcher.Modelers:
         Modeler = launcher.Modelers[i_shot]
@@ -544,18 +636,39 @@ def write_output_files(params, Xopt, LMP, launcher):
 
         Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, launcher.SIM, return_model=True)
         Modeler.best_model_includes_background = True
+
+        # store the updated per-roi scale factors in the new refl table
+        roi_scale_factor = flex.double(len(Modeler.refls), 1)
+        for roi_id in Modeler.roi_id_unique:
+            p = LMP["rank%d_shot%d_scale_roi%d" % (COMM.rank, i_shot, roi_id)]
+            scale_fac = p.get_val(Xopt[p.xpos])
+            test_refl_idx = Modeler.refls_idx[roi_id]
+            slc = Modeler.roi_id_slices[roi_id][0]
+            roi_refl_ids = Modeler.all_refls_idx[slc]
+            # NOTE, just a sanity check:
+            assert len(np.unique(roi_refl_ids))==1
+            refl_idx = roi_refl_ids[0]
+            assert test_refl_idx==refl_idx
+            roi_scale_factor[refl_idx] = scale_fac
+        Modeler.refls["scale_factor"] = roi_scale_factor
+
+        # get the new refls
         new_refl = hopper_utils.get_new_xycalcs(Modeler, new_exp, old_refl_tag="before_geom_ref")
 
         new_refl_fname, refl_ext = os.path.splitext(Modeler.refl_name)
-        new_refl_fname = "%s_%s%s" % (new_refl_fname, params.geometry.optimized_results_tag, refl_ext)
+        new_refl_fname = "rank%d_%s_%s%s" % (COMM.rank, os.path.basename(new_refl_fname), params.geometry.optimized_results_tag, refl_ext)
         if not new_refl_fname.endswith(".refl"):
             new_refl_fname += ".refl"
+        new_refl_fname = os.path.join(params.geometry.pandas_dir,"refls",  new_refl_fname)
         new_refl.as_file(new_refl_fname)
 
         new_expt_fname, expt_ext = os.path.splitext(Modeler.exper_name)
-        new_expt_fname = "%s_%s%s" % (new_expt_fname, params.geometry.optimized_results_tag, expt_ext)
+        new_expt_fname = "rank%d_%s_%s%s" % (COMM.rank, os.path.basename(new_expt_fname), params.geometry.optimized_results_tag, expt_ext)
+
         if not new_expt_fname.endswith(".expt"):
             new_expt_fname += ".expt"
+
+        new_expt_fname = os.path.join(params.geometry.pandas_dir,"expts", new_expt_fname)
         new_exp_lst = ExperimentList()
         new_exp_lst.append(new_exp)
         new_exp_lst.as_file(new_expt_fname)
