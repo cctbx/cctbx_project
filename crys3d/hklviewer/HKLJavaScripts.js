@@ -428,10 +428,7 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  if (shapeComp != null) {
-    shapeComp.autoView(500);
-    //WebsockSendMsg('AutoViewSet ' + pagename);
-  }
+  SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -468,7 +465,25 @@ async function RenderRequest(note = "")
     WebsockSendMsg(note + '_AfterRendering');
   if (isdebug)
     WebsockSendMsg('RenderRequest ' + pagename);
-}
+};
+
+
+async function SetAutoview(mycomponent, time)
+{
+  if (mycomponent == null)
+    return;
+
+  WebsockSendMsg('StartSetAutoView ' + pagename);
+  mycomponent.autoView(time); 
+
+  while (true) {
+    if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
+      WebsockSendMsg('FinishedSetAutoView ' + pagename);
+      return;
+    }
+    await sleep(200);
+  }
+};
 
 
 async function SendComponentRotationMatrixMsg() {
@@ -1257,9 +1272,7 @@ function onMessage(e)
 
     if (msgtype === "SetAutoView")
     {
-      if (shapeComp != null) {// workaround for QTWebEngine bug sometimes failing to render scene
-        shapeComp.autoView(500); // half a second animation
-      }
+      SetAutoview(shapeComp, 500);
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
@@ -1923,7 +1936,6 @@ function HKLscene()
   stage.signals.clicked.add(ClickPickingProxyfunc);
 
   SetDefaultOrientation();
-
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)

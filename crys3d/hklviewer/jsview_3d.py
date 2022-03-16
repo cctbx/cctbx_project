@@ -248,10 +248,10 @@ class hklview_3d:
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
-    #self.boundingbox_msg_sem = threading.Semaphore()
     self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.Semaphore()
     self.hkls_drawn_sem = threading.Semaphore()
+    self.autoview_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     self.WBmessenger.StartWebsocket()
@@ -520,6 +520,7 @@ class hklview_3d:
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
       if self.isnewfile:
+        #time.sleep(25)
         self.SetDefaultOrientation()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
@@ -1510,6 +1511,9 @@ class hklview_3d:
           time.sleep(self.sleeptime)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
+        elif "FinishedSetAutoView" in message:
+          self.autoview_sem.release()
+          self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -1541,6 +1545,8 @@ class hklview_3d:
           if onrequest: # only unlock if requested by GetClipPlaneDistances()
             self.clipplane_msg_sem.release()
             self.mprint("ProcessBrowserMessage release clipplane_msg_sem", verbose="threadingmsg")
+            self.autoview_sem.release()
+            self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -2246,7 +2252,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
-      time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
+      #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
       self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
       self.hkls_drawn_sem.acquire(blocking=True, timeout=tout)
       self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
@@ -2321,6 +2327,9 @@ in the space group %s\nwith unit cell %s\n""" \
     self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
     self.mprint("GetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
+    self.mprint("GetClipPlaneDistances waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("GetClipPlaneDistances got autoview_sem", verbose="threadingmsg")
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
@@ -2336,6 +2345,9 @@ in the space group %s\nwith unit cell %s\n""" \
     rotmx = self.Euler2RotMatrix( ( 0.0, 0.0, 0.0 ) )
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
+    self.mprint("SetAutoView waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
 
 
@@ -2363,6 +2375,9 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SetDefaultOrientation(self):
+    self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetDefaultOrientation")
 
 
