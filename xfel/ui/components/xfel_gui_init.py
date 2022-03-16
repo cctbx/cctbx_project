@@ -797,7 +797,7 @@ class UnitCellSentinel(Thread):
         iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
         params.input.__inject__('iterable', iterable)
         params.file_name = None
-        params.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
+        params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
         params.show_plot = True
         params.plot.legend = legend_list[0]
         reject_outliers = self.parent.run_window.unitcell_tab.chk_reject_outliers.GetValue()
