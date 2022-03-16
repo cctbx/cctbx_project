@@ -271,16 +271,22 @@ END
     return fcalc
 
 
-def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10):
+def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10, centroid='obs'):
     """
 
     :param refls: reflection table
     :param fdim: fast axis dimension
     :param sdim: slow axis dimension
     :param shoebox_sz: size of the shoeboxes
+    :param centroid: either `obs` or  `cal`. correspinds to refl column `xyzobs.px.value` or `xyzxcal.px`, respectively
     :return:
     """
-    fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
+    if centroid=='obs':
+        fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
+    elif centroid=='cal':
+        fs_spot, ss_spot, _ = zip(*refls['xyzcal.px'])
+    else:
+        raise NotImplementedError("No instruction to get centroid position from %s" % centroid)
     rois = []
     is_on_edge = []
     for i_spot, (x_com, y_com) in enumerate(zip(fs_spot, ss_spot)):
@@ -319,11 +325,12 @@ def add_rlp_column(refls, experiment):
         raise KeyError("Need rlp or s1 column in refl table!")
 
 
-def get_roi_deltaQ(refls, delta_Q, experiment):
+def get_roi_deltaQ(refls, delta_Q, experiment, centroid='obs'):
     """
     :param refls: reflection table (needs rlp column)
     :param delta_Q:  width of the ROI in inverse Angstromg (e.g. 0.05)
     :param experiment:
+    :param centroid: flag, obs, cal, or bbox
     :return:
     """
     nref = len(refls)
@@ -340,19 +347,20 @@ def get_roi_deltaQ(refls, delta_Q, experiment):
     rois = []
     is_on_edge = []
     for i_refl in range(nref):
-        roi, on_edge = determine_shoebox_ROI(detector, delta_Q, beam.get_wavelength(), refls[i_refl])
+        roi, on_edge = determine_shoebox_ROI(detector, delta_Q, beam.get_wavelength(), refls[i_refl], centroid=centroid)
         rois.append(roi)
         is_on_edge.append( on_edge)
     return rois, is_on_edge
 
 
+# TODO: pass params object directly to this method
 def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_edge_reflections=False,
                                    reject_roi_with_hotpix=True, background_mask=None, hotpix_mask=None,
                                    bg_thresh=3.5, set_negative_bg_to_zero=False,
                                    pad_for_background_estimation=None, use_robust_estimation=True, sigma_rdout=3.,
                                    min_trusted_pix_per_roi=4, deltaQ=None, experiment=None, weighted_fit=True,
                                    ret_cov=False, allow_overlaps=False, skip_roi_with_negative_bg=True,
-                                   only_high=True):
+                                   only_high=True, centroid='obs'):
     """
 
     :param refls: reflection table
@@ -375,8 +383,10 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     :param allow_overlaps: allow overlapping ROIS, otherwise shrink ROIS until the no longer overlap
     :param skip_roi_with_negative_bg: if an ROI has negative signal, dont include it in refinement
     :param only_high: only filter zingers that are above the mean (default is True)
+    :param centroid: obs or cal (get centroids from refl column xyzobs.px.value or xyzcal.px)
     :return:
     """
+
 
     # TODO handle divide by 0 warning that happens in is_outlier, when labeling background pix?
     npan, sdim, fdim = imgs.shape
@@ -388,12 +398,12 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         assert background_mask.shape == imgs.shape
 
     if deltaQ is None:  # then use fixed size ROIS determined by shoebox_sz
-        rois, is_on_edge = get_roi_from_spot(refls, fdim, sdim, shoebox_sz=shoebox_sz)
+        rois, is_on_edge = get_roi_from_spot(refls, fdim, sdim, shoebox_sz=shoebox_sz, centroid=centroid)
     else:
         assert experiment is not None
         if len(refls) == 0:
             return
-        rois, is_on_edge = get_roi_deltaQ(refls, deltaQ, experiment)
+        rois, is_on_edge = get_roi_deltaQ(refls, deltaQ, experiment, centroid=centroid)
 
     tilt_abc = []
     kept_rois = []
@@ -525,6 +535,8 @@ def determine_shoebox_ROI(detector, delta_Q, wavelength_A, refl, centroid="obs")
     fdim,sdim = panel.get_image_size()
     if centroid=='obs':  #TODO: give this more options
         i_com, j_com,_ = refl['xyzobs.px.value']
+    elif centroid=='cal':
+        i_com, j_com,_ = refl['xyzcal.px']
     else:
         i1,i2,j1,j2,_,_ = refl['bbox']  # super weird funky spots can skew bbox such that its a bad measure of centroid
         i_com = (i1+i2) * .5

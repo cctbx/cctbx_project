@@ -356,7 +356,7 @@ class DataModeler:
             weighted_fit=self.params.roi.fit_tilt_using_weights,
             allow_overlaps=self.params.roi.allow_overlapping_spots,
             ret_cov=True, skip_roi_with_negative_bg=self.params.roi.skip_roi_with_negative_bg,
-            only_high=self.params.roi.only_filter_zingers_above_mean)
+            only_high=self.params.roi.only_filter_zingers_above_mean, centroid=self.params.roi.centroid)
 
         if roi_packet is None:
             return False
