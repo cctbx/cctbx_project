@@ -98,6 +98,12 @@ steps:
     fi
   displayName: Configure and Build
 
+- script: |
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    ls ${CONDA_PREFIX}/lib/libgcc*
+  displayName: DEBUG
+
 # test
 - script: |
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
@@ -110,7 +116,7 @@ steps:
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export OMP_NUM_THREADS=2
-    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
+    LD_PRELOAD=${CONDA_PREFIX}/lib/libgcc_s.so.1 libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
 
