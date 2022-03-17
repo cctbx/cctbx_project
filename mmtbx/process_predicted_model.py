@@ -726,7 +726,7 @@ def split_model_with_pae(
      raise Sorry("The pae matrix has a size of (%s,%s) " %(
       tuple(pae_matrix.shape)) +
       "but the number of residues in the model is %s" %(n))
-  first_resno = model.first_resno_as_int()
+  first_resno = model.first_resseq_as_int()
 
   #  Assign all CA in model to a region
   from mmtbx.domains_from_pae import get_domain_selections_from_pae_matrix

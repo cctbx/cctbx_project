@@ -682,8 +682,8 @@ def run(
   model_list=split_model(hierarchy=hierarchy,only_first_model=True)
   for m in model_list:
     h=m.hierarchy
-    first_resno=h.first_resno_as_int()
-    last_resno=h.last_resno_as_int()
+    first_resno=h.first_resseq_as_int()
+    last_resno=h.last_resseq_as_int()
     chain_id=h.first_chain_id()
     residue_range=[first_resno,last_resno]
     chain_id_and_resseq=[chain_id,residue_range]

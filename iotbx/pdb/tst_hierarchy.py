@@ -5686,8 +5686,8 @@ END
 """)
   hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
 
-  assert hierarchy.first_resno_as_int() == 0
-  assert hierarchy.last_resno_as_int() == 0
+  assert hierarchy.first_resseq_as_int() == 0
+  assert hierarchy.last_resseq_as_int() == 0
   xray_structure = hierarchy.extract_xray_structure()
   assert xray_structure.sites_cart().size() == hierarchy.atoms().size()
   xray_structure.scale_adps(2.0)
@@ -5728,8 +5728,8 @@ ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
 ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
 """)
   hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
-  assert hierarchy.first_resno_as_int() == 1
-  assert hierarchy.last_resno_as_int() == 4
+  assert hierarchy.first_resseq_as_int() == 1
+  assert hierarchy.last_resseq_as_int() == 4
   pdb_inp_new = pdb.input(source_info=None, lines="""\
 ATOM      5  N   ASN B   2      -7.656   2.923   3.155  1.00 15.02           N
 ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C

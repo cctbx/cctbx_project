@@ -1813,7 +1813,7 @@ class _():
     else:
       return None
 
-  def first_resno_as_int(self, chain_id = None):
+  def first_resseq_as_int(self, chain_id = None):
     ''' Return residue number of first residue in specified chain, as integer.
         If chain not specified, first residue in hierarchy.
     '''
@@ -1823,7 +1823,7 @@ class _():
         for rg in chain.residue_groups():
           return rg.resseq_as_int()
 
-  def last_resno_as_int(self, chain_id = None):
+  def last_resseq_as_int(self, chain_id = None):
     ''' Return residue number of last residue in specified chain, as integer.
         If chain not specified, last residue in hierarchy.
     '''
