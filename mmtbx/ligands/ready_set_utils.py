@@ -243,9 +243,11 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
                                             append_to_end_of_model=False,
                                            ):
   rc=[]
-  for ag, (c, ca, n) in generate_atom_group_atom_names(residue_group,
+  for ag, rc in generate_atom_group_atom_names(residue_group,
                                                        ['C', 'CA', 'N'],
                                                        ):
+    if rc is None: continue
+    c, ca, n = rc
     tmp = add_c_terminal_oxygens_to_atom_group(
       ag,
       bonds=bonds,
@@ -646,6 +648,16 @@ def add_terminal_hydrogens(hierarchy,
       for chain in group:
         tmp.append(chain)
     _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, tmp)
+
+def delete_charged_n_terminal_hydrogens(hierarchy):
+  for ag in hierarchy.atom_groups():
+    h1 = ag.get_atom('H1')
+    if not h1: continue
+    h2 = ag.get_atom('H2')
+    if not h2: continue
+    h3 = ag.get_atom('H3')
+    if not h3: continue
+    ag.remove_atom(h3)
 
 def add_water_hydrogen_atoms_simple(hierarchy, log=None):
   for atom_group in hierarchy.atom_groups():
