@@ -1457,10 +1457,10 @@ END
     sels = m.macromolecule_plus_hetatms_by_chain_selections()
     sels = [list(s.iselection()) for s in sels]
     assert sels == [[0, 1, 2, 7], [3, 4, 5, 6, 8, 9]]
-    # Check first_resno_as_int in hierarchy and model (same function)
+    # Check first_resseq_as_int in hierarchy and model (same function)
     ph = pi.construct_hierarchy()
-    assert m.first_resno_as_int() == ph.first_resno_as_int()
-    assert m.last_resno_as_int() == ph.last_resno_as_int()
+    assert m.first_resseq_as_int() == ph.first_resseq_as_int()
+    assert m.last_resseq_as_int() == ph.last_resseq_as_int()
 
 
 def exercise_11_ss_annotations():

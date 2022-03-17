@@ -4105,8 +4105,8 @@ class manager(object):
       chain_type chain_types chains
       contains_dna contains_nucleic_acid contains_protein contains_rna
       format_fasta
-      first_chain_id first_resno_as_int overall_counts is_ca_only
-      is_similar_hierarchy last_resno_as_int""".split()
+      first_chain_id first_resseq_as_int overall_counts is_ca_only
+      is_similar_hierarchy last_resseq_as_int""".split()
 
     aa = self.get_hierarchy()
     assert aa is not None
