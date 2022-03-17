@@ -11,6 +11,7 @@ from cctbx.geometry_restraints.manager import manager as standard_manager
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints import qm_manager
 from mmtbx.geometry_restraints import mopac_manager
+from mmtbx.geometry_restraints import orca_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
@@ -46,9 +47,8 @@ def digester(model,
   make_header('QM Restraints Initialisation', out=log)
   qm_restraints_initialisation(params, log=log)
   run_program=True
-  # # transfer_internal_coordinates=True
   for i, qmr in enumerate(params.qi.qm_restraints):
-    if qmr.run_in_macro_cycles=='test': break
+    if qmr.run_in_macro_cycles=='test': break # REMOVE AFTER TESTING!!!
   else: run_program=False
   run_energies(model,
                params,
@@ -72,12 +72,14 @@ def add_hydrogen_atoms_to_model(model,
                                ):
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
   from mmtbx.ligands.ready_set_utils import add_water_hydrogen_atoms_simple
+  from mmtbx.ligands.ready_set_utils import delete_charged_n_terminal_hydrogens
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
                                use_capping_hydrogens=use_capping_hydrogens,
                                )
   assert not rc
   rc = add_water_hydrogen_atoms_simple(model.get_hierarchy())
+  rc = delete_charged_n_terminal_hydrogens(model.get_hierarchy())
 
 def select_and_reindex(model,
                        selection_str=None,
@@ -195,13 +197,15 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., wri
     atom2.tmp = atom1.tmp
   buffer_model._pdb_hierarchy = complete_p1.hierarchy
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
-  # write_pdb_file(buffer_model, 'test.pdb', None)
+  assert len(buffer_model.get_atoms())>0
 
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   from cctbx.maptbx.box import shift_and_box_model
   ligand_model = select_and_reindex(model, qmr.selection)
   if len(ligand_model.get_atoms())==0:
     raise Sorry('selection "%s" results in empty model' % qmr.selection)
+  if write_steps: write_pdb_file(ligand_model, 'model_selection.pdb', None)
+  assert qmr.selection.find('within')==-1
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
@@ -252,7 +256,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   if program=='test':
     qmm = qm_manager.base_manager
   elif program=='orca':
-    qmm = qm_manager.orca_manager
+    qmm = orca_manager.orca_manager
     default_defaults(qmr)
     if qmr.package.method is Auto:
       qmr.package.method='AM1'
@@ -294,6 +298,10 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
       ligand_selection.append(True)
     else:
       ligand_selection.append(False)
+  if qmr.include_nearest_neighbours_in_optimisation:
+    for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
+      if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']: continue
+      ligand_selection[i]=True
   qmm.set_ligand_atoms(ligand_selection)
   return qmm
 
@@ -322,6 +330,7 @@ def qm_restraints_initialisation(params, log=StringIO()):
                                        qmr.buffer,
                                        qmr.capping_groups), file=log)
   print('',file=log)
+  quantum_interface.get_qi_macro_cycle_array(params, verbose=True, log=log)
 
 def running_this_macro_cycle(qmr,
                              macro_cycle,
@@ -347,18 +356,29 @@ def running_this_macro_cycle(qmr,
   return False
 
 def update_bond_restraints(ligand_model,
+                           buffer_model,
                            model_grm=None, # flag for update vs checking
                            ignore_x_h_distance_protein=False,
+                           include_inter_residue_restraints=False,
                            log=StringIO()):
   ligand_grm = ligand_model.get_restraints_manager()
-  atoms = ligand_model.get_atoms()
-  bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
-    sites_cart=ligand_model.get_sites_cart())
+  ligand_atoms = ligand_model.get_atoms()
+  ligand_i_seqs = []
+  for atom in ligand_atoms:
+    ligand_i_seqs.append(atom.tmp)
+  buffer_grm = buffer_model.get_restraints_manager()
+  atoms = buffer_model.get_atoms()
+  ligand_atoms = ligand_model.get_atoms()
+  bond_proxies_simple, asu = buffer_grm.geometry.get_all_bond_proxies(
+    sites_cart=buffer_model.get_sites_cart())
   sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
     'delta',
-    ligand_model.get_sites_cart())
+    buffer_model.get_sites_cart())
   i=0
   for info in sorted_table:
+    #
+    # loop over buffer restraints
+    #
     (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
     i_atom=atoms[i_seq]
     j_atom=atoms[j_seq]
@@ -366,9 +386,15 @@ def update_bond_restraints(ligand_model,
       if i_atom.element_is_hydrogen(): continue
       if j_atom.element_is_hydrogen(): continue
     i_seqs=[i_seq, j_seq]
-    bond=ligand_grm.geometry.bond_params_table.lookup(*list(i_seqs))
+    bond=buffer_grm.geometry.bond_params_table.lookup(*list(i_seqs))
     i+=1
     if model_grm:
+      if include_inter_residue_restraints:
+        if not(i_atom.tmp in ligand_i_seqs or j_atom.tmp in ligand_i_seqs):
+          continue
+      else:
+        if not(i_atom.tmp in ligand_i_seqs and j_atom.tmp in ligand_i_seqs):
+          continue
       print('    %-2d %s - %s %5.3f ~> %5.3f' % (
         i,
         i_atom.id_str().replace('pdb=',''),
@@ -439,7 +465,7 @@ def setup_qm_jobs(model,
     # get appropriate QM manager
     #
     program_goal = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
-    if not energy_only and not qmr.do_not_even_calculate_qm_restraints:
+    if not energy_only and qmr.do_not_even_calculate_qm_restraints:
       print('    Skipping QM calculation : %s' % qmr.selection)
       continue
     qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
@@ -491,6 +517,8 @@ def run_energies(model,
   t0 = time.time()
   energy_only=True
   if not model.restraints_manager_available(): model.process(make_restraints=True)
+  if macro_cycle in [None, 0]: run_program=False
+  qi_array = quantum_interface.get_qi_macro_cycle_array(params)
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,
                                                                     energy_only=energy_only,
@@ -508,6 +536,7 @@ def run_energies(model,
                           pre_refinement=pre_refinement,
                           log=log)
   if not run_program: return
+  assert macro_cycle is not None
   #
   # run jobs
   #
@@ -560,15 +589,16 @@ def update_restraints(model,
     # update coordinates of ligand
     #
     old = ligand_model.get_hierarchy().atoms().extract_xyz()
-    rmsd = old.rms_difference(xyz)
-    if rmsd>5:
-      print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (rmsd),
-            file=log)
-      print('  Check the QM minimisation for errors or incorrect protonation.',
-            file=log)
-      if rmsd>20:
-        print('  Movement of cartesian coordinates is very large.', file=log)
-    ligand_model.get_hierarchy().atoms().set_xyz(xyz)
+    if not qmr.include_nearest_neighbours_in_optimisation:
+      rmsd = old.rms_difference(xyz)
+      if rmsd>5:
+        print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (rmsd),
+              file=log)
+        print('  Check the QM minimisation for errors or incorrect protonation.',
+              file=log)
+        if rmsd>20:
+          print('  Movement of cartesian coordinates is very large.', file=log)
+      ligand_model.get_hierarchy().atoms().set_xyz(xyz)
     old = buffer_model.get_hierarchy().atoms().extract_xyz()
     # rmsd = old.rms_difference(xyz_buffer)
     buffer_model.get_hierarchy().atoms().set_xyz(xyz_buffer)
@@ -589,10 +619,15 @@ def update_restraints(model,
     model_grm = model.get_restraints_manager()
     print('\n  Checking', file=log)
     update_bond_restraints(buffer_model,
+                           buffer_model,
                            ignore_x_h_distance_protein=qmr.ignore_x_h_distance_protein,
                            log=log)
     print('\n  Transfer', file=log)
-    update_bond_restraints(ligand_model, model_grm=model_grm, log=log)
+    update_bond_restraints(ligand_model,
+                           buffer_model,
+                           model_grm=model_grm,
+                           include_inter_residue_restraints=qmr.include_nearest_neighbours_in_optimisation,
+                           log=log)
     #
     #    - angles
     #
@@ -604,6 +639,7 @@ def update_restraints(model,
     ligand_lookup = {}
     model_lookup = {}
     i=0
+    if sorted_table is None: sorted_table=[]
     for info in sorted_table:
       (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
       i_atom=atoms[int(i_seqs[0])]

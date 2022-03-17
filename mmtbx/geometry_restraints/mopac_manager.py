@@ -27,13 +27,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
      )
     return outl
 
-  def opt_setup(self, optimise_ligand=True, optimise_h=True):
-    outl = self._input_header()
-    assert self.multiplicity==1
-    outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
-                                      optimise_h=optimise_h)
-    self.write_input(outl)
-
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True):
     outl = ''
     for i, atom in enumerate(self.atoms):
@@ -69,11 +62,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
 
   def get_input_filename(self):
     return 'mopac_%s.mop' % self.preamble
-
-  def write_input(self, outl):
-    f=open(self.get_input_filename(), 'w')
-    f.write(outl)
-    del f
 
   def read_xyz_output(self):
     filename = self.get_coordinate_filename()
@@ -111,36 +99,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                                )
     self.times.append(time.time()-t0)
 
-  def get_energy(self,
-                 optimise_h=True,
-                 cleanup=False,
-                 file_read=True,
-                 coordinate_filename_ext=None, # not used
-                 log_filename_ext=None, # not used
-                 redirect_output=False, # not used
-                 log=StringIO()):
-    energy=None
-    old_preamble = self.preamble
-    self.preamble += '_energy'
-    optimise_ligand=False
-    if file_read and self.check_file_read_safe(optimise_ligand=optimise_ligand,
-                                               optimise_h=optimise_h):
-      filename = self.get_log_filename()
-      if os.path.exists(filename):
-        if os.path.exists(filename):
-          base_qm_manager.process_qm_log_file(filename, log=log)
-        print('  Reading energy from %s\n' % filename, file=log)
-        energy = self.read_energy()
-    if energy is None:
-      outl = self.get_input_lines(optimise_ligand=optimise_ligand,
-                                  optimise_h=optimise_h)
-      self.write_input(outl)
-      self.run_cmd(redirect_output=redirect_output)
-      energy = self.read_energy()
-    if cleanup: self.cleanup(level=cleanup)
-    print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
-    self.preamble = old_preamble
-    return energy
 
   def read_energy(self):
     filename = self.get_log_filename()
@@ -159,23 +117,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
         self.energy = float(line.split()[5])
         self.units = line.split()[6]
     return self.energy, None
-
-  def get_strain(self,
-                 cleanup=False,
-                 file_read=True,
-                 coordinate_filename_ext=None, # not used
-                 log_filename_ext=None, # not used
-                 redirect_output=False, # not used
-                 log=StringIO()):
-    old_preamble = self.preamble
-    start_energy, junk = self.get_energy(optimise_h=True, cleanup=cleanup, log=log)
-    self.preamble = old_preamble+'_strain'
-    final_energy, junk = self.get_opt(redirect_output=False, cleanup=cleanup, log=log)
-    final_energy, junk = self.read_energy()
-    self.strain = start_energy-final_energy
-    print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
-    self.preamble = old_preamble
-    return self.strain, self.units
 
   def cleanup(self, level=None, verbose=False):
     if level=='all':

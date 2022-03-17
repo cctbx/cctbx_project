@@ -91,6 +91,8 @@ qm_restraints
     .type = bool
   capping_groups = False
     .type = bool
+  include_nearest_neighbours_in_optimisation = False
+    .type = bool
   do_not_update_restraints = False
     .type = bool
     .style = hidden
@@ -105,7 +107,7 @@ qm_restraints
   programs = ''
   for package, (func, var) in program_options.items():
     if func(os.environ, var):
-      if package=='orca':
+      if package=='mopac':
         programs += ' *%s' % package
       else:
         programs += '   %s' % package
@@ -210,6 +212,7 @@ def is_quantum_interface_active(params, verbose=False):
 def is_qi_energy_pre_refinement(params,
                                 macro_cycle,
                                 ):
+  assert 0
   qi = is_quantum_interface_active(params)
   if qi:
     rc = []
@@ -225,6 +228,7 @@ def is_qi_energy_pre_refinement(params,
 def is_qi_energy_post_refinement(params,
                                 macro_cycle,
                                 ):
+  assert 0
   qi = is_quantum_interface_active(params)
   if qi:
     rc = []
@@ -256,6 +260,48 @@ def is_quantum_interface_active_this_macro_cycle(params,
     return rc
   else:
     return False
+
+class unique_item_list(list):
+  def append(self, item):
+    if item not in self:
+      list.append(self, item)
+
+def get_qi_macro_cycle_array(params, verbose=False, log=None):
+  qi = is_quantum_interface_active(params)
+  number_of_macro_cycles = params.main.number_of_macro_cycles
+  tmp=[]
+  for i in range(number_of_macro_cycles+1):
+    tmp.append(unique_item_list())
+  if qi:
+    for i, qmr in enumerate(params.qi.qm_restraints):
+      rc=[]
+      for i in range(number_of_macro_cycles+1):
+        rc.append(unique_item_list())
+      if qmr.calculate_starting_strain:
+        rc[1].append('strain')
+      elif qmr.calculate_starting_energy:
+        rc[1].append('energy')
+      if not qmr.do_not_even_calculate_qm_restraints:
+        if qmr.run_in_macro_cycles=='first_only':
+          rc[1].append('restraints')
+        elif qmr.run_in_macro_cycles=='all':
+          for j in range(1,number_of_macro_cycles+1):
+            rc[j].append('restraints')
+        elif qmr.run_in_macro_cycles=='test':
+          rc[1].append('test')
+      if qmr.calculate_final_strain:
+        rc[-1].append('strain')
+      elif qmr.calculate_final_energy:
+        rc[-1].append('energy')
+    if verbose:
+      print('    %s' % qmr.selection, file=log)
+      for j, actions in enumerate(rc):
+        if actions:
+          print('      %2d : %s' % (j, ' '.join(actions)), file=log)
+    for j, actions in enumerate(rc):
+      for action in actions:
+        tmp[j].append(action)
+  return tmp
 
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)
