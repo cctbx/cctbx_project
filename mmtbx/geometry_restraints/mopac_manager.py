@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import os
-from io import StringIO
 import time
 
 from scitbx.array_family import flex
