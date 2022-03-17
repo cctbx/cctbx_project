@@ -1606,12 +1606,9 @@ class map_manager(map_reader, write_ccp4_map):
         sets the shift_cart but does not move the object
     '''
     if ncs_object.shift_cart():
-      print("ZZ currnet ncs obj:",ncs_object.shift_cart())
       offset = tuple(
         [s - n for s, n in zip(self.shift_cart(), ncs_object.shift_cart())])
       ncs_object = ncs_object.coordinate_offset(offset)
-      print("ZZ offset:",offset)
-      print("ZZ new shift cart:",ncs_object.shift_cart())
 
     else:
       ncs_object = ncs_object.coordinate_offset(self.shift_cart())
