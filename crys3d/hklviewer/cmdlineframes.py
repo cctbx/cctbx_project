@@ -280,6 +280,8 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if view_3d.has_phil_path(diff_phil, "data_array"):
+        if view_3d.has_phil_path(diff_phil, "phasertng_tag"):
+          phl.viewer.data_array.label = self.get_label_from_phasertng_tag(phl.viewer.data_array.phasertng_tag)
         phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
                                                                           phl.viewer.data_array.datatype)
 
@@ -886,6 +888,23 @@ class HKLViewFrame() :
       self.mprint("Can only save file in MTZ or CIF format. Sorry!")
 
 
+  def get_label_from_phasertng_tag(self, tngcolumn_tags):
+    tngcols = []
+    # Say tngcolumn_tags = "INAT,SIGINAT" and mtz history looks like:
+    # PHASER LABIN INAT/I<<FW/J SIGINAT/SIGI<<FW/Q IPOS/I(+)<<I/K
+    # PHASER LABIN SIGIPOS/SIGI(+)<<SIGI/M INEG/I(-)<<I/K SIGINEG/SIGI(-)<<SIGI/M
+    # then m would look like [('INAT', 'SIGINAT')]. Concatenate the strings before returning
+    label = ""
+    for e in self.hklfile_history:
+      for tngcolumn_tag in tngcolumn_tags.split(","):
+        m =  re.findall(tngcolumn_tag + '/(\S*)/', e, re.VERBOSE)
+        if len(m) > 0:
+          tngcols.append(m[0])
+    if len(tngcols):
+      label = ",".join(tngcols)
+    return label
+
+
   def validate_preset_buttons(self):
     if not self.validated_preset_buttons:
       activebtns = []
@@ -893,16 +912,22 @@ class HKLViewFrame() :
       for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
         rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
         rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+        m = re.findall('data_array\.phasertng_tag \s* = \s* \"(\w+) ,? (\w*)\"', philstr, re.VERBOSE)
+        if len(m):
+          phasertng_tags = ",".join(m[0])
+          rlbl = [ self.get_label_from_phasertng_tag(phasertng_tags) ]
+          # find the miller array used by phasertng as specified in the mtz history header
+
         if len(rlbl) == 1:
           labelfound = False; typefound= False
-          for infos in self.viewer.hkl_scenes_infos:
-            if infos[3] == rlbl[0]:
+          for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if label == rlbl[0]:
               labelfound = True
-              self.mprint("Preset button, %s, assigned to data column %s" %(btnname,infos[3]) )
+              self.mprint("Preset button, %s, assigned to data column %s" %(btnname, label) )
               break
-            if len(rtype) == 1 and infos[4] == rtype[0]:
+            if len(rtype) == 1 and description == rtype[0]:
               typefound = True
-              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,infos[4],infos[3]) )
+              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label) )
               break
         if not (labelfound or typefound):
           self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
@@ -1512,6 +1537,10 @@ masterphilstr = """
         .type = str
         .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
                    "order the miller array with this label is found in the reflection data file."
+      phasertng_tag = none
+        .type = str
+        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+                   "order the miller array with a label found in the parsed history of the MTZ header."
       datatype = None
         .type = str
         .caption = "In case label is not found this assigns scene_id with a value corresponding to " \

@@ -84,6 +84,11 @@ buttonsdeflist = [
                                                   data_array.datatype = "Intensity"
                                                 }
   """),
+  ("INAT", "INAT,SIGINAT test", """
+                                                viewer {
+                                                  data_array.phasertng_tag = "INAT,SIGINAT"
+                                                }
+  """),
   ("TNCS", "Show TNCS normal", """
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0]"

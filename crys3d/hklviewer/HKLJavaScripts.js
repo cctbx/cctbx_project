@@ -468,17 +468,22 @@ async function RenderRequest(note = "")
 };
 
 
-async function SetAutoview(mycomponent, time)
+async function SetAutoview(mycomponent, t)
 {
   if (mycomponent == null)
     return;
 
   WebsockSendMsg('StartSetAutoView ' + pagename);
-  mycomponent.autoView(time); 
+  mycomponent.autoView(t); 
 
   while (true) {
+    // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
+    // asynchroneously in the background. Its completion time is at least t miliseconds and depends on the 
+    // data size of mycomponent. It will have completed once the condition 
+    // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
+    // at that point in time
     if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
-      WebsockSendMsg('FinishedSetAutoView ' + pagename);
+      WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
       return;
     }
     await sleep(200);
