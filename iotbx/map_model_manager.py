@@ -8441,6 +8441,7 @@ class match_map_model_ncs(object):
   def add_ncs_object(self, ncs_object):
     # Add an NCS object to map_manager, overwriting any ncs object that is there
     # Must already have a map_manager. Ncs object must match shift_cart already
+    #  or at least be compatible
 
     assert self.map_manager() is not None
     self.map_manager().set_ncs_object(ncs_object) # checks for shift_cart

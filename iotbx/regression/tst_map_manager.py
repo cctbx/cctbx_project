@@ -279,6 +279,12 @@ def test_01():
   assert ncs_obj.is_similar_ncs_object(another_mm.ncs_object())
   assert new_mm.is_similar(another_mm)
 
+  # Resample with different gridding
+  resampled_mm = another_mm.resample_on_different_grid(
+    target_grid_spacing = .3)
+  assert tuple(resampled_mm.unit_cell_grid) == (67, 67, 67)
+  assert tuple(resampled_mm.origin_shift_grid_units) == (3 , 3, 3)
+
   # Get resolution
   assert approx_equal(new_mm.resolution(force=True, method='d99') ,
     3.73886)
