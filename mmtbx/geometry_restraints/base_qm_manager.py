@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 import os
+from io import StringIO
 import tempfile
+import time
 
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
@@ -181,6 +183,12 @@ class base_manager():
     return '-'
 
 class base_qm_manager(base_manager):
+
+  def write_input(self, outl):
+    f=open(self.get_input_filename(), 'w')
+    f.write(outl)
+    del f
+
   def check_file_read_safe(self, optimise_ligand=True, optimise_h=True):
     outl = self.get_input_lines(optimise_ligand=optimise_ligand,
                                 optimise_h=optimise_h)
@@ -191,11 +199,21 @@ class base_qm_manager(base_manager):
       lines = f.read()
       del f
       if not(outl==lines):
-        print('differences')
+        print('differences '*5)
+        print('proposed')
         print(outl)
+        print('≠'*80)
+        print(filename)
         print(lines)
+        print('filename',filename)
+        print('='*80)
         assert 0
     return outl==lines
+
+  def opt_setup(self, optimise_ligand=True, optimise_h=True):
+    outl = self.get_input_lines(optimise_ligand=optimise_ligand,
+                                optimise_h=optimise_h)
+    self.write_input(outl)
 
   def get_opt(self,
               optimise_h=True,
@@ -233,3 +251,64 @@ class base_qm_manager(base_manager):
           tmp.append(atom)
       coordinates=tmp
     return flex.vec3_double(coordinates), flex.vec3_double(coordinates_buffer)
+
+  def get_energy(self,
+                 optimise_h=True,
+                 cleanup=False,
+                 file_read=True,
+                 redirect_output=False,
+                 log=StringIO(),
+                 **kwds):
+    energy=None
+    old_preamble = self.preamble
+    self.preamble += '_energy'
+    optimise_ligand=False
+    if file_read and self.check_file_read_safe(optimise_ligand=optimise_ligand,
+                                               optimise_h=optimise_h):
+      filename = self.get_log_filename()
+      if os.path.exists(filename):
+        if os.path.exists(filename):
+          process_qm_log_file(filename, log=log)
+        print('  Reading energy from %s\n' % filename, file=log)
+        energy = self.read_energy()
+    if energy is None:
+      outl = self.get_input_lines(optimise_ligand=optimise_ligand,
+                                  optimise_h=optimise_h)
+      self.write_input(outl)
+      self.run_cmd(redirect_output=redirect_output)
+      energy = self.read_energy()
+    if cleanup: self.cleanup(level=cleanup)
+    print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
+    self.preamble = old_preamble
+    return energy
+
+  def get_strain(self,
+                 cleanup=False,
+                 file_read=True,
+                 redirect_output=False,
+                 log=StringIO(),
+                 **kwds):
+    old_preamble = self.preamble
+    start_energy, junk = self.get_energy(optimise_h=True,
+                                         redirect_output=redirect_output,
+                                         cleanup=cleanup,
+                                         log=log)
+    self.preamble = old_preamble+'_strain'
+    final_energy, junk = self.get_opt(redirect_output=redirect_output,
+                                      cleanup=cleanup,
+                                      log=log)
+    final_energy, junk = self.read_energy()
+    self.strain = start_energy-final_energy
+    print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
+    self.preamble = old_preamble
+    return self.strain, self.units
+
+  def get_timings(self, energy=None):
+    if not self.times: return '-'
+    f='  Timings : %0.2fs (%ss)' % (
+      self.times[-1],
+      self.times.format_mean(format='%.2f'))
+    if energy:
+      f+=' Energy : %0.6f' % energy
+    return f
+
