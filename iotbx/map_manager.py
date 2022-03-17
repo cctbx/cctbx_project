@@ -657,9 +657,11 @@ class map_manager(map_reader, write_ccp4_map):
   def set_ncs_object(self, ncs_object):
     '''
       set the ncs object for this map_manager.  Incoming ncs_object must
-     be compatible (shift_cart values must match).  Incoming ncs_object is
-     deep_copied.
+     be compatible (shift_cart values must match or be defined).
+      Incoming ncs_object is deep_copied.
     '''
+    if not ncs_object:
+      return # Nothing to do
     assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if (not self.is_compatible_ncs_object(ncs_object)):
       self.shift_ncs_object_to_match_map(ncs_object)
@@ -930,7 +932,7 @@ class map_manager(map_reader, write_ccp4_map):
 
   def as_full_size_map(self):
     '''
-      Create a full-size map that with the current map inside it, padded by zero
+      Create a full-size map with the current map inside it, padded by zero
 
       A little tricky because the starting map is going to have its origin at
       (0, 0, 0) but the map we are creating will have that point at
@@ -1573,6 +1575,12 @@ class map_manager(map_reader, write_ccp4_map):
 
     return True
 
+  def cart_to_grid_units(self, xyz):
+
+    return tuple([int(0.5 + x * n) for x,n in
+       zip(self.crystal_symmetry().unit_cell().fractionalize(xyz),
+        self.map_data().all())])
+
   def grid_units_to_cart(self, grid_units):
     ''' Convert grid units to cartesian coordinates '''
     x = grid_units[0]/self.unit_cell_grid[0]
@@ -1598,9 +1606,13 @@ class map_manager(map_reader, write_ccp4_map):
         sets the shift_cart but does not move the object
     '''
     if ncs_object.shift_cart():
+      print("ZZ currnet ncs obj:",ncs_object.shift_cart())
       offset = tuple(
         [s - n for s, n in zip(self.shift_cart(), ncs_object.shift_cart())])
       ncs_object = ncs_object.coordinate_offset(offset)
+      print("ZZ offset:",offset)
+      print("ZZ new shift cart:",ncs_object.shift_cart())
+
     else:
       ncs_object = ncs_object.coordinate_offset(self.shift_cart())
 
@@ -2028,11 +2040,75 @@ class map_manager(map_reader, write_ccp4_map):
       self._warning_message = "No map symmetry found; ncs_cc cutoff of %s" %(
         min_ncs_cc)
 
-  def resample_on_different_grid(self, n_real):
+  def _resample_on_different_grid_and_rebox(self, n_real = None,
+       target_grid_spacing = None):
+    '''
+      Resample the boxed map on a grid of n_real and return new map_manager
+      If an ncs_object is present, set its shift_cart too
+
+      Returns new boxed map of similar size
+      and location
+    '''
+
+    # Get starting lower and upper bounds (current map)
+    lower_bounds_cart = self.grid_units_to_cart(self.origin_shift_grid_units)
+    upper_bounds_cart = self.grid_units_to_cart(
+     [o + a for o,a in zip(self.origin_shift_grid_units,
+       self.map_data().all())]
+     )
+
+    # Save NCS object if any and current shift_cart
+    if self.ncs_object():
+      working_ncs_object = self.ncs_object().deep_copy()
+    else:
+      working_ncs_object = None
+    working_shift_cart = self.shift_cart()
+
+    # Create full size map so that we can work easily
+    mm_boxed_fs = self.as_full_size_map()
+    mm_boxed_fs.set_ncs_object(working_ncs_object)
+
+    assert tuple(mm_boxed_fs.origin_shift_grid_units) == (0,0,0)
+
+    # Resample the full size map on new grid
+    mm_boxed_fs_resample = mm_boxed_fs.resample_on_different_grid(
+       n_real = n_real,
+       target_grid_spacing = target_grid_spacing)
+
+    # Now rebox the newly-gridded map
+
+    # New bounds
+    lower_bounds = mm_boxed_fs_resample.cart_to_grid_units(lower_bounds_cart)
+    upper_bounds = mm_boxed_fs_resample.cart_to_grid_units(upper_bounds_cart)
+    mmm_boxed_fs_resample = mm_boxed_fs_resample.as_map_model_manager()
+
+    mmm_boxed_fs_resample_boxed = \
+      mmm_boxed_fs_resample.extract_all_maps_with_bounds(
+        lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+    return mmm_boxed_fs_resample_boxed.map_manager()
+
+  def resample_on_different_grid(self, n_real = None,
+       target_grid_spacing = None):
     '''
       Resample the map on a grid of n_real and return new map_manager
       If an ncs_object is present, set its shift_cart too
+
+      Allows map to be boxed; if so returns new boxed map of similar size
+      and location
     '''
+
+    assert n_real or target_grid_spacing
+
+    if self.origin_shift_grid_units != (0,0,0):
+      return self._resample_on_different_grid_and_rebox(n_real = n_real,
+       target_grid_spacing = target_grid_spacing)
+
+    if n_real is None:
+      n_real = []
+      for a, nn in zip(self.crystal_symmetry().unit_cell().parameters()[:3],
+         self.map_data().all()):
+        new_n = int (0.5+ a/target_grid_spacing)
+        n_real.append( new_n)
 
     original_n_real = self.map_data().all()
     original_shift_cart = self.shift_cart()
@@ -2045,30 +2121,7 @@ class map_manager(map_reader, write_ccp4_map):
         n_real           = n_real)
 
 
-    # Can have an origin shift if grid units are a multiple of original
-
-    if original_origin_shift_grid_units != (0,0,0):
-      new_origin_shift_grid_units = []
-      for i in range(3):
-
-        if n_real[i]  > original_n_real[i]:
-          if original_n_real[i] * (n_real[i]//original_n_real[i]) != n_real[i]:
-            raise Sorry(
-             "Cannot resample with origin shift unless new gridding is" +
-             " a multiple of original")
-        elif n_real[i] == original_n_real[i]:
-          pass
-        else:
-          if n_real[i] * (original_n_real[i]//n_real[i]) != original_n_real[i]:
-            raise Sorry(
-             "Cannot resample with origin shift unless new gridding is" +
-             " a multiple of original")
-
-        new_origin_shift_grid_units.append(original_origin_shift_grid_units[i]
-           * (n_real[i]//original_n_real[i]))
-
-    else:
-      new_origin_shift_grid_units = (0,0,0)
+    new_origin_shift_grid_units = (0,0,0)
 
     if self.ncs_object():
       new_ncs_object = self.ncs_object().deep_copy()
