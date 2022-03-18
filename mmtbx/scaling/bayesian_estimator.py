@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function
 # For use with data that may have missing entries for some predictors, try
 #  exercise_group below
 #
-# Parameters to set:  number of bins, mininum observations in each bin,
+# Parameters to set:  number of bins, minimum observations in each bin,
 #  number of bins to smooth over.   Normally you want 20 or more observations
 #  in each bin when you are training the estimator. You also want enough bins
 #  so that adjacent bins have similar values compared to the SD of the

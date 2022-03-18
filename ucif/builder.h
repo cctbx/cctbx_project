@@ -7,7 +7,7 @@
 namespace ucif {
 
 
-/*! The mininum functions required for an array interface.
+/*! The minimum functions required for an array interface.
     Arrays are used for storing lists of loop headers and looped data items,
     which are passed to the builders.
     Arrays are also used to store lists of any lexer and parser error messages
