@@ -432,6 +432,8 @@ class hklview_3d:
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25)
       self.set_volatile_params()
+    if has_phil_path(diff_phil, "fontsize"):
+      self.SetFontSize(self.ngl_settings.fontsize)
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       self.animate_rotate_around_vector()
@@ -1465,7 +1467,7 @@ class hklview_3d:
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
       self.SetFontSize(self.ngl_settings.fontsize)
-      self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
+      self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
       self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
@@ -1529,6 +1531,11 @@ class hklview_3d:
           self.mprint( message, verbose=1)
         elif "Warning!: Web browser closed unexpectedly" in message:
           self.mprint( message, verbose=1)
+        elif "ToggleAnimation" in message:
+          vecnr,speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+          speed = -speed # negative speed tells HKLjavascripts to pause animating
+          self.params.clip_plane.animate_rotation_around_vector = "[%s, %s]" %(vecnr,speed)
+          self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
           self.mprint( "Image to be received", verbose=1)
         elif "ImageWritten" in message:
@@ -2516,8 +2523,8 @@ in the space group %s\nwith unit cell %s\n""" \
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
 
-  def MakeColourChart(self, ctop, cleft, label, fomlabel, colourgradarray):
-    msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
+  def MakeColourChart(self, label, fomlabel, colourgradarray):
+    msg = "%s\n\n%s\n\n%s" %(label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
 

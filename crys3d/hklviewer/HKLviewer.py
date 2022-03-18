@@ -1089,6 +1089,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
+    if self.currentphilstringdict['clip_plane.animate_rotation_around_vector'] is not None:
+      vecnr,speed = self.currentphilstringdict['clip_plane.animate_rotation_around_vector']
+      self.AnimaRotCheckBox.setChecked( speed > 0 )
+
     self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clipwidth'] != None)
 
     if self.currentphilstringdict['viewer.fixorientation'] is not None:
@@ -1767,18 +1771,19 @@ clip_plane {
 
 
   def onAnimateRotation(self):
-    if self.AnimaRotCheckBox.isChecked() == True:
-      self.AnimateSpeedSlider.setEnabled(True)
-      self.rotavecangle_slider.setDisabled(True)
-      speed = self.AnimateSpeedSlider.value()
-      self.send_message("""clip_plane {
-      animate_rotation_around_vector = '[%d, %f]'
+    if not self.unfeedback:
+      if self.AnimaRotCheckBox.isChecked() == True:
+        self.AnimateSpeedSlider.setEnabled(True)
+        self.rotavecangle_slider.setDisabled(True)
+        speed = self.AnimateSpeedSlider.value()
+        self.send_message("""clip_plane {
+        animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
-    else:
-      self.rotavecangle_slider.setEnabled(True)
-      self.AnimateSpeedSlider.setDisabled(True)
-      self.send_message("""clip_plane {
-      animate_rotation_around_vector = '[%d, %f]'
+      else:
+        self.rotavecangle_slider.setEnabled(True)
+        self.AnimateSpeedSlider.setDisabled(True)
+        self.send_message("""clip_plane {
+        animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
 
 

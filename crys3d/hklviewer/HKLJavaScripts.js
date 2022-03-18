@@ -65,13 +65,22 @@ var isdebug = false;
 var tdelay = 100;
 var displaytooltips = true;
 var colourchart = null;
+var millerlabel = null;
+var fomlabel = null;
+var colourgradvalarrays = null;
 var infobanner = null;
 var ResetViewBtn = null;
+var StopAnimateBtn = null;
+var animatheta = 0.0;
+var animaaxis = new NGL.Vector3();
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
 var animationspeed = -1.0;
 var XYZaxes = null;
+var Helm = null;
+var Kelm = null;
+var Lelm = null;
 var Hstarstart = null;
 var Hstarend = null;
 var Kstarstart = null;
@@ -453,6 +462,41 @@ function CameraZoom(t, deltaX, deltaY) {
   if (isdebug)
     console.log(msg);
 };
+
+
+function AnimateRotation(axis, animatheta) {
+  let m4 = new NGL.Matrix4();
+  let then = 0;
+
+  function render(now) {
+// as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
+    now *= 0.001;
+    const deltaTime = now - then;
+    then = now;
+
+    if (animationspeed > 0)
+      animatheta = (animatheta + deltaTime * animationspeed) % 360;
+    //else
+    //  animatheta = 0.0;
+    if (shapeComp == null)
+      return;
+
+    m4.makeRotationAxis(axis, animatheta);
+    shapeComp.setTransform(m4);
+    for (let i = 0; i < vectorshapeComps.length; i++) {
+      if (typeof vectorshapeComps[i].reprList != "undefined")
+        vectorshapeComps[i].setTransform(m4);
+    }
+    stage.viewer.requestRender();
+
+    if (animationspeed > 0)
+      requestAnimationFrame(render);
+  }
+  if (animationspeed > 0)
+    requestAnimationFrame(render);
+}
+
+
 
 
 async function RenderRequest(note = "")
@@ -960,42 +1004,13 @@ function onMessage(e)
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
       WebsockSendMsg('Animate rotating components around axis ' + pagename);
-      let sm = new Float32Array(9);
-      let m4 = new NGL.Matrix4();
-      let axis = new NGL.Vector3();
       animationspeed = parseFloat(val[3])*0.05;
-      axis.x = parseFloat(val[0]);
-      axis.y = parseFloat(val[1]);
-      axis.z = parseFloat(val[2]);
+      animaaxis.x = parseFloat(val[0]);
+      animaaxis.y = parseFloat(val[1]);
+      animaaxis.z = parseFloat(val[2]);
 
-      let then = 0;
-      let theta = 0.0;
-      function render(now)
-      { // as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
-        now *= 0.001;
-        const deltaTime = now - then;
-        then = now;
+      AnimateRotation(animaaxis, animatheta);
 
-        if (animationspeed > 0)
-          theta = (theta + deltaTime * animationspeed) % 360;
-        else
-          theta = 0.0;
-        if (shapeComp == null)
-          return;
-
-        m4.makeRotationAxis(axis, theta);
-        shapeComp.setTransform(m4);
-        for (let i = 0; i < vectorshapeComps.length; i++) {
-          if (typeof vectorshapeComps[i].reprList != "undefined")
-            vectorshapeComps[i].setTransform(m4);
-        }
-        stage.viewer.requestRender();
-
-        if (animationspeed > 0)
-          requestAnimationFrame(render);
-      }
-      if (animationspeed > 0)
-        requestAnimationFrame(render);
       SendComponentRotationMatrixMsg();
     }
 
@@ -1142,7 +1157,10 @@ function onMessage(e)
     if (msgtype === "SetFontSize")
     {
       fontsize = parseFloat(val[0]);
-      //RenderRequest();
+      MakeColourChart();
+      MakeButtons();
+      MakeHKL_Axis();
+      MakeXYZ_Axis();
     }
 
     if (msgtype === "SetMouseSpeed")
@@ -1223,7 +1241,7 @@ function onMessage(e)
         infobanner.remove(); // delete previous infobanner if any
       if (msg == "")
         return;
-      infobanner = addBottomDivBox(msg, 10, 110, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
+      infobanner = addBottomDivBox(msg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
     if (msgtype === "SetBrowserDebug") {
@@ -1248,12 +1266,10 @@ function onMessage(e)
     if (msgtype === "MakeColourChart")
     {
       let msg = datval[1].split("\n\n");
-      let ctop = eval(msg[0]);
-      let cleft = eval(msg[1]);
-      let label = msg[2];
-      let fomlabel = msg[3];
-      let colourgradvalarrays = eval(msg[4]);
-      MakeColourChart(ctop, cleft, label, fomlabel, colourgradvalarrays);
+      millerlabel = msg[0];
+      fomlabel = msg[1];
+      colourgradvalarrays = eval(msg[2]);
+      MakeColourChart();
       RenderRequest();
     }
 
@@ -1308,6 +1324,7 @@ function onMessage(e)
       //CHROME ONLY
       // html2canvas retains div legends when creaing an image blob
       ResetViewBtn.style.display = "None"; // hide buttons and other GUL controls on this webpage
+      StopAnimateBtn.style.display = "None";
       html2canvas(document.getElementById("viewport")).then(function (canvas) {
         //blob = canvas.toDataURL("image/jpeg", 0.9);
         if (canvas.toBlob) {
@@ -1325,6 +1342,7 @@ function onMessage(e)
         }
       });
       ResetViewBtn.style.display = "Block";
+      StopAnimateBtn.style.display = "Block";
       WebsockSendMsg('ImageWritten ' + pagename);
     }
 
@@ -1473,21 +1491,30 @@ function MakeHKL_Axis()
   //red-z
   shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
 
-  let Helm = document.createElement("div");
+  if (Helm != null) {
+    stage.compList[0].removeAnnotation(Helm);
+    stage.compList[0].removeAnnotation(Kelm);
+    stage.compList[0].removeAnnotation(Lelm);
+    Helm.remove();
+    Kelm.remove();
+    Lelm.remove();
+  }
+
+  Helm = document.createElement("div");
   Helm.innerText = "h";
   Helm.style.color = "white";
   Helm.style.backgroundColor = "rgba(0, 0, 255, " + div_annotation_opacity + ")";
   Helm.style.fontSize = fontsize.toString() + "pt";
   Helm.style.padding = "4px"
 
-  let Kelm = document.createElement("div");
+  Kelm = document.createElement("div");
   Kelm.innerText = "k";
   Kelm.style.color = "white";
   Kelm.style.backgroundColor = "rgba(0, 255, 0, " + div_annotation_opacity + ")";
   Kelm.style.fontSize = fontsize.toString() + "pt";
   Kelm.style.padding = "4px"
 
-  let Lelm = document.createElement("div");
+  Lelm = document.createElement("div");
   Lelm.innerText = "l";
   Lelm.style.color = "white";
   Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
@@ -1607,18 +1634,22 @@ function getTextWidth(text, fsize=8)
 }
 
 
-function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
+function MakeColourChart()
 {
   /* colourgradvalarrays is a list of colour charts. If only one list then it's one colour chart.
   Otherwise it's usually a list of colour charts that constitute a gradient across colours,
   typically used for illustrating figure of merits attenuating phase values in map coefficients
   */
+  if (millerlabel == null || colourgradvalarrays == null)
+    return;
+
   let hfac = 60.0 / colourgradvalarrays[0].length;
   let ih = 3.0*hfac,
   topr = 25.0,
   topr2 = 0.0,
   lp = 2.0; // vertical margin between edge of white container and labels
-
+  let ctop = 10;
+  let cleft = 10;
   let maxnumberwidth = 0;
   for (let j = 0; j < colourgradvalarrays[0].length; j++)
   {
@@ -1929,6 +1960,40 @@ function GetReflectionsInFrustum() {
 }
 
 
+function MakeButtons() {
+  if (ResetViewBtn != null)
+    ResetViewBtn.remove();
+
+  let btnwidth = getTextWidth("Reset View", fontsize);
+  ResetViewBtn = createElement("input", {
+    value: "Reset view",
+    type: "button",
+    onclick: function () {
+      SetDefaultOrientation();
+      RenderRequest();
+      SendOrientationMsg();
+    },
+  }, { bottom: "10px", left: "10px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(ResetViewBtn);
+
+  if (StopAnimateBtn != null)
+    StopAnimateBtn.remove();
+  let leftoffset = 30 + btnwidth;
+  btnwidth = getTextWidth("Toggle Animation", fontsize);
+  StopAnimateBtn = createElement("input", {
+    value: "Toggle Animation",
+    type: "button",
+    onclick: function () {
+      animationspeed = -animationspeed;
+      if (animationspeed > 0)
+        AnimateRotation(animaaxis, animatheta);
+      WebsockSendMsg('ToggleAnimation');
+    },
+  }, { bottom: "10px", left: leftoffset.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(StopAnimateBtn);
+}
+
+
 function HKLscene()
 {
   stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
@@ -2036,16 +2101,7 @@ function HKLscene()
   if (isdebug)
     debugmessage.innerText = dbgmsg;
 
-  ResetViewBtn = createElement("input", {
-    value: "Reset view",
-    type: "button",
-    onclick: function () {
-      SetDefaultOrientation();
-      RenderRequest();
-      SendOrientationMsg();
-    },
-  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fontsize);
-  addElement(ResetViewBtn);
+  MakeButtons();
 
 }
 
