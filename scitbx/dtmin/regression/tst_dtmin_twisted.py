@@ -31,7 +31,7 @@ class RefineTG(RefineBase):
     return ["x", "y"]
 
   def macrocycle_large_shifts(self):
-    return [10., 10.]
+    return [1., 1.]
 
   def target(self):
     return twisted_gauss2d0(self.xy, self.s11, self.s12, self.s22, self.twist)
@@ -333,7 +333,7 @@ def run():
   protocol = [macro1]             # overall minimization protocol
   ncyc = 50                       # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"         # minimizer, bfgs or newton
-  study_params = False            # flag for calling studyparams procedure
+  study_params = True            # flag for calling studyparams procedure
 
   #create the minimizer object
   minimizer = Minimizer(output_level=0) # 0 for MUTE output see Minimizer.py
