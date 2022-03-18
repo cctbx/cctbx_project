@@ -93,9 +93,6 @@ def exercise():
       map1_coeffs, map_id = 'map_manager_1')
   mmm.add_map_from_fourier_coefficients(
       map2_coeffs, map_id = 'map_manager_2')
-  # mm1 = mmm.map_manager_1()
-  # mm2 = mmm.map_manager_2()
-  # mm_mean_data = (mm1.map_data() + mm2.map_data()) / 2
   mm_mean_data = (mmm.map_manager_1().map_data() + mmm.map_manager_2().map_data()) / 2
   mmm.map_manager().set_map_data(map_data = mm_mean_data)
   # Add mask map for ordered component of map
