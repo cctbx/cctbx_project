@@ -35,6 +35,53 @@ class RefineCryoemErrors(RefineBase):
     bstar = recip_params[1]
     cstar = recip_params[2]
     self.large_shifts_beta = [astar * astar, bstar * bstar, cstar * cstar, astar * bstar, astar * cstar, bstar * cstar]
+    ssqr_max = flex.max(mc1.d_star_sq().data())
+    d_min = math.sqrt(1./ssqr_max)
+    sigmaSphericity = 100*(d_min/2.5)**2 # 50-200?
+    self.sigmaSphericityBeta = flex.double(self.large_shifts_beta) * sigmaSphericity/4
+
+  def sphericity_restraint(self, anisoBeta, do_gradient=True, do_hessian=True,
+      sigma_factor = 1.):
+    sigmaSphericityBeta = self.sigmaSphericityBeta * sigma_factor
+    f = 0.
+    g = flex.double(6, 0)
+    h = flex.double(6 * 6, 0)
+    h.reshape(flex.grid(6, 6))
+    unit_cell = self.unit_cell
+    aniso_u_iso = adptbx.beta_as_u_iso(unit_cell, anisoBeta)
+    aniso_delta_beta = flex.double(adptbx.u_iso_as_beta(unit_cell, aniso_u_iso))
+    anisoRemoveIso = flex.double(anisoBeta) - aniso_delta_beta
+    dBetaIso_by_dBIso = list(adptbx.u_iso_as_beta(unit_cell, adptbx.b_as_u(1.)))
+    mm = unit_cell.metrical_matrix()
+    dBIso_by_dBetaAno = list(4./3.*flex.double(mm))
+
+    for ni in range(6):
+      f += math.pow(anisoRemoveIso[ni]/sigmaSphericityBeta[ni],2)/2.
+      if (do_gradient):
+        for nj in range(6):
+          dBetaIso_by_dBetaAnoI = dBetaIso_by_dBIso[nj]*dBIso_by_dBetaAno[ni]
+          if ni == nj:
+            dBetaAno_by_dBetaAnoI = 1.
+          else:
+            dBetaAno_by_dBetaAnoI = 0.
+          g[ni] += (anisoRemoveIso[nj]*(dBetaAno_by_dBetaAnoI-dBetaIso_by_dBetaAnoI) /
+                        math.pow(sigmaSphericityBeta[nj],2) )
+          if (do_hessian):
+            for nk in range(6):
+              dBetaIso_by_dBetaAnoI = dBetaIso_by_dBIso[nk]*dBIso_by_dBetaAno[ni]
+              if nk == ni:
+                dBetaAno_by_dBetaAnoI = 1.
+              else:
+                dBetaAno_by_dBetaAnoI = 0.
+              dBetaIso_by_dBetaAnoJ = dBetaIso_by_dBIso[nk]*dBIso_by_dBetaAno[nj]
+              if nk == nj:
+                dBetaAno_by_dBetaAnoJ = 1.
+              else:
+                dBetaAno_by_dBetaAnoJ = 0.
+              h[ni,nj] += ( (dBetaAno_by_dBetaAnoJ - dBetaIso_by_dBetaAnoJ) *
+                            (dBetaAno_by_dBetaAnoI - dBetaIso_by_dBetaAnoI) /
+                            math.pow(sigmaSphericityBeta[nk],2) )
+    return (f, g, h)
 
   def target_gradient_hessian(self, do_gradient=True, do_hessian=True):
     if do_hessian:
@@ -62,7 +109,6 @@ class RefineCryoemErrors(RefineBase):
     h = flex.double(self.nmp * self.nmp, 0)
     h.reshape(flex.grid(self.nmp, self.nmp))
 
-    twologpi = 2 * math.log(math.pi)
     # Loop over bins to accumulate target, gradient, Hessian
     ma = self.sumfsqr_miller # Miller array holding associated information
     i_bin_used = 0 # Keep track in case full range of bins not used
@@ -93,6 +139,13 @@ class RefineCryoemErrors(RefineBase):
       minusLL_terms = (sumfsqr * (u_terms + sigmaE_terms)
         - 2 * u_terms * f1f2cos) / var_terms + flex.log(var_terms)
       f += flex.sum(minusLL_terms)
+
+      fgh_a_restraint = self.sphericity_restraint(asqr_beta,
+          do_gradient, do_hessian, sigma_factor = 2.) # Looser for amplitude-squared
+      f += fgh_a_restraint[0]
+      fgh_e_restraint = self.sphericity_restraint(sigmaE_beta,
+          do_gradient, do_hessian)
+      f += fgh_e_restraint[0]
 
       if do_gradient:
         # Define some intermediate results needed below
@@ -133,18 +186,13 @@ class RefineCryoemErrors(RefineBase):
           i_ref += self.n_bins
         i_par += self.n_bins
         if self.refine_Asqr_beta:  # Only affects U
-          du_by_dbetaA11 = -hh * u_terms
-          du_by_dbetaA22 = -kk * u_terms
-          du_by_dbetaA33 = -ll * u_terms
-          du_by_dbetaA12 = -2 * hk * u_terms
-          du_by_dbetaA13 = -2 * hl * u_terms
-          du_by_dbetaA23 = -2 * kl * u_terms
-          g[i_ref] += flex.sum(dmLL_by_du_terms * du_by_dbetaA11)
-          g[i_ref+1] += flex.sum(dmLL_by_du_terms * du_by_dbetaA22)
-          g[i_ref+2] += flex.sum(dmLL_by_du_terms * du_by_dbetaA33)
-          g[i_ref+3] += flex.sum(dmLL_by_du_terms * du_by_dbetaA12)
-          g[i_ref+4] += flex.sum(dmLL_by_du_terms * du_by_dbetaA13)
-          g[i_ref+5] += flex.sum(dmLL_by_du_terms * du_by_dbetaA23)
+          hh_factors = [-hh, -kk, -ll, -2*hk, -2*hl, -2*kl]
+          du_by_dbetaA = []
+          for i_beta in range(6):
+            du_by_dbetaA.append(hh_factors[i_beta]*u_terms)
+          for i_beta in range(6):
+            g[i_ref+i_beta] += flex.sum(dmLL_by_du_terms * du_by_dbetaA[i_beta])
+            g[i_ref+i_beta] += fgh_a_restraint[1][i_beta] # Restraint term
           i_ref += 6
         i_par += 6
 
@@ -162,24 +210,13 @@ class RefineCryoemErrors(RefineBase):
           i_ref += self.n_bins
         i_par += self.n_bins
         if self.refine_sigmaE_beta: # Only affects SigmaE
-          dsigE_by_dbetaE11 = -hh * sigmaE_terms
-          dsigE_by_dbetaE22 = -kk * sigmaE_terms
-          dsigE_by_dbetaE33 = -ll * sigmaE_terms
-          dsigE_by_dbetaE12 = -2 * hk * sigmaE_terms
-          dsigE_by_dbetaE13 = -2 * hl * sigmaE_terms
-          dsigE_by_dbetaE23 = -2 * kl * sigmaE_terms
-          g[i_ref] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE11)
-          g[i_ref+1] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE22)
-          g[i_ref+2] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE33)
-          g[i_ref+3] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE12)
-          g[i_ref+4] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE13)
-          g[i_ref+5] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dbetaE23)
+          dsigE_by_dbetaE = []
+          for i_beta in range(6):
+            dsigE_by_dbetaE.append(hh_factors[i_beta]*sigmaE_terms)
+          for i_beta in range(6):
+            g[i_ref+i_beta] += flex.sum(dmLL_by_dsigE_terms * dsigE_by_dbetaE[i_beta])
+            g[i_ref+i_beta] += fgh_e_restraint[1][i_beta] # Restraint term
+
           i_ref += 6
         i_par += 6
         assert (i_par == len(self.x))
@@ -195,13 +232,6 @@ class RefineCryoemErrors(RefineBase):
                 or self.refine_sigmaE_beta):
             d2mLL_by_dsigE2_terms = ( (hyposqr - sigmaE_terms)
               / (sigmaE_sqr * sigmaE_terms) + sumsqrcos/u2sigE3 - 1./u2sigE2)
-          if self.refine_Asqr_beta or self.refine_sigmaE_beta:
-            hh_sqr = flex.pow2(hh)
-            kk_sqr = flex.pow2(kk)
-            ll_sqr = flex.pow2(ll)
-            hk_sqr = flex.pow2(hk)
-            hl_sqr = flex.pow2(hl)
-            kl_sqr = flex.pow2(kl)
 
           i_par = 0 # Keep track of index for unrefined parameters
           i_ref = 0  # Keep track of refined parameters
@@ -219,30 +249,13 @@ class RefineCryoemErrors(RefineBase):
             i_ref += self.n_bins
           i_par += self.n_bins
           if self.refine_Asqr_beta:  # Only affects U
-            d2u_by_dbetaA11_2 = hh_sqr * u_terms
-            d2u_by_dbetaA22_2 = kk_sqr * u_terms
-            d2u_by_dbetaA33_2 = ll_sqr * u_terms
-            d2u_by_dbetaA12_2 = 4 * hk_sqr * u_terms
-            d2u_by_dbetaA13_2 = 4 * hl_sqr * u_terms
-            d2u_by_dbetaA23_2 = 4 * kl_sqr * u_terms
-            h[i_ref, i_ref] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA11))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA11_2) )
-            h[i_ref+1,i_ref+1] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA22))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA22_2) )
-            h[i_ref+2,i_ref+2] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA33))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA33_2) )
-            h[i_ref+3,i_ref+3] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA12))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA12_2) )
-            h[i_ref+4,i_ref+4] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA13))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA13_2) )
-            h[i_ref+5,i_ref+5] += (
-              flex.sum(d2mLL_by_du2_terms * flex.pow2(du_by_dbetaA23))
-              + flex.sum(dmLL_by_du_terms * d2u_by_dbetaA23_2) )
+            for i_beta in range(6):
+              for j_beta in range(6):
+                h[i_ref+i_beta, i_ref+j_beta] += (
+                  flex.sum(d2mLL_by_du2_terms * du_by_dbetaA[i_beta]*du_by_dbetaA[j_beta])
+                  + flex.sum(dmLL_by_du_terms * hh_factors[i_beta]*hh_factors[j_beta]*u_terms) )
+                # Also add restraint term
+                h[i_ref+i_beta,i_ref+j_beta] += fgh_a_restraint[2][i_beta, j_beta]
             i_ref += 6
           i_par += 6
 
@@ -260,30 +273,18 @@ class RefineCryoemErrors(RefineBase):
             i_ref += self.n_bins
           i_par += self.n_bins
           if self.refine_sigmaE_beta: # Only affects SigmaE
-            d2sigE_by_dbetaE11_2 = hh_sqr * sigmaE_terms
-            d2sigE_by_dbetaE22_2 = kk_sqr * sigmaE_terms
-            d2sigE_by_dbetaE33_2 = ll_sqr * sigmaE_terms
-            d2sigE_by_dbetaE12_2 = 4 * hk_sqr * sigmaE_terms
-            d2sigE_by_dbetaE13_2 = 4 * hl_sqr * sigmaE_terms
-            d2sigE_by_dbetaE23_2 = 4 * kl_sqr * sigmaE_terms
-            h[i_ref, i_ref] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE11))
-                               + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE11_2) )
-            h[i_ref+1,i_ref+1] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE22))
-                                  + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE22_2) )
-            h[i_ref+2,i_ref+2] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE33))
-                                  + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE33_2) )
-            h[i_ref+3,i_ref+3] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE12))
-                                  + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE12_2) )
-            h[i_ref+4,i_ref+4] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE13))
-                                  + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE13_2) )
-            h[i_ref+5,i_ref+5] += ( flex.sum(d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dbetaE23))
-                                  + flex.sum(dmLL_by_dsigE_terms * d2sigE_by_dbetaE23_2) )
+            for i_beta in range(6):
+              for j_beta in range(6):
+                h[i_ref+i_beta, i_ref+j_beta] += (
+                  flex.sum(d2mLL_by_dsigE2_terms * dsigE_by_dbetaE[i_beta]*dsigE_by_dbetaE[j_beta])
+                  + flex.sum(dmLL_by_dsigE_terms * hh_factors[i_beta]*hh_factors[j_beta]*sigmaE_terms) )
+                h[i_ref+i_beta,i_ref+j_beta] += fgh_e_restraint[2][i_beta, j_beta]
             i_ref += 6
           i_par += 6
           assert (i_par == len(self.x))
           assert (i_ref == self.nmp)
 
-      # Add restraint terms
+      # Add other restraint terms
       # Restrain log of sigmaT_bins to 0, but downweighting low resolution
       d_bin = math.sqrt(self.ssqr_bins[i_bin_used])
       sigmascale = 0.15 + 0.001 / d_bin ** 3
@@ -297,7 +298,7 @@ class RefineCryoemErrors(RefineBase):
 
       i_bin_used += 1
 
-    return (f, g, h, True)
+    return (f, g, h, False)
 
   def target(self):
     f_g_h = self.target_gradient_hessian(do_gradient=False, do_hessian=False)
@@ -575,7 +576,7 @@ class RefineCryoemErrors(RefineBase):
     # Asqr_scale = self.x[0] # Unneeded parameters listed for completeness
     sigmaT_bins = self.x[1:n_bins + 1]
     # Asqr_beta = self.x[n_bins + 1 : n_bins + 7]
-    # sigmaE_scale = self.x[n_bins + 7]
+    sigmaE_scale = self.x[n_bins + 7]
     # sigmaE_bins = self.x[n_bins + 8 : 2*n_bins + 8]
     sigmaE_beta = tuple(self.x[2*n_bins + 8 : 2*n_bins + 14])
     sumw = sumwx = sumwa = sumwx2 = sumwxa = 0.
@@ -605,10 +606,16 @@ class RefineCryoemErrors(RefineBase):
       for i_beta in range(6):  # Then put slope into asqr_beta
         self.x[1 + n_bins + i_beta] = self.x[1 + n_bins + i_beta] + delta_beta_a[i_beta]
 
+    if not (sigmaE_scale == 1.): # Put change into bins before next step
+      assert (sigmaE_scale > 0.)
+      for i_bin in range(n_bins):
+        self.x[8 + n_bins + i_bin] = self.x[8 + n_bins + i_bin] / sigmaE_scale
+      self.x[7 + n_bins] = 1.
+      sigmaE_scale = 1.
+
     if self.refine_sigmaE_beta:
       # Extract isotropic B from sigmaE_beta, put it into sigmaE_bins
-      sigmaE_u_cart = adptbx.beta_as_u_cart(self.unit_cell, sigmaE_beta)
-      sigmaE_u_iso = adptbx.u_cart_as_u_iso(sigmaE_u_cart)
+      sigmaE_u_iso = adptbx.beta_as_u_iso(self.unit_cell, sigmaE_beta)
       sigmaE_delta_beta = list(adptbx.u_iso_as_beta(self.unit_cell, sigmaE_u_iso))
       sigmaE_b_iso = adptbx.u_as_b(sigmaE_u_iso)
       for i_bin in range(n_bins):  # Put isotropic B into bins
@@ -1075,12 +1082,12 @@ def auto_sharpen_isotropic(mmm, d_min):
   return working_mmm
 
 def add_ordered_volume_mask(
-    mmm, d_min, rad_factor=1.5, protein_mw=None, nucleic_mw=None,
+    mmm, d_min, rad_factor=2, protein_mw=None, nucleic_mw=None,
     map_id_out='ordered_volume_mask'):
   """
   Add map defining mask covering the volume of most ordered density required
-  to contain the specified content of protein and nucleic acid, judged by local
-  squared deviation of input map
+  to contain the specified content of protein and nucleic acid, judged by ratio
+  of local map variance and local noise variance.
 
   Compulsory arguments:
   mmm: map_model_manager containing input half-maps in default map_managers
@@ -1088,7 +1095,7 @@ def add_ordered_volume_mask(
 
   Optional arguments:
   rad_factor: factor by which d_min is multiplied to get radius for averaging
-    sphere, defaults to 1.5
+    sphere, defaults to 2
   protein_mw*: molecular weight of protein expected in map, if any
   nucleic_mw*: molecular weight of nucleic acid expected in map
   map_id_out: identifier of output map, defaults to ordered_volume_mask
@@ -1100,8 +1107,11 @@ def add_ordered_volume_mask(
 
   # Compute local average of squared density, using a sphere that will cover a
   # sufficient number of independent points and extending at least 5 A to
-  # sample non-bonded contact distances. A rad_factor of 1.5 should yield
-  # 4*Pi/3 * (2*1.5)^3 or about 113 independent points for the average.
+  # sample non-bonded contact distances. A rad_factor of 2 should yield
+  # 4*Pi/3 * (2*2)^3 or about 270 independent points for the average; fewer
+  # if the higher resolution data barely contribute. Larger values give less
+  # noise but lower resolution for producing a mask. A minimum radius of 5
+  # is enforced to explore next-nearest-neighbour density.
   radius = max(d_min*rad_factor, 5.)
 
   working_mmm = auto_sharpen_isotropic(mmm,d_min)
@@ -1165,6 +1175,77 @@ def add_ordered_volume_mask(
   new_mm = mmm.map_manager().customized_copy(map_data=overall_mask)
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
+def get_grid_spacings(unit_cell, unit_cell_grid):
+  assert unit_cell.parameters()[3:] == (90,90,90) # Required for this method
+  sp = []
+  for a,n in zip(unit_cell.parameters()[:3], unit_cell_grid):
+    sp.append(a/n)
+  return sp
+
+def get_distance_from_center(c, unit_cell, unit_cell_grid = None,
+    center = None):
+  """
+  Return a 3D flex array containing the distance of each grid point from the
+  center of the map.
+  Code provided by Tom Terwilliger
+  """
+  acc = c.accessor()
+  if not unit_cell_grid: # Assume c contains complete unit cell
+    unit_cell_grid = acc.all()
+  nu,nv,nw = unit_cell_grid
+  dx,dy,dz = get_grid_spacings(unit_cell, unit_cell_grid)
+  if not center:
+    center = (nu//2,nv//2,nw//2)
+
+  # d is initially going to be squared distance from center
+  d = flex.double(nu*nv*nw, 0)
+  d.reshape(acc)
+
+  # sum over x,y,z in slices
+  dx2 = dx**2
+  for i in range(nu):
+    dist_sqr = dx2 * (i - center[0])**2
+    d[i:i+1,0:nv,0:nw] += dist_sqr
+  dy2 = dy**2
+  for j in range(nv):
+    dist_sqr = dy2 * (j - center[1])**2
+    d[0:nu,j:j+1,0:nw] += dist_sqr
+  dz2 = dz**2
+  for k in range(nw):
+    dist_sqr = dz2 * (k - center[2])**2
+    d[0:nu,0:nv,k:k+1] += dist_sqr
+
+  # Take square root to get distances
+  d = flex.sqrt(d)
+
+  return d
+
+def get_maximal_mask_radius(mm_ordered_mask):
+  unit_cell = mm_ordered_mask.unit_cell()
+  om_data = mm_ordered_mask.map_data()
+  d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell)
+  sel = om_data > 0
+  selected_grid_indices = sel.iselection()
+  mask_distances = d_from_c.select(selected_grid_indices)
+  maximal_radius = mask_distances.min_max_mean().max
+  return maximal_radius
+
+def get_mask_radius(mm_ordered_mask,frac_coverage):
+  """
+  Get radius of sphere around map center enclosing desired fraction of
+  ordered density
+  """
+  unit_cell = mm_ordered_mask.unit_cell()
+  om_data = mm_ordered_mask.map_data()
+  d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell)
+  sel = om_data > 0
+  selected_grid_indices = sel.iselection()
+  mask_distances = d_from_c.select(selected_grid_indices)
+  mask_distances = mask_distances.select(flex.sort_permutation(data=mask_distances))
+  masked_points = mask_distances.size()
+  mask_radius = mask_distances[math.floor(frac_coverage*masked_points)-1]
+  return mask_radius
+
 def run_refine_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
@@ -1213,8 +1294,10 @@ def run_refine_cryoem_errors(
   if sphere_cent is None:
     # Default to sphere in center of cell extending halfway to nearest edge
     sphere_cent = flex.double((ucpars[0], ucpars[1], ucpars[2]))/2.
-    radius = min(ucpars[0], ucpars[1], ucpars[2])/4.
+    if radius is None:
+      radius = min(ucpars[0], ucpars[1], ucpars[2])/4.
   else:
+    assert radius is not None
     sphere_cent = flex.double(sphere_cent)
 
   # Define box big enough to hold sphere plus soft masking
@@ -1378,12 +1461,12 @@ def run_refine_cryoem_errors(
   # However, this would require all cryo-EM maps to obey the assumption
   # that half-maps are completely unmasked.
   if prior_params is not None:
-    # macro = ["Eprior"]        # protocol: fix error terms using prior
-    macro = ["default"]
+    macro1 = ["Eprior"]
   else:
-    macro = ["default"]       # protocol: refine sigmaE terms too
-  protocol = [macro, macro]   # overall minimization protocol
-  ncyc = 50                   # maximum number of microcycles per macrocycle
+    macro1 = ["default"]        # protocol: fix error terms using prior
+  macro2 = ["default"]       # protocol: refine sigmaE terms too
+  protocol = [macro1, macro2]   # overall minimization protocol
+  ncyc = 100                  # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"     # minimizer, bfgs or newton
   study_params = False        # flag for calling studyparams procedure
   output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
