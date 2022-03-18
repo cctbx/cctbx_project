@@ -226,7 +226,7 @@ class Auxiliary:
     print("")
     print("Study behaviour of parameters near current values")
 
-    fmin = self.target() # so called becuase it should be at the mininum
+    fmin = self.target() # so called because it should be at the minimum
 
     # First check that function values from F, FG and FGH agree
     reparameterized_f_g = self.reparameterized_target_gradient()
@@ -239,8 +239,7 @@ class Auxiliary:
 
     f_g_h = self.reparameterized_target_gradient_hessian()
     hessLogLike = f_g_h[0]
-    h           = f_g_h[1]
-    is_diagonal = f_g_h[2]
+    is_diagonal = f_g_h[3]
     if abs(fmin-hessLogLike) >= 0.1:
       print("Likelihoods from target() and reparameterized_f_g_h() disagree")
       print("Likelihood from                target(): " + str(-fmin))
@@ -308,17 +307,14 @@ class Auxiliary:
         df = gradLogLike - fmin
         f_g_h = self.reparameterized_target_gradient_hessian()
         h           = f_g_h[2].deep_copy()
-        is_diagonal = f_g_h[3]
         thisx = x[i] # Save before finite diffs
         x[i] = x[i] + dxgh[i]
-        xplus = x[i]
         self.set_reparameterized_parameters(x)
 
         f_g = self.reparameterized_target_gradient()
         fplus = f_g[0]
         gplus = f_g[1]
         x[i] = x[i] - 2*dxgh[i] # Other side of original x
-        xminus = x[i]
         self.set_reparameterized_parameters(x)
 
         f_g = self.reparameterized_target_gradient()
@@ -344,8 +340,6 @@ class Auxiliary:
       first = True
       self.set_reparameterized_parameters(x)
       f_g = self.reparameterized_target_gradient()
-      unrepar_g = f_g[1]
-
       f_g_h = self.reparameterized_target_gradient_hessian()
       h = f_g_h[2].deep_copy()
       for i in range(self.nmp-1):
