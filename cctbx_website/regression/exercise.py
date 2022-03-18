@@ -26,6 +26,10 @@ def exercise(script, tmp_path, use_pdb_file=False):
     if (not libtbx.env.has_module("ksdssp")):
       print("ksdssp not available, skipping test)")
       skipped = True
+  if script in ["doc_programming_tips_3.py"]:
+    if sys.platform == 'win32':
+      print("Not structured for Windows multiprocessing, skipping test")
+      skipped = True
   if not skipped:
     # Some scripts use a PDB file, use one from phenix_regression if available
     if use_pdb_file:
@@ -66,4 +70,3 @@ def exercise(script, tmp_path, use_pdb_file=False):
     print('%s skipped' % script)
 
   return return_code
-
