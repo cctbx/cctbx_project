@@ -30,15 +30,14 @@ class RefineCryoemErrors(RefineBase):
     self.target_spectrum = target_spectrum
     self.start_x = start_x
     self.x = start_x[:]         # Full set of parameters
-    recip_params = self.unit_cell.reciprocal_parameters()
-    astar = recip_params[0]
-    bstar = recip_params[1]
-    cstar = recip_params[2]
-    self.large_shifts_beta = [astar * astar, bstar * bstar, cstar * cstar, astar * bstar, astar * cstar, bstar * cstar]
     ssqr_max = flex.max(mc1.d_star_sq().data())
     d_min = math.sqrt(1./ssqr_max)
+    recip_params = self.unit_cell.reciprocal_parameters()
+    (astar, bstar, cstar) = recip_params[:3]
+    cell_tensor = flex.double((astar*astar, bstar*bstar, cstar*cstar, astar*bstar, astar*cstar, bstar*cstar))
+    self.large_shifts_beta = list(cell_tensor*20.*(d_min/2.5)**2)
     sigmaSphericity = 100*(d_min/2.5)**2 # 50-200?
-    self.sigmaSphericityBeta = flex.double(self.large_shifts_beta) * sigmaSphericity/4
+    self.sigmaSphericityBeta = cell_tensor * sigmaSphericity/4
 
   def sphericity_restraint(self, anisoBeta, do_gradient=True, do_hessian=True,
       sigma_factor = 1.):
@@ -175,7 +174,8 @@ class RefineCryoemErrors(RefineBase):
         i_ref = 0 # Keep track of refined parameters
         if self.refine_Asqr_scale: # Only affects U
           du_by_dAsqr_scale = u_terms / asqr_scale
-          g[i_ref] += flex.sum(dmLL_by_du_terms * du_by_dAsqr_scale)
+          i_Asqr_scale = i_ref # Save for mixed second derivatives
+          g[i_Asqr_scale] += flex.sum(dmLL_by_du_terms * du_by_dAsqr_scale)
           i_ref += 1
         i_par += 1
         if self.refine_sigmaT_bins: # Only affects U, just current bin
@@ -246,10 +246,32 @@ class RefineCryoemErrors(RefineBase):
           if self.refine_sigmaT_bins: # Only affects U, current bin
             h[i_sigmaT_bin,i_sigmaT_bin] += flex.sum(
               d2mLL_by_du2_terms * flex.pow2(du_by_dsigmaT_bin))
+            if self.refine_Asqr_scale:
+              d2u_by_dAsqr_scale_by_dsigmaT_bin = du_by_dsigmaT_bin / asqr_scale
+              cross_term = flex.sum(
+                d2mLL_by_du2_terms * du_by_dAsqr_scale * du_by_dsigmaT_bin +
+                dmLL_by_du_terms * d2u_by_dAsqr_scale_by_dsigmaT_bin)
+              h[i_Asqr_scale,i_sigmaT_bin] += cross_term
+              h[i_sigmaT_bin,i_Asqr_scale] += cross_term
             i_ref += self.n_bins
           i_par += self.n_bins
           if self.refine_Asqr_beta:  # Only affects U
             for i_beta in range(6):
+              if self.refine_Asqr_scale: # Add Asqr_scale mixed derivatives
+                d2u_by_dAsqr_scale_by_dbetaA = du_by_dbetaA[i_beta] / asqr_scale
+                cross_term = flex.sum(
+                  d2mLL_by_du2_terms * du_by_dAsqr_scale * du_by_dbetaA[i_beta] +
+                  dmLL_by_du_terms * d2u_by_dAsqr_scale_by_dbetaA)
+                h[i_Asqr_scale,i_ref+i_beta] += cross_term
+                h[i_ref+i_beta,i_Asqr_scale] += cross_term
+                # The following mixed derivatives match finite differences, but don't help
+                # if self.refine_sigmaT_bins: # Add sigmaT_bin mixed derivatives
+                #   d2u_by_dsigmaT_bin_by_dbetaA = du_by_dbetaA[i_beta] / sigmaT_bins[i_bin_used]
+                #   cross_term = flex.sum(
+                #     d2mLL_by_du2_terms * du_by_dsigmaT_bin * du_by_dbetaA[i_beta] +
+                #     dmLL_by_du_terms * d2u_by_dsigmaT_bin_by_dbetaA)
+                #   h[i_sigmaT_bin,i_ref+i_beta] += cross_term
+                #   h[i_ref+i_beta,i_sigmaT_bin] += cross_term
               for j_beta in range(6):
                 h[i_ref+i_beta, i_ref+j_beta] += (
                   flex.sum(d2mLL_by_du2_terms * du_by_dbetaA[i_beta]*du_by_dbetaA[j_beta])
@@ -336,21 +358,21 @@ class RefineCryoemErrors(RefineBase):
     i_par = 0 # Keep track of index for unrefined parameters
     large_shifts = []
     if self.refine_Asqr_scale:
-      large_shifts.append(self.start_x[i_par]/10.)
+      large_shifts.append(self.x[i_par]/4.)
     i_par += 1
     if self.refine_sigmaT_bins:
       for i_bin in range(self.n_bins):
-        large_shifts.append(0.05)
+        large_shifts.append(self.x[i_par+i_bin]/4.)
     i_par += self.n_bins
     if self.refine_Asqr_beta:
       large_shifts.extend(self.large_shifts_beta)
     i_par += 6
     if self.refine_sigmaE_scale:
-      large_shifts.append(0.01)
+      large_shifts.append(0.05)
     i_par += 1
     if self.refine_sigmaE_bins:
       for i_bin in range(self.n_bins):
-        large_shifts.append(self.start_x[i_par+i_bin]/30.)
+        large_shifts.append(self.x[i_par+i_bin]/4.)
     i_par += self.n_bins
     if self.refine_sigmaE_beta:
       large_shifts.extend(self.large_shifts_beta)
@@ -464,11 +486,11 @@ class RefineCryoemErrors(RefineBase):
     repar = []
 
     if self.refine_Asqr_scale:
-      repar.append(Reparams(True,0.))
+      repar.append(Reparams(False))
     i_par += 1
 
     if self.refine_sigmaT_bins:
-      repar.extend([Reparams(True, 0.) for i in range(self.n_bins)])
+      repar.extend([Reparams(False) for i in range(self.n_bins)])
     i_par += self.n_bins
 
     if self.refine_Asqr_beta:
@@ -476,11 +498,11 @@ class RefineCryoemErrors(RefineBase):
     i_par += 6
 
     if self.refine_sigmaE_scale:
-      repar.append(Reparams(True,0.))
+      repar.append(Reparams(False))
     i_par += 1
 
     if self.refine_sigmaE_bins:
-      repar.extend([Reparams(True, 0.) for i in range(self.n_bins)])
+      repar.extend([Reparams(False) for i in range(self.n_bins)])
     i_par += self.n_bins
 
     if self.refine_sigmaE_beta:
@@ -1428,23 +1450,25 @@ def run_refine_cryoem_errors(
       print("Requested resolution is higher than prior parameters support")
       sys.stdout.flush()
       exit
+    # sigmaE bin values should be proportional to weighted volume, pretty much
+    # independent of which part of map is being sampled.
+    # sigmaE_scale can be refined instead of the bins, which should have about the
+    # right relative size.
     ssqr_prior = tuple(prior_params['ssqr_bins'])
     sigmaE_prior = tuple(prior_params['sigmaE_bins'])
     sEinterp = interpolate.interp1d(ssqr_prior,sigmaE_prior,fill_value="extrapolate")
-    # Set sigmaE_scale to 1 after rescaling sigmaE_bins by volume comparison.
-    # In principle just this could be refined instead of the bins.
-    sigmaE_scale = 1.
     sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(weighted_points/prior_params['weighted_points'])
+    # sigmaE_baniso should also be pretty much independent of position in map
     sigmaE_baniso = prior_params['sigmaE_baniso']
     sigmaE_beta = adptbx.u_star_as_beta(adptbx.u_cart_as_u_star(mc1.unit_cell(),adptbx.b_as_u(sigmaE_baniso)))
   else:
-    sigmaE_scale = 1. # Fix at 1
     sigmaE_bins = []
     for i_bin in range(n_bins):
       sigmaE = meanfsq_bins[i_bin] * (1.-mapCC_bins[i_bin])
       sigmaE_bins.append(sigmaE)  # Error bin parameter
     sigmaE_beta = list(adptbx.u_iso_as_beta(mc1.unit_cell(), 0.))
 
+  sigmaE_scale = 1.
   sigmaT_bins = [1.]*n_bins
   start_params = []
   start_params.append(wilson_scale_intensity/3.5) # Asqr_scale, factor out low-res BEST value
@@ -1490,7 +1514,7 @@ def run_refine_cryoem_errors(
   i_par += n_bins
   asqr_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
-  sigmaE_scale = refined_params[i_par] # Used here but not saved later
+  sigmaE_scale = refined_params[i_par] # Should be one at this point, but apply in case.
   i_par += 1
   sigmaE_bins = list(sigmaE_scale * flex.double(refined_params[i_par:i_par + n_bins]))
   i_par += n_bins
@@ -1520,8 +1544,6 @@ def run_refine_cryoem_errors(
       print("  ",es.values()[iv],es.vectors(iv))
 
     print("\nParameters for SigmaE")
-    if prior_params is not None:
-      print("  SigmaE scale applied to prior bins:", sigmaE_scale)
     for i_bin in range(n_bins):
       print("  Bin #", i_bin + 1, "SigmaE base: ", sigmaE_bins[i_bin])
     print("  SigmaE tensor as beta:", sigmaE_beta)
