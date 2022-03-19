@@ -902,6 +902,7 @@ class map_model_manager(object):
     '''
      Overwrites existing model with id 'model'
     '''
+    assert model is not None
     self.add_model_by_id(model,'model')
 
 
@@ -1595,7 +1596,7 @@ class map_model_manager(object):
     assert resolution is not None
 
     model_info=self._get_model_info()
-    model = self._model_dict[model_info.model_id]
+    model = self._model_dict.get(model_info.model_id,None)
     if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
@@ -3441,13 +3442,15 @@ class map_model_manager(object):
         not model.crystal_symmetry().unit_cell()):
       map_manager.set_model_symmetries_and_shift_cart_to_match_map(model)
 
-  def shift_any_model_to_match(self, model, map_manager = None):
+  def shift_any_model_to_match(self, model, map_manager = None,
+     set_unit_cell_crystal_symmetry = False):
     '''
     Take any model and shift it to match the working shift_cart
     Also sets crystal_symmetry.
     Changes model in place
 
      Parameters:  model
+                  set_unit_cell_crystal_symmetry:  optionally set this as well
     '''
     if not model:
       return
@@ -3469,6 +3472,9 @@ class map_model_manager(object):
     model.shift_model_and_set_crystal_symmetry(
         shift_cart = coordinate_shift,
         crystal_symmetry=map_manager.crystal_symmetry())
+
+    if set_unit_cell_crystal_symmetry:
+       self.set_model_symmetries_and_shift_cart_to_match_map(model)
 
 
   def get_model_from_other(self, other,
