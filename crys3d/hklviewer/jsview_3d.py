@@ -1598,6 +1598,12 @@ class hklview_3d:
         elif "notify_cctbx_AfterRendering" in message:
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage release self.hkls_drawn_sem", verbose="threadingmsg")
+        elif "MoveClipPlanesUp" in message:
+          self.params.clip_plane.hkldist += 1
+          self.set_volatile_params()
+        elif "MoveClipPlanesDown" in message:
+          self.params.clip_plane.hkldist -= 1
+          self.set_volatile_params()
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -2252,7 +2258,7 @@ in the space group %s\nwith unit cell %s\n""" \
   def make_clip_plane(self, hkldist=0.0, clipwidth=None):
     # create clip plane oriented parallel or perpendicular to abc vector
     if clipwidth is None:
-      self.RemovePrimitives()
+      #self.RemovePrimitives()
       self.SetClipPlaneDistances(0, 0)
       self.TranslateHKLpoints(0, 0, 0, 0.0)
       return

@@ -70,6 +70,10 @@ var fomlabel = null;
 var colourgradvalarrays = null;
 var infobanner = null;
 var ResetViewBtn = null;
+var PlusBtn = null;
+var MinusBtn = null;
+var pmleft = null;
+var pmbottom = null;
 var StopAnimateBtn = null;
 var animatheta = 0.0;
 var animaaxis = new NGL.Vector3();
@@ -413,16 +417,18 @@ function RemovePrimitives(reprname)
   let reprnamegone = false;
   let clipvecgone = false;
   let unitcellgone = false;
+  let symHKLsgone = false;
   let reciprocunitcellgone = false;
   if (reprname != "")
     reprnamegone = DeletePrimitives(reprname);
   else // otherwise remove all vectors
   {
+    symHKLsgone = DeletePrimitives("sym_HKLs");
     clipvecgone = DeletePrimitives("clip_vector");
     unitcellgone = DeletePrimitives("unitcell");
     reciprocunitcellgone = DeletePrimitives("reciprocal_unitcell");
   }
-  if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
+  if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone || symHKLsgone)
     RenderRequest();
 }
 
@@ -1159,6 +1165,7 @@ function onMessage(e)
       fontsize = parseFloat(val[0]);
       MakeColourChart();
       MakeButtons();
+      MakePlusMinusButtons();
       MakeHKL_Axis();
       MakeXYZ_Axis();
     }
@@ -1242,6 +1249,9 @@ function onMessage(e)
       if (msg == "")
         return;
       infobanner = addBottomDivBox(msg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
+      pmleft = 70 + wp;
+      pmbottom = 35;
+      MakePlusMinusButtons(75 + wp + 2, 35);
     }
 
     if (msgtype === "SetBrowserDebug") {
@@ -1960,6 +1970,39 @@ function GetReflectionsInFrustum() {
 }
 
 
+function MakePlusMinusButtons() {
+  if (infobanner == null || pmbottom  == null || pmleft == null)
+    return;
+
+  if (PlusBtn != null)
+    PlusBtn.remove();
+
+  let btnwidth = getTextWidth("+", fontsize);
+  PlusBtn = createElement("input", {
+    value: "+",
+    type: "button",
+    onclick: function () {
+      WebsockSendMsg('MoveClipPlanesUp');
+    },
+  }, { bottom: pmbottom.toString() + "px", left: pmleft.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(PlusBtn);
+
+  if (MinusBtn != null)
+    MinusBtn.remove();
+
+  let left2 = btnwidth + pmleft + 20;
+  btnwidth = getTextWidth("-", fontsize);
+  MinusBtn = createElement("input", {
+    value: "-",
+    type: "button",
+    onclick: function () {
+      WebsockSendMsg('MoveClipPlanesDown');
+    },
+  }, { bottom: pmbottom.toString() + "px", left: left2.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(MinusBtn);
+};
+
+
 function MakeButtons() {
   if (ResetViewBtn != null)
     ResetViewBtn.remove();
@@ -1985,7 +2028,7 @@ function MakeButtons() {
     type: "button",
     onclick: function () {
       animationspeed = -animationspeed;
-      if (animationspeed > 0)
+      if (animationspeed > 0 && animaaxis.length() > 0.0)
         AnimateRotation(animaaxis, animatheta);
       WebsockSendMsg('ToggleAnimation');
     },
