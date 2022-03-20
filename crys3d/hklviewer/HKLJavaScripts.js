@@ -75,6 +75,7 @@ var MinusBtn = null;
 var pmleft = null;
 var pmbottom = null;
 var StopAnimateBtn = null;
+var hklequationmsg = "";
 var animatheta = 0.0;
 var animaaxis = new NGL.Vector3();
 var sockwaitcount = 0;
@@ -1241,17 +1242,19 @@ function onMessage(e)
     }
 
     if (msgtype === "PrintInformation") {
-      let msg = datval[1];
+      hklequationmsg = datval[1];
       let infofsize = fontsize + 1; // slightly bigger font of infobanner to make it more prominent
-      let wp = getTextWidth(msg, infofsize);
-      if (infobanner != null)
+      let wp = getTextWidth(hklequationmsg, infofsize);
+      if (infobanner != null) {
         infobanner.remove(); // delete previous infobanner if any
-      if (msg == "")
-        return;
-      infobanner = addBottomDivBox(msg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
+        infobanner = null;
+      }
       pmleft = 70 + wp;
       pmbottom = 35;
-      MakePlusMinusButtons(75 + wp + 2, 35);
+      MakePlusMinusButtons();
+      if (hklequationmsg == "")
+        return;
+      infobanner = addBottomDivBox(hklequationmsg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
     if (msgtype === "SetBrowserDebug") {
@@ -1971,11 +1974,17 @@ function GetReflectionsInFrustum() {
 
 
 function MakePlusMinusButtons() {
-  if (infobanner == null || pmbottom  == null || pmleft == null)
-    return;
-
-  if (PlusBtn != null)
+  if (MinusBtn != null || PlusBtn != null) {
+    stage.viewer.container.removeChild(MinusBtn);
+    stage.viewer.container.removeChild(PlusBtn);
     PlusBtn.remove();
+    MinusBtn.remove();
+    MinusBtn = null;
+    PlusBtn = null;
+  }
+
+  if (hklequationmsg == "")
+    return;
 
   let btnwidth = getTextWidth("+", fontsize);
   PlusBtn = createElement("input", {
@@ -1986,9 +1995,6 @@ function MakePlusMinusButtons() {
     },
   }, { bottom: pmbottom.toString() + "px", left: pmleft.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
   addElement(PlusBtn);
-
-  if (MinusBtn != null)
-    MinusBtn.remove();
 
   let left2 = btnwidth + pmleft + 20;
   btnwidth = getTextWidth("-", fontsize);
