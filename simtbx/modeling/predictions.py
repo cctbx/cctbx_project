@@ -64,6 +64,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         use_exascale_api=params.predictions.method == "exascale",
         use_db=params.predictions.method == "diffbragg",
         show_timings=params.predictions.verbose,
+        quiet=not params.predictions.verbose,
         perpixel_wavelen=params.predictions.laue_mode,
         det_thicksteps=params.predictions.thicksteps_override)
 
