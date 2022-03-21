@@ -370,7 +370,7 @@ def _condense(dotInfoList, condense):
     # Sort the dots for the same source atom based on characteristics of their target atom.
     # We include the XYZ position in the sort so that we get the same order and grouping each
     # time even though the phantom H? atoms are otherwise identical.
-    # There may be no target atoms specified (they may be None), which will
+    # There may be no target atoms specified (may be Python None value), which will
     # cause an attribute error.  If that happens, we don't sort.
     try:
       thisAtom = sorted(
@@ -771,8 +771,8 @@ Note:
         # Phantoms and their water Oxygens (both directions), which will shield their
         # contacts from one another and (1) avoid removing sections of hydrogen bond patterns
         # that fall inside atoms that are covalently bonded to acceptors, and (2) remove
-        # the inner collision of the water Oxygen with atoms in the acceptor that also makes
-        # a Hydrogen bond with the acceptor.
+        # the inner collision of the water Oxygen with the acceptor that also makes
+        # a Hydrogen bond with the Phantom Hydrogen.
         if srcExtra.isDummyHydrogen:
           nearbyPhantomHydrogens = set(phantomsQuery.neighbors(src.xyz, 0.001, maxRadius))
           newExclusions = set()
@@ -1902,7 +1902,8 @@ Note:
         for a in all_selected_atoms:
 
           # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-          # a single water in it and asking about the hydrogen radius.
+          # a single water in it and asking about the hydrogen radius.  This could also become a
+          # Phil parameter.
           phantomHydrogenRadius = 1.05
           if self.params.use_neutron_distances:
             phantomHydrogenRadius = 1.0
