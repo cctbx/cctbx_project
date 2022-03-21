@@ -5887,6 +5887,14 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert chain.get_residue_names_and_classes() == (
     ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR'], {'common_amino_acid': 7})
   assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  assert chain.as_new_hierarchy().as_pdb_string().splitlines()[0].strip() == \
+ "ATOM      1  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C"
+  assert chain.as_new_hierarchy().as_pdb_string() == \
+    chain.as_new_hierarchy().as_model_manager(pdb_in.crystal_symmetry()
+     ).get_hierarchy().as_pdb_string()
+  assert chain.as_new_hierarchy().as_model_manager(pdb_in.crystal_symmetry()
+     ).as_model_manager_each_chain()[0].get_hierarchy().as_pdb_string() == \
+      chain.as_new_hierarchy().as_pdb_string()
   assert chain.as_padded_sequence() == "XXGNNQQNY"
   assert (chain.is_protein()) and (not chain.is_na())
   assert pdb_hierarchy.chain_types() == ['PROTEIN']

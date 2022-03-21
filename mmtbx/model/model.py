@@ -520,6 +520,16 @@ class manager(object):
   def info(self):
     return self._info
 
+  def add_remark(self, text):
+    self.info().remarks = \
+       self.info().get('remarks',[]) + [text]
+
+  def remarks(self, as_string = False):
+    if as_string:
+      return ", ".join(self.info().get('remarks',[]))
+    else: # usual
+      return self.info().get('remarks',[])
+
   def __getstate__(self):
     ''' The _ss_manager is not pickleable. Remove it before pickling
       It may be present by itself or as an attribute of _processed_pdb_file
@@ -3869,6 +3879,21 @@ class manager(object):
     if(selection_aniso is not None):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
+
+  def as_model_manager_each_chain(self):
+    """ return a list of model_managers, one corresponding to each chain
+      in this model manager.  Only include chains from first model """
+    list_of_managers = []
+    for model in self.get_hierarchy().models()[:1]:
+      for chain in model.chains():
+        new_m = chain.as_new_hierarchy(
+         ).as_model_manager(self.crystal_symmetry(),
+         unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry(),
+         shift_cart = self.shift_cart())
+        new_m.set_info(self.info().copy()) # note this is shallow copy
+        new_m.add_remark('Chain %s extracted' %(chain.id))
+        list_of_managers.append(new_m)
+    return list_of_managers
 
   def as_map_model_manager(self, map_manager = None,
     create_model_map = False, resolution = None):

@@ -9,6 +9,7 @@ from iotbx.file_reader import any_file
 from iotbx.data_manager import DataManagerBase
 from libtbx import Auto
 from libtbx.utils import Sorry
+import os
 
 # =============================================================================
 class ModelDataManager(DataManagerBase):
@@ -97,6 +98,13 @@ model
       for filename in self.get_restraint_names():
         restraint_objects.append((filename, self.get_restraint(filename)))
       model.set_restraint_objects(restraint_objects)
+    if hasattr(model,'info'):  # save filename if possible
+      if filename is None:
+        filename = self.get_default_model_name()
+      if filename:
+        model.info().full_file_name = os.path.abspath(filename)
+        model.info().file_name = os.path.split(filename)[-1]
+
     return model
 
   def set_model_type(self, filename=None, model_type=None):

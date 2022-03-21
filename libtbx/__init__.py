@@ -262,8 +262,8 @@ class group_args(dda):
   def __call__(self):
     return self.__dict__
 
-  def get(self,kw):
-    return self.__dict__.get(kw)
+  def get(self,kw, default_value = None):
+    return self.__dict__.get(kw, default_value)
 
   def keys(self):
     return self.__dict__.keys()
