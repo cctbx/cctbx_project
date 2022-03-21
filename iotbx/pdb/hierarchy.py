@@ -709,7 +709,7 @@ class _():
        unit_cell_crystal_symmetry = None,
        shift_cart = None):
     ''' Returns simple version of model object based on this hierarchy
-     Requires crystal_symmetry.  Optional unit_cell_crystal_symmetry and 
+     Requires crystal_symmetry.  Optional unit_cell_crystal_symmetry and
      shift_cart
      '''
     import mmtbx.model
@@ -721,7 +721,7 @@ class _():
           unit_cell_crystal_symmetry = unit_cell_crystal_symmetry,
           shift_cart = shift_cart)
     return mm
-   
+
   def as_sequence(self,
       substitute_unknown='X',
       substitute_unknown_na = 'N',
