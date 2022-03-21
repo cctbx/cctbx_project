@@ -79,7 +79,7 @@ namespace least_squares {
       index = mi_lookup.find_hkl(h);
       if (index == -1) {
         if (!space_group.is_sys_absent(h)) {
-          SMTBX_ASSERT(index >= 0)(index);
+          SMTBX_ASSERT(index >= 0)(h.as_string());
         }
       }
       observable_updated = false;
