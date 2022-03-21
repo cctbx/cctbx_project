@@ -705,6 +705,23 @@ class _():
           sequence += seq
     return sequence
 
+  def as_model_manager(self, crystal_symmetry,
+       unit_cell_crystal_symmetry = None,
+       shift_cart = None):
+    ''' Returns simple version of model object based on this hierarchy
+     Requires crystal_symmetry.  Optional unit_cell_crystal_symmetry and 
+     shift_cart
+     '''
+    import mmtbx.model
+    mm = mmtbx.model.manager(
+          model_input = self.deep_copy().as_pdb_input(),
+          crystal_symmetry = crystal_symmetry,
+          )
+    mm.set_unit_cell_crystal_symmetry_and_shift_cart(
+          unit_cell_crystal_symmetry = unit_cell_crystal_symmetry,
+          shift_cart = shift_cart)
+    return mm
+   
   def as_sequence(self,
       substitute_unknown='X',
       substitute_unknown_na = 'N',
@@ -2077,6 +2094,13 @@ class _():
       residue_classes[c] += 1
     return (rn_seq, residue_classes)
 
+  def as_new_hierarchy(self):
+    new_h = iotbx.pdb.hierarchy.root()
+    mm = iotbx.pdb.hierarchy.model()
+    new_h.append_model(mm)
+    mm.append_chain(self.detached_copy())
+    return new_h
+
   def as_list_of_residue_names(self):
     sequence=[]
     for rg in self.residue_groups():
@@ -2144,7 +2168,6 @@ class _():
     :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
     :param as_string: return string (default is to return list of lines)
     '''
-    print("ZZ format chain as fasta")
     seq = self.as_sequence(
           substitute_unknown =substitute_unknown,
           substitute_unknown_na = substitute_unknown_na,
@@ -2162,7 +2185,6 @@ class _():
       seq_lines.append("".join(seq[i:j]))
       i = j
 
-    print("ZZ format chain as fasta",seq_lines)
     if as_string:
       return "\n".join(seq_lines)
     else:
