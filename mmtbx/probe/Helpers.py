@@ -522,7 +522,7 @@ def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
   return ret
 
 def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
-      placedHydrogenRadius = 1.05):
+      placedHydrogenDistance = 1.0):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
@@ -538,7 +538,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     an acceptor or a possible flipped position of an acceptor, and that is not something that
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
-    :param placedHydrogenRadius: Maximum radius to use for placed Phantom Hydrogen atoms.
+    :param placedHydrogenDistance: Maximum distance to use for placed Phantom Hydrogen atoms.
     The Hydrogens are placed at the optimal overlap distance so may be closer than this.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
@@ -570,7 +570,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     # close enough to potentially bond to the atom.
     OH_BOND_LENGTH = 1.0
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
-                (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
+                (placedHydrogenDistance + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
     if overlap < -0.1 and a.occ > minOccupancy and a.element != "H":
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
@@ -611,7 +611,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
     # and the best hydrogen-bonding overlap.
     BEST_HBOND_OVERLAP=0.6
-    distance = 1.0 + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
+    distance = placedHydrogenDistance + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
     try:
       normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset

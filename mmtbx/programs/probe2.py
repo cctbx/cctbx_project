@@ -1934,9 +1934,11 @@ Note:
             self._extraAtomInfo.setMappingFor(a, ei)
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
+            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenDistance
+            # with phantomHydrogenRadius.
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
-                              adjustedHydrogenRadius)
+                              1.0)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
