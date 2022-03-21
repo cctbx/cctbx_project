@@ -21,9 +21,7 @@ namespace smtbx {
 
         MaskData(af::const_ref<complex_type> const& f_mask)
           : f_mask(f_mask)
-        {
-          SMTBX_ASSERT(f_mask.size() == 0);
-        }
+        {}
 
         MaskData(cctbx::xray::observations<FloatType> const& reflections,
           sgtbx::space_group const& space_group,
@@ -31,8 +29,10 @@ namespace smtbx {
           af::const_ref<complex_type> const& f_mask)
           : f_mask(f_mask)
         {
-          mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
-            reflections.indices().const_ref(), space_group, anomalous_flag);
+          if (reflections.has_twin_components()) {
+            mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
+              reflections.indices().const_ref(), space_group, anomalous_flag);
+          }
         }
 
         complex_type find(miller::index<> const& h) const {
@@ -44,8 +44,14 @@ namespace smtbx {
         int size() const {
           return f_mask.size();
         }
-        af::const_ref<std::complex<FloatType> > f_mask;
+
+        const complex_type& get(int i) const {
+          return f_mask[i];
+        }
+
+        af::const_ref<complex_type> f_mask;
         miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
+        bool has_lookup;
       };
 
       template <typename FloatType>

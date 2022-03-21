@@ -222,6 +222,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static void wrap_mask_data() {
         using namespace boost::python;
         typedef MaskData<FloatType> wt;
+        return_value_policy<return_by_value> rbv;
         class_<wt>("MaskData", no_init)
           .def(init<af::const_ref<typename wt::complex_type> const&>((arg("f_mask"))))
           .def(init<cctbx::xray::observations<FloatType> const&,
@@ -232,6 +233,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("space_group"), arg("anomalous_flag"),
                 arg("f_mask"))))
           .def("size", &wt::size)
+          .def("__len__", &wt::size)
+          .def("get", &wt::get, rbv)
+          .def("__getitem__", &wt::get, rbv)
           ;
       }
 
