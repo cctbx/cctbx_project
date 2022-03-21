@@ -124,6 +124,8 @@ class hklview_3d:
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
+    self.planescalarvalue =0
+    self.planenormalhklvec =None
     #self.angle_x_svec = 0.0
     #self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
@@ -497,9 +499,10 @@ class hklview_3d:
         # Make a string of the equation of the plane of reflections
         hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
         if self.params.clip_plane.is_assoc_real_space_vector:
+          self.planescalarvalue = self.params.clip_plane.hkldist * hklvecsqr*scalefactor
+          self.planenormalhklvec = hklvec
           msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
-            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
-            roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
+            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), roundoff(self.planescalarvalue))
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation in the browser
@@ -1590,10 +1593,15 @@ class hklview_3d:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
             visiblehkls = []
+            outsideplanehkls = []
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
               visiblehkls.append(hkl)
-            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose=3)
+              if self.params.clip_plane.normal_vector != -1 and \
+               self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
+                outsideplanehkls.append(hkl)
+            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
+            self.mprint( "hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))), verbose="frustum")
           self.mprint( message, verbose=3)
         elif "notify_cctbx_AfterRendering" in message:
           self.hkls_drawn_sem.release()

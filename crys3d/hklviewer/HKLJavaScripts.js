@@ -504,16 +504,16 @@ function AnimateRotation(axis, animatheta) {
 }
 
 
-
-
 async function RenderRequest(note = "")
 {
   await sleep(100);
   if (note != "")
     WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
-  if (note != "")
+  if (note != "") {
+    GetReflectionsInFrustum();
     WebsockSendMsg(note + '_AfterRendering');
+  }
   if (isdebug)
     WebsockSendMsg('RenderRequest ' + pagename);
 };
@@ -1216,13 +1216,10 @@ function onMessage(e)
         stage.viewer.parameters.clipFar = far + (origcameraZpos - stage.viewer.camera.position.z);
       }
 
-      if (stage.viewer.parameters.clipScale == 'absolute')
-        GetReflectionsInFrustum();
-
       if (Number.isNaN(zoom) == false)
         stage.viewer.camera.zoom = zoom;
-
-      RenderRequest();
+// provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
+      RenderRequest("getfrustum");
     }
 
     if (msgtype === "GetClipPlaneDistances")
@@ -2131,6 +2128,8 @@ function HKLscene()
   );
 
 
+  //stage.tasks.onZeroOnce(GetReflectionsInFrustum);
+
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);
 
@@ -2157,8 +2156,6 @@ function HKLscene()
 
 function OnUpdateOrientation()
 {
-  GetReflectionsInFrustum();
-
   let msg = getOrientMsg();
   WebsockSendMsg('MouseMovedOrientation:\n' + msg );
 }
@@ -2170,7 +2167,10 @@ function PageLoad()
   {
     //alert('In PageLoad');
     document.addEventListener('DOMContentLoaded', function () { HKLscene(); }, false );
-    document.addEventListener('mouseup', function () { OnUpdateOrientation(); }, false );
+    document.addEventListener('mouseup', function () {
+      OnUpdateOrientation();
+      GetReflectionsInFrustum();
+    }, false);
     document.addEventListener('wheel', function (e) { OnUpdateOrientation(); }, false );
     document.addEventListener('scroll', function (e) { OnUpdateOrientation(); }, false );
     // mitigate flickering on some PCs when resizing
