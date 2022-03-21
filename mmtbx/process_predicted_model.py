@@ -362,7 +362,7 @@ def process_predicted_model(
        n_after, n_before), file = log)
     if n_after == 0:
       raise Sorry("No residues remaining after filtering...please check if "+
-         "B-value field is really '%s'" %(p.b_value_field_is))
+         "B-value field is really '%s'. Adjust maximum_rmsd if necessary." %(p.b_value_field_is))
     removed_ph = ph.select(~sel)
     from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
        split_model

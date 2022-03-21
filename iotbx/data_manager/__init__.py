@@ -524,7 +524,7 @@ options are {options}.\
       raise Sorry('%s already exists and overwrite is set to %s.' %
                   (filename, overwrite))
     if not isinstance(text_str, str):
-      raise Sorry('Please provide a text string for writing.')
+      raise AssertionError('Please provide a text string for writing.')
 
     try:
       with open(filename, 'w') as f:

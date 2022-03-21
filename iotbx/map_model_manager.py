@@ -898,12 +898,12 @@ class map_model_manager(object):
     else:
       return None
 
-  def set_model(self,model):
+  def set_model(self,model, overwrite = True):
     '''
      Overwrites existing model with id 'model'
+     Allows setting model to None if overwrite is True
     '''
-    assert model is not None
-    self.add_model_by_id(model,'model')
+    self.add_model_by_id(model,'model', overwrite = overwrite)
 
 
   def add_model_by_id(self, model, model_id,
