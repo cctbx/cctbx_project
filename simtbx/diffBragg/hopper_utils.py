@@ -757,8 +757,15 @@ class DataModeler:
         P.add(p)
 
         self.set_slices("roi_id")  # this creates roi_id_unique
+        refls_have_scales = "scale_factor" in list(self.refls.keys())
         for roi_id in self.roi_id_unique:
-            p = ParameterType(init=1, sigma=self.params.sigmas.roiPerScale,
+            if refls_have_scales:
+                slc = self.roi_id_slices[roi_id][0]
+                refl_idx = int(self.all_refls_idx[slc][0])
+                init_scale = self.refls[refl_idx]["scale_factor"]
+            else:
+                init_scale = 1
+            p = ParameterType(init=init_scale, sigma=self.params.sigmas.roiPerScale,
                               minval=0, maxval=1e12,
                               fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
                               center=1,
@@ -952,7 +959,9 @@ def model(x, SIM, pfs,  compute_grad=True):
 
     npix = int(len(pfs) / 3)
     nparam = len(x)
-    J = np.zeros((nparam, npix))  # gradients
+    J = None
+    if compute_grad:
+        J = np.zeros((nparam, npix))  # gradients
     model_pix = None
     model_pix_noRoi = None
 
@@ -1263,7 +1272,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     return f, g, model_bragg, Jac
 
 
-def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None):
+def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True):
     if gpu_device is None:
         gpu_device = 0
     params.simulator.spectrum.filename = spec
@@ -1303,7 +1312,8 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
 
     new_refl = get_new_xycalcs(Modeler, new_exp)
 
-    Modeler.clean_up()
+    if free_mem:
+        Modeler.clean_up()
 
     if return_modeler:
         return new_exp, new_refl, Modeler, x
@@ -1582,6 +1592,14 @@ def sanity_test_input_lines(input_lines):
         for fname in line_fields:
             if not os.path.exists(fname):
                 raise FileNotFoundError("File %s does not exist" % fname)
+
+
+def full_img_pfs(img_sh):
+    Panel_inds, Slow_inds, Fast_inds = map(np.ravel, np.indices(img_sh) )
+    pfs_coords = np.vstack([Panel_inds, Fast_inds, Slow_inds]).T
+    pfs_coords_flattened = pfs_coords.ravel()
+    pfs_full = flex.size_t( np.ascontiguousarray(pfs_coords_flattened))
+    return pfs_full
 
 
 def print_profile(stats, timed_methods):
