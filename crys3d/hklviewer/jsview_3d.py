@@ -466,7 +466,7 @@ class hklview_3d:
       if self.params.clip_plane.clipwidth: # then we are clipping
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-      msg = ""
+      infomsg = ""
       if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
@@ -508,7 +508,7 @@ class hklview_3d:
             dmincartvec = list( dminhkl * matrix.sqr(uc.fractionalization_matrix()).transpose() )
             sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1] + dmincartvec[2]*dmincartvec[2] )
             n_tncs_layers = sphereradius*self.scene.renderscale/self.L
-            msg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
+            infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
         if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[ self.params.clip_plane.normal_vector ][1] != "TNCS":
@@ -519,12 +519,12 @@ class hklview_3d:
         if self.params.clip_plane.is_assoc_real_space_vector:
           self.planescalarvalue = self.params.clip_plane.hkldist * hklvecsqr*scalefactor
           self.planenormalhklvec = hklvec
-          msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
+          infomsg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
             %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), roundoff(self.planescalarvalue))
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-      # show equation in the browser
-      self.AddToBrowserMsgQueue("PrintInformation", msg)
+      # show equation or info in the browser
+      self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )

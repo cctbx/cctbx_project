@@ -1055,6 +1055,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
     self.expandP1checkbox.setChecked( self.currentphilstringdict['viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['viewer.expand_anomalous'])
+    self.ExpandReflsGroupBox.setChecked(self.expandP1checkbox.isChecked() and self.expandAnomalouscheckbox.isChecked()) 
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['viewer.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
@@ -1747,7 +1748,7 @@ clip_plane.normal_vector = -1
 }
 clip_plane {
   normal_vector = -1
-  clipwidth = 0.0
+  clipwidth = None
 }
        """
     self.send_message(philstr)
