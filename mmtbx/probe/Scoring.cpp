@@ -1070,6 +1070,7 @@ std::string DotScorer::test()
     {
       iotbx::pdb::hierarchy::atom source;
       source.set_occ(1);
+      source.set_charge("0");
       source.data->i_seq = atomSeq++;
       ExtraAtomInfo se(sourceRad,false, true);
       atoms.push_back(source);
@@ -1081,6 +1082,27 @@ std::string DotScorer::test()
         maxChargedHydrogenOverlap, bumpOverlap, badOverlap);
 
       // Check the source atom against outside and inside the gap
+      source.set_xyz(vec3(targetRad + sourceRad - maxRegularHydrogenOverlap + 0.1, 0, 0));
+      res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+        probeRad, exclude, ds.dots(), ds.density(), false);
+      if (!res.valid) {
+        return "DotScorer::test(): Could not score dots for maxRegularHydrogenOverlap bump setting case";
+      }
+      if (res.bumpSubScore != 0) {
+        return "DotScorer::test(): Bump found when not expected for maxRegularHydrogenOverlap setting case";
+      }
+
+      source.set_xyz(vec3(targetRad + sourceRad - maxRegularHydrogenOverlap - 0.1, 0, 0));
+      res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+        probeRad, exclude, ds.dots(), ds.density(), false);
+      if (!res.valid) {
+        return "DotScorer::test(): Could not score dots for maxRegularHydrogenOverlap bump setting case";
+      }
+      if (res.bumpSubScore == 0) {
+        return "DotScorer::test(): Bump not found when expected for maxRegularHydrogenOverlap setting case";
+      }
+
+      // Check the source atom against badly outside and inside the gap
       source.set_xyz(vec3( targetRad + sourceRad - maxRegularHydrogenOverlap - badOverlap + 0.1, 0, 0 ));
       res = as.score_dots(source, 1, sq, sourceRad + targetRad,
         probeRad, exclude, ds.dots(), ds.density(), false);
