@@ -458,23 +458,26 @@ class CCTBXParser(ParserBase):
 
     # command-line PHIL arguments override any previous settings and are
     # processed in given order
-    def custom_processor(arg):
-      self.unused_phil.append(arg)
-      return True
-
     if len(phil_list) > 0:
-      interpreter = self.master_phil.command_line_argument_interpreter(
-        home_scope='')
+      interpreter = self.master_phil.command_line_argument_interpreter()
       print('  Adding command-line PHIL:', file=self.logger)
       print('  -------------------------', file=self.logger)
       for phil in phil_list:
         print('    %s' % phil, file=self.logger)
       print('', file=self.logger)
       printed_something = True
-      working = interpreter.process_args(
-        phil_list, custom_processor=custom_processor)
-      if len(working) > 0:
-        sources.extend(working)
+      # check each parameter
+      for phil in phil_list:
+        processed_arg = None
+        try:
+          processed_arg = interpreter.process_arg(arg=phil)
+        except Sorry as e:
+          if e.__str__().startswith('Unknown'):
+            self.unused_phil.append(phil)
+          else:
+            raise
+        if processed_arg is not None:
+          sources.append(processed_arg)
     if self.namespace.overwrite:  # override overwrite if True
       sources.append(iotbx.phil.parse('output.overwrite=True'))
     if len(data_sources) + len(sources) > 0:
