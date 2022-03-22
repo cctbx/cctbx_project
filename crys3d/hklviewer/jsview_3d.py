@@ -488,12 +488,30 @@ class hklview_3d:
         # in units of cartvec projected onto real_space_vec
         if self.params.clip_plane.is_assoc_real_space_vector:
           orientvector = real_space_vec
+          self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
         else:
           orientvector = cartvec
-        self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
+          abcvec = self.all_vectors[ self.params.clip_plane.normal_vector ][6]
+          self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec))
+          if self.all_vectors[ self.params.clip_plane.normal_vector ][1] == "TNCS":
+            """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
+            as to ensure we only get the strongest/weakest reflections between the clip planes
+            The tncs modulation length is the inverse length of the tncs vector as defined in 
+            HKLViewFrame.list_vectors() where the length is stored as half the length of the tncs vector
+            for the sake of stepping through alternating weak and strong layers with the +/- buttons.
+            So set clip plane width to 0.5*0.5/tncs-vector-length
+            """
+            self.params.clip_plane.clipwidth = 0.5*self.L
+            clipwidth = self.params.clip_plane.clipwidth
+            # want the radius of the sphere of reflections so get some reflection at highest resolution
+            dminhkl = self.miller_array.resolution_filter(d_min=0, d_max= self.miller_array.d_min()).indices()[0]
+            dmincartvec = list( dminhkl * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+            sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1] + dmincartvec[2]*dmincartvec[2] )
+            n_tncs_layers = sphereradius*self.scene.renderscale/self.L
+            msg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
-        if self.params.clip_plane.normal_vector_length_scale > 0:
+        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[ self.params.clip_plane.normal_vector ][1] != "TNCS":
           scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
@@ -507,7 +525,6 @@ class hklview_3d:
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation in the browser
       self.AddToBrowserMsgQueue("PrintInformation", msg)
-      #self.make_clip_plane(hkldist, clipwidth)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
@@ -1490,6 +1507,7 @@ class hklview_3d:
 
 
   def ProcessBrowserMessage(self, message):
+    # method runs in a separate thread handling messages from the browser displaying our reflections
     try:
       if sys.version_info[0] > 2:
         ustr = str
@@ -1499,7 +1517,7 @@ class hklview_3d:
         self.mprint( "Saving image to file", verbose=1)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
-
+      philchanged = False
       if isinstance(message, ustr) and message != "":
         if "JavaScriptError" in message:
           self.mprint( message, verbose=0)
@@ -1538,6 +1556,7 @@ class hklview_3d:
           vecnr,speed = eval(self.params.clip_plane.animate_rotation_around_vector)
           speed = -speed # negative speed tells HKLjavascripts to pause animating
           self.params.clip_plane.animate_rotation_around_vector = "[%s, %s]" %(vecnr,speed)
+          philchanged = True
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
           self.mprint( "Image to be received", verbose=1)
@@ -1597,11 +1616,13 @@ class hklview_3d:
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
               visiblehkls.append(hkl)
-              if self.params.clip_plane.normal_vector != -1 and \
+              if self.params.clip_plane.normal_vector != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
                self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
                 outsideplanehkls.append(hkl)
             self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
-            self.mprint( "hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))), verbose="frustum")
+            if len(outsideplanehkls):
+              self.mprint("hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))))
+              self.mprint("Consider reducing the clip plane width on the \"Slicing\" tab")
           self.mprint( message, verbose=3)
         elif "notify_cctbx_AfterRendering" in message:
           self.hkls_drawn_sem.release()
@@ -1609,12 +1630,16 @@ class hklview_3d:
         elif "MoveClipPlanesUp" in message:
           self.params.clip_plane.hkldist += 1
           self.set_volatile_params()
+          philchanged = True
         elif "MoveClipPlanesDown" in message:
           self.params.clip_plane.hkldist -= 1
           self.set_volatile_params()
+          philchanged = True
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
+        if philchanged:
+          self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
     self.lastmsg = message

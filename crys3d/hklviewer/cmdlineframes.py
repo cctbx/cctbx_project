@@ -384,11 +384,10 @@ class HKLViewFrame() :
         self.list_vectors()
       self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
-      self.currentphil = self.master_phil.format(python_object = self.params)
+      self.SendCurrentPhilValues()
       self.NewFileLoaded = False
       phl.mouse_moved = False
       self.validate_preset_buttons()
-      self.SendCurrentPhilValues()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -396,6 +395,17 @@ class HKLViewFrame() :
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc(), 0)
       return False
+
+
+  def SendCurrentPhilValues(self):
+    self.currentphil = self.master_phil.format(python_object = self.params)
+    philstrvalsdict = {}
+    for e in self.currentphil.all_definitions():
+      philstrvalsdict[e.path] = e.object.extract()
+    mydict = { "current_phil_strings": philstrvalsdict }
+    self.SendInfoToGUI(mydict)
+    if self.viewer.params.viewer.scene_id is not None:
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -1235,10 +1245,9 @@ class HKLViewFrame() :
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
       # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
-      # of relfections in the GUI when orienting clip plane perpendicular to the tncs vector
+      # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
       veclength = self.viewer.scene.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       self.viewer.all_vectors = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )] + self.viewer.all_vectors
-    self.viewer.all_vectors = self.uservectors + self.viewer.all_vectors
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1250,7 +1259,7 @@ class HKLViewFrame() :
     hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
                         (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
                         (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
-    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors
+    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors + self.uservectors
 
     for (opnr, label, order, cartvec, hkl_op, hkl, abc, length) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
@@ -1412,16 +1421,6 @@ class HKLViewFrame() :
 
   def SaveImageName(self, fname):
     self.viewer.MakeImage(fname)
-
-
-  def SendCurrentPhilValues(self):
-    philstrvalsdict = {}
-    for e in self.currentphil.all_definitions():
-      philstrvalsdict[e.path] = e.object.extract()
-    mydict = { "current_phil_strings": philstrvalsdict }
-    self.SendInfoToGUI(mydict)
-    if self.viewer.params.viewer.scene_id is not None:
-      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
 
 
   def GetHtmlURL(self):
