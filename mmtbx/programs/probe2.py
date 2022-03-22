@@ -375,7 +375,7 @@ def _condense(dotInfoList, condense):
     try:
       thisAtom = sorted(
         dotInfoList[curAtomIndex:curAtomEndIndex+1],
-        key=lambda dot: "{}{:4.4s}{}{} {}{} {:.3f} {:.3f} {:.3f}".format(
+        key=lambda dot: "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
           dot.target.parent().parent().parent().id, # chain
           str(dot.target.parent().parent().resseq_as_int()), # residue number
           dot.target.parent().parent().icode, # insertion code
@@ -615,6 +615,8 @@ Note:
     rad = self._extraAtomInfo.getMappingFor(a).vdwRadius
     if rad <= 0:
       alt = a.parent().altloc
+      if alt == "":
+        alt = " "
       resName = a.parent().resname.strip().upper()
       resID = str(a.parent().parent().resseq_as_int())
       chainID = a.parent().parent().parent().id
@@ -1204,7 +1206,7 @@ Note:
           else:
             ptmast = " '{}' ".format(node.ptmaster)
 
-          pointid = "{}{}{}{:4d}{}{}".format(a.name, a.parent().altloc, a.parent().resname,
+          pointid = "{}{:1s}{}{:4d}{}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
           if pointid != lastpointid:
@@ -1993,7 +1995,7 @@ Note:
                   chainID = a.parent().parent().parent().id
                   iCode = a.parent().parent().icode
                   alt = a.parent().altloc
-                  outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  outString += '{{{:>4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     a.name, alt, resName, chainID, resID, iCode,
                     a.xyz[0], a.xyz[1], a.xyz[2])
 
@@ -2002,7 +2004,7 @@ Note:
                   chainID = p.parent().parent().parent().id
                   iCode = p.parent().parent().icode
                   alt = p.parent().altloc
-                  outString += '{{{:4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  outString += '{{{:>4s}{:1s}{:>3s}{:>2s}{:>4s}{}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     p.name, alt, resName, chainID, resID, iCode,
                     p.xyz[0], p.xyz[1], p.xyz[2])
 
