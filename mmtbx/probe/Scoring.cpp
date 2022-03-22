@@ -193,9 +193,10 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     } else if (isHydrogenBond) {
       ret.overlap = -overlapScale * ret.gap;
       if (tooCloseHydrogenBond) {
-        // Reduce the gap magnitude by the expected hydrogen bond distance (the gap is negative)
-        // and report it as a clash.
+        // Reduce the gap magnitude by the expected hydrogen bond distance (gap is
+        // negative, so we add here), compute the overlap, and report it as a clash.
         ret.gap += hydrogenBondMinDist;
+        ret.overlap = -overlapScale * ret.gap;
         ret.overlapType = DotScorer::Clash;
       } else {
         ret.overlapType = DotScorer::HydrogenBond;
