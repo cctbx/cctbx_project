@@ -496,7 +496,7 @@ class hklview_3d:
           if self.all_vectors[ self.params.clip_plane.normal_vector ][1] == "TNCS":
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between the clip planes
-            The tncs modulation length is the inverse length of the tncs vector as defined in 
+            The tncs modulation length is the inverse length of the tncs vector as defined in
             HKLViewFrame.list_vectors() where the length is stored as half the length of the tncs vector
             for the sake of stepping through alternating weak and strong layers with the +/- buttons.
             So set clip plane width to 0.5*0.5/tncs-vector-length
@@ -2547,18 +2547,12 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
-    """
-    strdata = ""
-    strdata += "%s\n\n" %roundoff(positions, 2)
-    strdata += "%s\n\n" %roundoff(colours, 2)
-    strdata += "%s\n\n" %roundoff(radii, 2)
-    strdata += "%s" %ttipids
-    self.AddToBrowserMsgQueue("AddSpheresBin2ShapeBuffer", strdata)
-    """
-    self.AddToBrowserMsgQueue("AddCoordinatesSpheresBin2ShapeBuffer", positions, binary=True)
-    self.AddToBrowserMsgQueue("AddColoursSpheresBin2ShapeBuffer", colours, binary=True)
-    self.AddToBrowserMsgQueue("AddRadiiSpheresBin2ShapeBuffer", radii, binary=True)
-    self.AddToBrowserMsgQueue("AddTTipIdsSpheresBin2ShapeBuffer", ttipids, binary=True)
+    # send data in binary format rather than string to browser for the sake of speed and
+    # having to avoid rounding off numbers which is also slow
+    self.AddToBrowserMsgQueue("AddHKLCoordinates", positions, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLColours", colours, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLRadii", radii, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLTTipIds", ttipids, binary=True)
 
 
   def RenderStageObjects(self):

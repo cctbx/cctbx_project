@@ -260,6 +260,10 @@ class WBmessenger(object):
         if not binary:
           await self.mywebsock.send( message )
         else:
+          # Binary data is sent as a pair of messages. First a plain string containing the message type
+          # is sent. Then the actual data array is sent in binary format as a bytearray.
+          # When HKLjavascripts notes the second message is in binary format it pairs it up with the
+          # previous message which is the message type so it can be processed
           await self.mywebsock.send( msgtype )
           byteslst = struct.pack("%sf" % len(msg), *msg)
           await self.mywebsock.send( bytearray(byteslst) )

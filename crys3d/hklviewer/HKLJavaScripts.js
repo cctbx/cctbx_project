@@ -591,10 +591,10 @@ function onClose(e)
   dbgmsg =msg;
 };
 
-var coordarray; // global for the binary data that are sent subsequently
-var colourarray;
-var radiiarray;
-var ttipids;
+var coordarray; // global for the binary data that are sent after receiving the AddHKLCoordinates message
+var colourarray;// global for the binary data that are sent after receiving the AddHKLColours message
+var radiiarray; // global for the binary data that are sent after receiving the AddHKLRadii message
+var ttipids; // global for the binary data that are sent after receiving the AddHKLTTipIds message
 
 function onMessage(e)
 {
@@ -607,7 +607,7 @@ function onMessage(e)
   try
   {
     let msgtype = "";
-    if (e.data instanceof ArrayBuffer == false) {
+    if (e.data instanceof ArrayBuffer == false) { // plain string data
       let showdata = e.data;
       if (showdata.length > 400)
         showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
@@ -627,7 +627,12 @@ function onMessage(e)
       val2 = datval[1].split(";;"); // in case the received strings contain intended commas
     }
 
-    if (e.data instanceof ArrayBuffer) {
+    if (e.data instanceof ArrayBuffer) { // binary data is received. 
+      // Binary data is sent as a pair of messages by send_msg_to_browser(). First a plain string 
+      // containing the message type
+      // is sent.Then the actual data array is sent in binary format as a bytearray.
+      // When HKLjavascripts notes the second message is in binary format it pairs it up with the 
+      // previous message which is the message type so it can be processed
       msgtype = binmsgtype;
     }
 
@@ -1287,30 +1292,21 @@ function onMessage(e)
       RemoveStageObjects();
     }
 
-    if (msgtype === "AddCoordinatesSpheresBin2ShapeBuffer") {
+    if (msgtype === "AddHKLCoordinates") {
       coordarray = new Float32Array(e.data);
     }
 
-    if (msgtype === "AddColoursSpheresBin2ShapeBuffer") {
+    if (msgtype === "AddHKLColours") {
       colourarray = new Float32Array(e.data);
     }
 
-    if (msgtype === "AddRadiiSpheresBin2ShapeBuffer") {
+    if (msgtype === "AddHKLRadii") {
       radiiarray = new Float32Array(e.data);
     }
 
-    if (msgtype === "AddTTipIdsSpheresBin2ShapeBuffer") {
-      ttipids = new Int32Array(e.data);
+    if (msgtype === "AddHKLTTipIds") {
+      ttipids = Array.from(new Float32Array(e.data)); // convert to plain javascript array so we can concatenate additional elements
       // assuming the above arrays have been initialised create the shape buffer
-      AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
-    }
-
-    if (msgtype === "AddSpheresBin2ShapeBuffer") {
-      let strarrs = datval[1].split("\n\n");
-      let coordarray = eval(strarrs[0]);
-      let colourarray = eval(strarrs[1]);
-      let radiiarray = eval(strarrs[2]);
-      let ttipids = eval(strarrs[3]);
       AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
     }
 
