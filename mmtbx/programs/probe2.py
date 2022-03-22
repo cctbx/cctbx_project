@@ -816,7 +816,7 @@ Note:
               print('Warning: Invalid interaction type encountered (internal error)', file=self.logger)
               continue
 
-            # Main branch if whether we're reporting other than bad clashes
+            # Main branch if we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
               if spo.report_hydrogen_bonds and overlapType == probeExt.OverlapType.HydrogenBond:
