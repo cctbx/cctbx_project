@@ -20,6 +20,10 @@ import libtbx
 import libtbx.load_env
 import traceback
 import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
+try:
+  from .PresetButtons import buttonsdeflist
+except Exception as e: # if the user provides their own customised radio buttons for the GUI
+  buttonsdeflist = []
 
 
 NOREFLDATA = "No reflection data has been selected"
@@ -60,10 +64,14 @@ class HKLViewFrame() :
     self.settings = display.settings()
     self.verbose = 0
     if 'verbose' in kwds:
-      self.verbose = eval(kwds['verbose'])
+      try:
+        self.verbose = eval(kwds['verbose'])
+      except Exception as e:
+        self.verbose = kwds['verbose']
     self.guiSocketPort=None
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
+    self.outputmsgtypes = []
     self.infostr = ""
     self.hklfile_history = []
     self.tncsvec = None
@@ -101,6 +109,7 @@ class HKLViewFrame() :
     self.clipper_crystdict = None
     self.NewFileLoaded = False
     self.loaded_file_name = ""
+    self.validated_preset_buttons = False
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
@@ -121,7 +130,8 @@ class HKLViewFrame() :
 
 
   def mprint(self, msg, verbose=0):
-    if verbose <= self.verbose:
+    if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose <= self.verbose) \
+     or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
       if self.guiSocketPort:
         self.SendInfoToGUI( { "info": msg } )
       else:
@@ -147,6 +157,8 @@ class HKLViewFrame() :
           continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
         msgtype, mstr = eval(msgstr)
+        if msgtype=="debug_show_phil":
+          self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
           self.viewer.datatypedict = eval(mstr)
         if msgtype=="clipper_crystdict":
@@ -156,6 +168,13 @@ class HKLViewFrame() :
         if msgtype=="philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil)
+        if msgtype=="preset_philstr":
+          new_phil = libtbx.phil.parse(mstr)
+          self.ResetPhil()
+          self.viewer.sceneisdirty = True
+          self.viewer.executing_preset_btn = True
+          self.update_settings(new_phil)
+          self.viewer.executing_preset_btn = False
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
@@ -164,6 +183,26 @@ class HKLViewFrame() :
 
 
   def ResetPhilandViewer(self, extraphil=None):
+    self.ResetPhil(extraphil)
+    self.viewer.symops = []
+    self.viewer.sg = None
+    self.viewer.proc_arrays = []
+    self.viewer.HKLscenedict = {}
+    self.uservectors = []
+    self.viewer.visual_symmxs = []
+    self.visual_symHKLs = []
+    self.viewer.sceneisdirty = True
+    self.viewer.isnewfile = True
+    self.validated_preset_buttons = False
+    if self.viewer.miller_array:
+      self.viewer.params.viewer.scene_id = None
+      self.viewer.RemoveStageObjects()
+    self.viewer.miller_array = None
+    self.viewer.lastviewmtrx = None
+    return self.viewer.params
+
+
+  def ResetPhil(self, extraphil=None):
     self.master_phil = libtbx.phil.parse( masterphilstr )
     self.currentphil = self.master_phil
     if extraphil:
@@ -181,21 +220,6 @@ class HKLViewFrame() :
     self.params.nbins = 1
     self.params.scene_bin_thresholds = ""
     self.params.using_space_subgroup = False
-    self.viewer.symops = []
-    self.viewer.sg = None
-    self.viewer.proc_arrays = []
-    self.viewer.HKLscenedict = {}
-    self.uservectors = []
-    self.viewer.visual_symmxs = []
-    self.visual_symHKLs = []
-    self.viewer.sceneisdirty = True
-    self.viewer.isnewfile = True
-    if self.viewer.miller_array:
-      self.viewer.params.viewer.scene_id = None
-      self.viewer.RemoveStageObjects()
-    self.viewer.miller_array = None
-    self.viewer.lastviewmtrx = None
-    return self.viewer.params
 
 
   def GetNewCurrentPhilFromString(self, philstr, oldcurrentphil):
@@ -233,6 +257,11 @@ class HKLViewFrame() :
     currphil = master_phil.fetch(source = newphil)
 
 
+  def show_current_phil(self):
+    return "\nCurrent non-default phil parameters:\n\n" + \
+     self.master_phil.fetch_diff(source = self.currentphil).as_str()
+
+
   def update_settings(self, new_phil=None):
     try:
       if not new_phil:
@@ -250,6 +279,19 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      if view_3d.has_phil_path(diff_phil, "data_array"):
+        if view_3d.has_phil_path(diff_phil, "phasertng_tag"):
+          phl.viewer.data_array.label = self.get_label_from_phasertng_tag(phl.viewer.data_array.phasertng_tag)
+        phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
+                                                                          phl.viewer.data_array.datatype)
+
+      if view_3d.has_phil_path(diff_phil, "binlabel"):
+        phl.binner_idx = self.viewer.get_binner_idx_from_label(phl.binlabel)
+
+      elif view_3d.has_phil_path(diff_phil, "scene_id"):
+        phl.viewer.data_array.label = None
+        phl.viewer.data_array.datatype = None
+
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         #phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_miller_arrays():
@@ -265,7 +307,7 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
-         "scene_bin_thresholds"):
+         "scene_bin_thresholds", "data_array"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
@@ -273,7 +315,6 @@ class HKLViewFrame() :
                                          nbins=phl.nbins )
       if phl.spacegroup_choice == None:
         self.mprint("! spacegroup_choice == None")
-        #time.sleep(15)
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -339,14 +380,14 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      self.params = self.viewer.update_settings(diff_phil, phl)
-      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice"):
+      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
+      self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
-      self.currentphil = self.master_phil.format(python_object = self.params)
+      self.SendCurrentPhilValues()
       self.NewFileLoaded = False
       phl.mouse_moved = False
-      self.SendCurrentPhilValues()
+      self.validate_preset_buttons()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
         return False
@@ -354,6 +395,17 @@ class HKLViewFrame() :
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc(), 0)
       return False
+
+
+  def SendCurrentPhilValues(self):
+    self.currentphil = self.master_phil.format(python_object = self.params)
+    philstrvalsdict = {}
+    for e in self.currentphil.all_definitions():
+      philstrvalsdict[e.path] = e.object.extract()
+    mydict = { "current_phil_strings": philstrvalsdict }
+    self.SendInfoToGUI(mydict)
+    if self.viewer.params.viewer.scene_id is not None:
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
 
 
   def update_clicked (self, index) :#hkl, d_min=None, value=None) :
@@ -846,6 +898,56 @@ class HKLViewFrame() :
       self.mprint("Can only save file in MTZ or CIF format. Sorry!")
 
 
+  def get_label_from_phasertng_tag(self, tngcolumn_tags):
+    tngcols = []
+    # Say tngcolumn_tags = "INAT,SIGINAT" and mtz history looks like:
+    # PHASER LABIN INAT/I<<FW/J SIGINAT/SIGI<<FW/Q IPOS/I(+)<<I/K
+    # PHASER LABIN SIGIPOS/SIGI(+)<<SIGI/M INEG/I(-)<<I/K SIGINEG/SIGI(-)<<SIGI/M
+    # then m would look like [('INAT', 'SIGINAT')]. Concatenate the strings before returning
+    label = ""
+    for e in self.hklfile_history:
+      for tngcolumn_tag in tngcolumn_tags.split(","):
+        m =  re.findall(tngcolumn_tag + '/(\S*)/', e, re.VERBOSE)
+        if len(m) > 0:
+          tngcols.append(m[0])
+    if len(tngcols):
+      label = ",".join(tngcols)
+    return label
+
+
+  def validate_preset_buttons(self):
+    if not self.validated_preset_buttons:
+      activebtns = []
+      # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
+      for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+        rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+        rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
+        m = re.findall('data_array\.phasertng_tag \s* = \s* \"(\w+) ,? (\w*)\"', philstr, re.VERBOSE)
+        if len(m):
+          phasertng_tags = ",".join(m[0])
+          rlbl = [ self.get_label_from_phasertng_tag(phasertng_tags) ]
+          # find the miller array used by phasertng as specified in the mtz history header
+
+        if len(rlbl) == 1:
+          labelfound = False; typefound= False
+          for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if label == rlbl[0]:
+              labelfound = True
+              self.mprint("Preset button, %s, assigned to data column %s" %(btnname, label) )
+              break
+            if len(rtype) == 1 and description == rtype[0]:
+              typefound = True
+              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label) )
+              break
+        if not (labelfound or typefound):
+          self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
+          activebtns.append(False)
+        else:
+          activebtns.append(True)
+      self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
+      self.validated_preset_buttons = True
+
+
   def convert_clipperdict_to_millerarrays(self, crystdict):
     """
     Called in zmq_listen() when Chimerax with Isolde sends clipper arrays to
@@ -1135,16 +1237,17 @@ class HKLViewFrame() :
 
 
   def list_vectors(self):
+    self.viewer.calc_rotation_axes()
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     uc = self.viewer.miller_array.unit_cell()
     if self.tncsvec is not None:
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      #self.viewer.all_vectors.append( (ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength ) )
+      # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
+      # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
+      veclength = self.viewer.scene.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       self.viewer.all_vectors = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )] + self.viewer.all_vectors
-    self.viewer.all_vectors = self.uservectors + self.viewer.all_vectors
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1156,7 +1259,7 @@ class HKLViewFrame() :
     hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
                         (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
                         (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
-    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors
+    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors + self.uservectors
 
     for (opnr, label, order, cartvec, hkl_op, hkl, abc, length) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
@@ -1320,16 +1423,6 @@ class HKLViewFrame() :
     self.viewer.MakeImage(fname)
 
 
-  def SendCurrentPhilValues(self):
-    philstrvalsdict = {}
-    for e in self.currentphil.all_definitions():
-      philstrvalsdict[e.path] = e.object.extract()
-    mydict = { "current_phil_strings": philstrvalsdict }
-    self.SendInfoToGUI(mydict)
-    if self.viewer.params.viewer.scene_id is not None:
-      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
-
-
   def GetHtmlURL(self):
     return self.viewer.url
 
@@ -1418,6 +1511,7 @@ masterphilstr = """
       .caption = "If value is negative the length of the normal vector is used as the scale."
     clipwidth = None
       .type = float
+      .caption = "If value is not None then we are clipping"
     fractional_vector = reciprocal *realspace
       .type = choice
     bequiet = False
@@ -1428,11 +1522,29 @@ masterphilstr = """
     .type = str
   binner_idx = 0
     .type = int
+    .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+  binlabel = None
+    .type = str
+    .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
   nbins = 1
     .type = int(value_min=1, value_max=40)
   shape_primitive = *'spheres' 'points'
     .type = choice
   viewer {
+    data_array {
+      label = none
+        .type = str
+        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+                   "order the miller array with this label is found in the reflection data file."
+      phasertng_tag = none
+        .type = str
+        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+                   "order the miller array with a label found in the parsed history of the MTZ header."
+      datatype = None
+        .type = str
+        .caption = "In case label is not found this assigns scene_id with a value corresponding to " \
+                   "the first miller array of this data type found in the reflection data file."
+      }
     scene_id = None
       .type = int
     ncolourlabels = 6

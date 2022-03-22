@@ -37,6 +37,12 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
   from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 
+try:
+  from .PresetButtons import buttonsdeflist
+except Exception as e: # if the user provides their own customised radio buttons
+  buttonsdeflist = []
+
+
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
     super(MakeNewDataForm, self).__init__(parent.window)
@@ -146,6 +152,8 @@ class SettingsForm(QDialog):
     mainLayout.addWidget(myGroupBox,                       0, 0, 1, 3)
     mainLayout.addWidget(parent.resetlabeltxt,             1, 0, 1, 2)
     mainLayout.addWidget(parent.resetFactoryDefaultbtn,    1, 2, 1, 1)
+    mainLayout.addWidget(parent.showphillabeltxt,          2, 0, 1, 2)
+    mainLayout.addWidget(parent.showphilbtn,               2, 2, 1, 1)
     self.setLayout(mainLayout)
     self.setFixedSize( self.sizeHint() )
 
@@ -281,6 +289,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
     self.ReadPersistedQsettings()
+    self.makePresetButtons()
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -373,6 +382,12 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
     self.resetFactoryDefaultbtn = QPushButton()
     self.resetFactoryDefaultbtn.setText("Reset Settings")
     self.resetFactoryDefaultbtn.clicked.connect(self.onResetFactoryDefault)
+    self.showphillabeltxt = QLabel()
+    self.showphillabeltxt.setWordWrap(True)
+    self.showphillabeltxt.setText("Show current non-default phil parameters")
+    self.showphilbtn = QPushButton()
+    self.showphilbtn.setText("Show phil")
+    self.showphilbtn.clicked.connect(self.onDebugShowPhil)
     # Set the rich text of the SpaceGrpUCellText here rather than in QtDesigner which on windows
     # include MS Font in it. MS Font are not understood by MacOS
     htmlstr = '''<html><head/><body><p><span style=" font-weight:600;">Space group: \t
@@ -526,10 +541,26 @@ newarray._sigmas = sigs
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
 
+  def makePresetButtons(self):
+    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+      self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
+      self.__getattribute__(btnname).setObjectName(btnname)
+      self.__getattribute__(btnname).setText(label)
+      self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
+      self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
+
+
+  def onPresetbtn_click(self):
+    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+      if self.__getattribute__(btnname).isChecked():
+        self.send_message(philstr, msgtype = "preset_philstr")
+        break
+
+
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
     self.closing = True
-    #self.window.setVisible(False)
+    self.window.setVisible(False)
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKLviewer closing down")
@@ -949,6 +980,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("datatype_dict"):
             self.datatypedict = self.infodict.get("datatype_dict", {} )
 
+          if self.infodict.get("enable_disable_preset_buttons"):
+            activebtns = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
+            for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+              self.__getattribute__(btnname).setEnabled(activebtns[i])
+
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
             unitcell_info = self.infodict.get("unitcell_info",False)
@@ -1019,6 +1055,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
     self.expandP1checkbox.setChecked( self.currentphilstringdict['viewer.expand_to_p1'])
     self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['viewer.expand_anomalous'])
+    self.ExpandReflsGroupBox.setChecked(self.expandP1checkbox.isChecked() and self.expandAnomalouscheckbox.isChecked())
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['viewer.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
@@ -1034,11 +1071,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
     self.missingcheckbox.setChecked( self.currentphilstringdict['viewer.show_missing'])
     self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['viewer.show_missing'] )
+    if self.currentphilstringdict['viewer.scene_id'] is not None:
+      self.functionTabWidget.setEnabled(True)
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL.camera_type'])
     if self.currentphilstringdict['clip_plane.clipwidth']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clipwidth'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation']== "*vector")
+    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation'] == "vector" )
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1050,6 +1089,25 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
+
+    if self.currentphilstringdict['clip_plane.animate_rotation_around_vector'] is not None:
+      vecnr,speed = self.currentphilstringdict['clip_plane.animate_rotation_around_vector']
+      self.AnimaRotCheckBox.setChecked( speed > 0 )
+
+    self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clipwidth'] != None)
+
+    if self.currentphilstringdict['viewer.fixorientation'] is not None:
+      self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'] \
+         or self.currentphilstringdict['viewer.is_parallel'] )
+      self.normal_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
+        not self.currentphilstringdict['viewer.is_parallel'] and \
+        not self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
+      self.normal_realspace_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
+        not self.currentphilstringdict['viewer.is_parallel'] and \
+        self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
+      self.clipplane_normal_vector_combo.setCurrentIndex(self.currentphilstringdict['clip_plane.normal_vector'] )
+      if isinstance(self.clipplane_normal_vector_combo.currentData(), float) or isinstance(self.clipplane_normal_vector_combo.currentData(), int):
+        self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
 
     idx = self.clipplane_normal_vector_combo.currentIndex()
     if len(self.all_vectors) > 0:
@@ -1147,6 +1205,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onClearTextBuffer(self):
     self.textInfo.clear()
     self.infostr = ""
+
+
+  def onDebugShowPhil(self):
+    return self.send_message("", msgtype="debug_show_phil")
 
 
   def onResetFactoryDefault(self):
@@ -1532,16 +1594,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onClipwidthNormalVecLengthEditFinished(self):
-    if not self.unfeedback:
-      try:
-        val = eval(self.clipplane_normal_vector_length.text())
-        philstr = "clip_plane.normal_vector_length_scale = %s"  %val
-        self.send_message(philstr)
-      except Exception as e:
-        print( str(e) )
+    if self.unfeedback:
+      return
+    try:
+      val = eval(self.clipplane_normal_vector_length.text())
+      philstr = "clip_plane.normal_vector_length_scale = %s"  %val
+      self.send_message(philstr)
+    except Exception as e:
+      print( str(e) )
 
 
   def onClipPlaneNormalVecSelchange(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
     philstr = """viewer.fixorientation = *vector
 clip_plane.clipwidth = %f
@@ -1552,6 +1617,8 @@ clip_plane.normal_vector_length_scale = -1
 
 
   def onParallel_current_orientation_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(False)
     self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
@@ -1562,6 +1629,8 @@ clip_plane.normal_vector = -1
 
 
   def onNormal_vec_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(True)
     self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
@@ -1575,6 +1644,8 @@ clip_plane.normal_vector_length_scale = -1
 
 
   def onNormal_realspace_vec_btn_click(self):
+    if self.unfeedback:
+      return
     self.clipplane_normal_vector_combo.setEnabled(True)
     self.RotateGroupBox.setEnabled(False)
     philstr = """viewer.fixorientation = *vector
@@ -1614,9 +1685,9 @@ clip_plane.normal_vector_length_scale = -1
   def onAlignedVector(self):
     if self.unfeedback:
       return
-    val = "None"
+    val = "*None"
     if self.AlignVectorGroupBox.isChecked():
-      val = "vector"
+      val = "*vector"
     philstr = """viewer {
         is_parallel = %s
         fixorientation = "%s"
@@ -1677,7 +1748,7 @@ clip_plane.normal_vector = -1
 }
 clip_plane {
   normal_vector = -1
-  clipwidth = 0.0
+  clipwidth = None
 }
        """
     self.send_message(philstr)
@@ -1701,18 +1772,19 @@ clip_plane {
 
 
   def onAnimateRotation(self):
-    if self.AnimaRotCheckBox.isChecked() == True:
-      self.AnimateSpeedSlider.setEnabled(True)
-      self.rotavecangle_slider.setDisabled(True)
-      speed = self.AnimateSpeedSlider.value()
-      self.send_message("""clip_plane {
-      animate_rotation_around_vector = '[%d, %f]'
+    if not self.unfeedback:
+      if self.AnimaRotCheckBox.isChecked() == True:
+        self.AnimateSpeedSlider.setEnabled(True)
+        self.rotavecangle_slider.setDisabled(True)
+        speed = self.AnimateSpeedSlider.value()
+        self.send_message("""clip_plane {
+        animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, speed))
-    else:
-      self.rotavecangle_slider.setEnabled(True)
-      self.AnimateSpeedSlider.setDisabled(True)
-      self.send_message("""clip_plane {
-      animate_rotation_around_vector = '[%d, %f]'
+      else:
+        self.rotavecangle_slider.setEnabled(True)
+        self.AnimateSpeedSlider.setDisabled(True)
+        self.send_message("""clip_plane {
+        animate_rotation_around_vector = '[%d, %f]'
 }""" %(self.rotvec, -1.0))
 
 
@@ -2092,6 +2164,7 @@ clip_plane {
     self.settings.setValue("windowsize", self.window.size())
     self.settings.setValue("splitter1Sizes", self.splitter.saveState())
     self.settings.setValue("splitter2Sizes", self.splitter_2.saveState())
+    self.settings.setValue("splitter3Sizes", self.splitter_3.saveState())
 
     self.settings.beginGroup("DataTypesGroups")
     datatypesgroups = self.settings.childGroups()
@@ -2108,20 +2181,21 @@ clip_plane {
 
   def ReadPersistedQsettings(self):
     # Read the user's persisted settings from disc
-    # First see if there are any. If not then use factory defaults stored in .ini file
     self.settings.beginGroup(self.Qtversion)
     use_factory_default_settings = False
-    if len(self.settings.allKeys()) == 0: # no settings for this Qt version
+    # First see if there are any. If not then use factory defaults stored in .ini file
+    if len(self.settings.allKeys()) == 0:
+       # no settings for this Qt version. Use defaults then
       use_factory_default_settings = True
-    self.settings.endGroup()
-    # Numbers of splitters and tabs in the GUI are a very crude indication of
-    # GUI complexity. If numbers differs from what is stored in the settings on disk the
-    # settings are likely from a newer or older GUI version and should be ignored to prevent
-    # messing up GUI layout. Use the factory defaults instead
+      # Numbers of splitters and tabs in the GUI are a very crude indication of
+      # GUI complexity. If numbers differs from what is stored in the settings on disk the
+      # settings are likely from a newer or older GUI version and should be ignored to prevent
+      # messing up GUI layout. Use the defaults instead
     if self.nsplitters !=  self.settings.value("QSplitter_number", 0):
       use_factory_default_settings = True
     if self.ntabs != self.settings.value("QTabWidget_number", 0):
       use_factory_default_settings = True
+    self.settings.endGroup()
 
     Qtversion = self.Qtversion
     if use_factory_default_settings:
@@ -2185,6 +2259,10 @@ clip_plane {
     self.windowsize = self.settings.value("windowsize", None)
     self.splitter1sizes = self.settings.value("splitter1Sizes", None)
     self.splitter2sizes = self.settings.value("splitter2Sizes", None)
+    self.splitter3sizes = self.settings.value("splitter3Sizes", None)
+    #self.splitter1sizes = None
+    #self.splitter2sizes = None
+    #self.splitter3sizes = None
     self.settings.endGroup()
     if use_factory_default_settings:
       # Revert to storing settings in the default Qsettings location such as
@@ -2231,12 +2309,14 @@ clip_plane {
       self.onShowTooltips(self.ttip_click_invoke)
       self.ttipClickradio.setChecked(self.ttip_click_invoke == "click")
       self.ttipHoverradio.setChecked(self.ttip_click_invoke == "hover")
-    if self.splitter1sizes is not None and self.splitter2sizes is not None and self.windowsize is not None:
+    if self.splitter1sizes is not None and self.splitter2sizes is not None and \
+       self.splitter3sizes is not None and self.windowsize is not None:
       self.window.resize(self.windowsize)
       if self.webpagedebugform and self.devmode:
         self.webpagedebugform.resize( self.window.size())
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
+      self.splitter_3.restoreState(self.splitter3sizes)
     self.setDatatypedict(self.datatypedict)
     if self.make_new_factory_default_settings:
       # Create a new Factory default settings .ini file to be stored alongside this source file.
@@ -2252,7 +2332,7 @@ clip_plane {
 
 def run(isembedded=False, chimeraxsession=None):
   import time
-  #time.sleep(10) # enough time for attaching debugger
+  #time.sleep(15) # enough time for attaching debugger
   try:
     debugtrue = False
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "

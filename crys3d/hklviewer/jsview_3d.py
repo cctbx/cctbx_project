@@ -86,6 +86,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
+tout=100
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
@@ -103,7 +104,6 @@ class hklview_3d:
     self.scene = None
     self.lastscene_id = None
     self.merge = False
-    self.primitivetype = "SphereBuffer"
     self.url = ""
     self.bin_labels_type_idxs = []
     self.colour_scene_id = None
@@ -121,12 +121,11 @@ class hklview_3d:
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.boundingX = None
-    self.boundingY = None
-    self.boundingZ = None
     self.OrigClipNear = None
     self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
+    self.planescalarvalue =0
+    self.planenormalhklvec =None
     #self.angle_x_svec = 0.0
     #self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
@@ -177,6 +176,7 @@ class hklview_3d:
     self.L = 1.0
     self.nuniqueval = 0
     self.bin_infotpls = []
+    self.executing_preset_btn = False
     self.mapcoef_fom_dict = {}
     # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
     self.datatypedefault = ["brg", 1.0, 1.0, 1.0]
@@ -185,9 +185,6 @@ class hklview_3d:
     self.parent = None
     if 'parent' in kwds:
       self.parent = kwds['parent']
-    self.verbose = 0
-    if 'verbose' in kwds:
-      self.verbose = eval(kwds['verbose'])
     self.debug = None
     if 'debug' in kwds:
       self.debug = kwds['debug']
@@ -253,9 +250,10 @@ class hklview_3d:
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
-    self.boundingbox_msg_sem = threading.Semaphore()
     self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.Semaphore()
+    self.hkls_drawn_sem = threading.Semaphore()
+    self.autoview_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     self.WBmessenger.StartWebsocket()
@@ -310,6 +308,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
+                       "data_array",
                        "color_scheme",
                        "color_powscale",
                        "scale",
@@ -331,6 +330,7 @@ class hklview_3d:
                        "slice_index",
                        "sigma_color_radius",
                        "scene_id",
+                       "data_array",
                        "use_provided_miller_arrays",
                        "color_scheme",
                        "color_powscale",
@@ -347,6 +347,7 @@ class hklview_3d:
                       "show_only_missing",
                       "show_systematic_absences",
                       "binner_idx",
+                      "binlabel",
                       "nbins",
                       )
        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
@@ -380,7 +381,12 @@ class hklview_3d:
       self.show_rotation_axes()
 
     if has_phil_path(diff_phil, "show_vector"):
-      self.show_vector()
+      [i, isvisible] = eval(self.viewerparams.show_vector)
+      if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+        # don't zoom if also initiating animation from this set of phil parameters
+        self.show_vector(i, isvisible, autozoom=False)
+      else:
+        self.show_vector(i, isvisible, autozoom=True)
 
     if has_phil_path(diff_phil, "show_all_vectors"):
       self.show_all_vectors()
@@ -400,9 +406,6 @@ class hklview_3d:
       self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
       self.viewerparams.angle_around_ZHKL_vector = None
 
-    if has_phil_path(diff_phil, "animate_rotation_around_vector"):
-      self.animate_rotate_around_vector()
-
     if has_phil_path(diff_phil, "miller_array_operations"):
       self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
       self.viewerparams.sigma_color_radius = False
@@ -415,8 +418,10 @@ class hklview_3d:
                       "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
                       "bin_opacities",
                       "binner_idx",
+                      "binlabel",
                       "nbins",
                       "fontsize",
+                      "data_array",
                       "miller_array_operations",
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
@@ -427,7 +432,13 @@ class hklview_3d:
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
+      #time.sleep(25)
       self.set_volatile_params()
+    if has_phil_path(diff_phil, "fontsize"):
+      self.SetFontSize(self.ngl_settings.fontsize)
+
+    if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+      self.animate_rotate_around_vector()
 
     if self.viewerparams.scene_id is None:
       self.DrawNGLJavaScript(blankscene=True)
@@ -442,8 +453,8 @@ class hklview_3d:
     in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
     if self.viewerparams.scene_id is not None:
-      if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
-        return
+      #if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
+      #  return
       if self.viewerparams.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
@@ -452,11 +463,11 @@ class hklview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
 
-      if self.params.clip_plane.clipwidth:
+      if self.params.clip_plane.clipwidth: # then we are clipping
         clipwidth = self.params.clip_plane.clipwidth
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-      msg = ""
-      if self.params.clip_plane.normal_vector != -1:
+      infomsg = ""
+      if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
@@ -477,25 +488,43 @@ class hklview_3d:
         # in units of cartvec projected onto real_space_vec
         if self.params.clip_plane.is_assoc_real_space_vector:
           orientvector = real_space_vec
+          self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
         else:
           orientvector = cartvec
-        self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
+          abcvec = self.all_vectors[ self.params.clip_plane.normal_vector ][6]
+          self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec))
+          if self.all_vectors[ self.params.clip_plane.normal_vector ][1] == "TNCS":
+            """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
+            as to ensure we only get the strongest/weakest reflections between the clip planes
+            The tncs modulation length is the inverse length of the tncs vector as defined in
+            HKLViewFrame.list_vectors() where the length is stored as half the length of the tncs vector
+            for the sake of stepping through alternating weak and strong layers with the +/- buttons.
+            So set clip plane width to 0.5*0.5/tncs-vector-length
+            """
+            self.params.clip_plane.clipwidth = 0.5*self.L
+            clipwidth = self.params.clip_plane.clipwidth
+            # want the radius of the sphere of reflections so get some reflection at highest resolution
+            dminhkl = self.miller_array.resolution_filter(d_min=0, d_max= self.miller_array.d_min()).indices()[0]
+            dmincartvec = list( dminhkl * matrix.sqr(uc.fractionalization_matrix()).transpose() )
+            sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1] + dmincartvec[2]*dmincartvec[2] )
+            n_tncs_layers = sphereradius*self.scene.renderscale/self.L
+            infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
-        if self.params.clip_plane.normal_vector_length_scale > 0:
+        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[ self.params.clip_plane.normal_vector ][1] != "TNCS":
           scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
         hklvecsqr = hklvec[0]*hklvec[0] + hklvec[1]*hklvec[1] + hklvec[2]*hklvec[2]
         if self.params.clip_plane.is_assoc_real_space_vector:
-          msg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
-            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), \
-            roundoff(self.params.clip_plane.hkldist * hklvecsqr*scalefactor))
+          self.planescalarvalue = self.params.clip_plane.hkldist * hklvecsqr*scalefactor
+          self.planenormalhklvec = hklvec
+          infomsg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
+            %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), roundoff(self.planescalarvalue))
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-      # show equation in the browser
-      self.AddToBrowserMsgQueue("PrintInformation", msg)
-      self.make_clip_plane(hkldist, clipwidth)
+      # show equation or info in the browser
+      self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
       self.SetOpacities(self.ngl_settings.bin_opacities )
@@ -512,6 +541,11 @@ class hklview_3d:
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
+      if self.isnewfile:
+        #time.sleep(25)
+        self.SetDefaultOrientation()
+      self.isnewfile = False
+      self.make_clip_plane(hkldist, clipwidth)
 
 
   def set_scene(self):
@@ -960,8 +994,6 @@ class hklview_3d:
     self.mapcoef_fom_dict = {}
     self.sceneid_from_arrayid = []
     for k,proc_array in enumerate(self.proc_arrays):
-      #if not proc_array.is_complex_array() or not proc_array.is_real_array():
-      #  continue
       fom_arrays_idx = []
       array_scene_ids = [(k,k)]
       for i,foms_array in enumerate(self.proc_arrays):
@@ -975,6 +1007,20 @@ class hklview_3d:
         array_scene_ids.append((k,i))
       self.sceneid_from_arrayid.extend( array_scene_ids)
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
+
+
+  def get_scene_id_from_label_or_type(self, datalabel, datatype):
+    """ Try finding a matching sceneid to the datalabel provided. As a fallback
+    try finding a sceneid for the first matching datatype regardless of its label
+    """
+    assert datalabel is not None
+    for i,e in enumerate(self.hkl_scenes_infos):
+      if e[3] == datalabel:
+        return i
+    for i,e in enumerate(self.hkl_scenes_infos):
+      if e[4] == datatype:
+        return i
+    return -1
 
 
   def scene_id_to_array_id(self, scene_id):
@@ -1307,7 +1353,7 @@ class hklview_3d:
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
-    if self.oldnbinvalsboundaries != self.nbinvalsboundaries:
+    if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
       self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
@@ -1430,8 +1476,9 @@ class hklview_3d:
         nreflsinbin = len(self.radii2[ibin])
         if nreflsinbin == 0:
           continue
-        self.SetBrowserDebug(str(self.verbose>=2).lower())
-        self.SetFontSize(self.ngl_settings.fontsize)
+        if self.debug == "debug":
+          self.SetBrowserDebug("true")
+        #self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend),
@@ -1439,22 +1486,20 @@ class hklview_3d:
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin],
                                      self.radii2[ibin], self.spbufttips[ibin] )
       self.RenderStageObjects()
-      self.MakeColourChart(10, 10, colourlabel, fomlabel, colourgradstrs)
-
-      if self.WaitforHandshake():
-        nwait = 0
-        while self.viewmtrx is None and nwait < self.handshakewait:
-          time.sleep(self.sleeptime)
-          nwait += self.sleeptime
+      self.SetFontSize(self.ngl_settings.fontsize)
+      self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
-      self.GetBoundingBox()
+      self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+      self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
+      self.clipplane_msg_sem.release()
+      self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
-      if self.isnewfile:
-        self.SetAutoView()
-      self.isnewfile = False
-
+      #if self.isnewfile:
+      #  self.SetAutoView()
+      #self.isnewfile = False
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
@@ -1462,6 +1507,7 @@ class hklview_3d:
 
 
   def ProcessBrowserMessage(self, message):
+    # method runs in a separate thread handling messages from the browser displaying our reflections
     try:
       if sys.version_info[0] > 2:
         ustr = str
@@ -1471,14 +1517,16 @@ class hklview_3d:
         self.mprint( "Saving image to file", verbose=1)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
-
+      philchanged = False
       if isinstance(message, ustr) and message != "":
-        if "Orientation" in message:
+        if "JavaScriptError" in message:
+          self.mprint( message, verbose=0)
+        elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
-          self.mprint( message, verbose=2)
+          self.mprint( message, verbose=3)
         elif 'Browser: Got' in message:
-          self.mprint( message, verbose=2)
+          self.mprint( message, verbose=3)
         elif "websocket" in message:
           self.mprint( message, verbose=1)
         elif "Refreshing" in message or "disconnecting" in message:
@@ -1486,6 +1534,9 @@ class hklview_3d:
           time.sleep(self.sleeptime)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
+        elif "FinishedSetAutoView" in message:
+          self.autoview_sem.release()
+          self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -1494,13 +1545,19 @@ class hklview_3d:
         elif "JavaScriptError:" in message:
           self.mprint( message, verbose=0)
         elif "Expanded rotation operator" in message:
-          self.mprint( message, verbose=1)
+          self.mprint( message, verbose="expansionmsg")
         elif "Expand" in message:
           self.mprint( message, verbose=2)
         elif "Connection lost" in message:
           self.mprint( message, verbose=1)
         elif "Warning!: Web browser closed unexpectedly" in message:
           self.mprint( message, verbose=1)
+        elif "ToggleAnimation" in message:
+          vecnr,speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+          speed = -speed # negative speed tells HKLjavascripts to pause animating
+          self.params.clip_plane.animate_rotation_around_vector = "[%s, %s]" %(vecnr,speed)
+          philchanged = True
+          self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
           self.mprint( "Image to be received", verbose=1)
         elif "ImageWritten" in message:
@@ -1513,15 +1570,12 @@ class hklview_3d:
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
           self.zoom = flst[3]
-          self.clipplane_msg_sem.release()
-        elif "ReturnBoundingBox:" in message:
-          datastr = message[ message.find("\n") + 1: ]
-          lst = datastr.split(",")
-          flst = [float(e) for e in lst]
-          self.boundingX = flst[0]
-          self.boundingY = flst[1]
-          self.boundingZ = flst[2]
-          self.boundingbox_msg_sem.release()
+          onrequest = flst[4]
+          if onrequest: # only unlock if requested by GetClipPlaneDistances()
+            self.clipplane_msg_sem.release()
+            self.mprint("ProcessBrowserMessage release clipplane_msg_sem", verbose="threadingmsg")
+            self.autoview_sem.release()
+            self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1529,6 +1583,7 @@ class hklview_3d:
           if flst[0] is not None and not cmath.isnan(flst[0]):
             self.ngl_settings.mouse_sensitivity = flst[0]
           self.mousespeed_msg_sem.release()
+          self.mprint("ProcessBrowserMessage release mousespeed_msg_sem", verbose="threadingmsg")
         elif "tooltip_id:" in message:
           ttipids = message.split("tooltip_id:")[1]
           hklid = eval(message.split("tooltip_id:")[1])[0]
@@ -1551,19 +1606,40 @@ class hklview_3d:
           sceneid = int(message.split(":")[1])
           self.parent.SetScene(sceneid)
         elif "InFrustum:" in message:
-          # if GetReflectionsInFrustum() finds no reflections then message=="InFrustum::" which crashes eval()
+          # if GetReflectionsInFrustum() finds no reflections
+          # then message=="InFrustum::" which crashes eval(). Avoid this
           if "InFrustum::" not in message:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
             visiblehkls = []
+            outsideplanehkls = []
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
               visiblehkls.append(hkl)
-            self.mprint( "visible hkls: " + str(list(set(visiblehkls))))
-          self.mprint( message, verbose=2)
+              if self.params.clip_plane.normal_vector != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
+               self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
+                outsideplanehkls.append(hkl)
+            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
+            if len(outsideplanehkls):
+              self.mprint("hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))))
+              self.mprint("Consider reducing the clip plane width on the \"Slicing\" tab")
+          self.mprint( message, verbose=3)
+        elif "notify_cctbx_AfterRendering" in message:
+          self.hkls_drawn_sem.release()
+          self.mprint("ProcessBrowserMessage release self.hkls_drawn_sem", verbose="threadingmsg")
+        elif "MoveClipPlanesUp" in message:
+          self.params.clip_plane.hkldist += 1
+          self.set_volatile_params()
+          philchanged = True
+        elif "MoveClipPlanesDown" in message:
+          self.params.clip_plane.hkldist -= 1
+          self.set_volatile_params()
+          philchanged = True
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
+        if philchanged:
+          self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
       self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
     self.lastmsg = message
@@ -1578,7 +1654,7 @@ class hklview_3d:
                           )
     )
     cameratranslation = (flst[12], flst[13], flst[14])
-    self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose=3)
+    self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose="orientmsg")
     alllst = roundoff(flst)
     self.mprint("""OrientationMatrix matrix:
   %s,  %s,  %s,  %s
@@ -1586,7 +1662,7 @@ class hklview_3d:
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
 Distance: %s
-    """ %tuple(alllst), verbose=4)
+    """ %tuple(alllst), verbose="orientmsg")
     rotdet = ScaleRotMx.determinant()
     if rotdet <= 0.0:
       self.mprint("Negative orientation matrix determinant!!", verbose=1)
@@ -1594,7 +1670,7 @@ Distance: %s
       return self.cameraPosZ, self.currentRotmx, self.cameratranslation
     else:
       cameradist = math.pow(rotdet, 1.0/3.0)
-    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose=3)
+    self.mprint("Scale distance: %s" %roundoff(cameradist), verbose="orientmsg")
     currentRotmx = matrix.identity(3)
     if cameradist > 0.0:
       currentRotmx = ScaleRotMx/cameradist
@@ -1619,7 +1695,7 @@ Distance: %s
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
-    """ %rotlst, verbose=3)
+    """ %rotlst, verbose="orientmsg")
     uc = self.miller_array.unit_cell()
     OrtMx = matrix.sqr( uc.fractionalization_matrix() )
     InvMx = OrtMx.inverse()
@@ -1668,16 +1744,6 @@ Distance: %s
       self.rot_recip_zvec = self.rot_zvec * rfracmx
       self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
       self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
-
-
-  def WaitforHandshake(self, sec=5):
-    nwait = 0
-    while not self.WBmessenger.browserisopen:
-      time.sleep(self.sleeptime)
-      nwait += self.sleeptime
-      if nwait > sec:
-        return False
-    return True
 
 
   def OpenBrowser(self):
@@ -1790,7 +1856,7 @@ Distance: %s
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
-    self.GetBoundingBox() # bounding box changes when the extent of the displayed lattice changes
+    #self.SetAutoView()
 
 
   def draw_sphere(self, s1, s2, s3, isreciprocal=True,
@@ -1991,11 +2057,10 @@ in the space group %s\nwith unit cell %s\n""" \
       self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, cartvec, hklop, autozoom=False)
 
 
-  def show_vector(self):
-    [i, isvisible] = eval(self.viewerparams.show_vector)
+  def show_vector(self, i, isvisible, autozoom=True):
     self.visual_symmxs = []
     (opnr, label, order, v, hklop, hkl, abc, length) = self.all_vectors[i]
-    self.show_labelled_vector(isvisible, label, order, v, hklop)
+    self.show_labelled_vector(isvisible, label, order, v, hklop, autozoom=autozoom)
 
 
   def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
@@ -2226,21 +2291,31 @@ in the space group %s\nwith unit cell %s\n""" \
   def make_clip_plane(self, hkldist=0.0, clipwidth=None):
     # create clip plane oriented parallel or perpendicular to abc vector
     if clipwidth is None:
-      self.RemovePrimitives()
+      #self.RemovePrimitives()
       self.SetClipPlaneDistances(0, 0)
       self.TranslateHKLpoints(0, 0, 0, 0.0)
       return
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemovePrimitives("clip_vector")
-    if self.cameraPosZ is None and self.viewmtrx is not None:
-      self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
+    if self.cameraPosZ is None or self.cameraPosZ == 1.0:
+      #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
+      self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
+      self.hkls_drawn_sem.acquire(blocking=True, timeout=tout)
+      self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
+      self.GetClipPlaneDistances()
+      self.hkls_drawn_sem.release()
+      self.mprint("make_clip_plane release hkls_drawn_sem", verbose="threadingmsg")
+    self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.clipplane_msg_sem.release()
+    self.mprint("make_clip_plane release clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
-    self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s" %(clipNear, clipFar, -self.cameraPosZ), verbose=1)
+    self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 
 
   def set_camera_type(self):
@@ -2253,9 +2328,17 @@ in the space group %s\nwith unit cell %s\n""" \
       self.mprint("%d, %s" %(i, e[0]))
 
 
+  def get_binner_idx_from_label(self, binlabel):
+    for i,e in enumerate(self.bin_labels_type_idxs):
+      if binlabel == e[0]:
+        return i
+    return -1
+
+
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
+    #self.RenderStageObjects()
 
 
   def SetBrowserDebug(self, isdebug):
@@ -2270,15 +2353,11 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def GetMouseSpeed(self):
+    self.mprint("GetMouseSpeed waiting for mousespeed_msg_sem.acquire", verbose="threadingmsg")
+    self.mousespeed_msg_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("GetMouseSpeed got mousespeed_msg_sem", verbose="threadingmsg")
     self.ngl_settings.mouse_sensitivity = None
-    self.mousespeed_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
-    if self.WaitforHandshake():
-      nwait = 0
-      if not self.mousespeed_msg_sem.acquire(blocking=False) and nwait < 5:
-        nwait += self.sleeptime
-        self.mprint("mousespeed_msg_sem, wait= %s" %nwait, verbose=2)
-    self.mousespeed_msg_sem.release()
 
 
   def SetClipPlaneDistances(self, near, far, cameraPosZ=None, zoom=None):
@@ -2291,38 +2370,17 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def GetClipPlaneDistances(self):
+    self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("GetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
+    self.mprint("GetClipPlaneDistances waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("GetClipPlaneDistances got autoview_sem", verbose="threadingmsg")
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.clipplane_msg_sem.acquire()
     self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
-    if self.WaitforHandshake():
-      nwait = 0
-      if not self.clipplane_msg_sem.acquire(blocking=False) and nwait < 5:
-        nwait += self.sleeptime
-        self.mprint("clipplane_msg_sem, wait= %s" %nwait, verbose=2)
-      self.mprint("clipnear, clipfar, cameraPosZ, zoom: %s, %s, %s, %s" \
-                 %(self.clipNear, self.clipFar, self.cameraPosZ, self.zoom), 2)
-    self.clipplane_msg_sem.release()
-    return (self.clipNear, self.clipFar, self.cameraPosZ, self.zoom)
-
-
-  def GetBoundingBox(self):
-    self.boundingX = 0.0
-    self.boundingY = 0.0
-    self.boundingZ = 0.0
-    self.boundingbox_msg_sem.acquire()
-    self.AddToBrowserMsgQueue("GetBoundingBox", "")
-    if self.WaitforHandshake():
-      nwait = 0
-      if not self.boundingbox_msg_sem.acquire(blocking=False) and nwait < 5:
-        nwait += self.sleeptime
-        self.mprint("boundingbox_msg_sem, wait= %s" %nwait, verbose=2)
-      self.mprint("boundingXYZ: %s, %s %s" \
-         %(self.boundingX, self.boundingY, self.boundingZ), verbose=2)
-    self.boundingbox_msg_sem.release()
-    return (self.boundingX, self.boundingY, self.boundingZ)
 
 
   def RemovePrimitives(self, reprname=""):
@@ -2333,7 +2391,11 @@ in the space group %s\nwith unit cell %s\n""" \
     rotmx = self.Euler2RotMatrix( ( 0.0, 0.0, 0.0 ) )
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
+    self.mprint("SetAutoView waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
+
 
 
   def TestNewFunction(self):
@@ -2358,6 +2420,13 @@ in the space group %s\nwith unit cell %s\n""" \
       self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
 
 
+  def SetDefaultOrientation(self):
+    self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
+    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
+    self.AddToBrowserMsgQueue("SetDefaultOrientation")
+
+
   def Euler2RotMatrix(self, eulerangles):
     eulerangles1 = eulerangles
     radangles = [e*math.pi/180.0 for e in eulerangles1]
@@ -2368,17 +2437,21 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
-    if self.cameraPosZ is None:
-      return
-    scaleRot = rotmx * self.cameraPosZ
-    ortrot = scaleRot.as_mat3()
-    str_rot = str(ortrot)
-    str_rot = str_rot.replace("(", "")
-    str_rot = str_rot.replace(")", "")
-    msg = str_rot + ", quiet\n"
-    if not quietbrowser:
-      msg = str_rot + ", verbose\n"
-    self.AddToBrowserMsgQueue("RotateStage", msg)
+    self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+    self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
+    if self.cameraPosZ is not None:
+      scaleRot = rotmx * self.cameraPosZ
+      ortrot = scaleRot.as_mat3()
+      str_rot = str(ortrot)
+      str_rot = str_rot.replace("(", "")
+      str_rot = str_rot.replace(")", "")
+      msg = str_rot + ", quiet\n"
+      if not quietbrowser:
+        msg = str_rot + ", verbose\n"
+      self.AddToBrowserMsgQueue("RotateStage", msg)
+    self.clipplane_msg_sem.release()
+    self.mprint("RotateMxStage release clipplane_msg_sem", verbose="threadingmsg")
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
@@ -2474,20 +2547,23 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
-    strdata = ""
-    strdata += "%s\n\n" %roundoff(positions, 2)
-    strdata += "%s\n\n" %roundoff(colours, 2)
-    strdata += "%s\n\n" %roundoff(radii, 2)
-    strdata += "%s" %ttipids
-    self.AddToBrowserMsgQueue("AddSpheresBin2ShapeBuffer", strdata)
+    # send data in binary format rather than string to browser for the sake of speed and
+    # having to avoid rounding off numbers which is also slow
+    self.AddToBrowserMsgQueue("AddHKLCoordinates", positions, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLColours", colours, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLRadii", radii, binary=True)
+    self.AddToBrowserMsgQueue("AddHKLTTipIds", ttipids, binary=True)
 
 
   def RenderStageObjects(self):
+    self.mprint("RenderStageObjects waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
+    self.hkls_drawn_sem.acquire(timeout=tout)
+    self.mprint("RenderStageObjects got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
 
-  def MakeColourChart(self, ctop, cleft, label, fomlabel, colourgradarray):
-    msg = "%s\n\n%s\n\n%s\n\n%s\n\n%s" %(ctop, cleft, label, fomlabel, str(colourgradarray) )
+  def MakeColourChart(self, label, fomlabel, colourgradarray):
+    msg = "%s\n\n%s\n\n%s" %(label, fomlabel, str(colourgradarray) )
     self.AddToBrowserMsgQueue("MakeColourChart", msg )
 
 

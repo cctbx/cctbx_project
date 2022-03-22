@@ -56,10 +56,8 @@ var fontsize = 9;
 var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var oldmsg = "";
+var binmsgtype = "";
 var clipFixToCamPosZ = false;
-var origclipnear;
-var origclipfar;
-var origcameraZpos;
 var nbins = 0;
 var rerendered = false;
 var expstate = "";
@@ -68,13 +66,27 @@ var isdebug = false;
 var tdelay = 100;
 var displaytooltips = true;
 var colourchart = null;
+var millerlabel = null;
+var fomlabel = null;
+var colourgradvalarrays = null;
 var infobanner = null;
 var ResetViewBtn = null;
+var PlusBtn = null;
+var MinusBtn = null;
+var pmleft = null;
+var pmbottom = null;
+var StopAnimateBtn = null;
+var hklequationmsg = "";
+var animatheta = 0.0;
+var animaaxis = new NGL.Vector3();
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
 var animationspeed = -1.0;
 var XYZaxes = null;
+var Helm = null;
+var Kelm = null;
+var Lelm = null;
 var Hstarstart = null;
 var Hstarend = null;
 var Kstarstart = null;
@@ -235,7 +247,7 @@ function CreateWebSocket()
   {
     mysocket = new WebSocket('ws://localhost:' + websocket_portnumber);
     //mysocket = new WebSocket('wss://localhost:' + websocket_portnumber);
-    mysocket.bufferType = "arraybuffer"; // "blob";
+    mysocket.binaryType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
     //  socket_intentionally_closed = false;
@@ -358,8 +370,11 @@ Object.assign(debugmessage.style, {
 });
 
 
-function ReturnClipPlaneDistances()
-{
+function ReturnClipPlaneDistances(onrequest = false)
+{ // If onrequest=true then jsview.py will increase the semaphore 
+  // count by calling clipplane_msg_sem.release().
+  // Only do this in response to a explicit message like "GetClipPlaneDistances"
+  // from where the sempahore has been acquired
   let cameradist;
   if (stage.viewer.parameters.clipScale == 'relative')
     cameradist = stage.viewer.cDist;
@@ -379,7 +394,7 @@ function ReturnClipPlaneDistances()
 
   let msg = String( [stage.viewer.parameters.clipNear,
                   stage.viewer.parameters.clipFar,
-                  cameradist, stage.viewer.camera.zoom ] )
+                  cameradist, stage.viewer.camera.zoom, Number(onrequest) ] )
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
@@ -404,17 +419,35 @@ function RemovePrimitives(reprname)
   let reprnamegone = false;
   let clipvecgone = false;
   let unitcellgone = false;
+  let symHKLsgone = false;
   let reciprocunitcellgone = false;
   if (reprname != "")
     reprnamegone = DeletePrimitives(reprname);
   else // otherwise remove all vectors
   {
+    symHKLsgone = DeletePrimitives("sym_HKLs");
     clipvecgone = DeletePrimitives("clip_vector");
     unitcellgone = DeletePrimitives("unitcell");
     reciprocunitcellgone = DeletePrimitives("reciprocal_unitcell");
   }
-  if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone)
+  if (reprnamegone || clipvecgone || unitcellgone || reciprocunitcellgone || symHKLsgone)
     RenderRequest();
+}
+
+
+function SetDefaultOrientation() {
+  let m4 = new NGL.Matrix4();
+  let axis = new NGL.Vector3();
+  axis.x = 0.0;
+  axis.y = 1.0;
+  axis.z = 0.0;
+  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+  // But we want x-axis pointing right and z-axis pointing out of the screen. 
+  // Rotate coordinate system to that effect
+  m4.makeRotationAxis(axis, Math.PI);
+  SetAutoview(shapeComp, 500);
+  if (!rotationdisabled)
+    stage.viewerControls.orient(m4);
 }
 
 
@@ -439,13 +472,99 @@ function CameraZoom(t, deltaX, deltaY) {
 };
 
 
-async function RenderRequest()
+function AnimateRotation(axis, animatheta) {
+  let m4 = new NGL.Matrix4();
+  let then = 0;
+
+  function render(now) {
+// as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
+    now *= 0.001;
+    const deltaTime = now - then;
+    then = now;
+
+    if (animationspeed > 0)
+      animatheta = (animatheta + deltaTime * animationspeed) % 360;
+    //else
+    //  animatheta = 0.0;
+    if (shapeComp == null)
+      return;
+
+    m4.makeRotationAxis(axis, animatheta);
+    shapeComp.setTransform(m4);
+    for (let i = 0; i < vectorshapeComps.length; i++) {
+      if (typeof vectorshapeComps[i].reprList != "undefined")
+        vectorshapeComps[i].setTransform(m4);
+    }
+    stage.viewer.requestRender();
+
+    if (animationspeed > 0)
+      requestAnimationFrame(render);
+  }
+  if (animationspeed > 0)
+    requestAnimationFrame(render);
+}
+
+
+async function RenderRequest(note = "")
 {
   await sleep(100);
+  if (note != "")
+    WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
+  if (note != "") {
+    GetReflectionsInFrustum();
+    WebsockSendMsg(note + '_AfterRendering');
+  }
   if (isdebug)
-    WebsockSendMsg( 'RenderRequest ' + pagename );
-}
+    WebsockSendMsg('RenderRequest ' + pagename);
+};
+
+
+async function SetAutoview(mycomponent, t)
+{
+  if (mycomponent == null)
+    return;
+
+  WebsockSendMsg('StartSetAutoView ' + pagename);
+  mycomponent.autoView(t); 
+
+  while (true) {
+    // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
+    // asynchroneously in the background. Its completion time is at least t miliseconds and depends on the 
+    // data size of mycomponent. It will have completed once the condition 
+    // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
+    // at that point in time
+    if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
+      WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
+      return;
+    }
+    await sleep(200);
+  }
+};
+
+
+async function SendComponentRotationMatrixMsg() {
+  await sleep(100);
+  try {
+    let msg = String(shapeComp.matrix.elements);
+    WebsockSendMsg('CurrentComponentRotation:\n' + msg);
+  }
+  catch (err) {
+    WebsockSendMsg('JavaScriptError: ' + err.stack);
+  }
+};
+
+async function SendOrientationMsg() {
+  await sleep(100);
+  try {
+    let msg = getOrientMsg();
+    WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+  }
+  catch (err) {
+    WebsockSendMsg('JavaScriptError: ' + err.stack);
+  }
+};
+
 
 // Log errors to debugger of your browser
 function onError(e)
@@ -472,22 +591,50 @@ function onClose(e)
   dbgmsg =msg;
 };
 
+var coordarray; // global for the binary data that are sent after receiving the AddHKLCoordinates message
+var colourarray;// global for the binary data that are sent after receiving the AddHKLColours message
+var radiiarray; // global for the binary data that are sent after receiving the AddHKLRadii message
+var ttipids; // global for the binary data that are sent after receiving the AddHKLTTipIds message
 
 function onMessage(e)
 {
   let c,
     si;
-  let showdata = e.data;
-  if (showdata.length > 400)
-    showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-  if (isdebug)
-    WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
+  let val = null;
+  let val2 = null;
+  let datval = null;
+  
   try
   {
-    let datval = e.data.split(":\n");
-    let msgtype = datval[0];
-    let val = datval[1].split(","); // assuming no commas in the received strings
-    let val2 = datval[1].split(";;"); // in case the received strings contain intended commas
+    let msgtype = "";
+    if (e.data instanceof ArrayBuffer == false) { // plain string data
+      let showdata = e.data;
+      if (showdata.length > 400)
+        showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
+      if (isdebug)
+        WebsockSendMsg('Browser: Got ' + showdata); // tell server what it sent us
+
+      datval = e.data.split(":\n");
+      msgtype = datval[0];
+      if (datval.length == 1 && typeof msgtype === 'string') {// if message is empty we expect the next message to be an ArrayBuffer, i.e. a byte array sent from python
+        binmsgtype = msgtype; // store the msgtype of the next message
+        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype + ' ' + pagename);
+        return;
+      }
+      else
+        binmsgtype = "";
+      val = datval[1].split(","); // assuming no commas in the received strings
+      val2 = datval[1].split(";;"); // in case the received strings contain intended commas
+    }
+
+    if (e.data instanceof ArrayBuffer) { // binary data is received. 
+      // Binary data is sent as a pair of messages by send_msg_to_browser(). First a plain string 
+      // containing the message type
+      // is sent.Then the actual data array is sent in binary format as a bytearray.
+      // When HKLjavascripts notes the second message is in binary format it pairs it up with the 
+      // previous message which is the message type so it can be processed
+      msgtype = binmsgtype;
+    }
 
     if (msgtype === "Reload")
     {
@@ -504,7 +651,6 @@ function onMessage(e)
           mysocket.close(4242, 'Refreshing ' + pagename);
           ready_for_closing = true;
           window.location.reload(true);
-          // In 200ms we are gone. A new javascript file will be loaded in the browser
         }
       );
     }
@@ -594,8 +740,7 @@ function onMessage(e)
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
       RenderRequest();
-      let msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+      SendOrientationMsg();
     }
 
     if (msgtype.includes("Expand") && shapeComp != null)
@@ -822,11 +967,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "RotateAxisStage")
@@ -846,11 +987,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "RotateComponents" && shapeComp != null)
@@ -875,11 +1012,7 @@ function onMessage(e)
       if (val[9] == "verbose")
         postrotmxflag = true;
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null) {
@@ -902,55 +1035,19 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest();
-      sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
       WebsockSendMsg('Animate rotating components around axis ' + pagename);
-      let sm = new Float32Array(9);
-      let m4 = new NGL.Matrix4();
-      let axis = new NGL.Vector3();
       animationspeed = parseFloat(val[3])*0.05;
-      axis.x = parseFloat(val[0]);
-      axis.y = parseFloat(val[1]);
-      axis.z = parseFloat(val[2]);
+      animaaxis.x = parseFloat(val[0]);
+      animaaxis.y = parseFloat(val[1]);
+      animaaxis.z = parseFloat(val[2]);
 
-      let then = 0;
-      let theta = 0.0;
-      function render(now)
-      { // as in https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL
-        now *= 0.001;
-        const deltaTime = now - then;
-        then = now;
+      AnimateRotation(animaaxis, animatheta);
 
-        if (animationspeed > 0)
-          theta = (theta + deltaTime * animationspeed) % 360;
-        else
-          theta = 0.0;
-
-        m4.makeRotationAxis(axis, theta);
-        shapeComp.setTransform(m4);
-        for (let i = 0; i < vectorshapeComps.length; i++) {
-          if (typeof vectorshapeComps[i].reprList != "undefined")
-            vectorshapeComps[i].setTransform(m4);
-        }
-        stage.viewer.requestRender();
-
-        if (animationspeed > 0)
-          requestAnimationFrame(render);
-      }
-      if (animationspeed > 0)
-        requestAnimationFrame(render);
-
-      sleep(100).then(() => {
-        let msg = String(shapeComp.matrix.elements);
-        WebsockSendMsg('CurrentComponentRotation:\n' + msg);
-      }
-      );
+      SendComponentRotationMatrixMsg();
     }
 
     if (msgtype === "TranslateHKLpoints" && shapeComp != null)
@@ -963,11 +1060,7 @@ function onMessage(e)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       RenderRequest();
-      sleep(100).then(()=> {
-          let msg = getOrientMsg();
-          WebsockSendMsg('CurrentViewOrientation:\n' + msg );
-        }
-      );
+      SendOrientationMsg();
     }
 
     if (msgtype === "DrawSphere") {
@@ -1100,7 +1193,11 @@ function onMessage(e)
     if (msgtype === "SetFontSize")
     {
       fontsize = parseFloat(val[0]);
-      RenderRequest();
+      MakeColourChart();
+      MakeButtons();
+      MakePlusMinusButtons();
+      MakeHKL_Axis();
+      MakeXYZ_Axis();
     }
 
     if (msgtype === "SetMouseSpeed")
@@ -1125,7 +1222,7 @@ function onMessage(e)
     {
       let near = parseFloat(val[0]);
       let far = parseFloat(val[1]);
-      origcameraZpos = parseFloat(val[2]);
+      let origcameraZpos = parseFloat(val[2]);
       let zoom = parseFloat(val[3]);
       stage.viewer.parameters.clipMode =  'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
@@ -1140,32 +1237,22 @@ function onMessage(e)
         near = 0;
         far = 100;
       }
-      else
-        stage.viewer.camera.position.z = origcameraZpos;
+      
       stage.viewer.parameters.clipNear = near;
       stage.viewer.parameters.clipFar = far;
-      origclipnear = near;
-      origclipfar = far;
-      if (stage.viewer.parameters.clipScale == 'absolute')
-        GetReflectionsInFrustum();
+      if (clipFixToCamPosZ === true) {
+        stage.viewer.parameters.clipNear = near + (origcameraZpos - stage.viewer.camera.position.z);
+        stage.viewer.parameters.clipFar = far + (origcameraZpos - stage.viewer.camera.position.z);
+      }
 
       if (Number.isNaN(zoom) == false)
         stage.viewer.camera.zoom = zoom;
-
-      RenderRequest();
+// provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
+      RenderRequest("getfrustum");
     }
 
     if (msgtype === "GetClipPlaneDistances")
-      ReturnClipPlaneDistances();
-
-    if (msgtype === "GetBoundingBox")
-    {
-      let msg = String( [stage.viewer.boundingBoxSize.x,
-                     stage.viewer.boundingBoxSize.y,
-                     stage.viewer.boundingBoxSize.z]
-                  )
-      WebsockSendMsg('ReturnBoundingBox:\n' + msg );
-    }
+      ReturnClipPlaneDistances(true);
 
     if (msgtype ==="JavaScriptCleanUp")
     {
@@ -1181,14 +1268,19 @@ function onMessage(e)
     }
 
     if (msgtype === "PrintInformation") {
-      let msg = datval[1];
+      hklequationmsg = datval[1];
       let infofsize = fontsize + 1; // slightly bigger font of infobanner to make it more prominent
-      let wp = getTextWidth(msg, infofsize);
-      if (infobanner != null)
+      let wp = getTextWidth(hklequationmsg, infofsize);
+      if (infobanner != null) {
         infobanner.remove(); // delete previous infobanner if any
-      if (msg == "")
+        infobanner = null;
+      }
+      pmleft = 70 + wp;
+      pmbottom = 35;
+      MakePlusMinusButtons();
+      if (hklequationmsg == "")
         return;
-      infobanner = addBottomDivBox(msg, 10, 110, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
+      infobanner = addBottomDivBox(hklequationmsg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
     if (msgtype === "SetBrowserDebug") {
@@ -1200,42 +1292,55 @@ function onMessage(e)
       RemoveStageObjects();
     }
 
-    if (msgtype === "AddSpheresBin2ShapeBuffer")
-    {
-      let strarrs = datval[1].split("\n\n");
-      let coordarray = eval(strarrs[0]);
-      let colourarray = eval(strarrs[1]);
-      let radiiarray = eval(strarrs[2]);
-      let ttipids = eval(strarrs[3]);
+    if (msgtype === "AddHKLCoordinates") {
+      coordarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddHKLColours") {
+      colourarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddHKLRadii") {
+      radiiarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddHKLTTipIds") {
+      ttipids = Array.from(new Float32Array(e.data)); // convert to plain javascript array so we can concatenate additional elements
+      // assuming the above arrays have been initialised create the shape buffer
       AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
     }
 
     if (msgtype === "MakeColourChart")
     {
       let msg = datval[1].split("\n\n");
-      let ctop = eval(msg[0]);
-      let cleft = eval(msg[1]);
-      let label = msg[2];
-      let fomlabel = msg[3];
-      let colourgradvalarrays = eval(msg[4]);
-      MakeColourChart(ctop, cleft, label, fomlabel, colourgradvalarrays);
+      millerlabel = msg[0];
+      fomlabel = msg[1];
+      colourgradvalarrays = eval(msg[2]);
+      MakeColourChart();
       RenderRequest();
     }
 
     if (msgtype ==="RenderStageObjects")
     {
-      shapeComp = stage.addComponentFromObject(shape);
-      MakeHKL_Axis();
-      MakeXYZ_Axis();
-      repr = shapeComp.addRepresentation('buffer');
-      RenderRequest();
-      WebsockSendMsg('Drawing new reflections');
+      if (shape != null) {
+        shapeComp = stage.addComponentFromObject(shape);
+        MakeHKL_Axis();
+        MakeXYZ_Axis();
+        repr = shapeComp.addRepresentation('buffer');
+        RenderRequest("notify_cctbx");
+        WebsockSendMsg('RenderStageObjects');
+      }
+    }
+
+    if (msgtype == "SetDefaultOrientation")
+    {
+      SetDefaultOrientation();
+      WebsockSendMsg('DefaultOrientSet ' + pagename); 
     }
 
     if (msgtype === "SetAutoView")
     {
-      if (shapeComp != null) // workaround for QTWebEngine bug sometimes failing to render scene
-        shapeComp.autoView(500); // half a second animation
+      SetAutoview(shapeComp, 500);
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
@@ -1266,6 +1371,7 @@ function onMessage(e)
       //CHROME ONLY
       // html2canvas retains div legends when creaing an image blob
       ResetViewBtn.style.display = "None"; // hide buttons and other GUL controls on this webpage
+      StopAnimateBtn.style.display = "None";
       html2canvas(document.getElementById("viewport")).then(function (canvas) {
         //blob = canvas.toDataURL("image/jpeg", 0.9);
         if (canvas.toBlob) {
@@ -1283,6 +1389,7 @@ function onMessage(e)
         }
       });
       ResetViewBtn.style.display = "Block";
+      StopAnimateBtn.style.display = "Block";
       WebsockSendMsg('ImageWritten ' + pagename);
     }
 
@@ -1431,21 +1538,30 @@ function MakeHKL_Axis()
   //red-z
   shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
 
-  let Helm = document.createElement("div");
+  if (Helm != null) {
+    stage.compList[0].removeAnnotation(Helm);
+    stage.compList[0].removeAnnotation(Kelm);
+    stage.compList[0].removeAnnotation(Lelm);
+    Helm.remove();
+    Kelm.remove();
+    Lelm.remove();
+  }
+
+  Helm = document.createElement("div");
   Helm.innerText = "h";
   Helm.style.color = "white";
   Helm.style.backgroundColor = "rgba(0, 0, 255, " + div_annotation_opacity + ")";
   Helm.style.fontSize = fontsize.toString() + "pt";
   Helm.style.padding = "4px"
 
-  let Kelm = document.createElement("div");
+  Kelm = document.createElement("div");
   Kelm.innerText = "k";
   Kelm.style.color = "white";
   Kelm.style.backgroundColor = "rgba(0, 255, 0, " + div_annotation_opacity + ")";
   Kelm.style.fontSize = fontsize.toString() + "pt";
   Kelm.style.padding = "4px"
 
-  let Lelm = document.createElement("div");
+  Lelm = document.createElement("div");
   Lelm.innerText = "l";
   Lelm.style.color = "white";
   Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
@@ -1565,18 +1681,22 @@ function getTextWidth(text, fsize=8)
 }
 
 
-function MakeColourChart(ctop, cleft, millerlabel, fomlabel, colourgradvalarrays)
+function MakeColourChart()
 {
   /* colourgradvalarrays is a list of colour charts. If only one list then it's one colour chart.
   Otherwise it's usually a list of colour charts that constitute a gradient across colours,
   typically used for illustrating figure of merits attenuating phase values in map coefficients
   */
+  if (millerlabel == null || colourgradvalarrays == null)
+    return;
+
   let hfac = 60.0 / colourgradvalarrays[0].length;
   let ih = 3.0*hfac,
   topr = 25.0,
   topr2 = 0.0,
   lp = 2.0; // vertical margin between edge of white container and labels
-
+  let ctop = 10;
+  let cleft = 10;
   let maxnumberwidth = 0;
   for (let j = 0; j < colourgradvalarrays[0].length; j++)
   {
@@ -1887,6 +2007,76 @@ function GetReflectionsInFrustum() {
 }
 
 
+function MakePlusMinusButtons() {
+  if (MinusBtn != null || PlusBtn != null) {
+    stage.viewer.container.removeChild(MinusBtn);
+    stage.viewer.container.removeChild(PlusBtn);
+    PlusBtn.remove();
+    MinusBtn.remove();
+    MinusBtn = null;
+    PlusBtn = null;
+  }
+
+  if (hklequationmsg == "")
+    return;
+
+  let btnwidth = getTextWidth("+", fontsize);
+  PlusBtn = createElement("input", {
+    value: "+",
+    type: "button",
+    onclick: function () {
+      WebsockSendMsg('MoveClipPlanesUp');
+    },
+  }, { bottom: pmbottom.toString() + "px", left: pmleft.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(PlusBtn);
+
+  let left2 = btnwidth + pmleft + 20;
+  btnwidth = getTextWidth("-", fontsize);
+  MinusBtn = createElement("input", {
+    value: "-",
+    type: "button",
+    onclick: function () {
+      WebsockSendMsg('MoveClipPlanesDown');
+    },
+  }, { bottom: pmbottom.toString() + "px", left: left2.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(MinusBtn);
+};
+
+
+function MakeButtons() {
+  if (ResetViewBtn != null)
+    ResetViewBtn.remove();
+
+  let btnwidth = getTextWidth("Reset View", fontsize);
+  ResetViewBtn = createElement("input", {
+    value: "Reset view",
+    type: "button",
+    onclick: function () {
+      SetDefaultOrientation();
+      RenderRequest();
+      SendOrientationMsg();
+    },
+  }, { bottom: "10px", left: "10px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(ResetViewBtn);
+
+  if (StopAnimateBtn != null)
+    StopAnimateBtn.remove();
+  let leftoffset = 30 + btnwidth;
+  btnwidth = getTextWidth("Toggle Animation", fontsize);
+  StopAnimateBtn = createElement("input", {
+    value: "Toggle Animation",
+    type: "button",
+    onclick: function () {
+      animationspeed = -animationspeed;
+      if (animationspeed > 0 && animaaxis.length() > 0.0)
+        AnimateRotation(animaaxis, animatheta);
+      WebsockSendMsg('ToggleAnimation');
+    },
+  }, { bottom: "10px", left: leftoffset.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  addElement(StopAnimateBtn);
+}
+
+
 function HKLscene()
 {
   stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
@@ -1898,36 +2088,11 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
 
-  function SetDefaultOrientation() {
-    //if (shapeComp == null)
-    //  return;
-    let m4 = new NGL.Matrix4();
-    let axis = new NGL.Vector3();
-    axis.x = 0.0;
-    axis.y = 1.0;
-    axis.z = 0.0;
-    // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
-    // But we want x-axis pointing right and z-axis pointing out of the screen. 
-    // Rotate coordinate system to that effect
-    m4.makeRotationAxis(axis, Math.PI);
-    if (shapeComp != null)
-      shapeComp.autoView(500);
-    if (!rotationdisabled)
-      stage.viewerControls.orient(m4);
-  }
-
   SetDefaultOrientation();
-
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
       let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
@@ -1938,15 +2103,6 @@ function HKLscene()
         timenow = timefunc();
       }
       tooltip.style.display = "none";
-      /*
-      let dim = stage.viewer.parameters.clipNear + stage.viewer.parameters.clipFar + stage.viewer.camera.position.z;
-      let msg2 = "clips: " + stage.viewer.parameters.clipNear.toString() + ", " +
-        stage.viewer.parameters.clipFar.toString() + ", origcamZ: " + origcameraZpos.toString() +
-        ", cameraZ: " + stage.viewer.camera.position.z.toString() + ", dim: " + dim.toString();
-      //msg2 = "dx: " + deltaX.toString() + ", dy: " + deltaY.toString()
-      if (isdebug)
-        console.log(msg2);
-     */ 
     }
   );
 
@@ -1963,16 +2119,12 @@ function HKLscene()
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
     {
-      if (clipFixToCamPosZ === true)
-      {
-        stage.viewer.parameters.clipNear = origclipnear + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.parameters.clipFar = origclipfar + (origcameraZpos -stage.viewer.camera.position.z);
-        stage.viewer.requestRender();
-      }
       let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
+        postrotmxflag = true;
+        ReturnClipPlaneDistances();
         WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         timenow = timefunc();
       }
@@ -2013,6 +2165,8 @@ function HKLscene()
   );
 
 
+  //stage.tasks.onZeroOnce(GetReflectionsInFrustum);
+
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);
 
@@ -2032,28 +2186,13 @@ function HKLscene()
   if (isdebug)
     debugmessage.innerText = dbgmsg;
 
-  ResetViewBtn = createElement("input", {
-    value: "Reset view",
-    type: "button",
-    onclick: function () {
-      SetDefaultOrientation();
-      RenderRequest();
-      sleep(100).then(() => {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
-      }
-      );
-    },
-  }, { bottom: "10px", left: "10px", width: "90px", position: "absolute" }, fontsize);
-  addElement(ResetViewBtn);
+  MakeButtons();
 
 }
 
 
 function OnUpdateOrientation()
 {
-  GetReflectionsInFrustum();
-
   let msg = getOrientMsg();
   WebsockSendMsg('MouseMovedOrientation:\n' + msg );
 }
@@ -2065,12 +2204,15 @@ function PageLoad()
   {
     //alert('In PageLoad');
     document.addEventListener('DOMContentLoaded', function () { HKLscene(); }, false );
-    document.addEventListener('mouseup', function () { OnUpdateOrientation(); }, false );
+    document.addEventListener('mouseup', function () {
+      OnUpdateOrientation();
+      GetReflectionsInFrustum();
+    }, false);
     document.addEventListener('wheel', function (e) { OnUpdateOrientation(); }, false );
     document.addEventListener('scroll', function (e) { OnUpdateOrientation(); }, false );
     // mitigate flickering on some PCs when resizing
     document.addEventListener('resize', function () { RenderRequest(); }, false);
- }
+  }
   catch(err)
   {
     WebsockSendMsg('JavaScriptError: ' + err.stack );
