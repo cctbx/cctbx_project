@@ -2547,12 +2547,18 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SendCoordinates2Browser(self, positions, colours, radii, ttipids ):
+    """
     strdata = ""
     strdata += "%s\n\n" %roundoff(positions, 2)
     strdata += "%s\n\n" %roundoff(colours, 2)
     strdata += "%s\n\n" %roundoff(radii, 2)
     strdata += "%s" %ttipids
     self.AddToBrowserMsgQueue("AddSpheresBin2ShapeBuffer", strdata)
+    """
+    self.AddToBrowserMsgQueue("AddCoordinatesSpheresBin2ShapeBuffer", positions, binary=True)
+    self.AddToBrowserMsgQueue("AddColoursSpheresBin2ShapeBuffer", colours, binary=True)
+    self.AddToBrowserMsgQueue("AddRadiiSpheresBin2ShapeBuffer", radii, binary=True)
+    self.AddToBrowserMsgQueue("AddTTipIdsSpheresBin2ShapeBuffer", ttipids, binary=True)
 
 
   def RenderStageObjects(self):

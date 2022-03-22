@@ -56,6 +56,7 @@ var fontsize = 9;
 var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var oldmsg = "";
+var binmsgtype = "";
 var clipFixToCamPosZ = false;
 var nbins = 0;
 var rerendered = false;
@@ -246,7 +247,7 @@ function CreateWebSocket()
   {
     mysocket = new WebSocket('ws://localhost:' + websocket_portnumber);
     //mysocket = new WebSocket('wss://localhost:' + websocket_portnumber);
-    mysocket.bufferType = "arraybuffer"; // "blob";
+    mysocket.binaryType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
     //  socket_intentionally_closed = false;
@@ -590,22 +591,45 @@ function onClose(e)
   dbgmsg =msg;
 };
 
+var coordarray; // global for the binary data that are sent subsequently
+var colourarray;
+var radiiarray;
+var ttipids;
 
 function onMessage(e)
 {
   let c,
     si;
-  let showdata = e.data;
-  if (showdata.length > 400)
-    showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-  if (isdebug)
-    WebsockSendMsg('Browser: Got ' + showdata ); // tell server what it sent us
+  let val = null;
+  let val2 = null;
+  let datval = null;
+  
   try
   {
-    let datval = e.data.split(":\n");
-    let msgtype = datval[0];
-    let val = datval[1].split(","); // assuming no commas in the received strings
-    let val2 = datval[1].split(";;"); // in case the received strings contain intended commas
+    let msgtype = "";
+    if (e.data instanceof ArrayBuffer == false) {
+      let showdata = e.data;
+      if (showdata.length > 400)
+        showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
+      if (isdebug)
+        WebsockSendMsg('Browser: Got ' + showdata); // tell server what it sent us
+
+      datval = e.data.split(":\n");
+      msgtype = datval[0];
+      if (datval.length == 1 && typeof msgtype === 'string') {// if message is empty we expect the next message to be an ArrayBuffer, i.e. a byte array sent from python
+        binmsgtype = msgtype; // store the msgtype of the next message
+        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype + ' ' + pagename);
+        return;
+      }
+      else
+        binmsgtype = "";
+      val = datval[1].split(","); // assuming no commas in the received strings
+      val2 = datval[1].split(";;"); // in case the received strings contain intended commas
+    }
+
+    if (e.data instanceof ArrayBuffer) {
+      msgtype = binmsgtype;
+    }
 
     if (msgtype === "Reload")
     {
@@ -1263,8 +1287,25 @@ function onMessage(e)
       RemoveStageObjects();
     }
 
-    if (msgtype === "AddSpheresBin2ShapeBuffer")
-    {
+    if (msgtype === "AddCoordinatesSpheresBin2ShapeBuffer") {
+      coordarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddColoursSpheresBin2ShapeBuffer") {
+      colourarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddRadiiSpheresBin2ShapeBuffer") {
+      radiiarray = new Float32Array(e.data);
+    }
+
+    if (msgtype === "AddTTipIdsSpheresBin2ShapeBuffer") {
+      ttipids = new Int32Array(e.data);
+      // assuming the above arrays have been initialised create the shape buffer
+      AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
+    }
+
+    if (msgtype === "AddSpheresBin2ShapeBuffer") {
       let strarrs = datval[1].split("\n\n");
       let coordarray = eval(strarrs[0]);
       let colourarray = eval(strarrs[1]);

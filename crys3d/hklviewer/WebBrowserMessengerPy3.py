@@ -4,8 +4,7 @@ from libtbx.utils import Sorry, to_str
 import threading, sys
 import os.path, time
 
-#import pathlib
-#import ssl
+import struct
 import asyncio
 import websockets
 from typing import Optional
@@ -183,8 +182,8 @@ class WBmessenger(object):
         if self.parent.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
           return
         if len(self.msgqueue):
-          pendingmessagetype, pendingmessage = self.msgqueue[0]
-          gotsent = await self.send_msg_to_browser(pendingmessagetype, pendingmessage)
+          pendingmessagetype, pendingmessage, pendingbinary = self.msgqueue[0]
+          gotsent = await self.send_msg_to_browser(pendingmessagetype, pendingmessage, pendingbinary)
           while not self.browserisopen:  #self.websockclient:
             await asyncio.sleep(self.sleeptime)
             nwait += self.sleeptime
@@ -206,8 +205,8 @@ class WBmessenger(object):
     self.mprint("Shutting down WebsocketClientMessageThread", verbose=1)
 
 
-  def AddToBrowserMsgQueue(self, msgtype, msg=""):
-    self.msgqueue.append( (msgtype, msg) )
+  def AddToBrowserMsgQueue(self, msgtype, msg="",binary=False):
+    self.msgqueue.append( (msgtype, msg, binary) )
 
 
   def OnConnectWebsocketClient(self, client):
@@ -238,7 +237,7 @@ class WBmessenger(object):
     self.ishandling = False
 
 
-  async def send_msg_to_browser(self, msgtype, msg=""):
+  async def send_msg_to_browser(self, msgtype, msg="", binary=False):
     message = u"" + msgtype + self.msgdelim + str(msg)
     nwait = 0.0
     while isinstance(self.parent.lastmsg, str) and \
@@ -250,7 +249,7 @@ class WBmessenger(object):
       nwait += self.sleeptime
       if self.was_disconnected != None:
         return False
-      if nwait > 2.0 and self.browserisopen:
+      if nwait > 200 and self.browserisopen:
         self.mprint("ERROR: No handshake from browser!", verbose=0 )
         self.mprint("failed sending " + msgtype, verbose=1)
         self.was_disconnected = 1005
@@ -258,7 +257,12 @@ class WBmessenger(object):
         return False
     if self.browserisopen and self.websockclient is not None or self.mywebsock.client_connected is not None:
       try: # use EAFP rather than LBYL style with websockets
-        await self.mywebsock.send( message )
+        if not binary:
+          await self.mywebsock.send( message )
+        else:
+          await self.mywebsock.send( msgtype )
+          byteslst = struct.pack("%sf" % len(msg), *msg)
+          await self.mywebsock.send( bytearray(byteslst) )
         return True
       except Exception as e:
         if self.was_disconnected != 4242:
