@@ -1351,11 +1351,11 @@ class HKLViewFrame() :
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
     if use:
       self.params.clip_plane.hkldist = hkldist
-      self.params.clip_plane.clipwidth = clipwidth
+      self.params.clip_plane.clip_width = clipwidth
       self.params.viewer.slice_mode = False
       self.params.viewer.inbrowser = True
     else:
-      self.params.clip_plane.clipwidth = None
+      self.params.clip_plane.clip_width = None
     self.update_settings()
 
 
@@ -1509,9 +1509,12 @@ masterphilstr = """
     normal_vector_length_scale = -1
       .type = float
       .caption = "If value is negative the length of the normal vector is used as the scale."
-    clipwidth = None
+    clip_width = None
       .type = float
       .caption = "If value is not None then we are clipping"
+    auto_clip_width = True
+      .type = bool
+      .caption = "If true compute appropriate clip plane width. Otherwise use clip_width value"
     fractional_vector = reciprocal *realspace
       .type = choice
     bequiet = False

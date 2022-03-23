@@ -259,7 +259,7 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>434</width>
+                      <width>428</width>
                       <height>392</height>
                      </rect>
                     </property>
@@ -450,6 +450,63 @@
                             <bool>false</bool>
                            </property>
                            <layout class="QGridLayout" name="gridLayout_6">
+                            <item row="2" column="4">
+                             <widget class="QLabel" name="label_13">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="text">
+                               <string>Scale:</string>
+                              </property>
+                              <property name="textFormat">
+                               <enum>Qt::RichText</enum>
+                              </property>
+                              <property name="alignment">
+                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="2" rowspan="2" colspan="2">
+                             <widget class="MyQDoubleSpinBox" name="hkldist_spinBox">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="toolTip">
+                               <string>in units of the selected vector above</string>
+                              </property>
+                              <property name="decimals">
+                               <number>4</number>
+                              </property>
+                              <property name="minimum">
+                               <double>-1000.000000000000000</double>
+                              </property>
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="0" colspan="3">
+                             <widget class="QRadioButton" name="parallel_current_orientation_btn">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="text">
+                               <string>uses current orientation</string>
+                              </property>
+                              <property name="checked">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
                             <item row="1" column="0" colspan="2">
                              <widget class="QRadioButton" name="normal_vec_btn">
                               <property name="toolTip">
@@ -460,17 +517,49 @@
                               </property>
                              </widget>
                             </item>
-                            <item row="1" column="3" rowspan="2" colspan="2">
+                            <item row="2" column="1" colspan="2">
+                             <widget class="QLabel" name="normal_realspace_vec_label">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                                <horstretch>1</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="toolTip">
+                               <string>Useful for inspecting reflections satisfying an equation for a plane through reciprocal space</string>
+                              </property>
+                              <property name="text">
+                               <string>is normal to real space vector associated with:</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="3" column="0" rowspan="2" colspan="2">
+                             <widget class="QLabel" name="label_15">
+                              <property name="toolTip">
+                               <string>in units of the selected vector above</string>
+                              </property>
+                              <property name="text">
+                               <string>Distance from origin</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="3">
                              <widget class="QComboBox" name="clipplane_normal_vector_combo">
                               <property name="sizePolicy">
                                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                                <horstretch>3</horstretch>
+                                <horstretch>2</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
                               </property>
                              </widget>
                             </item>
-                            <item row="1" column="6" rowspan="2">
+                            <item row="2" column="5">
                              <widget class="QLineEdit" name="clipplane_normal_vector_length">
                               <property name="sizePolicy">
                                <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
@@ -502,77 +591,20 @@
                               </property>
                              </widget>
                             </item>
-                            <item row="2" column="1" colspan="2">
-                             <widget class="QLabel" name="normal_realspace_vec_label">
-                              <property name="sizePolicy">
-                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                                <horstretch>1</horstretch>
-                                <verstretch>0</verstretch>
-                               </sizepolicy>
-                              </property>
-                              <property name="toolTip">
-                               <string>Useful for inspecting reflections satisfying an equation for a plane through reciprocal space</string>
-                              </property>
-                              <property name="text">
-                               <string>is normal to real space vector associated with:</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="0" colspan="2">
-                             <widget class="QLabel" name="label_15">
-                              <property name="toolTip">
-                               <string>in units of the selected vector above</string>
-                              </property>
-                              <property name="text">
-                               <string>Distance from origin</string>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="2" colspan="2">
-                             <widget class="MyQDoubleSpinBox" name="hkldist_spinBox">
+                            <item row="3" column="4" colspan="2">
+                             <widget class="QCheckBox" name="AutoClipWidthCheckBox">
                               <property name="sizePolicy">
                                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
                               </property>
-                              <property name="toolTip">
-                               <string>in units of the selected vector above</string>
-                              </property>
-                              <property name="decimals">
-                               <number>4</number>
-                              </property>
-                              <property name="minimum">
-                               <double>-1000.000000000000000</double>
-                              </property>
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="3" column="4" colspan="2">
-                             <widget class="QLabel" name="label_21">
-                              <property name="sizePolicy">
-                               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                               </sizepolicy>
-                              </property>
                               <property name="text">
-                               <string>Clip Plane Width:</string>
-                              </property>
-                              <property name="alignment">
-                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                               <string>Automatic Clip plane width</string>
                               </property>
                              </widget>
                             </item>
-                            <item row="3" column="6">
+                            <item row="4" column="5">
                              <widget class="MyQDoubleSpinBox" name="clipwidth_spinBox">
                               <property name="sizePolicy">
                                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -594,38 +626,19 @@
                               </property>
                              </widget>
                             </item>
-                            <item row="1" column="5" rowspan="2">
-                             <widget class="QLabel" name="label_13">
+                            <item row="4" column="4">
+                             <widget class="QLabel" name="label_21">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
                               </property>
                               <property name="text">
-                               <string>Scale:</string>
-                              </property>
-                              <property name="textFormat">
-                               <enum>Qt::RichText</enum>
+                               <string>Clip Plane Width:</string>
                               </property>
                               <property name="alignment">
-                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="0" column="0" colspan="3">
-                             <widget class="QRadioButton" name="parallel_current_orientation_btn">
-                              <property name="sizePolicy">
-                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                               </sizepolicy>
-                              </property>
-                              <property name="text">
-                               <string>uses current orientation</string>
-                              </property>
-                              <property name="checked">
-                               <bool>true</bool>
+                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                               </property>
                              </widget>
                             </item>

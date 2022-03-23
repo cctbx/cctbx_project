@@ -6,7 +6,7 @@ buttonsdeflist = [
                                                   hkldist = 0
                                                   normal_vector = 0
                                                   is_assoc_real_space_vector = True
-                                                  clipwidth = 0.5
+                                                  clip_width = 0.5
                                                 }
                                                 viewer {
                                                   data_array.label = "I,SIGI"
@@ -25,7 +25,7 @@ buttonsdeflist = [
                                                   hkldist = 0
                                                   normal_vector = 1
                                                   is_assoc_real_space_vector = True
-                                                  clipwidth = 0.650000
+                                                  clip_width = 0.650000
                                                 }
                                                 viewer {
                                                   data_array.label = "I,SIGI"
@@ -44,7 +44,7 @@ buttonsdeflist = [
                                                   hkldist = 0
                                                   normal_vector = 2
                                                   is_assoc_real_space_vector = True
-                                                  clipwidth = 0.5
+                                                  clip_width = 0.5
                                                 }
                                                 viewer {
                                                   data_array.label = "I,SIGI"
@@ -62,7 +62,7 @@ buttonsdeflist = [
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0]"
                                                   animate_rotation_around_vector = "[0, -1.000000]"
-                                                  clipwidth = 0
+                                                  clip_width = 0
                                                 }
                                                 binlabel = "ANISO"
                                                 nbins = 8
@@ -96,7 +96,7 @@ buttonsdeflist = [
                                                   normal_vector = 3
                                                   normal_vector_length_scale = 0.87128
                                                   is_assoc_real_space_vector = False
-                                                  clipwidth = 0.35
+                                                  clip_width = 0.35
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"
@@ -112,7 +112,7 @@ buttonsdeflist = [
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0.0]"
                                                   animate_rotation_around_vector = "[3, 5.000000]"
-                                                  clipwidth = 3
+                                                  clip_width = 3
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"

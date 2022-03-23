@@ -453,8 +453,6 @@ class hklview_3d:
     in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
     if self.viewerparams.scene_id is not None:
-      #if has_phil_path(self.diff_phil, "angle_around_vector"): # no need to redraw any clip plane
-      #  return
       if self.viewerparams.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
@@ -463,8 +461,10 @@ class hklview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
 
-      if self.params.clip_plane.clipwidth: # then we are clipping
-        clipwidth = self.params.clip_plane.clipwidth
+      if self.params.clip_plane.clip_width: # then we are clipping
+        if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
+          self.params.clip_plane.clip_width = 0.5*self.L # equal to the hkl vector length
+        clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       infomsg = ""
       if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
@@ -501,12 +501,16 @@ class hklview_3d:
             for the sake of stepping through alternating weak and strong layers with the +/- buttons.
             So set clip plane width to 0.5*0.5/tncs-vector-length
             """
-            self.params.clip_plane.clipwidth = 0.5*self.L
-            clipwidth = self.params.clip_plane.clipwidth
-            # want the radius of the sphere of reflections so get some reflection at highest resolution
-            dminhkl = self.miller_array.resolution_filter(d_min=0, d_max= self.miller_array.d_min()).indices()[0]
+            if self.params.clip_plane.auto_clip_width: # use the default spacing between tncs layers of reflections
+              self.params.clip_plane.clip_width = 0.5*self.L
+            clipwidth = self.params.clip_plane.clip_width
+            # Want the radius of the sphere of reflections so get a reflection at highest resolution
+            # Decrease resolution by 0.00001 to avoid machine precision errors yielding 0 reflections
+            dminhkl = self.miller_array.resolution_filter(d_min=0,
+                                                          d_max=(self.miller_array.d_min()+0.00001)).indices()[0]
             dmincartvec = list( dminhkl * matrix.sqr(uc.fractionalization_matrix()).transpose() )
-            sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1] + dmincartvec[2]*dmincartvec[2] )
+            sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1]
+                                      + dmincartvec[2]*dmincartvec[2] )
             n_tncs_layers = sphereradius*self.scene.renderscale/self.L
             infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
         self.orient_vector_to_screen(orientvector)
@@ -522,7 +526,6 @@ class hklview_3d:
           infomsg = "Reflections satisfying: %s*h + %s*k + %s*l = %s" \
             %(roundoff(hklvec[0],4), roundoff(hklvec[1],4), roundoff(hklvec[2],4), roundoff(self.planescalarvalue))
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
-        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.viewerparams.inbrowser:
