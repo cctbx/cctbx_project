@@ -75,6 +75,9 @@ class HKLViewFrame() :
     self.infostr = ""
     self.hklfile_history = []
     self.tncsvec = None
+    self.aniso1 = None
+    self.aniso2 = None
+    self.aniso3 = None
     self.uservectors = []
     self.new_miller_array_operations_lst = []
     self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
@@ -637,6 +640,9 @@ class HKLViewFrame() :
     self.viewer.sceneid_from_arrayid = []
     self.hklfile_history = []
     self.tncsvec = None
+    self.aniso1 = None
+    self.aniso2 = None
+    self.aniso3 = None
     self.loaded_file_name = ""
 
 
@@ -791,6 +797,11 @@ class HKLViewFrame() :
               if (t1*t1 + t2*t2 + t3*t3) > 0.0:
                 self.tncsvec = (t1, t2, t3)
                 self.mprint("tNCS vector found in header of mtz file: %s" %str(self.tncsvec) )
+            if "PHASER A" in e and len(e.split()) == 11:
+              self.aniso1 = [ eval(f) for f in e.split()[2:5] ]
+              self.aniso2 = [ eval(f) for f in e.split()[5:8] ]
+              self.aniso3 = [ eval(f) for f in e.split()[8:11] ]
+              self.mprint("Anisotropic principal axes found in header of mtz file: %s" %str(self.tncsvec) )
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
@@ -1240,6 +1251,7 @@ class HKLViewFrame() :
     self.viewer.calc_rotation_axes()
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     uc = self.viewer.miller_array.unit_cell()
+    tncsvec = []
     if self.tncsvec is not None:
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
@@ -1247,7 +1259,25 @@ class HKLViewFrame() :
       # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
       # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
       veclength = self.viewer.scene.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      self.viewer.all_vectors = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )] + self.viewer.all_vectors
+      tncsvec = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
+
+    anisovectors = []
+    if self.aniso1 is not None:
+      # anisotropic principal axes vector are specified in realspace fractional coordinates. Convert it to cartesian
+      cartvec = list( self.aniso1 * matrix.sqr(uc.orthogonalization_matrix()) )
+      ln = len(self.viewer.all_vectors)
+      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      anisovectors = [(ln, "ANISO1", 0, cartvec, "", "", str(roundoff(self.aniso1, 5)), veclength )]
+
+      cartvec = list( self.aniso2 * matrix.sqr(uc.orthogonalization_matrix()) )
+      ln = len(self.viewer.all_vectors)
+      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      anisovectors.append((ln, "ANISO2", 0, cartvec, "", "", str(roundoff(self.aniso2, 5)), veclength ) )
+
+      cartvec = list( self.aniso3 * matrix.sqr(uc.orthogonalization_matrix()) )
+      ln = len(self.viewer.all_vectors)
+      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      anisovectors.append( (ln, "ANISO3", 0, cartvec, "", "", str(roundoff(self.aniso3, 5)), veclength ) )
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1259,7 +1289,7 @@ class HKLViewFrame() :
     hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
                         (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
                         (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
-    self.viewer.all_vectors = hklunit_vectors + self.viewer.all_vectors + self.uservectors
+    self.viewer.all_vectors = hklunit_vectors + tncsvec + anisovectors + self.viewer.all_vectors + self.uservectors
 
     for (opnr, label, order, cartvec, hkl_op, hkl, abc, length) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"

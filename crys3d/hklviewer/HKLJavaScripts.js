@@ -63,7 +63,7 @@ var rerendered = false;
 var expstate = "";
 var current_ttip_ids;
 var isdebug = false;
-var tdelay = 100;
+var tdelay = 200;
 var displaytooltips = true;
 var colourchart = null;
 var millerlabel = null;

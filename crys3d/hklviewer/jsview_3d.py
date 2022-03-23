@@ -463,7 +463,7 @@ class hklview_3d:
 
       if self.params.clip_plane.clip_width: # then we are clipping
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
-          self.params.clip_plane.clip_width = 0.5*self.L # equal to the hkl vector length
+          self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
         clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       infomsg = ""

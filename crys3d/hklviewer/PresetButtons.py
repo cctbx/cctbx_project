@@ -111,8 +111,9 @@ buttonsdeflist = [
   ("TNCSpar", "Show TNCS paralllel", """
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0.0]"
-                                                  animate_rotation_around_vector = "[3, 5.000000]"
-                                                  clip_width = 3
+                                                  animate_rotation_around_vector = "[3, -5.0]"
+                                                  clip_width = 4
+                                                  auto_clip_width = False
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"
