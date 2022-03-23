@@ -436,7 +436,6 @@ def combine_hd_exchangable(hierarchy):
         for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
           elements_group1 = atom_group_1.atoms().extract_element()
           non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
-          #if non_H_atoms_group1: continue
           for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
             elements_group2 = atom_group_2.atoms().extract_element()
             non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
