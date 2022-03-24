@@ -2551,6 +2551,19 @@ class manager(object):
         else:                sites_cart[i] = sites_cart[j]
       self.set_sites_cart(sites_cart = sites_cart)
 
+  def de_deuterate(self):
+    """
+    Remove all D atoms and replace with H. Keep only H at hydrogen/deuterium
+    sites. Changes hierarchy in place.
+    Caution: reset_after_changing_hierarchy probably does not take care of
+    everything to make sure that internal objects are updated (such as NCS,
+    secondary structure)
+    """
+    if not self.has_hd(): return
+    self.get_hierarchy().de_deuterate()
+    self.reset_after_changing_hierarchy()
+    self.unset_riding_h_manager()
+
   def rotatable_hd_selection(self, iselection=True, use_shortcut=True):
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.get_hierarchy(),

@@ -1896,6 +1896,54 @@ class _():
       self.atoms().reset_i_seq()
     return n_removed
 
+
+  def de_deuterate(self):
+    """
+    Remove all D atoms and replace with H. Keep only H at hydrogen/deuterium
+    sites. Changes hierarchy in place.
+    """
+    atoms = self.atoms()
+    # Get exchanged sites
+    from mmtbx import utils
+    hd_group_selections = utils.combine_hd_exchangable(hierarchy = self)
+    hd_site_d_iseqs, hd_site_h_iseqs = [], []
+    for gsel in hd_group_selections:
+      i,j = gsel[0][0], gsel[1][0]
+      for _i in [i,j]:
+        if atoms[_i].element.strip().upper() == 'D':
+          hd_site_d_iseqs.append(_i)
+        if atoms[_i].element.strip().upper() == 'H':
+          hd_site_h_iseqs.append(_i)
+    #
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for m in self.models():
+      for c in m.chains():
+        for rg in c.residue_groups():
+          for ag in rg.atom_groups():
+            for a in ag.atoms():
+              i = a.i_seq
+              # remove D atoms at exchanged sites
+              if a.element.strip().upper() == 'D'and i in hd_site_d_iseqs:
+                ag.remove_atom(a)
+                continue
+              # remove D/H atoms in water and rename residue to HOH
+              resname = (a.parent().resname).strip()
+              if(get_class(name = resname) == "common_water"):
+                if resname == 'DOD':
+                  a.parent().resname = 'HOH'
+                if a.element_is_hydrogen():
+                  ag.remove_atom(a)
+                  continue
+              # reset occ and altloc for H at exchanged sites
+              if a.element.strip().upper() == 'H' and i in hd_site_h_iseqs:
+                a.occ = 1.0
+                a.parent().altloc = ""
+              # transform all other D atoms to H: change element and rename
+              if a.element.strip().upper() == 'D':
+                a.element = 'H'
+                new_name = a.name.replace('D','H',1)
+                a.name = new_name
+
   def is_ca_only(self):
     """
     Determine if hierarchy consists only from CA atoms.
