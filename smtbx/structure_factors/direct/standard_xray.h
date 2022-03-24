@@ -629,10 +629,11 @@ namespace smtbx { namespace structure_factors { namespace direct {
             if (scatterer.anharmonic_adp) {
               complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
-                af::shared<complex_type> gc = scatterer
-                  .anharmonic_adp->gradient_coefficients(g.hr);
+                std::vector<complex_type> gc(25);
+                complex_type t;
+                scatterer.anharmonic_adp->gradient_coefficients_in_place(g.hr, gc);
                 for (int gi = 0; gi < 25; gi++) {
-                  complex_type t = f * gc[gi];
+                  t = f * gc[gi];
                   base_t::grad_anharmonic_adp[gi] += fp_fdp * t.real();
                   // (t * ff[k]).real();
                   base_t::grad_anharmonic_adp[gi] += (t.real()*ff[k].real() - t.imag()*ff[k].imag());

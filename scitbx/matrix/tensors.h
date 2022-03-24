@@ -148,6 +148,23 @@ namespace scitbx { namespace matrix { namespace tensors {
       return r;
     }
 
+    template <typename NumType>
+    void gradient_coefficients(
+      const scitbx::vec3<NumType>& h,
+      std::vector<std::complex<FloatType> > &rv,
+      const int offset) const
+    {
+      const index_list_t& indices = get_indices();
+      for (size_t i = 0; i < indices.size(); i++) {
+        const index_t& idx = indices[i];
+        FloatType prod_h = 1;
+        for (size_t j = 0; j < heir_t::rank(); j++) {
+          prod_h *= h[idx[j]];
+        }
+        rv[i + offset] = prod_h * get_multiplicity(i);
+      }
+    }
+
     const af::shared<FloatType> &data() const {
       return self().data_;
     }

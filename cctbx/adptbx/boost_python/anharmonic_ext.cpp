@@ -25,6 +25,8 @@ namespace cctbx { namespace boost_python { namespace anharmonic {
           (arg("miller_index")))
         .def("gradient_coefficients", &wt::gradient_coefficients,
           (arg("miller_index")))
+        .def("gradient_coefficients_in_place", &wt::gradient_coefficients_in_place,
+          (arg("miller_index"), arg("result_vector")))
         .def("data", &wt::data)
         ;
     }
