@@ -60,7 +60,7 @@ def nth_power_scale(dataarray, nth_power):
   """
   set nth_power to appropriate number between 0 and 1 for dampening the
   difference between the smallest and the largest values.
-  If nth_power < 0 then an automatic value is computed that maps the smallest
+  If nth_power=NaN then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
   absdat = flex.abs(dataarray).as_double()
@@ -68,7 +68,6 @@ def nth_power_scale(dataarray, nth_power):
   maxdat = flex.max(absdat2)
   mindat = max(1e-10*maxdat, flex.min(absdat2) )
   # only autoscale for sensible values of maxdat and mindat
-  #if nth_power < 0.0 and maxdat > mindat : # amounts to automatic scale
   if math.isnan(nth_power) and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
   datascaled = flex.pow(absdat, nth_power)

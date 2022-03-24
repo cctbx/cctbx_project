@@ -577,7 +577,7 @@ newarray._sigmas = sigs
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
     except Exception as e:
-      print("Terminating hanging cctbx.python process.")
+      print("Exterminating unresponsive cctbx.python process, at will and with impunity!")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
@@ -1468,7 +1468,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.ManualPowerScalecheckbox.isChecked():
       self.send_message('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
     else:
-      #self.send_message('viewer.nth_power_scale_radii = -1.0')
       self.send_message('viewer.nth_power_scale_radii = %s' %float("nan"))
 
 

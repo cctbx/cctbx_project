@@ -276,7 +276,7 @@ class HKLViewFrame() :
       self.params = self.currentphil.extract()
       phl = self.params
 
-      if len(diff_phil.all_definitions()) < 1 and not phl.mouse_moved:
+      if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
         self.mprint( "Nothing's changed", verbose=1)
         return False
 
@@ -389,7 +389,7 @@ class HKLViewFrame() :
       # parameters might have been changed. So update self.currentphil accordingly
       self.SendCurrentPhilValues()
       self.NewFileLoaded = False
-      phl.mouse_moved = False
+      self.viewer.mouse_moved = False
       self.validate_preset_buttons()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, True)
@@ -801,7 +801,8 @@ class HKLViewFrame() :
               self.aniso1 = [ eval(f) for f in e.split()[2:5] ]
               self.aniso2 = [ eval(f) for f in e.split()[5:8] ]
               self.aniso3 = [ eval(f) for f in e.split()[8:11] ]
-              self.mprint("Anisotropic principal axes found in header of mtz file: %s" %str(self.tncsvec) )
+              self.mprint("Anisotropic principal axes found in header of mtz file: %s, %s, %s" \
+                %(str(self.aniso1),str(self.aniso2),str(self.aniso3) ))
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
@@ -944,14 +945,14 @@ class HKLViewFrame() :
           for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
             if label == rlbl[0]:
               labelfound = True
-              self.mprint("Preset button, %s, assigned to data column %s" %(btnname, label) )
+              self.mprint("Preset button, %s, assigned to data column %s" %(btnname, label), verbose=1)
               break
             if len(rtype) == 1 and description == rtype[0]:
               typefound = True
-              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label) )
+              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label), verbose=1)
               break
         if not (labelfound or typefound):
-          self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype))
+          self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype), verbose=1)
           activebtns.append(False)
         else:
           activebtns.append(True)
@@ -1518,8 +1519,6 @@ masterphilstr = """
     .type = int
   using_space_subgroup = False
     .type = bool
-  mouse_moved = False
-    .type = bool
   real_space_unit_cell_scale_fraction = None
     .type = float
   reciprocal_unit_cell_scale_fraction = None
@@ -1656,4 +1655,4 @@ def run():
 
 
 if __name__ == '__main__':
-  run()
+  myHKLview = run()

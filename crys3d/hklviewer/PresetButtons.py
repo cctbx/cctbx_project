@@ -18,7 +18,6 @@ buttonsdeflist = [
                                                   color_scheme = *CMRmap
                                                   color_powscale = 0.2633312543
                                                 }
-                                                NGL.fontsize = 7
 """),
   ("K_I", "Show Zone K for intensities", """
                                                 clip_plane {
@@ -37,7 +36,6 @@ buttonsdeflist = [
                                                   color_scheme = *CMRmap
                                                   color_powscale = 0.2633312543
                                                 }
-                                                NGL.fontsize = 7
   """),
   ("L_I", "Show Zone L for intensities", """
                                                 clip_plane {
@@ -56,7 +54,6 @@ buttonsdeflist = [
                                                   color_scheme = *CMRmap
                                                   color_powscale = 0.2633312543
                                                 }
-                                                NGL.fontsize = 7
 """),
   ("aniso", "Show Anisotropy", """
                                                 clip_plane {
@@ -75,7 +72,6 @@ buttonsdeflist = [
                                                 }
                                                 NGL {
                                                   bin_opacities = "[(1.0, 0), (1.0, 1), (0.0, 2), (0.0, 3), (0.0, 4), (0.0, 5), (1.0, 6), (1.0, 7), (0.0, 8), (0.0, 9), (0.0, 10)]"
-                                                  fontsize = 7
                                                 }
   """),
   ("Test", "I,SIGI test", """
@@ -106,17 +102,17 @@ buttonsdeflist = [
                                                   expand_to_p1 = True
                                                   expand_anomalous = True
                                                 }
-                                                NGL.fontsize = 7
   """),
   ("TNCSpar", "Show TNCS paralllel", """
                                                 clip_plane {
                                                   angle_around_vector = "[3, 0.0]"
-                                                  animate_rotation_around_vector = "[3, -5.0]"
-                                                  clip_width = 4
+                                                  animate_rotation_around_vector = "[3, 5.000000]"
+                                                  clip_width = 5.000000
                                                   auto_clip_width = False
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"
+                                                  scene_id = 19
                                                   show_vector = "[3, True]"
                                                   is_parallel = True
                                                   fixorientation = *vector None
@@ -124,9 +120,6 @@ buttonsdeflist = [
                                                   expand_to_p1 = True
                                                   expand_anomalous = True
                                                   color_scheme = *rainbow
-                                                }
-                                                NGL {
-                                                  fontsize = 7
                                                 }
 
 

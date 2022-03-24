@@ -178,8 +178,8 @@ class hklview_3d:
     self.bin_infotpls = []
     self.executing_preset_btn = False
     self.mapcoef_fom_dict = {}
-    # colourmap=brg, colourpower=1, powerscale=1, radiiscale=1
-    self.datatypedefault = ["brg", 1.0, 1.0, 1.0]
+    # colourmap=brg, colourpower=1, nth_power_scale_radii=nan, radiiscale=1
+    self.datatypedefault = ["brg", 1.0, float('nan'), 1.0]
     self.datatypedict = { }
     self.sceneid_from_arrayid = []
     self.parent = None
@@ -245,6 +245,7 @@ class hklview_3d:
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
+    self.mouse_moved = False
     self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
     self.handshakewait = 5
     if 'handshakewait' in kwds:
@@ -792,7 +793,7 @@ class hklview_3d:
                          self.viewerparams.color_powscale,
                          sceneid,
                          self.viewerparams.scale,
-                         str(self.viewerparams.nth_power_scale_radii)
+                         self.viewerparams.nth_power_scale_radii
                          )
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
@@ -831,7 +832,7 @@ class hklview_3d:
                                 self.viewerparams.color_powscale,
                                 sceneid,
                                 self.viewerparams.scale,
-                                str(self.viewerparams.nth_power_scale_radii)
+                                self.viewerparams.nth_power_scale_radii
                                 )
           self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
@@ -856,7 +857,7 @@ class hklview_3d:
                               self.viewerparams.color_powscale,
                               self.viewerparams.scene_id,
                               self.viewerparams.scale,
-                              str(self.viewerparams.nth_power_scale_radii)
+                              self.viewerparams.nth_power_scale_radii
                               )
       scenearraylabeltypes = [ (e[3], e[4], e[1], e[5], e[6]) for e in hkl_scenes_infos ]
       self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
@@ -899,7 +900,7 @@ class hklview_3d:
                               self.viewerparams.color_powscale,
                               sceneid,
                               self.viewerparams.scale,
-                              str(self.viewerparams.nth_power_scale_radii)
+                              self.viewerparams.nth_power_scale_radii
                               )
         self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
           scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
@@ -934,7 +935,7 @@ class hklview_3d:
                       self.viewerparams.color_powscale,
                       sceneid,
                       self.viewerparams.scale,
-                      str(self.viewerparams.nth_power_scale_radii)
+                      self.viewerparams.nth_power_scale_radii
                       )
 
 
@@ -1391,9 +1392,12 @@ class hklview_3d:
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.bindata[i], self.binvalsboundaries, self.nbinvalsboundaries )
-      self.positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
-      self.colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
-      self.radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
+      #self.positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
+      #self.colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
+      #self.radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
+      self.positions[ibin].extend( hklstars )
+      self.colours[ibin].extend( colors[i] )
+      self.radii2[ibin].append( radii[i] )
       self.spbufttips[ibin].append( i )
 
     elapsed_time = time.time() - start_time
@@ -1732,7 +1736,7 @@ Distance: %s
                                                      str(roundoff(Zhkl, 2))),
                            } )
     if "MouseMovedOrientation:" in message:
-      self.params.mouse_moved = True
+      self.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
       # Round off matrix elements to avoid machine imprecision errors that might cast
       # any matrix element into a number strictly larger than 1 which would
@@ -2603,7 +2607,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
 ngl_philstr = """
-  mouse_sensitivity = 0.02
+  mouse_sensitivity = 0.06
     .type = float
   bin_opacities = ""
     .type = str
