@@ -41,7 +41,7 @@ class map_model_mixins(object):
       self.remove_model(file_name)   # forget previous reads
 
   def get_map_model_manager(
-    self, 
+    self,
     model_file=None,
     map_files=None,
     from_phil=False,
@@ -173,4 +173,3 @@ class map_model_mixins(object):
       self.remove_model(model_file)
 
     return mmm
-
