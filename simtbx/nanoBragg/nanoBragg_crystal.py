@@ -2,7 +2,10 @@
 organizer for setting the nanoBragg crystal properties
 """
 from __future__ import absolute_import, division, print_function
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ModuleNotFoundError:
+    from collections import Iterable
 from simtbx.nanoBragg import shapetype
 from scitbx.matrix import sqr
 from cctbx import sgtbx

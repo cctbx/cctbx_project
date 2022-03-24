@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ModuleNotFoundError:
+    from collections import Iterable
 from simtbx.diffBragg import diffBragg
 from scitbx.array_family import flex
 import numpy as np
