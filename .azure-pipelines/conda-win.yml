@@ -161,7 +161,12 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
@@ -189,7 +194,12 @@ jobs:
       git clone https://github.com/cctbx/boost.git -b py310
       cd ..
 
-      call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
       python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
       call .\build\setpaths.bat
@@ -210,7 +220,12 @@ jobs:
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
       call .\build\setpaths.bat
       mkdir tests
       cd tests
@@ -238,7 +253,12 @@ jobs:
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
       cd $(Pipeline.Workspace)
-      call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
       call .\build\setpaths.bat
       mkdir tests
       cd tests
