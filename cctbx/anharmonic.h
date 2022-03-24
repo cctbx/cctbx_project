@@ -14,6 +14,9 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
   struct GramCharlier4 {
     tensor_rank_3<FloatType> C;
     tensor_rank_4<FloatType> D;
+    const FloatType c_factor = -scitbx::constants::pi_sq * scitbx::constants::pi * 4 / 3, 
+      d_factor = scitbx::constants::pi_sq * scitbx::constants::pi_sq * 2 / 3;
+    const std::complex<FloatType> compl_c_factor = std::complex<FloatType>(0, c_factor);
 
     GramCharlier4() {}
 
@@ -26,8 +29,8 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
       using namespace scitbx::constants;
       FloatType c = C.sum_up(h), d = D.sum_up(h);
       return std::complex<FloatType>(
-        1 + d * pi_sq*pi_sq * 2 / 3,
-        -c * pi_sq*pi * 4 / 3);
+        1 + d * d_factor,
+        c * c_factor);
     }
 
     af::shared<std::complex<FloatType> >
@@ -36,16 +39,29 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
       using namespace scitbx::constants;
       af::shared<std::complex<FloatType> > r(25);
       af::shared<FloatType> c = C.gradient_coefficients(h);
-      const FloatType c_factor = -pi_sq * pi * 4 / 3,
-        d_factor = pi_sq * pi_sq * 2 / 3;
       for (size_t i = 0; i < 10; i++) {
-        r[i] = std::complex<FloatType>(0, c[i]*c_factor);
+        r[i] = c[i] * compl_c_factor;
       }
       c = D.gradient_coefficients(h);
       for (size_t i = 0; i < 15; i++) {
-        r[i + 10] = c[i] * d_factor;
+        r[i] = c[i] * d_factor;
       }
       return r;
+    }
+    
+    void gradient_coefficients_in_place(
+        const miller::index<>& h,
+        std::vector<std::complex<FloatType> >& rv) const
+    {
+      using namespace scitbx::constants;
+      C.gradient_coefficients(h, rv, 0);
+      for (size_t i = 0; i < 10; i++) {
+        rv[i] *= compl_c_factor;
+      }
+      D.gradient_coefficients(h, rv, 10);
+      for (size_t i = 10; i < 25; i++) {
+        rv[i] *= d_factor;
+      }
     }
 
     af::shared<FloatType> data() const {
