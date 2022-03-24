@@ -73,6 +73,7 @@ from iotbx_pdb_hierarchy_ext import *
 from six.moves import cStringIO as StringIO
 from copy import deepcopy
 import re
+import os
 import sys
 import math
 
@@ -424,6 +425,36 @@ class manager(object):
       if (line.startswith("REMARK r_free_flags.md5.hexdigest ")):
         result.append(line.rstrip())
     return result
+
+  def get_source_filename(self, full_path=True):
+    '''
+    If the object is constructed from a file, this function returns the
+    filename. Otherwise, None is returned.
+
+    Note that this may fail if the model is created from a file with a
+    relative path and then the current working directory is changed. This
+    is because os.path.abspath will join the current working directory
+    with the filename. In this case, create the model with the full path.
+
+    Parameters
+    ----------
+      full_path: bool
+        If True, the full path of the filename is returned
+
+    Returns
+    -------
+      filename: str or None
+    '''
+    filename = ''
+    if self._model_input is not None:
+      filename = self._model_input.source_info()
+      if filename and filename.startswith('file'):
+        filename = filename.split()[-1]
+      if filename and full_path:
+        filename = os.path.abspath(filename)
+    if not filename:
+      filename = None
+    return filename
 
   def get_xray_structure(self):
     if(self._xray_structure is None):

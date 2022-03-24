@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 import mmtbx.model
 import libtbx.load_env
 import iotbx.pdb
+import os
+import tempfile
 import time
 from libtbx.utils import null_out
 from cctbx import crystal, adptbx
@@ -476,6 +478,19 @@ END
   assert sels[1] == [9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,
                      29, 30]
 
+def exercise_model_filename():
+  for suffix in ['.pdb', '.cif']:
+    with tempfile.NamedTemporaryFile(dir=os.getcwd(), suffix=suffix) as f:
+      filename = f.name
+      inp = iotbx.pdb.input(file_name=os.path.basename(filename))
+      m = mmtbx.model.manager(model_input=inp)
+      assert os.path.abspath(filename) == m.get_source_filename()
+      assert os.path.basename(filename) == m.get_source_filename(full_path=False)
+
+  inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1)
+  m = mmtbx.model.manager(model_input=inp)
+  assert m.get_source_filename() is None
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_macromolecule_plus_hetatms_by_chain_selections()
@@ -488,4 +503,5 @@ if (__name__ == "__main__"):
   exercise_from_sites_cart()
   exercise_has_hd()
   exercise_flip_nqh()
+  exercise_model_filename()
   print("Time: %6.3f"%(time.time()-t0))
