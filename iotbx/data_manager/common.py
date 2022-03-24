@@ -41,7 +41,12 @@ class map_model_mixins(object):
       self.remove_model(file_name)   # forget previous reads
 
   def get_map_model_manager(
-    self, model_file=None, map_files=None, from_phil=False, **kwargs):
+    self, 
+    model_file=None,
+    map_files=None,
+    from_phil=False,
+    guess_files=True,
+    **kwargs):
     '''
     A convenience function for constructing a map_model_manager from the
     files in the DataManager.
@@ -99,12 +104,12 @@ class map_model_mixins(object):
     # If we didn't get anything, try looking directly at the
     #  available maps and models. If there are 1, 2 or 3 maps and 1 model,
     #  take them
-    if (not model_file) and self.get_model_names() and \
+    if guess_files and (not model_file) and self.get_model_names() and \
          len(self.get_model_names()) == 1:
       model_file = self.get_default_model_name()
       if map_model:
         map_model.model = model_file
-    if not map_files and self.get_real_map_names():
+    if guess_files and (not map_files) and self.get_real_map_names():
       if len(self.get_real_map_names()) == 1:
         map_files = self.get_default_real_map_name()
 
