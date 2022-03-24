@@ -1,7 +1,12 @@
 from __future__ import division
 import random
 from scipy import special
-from collections import Iterable
+
+try:
+    from collections.abc import Iterable
+except ModuleNotFoundError:
+    from collections import Iterable
+
 import numpy as np
 from simtbx.nanoBragg.tst_gaussian_mosaicity2 import check_distributions
 from scitbx.matrix import sqr, col

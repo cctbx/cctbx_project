@@ -1103,7 +1103,7 @@ class FormatInMemory:
         if image.dtype != np.float64:
             self.image = self.image.astype(np.float64)
         if mask is None:
-            self.mask = np.ones_like(self.image).astype(np.bool)
+            self.mask = np.ones_like(self.image).astype(bool)
         else:
             assert (mask.shape == image.shape)
             assert(mask.dtype == bool)
