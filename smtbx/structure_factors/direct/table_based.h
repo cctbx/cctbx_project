@@ -270,7 +270,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
 
       std::vector<size_t> r_map;
       r_map.resize(space_group.n_smx());
-      for (std::size_t i = 0; i < space_group.n_smx(); i++) {
+      for (size_t i = 0; i < space_group.n_smx(); i++) {
         sgtbx::rot_mx const& r = data_.rot_mxs()[i];
         bool found = false;
         for (size_t mi = 0; mi < space_group.n_smx(); mi++) {
@@ -379,10 +379,12 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     {
       SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
       SMTBX_ASSERT(data_.is_expanded());
+      auto indices = data_.miller_indices();
       for (size_t i = 0; i < data.size(); i++) {
-        mi_lookup[data_.miller_indices()[i]] = i;
+        mi_lookup[indices[i]] = i;
         data[i].resize(scatterers.size());
-        for (size_t j = 0; j < scatterers.size(); j++) {
+#pragma omp parallel for
+        for (int j = 0; j < scatterers.size(); j++) {
           data[i][j] = data_.data()[i][j];
         }
       }
@@ -433,9 +435,9 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         miller::index<> h = h_ * space_group.smx(i).r();
         lookup_t::const_iterator l = mi_lookup.find(h);
         if (l == mi_lookup.end() && !anomalous_flag) {
-          miller::index<> h_bar = -h;
-          l = mi_lookup.find(h_bar);
-          SMTBX_ASSERT(l != mi_lookup.end())(h_bar.as_string());
+          h *= -1;
+          l = mi_lookup.find(h);
+          SMTBX_ASSERT(l != mi_lookup.end())(h.as_string());
           tmp[i] = std::conj(data[l->second][scatterer_idx]);
         }
         else{

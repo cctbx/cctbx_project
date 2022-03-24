@@ -55,7 +55,8 @@ namespace lookup_utils{
       hkl_lookup_(),
       anomalous_flag_(anomalous_flag)
     {
-      for (unsigned ii=0;ii<hkl.size();ii++){
+#pragma omp parallel for
+      for (int ii=0;ii<hkl.size();ii++){
         cctbx::miller::asym_index asumap(space_group_,
                                          asu_choice_,
                                          hkl[ii]);
@@ -320,8 +321,6 @@ namespace lookup_utils{
 
       // store a neighbour list please
       neighbour_list_ = local_area_locator_.construct_neighbourhood();
-
-
 
       unsigned last_size=0, tmp_size;
       for (unsigned ii=0;ii<hkl.size();ii++){
