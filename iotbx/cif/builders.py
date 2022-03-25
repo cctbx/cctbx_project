@@ -550,7 +550,8 @@ class miller_array_builder(crystal_symmetry_builder):
                 self._arrays[ label + lablsufx ] = millarr
               origarr = self.flex_std_string_as_miller_array(
                   datastrarray, wavelength_id=w_id, crystal_id=crys_id,
-                  scale_group_code=scale_group)
+                  scale_group_code=scale_group,
+                  allowNaNs=True)
               newlabel = label.replace("_refln.", "")
               newlabel2 = newlabel.replace("_refln_", "")
               if origarr: # want only genuine miller arrays
@@ -773,8 +774,12 @@ class miller_array_builder(crystal_symmetry_builder):
   def get_selection(self, value,
                     wavelength_id=None,
                     crystal_id=None,
-                    scale_group_code=None):
-    selection = ~((value == '.') | (value == '?'))
+                    scale_group_code=None,
+                    allowNaNs = False):
+    if allowNaNs:
+      selection = flex.bool(value.size(), True)
+    else:
+      selection = ~((value == '.') | (value == '?'))
     if self.wavelength_id_array is not None and wavelength_id is not None:
       selection &= (self.wavelength_id_array.data() == wavelength_id)
     if self.crystal_id_array is not None and crystal_id is not None:
@@ -783,17 +788,19 @@ class miller_array_builder(crystal_symmetry_builder):
       selection &= (self.scale_group_array.data() == scale_group_code)
     return selection
 
+
   def flex_std_string_as_miller_array(self, value,
                                       wavelength_id=None,
                                       crystal_id=None,
-                                      scale_group_code=None):
+                                      scale_group_code=None,
+                                      allowNaNs = False):
     # Create a miller_array object of only the data and indices matching the
     # wavelength_id, crystal_id and scale_group_code submitted or full array if these are None
     selection = self.get_selection(
       value, wavelength_id=wavelength_id,
-      crystal_id=crystal_id, scale_group_code=scale_group_code)
+      crystal_id=crystal_id, scale_group_code=scale_group_code,
+      allowNaNs=allowNaNs)
     data = value.select(selection)
-    #if not isinstance(data, flex.double):
     try:
       data = flex.int(data)
       indices = self.indices.select(selection)
@@ -809,8 +816,10 @@ class miller_array_builder(crystal_symmetry_builder):
     return miller.array(
       miller.set(self.crystal_symmetry, indices).auto_anomalous(), data)
 
+
   def arrays(self):
     return self._arrays
+
 
   def origarrays(self):
     """
