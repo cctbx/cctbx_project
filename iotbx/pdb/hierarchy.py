@@ -1923,13 +1923,13 @@ class _():
             for a in ag.atoms():
               i = a.i_seq
               # remove D atoms at exchanged sites
-              if a.element.strip().upper() == 'D'and i in hd_site_d_iseqs:
+              if a.element.strip().upper() == 'D' and i in hd_site_d_iseqs:
                 ag.remove_atom(a)
                 continue
               # remove D/H atoms in water and rename residue to HOH
               resname = (a.parent().resname).strip()
               if(get_class(name = resname) == "common_water"):
-                if resname == 'DOD':
+                if a.element.strip().upper() == 'O':
                   a.parent().resname = 'HOH'
                 if a.element_is_hydrogen():
                   ag.remove_atom(a)
