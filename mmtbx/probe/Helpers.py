@@ -1102,9 +1102,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
   bondedNeighborLists = getBondedNeighborLists(atoms, bondProxies)
 
-  model = dm.get_model().get_hierarchy().models()[0]
+  model = dm.get_model()
 
-  for a in model.atoms():
+  for a in model.get_hierarchy().models()[0].atoms():
     if a.name.strip() in ["H41","H42","HO2'"]:
       if not isPolarHydrogen(a, bondedNeighborLists):
         return "Optimizers.Test(): Polar Hydrogen not identified: " + a.name
@@ -1118,22 +1118,26 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # counts match what is expected.  Do this for the case where we clamp the non-
   # hydrogen ones to the 3 and when we use the default of very large to count
   # them all.
-  # NOTE: This re-uses the bondedNeighborLists test results from above
+  # NOTE: This re-uses the bondedNeighborLists test results from above.
   N4 = None
   for a in atoms:
     if a.name.strip().upper() == 'N4':
       N4 = a
   assert N4 is not None, ("Helpers.Test(): Could not find N4 (internal failure)")
+
+  # First test with a huge probe radius where all of the atoms are within range.
   # When clamped, we can't go further than the non-Hydrogen bound except for Hydrogens
   nestedNeighborsForN4 = [ None, 3, 5, 8, 9, 9, 9]
+  extraInfo = getExtraAtomInfo(model, bondedNeighborLists).extraAtomInfo
+  hugeRadius = 1000
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N, 3))
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, hugeRadius, N, 3))
     assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested clamped count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
   # When unclamped, we can traverse all the way to the end in all cases
   nestedNeighborsForN4 = [ None, 3, 5, 8, 11, 12, 15]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, N))
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, hugeRadius, N))
     assert count == nestedNeighborsForN4[N], ("Helpers.Test(): Nested unclamped count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4[N]))
   # When we start with a Hydrogen, we should never get clamped off.
@@ -1144,9 +1148,18 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   assert H41 is not None, ("Helpers.Test(): Could not find H41 (internal failure)")
   nestedNeighborsForH41 = [ None, 1, 3, 5, 8, 11, 12]
   for N in range(1,7):
-    count = len(getAtomsWithinNBonds(H41, bondedNeighborLists, N, 3))
+    count = len(getAtomsWithinNBonds(H41, bondedNeighborLists, extraInfo, hugeRadius, N, 3))
     assert count == nestedNeighborsForH41[N], ("Helpers.Test(): Nested clamped count for "+H41.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForH41[N]))
+
+  # Then test with a small probe radius which limits how far we can go before not finding
+  # any more neighbors.
+  nestedNeighborsForN4Small = [ None, 3, 5, 6, 6, 6, 6]
+  smallRadius = 0.1
+  for N in range(1,7):
+    count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, smallRadius, N))
+    assert count == nestedNeighborsForN4Small[N], ("Helpers.Test(): Nested small-radius count for "+N4.name.strip()+
+        " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4Small[N]))
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
