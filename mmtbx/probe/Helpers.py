@@ -193,7 +193,6 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
   """
   for a in atoms:
     if a.element_is_positive_ion():
-      print('XXX Found positive ion',a.name)
       myRad = extraAtomInfo.getMappingFor(a).vdwRadius
       minDist = myRad
       maxDist = 0.25 + myRad + 3  # overestimate so we don't miss any
@@ -203,7 +202,6 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
         dist = (rvec3(a.xyz) - rvec3(n.xyz)).length()
         expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
         if dist >= (expected - 0.6) and dist <= (expected + 0.2):
-          print('  XXX Adding ionic bonds between',a.name,'and',n.name,n.parent().resname)
           # We're in range; bond each of us to the other.
           try:
             bondedNeighborLists[a].append(n)
