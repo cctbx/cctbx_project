@@ -94,6 +94,11 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
   ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
 
+  // If the source atom is an ion and we are ignoring ions, we're done.
+  if (sourceAtom.element_is_ion() && m_ignoreIonInteractions) {
+    return ret;
+  }
+
   // Find the world-space location of the dot by adding it to the location of the source atom.
   // The probe location is in the same direction as d from the source but is further away by the
   // probe radius.
@@ -110,6 +115,12 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // the dot would interact with.
   for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator b = interacting.begin();
        b != interacting.end(); b++) {
+
+    // If the potential target atom is an ion and we are ignoring ions, skip it.
+    if (b->element_is_ion() && m_ignoreIonInteractions) {
+      continue;
+    }
+
     ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
     Point locb = b->data->xyz;
     double vdwb = bExtra.getVdwRadius();
@@ -599,6 +610,8 @@ std::string DotScorer::test()
   for (size_t i = 0; i < sizeof(chargesArray)/sizeof(chargesArray[0]); i++) {
     charges.push_back(chargesArray[i]);
   }
+  // Make a vector of Booleans that covers false and true so that we can use
+  // a for-loop iterator to cover both cases and set all combinations of Boolean variables.
   std::vector<bool> bools; bools.push_back(false); bools.push_back(true);
   for (std::vector<std::string>::const_iterator targetCharge = charges.begin();
        targetCharge != charges.end(); targetCharge++) {
@@ -612,14 +625,20 @@ std::string DotScorer::test()
           targetDonor != bools.end(); targetDonor++) {
       for (std::vector<bool>::const_iterator sourceDonor = bools.begin();
            sourceDonor != bools.end(); sourceDonor++) {
-        for (std::vector<bool>::const_iterator sourceDummy = bools.begin();
-          sourceDummy != bools.end(); sourceDummy++) {
-          for (std::vector<bool>::const_iterator targetDummy = bools.begin();
-            targetDummy != bools.end(); targetDummy++) {
+       for (std::vector<bool>::const_iterator sourceDummy = bools.begin();
+            sourceDummy != bools.end(); sourceDummy++) {
+        for (std::vector<bool>::const_iterator targetDummy = bools.begin();
+             targetDummy != bools.end(); targetDummy++) {
+         for (std::vector<bool>::const_iterator sourceIon = bools.begin();
+              sourceIon != bools.end(); sourceIon++) {
+          for (std::vector<bool>::const_iterator targetIon = bools.begin();
+               targetIon != bools.end(); targetIon++) {
+           for (std::vector<bool>::const_iterator ignoreIons = bools.begin();
+                ignoreIons != bools.end(); ignoreIons++) {
             for (std::vector<bool>::const_iterator onlyBumps = bools.begin();
-              onlyBumps != bools.end(); onlyBumps++) {
+                 onlyBumps != bools.end(); onlyBumps++) {
               for (std::vector<bool>::const_iterator excludeAtom = bools.begin();
-                excludeAtom != bools.end(); excludeAtom++) {
+                   excludeAtom != bools.end(); excludeAtom++) {
 
                 //================================================================
                 // Test the scoring for various cases to ensure that they all behave as expected
@@ -632,6 +651,9 @@ std::string DotScorer::test()
                 a.set_charge(targetCharge->c_str());
                 a.set_xyz(vec3( 0,0,0 ));
                 a.set_occ(1);
+                if (*targetIon) {
+                  a.set_element("CU");
+                }
                 a.data->i_seq = atomSeq++;
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
                 atoms.push_back(a);
@@ -644,13 +666,17 @@ std::string DotScorer::test()
                 iotbx::pdb::hierarchy::atom source;
                 source.set_charge(sourceCharge->c_str());
                 source.set_occ(1);
+                if (*sourceIon) {
+                  source.set_element("CU");
+                }
                 source.data->i_seq = atomSeq++;
                 ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
                 atoms.push_back(source);
                 infos.push_back(se);
 
                 // Construct the scorer to be used.
-                DotScorer as(ExtraAtomInfoMap(atoms, infos));
+                DotScorer as(ExtraAtomInfoMap(atoms, infos), 0.25, 10.0, 4.0, 0.6, 0.8, 0.4, 0.5, 0.25, false,
+                  *ignoreIons);
 
                 // Determine our hydrogen-bond state
                 bool compatibleCharge = atom_charge(source) * atom_charge(a) <= 0;
@@ -672,11 +698,11 @@ std::string DotScorer::test()
                   exclude.push_back(ea);
 
                   // We added an atom, so we need a new DotScorer
-                  DotScorer as(ExtraAtomInfoMap(atoms, infos));
+                  DotScorer as2(ExtraAtomInfoMap(atoms, infos));
 
                   // Even when we have a close clash, we should get no response.
                   source.set_xyz(vec3( sourceRad,0,0 ));
-                  ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                  ScoreDotsResult res = as2.score_dots(source, 1, sq, sourceRad + targetRad,
                     probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
                   if (!res.valid) {
                     return "DotScorer::test(): Could not score dots for excluded-atom case";
@@ -689,6 +715,24 @@ std::string DotScorer::test()
                     }
                   }
 
+                  // Skip the rest of the tests for this case.
+                  continue;
+                }
+
+                // If we have an ion and we are ignoring ions, we should always get no bumping.
+                if ((*ignoreIons) && (*sourceIon || *targetIon)) {
+                  if (!hBond) {
+                    // Even when we have a close clash, we should get no response.
+                    source.set_xyz(vec3(sourceRad, 0, 0));
+                    ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+                      probeRad, exclude, ds.dots(), ds.density(), *onlyBumps);
+                    if (!res.valid) {
+                      return "DotScorer::test(): Could not score dots for ion case";
+                    }
+                    if ((res.bumpSubScore != 0) || res.hasBadBump) {
+                      return "DotScorer::test(): Got unexpected result for ion case";
+                    }
+                  }
                   // Skip the rest of the tests for this case.
                   continue;
                 }
@@ -765,7 +809,10 @@ std::string DotScorer::test()
 
               }
             }
+           }
+          }
          }
+        }
        }
       }
      }

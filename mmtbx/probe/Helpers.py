@@ -94,6 +94,10 @@ probe
   implicit_hydrogens = False
     .type = bool
     .help = Use implicit hydrogens, no water proxies (-implicit in probe)
+
+  ignore_ion_interactions = False
+    .type = bool
+    .help = Ignore interactions with ions
 }
 """
 
@@ -136,7 +140,8 @@ def createDotScorer(extraAtomInfo, probePhil):
         probePhil.bump_weight, probePhil.hydrogen_bond_weight,
         probePhil.uncharged_hydrogen_cutoff, probePhil.charged_hydrogen_cutoff,
         probePhil.clash_cutoff, probePhil.worse_clash_cutoff,
-        probePhil.contact_cutoff, probePhil.allow_weak_hydrogen_bonds)
+        probePhil.contact_cutoff, probePhil.allow_weak_hydrogen_bonds,
+        probePhil.ignore_ion_interactions)
 
 ##################################################################################
 # Other helper functions.
@@ -782,8 +787,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # and original Probe results.
   standardChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True ],
-    ["ND1", 1.55, True,  True ],
+    ["N",   1.55, False, True],
+    ["ND1", 1.55, True,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -791,8 +796,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   ]
   neutronChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True ],
-    ["ND1", 1.55, True,  True ],
+    ["N",   1.55, False, True],
+    ["ND1", 1.55, True,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -800,12 +805,12 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   ]
   implicitChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.6,  False, True ],
-    ["ND1", 1.6,  True,  True ],
+    ["N",   1.6,  False, True],
+    ["ND1", 1.6,  True,  True],
     ["C",   1.8,  False, False],
-    ["CB",  1.92,  False, False],
-    ["O",   1.52,  True,  False],
-    ["CD2", 1.74,  False, False]
+    ["CB",  1.92, False, False],
+    ["O",   1.52, True,  False],
+    ["CD2", 1.74, False, False]
   ]
 
   # Situations to run the test in and expected results:
@@ -820,7 +825,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     useNeutronDistances = cs[0]
     useImplicitHydrogenDistances = cs[1]
     checks = cs[2]
-    runType = "; neutron,implicit,probe = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)
+    runType = "; neutron,implicit = "+str(useNeutronDistances)+","+str(useImplicitHydrogenDistances)
 
     dm = iotbx.data_manager.DataManager(['model'])
     dm.process_model_str("1xso_snip.pdb",pdb_1xso_his_61)
@@ -860,8 +865,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
       for c in checks:
         if a.name.strip() == c[0]:
           if hasattr(math, 'isclose'):
-            assert math.isclose(e.vdwRadius, c[1]), ("Helpers.Test(): Bad radius for "+a.name+": "
-            +str(e.vdwRadius)+" (expected "+str(c[1])+")"+runType)
+            assert math.isclose(e.vdwRadius, c[1]), ("Helpers.Test(): Bad radius for "+a.name+runType+": "
+            +str(e.vdwRadius)+" (expected "+str(c[1])+")")
           assert e.isAcceptor == c[2], "Helpers.Test(): Bad Acceptor status for "+a.name+": "+str(e.isAcceptor)+runType
           assert e.isDonor == c[3], "Helpers.Test(): Bad Donor status for "+a.name+": "+str(e.isDonor)+runType
           # Check the ability to set and check Dummy/Phantom Hydrogen status

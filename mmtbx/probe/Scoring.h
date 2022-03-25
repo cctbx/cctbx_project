@@ -79,11 +79,8 @@ namespace molprobity {
 
     //=====================================================================================================
     /// @brief Class to hold data values for an atom beyond those present in the hierarchy::atom class itself
-    // that are needed by the Probe calculations.  These must be filled in by the client, perhaps using data
-    // from the mmtbx.monomer_library.server.ener_lib() function to get a library and looking things up
-    // in it based on getting a monomer lib query mon_lib_query() from reduce_hydrogen, then calling its
-    // atom_dict() method and then looking up the atom by name in that dictionary to get its type_energy
-    // value.
+    /// that are needed by the Probe calculations.  These must be filled in by the client, perhaps by calling
+    /// the mmtbx/probe/Helpers.py::getExtraAtomInfo() function.
 
     class ExtraAtomInfo {
     public:
@@ -98,7 +95,7 @@ namespace molprobity {
         , m_isDummyHydrogen(e.m_isDummyHydrogen) {}
 
       /// @brief Get and set methods
-      double  getVdwRadius() const { return m_vdwRadius; }
+      double getVdwRadius() const { return m_vdwRadius; }
       void setVdwRadius(double val) { m_vdwRadius = val; }
 
       bool getIsAcceptor() const { return m_isAcceptor; }
@@ -113,16 +110,16 @@ namespace molprobity {
         return ((getVdwRadius() == o.getVdwRadius())
           && (getIsAcceptor() == o.getIsAcceptor())
           && (getIsDonor() == o.getIsDonor())
-          && (getIsDummyHydrogen() == o.getIsDummyHydrogen()));
+          && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
+          );
       }
 
     protected:
       double m_vdwRadius;      ///< van Der Waals radius of the atom
-      bool m_isAcceptor;       ///< Does this accept hydrogen bonds (aromatic carbon, nitrogen acceptor,
-                               ///  oxygen, sulfur, fluorine, chlorine, bromine, or iodine?
-      bool m_isDonor;          ///< Is this a donor hydrogen (from polar, aromatic polar, or water)?
-      bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide
-                               ///  bonds that can go in any direction.
+      bool m_isAcceptor;       ///< Does this accept hydrogen bonds?
+      bool m_isDonor;          ///< Is this a donor hydrogen?
+      bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide potential
+                               ///  hydrogen bonds to nearby acceptors.
     };
 
     //=====================================================================================================
@@ -199,6 +196,10 @@ namespace molprobity {
       /// @param [in] weakHBonds Include weak hydrogen bonds (dots that are in hydrogen bonds but which
       ///             are outside contact).  These are categorized as a different InteractionType but
       ///             are counted as hydrogen bonds when scoring.
+      /// @param [in] ignoreIonInteractions Ignore ions when computing interactions.  An ion source
+      ///             atom will have no interactions and an ion will not be considered in the
+      ///             target atom calculations (unless it is listed as an excluder).  This is because
+      ///             as of Probe does not properly handle ionic interactions.
       /// @todo Consider moving the probe radius into the constructor parameters
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
@@ -210,6 +211,7 @@ namespace molprobity {
         , double badBumpOverlap = 0.5
         , double contactCutoff = 0.25
         , bool weakHBonds = false
+        , bool ignoreIonInteractions = false
       ) : m_extraInfoMap(extraInfoMap)
         , m_gapScale(gapScale), m_bumpWeight(bumpWeight), m_hBondWeight(hBondWeight)
         , m_maxRegularHydrogenOverlap(maxRegularHydrogenOverlap)
@@ -218,6 +220,7 @@ namespace molprobity {
         , m_badBumpOverlap(badBumpOverlap)
         , m_contactCutoff(contactCutoff)
         , m_weakHBonds(weakHBonds)
+        , m_ignoreIonInteractions(ignoreIonInteractions)
       {}
 
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
@@ -361,6 +364,7 @@ namespace molprobity {
       double m_badBumpOverlap;
       double m_contactCutoff;
       bool m_weakHBonds;
+      bool m_ignoreIonInteractions;
     };
 
     /// @todo Figure out what all of the things needed by Probe (as opposed to Reduce) are.
