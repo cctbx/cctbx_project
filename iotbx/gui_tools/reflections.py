@@ -804,7 +804,10 @@ class ArrayInfo:
           self.maxdata = max([max(e) for e in data ])
           self.mindata = min([min(e) for e in data ])
       else:
-        self.arrsize = len([42 for e in millarr.data() if not math.isnan(abs(e))])
+        # Get a list of bools with True whenever there is a nan
+        selection = ~ graphics_utils.IsNans( flex.abs( millarr.data()).as_double() )
+        # count elements that are not nan values
+        self.arrsize = millarr.data().select(selection).size()
         if (isinstance(data, flex.int)):
           data = flex.double([e for e in data if e!= display2.inanval])
         if millarr.is_complex_array():

@@ -86,7 +86,7 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
       scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
-tout=100
+lock_timeout=100 # for the sempahores
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
@@ -802,7 +802,7 @@ class hklview_3d:
         return True
     if self.has_new_miller_array:
       self.identify_suitable_fomsarrays()
-    self.mprint("Constructing HKL scenes", verbose=0)
+    self.mprint("Constructing HKL scenes...", verbose=0)
     if scene_id is None:
       hkl_scenes_infos = []
       self.HKLscenes = []
@@ -915,6 +915,7 @@ class hklview_3d:
     ) =  self.HKLscenedict[self.HKLsceneKey]
     self.sceneisdirty = True
     self.has_new_miller_array = False
+    self.mprint("Done constructing HKL scenes", verbose=0)
     return True
 
 
@@ -1309,6 +1310,7 @@ class hklview_3d:
       self.meanradius = flex.mean(radii)
 
     bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binner_idx]
+    self.mprint(".")
     if blankscene:
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
@@ -1401,7 +1403,7 @@ class hklview_3d:
       self.spbufttips[ibin].append( i )
 
     elapsed_time = time.time() - start_time
-    self.mprint("elapsed time: %s" %elapsed_time, verbose=2)
+    self.mprint("elapsed time: %s" %elapsed_time, verbose=1)
 
     spherebufferstr = self.colstraliases
     cntbin = 0
@@ -1475,6 +1477,8 @@ class hklview_3d:
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
         colourgradstrs.append(colourgradstr)
 
+    self.mprint(".")
+
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
     if not blankscene:
@@ -1485,31 +1489,30 @@ class hklview_3d:
           continue
         if self.debug == "debug":
           self.SetBrowserDebug("true")
-        #self.SetFontSize(self.ngl_settings.fontsize)
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend),
           Hstararrowtxt, Kstararrowtxt, Lstararrowtxt )
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin],
                                      self.radii2[ibin], self.spbufttips[ibin] )
+      self.mprint(".")
       self.RenderStageObjects()
+      self.mprint(".")
       self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-      self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+      self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
       self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
       self.clipplane_msg_sem.release()
       self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
-      #if self.isnewfile:
-      #  self.SetAutoView()
-      #self.isnewfile = False
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
+    self.mprint("Done rendering reflections ")
 
 
 
@@ -2307,13 +2310,13 @@ in the space group %s\nwith unit cell %s\n""" \
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
       #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
       self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
-      self.hkls_drawn_sem.acquire(blocking=True, timeout=tout)
+      self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout)
       self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
       self.GetClipPlaneDistances()
       self.hkls_drawn_sem.release()
       self.mprint("make_clip_plane release hkls_drawn_sem", verbose="threadingmsg")
     self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
@@ -2345,7 +2348,6 @@ in the space group %s\nwith unit cell %s\n""" \
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
-    #self.RenderStageObjects()
 
 
   def SetBrowserDebug(self, isdebug):
@@ -2361,7 +2363,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def GetMouseSpeed(self):
     self.mprint("GetMouseSpeed waiting for mousespeed_msg_sem.acquire", verbose="threadingmsg")
-    self.mousespeed_msg_sem.acquire(blocking=True, timeout=tout)
+    self.mousespeed_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("GetMouseSpeed got mousespeed_msg_sem", verbose="threadingmsg")
     self.ngl_settings.mouse_sensitivity = None
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
@@ -2378,10 +2380,10 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def GetClipPlaneDistances(self):
     self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("GetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
     self.mprint("GetClipPlaneDistances waiting for autoview_sem.acquire", verbose="threadingmsg")
-    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.autoview_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("GetClipPlaneDistances got autoview_sem", verbose="threadingmsg")
     self.clipNear = None
     self.clipFar = None
@@ -2399,7 +2401,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
     self.mprint("SetAutoView waiting for autoview_sem.acquire", verbose="threadingmsg")
-    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.autoview_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
 
@@ -2429,7 +2431,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def SetDefaultOrientation(self):
     self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
-    self.autoview_sem.acquire(blocking=True, timeout=tout)
+    self.autoview_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetDefaultOrientation")
 
@@ -2445,7 +2447,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
     self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    self.clipplane_msg_sem.acquire(blocking=True, timeout=tout)
+    self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
     if self.cameraPosZ is not None:
       scaleRot = rotmx * self.cameraPosZ
@@ -2564,7 +2566,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def RenderStageObjects(self):
     self.mprint("RenderStageObjects waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
-    self.hkls_drawn_sem.acquire(timeout=tout)
+    self.hkls_drawn_sem.acquire(timeout=lock_timeout)
     self.mprint("RenderStageObjects got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
