@@ -428,30 +428,6 @@ def remove_selections(selection, other, size):
       result.append(new_group)
   return result
 
-def combine_hd_exchangable(hierarchy):
-  result = []
-  for model in hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
-          elements_group1 = atom_group_1.atoms().extract_element()
-          non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
-          for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
-            elements_group2 = atom_group_2.atoms().extract_element()
-            non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
-            if non_H_atoms_group1 and non_H_atoms_group2: continue
-            if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
-              for atom1 in atom_group_1.atoms():
-                e1 = atom1.element.strip()
-                n1 = atom1.name.strip()[1:]
-                for atom2 in atom_group_2.atoms():
-                  e2 = atom2.element.strip()
-                  n2 = atom2.name.strip()[1:]
-                  if(e1 in ["H","D"] and e2 in ["H","D"] and e1 != e2 and
-                     n1 == n2):
-                    result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
-  return result
-
 def assert_xray_structures_equal(
       x1,
       x2,

@@ -310,8 +310,7 @@ def occupancy_selections(
     common_residue_name_class_only = None,
     always_group_adjacent          = False,
     ignore_hydrogens               = False)
-  exchangable_hd_pairs = mmtbx.utils.combine_hd_exchangable(hierarchy =
-    model.get_hierarchy())
+  exchangable_hd_pairs = model.get_hierarchy().exchangeable_hd_selections()
   if(len(exchangable_hd_pairs)==0 and result is not None):
     occupancy_regroupping(
       pdb_hierarchy = model.get_hierarchy(),

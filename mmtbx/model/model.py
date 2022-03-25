@@ -1835,8 +1835,7 @@ class manager(object):
     if not self._has_hd:
       self.unset_riding_h_manager()
     if self._has_hd:
-      self.exchangable_hd_groups = utils.combine_hd_exchangable(
-        hierarchy = self._pdb_hierarchy)
+      self.exchangable_hd_groups = self._pdb_hierarchy.exchangeable_hd_selections()
 
   def _update_atom_selection_cache(self):
     if self.crystal_symmetry() is not None:
@@ -3003,7 +3002,7 @@ class manager(object):
           iff_wavelength = scattering_dict_info.iff_wavelength)
 
   def hd_group_selections(self):
-    return utils.combine_hd_exchangable(hierarchy = self._pdb_hierarchy)
+    return self._pdb_hierarchy.exchangeable_hd_selections()
 
   def reset_adp_of_hd_sites_to_be_equal(self):
     scatterers = self._xray_structure.scatterers()
