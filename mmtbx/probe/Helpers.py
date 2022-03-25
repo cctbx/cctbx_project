@@ -178,6 +178,42 @@ def getBondedNeighborLists(atoms, bondProxies):
       pass
   return bondedNeighbors
 
+def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
+  """
+    Helper function to add ionic bonds to the list of bonded neighbors.
+    Be sure never to make an ionic bond to a water.
+    :param bondedNeighborLists: Object to have the ionic bonds added to in place.
+    :param atoms: Flex array of atoms (could be obtained using model.get_atoms() if there
+    are no chains with multiple conformations, must be a subset of the atoms including
+    :param spatialQuery: mmtbx_probe_ext.SpatialQuery structure to rapidly determine which atoms
+    are within a specified distance of a location.
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    which atoms may be acceptors.
+  """
+  for a in atoms:
+    if a.element_is_positive_ion():
+      print('XXX Found positive ion',a.name)
+      myRad = extraAtomInfo.getMappingFor(a).vdwRadius
+      minDist = myRad
+      maxDist = 0.25 + myRad + 3  # overestimate so we don't miss any
+      neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
+      for n in neighbors:
+        # See if we're within range for an ionic bond between the two atoms.
+        dist = (rvec3(a.xyz) - rvec3(n.xyz)).length()
+        expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
+        if dist >= (expected - 0.6) and dist <= (expected + 0.2):
+          print('  XXX Adding ionic bonds between',a.name,'and',n.name,n.parent().resname)
+          # We're in range; bond each of us to the other.
+          try:
+            bondedNeighborLists[a].append(n)
+          except:
+            bondedNeighborLists[a] = [n]
+          try:
+            bondedNeighborLists[n].append(a)
+          except:
+            bondedNeighborLists[n] = [a]
+
 def compatibleConformations(a1, a2):
   '''
     Returns True if the two atoms are in compatible conformations, False if not.
@@ -194,20 +230,26 @@ def compatibleConformations(a1, a2):
     return True
   return alt1 == alt2
 
-def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
+def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, nonHydrogenN = 1e10):
   """
     Helper function to produce a list of all of the atoms that are bonded to the
-    specified atoms, or to one of the atoms bonded to the specified atom, recursively
+    specified atom, or to one of the atoms bonded to the specified atom, recursively
     to a depth of N.  The atom itself will not be included in the list, so an atom that
-    has no bonded neighbors will always have an empty result.  This can be used to
+    has no bonded neighbors will have an empty result.  This can be used to
     produce a list of excluded atoms for dot scoring.  It checks to ensure that all of
     the bonded atoms are from compatible conformations (if the original atom
     is in the empty configuration then this will return atoms from all conformations that
     are in the bonded set).
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
-    each atom in a set of atoms.  Should be obtained using
-    mmtbx.probe.Helpers.getBondedNeighborLists().
+    each atom in a set of atoms.  Should be obtained using getBondedNeighborLists() and
+    perhaps augmented by calling addIonicBonds().
+    :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
+    information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
+    radii of the potential bonded neighbors.  No atom that is further than twice the probe
+    radius from the source atom is part of the chain of neighbors.
+    :param probeRad: Probe radius.  No atom that is further than twice the probe
+    radius from the source atom is part of the chain of neighbors.
     :param N: Depth of recursion.  N=1 will return the atoms bonded to atom.  N=2 will
     also return those bonded to these neighbors (but not the atom itself).
     :param nonHydrogenN: When neither the original atom nor the bonded atom is a Hydrogen,
@@ -215,6 +257,8 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
     :returns a list of all atoms that are bonded to atom within a depth of N.  The original
     atom is never on the list.
   """
+  aLoc = atom.xyz
+  aRad = extraAtomInfo.getMappingFor(atom).vdwRadius
   atomIsHydrogen = atom.element_is_hydrogen()
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
@@ -226,7 +270,12 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, N, nonHydrogenN = 1e10):
         if i < nonHydrogenN or atomIsHydrogen or n.element_is_hydrogen():
           # Ensure that the new atom is in a compatible conformation with the original atom.
           if compatibleConformations(atom, n):
-            atoms.add(n)
+            # Ensure that the atom is not too far away from the original atom.
+            nLoc = n.xyz
+            nRad = extraAtomInfo.getMappingFor(n).vdwRadius
+            d = (rvec3(nLoc) - rvec3(aLoc)).length()
+            if d <= aRad + nRad + 2 * probeRad:
+              atoms.add(n)
 
   # Remove the original atom from the result and turn the result into a list.
   atoms.discard(atom)
@@ -238,7 +287,7 @@ def isPolarHydrogen(atom, bondedNeighborLists):
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using
-    mmtbx.probe.Helpers.getBondedNeighborLists().
+    mmtbx.probe.Helpers.getBondedNeighborLists() and perhaps augmented by calling addIonicBonds().
     :return: True if the atom is a polar hydrogen.
   '''
   if atom.element_is_hydrogen():
@@ -268,7 +317,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
     model.process(make_restraints=True), with useNeutronDistances matching
     the parameter to this function.
     :param bondedNeighborLists: Lists of atoms that are bonded to each other.
-    Can be obtained by calling getBondedNeighborLists().
+    Can be obtained by calling getBondedNeighborLists() and
+    perhaps augmented by calling addIonicBonds().
     :param useNeutronDistances: Default is to use x-ray distances, but setting this to
     True uses neutron distances instead.  This must be set consistently with the
     PDB interpretation parameter used on the model.
@@ -637,7 +687,7 @@ def fixupExplicitDonors(atoms, bondedNeighborLists, extraAtomInfo):
     :param atoms: The list of atoms to adjust.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using
-    mmtbx.probe.Helpers.getBondedNeighborLists().
+    mmtbx.probe.Helpers.getBondedNeighborLists() and perhaps augmented by calling addIonicBonds().
     :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
     information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
     which atoms may be acceptors.  This information is modified in place to adjust the donor

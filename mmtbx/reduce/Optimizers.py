@@ -424,7 +424,7 @@ class _SingletonOptimizer(object):
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._bondedNeighborDepth)
+            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth)
         self._infoString += _ReportTiming("determine excluded atoms")
 
         ################################################################################

@@ -764,7 +764,7 @@ Note:
         # Find the atoms that are bonded to the source atom within the specified hop
         # count.  Limit the length of the chain to 3 if neither the source nor the final
         # atom is a Hydrogen.
-        excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
+        excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
           excluded_bond_chain_length, 3)
 
         # For Phantom Hydrogens, move any non-Acceptor atom in the atom list into the
@@ -975,11 +975,12 @@ Note:
     # Store parameters that are used in the inner loop
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
 
+    probeRadius = self.params.probe.radius
     for src in atoms:
       # Find the atoms that are bonded to the source atom within the specified hop
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
-      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists,
+      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
         excluded_bond_chain_length, 3)
 
       # Count the skin dots for this atom.
@@ -1847,7 +1848,7 @@ Note:
     # input file and no model specified in the source and target patterns, we loop over all
     # models in the file.
     # We get lists of all atoms present in each hierarchy model that we're running.
-    # This is the one selected when one is selected and it is all of the available ones
+    # This is a list of one when only one is selected and it is all of the available ones
     # when no particular one is selected.
     atomLists = [ self.model.get_atoms() ]
     if (self.params.approach == 'self' and
@@ -1889,6 +1890,12 @@ Note:
         self._spatialQuery = Helpers.createSpatialQuery(atoms, self.params.probe)
       else:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms, self.params.probe))
+
+      ################################################################################
+      # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
+      # between two atoms that are both bonded to the same ion (such as Nitrogens on
+      # Histidine rings around Cu or Zn).
+      Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
 
       ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
