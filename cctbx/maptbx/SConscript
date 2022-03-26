@@ -40,3 +40,5 @@ if (not env_etc.no_boost_python):
   env_bpl.SharedLibrary(
     target="#lib/cctbx_asymmetric_map_ext",
     source=["asymmetric_map_ext.cpp"])
+
+SConscript("bcr/SConscript")
