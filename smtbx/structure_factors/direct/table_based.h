@@ -157,12 +157,70 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
       }
     }
+    void read_binary(af::shared<xray::scatterer<float_type> > const &scatterers,
+      const std::string &file_name)
+    {
+      using namespace std;
+      ifstream tsc_file(file_name.c_str(), ios::binary);
+
+      int head[1];
+      tsc_file.read((char*)&head, sizeof(head));
+      char* header = new char[head[0]];
+      tsc_file.read(header, head[0] * sizeof(char));
+      string header_str(header);
+      free(header);
+      //read scatterer labels and map onto scattterers list
+      int sc_len[1];
+      tsc_file.read((char*)&sc_len, sizeof(sc_len));
+      char* scat_line = new char[sc_len[0]];
+      tsc_file.read(scat_line, sc_len[0] * sizeof(char));
+      string scat_str(scat_line);
+      free(scat_line);
+      vector<string> toks;
+      boost::split(toks, scat_str, boost::is_any_of(" "));
+      SMTBX_ASSERT(toks.size() == scatterers.size());
+      map<string, size_t> sc_map;
+      for (size_t sci = 0; sci < scatterers.size(); sci++) {
+        sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
+      }
+      vector<size_t> sc_indices(scatterers.size());
+      for (size_t sci = 0; sci < scatterers.size(); sci++) {
+        boost::to_upper(toks[sci]);
+        map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
+        if(fsci == sc_map.end()){
+          SMTBX_ERROR("scatterer " + toks[sci] + "not found!");
+        }
+        sc_indices[sci] = fsci->second;
+      }
+      //binary tsc files will only be written in expanded mode
+      parent_t::expanded = true;
+      //read number of indices in tscb file
+      int nr_hkl[1];
+      tsc_file.read((char*)&nr_hkl, sizeof(nr_hkl));
+      //read indices and scattering factors row by row
+      int index[3];      
+      for (int run = 0; run < *nr_hkl; run++) {
+        tsc_file.read((char*)&index, 3*sizeof(int));
+        cctbx::miller::index<> mi(index[0], index[1], index[2]);
+        parent_t::miller_indices_.push_back(mi);
+        vector<complex<double>> row(scatterers.size());
+        tsc_file.read((char*)row.data(), scatterers.size() * sizeof(complex<double>));
+        parent_t::data_.push_back(row);
+      }
+      tsc_file.close();
+      SMTBX_ASSERT(!tsc_file.bad());
+    }
 
   public:
     table_reader(af::shared<xray::scatterer<float_type> > const &scatterers,
       const std::string &file_name)
     {
-      read(scatterers, file_name);
+      if(file_name.find(".tscb")!=std::string::npos){
+        read_binary(scatterers, file_name);
+      }
+      else{
+        read(scatterers, file_name);
+      }
     }
   };
 
