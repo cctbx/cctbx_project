@@ -151,6 +151,7 @@ general_tests = [
   "$D/hydrogens/tst_parameterization_6.py",
   "$D/hydrogens/tst_parameterization_7.py",
   "$D/hydrogens/tst_parameterization_8.py",
+  "$D/hydrogens/tst_parameterization_9.py",
   "$D/hydrogens/tst_riding_fd_1.py",
   "$D/hydrogens/tst_riding_fd_2.py",
   "$D/hydrogens/tst_riding_fd_3.py",

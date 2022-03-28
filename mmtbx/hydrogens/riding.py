@@ -13,10 +13,12 @@ class manager(object):
       geometry_restraints,
       use_ideal_bonds_angles = True,
       process_manager        = True,
-      use_ideal_dihedral = False):
+      use_ideal_dihedral = False,
+      ignore_h_with_dof  = False):
     self.pdb_hierarchy = pdb_hierarchy
     self.geometry_restraints = geometry_restraints
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
+    self.ignore_h_with_dof = ignore_h_with_dof
     #
     self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
       selection("element H or element D")
@@ -35,7 +37,8 @@ class manager(object):
         use_ideal_bonds_angles = use_ideal_bonds_angles,
         site_labels         = [atom.id_str().replace('pdb=','').replace('"','')
                                   for atom in pdb_hierarchy.atoms()],
-        use_ideal_dihedral = use_ideal_dihedral)
+        use_ideal_dihedral = use_ideal_dihedral,
+        ignore_h_with_dof  = self.ignore_h_with_dof)
       self.h_parameterization = parameterization_manager.h_parameterization
       self.parameterization_cpp = self.get_parameterization_cpp(
         h_parameterization = self.h_parameterization)

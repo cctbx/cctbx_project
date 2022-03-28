@@ -2356,14 +2356,16 @@ class manager(object):
   def unset_riding_h_manager(self):
     self.riding_h_manager = None
 
-  def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False):
+  def setup_riding_h_manager(self, idealize=True, use_ideal_dihedral=False,
+                             ignore_h_with_dof = False):
     assert self.riding_h_manager is None
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.get_hierarchy(),
       geometry_restraints = self.get_restraints_manager().geometry,
-      use_ideal_dihedral  = use_ideal_dihedral)
+      use_ideal_dihedral  = use_ideal_dihedral,
+      ignore_h_with_dof   = ignore_h_with_dof)
     if(idealize):
       self.idealize_h_riding()
 

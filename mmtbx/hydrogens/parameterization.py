@@ -12,12 +12,14 @@ class manager(object):
       sites_cart,
       use_ideal_bonds_angles,
       site_labels,
-      use_ideal_dihedral=False):
+      use_ideal_dihedral = False,
+      ignore_h_with_dof  = False):
     self.h_connectivity = h_connectivity
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
     self.site_labels = site_labels
     self.use_ideal_dihedral = use_ideal_dihedral
+    self.ignore_h_with_dof = ignore_h_with_dof
     self.determine_parameterization()
 
 #-------------------------------------------------------------------------------
@@ -43,7 +45,8 @@ class manager(object):
         self.process_3_neighbors(neighbors = neighbors)
       # Free rotation and propeller groups
       elif(number_non_h_neighbors == 1 and
-        (number_h_neighbors == 0 or number_h_neighbors == 2)):
+        (number_h_neighbors == 0 or number_h_neighbors == 2) and
+        not self.ignore_h_with_dof):
         self.process_1_neighbor(neighbors = neighbors)
       # planar Y-X-H2 groups such as in ARG head
       elif(number_non_h_neighbors == 1 and number_h_neighbors == 1):
