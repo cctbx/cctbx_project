@@ -43,8 +43,9 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
         r[i] = c[i] * compl_c_factor;
       }
       c = D.gradient_coefficients(h);
+      std::complex<FloatType>* r_ = &r[10];
       for (size_t i = 0; i < 15; i++) {
-        r[i] = c[i] * d_factor;
+        r_[i] = c[i] * d_factor;
       }
       return r;
     }
