@@ -21,7 +21,7 @@ def run(d_min       = 2.0,
       )
     r = rfactor(b.image_values, b.bcr_approx_values)
     if(i == 0): assert r>10, r
-    else:       assert r<0.3, r
+    else:       assert r<0.4, r
     #
     # b_iso is not 0
     #
@@ -40,7 +40,7 @@ def run(d_min       = 2.0,
       bcr_approx_values.append(first + second)
     r = rfactor(im.image_values, bcr_approx_values)
     if(i == 0): assert r>10, r
-    else:       assert r<0.3, r
+    else:       assert r<0.4, r
 
 if (__name__ == "__main__"):
   run()
