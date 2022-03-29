@@ -185,7 +185,7 @@ def getBondedNeighborLists(atoms, bondProxies):
 def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
   """
     Helper function to add ionic bonds to the list of bonded neighbors.
-    Be sure never to make an ionic bond to a water.
+    @todo: Be sure never to make an ionic bond to a water (fix in old and new probe).
     :param bondedNeighborLists: Object to have the ionic bonds added to in place.
     :param atoms: Flex array of atoms (could be obtained using model.get_atoms() if there
     are no chains with multiple conformations, must be a subset of the atoms including
