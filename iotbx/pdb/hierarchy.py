@@ -2182,7 +2182,8 @@ class _():
 
   def as_sequence(self, substitute_unknown='X',
      substitute_unknown_na = 'N',
-     ignore_all_unknown = None):
+     ignore_all_unknown = None,
+     as_string = False):
     """
     Naively extract single-character protein or nucleic acid sequence, without
     accounting for residue numbering.
@@ -2190,6 +2191,7 @@ class _():
     :param substitute_unknown: character to use for unrecognized 3-letter codes
     :param substitute_unknown_na: character to use for unrecognized na codes
     :param ignore_all_unknown: set substitute_unknown and substitute_unknown_na to ''
+    :param as_string: return string (default is to return list)
     """
 
     if ignore_all_unknown:
@@ -2224,7 +2226,10 @@ class _():
         if rn not in common_rna_dna_codes and rn in na_3_as_1_mod:
           rn = na_3_as_1_mod.get(rn, "N")
         seq.append(common_rna_dna_codes.get(rn, "N"))
-    return seq
+    if as_string:
+      return "".join(seq)
+    else: # usual
+      return seq
 
   def format_fasta(self,
       max_line_length=79,
