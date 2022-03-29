@@ -531,6 +531,7 @@ def run():
     (24, 28), (24, 30), (25, 26), (25, 28), (26, 27), (26, 31), (27, 28), (27, 29),
     (27, 30), (28, 29), (28, 30), (29, 30)]
   assert interaction_list == expected_list
+  #print(set(interaction_list).symmetric_difference(set(expected_list)))
 
 if(__name__ == "__main__"):
   run()
