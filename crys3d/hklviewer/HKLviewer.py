@@ -1029,7 +1029,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.isembedded:
       print(currentinfostr)
     else:
-      self.infostr += currentinfostr + "\n"
+      self.infostr += currentinfostr
       # display no more than self.bufsize bytes of text
       self.infostr = self.infostr[-1000*self.textinfosize:]
       self.textInfo.setPlainText(self.infostr)
@@ -1038,6 +1038,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def make_new_millertable(self):
     self.millertable.clearContents()
+    if len(self.array_infotpls) == 0:
+      return
     self.millertable.setRowCount(len(self.array_infotpls))
     labels = [ e.strip("|").strip() for e in self.array_infotpls[0][0] ]
     self.millertable.setColumnCount(len(labels))

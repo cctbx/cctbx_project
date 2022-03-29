@@ -74,6 +74,7 @@ class HKLViewFrame() :
     self.outputmsgtypes = []
     self.infostr = ""
     self.hklfile_history = []
+    self.arrayinfos = []
     self.tncsvec = None
     self.aniso1 = None
     self.aniso2 = None
@@ -91,7 +92,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      self.mprint("CCTBX starting socket thread", 1)
+      self.mprint("CCTBX starting socket thread", verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
@@ -101,8 +102,8 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
-    self.mprint("kwds= " +str(kwds), 1)
-    self.mprint("args= " + str(args), 1)
+    self.mprint("kwds= " +str(kwds), verbose=1)
+    self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
@@ -132,11 +133,11 @@ class HKLViewFrame() :
     #sys.exit()
 
 
-  def mprint(self, msg, verbose=0):
+  def mprint(self, msg, verbose=0, end="\n"):
     if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose <= self.verbose) \
      or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
       if self.guiSocketPort:
-        self.SendInfoToGUI( { "info": msg } )
+        self.SendInfoToGUI( { "info": msg + end } )
       else:
         print(msg)
 
@@ -181,7 +182,7 @@ class HKLViewFrame() :
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
-    self.mprint("Shutting down zmq_listen() thread", 1)
+    self.mprint("Shutting down zmq_listen() thread", verbose=1)
     self.guiSocketPort=None
 
 
@@ -275,6 +276,7 @@ class HKLViewFrame() :
       #diff = None
       self.params = self.currentphil.extract()
       phl = self.params
+      self.viewer.viewerparams = phl.viewer
 
       if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
         self.mprint( "Nothing's changed", verbose=1)
@@ -316,6 +318,7 @@ class HKLViewFrame() :
           self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
                                          binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
+
       if phl.spacegroup_choice == None:
         self.mprint("! spacegroup_choice == None")
 
@@ -385,18 +388,20 @@ class HKLViewFrame() :
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
+
       self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
+
       self.SendCurrentPhilValues()
       self.NewFileLoaded = False
       self.viewer.mouse_moved = False
       self.validate_preset_buttons()
       if (self.viewer.miller_array is None) :
-        self.mprint( NOREFLDATA, True)
+        self.mprint( NOREFLDATA)
         return False
       return True
     except Exception as e:
-      self.mprint(to_str(e) + "\n" + traceback.format_exc(), 0)
+      self.mprint(to_str(e) + "\n" + traceback.format_exc(), verbose=0)
       return False
 
 
@@ -481,10 +486,10 @@ class HKLViewFrame() :
     if col is not None and col >= len(self.viewer.hkl_scenes_info ):
       return
     array_info = self.process_all_miller_arrays(col)
-    self.viewer.set_miller_array(col, merge=array_info.merge,
-       details=array_info.details_str)
     self.viewer.proc_arrays = self.procarrays
     self.viewer.identify_suitable_fomsarrays()
+    self.viewer.set_miller_array(col, merge=array_info.merge,
+       details=array_info.details_str)
 
 
   def update_space_group_choices(self, col=None) :
@@ -654,6 +659,7 @@ class HKLViewFrame() :
     self.ano_spg_tpls =[]
     self.mprint("%d Miller arrays in this dataset:" %len(arrays))
     spgset = set([])
+    self.arrayinfos = []
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -700,6 +706,7 @@ class HKLViewFrame() :
             colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
         self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
       valid_arrays.append(array)
+      self.arrayinfos.append(arrayinfo)
     self.valid_arrays = valid_arrays
     self.SendInfoToGUI({"spacegroup_info": arrayinfo.spginf, "unitcell_info": list(spgset) })
 
@@ -711,6 +718,7 @@ class HKLViewFrame() :
       self.NewFileLoaded=False
     elif (len(valid_arrays) >= 1):
       self.set_miller_array()
+      self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       self.update_space_group_choices(0) # get the default spacegroup choice
       mydict = { "info": self.infostr,
                   "array_infotpls": self.viewer.array_info_format_tpl,

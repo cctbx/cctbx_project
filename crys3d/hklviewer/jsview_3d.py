@@ -29,7 +29,7 @@ def has_phil_path(philobj, *paths): # variable number of arguments
   return False
 
 
-def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.stdout.write):
+def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.write):
   """
   Conpute the hklscene for the miller array, proc_array. If it's a complex array and there is a FOM array
   among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the
@@ -42,51 +42,48 @@ def MakeHKLscene( proc_array, pidx, setts, mapcoef_fom_dict, merge, mprint=sys.s
   sceneminsigmas = []
   scenearrayinfos = []
   hklscenes = []
-  fomsarrays_idx = [(None, None)]
-  if proc_array.is_complex_array():
-    fomsarrays_idx.extend( mapcoef_fom_dict.get(proc_array.info().label_string()) )
   settings = setts
   if (settings.expand_anomalous or settings.expand_to_p1) \
-      and not proc_array.is_unique_set_under_symmetry() and not merge:
+      and not proc_array.is_unique_set_under_symmetry():
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
-    mprint("Alert! The " + proc_array.info().label_string() + \
-         " array is not symmetry unique and therefore won't be expanded crystallographically.")
+    mprint("The " + proc_array.info().label_string() + \
+         " array is not symmetry unique. Expansion may lead to multiple reflections having the same indices.")
   if (settings.inbrowser==True):
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
 
-  for (fomsarray, fidx) in fomsarrays_idx:
-    hklscene = display.scene(miller_array=proc_array, merge=merge,
-      settings=settings, foms_array=fomsarray, fullprocessarray=True, mprint=mprint)
-    if not hklscene.SceneCreated:
-      mprint("The " + proc_array.info().label_string() + " array was not processed")
-      break
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
-    if hklscene.SceneCreated:
-      hklscenes.append( hklscene)
-      hklscene.colors = graphics_utils.NoNansvec3( hklscene.colors, 1.0, 1.0, 1.0)
-      hklscene.radii = graphics_utils.NoNansArray( hklscene.radii, 0.2)
-      fomslabel = None
-      if fomsarray:
-        fomslabel = fomsarray.info().label_string()
-      arrayinfo = ArrayInfo(hklscene.work_array)
-      scenemindata.append(arrayinfo.minmaxdata[0])
-      scenemaxdata.append(arrayinfo.minmaxdata[1])
-      sceneminsigmas.append(arrayinfo.minmaxsigs[0])
-      scenemaxsigmas.append(arrayinfo.minmaxsigs[1])
-      lbl = arrayinfo.labelstr
-      hassigmas=True
-      if math.isnan(arrayinfo.maxsigmas):
-        hassigmas=False
-      if fomslabel:
-        lbl = arrayinfo.labelstr + " + " + fomslabel
-      (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
-      scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
+  hklscene = display.scene(miller_array=proc_array, merge=None,
+    settings=settings, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
+  if not hklscene.SceneCreated:
+    mprint("The " + proc_array.info().label_string() + " array was not processed")
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  # cast any NAN values to 1 of the colours and radii to 0.2 before writing javascript
+  else:
+    hklscenes.append( hklscene)
+    hklscene.colors = graphics_utils.NoNansvec3( hklscene.colors, 1.0, 1.0, 1.0)
+    hklscene.radii = graphics_utils.NoNansArray( hklscene.radii, 0.2)
+    fomslabel = None
+    if foms_array:
+      fomslabel = foms_array.info().label_string()
+    arrayinfo = ArrayInfo(hklscene.work_array)
+    scenemindata.append(arrayinfo.minmaxdata[0])
+    scenemaxdata.append(arrayinfo.minmaxdata[1])
+    sceneminsigmas.append(arrayinfo.minmaxsigs[0])
+    scenemaxsigmas.append(arrayinfo.minmaxsigs[1])
+    lbl = arrayinfo.labelstr
+    hassigmas=True
+    if math.isnan(arrayinfo.maxsigmas):
+      hassigmas=False
+    if fomslabel:
+      lbl = arrayinfo.labelstr + " + " + fomslabel
+    (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
+    scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
+
 lock_timeout=100 # for the sempahores
+
 
 class hklview_3d:
   def __init__ (self, *args, **kwds) :
@@ -339,8 +336,8 @@ class hklview_3d:
                        "nth_power_scale_radii"
             ):
           self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
-        else:
-          self.ConstructReciprocalSpace(curphilparam )
+        #else:
+        #  self.ConstructReciprocalSpace(curphilparam )
     msg = ""
     if self.viewerparams.scene_id is not None and \
       ( has_phil_path(diff_phil,
@@ -571,7 +568,8 @@ class hklview_3d:
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.viewerparams.scene_id = scene_id
-    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
+    #if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
+    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0:
       self.miller_array = self.HKLscene_from_dict(self.viewerparams.scene_id).miller_array
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
     self.merge = merge
@@ -772,8 +770,8 @@ class hklview_3d:
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
-    if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+    #if sceneid is None:
+    #  sceneid = self.viewerparams.scene_id
     if len(self.proc_arrays) == 0:
       return False
 
@@ -803,108 +801,37 @@ class hklview_3d:
     if self.has_new_miller_array:
       self.identify_suitable_fomsarrays()
     self.mprint("Constructing HKL scenes...", verbose=0)
-    if scene_id is None:
-      hkl_scenes_infos = []
-      self.HKLscenes = []
-      sceneid = 0
-      for (idx, arr) in enumerate(self.proc_arrays):
-        (hklscenes, scenemaxdata,
-          scenemindata, scenemaxsigmas,
-            sceneminsigmas, scenearrayinfos
-         ) = MakeHKLscene( arr.deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
-        if len(scenearrayinfos) == 0: # arr does not have valid data
-          sceneid += 1  # arr does not have valid data still raise the count
-        for i,inf in enumerate(scenearrayinfos):
-          self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=1)
-          self.HKLsceneKey = (curphilparam.spacegroup_choice,
-                                curphilparam.using_space_subgroup,
-                                curphilparam.merge_data,
-                                self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                                self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                                self.viewerparams.inbrowser,
-                                self.viewerparams.slice_axis,
-                                self.viewerparams.slice_index,
-                                self.viewerparams.show_missing,
-                                self.viewerparams.show_only_missing,
-                                self.viewerparams.show_systematic_absences,
-                                self.viewerparams.sigma_color_radius,
-                                self.viewerparams.color_scheme,
-                                self.viewerparams.color_powscale,
-                                sceneid,
-                                self.viewerparams.scale,
-                                self.viewerparams.nth_power_scale_radii
-                                )
-          self.HKLscenedict[self.HKLsceneKey] = ( hklscenes[i], scenemaxdata[i],
-          scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-          hkl_scenes_infos.append(inf + [sceneid])
-          self.HKLscenes.append(hklscenes[i])
-          sceneid += 1
-      self.hkl_scenes_infos = hkl_scenes_infos
-      if self.viewerparams.scene_id is not None:
-        self.HKLsceneKey = (curphilparam.spacegroup_choice,
-                              curphilparam.using_space_subgroup,
-                              curphilparam.merge_data,
-                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                              self.viewerparams.inbrowser,
-                              self.viewerparams.slice_axis,
-                              self.viewerparams.slice_index,
-                              self.viewerparams.show_missing,
-                              self.viewerparams.show_only_missing,
-                              self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_color_radius,
-                              self.viewerparams.color_scheme,
-                              self.viewerparams.color_powscale,
-                              self.viewerparams.scene_id,
-                              self.viewerparams.scale,
-                              self.viewerparams.nth_power_scale_radii
-                              )
-      scenearraylabeltypes = [ (e[3], e[4], e[1], e[5], e[6]) for e in hkl_scenes_infos ]
-      self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
-
-      self.bin_labels_type_idxs = []
-      self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
-      self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
-      for label,labeltype,idx,hassigmas,sceneid in scenearraylabeltypes:
-        if labeltype not in  ["Map coeffs", "Map coeffs_fom", "HL coeffs"]:
-          self.bin_labels_type_idxs.append((label, labeltype, sceneid))
-        if hassigmas:
-          self.bin_labels_type_idxs.append(("Sigmas of " + label, "hassigmas", sceneid))
-        if labeltype == "Map coeffs":
-          self.bin_labels_type_idxs.append(("Phases of " + label, labeltype, sceneid))
-          self.bin_labels_type_idxs.append(("Amplitudes of " + label, labeltype, sceneid))
-
-      self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
-      self.get_labels_of_data_for_binning()
-    else:
-      idx = self.scene_id_to_array_id(scene_id)
-      (hklscenes, scenemaxdata,
-        scenemindata, scenemaxsigmas,
-          sceneminsigmas, scenearrayinfos
-      ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), idx, copy.deepcopy(self.viewerparams), self.mapcoef_fom_dict, None, self.mprint )
-      for i,inf in enumerate(scenearrayinfos):
-        self.mprint("%d, %s" %(idx+i+1, inf[0]), verbose=1)
-        self.HKLsceneKey = (curphilparam.spacegroup_choice,
-                              curphilparam.using_space_subgroup,
-                              curphilparam.merge_data,
-                              self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                              self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                              self.viewerparams.inbrowser,
-                              self.viewerparams.slice_axis,
-                              self.viewerparams.slice_index,
-                              self.viewerparams.show_missing,
-                              self.viewerparams.show_only_missing,
-                              self.viewerparams.show_systematic_absences,
-                              self.viewerparams.sigma_color_radius,
-                              self.viewerparams.color_scheme,
-                              self.viewerparams.color_powscale,
-                              sceneid,
-                              self.viewerparams.scale,
-                              self.viewerparams.nth_power_scale_radii
-                              )
-        self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
-          scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
-        sceneid += 1
+    idx,fdx = self.scene_id_to_array_and_foms_id(scene_id)
+    fomarray = None
+    if fdx >= 0: # index is -1 if idx is not paired with a FOM array
+      fomarray = self.proc_arrays[fdx].deep_copy()
+    (hklscenes, scenemaxdata,
+      scenemindata, scenemaxsigmas,
+        sceneminsigmas, scenearrayinfos
+    ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx, copy.deepcopy(self.viewerparams), self.mprint )
+    for i,inf in enumerate(scenearrayinfos):
+      self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
+      self.HKLsceneKey = (curphilparam.spacegroup_choice,
+                            curphilparam.using_space_subgroup,
+                            curphilparam.merge_data,
+                            self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
+                            self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
+                            self.viewerparams.inbrowser,
+                            self.viewerparams.slice_axis,
+                            self.viewerparams.slice_index,
+                            self.viewerparams.show_missing,
+                            self.viewerparams.show_only_missing,
+                            self.viewerparams.show_systematic_absences,
+                            self.viewerparams.sigma_color_radius,
+                            self.viewerparams.color_scheme,
+                            self.viewerparams.color_powscale,
+                            sceneid,
+                            self.viewerparams.scale,
+                            self.viewerparams.nth_power_scale_radii
+                            )
+      self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
+        scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
+      sceneid += 1
     (
       self.HKLscene,
       self.HKLscenesMaxdata,
@@ -1000,7 +927,7 @@ class hklview_3d:
     self.sceneid_from_arrayid = []
     for k,proc_array in enumerate(self.proc_arrays):
       fom_arrays_idx = []
-      array_scene_ids = [(k,k)]
+      array_scene_ids = [(k,-1)] # using -1 to indicate not paired with a fom array
       for i,foms_array in enumerate(self.proc_arrays):
         if not proc_array.is_complex_array() or not foms_array.is_real_array():
           continue
@@ -1032,6 +959,13 @@ class hklview_3d:
     for i,array_scene_id in enumerate(self.sceneid_from_arrayid):
       if scene_id == i:
         return array_scene_id[0]
+    raise Sorry("scene_id, %d, is out of range" %scene_id)
+
+
+  def scene_id_to_array_and_foms_id(self, scene_id):
+    for i,array_scene_id in enumerate(self.sceneid_from_arrayid):
+      if scene_id == i:
+        return array_scene_id
     raise Sorry("scene_id, %d, is out of range" %scene_id)
 
 
@@ -1205,7 +1139,7 @@ class hklview_3d:
       self.mprint( "Select a dataset to display reflections" )
       blankscene = True
     else:
-      self.mprint("Rendering reflections...")
+      self.mprint("Rendering reflections.", end="")
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
@@ -1310,7 +1244,7 @@ class hklview_3d:
       self.meanradius = flex.mean(radii)
 
     bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binner_idx]
-    self.mprint(".")
+    self.mprint(".", end="")
     if blankscene:
       points = flex.vec3_double( [ ] )
       colors = flex.vec3_double( [ ] )
@@ -1394,9 +1328,6 @@ class hklview_3d:
     for i, hklstars in enumerate(points):
       # bin currently displayed data according to the values of another miller array
       ibin = data2bin( self.bindata[i], self.binvalsboundaries, self.nbinvalsboundaries )
-      #self.positions[ibin].extend( graphics_utils.flt_roundoffvec3(hklstars, 2) )
-      #self.colours[ibin].extend( graphics_utils.flt_roundoffvec3(colors[i], 2) )
-      #self.radii2[ibin].append( graphics_utils.flt_roundoff(radii[i], 2) )
       self.positions[ibin].extend( hklstars )
       self.colours[ibin].extend( colors[i] )
       self.radii2[ibin].append( radii[i] )
@@ -1477,8 +1408,7 @@ class hklview_3d:
           colourgradstr.append([vstr, rgb[0], rgb[1], rgb[2] ])
         colourgradstrs.append(colourgradstr)
 
-    self.mprint(".")
-
+    self.mprint(".", end="")
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
     if not blankscene:
@@ -1495,9 +1425,9 @@ class hklview_3d:
           Hstararrowtxt, Kstararrowtxt, Lstararrowtxt )
         self.SendCoordinates2Browser(self.positions[ibin], self.colours[ibin],
                                      self.radii2[ibin], self.spbufttips[ibin] )
-      self.mprint(".")
+      self.mprint(".", end="")
       self.RenderStageObjects()
-      self.mprint(".")
+      self.mprint(".", end="")
       self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
@@ -1512,7 +1442,7 @@ class hklview_3d:
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
-    self.mprint("Done rendering reflections ")
+    self.mprint("\nDone rendering reflections ")
 
 
 
@@ -2332,7 +2262,44 @@ in the space group %s\nwith unit cell %s\n""" \
     self.AddToBrowserMsgQueue("SetCameraType", self.ngl_settings.camera_type)
 
 
-  def get_labels_of_data_for_binning(self):
+  def get_labels_of_data_for_binning(self, arrayinfos):
+    self.hkl_scenes_infos = []
+    sceneid = 0
+    for pidx,arrayinfo in enumerate(arrayinfos):
+      hassigmas=True
+      if math.isnan(arrayinfo.maxsigmas):
+        hassigmas=False
+      (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
+
+      fomsarrays_idx = [(None, None)]
+      if infolst[1] in ['Map coeffs']:
+        fomsarrays_idx.extend( self.mapcoef_fom_dict.get(infolst[0]))
+      for (fomsarray, fidx) in fomsarrays_idx:
+        lbl = arrayinfo.labelstr
+        fomslabel = None
+        if fomsarray:
+          fomslabel = fomsarray.info().label_string()
+          lbl = arrayinfo.labelstr + " + " + fomslabel
+        self.hkl_scenes_infos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas, sceneid])
+        sceneid += 1
+
+    scenearraylabeltypes = [ (e[3], e[4], e[1], e[5], e[6]) for e in self.hkl_scenes_infos ]
+    self.SendInfoToGUI({ "scene_array_label_types": scenearraylabeltypes, "NewHKLscenes" : True })
+
+    self.bin_labels_type_idxs = []
+    self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
+    self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
+    for label,labeltype,idx,hassigmas,sceneid in scenearraylabeltypes:
+      if labeltype not in  ["Map coeffs", "Map coeffs_fom", "HL coeffs"]:
+        self.bin_labels_type_idxs.append((label, labeltype, sceneid))
+      if hassigmas:
+        self.bin_labels_type_idxs.append(("Sigmas of " + label, "hassigmas", sceneid))
+      if labeltype == "Map coeffs":
+        self.bin_labels_type_idxs.append(("Phases of " + label, labeltype, sceneid))
+        self.bin_labels_type_idxs.append(("Amplitudes of " + label, labeltype, sceneid))
+
+    self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
+
     self.mprint("Data can be binned according to:")
     for i,e in enumerate(self.bin_labels_type_idxs):
       self.mprint("%d, %s" %(i, e[0]))
@@ -2559,8 +2526,11 @@ in the space group %s\nwith unit cell %s\n""" \
     # send data in binary format rather than string to browser for the sake of speed and
     # having to avoid rounding off numbers which is also slow
     self.AddToBrowserMsgQueue("AddHKLCoordinates", positions, binary=True)
+    self.mprint(".", end="")
     self.AddToBrowserMsgQueue("AddHKLColours", colours, binary=True)
+    self.mprint(".", end="")
     self.AddToBrowserMsgQueue("AddHKLRadii", radii, binary=True)
+    self.mprint(".", end="")
     self.AddToBrowserMsgQueue("AddHKLTTipIds", ttipids, binary=True)
 
 
