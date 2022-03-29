@@ -1768,15 +1768,6 @@ Note:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
     ################################################################################
-    # Get the dot sets we will need for each atom.  This is the set of offsets from the
-    # atom center where dots should be placed.  We use a cache to reduce the calculation
-    # time by returning the same answer for atoms that have the same radius.
-    dotCache = Helpers.createDotSphereCache(self.params.probe)
-    self._dots = {}
-    for a in allAtoms:
-      self._dots[a] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius).dots()
-
-    ################################################################################
     # Get the other characteristics we need to know about each atom to do our work.
     self._inWater = {}
     self._inHet = {}
@@ -1985,9 +1976,6 @@ Note:
                 #self._allBondedNeighborLists[p] = [a]
                 #self._allBondedNeighborLists[a].append(p)
 
-                # Generate source dots for the new atom
-                self._dots[p] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(p).vdwRadius).dots()
-
                 # Add the new atom to any selections that the old atom was in.
                 if a in source_atoms:
                   source_atoms.add(p)
@@ -2037,6 +2025,17 @@ Note:
       # Hydrogens and adjusted all of the ExtraAtomInfo.
       make_sub_header('Make dot scorer', out=self.logger)
       self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self.params.probe)
+
+      ################################################################################
+      # Get the dot sets we will need for each atom.  This is the set of offsets from the
+      # atom center where dots should be placed.  We use a cache to reduce the calculation
+      # time by returning the same answer for atoms that have the same radius.
+      # This must be done after all modifications are made to the atoms' radii to ensure
+      # the correct dots.
+      dotCache = Helpers.createDotSphereCache(self.params.probe)
+      self._dots = {}
+      for a in all_selected_atoms:
+        self._dots[a] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius).dots()
 
       ################################################################################
       # Sums of interaction types of dots based on whether their source and/or target
