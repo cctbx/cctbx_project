@@ -1373,7 +1373,7 @@ class HKLViewFrame() :
 
 
   def ShowVector(self, i, val=True):
-    self.params.viewer.show_vector = str([i, val])
+    self.params.viewer.show_vector = [str([i, val])]
     self.update_settings()
 
 
@@ -1418,7 +1418,7 @@ class HKLViewFrame() :
     if val:
       viewer.is_parallel = is_parallel
       viewer.fixorientation = "vector"
-      viewer.show_vector = '[%d, True]' %vecnr
+      viewer.show_vector = ['[%d, True]' %vecnr]
     self.update_settings()
 
 
@@ -1593,6 +1593,7 @@ masterphilstr = """
       .type = bool
     show_vector = ''
       .type = str
+      .multiple = True
     show_all_vectors = False
       .type = bool
     add_user_vector_hkl_op = ""

@@ -31,9 +31,8 @@ def has_phil_path(philobj, *paths): # variable number of arguments
 
 def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.write):
   """
-  Conpute the hklscene for the miller array, proc_array. If it's a complex array and there is a FOM array
-  among the list of miller arrays then also compute an hklscene with colours of each hkl attenuated by the
-  corresponding FOM value.
+  Conpute the hklscene for proc_array. If it's a complex array and foms_array!=None
+  then also compute an hklscene with colours of each hkl attenuated by the corresponding FOM value.
   """
   from iotbx.gui_tools.reflections import ArrayInfo
   scenemaxdata =[]
@@ -379,12 +378,13 @@ class hklview_3d:
       self.show_rotation_axes()
 
     if has_phil_path(diff_phil, "show_vector"):
-      [i, isvisible] = eval(self.viewerparams.show_vector)
-      if has_phil_path(diff_phil, "animate_rotation_around_vector"):
-        # don't zoom if also initiating animation from this set of phil parameters
-        self.show_vector(i, isvisible, autozoom=False)
-      else:
-        self.show_vector(i, isvisible, autozoom=True)
+      for ivec in self.viewerparams.show_vector:
+        [i, isvisible] = eval(ivec)
+        if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+          # don't zoom if also initiating animation from this set of phil parameters
+          self.show_vector(i, isvisible, autozoom=False)
+        else:
+          self.show_vector(i, isvisible, autozoom=True)
 
     if has_phil_path(diff_phil, "show_all_vectors"):
       self.show_all_vectors()
@@ -1999,6 +1999,8 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def show_vector(self, i, isvisible, autozoom=True):
     self.visual_symmxs = []
+    if i >= len(self.all_vectors):
+      return
     (opnr, label, order, v, hklop, hkl, abc, length) = self.all_vectors[i]
     self.show_labelled_vector(isvisible, label, order, v, hklop, autozoom=autozoom)
 

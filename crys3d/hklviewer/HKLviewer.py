@@ -1501,10 +1501,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         if label is None:
           return
         if col==0:
-          if item.checkState()==Qt.Checked:
-            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, True ))
-          else:
-            self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, False ))
+          #if item.checkState()==Qt.Checked:
+          #  self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, True ))
+          #else:
+          #  self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, False ))
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
               self.send_message("""clip_plane {
                 angle_around_vector = '[%d, 0]'
@@ -1513,11 +1513,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
           sum = 0
+          ivecs = ""
+          ivec= []
+          philstr = ""
           for rvrow in range(self.vectortable2.rowCount()):
             if self.vectortable2.item(rvrow, 0) is not None:
               if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
                 self.rotvec = rvrow
                 sum +=1
+                ivec = [rvrow, True]
+              else:
+                ivec = [rvrow, False]
+              philstr += "viewer.show_vector = " + str(ivec) + "\n"
+          self.send_message(philstr)
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
             self.send_message("""clip_plane {
   animate_rotation_around_vector = '[%d, %f]'
