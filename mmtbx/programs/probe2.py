@@ -59,10 +59,6 @@ drop_non_selected_atoms = False
   .type = bool
   .help = Drop non selected atoms (-drop in probe)
 
-use_polar_hydrogens = True
-  .type = bool
-  .help = Use polar hydrogens (-usepolarh in probe)
-
 minimum_polar_hydrogen_occupancy = 0.7
   .type = float
   .help = Minimum occupancy for polar hydrogens (0.25 in probe)
@@ -1910,21 +1906,13 @@ Note:
 
           adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
-          # Adjust hydrogen atom class and radius as needed.
+          # Ignore Hydrogens whose parameters are out of bounds.
           if a.element_is_hydrogen():
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
             # If they are not, set the class for the atom to 'ignore'.
             if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
                 a.b > self.params.maximum_polar_hydrogen_b):
               self._atomClasses[a] = 'ignore'
-            else:
-              for n in bondedNeighborLists[a]:
-                if n.element in ['N','O','S']:
-                  # We may have our radius adjusted
-                  ei = self._extraAtomInfo.getMappingFor(a)
-                  if self.params.use_polar_hydrogens:
-                    ei.vdwRadius = adjustedHydrogenRadius
-                  self._extraAtomInfo.setMappingFor(a, ei)
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
           elif self._inWater[a] and a.element == 'O':
@@ -2021,21 +2009,21 @@ Note:
       all_selected_atoms = source_atoms.union(target_atoms)
 
       ################################################################################
-      # Construct a DotScorer object.  This must be done after we've added all Phantom
-      # Hydrogens and adjusted all of the ExtraAtomInfo.
-      make_sub_header('Make dot scorer', out=self.logger)
-      self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self.params.probe)
-
-      ################################################################################
       # Get the dot sets we will need for each atom.  This is the set of offsets from the
       # atom center where dots should be placed.  We use a cache to reduce the calculation
       # time by returning the same answer for atoms that have the same radius.
-      # This must be done after all modifications are made to the atoms' radii to ensure
-      # the correct dots.
+      # This must be done after we've added all Phantom Hydrogens and adjusted all of
+      # the ExtraAtomInfo.
       dotCache = Helpers.createDotSphereCache(self.params.probe)
       self._dots = {}
       for a in all_selected_atoms:
         self._dots[a] = dotCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius).dots()
+
+      ################################################################################
+      # Construct a DotScorer object.  This must be done after we've added all Phantom
+      # Hydrogens and adjusted all of the ExtraAtomInfo.
+      make_sub_header('Make dot scorer', out=self.logger)
+      self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self.params.probe)
 
       ################################################################################
       # Sums of interaction types of dots based on whether their source and/or target

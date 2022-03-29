@@ -98,6 +98,10 @@ probe
   ignore_ion_interactions = False
     .type = bool
     .help = Ignore interactions with ions
+
+  set_polar_hydrogen_radius = True
+    .type = bool
+    .help = Override the radius of polar Hydrogens with 1.05 to ensure it has this value. (-usepolarh in probe)
 }
 """
 
@@ -327,6 +331,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
       implicit_hydrogens (bool): Default is to use distances consistent with
       explicitly-listed Hydrgoens, but setting this to True implicit-Hydrogen distances instead.
       This must be set consistently with the hydrogens in the model.
+      set_polar_hydrogen_radius(bool): Default is to override the radius for polar
+      Hydrogen atoms with 1.05.  Setting this to false uses the CCTBX value.
     :returns a ExtraAtomInfoMap with an entry for every atom in the model suitable for
     passing to the scoring functions.
   """
@@ -363,7 +369,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # Michael Prisant that we want to use the ionic radius rather than the
                 # larger radius for all purposes.
                 # @todo Once the CCTBX radius determination discussion and upgrade is
-                # complete (ongoing as of September 2021), this check might be removed
+                # complete (ongoing as of March 2022), this check might be removed
                 # and we'll just use the CCTBX radius.
                 if a.element_is_ion():
                   warnings += "Using ionic radius for "+a.name.strip()+"\n"
@@ -412,6 +418,13 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                   else:
                     extra.vdwRadius = 1.65
                   warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+
+                # If we've been asked to ensure polar hydrogen radius, do so here.
+                if probePhil.set_polar_hydrogen_radius and a.element_is_hydrogen():
+                  for n in bondedNeighborLists[a]:
+                    if n.element in ['N','O','S']:
+                      extra.vdwRadius = 1.05
+                      warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 extras.setMappingFor(a, extra)
 
