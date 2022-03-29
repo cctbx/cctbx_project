@@ -420,11 +420,9 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                   warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 # If we've been asked to ensure polar hydrogen radius, do so here.
-                if probePhil.set_polar_hydrogen_radius and a.element_is_hydrogen():
-                  for n in bondedNeighborLists[a]:
-                    if n.element in ['N','O','S']:
-                      extra.vdwRadius = 1.05
-                      warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+                if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
+                  extra.vdwRadius = 1.05
+                  warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 extras.setMappingFor(a, extra)
 
