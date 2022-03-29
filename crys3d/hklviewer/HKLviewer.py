@@ -21,7 +21,7 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1'
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
+    QMainWindow, QMenu, QMenuBar, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
@@ -1216,11 +1216,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onResetFactoryDefault(self):
-    self.RemoveQsettings()
-    self.reset_to_factorydefaults = True
-    msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
-    self.AddInfoText(msg)
-    self.resetFactoryDefaultbtn.setEnabled(False)
+    ret = QMessageBox.warning(self.window, "Reset HKLviewer settings",
+                              "Are you sure to use factory defaults next time HKLviewer starts?",
+                              buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
+    if ret == QMessageBox.Yes:
+      self.RemoveQsettings()
+      self.reset_to_factorydefaults = True
+      msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
+      self.AddInfoText(msg)
+      self.resetFactoryDefaultbtn.setEnabled(False)
 
 
   def onWrapTextBuffer(self):

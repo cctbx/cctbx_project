@@ -8,7 +8,8 @@ if 'PyQt5' in sys.modules:
         QRect, Qt, QEvent, QItemSelectionModel, QUrl, QSize, QSettings, QTimer  # special import
   from PyQt5.QtWidgets import ( QAction, QAbstractItemView, QApplication, QCheckBox, QComboBox,   # special import
         QDialog, QDoubleSpinBox, QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView,
-        QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
+        QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
+        QPlainTextEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
@@ -22,7 +23,8 @@ else:
         QModelIndex, QUrl, QRect, QItemSelectionModel, QSize, QSettings, QTimer   # special import
   from PySide2.QtWidgets import ( QAction, QAbstractItemView, QApplication, QCheckBox, QComboBox,   # special import
         QDialog, QDoubleSpinBox, QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView,
-        QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar, QPlainTextEdit,
+        QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,  QMessageBox,
+        QPlainTextEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )

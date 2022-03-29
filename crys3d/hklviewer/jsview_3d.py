@@ -1997,12 +1997,20 @@ in the space group %s\nwith unit cell %s\n""" \
       self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, cartvec, hklop, autozoom=False)
 
 
-  def show_vector(self, i, isvisible, autozoom=True):
+  def show_vector(self, val, isvisible, autozoom=True):
     self.visual_symmxs = []
-    if i >= len(self.all_vectors):
+    if isinstance(val, int):
+      if val >= len(self.all_vectors):
+        return
+      (opnr, label, order, cartvec, hklop, hkl, abc, length) = self.all_vectors[val]
+      self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
       return
-    (opnr, label, order, v, hklop, hkl, abc, length) = self.all_vectors[i]
-    self.show_labelled_vector(isvisible, label, order, v, hklop, autozoom=autozoom)
+
+    if isinstance(val, str):
+      for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
+        if val==label:
+          self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
+          return
 
 
   def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
