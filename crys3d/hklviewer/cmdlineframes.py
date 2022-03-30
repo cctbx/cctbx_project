@@ -408,8 +408,17 @@ class HKLViewFrame() :
   def SendCurrentPhilValues(self):
     self.currentphil = self.master_phil.format(python_object = self.params)
     philstrvalsdict = {}
+    lst = []
     for e in self.currentphil.all_definitions():
-      philstrvalsdict[e.path] = e.object.extract()
+      # deal with multiple definitions of a phil parameter by appending them to a list and 
+      # then assigning that list to the dictionary value with the key e.path. This assumes
+      # that e.object is a phil parameter and not a phil scope
+      if e.object.multiple == True: 
+        lst.append(e.object.extract())
+        philstrvalsdict[e.path] = lst
+      else:
+        philstrvalsdict[e.path] = e.object.extract()
+        lst = []
     mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
@@ -1372,8 +1381,8 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ShowVector(self, i, val=True):
-    self.params.viewer.show_vector = [str([i, val])]
+  def ShowVector(self, val, b=True):
+    self.params.viewer.show_vector = [str([val, b])]
     self.update_settings()
 
 

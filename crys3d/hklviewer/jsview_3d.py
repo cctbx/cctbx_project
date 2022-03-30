@@ -378,19 +378,26 @@ class hklview_3d:
       self.show_rotation_axes()
 
     if has_phil_path(diff_phil, "show_vector"):
-      for ivec in self.viewerparams.show_vector:
-        [i, isvisible] = eval(ivec)
-        if has_phil_path(diff_phil, "animate_rotation_around_vector"):
-          # don't zoom if also initiating animation from this set of phil parameters
-          self.show_vector(i, isvisible, autozoom=False)
-        else:
-          self.show_vector(i, isvisible, autozoom=True)
+      for i,ivec in enumerate(self.viewerparams.show_vector):
+        try:
+          [val, isvisible] = eval(ivec)
+          # in case val is the label for one of the vectors let show_vector() find the
+          #  corresponding number and reassign ivec to "[number, bool]"
+          if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+            # don't zoom if also initiating animation from this set of phil parameters
+            ivec = self.show_vector(val, isvisible, autozoom=False)
+          else:
+            ivec = self.show_vector(val, isvisible, autozoom=isvisible)
+          self.viewerparams.show_vector[i] = ivec
+        except Exception as e:
+          pass
 
     if has_phil_path(diff_phil, "show_all_vectors"):
       self.show_all_vectors()
 
     if has_phil_path(diff_phil, "angle_around_vector"):
-      self.rotate_around_numbered_vector()
+      i,deg = self.rotate_around_numbered_vector()
+      self.params.clip_plane.angle_around_vector = str([i, deg])
 
     if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
       self.rotate_stage_around_cartesian_vector([1,0,0], self.viewerparams.angle_around_XHKL_vector)
@@ -436,7 +443,8 @@ class hklview_3d:
       self.SetFontSize(self.ngl_settings.fontsize)
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
-      self.animate_rotate_around_vector()
+      i,speed = self.animate_rotate_around_vector()
+      self.params.clip_plane.animate_rotation_around_vector = str([i, speed])
 
     if self.viewerparams.scene_id is None:
       self.DrawNGLJavaScript(blankscene=True)
@@ -465,6 +473,9 @@ class hklview_3d:
         clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       infomsg = ""
+      if isinstance(self.params.clip_plane.normal_vector, str):
+        vecnr = val
+
       if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
@@ -1998,19 +2009,21 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def show_vector(self, val, isvisible, autozoom=True):
+    # val can be either the number (zero offset) of the vector in the list of vectors
+    # or the label name of the vector in the list of vectors
     self.visual_symmxs = []
     if isinstance(val, int):
       if val >= len(self.all_vectors):
-        return
+        return str([])
       (opnr, label, order, cartvec, hklop, hkl, abc, length) = self.all_vectors[val]
       self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
-      return
+      return str([val, isvisible])
 
     if isinstance(val, str):
-      for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
+      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
         if val==label:
           self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
-          return
+          return str([i, isvisible])
 
 
   def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
@@ -2079,9 +2092,17 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def rotate_around_numbered_vector(self):
-    vecnr, deg = eval(self.params.clip_plane.angle_around_vector)
-    if vecnr < len(self.all_vectors):
-      self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
+    val, deg = eval(self.params.clip_plane.angle_around_vector)
+    vecnr = -1
+    if isinstance(val, int):
+      vecnr = val
+    if isinstance(val, str):
+      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
+        if val==label:
+          vecnr = i
+    assert (vecnr>=0 and vecnr < len(self.all_vectors))
+    self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
+    return vecnr,deg
 
 
   def rotate_components_around_cartesian_vector(self, cartvec, deg):
@@ -2103,14 +2124,22 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def animate_rotate_around_vector(self):
-    vecnr, speed = eval(self.params.clip_plane.animate_rotation_around_vector)
-    if vecnr < len(self.all_vectors):
-      cartvec = self.all_vectors[vecnr][3]
-      normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      ux = cartvec[0]/normR
-      uy = cartvec[1]/normR
-      uz = cartvec[2]/normR
-      self.AnimateRotateAxisComponents([ux,uy,uz], speed, True)
+    val, speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+    vecnr = -1
+    if isinstance(val, int):
+      vecnr = val
+    if isinstance(val, str):
+      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
+        if val==label:
+          vecnr = i
+    assert (vecnr>=0 and vecnr < len(self.all_vectors))
+    cartvec = self.all_vectors[vecnr][3]
+    normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+    ux = cartvec[0]/normR
+    uy = cartvec[1]/normR
+    uz = cartvec[2]/normR
+    self.AnimateRotateAxisComponents([ux,uy,uz], speed, True)
+    return vecnr,speed
 
 
   def DrawUnitCell(self, scale=1):

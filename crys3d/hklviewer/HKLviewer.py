@@ -577,7 +577,7 @@ newarray._sigmas = sigs
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
     except Exception as e:
-      print("Exterminating unresponsive cctbx.python process, at will and with impunity!")
+      print("\nExterminating unresponsive cctbx.python process, unconditionally, at will, with impunity and effective immediately!")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
@@ -1122,6 +1122,19 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       else:
         self.normal_realspace_vec_btn.setEnabled(True)
         self.normal_realspace_vec_label.setEnabled(True)
+
+    if self.currentphilstringdict['viewer.show_vector'] is not None:
+      ivecs = self.currentphilstringdict['viewer.show_vector']
+      for ivec in ivecs:
+        try:
+          [i,b] = eval(ivec)
+          if i < self.vectortable2.rowCount():
+            if b:
+              self.vectortable2.item(i, 0).setCheckState(Qt.Checked)
+            else:
+              self.vectortable2.item(i, 0).setCheckState(Qt.Unchecked)
+        except Exception as e:
+          pass
 
     self.unfeedback = False
 

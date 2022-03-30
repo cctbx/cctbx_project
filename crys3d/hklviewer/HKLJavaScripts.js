@@ -1146,7 +1146,7 @@ function onMessage(e)
       let autozoom = val2[13];
       if (reprname != "")
       {
-        DeletePrimitives(reprname); // delete any existing vectors with the same name
+        let wasremoved = DeletePrimitives(reprname); // delete any existing vectors with the same name
         let cmp = stage.addComponentFromObject(vectorshape);
         for (let i = 0; i < annodivs.length; i++)
         {
@@ -1160,7 +1160,7 @@ function onMessage(e)
           vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
                                                                       { name: reprname} )
         );
-        if (autozoom == "True")
+        if (autozoom == "True" && !wasremoved) // don't animate if adding a vector that was just removed above
           vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
 
         vectorshape = null;

@@ -56,11 +56,11 @@ buttonsdeflist = [
                                                 }
 """),
   ("aniso", "Show Anisotropy", """
-                                                clip_plane {
-                                                  angle_around_vector = "[3, 0]"
-                                                  animate_rotation_around_vector = "[0, -1.000000]"
-                                                  clip_width = 0
-                                                }
+                                                #clip_plane {
+                                                  #angle_around_vector = "[3, 0]"
+                                                  #animate_rotation_around_vector = "[0, -1.000000]"
+                                                  #clip_width = 0
+                                                #}
                                                 binlabel = "ANISO"
                                                 nbins = 8
                                                 viewer {
@@ -90,7 +90,7 @@ buttonsdeflist = [
   """),
   ("TNCS", "Show TNCS normal", """
                                                 clip_plane {
-                                                  angle_around_vector = "[3, 0]"
+                                                  angle_around_vector = "['TNCS', 0]"
                                                   animate_rotation_around_vector = "[0, -1.000000]"
                                                   normal_vector = 3
                                                   normal_vector_length_scale = 0.87128
@@ -99,7 +99,7 @@ buttonsdeflist = [
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"
-                                                  show_vector = "[3, False]"
+                                                  show_vector = "['TNCS', True]"
                                                   fixorientation = *vector None
                                                   nth_power_scale_radii = 0.1
                                                   expand_to_p1 = True
@@ -108,15 +108,14 @@ buttonsdeflist = [
   """),
   ("TNCSpar", "Show TNCS paralllel", """
                                                 clip_plane {
-                                                  angle_around_vector = "[3, 0.0]"
-                                                  animate_rotation_around_vector = "[3, 5.000000]"
+                                                  angle_around_vector = "['TNCS', 0.0]"
+                                                  animate_rotation_around_vector = "['TNCS', 5.000000]"
                                                   clip_width = 5.000000
                                                   auto_clip_width = False
                                                 }
                                                 viewer {
                                                   data_array.label = "TEPS"
-                                                  scene_id = 19
-                                                  show_vector = "[3, True]"
+                                                  show_vector = "['TNCS', True]"
                                                   is_parallel = True
                                                   fixorientation = *vector None
                                                   nth_power_scale_radii = 0.1
