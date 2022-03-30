@@ -343,6 +343,7 @@ class around_model(with_bounds):
   Bounds:
     if model_can_be_outside_bounds, allow model to be outside the bounds
     if stay_inside_current_map, adjust bounds to not go outside current map
+      in the case that bounds are entirely outside current map, use current map
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
@@ -384,8 +385,16 @@ class around_model(with_bounds):
       model = model,
       box_cushion = box_cushion,
       stay_inside_current_map = stay_inside_current_map)
-    self.gridding_first = info.lower_bounds
-    self.gridding_last = info.upper_bounds
+    from scitbx.matrix import col
+    if flex.double(col(info.upper_bounds) - col(info.lower_bounds)
+        ).min_max_mean().min < -0.5:  # nothing there
+      raise AssertionError("Sorry, model is entirely outside box,"+
+        " so boxing around model staying inside current map is not possible")
+      self.gridding_first = map_manager.data().origin()
+      self.gridding_last = map_manager.data().all()
+    else: # usual
+      self.gridding_first = info.lower_bounds
+      self.gridding_last = info.upper_bounds
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
