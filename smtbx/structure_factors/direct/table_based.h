@@ -163,28 +163,35 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       using namespace std;
       ifstream tsc_file(file_name.c_str(), ios::binary);
 
+      auto charsize = sizeof(char);
       int head[1];
-      tsc_file.read((char*)&head, sizeof(head));
-      char* header = new char[head[0]];
-      tsc_file.read(header, head[0] * sizeof(char));
-      string header_str(header);
-      free(header);
+      auto intsize = sizeof(head);
+      tsc_file.read((char*)&head, intsize);
+      char* header;
+      string header_str;
+      if (head[0] != 0) {
+        header = new char[head[0]];
+        tsc_file.read(header, head[0] * charsize);
+        header_str = header;
+        free(header);
+      }
       //read scatterer labels and map onto scattterers list
       int sc_len[1];
-      tsc_file.read((char*)&sc_len, sizeof(sc_len));
-      char* scat_line = new char[sc_len[0]];
-      tsc_file.read(scat_line, sc_len[0] * sizeof(char));
-      string scat_str(scat_line);
-      free(scat_line);
+      tsc_file.read((char*)&sc_len, intsize);
+      vector<char> scat_line(sc_len[0]);
+      tsc_file.read((char*)scat_line.data(), sc_len[0] * charsize);
+      string scat_str(scat_line.begin(),scat_line.end());
+      //scat_str.resize(sc_len[0]);
       vector<string> toks;
       boost::split(toks, scat_str, boost::is_any_of(" "));
       SMTBX_ASSERT(toks.size() == scatterers.size());
       map<string, size_t> sc_map;
-      for (size_t sci = 0; sci < scatterers.size(); sci++) {
+      const int nr_scat = scatterers.size();
+      for (size_t sci = 0; sci < nr_scat; sci++) {
         sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
       }
-      vector<size_t> sc_indices(scatterers.size());
-      for (size_t sci = 0; sci < scatterers.size(); sci++) {
+      vector<size_t> sc_indices(nr_scat);
+      for (size_t sci = 0; sci < nr_scat; sci++) {
         boost::to_upper(toks[sci]);
         map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
         if(fsci == sc_map.end()){
@@ -196,11 +203,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       parent_t::expanded = true;
       //read number of indices in tscb file
       int nr_hkl[1];
-      tsc_file.read((char*)&nr_hkl, sizeof(nr_hkl));
+      tsc_file.read((char*)&nr_hkl, intsize);
       //read indices and scattering factors row by row
       int index[3];      
       for (int run = 0; run < *nr_hkl; run++) {
-        tsc_file.read((char*)&index, 3*sizeof(int));
+        tsc_file.read((char*)&index, 3*intsize);
         cctbx::miller::index<> mi(index[0], index[1], index[2]);
         parent_t::miller_indices_.push_back(mi);
         vector<complex<double>> row(scatterers.size());
