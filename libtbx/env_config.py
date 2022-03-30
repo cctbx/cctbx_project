@@ -523,7 +523,7 @@ class environment:
 
   def as_relocatable_path(self, path):
     if isinstance(path, libtbx.path.path_mixin): return path
-    return relocatable_path(self.build_path, path)
+    return relocatable_path(self.build_path, path, resolve_symlinks=False)
 
   def set_derived_paths(self):
     r = self.as_relocatable_path

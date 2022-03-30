@@ -349,13 +349,18 @@ class absolute_path(path_mixin):
 
 
 class relocatable_path(path_mixin):
-  def __init__(self, anchor, relocatable):
+  def __init__(self, anchor, relocatable, resolve_symlinks=True):
     assert isinstance(anchor, absolute_path)
     self._anchor = anchor
     if op.isabs(relocatable):
+      path = abs(absolute_path(relocatable))
+      start = abs(self._anchor)
+      if resolve_symlinks:
+        path = op.realpath(path)
+        start = op.realpath(start)
       relocatable = relpath(
-        path=op.realpath(abs(absolute_path(relocatable))),
-        start=op.realpath(abs(self._anchor)),
+        path=path,
+        start=start,
         enable_abspath_if_through_root=True)
     self.relocatable = relocatable
 

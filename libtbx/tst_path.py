@@ -168,6 +168,27 @@ The following 5 files will be deleted:
 0.0 KB of disk space will be freed.
 """), out.getvalue()
 
+def exercise_symlinks_in_relocatable_path():
+  import os
+  import tempfile
+  from libtbx.path import abs_real_norm, absolute_path, relocatable_path
+
+  cwd = abs_real_norm(os.getcwd())  # ensure no symbolic links
+
+  with tempfile.NamedTemporaryFile(dir=cwd) as f:
+
+    original = f.name
+    link = os.path.join(cwd, 'abc')
+    os.symlink(original, link)
+
+    # symbolic link is resolved
+    l = relocatable_path(absolute_path(cwd), link)
+    assert abs(l) == original
+
+    # symbolic link is kept
+    l = relocatable_path(absolute_path(cwd), link, resolve_symlinks=False)
+    assert abs(l) == link
+
 def run(args):
   assert len(args) == 0
   exercise_relpath()
@@ -176,9 +197,10 @@ def run(args):
   assert len(random_new_directory_name()) == len("tmp_dir_00000000")
   import os
   if (os.name == "nt") : # FIXME
-    print("skipping directory cleanup test on Windows")
+    print("skipping directory cleanup and symbolic link tests on Windows")
   else :
     exercise_cleanup()
+    exercise_symlinks_in_relocatable_path()
   print("OK")
 
 if (__name__ == "__main__"):
