@@ -69,7 +69,7 @@ steps:
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    conda install -y -c conda-forge pandas distro -n $(PYTHON_VERSION)
+    conda install -y -c conda-forge cmake pandas distro -n $(PYTHON_VERSION)
   displayName: Create conda environment
 
 # build
@@ -78,7 +78,18 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     rm -rf modules/boost
-    python bootstrap.py --builder=xfel --use-conda $CONDA_PREFIX --nproc=4 --config-flags="--enable_openmp_if_possible=True" --config-flags="--compiler=conda" --config-flags="--use_environment_flags" --config-flags="--enable_cxx11" --config-flags="--no_bin_python" --no-boost-src build
+    python bootstrap.py \
+      --builder=xfel \
+      --use-conda $CONDA_PREFIX \
+      --nproc=4 \
+      --config-flags="--enable_openmp_if_possible=True" \
+      --config-flags="--compiler=conda" \
+      --config-flags="--use_environment_flags" \
+      --config-flags="--enable_cxx11" \
+      --config-flags="--no_bin_python" \
+      --config-flags="--enable_kokkos" \
+      --no-boost-src \
+      build
     if [ "$(OS)" = "linux" ]; then
       cd build
       source conda_setpaths.sh
@@ -98,8 +109,8 @@ steps:
     libtbx.configure xfel_regression LS49 ls49_big_data
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
-    export OMP_NUM_THREADS=4
-    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=4
+    export OMP_NUM_THREADS=2
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
 
