@@ -163,11 +163,16 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       using namespace std;
       ifstream tsc_file(file_name.c_str(), ios::binary);
 
-      auto charsize = sizeof(char);
-      int head[1];
-      auto intsize = sizeof(head);
+      const auto charsize = sizeof(char);
+      int head[1] = { 0 };
+      const auto intsize = sizeof(head);
+      const auto complex_doublesize = sizeof(complex<double>);
+      const auto complex_type_size = sizeof(complex_type);
+      //If the size is not according to double type the binary will not be readable
+      SMTBX_ASSERT(complex_doublesize == complex_type_size);
       tsc_file.read((char*)&head, intsize);
       char* header;
+      const int nr_scat = scatterers.size();
       string header_str;
       if (head[0] != 0) {
         header = new char[head[0]];
@@ -176,17 +181,15 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         free(header);
       }
       //read scatterer labels and map onto scattterers list
-      int sc_len[1];
+      int sc_len[1] = {0};
       tsc_file.read((char*)&sc_len, intsize);
       vector<char> scat_line(sc_len[0]);
       tsc_file.read((char*)scat_line.data(), sc_len[0] * charsize);
       string scat_str(scat_line.begin(),scat_line.end());
-      //scat_str.resize(sc_len[0]);
       vector<string> toks;
       boost::split(toks, scat_str, boost::is_any_of(" "));
-      SMTBX_ASSERT(toks.size() == scatterers.size());
+      SMTBX_ASSERT(toks.size() == nr_scat);
       map<string, size_t> sc_map;
-      const int nr_scat = scatterers.size();
       for (size_t sci = 0; sci < nr_scat; sci++) {
         sc_map[boost::to_upper_copy(scatterers[sci].label)] = sci;
       }
@@ -199,19 +202,23 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
         sc_indices[sci] = fsci->second;
       }
+      SMTBX_ASSERT(sc_map.size() == scatterers.size());
       //binary tsc files will only be written in expanded mode
       parent_t::expanded = true;
       //read number of indices in tscb file
-      int nr_hkl[1];
+      int nr_hkl[1] = { 0 };
       tsc_file.read((char*)&nr_hkl, intsize);
       //read indices and scattering factors row by row
-      int index[3];      
+      int index[3] = { 0,0,0 };
+      vector<complex<double>> row(nr_scat);
+      parent_t::data_.reserve(nr_hkl[0] * nr_scat);
       for (int run = 0; run < *nr_hkl; run++) {
         tsc_file.read((char*)&index, 3*intsize);
         cctbx::miller::index<> mi(index[0], index[1], index[2]);
         parent_t::miller_indices_.push_back(mi);
-        vector<complex<double>> row(scatterers.size());
-        tsc_file.read((char*)row.data(), scatterers.size() * sizeof(complex<double>));
+        for (int i = 0; i < nr_scat; i++) {
+          tsc_file.read((char*)&(row[sc_indices[i]]), complex_doublesize);
+        }
         parent_t::data_.push_back(row);
       }
       tsc_file.close();
