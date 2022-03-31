@@ -1100,6 +1100,21 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.AutoClipWidthCheckBox.setChecked(self.currentphilstringdict['clip_plane.auto_clip_width'] == True)
     self.clipwidth_spinBox.setDisabled(self.AutoClipWidthCheckBox.isChecked() )
 
+    lbl = self.currentphilstringdict['clip_plane.normal_vector']
+    idx = -1
+    if len(self.all_vectors) > 0:
+      for i,(opnr,label,order,cartvec,hklop,hkls,abcs,length) in enumerate(self.all_vectors):
+        if lbl == label:
+          idx = i
+          break
+      opnr,label,order,cartvec,hklop,hkls,abcs,length = self.all_vectors[idx]
+      if hkls == "" or not self.ClipPlaneChkGroupBox.isChecked():
+        self.normal_realspace_vec_btn.setEnabled(False)
+        self.normal_realspace_vec_label.setEnabled(False)
+      else:
+        self.normal_realspace_vec_btn.setEnabled(True)
+        self.normal_realspace_vec_label.setEnabled(True)
+
     if self.currentphilstringdict['viewer.fixorientation'] is not None:
       self.parallel_current_orientation_btn.setChecked( "None" in self.currentphilstringdict['viewer.fixorientation'] \
          or self.currentphilstringdict['viewer.is_parallel'] )
@@ -1109,19 +1124,10 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.normal_realspace_vec_btn.setChecked( "vector" in self.currentphilstringdict['viewer.fixorientation'] and \
         not self.currentphilstringdict['viewer.is_parallel'] and \
         self.currentphilstringdict['clip_plane.is_assoc_real_space_vector'])
-      self.clipplane_normal_vector_combo.setCurrentIndex(self.currentphilstringdict['clip_plane.normal_vector'] )
+
+      self.clipplane_normal_vector_combo.setCurrentIndex(idx )
       if isinstance(self.clipplane_normal_vector_combo.currentData(), float) or isinstance(self.clipplane_normal_vector_combo.currentData(), int):
         self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
-
-    idx = self.clipplane_normal_vector_combo.currentIndex()
-    if len(self.all_vectors) > 0:
-      opnr, label, order, cartvec, hklop, hkls, abcs, length = self.all_vectors[idx]
-      if hkls == "" or not self.ClipPlaneChkGroupBox.isChecked():
-        self.normal_realspace_vec_btn.setEnabled(False)
-        self.normal_realspace_vec_label.setEnabled(False)
-      else:
-        self.normal_realspace_vec_btn.setEnabled(True)
-        self.normal_realspace_vec_label.setEnabled(True)
 
     if self.currentphilstringdict['viewer.show_vector'] is not None:
       ivecs = self.currentphilstringdict['viewer.show_vector']
@@ -1638,9 +1644,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
     philstr = """viewer.fixorientation = *vector
 clip_plane.clip_width = %f
-clip_plane.normal_vector = %d
+clip_plane.normal_vector = "%s"
 clip_plane.normal_vector_length_scale = -1
-""" %(self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+""" %(self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentText())
     self.send_message(philstr)
 
 
@@ -1651,7 +1657,7 @@ clip_plane.normal_vector_length_scale = -1
     self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
 clip_plane.clip_width = %f
-clip_plane.normal_vector = -1
+clip_plane.normal_vector = "-1"
 """ %self.clipwidth_spinBox.value()
     self.send_message(philstr)
 
@@ -1664,10 +1670,10 @@ clip_plane.normal_vector = -1
     philstr = """viewer.fixorientation = *vector
 viewer.is_parallel = False
 clip_plane.clip_width = %f
-clip_plane.normal_vector = %d
+clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = False
 clip_plane.normal_vector_length_scale = -1
-""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentText())
     self.send_message(philstr)
 
 
@@ -1679,10 +1685,10 @@ clip_plane.normal_vector_length_scale = -1
     philstr = """viewer.fixorientation = *vector
 viewer.is_parallel = False
 clip_plane.clip_width = %f
-clip_plane.normal_vector = %d
+clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = True
 clip_plane.normal_vector_length_scale = -1
-""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentText())
     self.send_message(philstr)
 
 
@@ -1738,10 +1744,10 @@ clip_plane.normal_vector_length_scale = -1
   fixorientation = *vector
 }
 clip_plane.clip_width = %f
-clip_plane.normal_vector = %d
+clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = True
 clip_plane.normal_vector_length_scale = -1
-""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentText())
       elif self.normal_vec_btn.isChecked():
         self.clipplane_normal_vector_combo.setEnabled(True)
         self.RotateGroupBox.setEnabled(False)
@@ -1752,10 +1758,10 @@ clip_plane.normal_vector_length_scale = -1
   fixorientation = *vector
 }
 clip_plane.clip_width = %f
-clip_plane.normal_vector = %d
+clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = False
 clip_plane.normal_vector_length_scale = -1
-""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentIndex())
+""" %( self.clipwidth_spinBox.value(), self.clipplane_normal_vector_combo.currentText())
       else:
         self.clipplane_normal_vector_combo.setEnabled(False)
         self.RotateGroupBox.setEnabled(True)
@@ -1766,7 +1772,7 @@ clip_plane.normal_vector_length_scale = -1
   fixorientation = *None
 }
 clip_plane.clip_width = %f
-clip_plane.normal_vector = -1
+clip_plane.normal_vector = "-1"
           """ %self.clipwidth_spinBox.value()
     else:
       philstr = """viewer {

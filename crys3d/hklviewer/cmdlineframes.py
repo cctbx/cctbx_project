@@ -410,10 +410,10 @@ class HKLViewFrame() :
     philstrvalsdict = {}
     lst = []
     for e in self.currentphil.all_definitions():
-      # deal with multiple definitions of a phil parameter by appending them to a list and 
+      # deal with multiple definitions of a phil parameter by appending them to a list and
       # then assigning that list to the dictionary value with the key e.path. This assumes
       # that e.object is a phil parameter and not a phil scope
-      if e.object.multiple == True: 
+      if e.object.multiple == True:
         lst.append(e.object.extract())
         philstrvalsdict[e.path] = lst
       else:
@@ -1547,8 +1547,8 @@ masterphilstr = """
       .type = str
     hkldist = 0.0
       .type = float
-    normal_vector = -1
-      .type = int
+    normal_vector = "-1"
+      .type = str
     is_assoc_real_space_vector = False
       .type = bool
       .caption = "Indicate if using associated real space vector to the selected vector"

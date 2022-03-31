@@ -137,6 +137,7 @@ class hklview_3d:
     self.normal_hk = None
     self.normal_kl = None
     self.normal_lh = None
+    self.normal_vecnr = -1
     self.isnewfile = False
     self.has_new_miller_array = False
     self.sleeptime = 0.01 # 0.025
@@ -473,20 +474,22 @@ class hklview_3d:
         clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       infomsg = ""
-      if isinstance(self.params.clip_plane.normal_vector, str):
-        vecnr = val
+      self.normal_vecnr = -1
+      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
+        if self.params.clip_plane.normal_vector == label:
+          self.normal_vecnr = i
 
-      if self.params.clip_plane.normal_vector != -1: # then we are orienting clip plane with a vector
+      if self.normal_vecnr != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
         # or abcvec vector in cartesian coordinates
-        cartvec = self.all_vectors[ self.params.clip_plane.normal_vector ][3]
-        self.L = self.all_vectors[ self.params.clip_plane.normal_vector ][7]
+        cartvec = self.all_vectors[ self.normal_vecnr ][3]
+        self.L = self.all_vectors[ self.normal_vecnr ][7]
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
         # into the reciprocal coordinates
         try:
-          hklvec = eval(self.all_vectors[ self.params.clip_plane.normal_vector ][5])
+          hklvec = eval(self.all_vectors[ self.normal_vecnr ][5])
         except Exception as e:
           hklvec = list(self.reciprocal_from_real_space_vector(cartvec ))
         # Get corresponding real space vector to the hkl vector (as cartesian coordinates)
@@ -500,9 +503,9 @@ class hklview_3d:
           self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
         else:
           orientvector = cartvec
-          abcvec = self.all_vectors[ self.params.clip_plane.normal_vector ][6]
+          abcvec = self.all_vectors[ self.normal_vecnr ][6]
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec))
-          if self.all_vectors[ self.params.clip_plane.normal_vector ][1] == "TNCS":
+          if self.all_vectors[ self.normal_vecnr ][1] == "TNCS":
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between the clip planes
             The tncs modulation length is the inverse length of the tncs vector as defined in
@@ -1567,7 +1570,7 @@ class hklview_3d:
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
               visiblehkls.append(hkl)
-              if self.params.clip_plane.normal_vector != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
+              if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
                self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
                 outsideplanehkls.append(hkl)
             self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
