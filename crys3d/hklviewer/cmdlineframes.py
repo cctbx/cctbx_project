@@ -92,7 +92,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      self.mprint("CCTBX starting socket thread", verbose=1)
+      self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
@@ -319,8 +319,8 @@ class HKLViewFrame() :
                                          binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
 
-      if phl.spacegroup_choice == None:
-        self.mprint("! spacegroup_choice == None")
+      #if phl.spacegroup_choice == None:
+      #  self.mprint("! spacegroup_choice == None")
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -528,7 +528,7 @@ class HKLViewFrame() :
       c = 0
       self.spacegroup_choices.insert(c, sg_info)
       self.current_spacegroup = sg_info
-    self.params.spacegroup_choice = c
+    #self.params.spacegroup_choice = c
     spglst = [e.symbol_and_number() for e in self.spacegroup_choices] + ["original spacegroup"]
     mydict = { "spacegroups": spglst }
     self.SendInfoToGUI(mydict)
@@ -1532,7 +1532,7 @@ masterphilstr = """
     .type = bool
   miller_array_operations = ''
     .type = str
-  spacegroup_choice = 0
+  spacegroup_choice = None
     .type = int
   using_space_subgroup = False
     .type = bool
@@ -1642,7 +1642,7 @@ def run():
   """
   utility function for passing keyword arguments more directly to HKLViewFrame()
   """
-  #time.sleep(10) # enough for attaching debugger
+  #time.sleep(15) # enough for attaching debugger
   # dirty hack for parsing a file path with spaces of a browser if not using default
   args = sys.argv[1:]
   sargs = " ".join(args)
@@ -1669,7 +1669,7 @@ def run():
       kwargs['hklin'] = arg
 
   myHKLview = HKLViewFrame(**kwargs)
-  return myHKLview
+  return myHKLview # only necessary for aiding debugging or line profiling
 
 
 if __name__ == '__main__':

@@ -560,7 +560,13 @@ newarray._sigmas = sigs
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
     self.closing = True
+    self.settingsform.setVisible(False)
+    self.aboutform.setVisible(False)
+    self.millerarraytableform.setVisible(False)
+    self.ColourMapSelectDlg.setVisible(False)
+    self.select_millertable_column_dlg.setVisible(False)
     self.window.setVisible(False)
+
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
     print("HKLviewer closing down")
@@ -722,7 +728,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             # use NGL's download feature for images since websocket_server fails to handle large streams
             self.webpage.profile().downloadRequested.connect(self.Browser_download_requested)
           return
-
         self.infodict = eval(msgstr)
         if self.infodict:
           if self.infodict.get("WebGL_error"):
@@ -1235,8 +1240,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onResetFactoryDefault(self):
-    ret = QMessageBox.warning(self.window, "Reset HKLviewer settings",
-                              "Are you sure to use factory defaults next time HKLviewer starts?",
+    ret = QMessageBox.warning(self.window, "Reset to factory defaults next time HKLviewer starts",
+                              "Are you sure?",
                               buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
     if ret == QMessageBox.Yes:
       self.RemoveQsettings()

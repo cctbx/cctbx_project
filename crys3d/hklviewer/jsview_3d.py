@@ -355,13 +355,17 @@ class hklview_3d:
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
 
-    if has_phil_path(diff_phil,
-                       "color_scheme",
-                       "color_powscale",
-                       "scale",
-                       "nth_power_scale_radii"
-                       ):
-      self.add_colour_map_radii_power_to_dict()
+    if has_phil_path(diff_phil, "color_scheme"):
+      self.add_colour_scheme_to_dict()
+
+    if has_phil_path(diff_phil, "color_powscale"):
+      self.add_colour_powscale_to_dict()
+
+    if has_phil_path(diff_phil, "nth_power_scale_radii"):
+      self.add_nth_power_scale_radii_to_dict()
+
+    if has_phil_path(diff_phil, "scale"):
+      self.add_radii_scale_to_dict()
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
@@ -507,7 +511,7 @@ class hklview_3d:
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec))
           if self.all_vectors[ self.normal_vecnr ][1] == "TNCS":
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
-            as to ensure we only get the strongest/weakest reflections between the clip planes
+            as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
             The tncs modulation length is the inverse length of the tncs vector as defined in
             HKLViewFrame.list_vectors() where the length is stored as half the length of the tncs vector
             for the sake of stepping through alternating weak and strong layers with the +/- buttons.
@@ -527,7 +531,7 @@ class hklview_3d:
             infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
-        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[ self.params.clip_plane.normal_vector ][1] != "TNCS":
+        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "TNCS":
           scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
@@ -1118,18 +1122,33 @@ class hklview_3d:
 
 
   def get_colour_map_radii_power(self):
-    datatype = self.get_current_datatype()
-    if self.viewerparams.sigma_color_radius:
-      datatype = datatype + "_sigmas"
-    if datatype not in self.datatypedict.keys():
-        # ensure individual copies of datatypedefault and not references to the same
-      self.datatypedict[ datatype ] = self.datatypedefault[:]
+    datatype = self.get_current_datatype_or_default_dict()
     colourscheme, colourpower, powerscale, radiiscale = \
         self.datatypedict.get( datatype, self.datatypedefault[:] )
     return colourscheme, colourpower, powerscale, radiiscale
 
 
-  def add_colour_map_radii_power_to_dict(self):
+  def add_colour_scheme_to_dict(self):
+    datatype = self.get_current_datatype_or_default_dict()
+    self.datatypedict[datatype][0] = self.viewerparams.color_scheme
+
+
+  def add_colour_powscale_to_dict(self):
+    datatype = self.get_current_datatype_or_default_dict()
+    self.datatypedict[datatype][1] = self.viewerparams.color_powscale
+
+
+  def add_nth_power_scale_radii_to_dict(self):
+    datatype = self.get_current_datatype_or_default_dict()
+    self.datatypedict[datatype][2] = self.viewerparams.nth_power_scale_radii
+
+
+  def add_radii_scale_to_dict(self):
+    datatype = self.get_current_datatype_or_default_dict()
+    self.datatypedict[datatype][3] = self.viewerparams.scale
+
+
+  def get_current_datatype_or_default_dict(self):
     datatype = self.get_current_datatype()
     if datatype is None:
       return
@@ -1138,10 +1157,7 @@ class hklview_3d:
     if datatype not in self.datatypedict.keys():
         # ensure individual copies of datatypedefault and not references to the same
       self.datatypedict[ datatype ] = self.datatypedefault[:]
-    self.datatypedict[datatype][0] = self.viewerparams.color_scheme
-    self.datatypedict[datatype][1] = self.viewerparams.color_powscale
-    self.datatypedict[datatype][2] = self.viewerparams.nth_power_scale_radii
-    self.datatypedict[datatype][3] = self.viewerparams.scale
+    return datatype
 
 
   def DrawNGLJavaScript(self, blankscene=False):
