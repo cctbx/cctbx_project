@@ -67,7 +67,11 @@ _AromaticTable = [
   # reside and atom name is not duplicated, but there are multiple entries for some residues --
   # this is not a set.
 
-  [ ['HIS'], ['ND1','NE2'] ],
+  # Do not mark the atoms in the Histidine ring or the atoms in the TRP 5-sided
+  # ring as acceptors just because they are in the ring.  5-sided rings were getting too
+  # many bonds from the sides.  Once we have a better aromatic ring hydrogen bond test,
+  # we may put these back in.
+  #[ ['HIS'], ['ND1','NE2'] ],
 
   [ ['ADE','A'], ['N1','N3','N7','C2','C4','C5','C6','C8','N9'] ],
   [ ['CYT','C'], ['N3','N1','C2','C4','C5','C6'] ],
@@ -93,8 +97,13 @@ _AromaticTable = [
               'C1D','C2D','C3D','C4D'] ],
   [ ['PHE'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
   [ ['TYR'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
+  # Do not mark the atoms in the Histidine ring or the atoms in the TRP 5-sided
+  # ring as acceptors just because they are in the ring.  5-sided rings were getting too
+  # many bonds from the sides.  Once we have a better aromatic ring hydrogen bond test,
+  # we may put these back in.
   # [ ['HIS'], ['CD2','CE1','CG'] ],
-  [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','NE1','CD2','CD1','CG'] ],
+  # [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','NE1','CD2','CD1','CG'] ],
+  [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','CD2'] ],
 
   # Here we add the hydrogens and deuteriums that can be part of a ring from probe:select.c
   [ ['PHE'], ['HD1','HD2','HE1','HE2','HZ','DD1','DD2','DE1','DE2','DZ'] ],
