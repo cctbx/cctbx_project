@@ -8,6 +8,7 @@ from cctbx import miller, sgtbx
 from scitbx import graphics_utils
 from scitbx import matrix
 import scitbx.math
+from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
 if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
@@ -1888,10 +1889,11 @@ Distance: %s
 
   def get_cartesian_vector_angles(self, s1, s2, s3, t1, t2, t3):
     svec = [t1-s1, t2-s2, t3-s3]
+    svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
-    if xyvecnorm > 0.0:
+    if xyvecnorm > 0.0 and not approx_equal(xyvecnorm/svecnorm, 0.0):
       angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
       angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
     else:
@@ -1900,13 +1902,12 @@ Distance: %s
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
-    if yzvecnorm > 0.0:
+    if yzvecnorm > 0.0 and not approx_equal(yzvecnorm/svecnorm, 0.0):
       angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
       angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
     else:
       angle_y_yzvec = 90.0
       angle_z_yzvec = 90.0
-    svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi

@@ -112,14 +112,14 @@ class HKLViewFrame() :
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
+    self.allbuttonslist = buttonsdeflist
     if os.path.exists(self.userpresetbuttonsfname):
       spec = importlib.util.spec_from_file_location("UserPresetButtons", self.userpresetbuttonsfname)
       self.mprint("Found UserPresetButtons in the HOME directory")
       UserPresetButtons_module = importlib.util.module_from_spec(spec)
       sys.modules["UserPresetButtons"] = UserPresetButtons_module
       spec.loader.exec_module(UserPresetButtons_module)
-    self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
-
+      self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
 
     self.ResetPhilandViewer()
     self.firsttime = True
