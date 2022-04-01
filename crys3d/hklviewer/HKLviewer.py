@@ -37,11 +37,6 @@ except Exception as e: # if invoked by a generic python that doesn't know cctbx 
   from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 
-try:
-  from .PresetButtons import buttonsdeflist
-except Exception as e: # if the user provides their own customised radio buttons
-  buttonsdeflist = []
-
 
 class MakeNewDataForm(QDialog):
   def __init__(self, parent=None):
@@ -289,7 +284,7 @@ class NGL_HKLViewer(HKLviewerGui.Ui_MainWindow):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
     self.ReadPersistedQsettings()
-    self.makePresetButtons()
+    self.buttonsdeflist =[]
     self.app = thisapp
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
@@ -541,17 +536,8 @@ newarray._sigmas = sigs
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
 
 
-  def makePresetButtons(self):
-    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
-      self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
-      self.__getattribute__(btnname).setObjectName(btnname)
-      self.__getattribute__(btnname).setText(label)
-      self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
-      self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
-
-
   def onPresetbtn_click(self):
-    for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+    for i,((btnname, label, philstr), isenabled) in enumerate(self.buttonsdeflist):
       if self.__getattribute__(btnname).isChecked():
         self.send_message(philstr, msgtype = "preset_philstr")
         break
@@ -986,9 +972,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.datatypedict = self.infodict.get("datatype_dict", {} )
 
           if self.infodict.get("enable_disable_preset_buttons"):
-            activebtns = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
-            for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
-              self.__getattribute__(btnname).setEnabled(activebtns[i])
+            self.buttonsdeflist = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
+            for i in reversed(range(self.gridLayout_24.count())):
+              # first delete any previous widgets from last time a file was loaded
+              self.gridLayout_24.itemAt(i).widget().setParent(None)
+            for i,((btnname, label, _), isenabled) in enumerate(self.buttonsdeflist):
+              self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
+              self.__getattribute__(btnname).setObjectName(btnname)
+              self.__getattribute__(btnname).setText(label)
+              self.__getattribute__(btnname).setEnabled(isenabled)
+              self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
+              self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
 
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)

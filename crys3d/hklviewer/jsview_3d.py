@@ -15,7 +15,7 @@ if sys.version_info[0] > 2: # using websockets which is superior to websocket_se
 else: # using websocket_server
   from crys3d.hklviewer.WebBrowserMessengerPy2 import WBmessenger
 
-import os.path, time, copy
+import os.path, time, copy, re
 import libtbx
 import libtbx.load_env
 import webbrowser, tempfile
@@ -81,7 +81,9 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.w
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
-lock_timeout=5 # for the sempahores
+lock_timeout=45 # for the sempahores. Rendering could take a while for very large file. Until that
+# has been completed geometries of the stage such as clipnear, clipfar, cameraZ and bounding box
+# are undefined
 
 
 class hklview_3d:
@@ -147,7 +149,6 @@ class hklview_3d:
     self.oldnbinvalsboundaries = None
     self.proc_arrays = []
     self.HKLscene = []
-    self.HKLscenes = []
     self.HKLscenedict = {}
     self.HKLscenesdict = {}
     self.HKLscenesMaxdata = []
@@ -379,30 +380,6 @@ class hklview_3d:
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
 
-    if has_phil_path(diff_phil, "show_symmetry_rotation_axes"):
-      self.show_rotation_axes()
-
-    if has_phil_path(diff_phil, "show_vector"):
-      for i,ivec in enumerate(self.viewerparams.show_vector):
-        try:
-          [val, isvisible] = eval(ivec)
-          # in case val is the label for one of the vectors let show_vector() find the
-          #  corresponding number and reassign ivec to "[number, bool]"
-          if has_phil_path(diff_phil, "animate_rotation_around_vector"):
-            # don't zoom if also initiating animation from this set of phil parameters
-            ivec = self.show_vector(val, isvisible, autozoom=False)
-          else:
-            # autozoom causes race condition with unreleased semaphore clipplane_msg_sem
-            # if more vectors are to be drawn at once
-            ivec = self.show_vector(val, isvisible, autozoom=False)
-            #ivec = self.show_vector(val, isvisible, autozoom=isvisible)
-          self.viewerparams.show_vector[i] = ivec
-        except Exception as e:
-          pass
-
-    if has_phil_path(diff_phil, "show_all_vectors"):
-      self.show_all_vectors()
-
     if has_phil_path(diff_phil, "angle_around_vector"):
       i,deg = self.rotate_around_numbered_vector()
       self.params.clip_plane.angle_around_vector = str([i, deg])
@@ -440,13 +417,23 @@ class hklview_3d:
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
                       "clip_plane",
+                      "show_symmetry_rotation_axes",
+                      "show_vector",
+                      "show_all_vectors",
                       "viewer") and self.viewerparams.scene_id is not None:
        # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25)
+      self.show_rotation_axes()
+      self.show_vectors(self.viewerparams.show_vector, diff_phil)
+
+      if has_phil_path(diff_phil, "show_all_vectors"):
+        self.show_all_vectors()
+
       self.set_volatile_params()
+
     if has_phil_path(diff_phil, "fontsize"):
       self.SetFontSize(self.ngl_settings.fontsize)
 
@@ -671,25 +658,23 @@ class hklview_3d:
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
-    for hklscene in self.HKLscenes:
+    for proc_array in self.proc_arrays:
       sigvals = []
       datvals = []
-      if hklscene.isUsingFOMs():
-        continue # already have tooltips for the scene without the associated fom
-      if hklscene.work_array.sigmas() is not None:
-        sigvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).sigmas() )
+      if proc_array.sigmas() is not None:
+        sigvals = list( proc_array.select(proc_array.indices() == hkl).sigmas() )
       datval = None
-      if hkl in hklscene.work_array.indices():
-        datvals = list( hklscene.work_array.select(hklscene.work_array.indices() == hkl).data() )
+      if hkl in proc_array.indices():
+        datvals = list( proc_array.select(proc_array.indices() == hkl).data() )
       else:
-        if id >= hklscene.data.size():
+        if id >= proc_array.size():
           continue
       for i,datval in enumerate(datvals):
-        if hklscene.work_array.is_hendrickson_lattman_array() and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
+        if proc_array.is_hendrickson_lattman_array() and math.isnan(datval[0] + datval[1] + datval[2] + datval[3]):
           continue
         if not isinstance(datval, tuple) and (math.isnan( abs(datval) ) or datval == display.inanval):
           continue
-        if hklscene.work_array.is_complex_array():
+        if proc_array.is_complex_array():
           ampl = abs(datval)
           phase = cmath.phase(datval) * 180.0/math.pi
           # purge nan values from array to avoid crash in fmod_positive()
@@ -698,8 +683,8 @@ class hklview_3d:
             phase = 42.4242
           # Cast negative degrees to equivalent positive degrees
           phase = phase % 360.0
-        spbufttip +="\\n" + hklscene.work_array.info().label_string() + ': '
-        if hklscene.work_array.is_complex_array():
+        spbufttip +="\\n" + proc_array.info().label_string() + ': '
+        if proc_array.is_complex_array():
           spbufttip += str(roundoff(ampl, 2)) + ", " + str(roundoff(phase, 2)) + \
             "\'+ String.fromCharCode(176) +\'" # degree character for javascript
         elif sigvals:
@@ -2048,9 +2033,31 @@ in the space group %s\nwith unit cell %s\n""" \
           return str([i, isvisible])
 
 
+  def show_vectors(self, philvectors, diff_phil):
+    # autozoom may cause deadlock with unreleased semaphore clipplane_msg_sem
+    # if more vectors are to be drawn at once. Avoid that.
+    m = re.findall("(True)", str(philvectors)) # are there more vectors to be drawn?
+    doautozoom = True
+    if len(m) > 1:
+      doautozoom = False
+    for i,ivec in enumerate(philvectors):
+      try:
+        [val, isvisible] = eval(ivec)
+        # in case val is the label for one of the vectors let show_vector() find the
+        #  corresponding number and reassign ivec to "[number, bool]"
+        if has_phil_path(diff_phil, "animate_rotation_around_vector"):
+          # don't zoom if also initiating animation from this set of phil parameters
+          ivec = self.show_vector(val, isvisible, autozoom=False)
+        else:
+          ivec = self.show_vector(val, isvisible, autozoom=(isvisible and doautozoom))
+        philvectors[i] = ivec
+      except Exception as e:
+        pass
+
+
   def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
     # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
-    name = label + hklop.replace(",", "_")
+    name = label + "_" + hklop.replace(",", "_")
     if isvisible:
       self.currentrotvec = cartvec # cartesian vector to display and used for aligning
       if order > 0 and hklop != "":
@@ -2122,7 +2129,8 @@ in the space group %s\nwith unit cell %s\n""" \
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
         if val==label:
           vecnr = i
-    assert (vecnr>=0 and vecnr < len(self.all_vectors))
+    if not (vecnr>=0 and vecnr < len(self.all_vectors)):
+      raise Sorry("No vector present in file with label or index: %s" %val)
     self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
     return vecnr,deg
 

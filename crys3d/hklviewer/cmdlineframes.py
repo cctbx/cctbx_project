@@ -20,6 +20,9 @@ import libtbx
 import libtbx.load_env
 import traceback
 import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
+from pathlib import Path
+import importlib.util
+
 try:
   from .PresetButtons import buttonsdeflist
 except Exception as e: # if the user provides their own customised radio buttons for the GUI
@@ -72,7 +75,9 @@ class HKLViewFrame() :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.outputmsgtypes = []
+    self.userpresetbuttonsfname = os.path.join( Path.home(), ".HKLviewerButtons.py")
     self.infostr = ""
+    self.allbuttonslist = []
     self.hklfile_history = []
     self.arrayinfos = []
     self.tncsvec = None
@@ -107,6 +112,15 @@ class HKLViewFrame() :
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
     self.viewer = view_3d.hklview_3d( **kwds )
+    if os.path.exists(self.userpresetbuttonsfname):
+      spec = importlib.util.spec_from_file_location("UserPresetButtons", self.userpresetbuttonsfname)
+      self.mprint("Found UserPresetButtons in the HOME directory")
+      UserPresetButtons_module = importlib.util.module_from_spec(spec)
+      sys.modules["UserPresetButtons"] = UserPresetButtons_module
+      spec.loader.exec_module(UserPresetButtons_module)
+    self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
+
+
     self.ResetPhilandViewer()
     self.firsttime = True
     self.idx_data = None
@@ -174,6 +188,7 @@ class HKLViewFrame() :
           self.update_settings(new_phil)
         if msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
+          self.viewer.SetDefaultOrientation
           self.ResetPhil()
           self.viewer.sceneisdirty = True
           self.viewer.executing_preset_btn = True
@@ -948,7 +963,7 @@ class HKLViewFrame() :
     if not self.validated_preset_buttons:
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
-      for i,(btnname, label, philstr) in enumerate(buttonsdeflist):
+      for i,(btnname, label, philstr) in enumerate(self.allbuttonslist):
         rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
         rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
         m = re.findall('data_array\.phasertng_tag \s* = \s* \"(\w+) ,? (\w*)\"', philstr, re.VERBOSE)
@@ -970,11 +985,11 @@ class HKLViewFrame() :
               break
         if not (labelfound or typefound):
           self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype), verbose=1)
-          activebtns.append(False)
+          activebtns.append((self.allbuttonslist[i],False))
         else:
-          activebtns.append(True)
+          activebtns.append((self.allbuttonslist[i],True))
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
-      self.validated_preset_buttons = True
+    self.validated_preset_buttons = True
 
 
   def convert_clipperdict_to_millerarrays(self, crystdict):
