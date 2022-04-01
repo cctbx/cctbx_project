@@ -81,7 +81,7 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.w
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
-lock_timeout=100 # for the sempahores
+lock_timeout=5 # for the sempahores
 
 
 class hklview_3d:
@@ -392,7 +392,10 @@ class hklview_3d:
             # don't zoom if also initiating animation from this set of phil parameters
             ivec = self.show_vector(val, isvisible, autozoom=False)
           else:
-            ivec = self.show_vector(val, isvisible, autozoom=isvisible)
+            # autozoom causes race condition with unreleased semaphore clipplane_msg_sem
+            # if more vectors are to be drawn at once
+            ivec = self.show_vector(val, isvisible, autozoom=False)
+            #ivec = self.show_vector(val, isvisible, autozoom=isvisible)
           self.viewerparams.show_vector[i] = ivec
         except Exception as e:
           pass
@@ -1461,13 +1464,13 @@ class hklview_3d:
       self.SetFontSize(self.ngl_settings.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
-      self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-      self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
-      self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
+      #self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      #self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
+      #self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
-      self.clipplane_msg_sem.release()
-      self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
+      #self.clipplane_msg_sem.release()
+      #self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.viewerparams.scene_id
@@ -1891,7 +1894,7 @@ Distance: %s
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="",
                             r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8, autozoom = True ):
-    self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose=1)
+    self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose="vector")
     self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
          %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos, autozoom) )
     if name=="":

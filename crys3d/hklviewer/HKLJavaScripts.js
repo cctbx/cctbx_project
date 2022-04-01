@@ -392,9 +392,8 @@ function ReturnClipPlaneDistances(onrequest = false)
     else
       return;
 
-  let msg = String( [stage.viewer.parameters.clipNear,
-                  stage.viewer.parameters.clipFar,
-                  cameradist, stage.viewer.camera.zoom, Number(onrequest) ] )
+  let msg = String([stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
+    cameradist, stage.viewer.camera.zoom, Number(onrequest)]);
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 

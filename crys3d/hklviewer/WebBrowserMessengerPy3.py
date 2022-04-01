@@ -40,6 +40,7 @@ class MyWebSocketServerProtocol(websockets.WebSocketServerProtocol):
       self.ondisconnect(self.client_connected, self.close_code, self.close_reason)
     return super().connection_closed_exc()
 
+lock_timeout = 2
 
 class WBmessenger(object):
   def __init__(self, viewerparent ):
@@ -60,6 +61,7 @@ class WBmessenger(object):
       self.was_disconnected = None
       self.mywebsock = None
       self.websockeventloop = None
+      self.clientmsgqueue_sem = threading.Semaphore()
     except Exception as e:
       print( to_str(e) + "\n" + traceback.format_exc(limit=10))
 
@@ -162,7 +164,9 @@ class WBmessenger(object):
       except Exception as e:
         if self.was_disconnected != 4242:
           self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
+      self.clientmsgqueue_sem.acquire(blocking=True, timeout=lock_timeout)
       self.clientmsgqueue.append(message)
+      self.clientmsgqueue_sem.release()
 
 
   async def WebBrowserMsgQueue(self):
@@ -198,9 +202,11 @@ class WBmessenger(object):
   def ProcessClientMessageLoop(self):
     while self.isterminating == False:
       if len(self.clientmsgqueue):
+        self.clientmsgqueue_sem.acquire(blocking=True, timeout=lock_timeout)
         pendingmessage = self.clientmsgqueue[0]
         self.ProcessBrowserMessage(pendingmessage)
         self.clientmsgqueue.remove( self.clientmsgqueue[0] )
+        self.clientmsgqueue_sem.release()
       time.sleep(self.sleeptime)
     self.mprint("Shutting down WebsocketClientMessageThread", verbose=1)
 
