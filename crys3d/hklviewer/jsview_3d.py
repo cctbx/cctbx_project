@@ -16,7 +16,7 @@ if sys.version_info[0] > 2: # using websockets which is superior to websocket_se
 else: # using websocket_server
   from crys3d.hklviewer.WebBrowserMessengerPy2 import WBmessenger
 
-import os.path, time, copy, re
+import os.path, time, copy, re, io
 import libtbx
 import libtbx.load_env
 import webbrowser, tempfile
@@ -471,7 +471,7 @@ class hklview_3d:
       infomsg = ""
       self.normal_vecnr = -1
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
-        if self.params.clip_plane.normal_vector == label:
+        if self.params.clip_plane.normal_vector in label:
           self.normal_vecnr = i
 
       if self.normal_vecnr != -1: # then we are orienting clip plane with a vector
@@ -520,6 +520,11 @@ class hklview_3d:
                                       + dmincartvec[2]*dmincartvec[2] )
             n_tncs_layers = sphereradius*self.scene.renderscale/self.L
             infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
+
+          if "twin" in self.all_vectors[ self.normal_vecnr ][1].lower():
+            clipwidth = self.params.clip_plane.clip_width
+            infomsg = "Twin layer: %d " %self.params.clip_plane.hkldist
+
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
         if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "TNCS":
@@ -1888,33 +1893,41 @@ Distance: %s
 
 
   def get_cartesian_vector_angles(self, s1, s2, s3, t1, t2, t3):
+    self.mprint("in get cartesian angles", verbose="angles")
     svec = [t1-s1, t2-s2, t3-s3]
     svecnorm = math.sqrt( svec[0]*svec[0] + svec[1]*svec[1] + svec[2]*svec[2] )
     xyvec = svec[:] # deep copying
     xyvec[2] = 0.0 # projection vector of svec in the xy plane
     xyvecnorm = math.sqrt( xyvec[0]*xyvec[0] + xyvec[1]*xyvec[1] )
-    if xyvecnorm > 0.0 and not approx_equal(xyvecnorm/svecnorm, 0.0):
+    output = io.StringIO()
+    if xyvecnorm > 0.0 and not approx_equal(xyvecnorm/svecnorm, 0.0, out=output):
       angle_x_xyvec = math.acos( xyvec[0]/xyvecnorm )*180.0/math.pi
       angle_y_xyvec = math.acos( xyvec[1]/xyvecnorm )*180.0/math.pi
     else:
       angle_x_xyvec = 90.0
       angle_y_xyvec = 90.0
+    self.mprint(output.getvalue(), verbose="angles")
+    output.close()
     yzvec = svec[:]
     yzvec[0] = 0.0 # projection vector of svec in the yz plane
     yzvecnorm = math.sqrt( yzvec[1]*yzvec[1] + yzvec[2]*yzvec[2] )
-    if yzvecnorm > 0.0 and not approx_equal(yzvecnorm/svecnorm, 0.0):
+
+    output = io.StringIO()
+    if yzvecnorm > 0.0 and not approx_equal(yzvecnorm/svecnorm, 0.0, out=output):
       angle_y_yzvec = math.acos( yzvec[1]/yzvecnorm )*180.0/math.pi
       angle_z_yzvec = math.acos( yzvec[2]/yzvecnorm )*180.0/math.pi
     else:
       angle_y_yzvec = 90.0
       angle_z_yzvec = 90.0
+    self.mprint(output.getvalue(), verbose="angles")
+    output.close()
     angle_x_svec = math.acos( svec[0]/svecnorm )*180.0/math.pi
     angle_y_svec = math.acos( svec[1]/svecnorm )*180.0/math.pi
     angle_z_svec = math.acos( svec[2]/svecnorm )*180.0/math.pi
     if angle_y_svec > 90.0:
       angle_x_xyvec = -angle_x_xyvec
-    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose=2)
-    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose=2)
+    self.mprint("angles in xy plane to x,y axis are: %s, %s" %(angle_x_xyvec, angle_y_xyvec), verbose="angles")
+    self.mprint("angles in yz plane to y,z axis are: %s, %s" %(angle_y_yzvec, angle_z_yzvec), verbose="angles")
     self.mprint("angles to x,y,z axis are: %s, %s, %s" %(angle_x_svec, angle_y_svec, angle_z_svec ), verbose=2)
     return angle_x_xyvec, angle_z_svec
 
@@ -2029,7 +2042,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
-        if val==label:
+        if val in label:
           self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
           return str([i, isvisible])
 
@@ -2128,7 +2141,7 @@ in the space group %s\nwith unit cell %s\n""" \
       vecnr = val
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
-        if val==label:
+        if val in label:
           vecnr = i
     if not (vecnr>=0 and vecnr < len(self.all_vectors)):
       raise Sorry("No vector present in file with label or index: %s" %val)
@@ -2161,7 +2174,7 @@ in the space group %s\nwith unit cell %s\n""" \
       vecnr = val
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
-        if val==label:
+        if val in label:
           vecnr = i
     assert (vecnr>=0 and vecnr < len(self.all_vectors))
     cartvec = self.all_vectors[vecnr][3]

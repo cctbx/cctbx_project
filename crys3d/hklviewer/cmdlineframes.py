@@ -320,8 +320,9 @@ class HKLViewFrame() :
         phl.use_provided_miller_arrays = False # ensure we can do this again
 
       if view_3d.has_phil_path(diff_phil, "openfilename"):
-        phl = self.ResetPhilandViewer(self.currentphil)
-        if not self.load_reflections_file(phl.openfilename):
+        fname = phl.openfilename
+        phl = self.ResetPhilandViewer()
+        if not self.load_reflections_file(fname):
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
 
@@ -333,9 +334,6 @@ class HKLViewFrame() :
           self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
                                          binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
-
-      #if phl.spacegroup_choice == None:
-      #  self.mprint("! spacegroup_choice == None")
 
       if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -357,6 +355,7 @@ class HKLViewFrame() :
                                          "add_user_vector_abc",
                                          "add_user_vector_hkl"):
         self.add_user_vector()
+        self.validated_preset_buttons = False
 
       if view_3d.has_phil_path(diff_phil, "selected_info"):
         self.viewer.array_info_format_tpl = []
@@ -972,6 +971,15 @@ class HKLViewFrame() :
           rlbl = [ self.get_label_from_phasertng_tag(phasertng_tags) ]
           # find the miller array used by phasertng as specified in the mtz history header
 
+        m = re.findall('show_vector \s* = \s* \"\[ [\'|\"] (\S+) [\'|\"] \s*,' , philstr, re.VERBOSE)
+        vectorfound = True
+        if len(m):
+          vectorfound = False
+          vectorlabel = m[0] # see if this substring is present in the labels of vectors
+          for opnr, label, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
+            if vectorlabel in label:
+              vectorfound = True
+
         if len(rlbl) == 1:
           labelfound = False; typefound= False
           for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -983,11 +991,12 @@ class HKLViewFrame() :
               typefound = True
               self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label), verbose=1)
               break
-        if not (labelfound or typefound):
+        if (labelfound or typefound) and vectorfound:
+          activebtns.append((self.allbuttonslist[i],True))
+        else:
           self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype), verbose=1)
           activebtns.append((self.allbuttonslist[i],False))
-        else:
-          activebtns.append((self.allbuttonslist[i],True))
+
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
 

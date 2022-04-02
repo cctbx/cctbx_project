@@ -569,7 +569,7 @@ newarray._sigmas = sigs
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
     except Exception as e:
-      print("\nExterminating unresponsive cctbx.python process, unconditionally, at will, with impunity and effective immediately!")
+      print("\nUnconditionally exterminating unresponsive cctbx.python process, at will, with impunity, effective immediately!")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
@@ -975,7 +975,11 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.buttonsdeflist = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
             for i in reversed(range(self.gridLayout_24.count())):
               # first delete any previous widgets from last time a file was loaded
-              self.gridLayout_24.itemAt(i).widget().setParent(None)
+              #self.gridLayout_24.itemAt(i).widget().setParent(None)
+              widgetToRemove = self.gridLayout_24.itemAt(i).widget()
+              self.gridLayout_24.removeWidget(widgetToRemove)
+              widgetToRemove.setParent(None)
+
             for i,((btnname, label, _), isenabled) in enumerate(self.buttonsdeflist):
               self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
               self.__getattribute__(btnname).setObjectName(btnname)
