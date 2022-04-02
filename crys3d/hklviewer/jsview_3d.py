@@ -821,7 +821,7 @@ class hklview_3d:
     (hklscenes, scenemaxdata,
       scenemindata, scenemaxsigmas,
         sceneminsigmas, scenearrayinfos
-    ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx, 
+    ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx,
                      self.renderscale, copy.deepcopy(self.viewerparams), self.mprint )
     for i,inf in enumerate(scenearrayinfos):
       self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
