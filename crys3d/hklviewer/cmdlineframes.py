@@ -209,7 +209,7 @@ class HKLViewFrame() :
     self.viewer.HKLscenedict = {}
     self.uservectors = []
     self.viewer.visual_symmxs = []
-    self.visual_symHKLs = []
+    self.viewer.visual_symHKLs = []
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
     self.validated_preset_buttons = False
@@ -325,6 +325,7 @@ class HKLViewFrame() :
         if not self.load_reflections_file(fname):
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
+        self.validated_preset_buttons = False
 
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
@@ -400,7 +401,7 @@ class HKLViewFrame() :
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      if view_3d.has_phil_path(diff_phil, "scene_id", "spacegroup_choice", "data_array"):
+      if view_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
 
       self.params = self.viewer.update_settings(diff_phil, phl)
@@ -1292,7 +1293,11 @@ class HKLViewFrame() :
   def list_vectors(self):
     self.viewer.calc_rotation_axes()
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
-    uc = self.viewer.miller_array.unit_cell()
+    if self.viewer.miller_array is not None:
+      uc = self.viewer.miller_array.unit_cell()
+    else: # a fallback
+      uc = self.procarrays[0].unit_cell()
+
     tncsvec = []
     if self.tncsvec is not None:
       # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
@@ -1300,7 +1305,7 @@ class HKLViewFrame() :
       ln = len(self.viewer.all_vectors)
       # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
       # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
-      veclength = self.viewer.scene.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      veclength = self.viewer.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       tncsvec = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
 
     anisovectors = []
@@ -1308,23 +1313,23 @@ class HKLViewFrame() :
       # anisotropic principal axes vector are specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.aniso1 * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       anisovectors = [(ln, "ANISO1", 0, cartvec, "", "", str(roundoff(self.aniso1, 5)), veclength )]
 
       cartvec = list( self.aniso2 * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       anisovectors.append((ln, "ANISO2", 0, cartvec, "", "", str(roundoff(self.aniso2, 5)), veclength ) )
 
       cartvec = list( self.aniso3 * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       anisovectors.append( (ln, "ANISO3", 0, cartvec, "", "", str(roundoff(self.aniso3, 5)), veclength ) )
 
     ln = len(self.viewer.all_vectors)
-    Hcartvec = list( self.viewer.scene.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-    Kcartvec = list( self.viewer.scene.renderscale*( (0,1,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-    Lcartvec = list( self.viewer.scene.renderscale*( (0,0,1)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    Hcartvec = list( self.viewer.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    Kcartvec = list( self.viewer.renderscale*( (0,1,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+    Lcartvec = list( self.viewer.renderscale*( (0,0,1)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
     Hlength = math.sqrt( Hcartvec[0]*Hcartvec[0] + Hcartvec[1]*Hcartvec[1] + Hcartvec[2]*Hcartvec[2] )
     Klength = math.sqrt( Kcartvec[0]*Kcartvec[0] + Kcartvec[1]*Kcartvec[1] + Kcartvec[2]*Kcartvec[2] )
     Llength = math.sqrt( Lcartvec[0]*Lcartvec[0] + Lcartvec[1]*Lcartvec[1] + Lcartvec[2]*Lcartvec[2] )
@@ -1355,13 +1360,13 @@ class HKLViewFrame() :
       if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
         hklvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl))
         # convert into cartesian space
-        cartvec = list( self.viewer.scene.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+        cartvec = list( self.viewer.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
         veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       elif self.params.viewer.add_user_vector_abc not in [None, "", "()"]:
         abcvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_abc))
         # convert into cartesian space
         cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
-        veclength = self.viewer.scene.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
         hklop = re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl_op)
         rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)

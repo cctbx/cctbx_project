@@ -405,6 +405,7 @@ function DeletePrimitives(reprname)
   for (let i = 0; i < stage.compList.length; i++)
     if (stage.compList[i].reprList.length > 0 && stage.compList[i].reprList[0].name == reprname) {
       let thiscomp = stage.compList[i];
+      thiscomp.removeAllAnnotations();
       thiscomp.removeRepresentation(thisrepr);
       stage.removeComponent(thiscomp);
       wasremoved = true;

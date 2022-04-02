@@ -30,7 +30,7 @@ def has_phil_path(philobj, *paths): # variable number of arguments
   return False
 
 
-def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.write):
+def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, setts, mprint=sys.stdout.write):
   """
   Conpute the hklscene for proc_array. If it's a complex array and foms_array!=None
   then also compute an hklscene with colours of each hkl attenuated by the corresponding FOM value.
@@ -53,7 +53,7 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, setts, mprint=sys.stdout.w
     settings.expand_anomalous = False
     settings.expand_to_p1 = False
 
-  hklscene = display.scene(miller_array=proc_array, merge=None,
+  hklscene = display.scene(miller_array=proc_array, merge=None, renderscale=renderscale,
     settings=settings, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
   if not hklscene.SceneCreated:
     mprint("The " + proc_array.info().label_string() + " array was not processed")
@@ -125,6 +125,7 @@ class hklview_3d:
     self.cameratranslation = ( 0,0,0 )
     self.planescalarvalue =0
     self.planenormalhklvec =None
+    self.renderscale = 100
     #self.angle_x_svec = 0.0
     #self.angle_y_svec = 0.0
     self.angle_z_svec = 0.0
@@ -518,7 +519,7 @@ class hklview_3d:
             dmincartvec = list( dminhkl * matrix.sqr(uc.fractionalization_matrix()).transpose() )
             sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1]
                                       + dmincartvec[2]*dmincartvec[2] )
-            n_tncs_layers = sphereradius*self.scene.renderscale/self.L
+            n_tncs_layers = sphereradius*self.renderscale/self.L
             infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
 
           if "twin" in self.all_vectors[ self.normal_vecnr ][1].lower():
@@ -820,7 +821,8 @@ class hklview_3d:
     (hklscenes, scenemaxdata,
       scenemindata, scenemaxsigmas,
         sceneminsigmas, scenearrayinfos
-    ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx, copy.deepcopy(self.viewerparams), self.mprint )
+    ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx, 
+                     self.renderscale, copy.deepcopy(self.viewerparams), self.mprint )
     for i,inf in enumerate(scenearrayinfos):
       self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
       self.HKLsceneKey = (curphilparam.spacegroup_choice,
@@ -1178,8 +1180,8 @@ class hklview_3d:
     self.normal_kl = k_axis.cross( l_axis )
     self.normal_lh = l_axis.cross( h_axis )
     maxnorm = max(h_axis.norm(), max(k_axis.norm(), l_axis.norm()))
-    l1 = self.scene.renderscale * maxnorm * 1.1
-    l2= self.scene.renderscale * maxnorm * 1.15
+    l1 = self.renderscale * maxnorm * 1.1
+    l2= self.renderscale * maxnorm * 1.15
     Hstararrowstart = roundoff( [-self.unit_h_axis[0][0]*l1, -self.unit_h_axis[0][1]*l1, -self.unit_h_axis[0][2]*l1] )
     Hstararrowend = roundoff( [self.unit_h_axis[0][0]*l1, self.unit_h_axis[0][1]*l1, self.unit_h_axis[0][2]*l1] )
     Hstararrowtxt  = roundoff( [self.unit_h_axis[0][0]*l2, self.unit_h_axis[0][1]*l2, self.unit_h_axis[0][2]*l2] )
@@ -1831,7 +1833,7 @@ Distance: %s
     spheres are then joined in the same NGL representation.
     """
     uc = self.miller_array.unit_cell()
-    vec = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
+    vec = (s1*self.renderscale, s2*self.renderscale, s3*self.renderscale)
     #svec = list(vec)
     if isreciprocal:
       # uc.reciprocal_space_vector() only takes integer miller indices so compute the cartesian coordinates
@@ -1840,7 +1842,7 @@ Distance: %s
       svec = [ vec[0], vec[1], vec[2] ]
     else: # real space fractional values
       vec = list( vec * matrix.sqr(uc.orthogonalization_matrix()) )
-      vscale =  1.0/self.scene.renderscale
+      vscale =  1.0/self.renderscale
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec = [ vscale*vec[0], vscale*vec[1], vscale*vec[2] ]
     self.draw_cartesian_sphere(svec[0], svec[1], svec[2], r, g, b, name, radius, mesh)
@@ -1862,8 +1864,8 @@ Distance: %s
     These vectors are then joined in the same NGL representation
     """
     uc = self.miller_array.unit_cell()
-    vec1 = (s1*self.scene.renderscale, s2*self.scene.renderscale, s3*self.scene.renderscale)
-    vec2 = (t1*self.scene.renderscale, t2*self.scene.renderscale, t3*self.scene.renderscale)
+    vec1 = (s1*self.renderscale, s2*self.renderscale, s3*self.renderscale)
+    vec2 = (t1*self.renderscale, t2*self.renderscale, t3*self.renderscale)
     #svec = list(vec)
     if isreciprocal:
       # uc.reciprocal_space_vector() only takes integer miller indices so compute the cartesian coordinates
@@ -1875,7 +1877,7 @@ Distance: %s
     else: # real space fractional values
       vec1 = list( vec1 * matrix.sqr(uc.orthogonalization_matrix()) )
       vec2 = list( vec2 * matrix.sqr(uc.orthogonalization_matrix()) )
-      vscale =  1.0/self.scene.renderscale
+      vscale =  1.0/self.renderscale
       # TODO: find suitable scale factor for displaying real space vector together with reciprocal vectors
       svec1 = [ vscale*vec1[0], vscale*vec1[1], vscale*vec1[2] ]
       svec2 = [ vscale*vec2[0], vscale*vec2[1], vscale*vec2[2] ]
@@ -2014,14 +2016,15 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def calc_rotation_axes(self):
-    unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
-    self.rotation_operators = []
-    for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
-      (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
-      if label != "":
-        self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
-        veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-        self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )
+    if self.sg:
+      unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
+      self.rotation_operators = []
+      for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
+        (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
+        if label != "":
+          self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
+          veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+          self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )
 
 
   def show_all_vectors(self):
@@ -2032,7 +2035,6 @@ in the space group %s\nwith unit cell %s\n""" \
   def show_vector(self, val, isvisible, autozoom=True):
     # val can be either the number (zero offset) of the vector in the list of vectors
     # or the label name of the vector in the list of vectors
-    self.visual_symmxs = []
     if isinstance(val, int):
       if val >= len(self.all_vectors):
         return str([])
@@ -2049,11 +2051,15 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def show_vectors(self, philvectors, diff_phil):
     # autozoom may cause deadlock with unreleased semaphore clipplane_msg_sem
-    # if more vectors are to be drawn at once. Avoid that.
-    m = re.findall("(True)", str(philvectors)) # are there more vectors to be drawn?
+    # if more than 1 vectors are to be drawn at once. Avoid that.
+    m = re.findall("(True)", str(philvectors)) # are there more than 1 vectors to be drawn?
     doautozoom = True
-    if len(m) > 1:
+    if len(m) > 1 or self.params.clip_plane.clip_width: # don't autozoom if we are clipping
       doautozoom = False
+
+    self.visual_symmxs = []
+    self.visual_symHKLs = []
+
     for i,ivec in enumerate(philvectors):
       try:
         [val, isvisible] = eval(ivec)
@@ -2081,7 +2087,9 @@ in the space group %s\nwith unit cell %s\n""" \
         self.visual_symmxs.append( (RotMx, rt.r().as_hkl()) )
         nfoldrotmx = RotMx
         nfoldrot = rt.r()
-        for ord in range(order -1): # skip identity operator
+        self.visual_symmxs = []
+        self.visual_symHKLs = []
+        for n in range(order): # append successive rotations to self.visual_symmxs
           nfoldrotmx = RotMx * nfoldrotmx
           nfoldrot = nfoldrot.multiply( rt.r() )
           self.visual_symmxs.append( (nfoldrotmx, nfoldrot.as_hkl()) )
@@ -2095,8 +2103,6 @@ in the space group %s\nwith unit cell %s\n""" \
                                   label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
     else:
       self.RemovePrimitives(name)
-      self.visual_symmxs = []
-      self.visual_symHKLs = []
       self.viewerparams.show_all_vectors = False
     self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
 
@@ -2247,7 +2253,7 @@ in the space group %s\nwith unit cell %s\n""" \
     # for real space vector
     vec2 = vec * matrix.sqr(uc.orthogonalization_matrix())
     bodydiagonal_length =  vec2.length()
-    self.realspace_scale = self.scene.renderscale * reciprocspan_length / bodydiagonal_length
+    self.realspace_scale = self.renderscale * reciprocspan_length / bodydiagonal_length
 
 
   def real_space_from_cartesian_vector(self, cartvec):
@@ -2259,7 +2265,7 @@ in the space group %s\nwith unit cell %s\n""" \
     # Get corresponding real space vector (in real space units) to the hkl vector
     uc = self.miller_array.unit_cell()
     R= hklvec[0] * self.normal_kl + hklvec[1] * self.normal_lh - hklvec[2] * self.normal_hk
-    return (R[0]*matrix.sqr(uc.orthogonalization_matrix()).inverse()) * self.scene.renderscale
+    return (R[0]*matrix.sqr(uc.orthogonalization_matrix()).inverse()) * self.renderscale
     #return hklvec * matrix.sqr(uc.orthogonalization_matrix())
 
 
@@ -2271,7 +2277,7 @@ in the space group %s\nwith unit cell %s\n""" \
   def reciprocal_associated_with_real_space_vector(self, hklvec):
     uc = self.miller_array.unit_cell()
     cartvec = hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()
-    myhkl = matrix.sqr(uc.orthogonalization_matrix()).inverse() * cartvec * self.scene.renderscale
+    myhkl = matrix.sqr(uc.orthogonalization_matrix()).inverse() * cartvec * self.renderscale
     #hkl = myhkl[0] * self.normal_bc + myhkl[1] * self.normal_ca - myhkl[2] * self.normal_ab
     return myhkl
 
@@ -2573,8 +2579,8 @@ in the space group %s\nwith unit cell %s\n""" \
       svec = (0, 0, 0)
     else:
       #cartvec = (mag/cartvec.norm()) * cartvec
-      cartvec = (-mag*self.scene.renderscale/hkl_vec.norm()) * cartvec
-      #svec = [cartvec[0][0]*self.scene.renderscale, cartvec[0][1]*self.scene.renderscale, cartvec[0][2]*self.scene.renderscale ]
+      cartvec = (-mag*self.renderscale/hkl_vec.norm()) * cartvec
+      #svec = [cartvec[0][0]*self.renderscale, cartvec[0][1]*self.renderscale, cartvec[0][2]*self.renderscale ]
       svec = cartvec[0]
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.mprint("cartesian translation vector is: " + str(roundoff(svec)), verbose=1)

@@ -135,10 +135,10 @@ class scene(object):
   easily extensible to any other graphics platform (e.g. a PNG embedded in
   a web page).
   """
-  def __init__(self, miller_array, settings, merge=None, foms_array=None,
+  def __init__(self, miller_array, settings, merge=None, renderscale=100, foms_array=None,
    fullprocessarray=True, mprint=sys.stdout.write):
     self.miller_array = miller_array
-    self.renderscale = 100.0
+    self.renderscale = renderscale
     self.foms_workarray = foms_array
     self.SceneCreated = False
     self.mprint = mprint

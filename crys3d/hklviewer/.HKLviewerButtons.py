@@ -31,7 +31,7 @@ buttonsdeflist = [
                                           data_array.phasertng_tag = "INAT,SIGINAT"
                                         }
   """),
-  ("TNCS", "Show TNCS normal", """
+  ("TNCS", "Slice perpendicular to TNCS vector", """
                                         clip_plane {
                                           angle_around_vector = "['TNCS', 0]"
                                           animate_rotation_around_vector = "[0, -1.000000]"
@@ -50,7 +50,7 @@ buttonsdeflist = [
                                           color_scheme = *rainbow
                                         }
 """),
-  ("TNCSpar", "Show TNCS paralllel", """
+  ("TNCSpar", "Show TNCS parallel", """
                                         clip_plane {
                                           angle_around_vector = "['TNCS', 0.0]"
                                           animate_rotation_around_vector = "['TNCS', 5.000000]"
@@ -68,6 +68,33 @@ buttonsdeflist = [
                                           color_scheme = *rainbow
                                         }
 
+  """),
+
+  ("TwinAxis", "Slice perpendicular to twin axis", """
+
+                                        clip_plane {
+                                          angle_around_vector = "['twin', 0.0]"
+                                          animate_rotation_around_vector = "[0, -1.0]"
+                                          hkldist = 0
+                                          normal_vector = "2-fold_twin"
+                                          clip_width = 1
+                                          auto_clip_width = False
+                                        }
+                                        viewer {
+                                          data_array.label = "F,SIGF"
+                                          data_array.datatype = "Amplitude"
+                                          show_vector = "['twin', True]"
+                                          user_label = "twin"
+                                          fixorientation = *vector None
+                                          nth_power_scale_radii = nan
+                                          expand_to_p1 = True
+                                          expand_anomalous = True
+                                          color_scheme = *jet
+                                          color_powscale = 0.5131581182
+                                        }
+                                        NGL {
+                                          show_tooltips = *click
+                                        }
   """)
 
 
