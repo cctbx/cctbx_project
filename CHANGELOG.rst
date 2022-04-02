@@ -1,3 +1,10 @@
+2022.3
+======
+
+* Added mmtbx.process_predicted_model command
+* Updates and bug fixes to cctbx.HKLviewer
+* Added methods for improved handling of heavy hydrogens in model
+
 2022.2
 ======
 
