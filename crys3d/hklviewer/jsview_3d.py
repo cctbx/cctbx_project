@@ -522,9 +522,10 @@ class hklview_3d:
             n_tncs_layers = sphereradius*self.renderscale/self.L
             infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
 
-          if "twin" in self.all_vectors[ self.normal_vecnr ][1].lower():
+          if "-fold" in self.all_vectors[ self.normal_vecnr ][1]:
             clipwidth = self.params.clip_plane.clip_width
-            infomsg = "Twin layer: %d " %self.params.clip_plane.hkldist
+            infomsg = "Reflection layer %d related through %s" \
+              %(self.params.clip_plane.hkldist, self.all_vectors[ self.normal_vecnr ][1])
 
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
@@ -2256,11 +2257,6 @@ in the space group %s\nwith unit cell %s\n""" \
     self.realspace_scale = self.renderscale * reciprocspan_length / bodydiagonal_length
 
 
-  def real_space_from_cartesian_vector(self, cartvec):
-    uc = self.miller_array.unit_cell()
-    return cartvec * matrix.sqr(uc.fractionalization_matrix())
-
-
   def real_space_associated_with_reciprocal_vector(self, hklvec):
     # Get corresponding real space vector (in real space units) to the hkl vector
     uc = self.miller_array.unit_cell()
@@ -2486,6 +2482,10 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SetDefaultOrientation(self):
+    if self.params.clip_plane.clip_width:
+      # then we are clipping and using camerazoom instead of camera.position.z
+      # Autoview used by SetDefaultOrientation will mess that up. So bail out.
+      return
     self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
     self.autoview_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")

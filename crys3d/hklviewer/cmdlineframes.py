@@ -253,21 +253,6 @@ class HKLViewFrame() :
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
-    """
-    oldcolbintrshld = oldcurrentphil.extract().scene_bin_thresholds
-    newcolbintrshld = oldcolbintrshld
-    if hasattr(pyphilobj.extract(), "scene_bin_thresholds"):
-      newcolbintrshld = pyphilobj.extract().scene_bin_thresholds
-    # fetch_diff doesn't seem able to correclty spot changes
-    # in the multiple scope phil object "scene_bin_thresholds"
-    # Must do it manually
-    params = newcurrentphil.extract()
-    if oldcolbintrshld != newcolbintrshld: # or old_binopacities != new_binopacities:
-      params.scene_bin_thresholds = newcolbintrshld
-      newcurrentphil = self.master_phil.format(python_object = params)
-      diffphil = self.master_phil.fetch_diff(source = newcurrentphil)
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    """
     return newcurrentphil, diffphil
 
 
@@ -1310,21 +1295,27 @@ class HKLViewFrame() :
 
     anisovectors = []
     if self.aniso1 is not None:
-      # anisotropic principal axes vector are specified in realspace fractional coordinates. Convert it to cartesian
-      cartvec = list( self.aniso1 * matrix.sqr(uc.orthogonalization_matrix()) )
+      # anisotropic principal axes vector are specified in cartesian coordinates.
+      cartvec = [self.aniso1[0]*self.viewer.renderscale, self.aniso1[1]*self.viewer.renderscale, self.aniso1[2]*self.viewer.renderscale]
       ln = len(self.viewer.all_vectors)
+      # convert vector to fractional coordinates for the table in the GUI
+      aniso1frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors = [(ln, "ANISO1", 0, cartvec, "", "", str(roundoff(self.aniso1, 5)), veclength )]
+      anisovectors = [(ln, "ANISO1", 0, cartvec, "", "", str(roundoff(aniso1frac, 5)), veclength )]
 
-      cartvec = list( self.aniso2 * matrix.sqr(uc.orthogonalization_matrix()) )
+      cartvec = [self.aniso2[0]*self.viewer.renderscale, self.aniso2[1]*self.viewer.renderscale, self.aniso2[2]*self.viewer.renderscale]
       ln = len(self.viewer.all_vectors)
+      # convert vector to fractional coordinates for the table in the GUI
+      aniso2frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append((ln, "ANISO2", 0, cartvec, "", "", str(roundoff(self.aniso2, 5)), veclength ) )
+      anisovectors.append((ln, "ANISO2", 0, cartvec, "", "", str(roundoff(aniso2frac, 5)), veclength ) )
 
-      cartvec = list( self.aniso3 * matrix.sqr(uc.orthogonalization_matrix()) )
+      cartvec = [self.aniso3[0]*self.viewer.renderscale, self.aniso3[1]*self.viewer.renderscale, self.aniso3[2]*self.viewer.renderscale]
       ln = len(self.viewer.all_vectors)
+      # convert vector to fractional coordinates for the table in the GUI
+      aniso3frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append( (ln, "ANISO3", 0, cartvec, "", "", str(roundoff(self.aniso3, 5)), veclength ) )
+      anisovectors.append( (ln, "ANISO3", 0, cartvec, "", "", str(roundoff(aniso3frac, 5)), veclength ) )
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )

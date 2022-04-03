@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 buttonsdeflist = [
-  ("H_I", "Show Zone H for intensities", """
+  ("H_I", "Show plane of intensities with constant H", """
                                                 clip_plane {
                                                   hkldist = 0
                                                   normal_vector = "H (1,0,0)"
@@ -17,7 +17,7 @@ buttonsdeflist = [
                                                   expand_anomalous = True
                                                 }
 """),
-  ("K_I", "Show Zone K for intensities", """
+  ("K_I", "Show plane of intensities with constant K", """
                                                 clip_plane {
                                                   hkldist = 0
                                                   normal_vector = "K (0,1,0)"
@@ -33,7 +33,7 @@ buttonsdeflist = [
                                                   expand_anomalous = True
                                                 }
   """),
-  ("L_I", "Show Zone L for intensities", """
+  ("L_I", "Show plane of intensities with constant L", """
                                                 clip_plane {
                                                   hkldist = 0
                                                   normal_vector = "L (0,0,1)"
@@ -49,7 +49,7 @@ buttonsdeflist = [
                                                   expand_anomalous = True
                                                 }
 """),
-  ("H_F", "Show Zone H for amplitudes", """
+  ("H_F", "Show plane of amplitudes with constant H", """
                                               clip_plane {
                                                 hkldist = 0
                                                 normal_vector = "H (1,0,0)"
@@ -67,7 +67,7 @@ buttonsdeflist = [
 
   """),
 
-  ("K_F", "Show Zone K for amplitudes", """
+  ("K_F", "Show plane of amplitudes with constant K", """
                                               clip_plane {
                                                 hkldist = 0
                                                 normal_vector = "K (0,1,0)"
@@ -85,7 +85,7 @@ buttonsdeflist = [
 
   """),
 
-  ("L_F", "Show Zone L for amplitudes", """
+  ("L_F", "Show plane of amplitudes with constant L", """
                                               clip_plane {
                                                 hkldist = 0
                                                 normal_vector = "L (0,0,1)"
@@ -103,12 +103,5 @@ buttonsdeflist = [
 
   """),
 
-
-  ("Test", "I,SIGI test", """
-                                                viewer {
-                                                  data_array.label = "I,SIGI"
-                                                  data_array.datatype = "Intensity"
-                                                }
-  """),
 
 ]
