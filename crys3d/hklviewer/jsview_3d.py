@@ -429,7 +429,9 @@ class hklview_3d:
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25)
       self.show_rotation_axes()
-      self.show_vectors(self.viewerparams.show_vector, diff_phil)
+
+      if has_phil_path(diff_phil, "show_vector"):
+        self.show_vectors(self.viewerparams.show_vector, diff_phil)
 
       if has_phil_path(diff_phil, "show_all_vectors"):
         self.show_all_vectors()
@@ -2030,7 +2032,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def show_all_vectors(self):
     for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
-      self.show_labelled_vector(self.viewerparams.show_all_vectors, label, order, cartvec, hklop, autozoom=False)
+      self.show_labelled_vector(self.viewerparams.show_all_vectors==1, label, order, cartvec, hklop, autozoom=False)
 
 
   def show_vector(self, val, isvisible, autozoom=True):
@@ -2041,12 +2043,15 @@ in the space group %s\nwith unit cell %s\n""" \
         return str([])
       (opnr, label, order, cartvec, hklop, hkl, abc, length) = self.all_vectors[val]
       self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
+      if not isvisible:
+        self.viewerparams.show_all_vectors = 0
       return str([val, isvisible])
-
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
         if val in label:
           self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
+          if not isvisible:
+            self.viewerparams.show_all_vectors = 0
           return str([i, isvisible])
 
 
@@ -2104,7 +2109,6 @@ in the space group %s\nwith unit cell %s\n""" \
                                   label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
     else:
       self.RemovePrimitives(name)
-      self.viewerparams.show_all_vectors = False
     self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
 
 
@@ -2482,7 +2486,8 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def SetDefaultOrientation(self):
-    if self.params.clip_plane.clip_width:
+    if self.params.clip_plane.clip_width and not self.isnewfile:
+      # if self.params.clip_plane.clip_width
       # then we are clipping and using camerazoom instead of camera.position.z
       # Autoview used by SetDefaultOrientation will mess that up. So bail out.
       return

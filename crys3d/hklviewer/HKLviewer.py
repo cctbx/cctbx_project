@@ -1145,6 +1145,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         except Exception as e:
           pass
 
+    if self.currentphilstringdict['viewer.show_all_vectors'] is not None:
+      show_all_vectors = self.currentphilstringdict['viewer.show_all_vectors']
+      for rvrow in range(self.vectortable2.rowCount()):
+        if self.vectortable2.item(rvrow, 0) is not None:
+          if show_all_vectors == 1:
+            self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
+          if show_all_vectors == -1:
+            self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
+
     self.unfeedback = False
 
 
@@ -1500,16 +1509,12 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onShowAllVectors(self):
-    self.unfeedback = True
+    if self.unfeedback:
+      return
     if self.ShowAllVectorsBtn.checkState()==Qt.Checked:
-      for rvrow in range(self.vectortable2.rowCount()):
-        if self.vectortable2.item(rvrow, 0).text() !=  "new vector":
-          self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
-      self.send_message("viewer.show_all_vectors = True")
+      self.send_message("viewer.show_all_vectors = 1")
     if self.ShowAllVectorsBtn.checkState()==Qt.Unchecked:
-      for rvrow in range(self.vectortable2.rowCount()):
-        self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
-      self.send_message("viewer.show_all_vectors = False")
+      self.send_message("viewer.show_all_vectors = -1")
     self.unfeedback = False
 
 

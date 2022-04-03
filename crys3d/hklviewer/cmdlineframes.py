@@ -188,7 +188,6 @@ class HKLViewFrame() :
           self.update_settings(new_phil)
         if msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
-          self.viewer.SetDefaultOrientation
           self.ResetPhil()
           self.viewer.sceneisdirty = True
           self.viewer.executing_preset_btn = True
@@ -1623,8 +1622,8 @@ masterphilstr = """
     show_vector = ''
       .type = str
       .multiple = True
-    show_all_vectors = False
-      .type = bool
+    show_all_vectors = 0
+      .type = int(value_min=-1, value_max=1)
     add_user_vector_hkl_op = ""
       .type = str
     add_user_vector_abc = ""

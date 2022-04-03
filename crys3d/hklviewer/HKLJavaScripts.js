@@ -459,7 +459,7 @@ function CameraZoom(t, deltaX, deltaY) {
   if (Number.isInteger(deltaY))
     dy = deltaY;
   let z = stage.viewer.camera.zoom;
-  z -= (dx+dy) / 4.0;
+  z -= (dx + dy) * stage.trackballControls.rotateSpeed; // which is adjusted by SetMouseSpeed message
   if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
     stage.viewer.camera.zoom = z;
     stage.viewer.requestRender();
