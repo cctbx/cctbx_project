@@ -59,13 +59,13 @@ drop_non_selected_atoms = False
   .type = bool
   .help = Drop non selected atoms (-drop in probe)
 
-minimum_polar_hydrogen_occupancy = 0.7
+minimum_polar_hydrogen_occupancy = 0.25
   .type = float
-  .help = Minimum occupancy for polar hydrogens (0.25 in probe)
+  .help = Minimum occupancy for polar hydrogens (0.7 in original Reduce)
 
-maximum_polar_hydrogen_b = 40.0
+maximum_polar_hydrogen_b = 80.0
   .type = float
-  .help = Minimum b-factor for polar hydrogens (80.0 in probe)
+  .help = Minimum b-factor for polar hydrogens (40.0 in original Reduce)
 
 include_mainchain_mainchain = True
   .type = bool
@@ -1928,6 +1928,8 @@ Note:
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
                               1.0)
+              if len(newPhantoms) > 0:
+                print('XXX Added',len(newPhantoms),'Phantom Hydrogens to',a.parent().resname,str(a.parent().parent().resseq_as_int()))
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
