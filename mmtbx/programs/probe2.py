@@ -1908,8 +1908,14 @@ Note:
 
           # Ignore Hydrogens whose parameters are out of bounds.
           if a.element_is_hydrogen():
+            # In the original code, this looks at H atoms with parent N,O,S atoms
+            # and marks them as donors.  This is handled for us below in the call
+            # to Helpers.fixupExplicitDonors().
+
             # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
             # If they are not, set the class for the atom to 'ignore'.
+            # This handles the case where there were explicit Hydrogens on waters and so
+            # we won't add Phantom Hydrogens.
             if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
                 a.b > self.params.maximum_polar_hydrogen_b):
               self._atomClasses[a] = 'ignore'
@@ -1928,8 +1934,6 @@ Note:
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
                               1.0)
-              if len(newPhantoms) > 0:
-                print('XXX Added',len(newPhantoms),'Phantom Hydrogens to',a.parent().resname,str(a.parent().parent().resseq_as_int()))
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
