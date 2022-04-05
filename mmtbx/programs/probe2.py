@@ -804,6 +804,15 @@ Note:
 
           # Handle any dots that should not be ignored.
           if overlapType != probeExt.OverlapType.Ignore:
+
+            # If the overlap type is not a Hydrogen bond, then check the occupancy of atoms where
+            # at least one of the pair is on the "" or " " alternate conformation to make sure the
+            # sum of their occupancies is greater than 1.
+            if overlapType != probeExt.OverlapType.HydrogenBond:
+              if (src.parent().altloc in ['',' ']) or (res.cause.parent().altloc in ['',' ']):
+                if src.occ + res.cause.occ <= 1:
+                  continue
+
             # See whether this dot is allowed based on our parameters.
             spo = self.params.output
             show = False
@@ -1923,6 +1932,9 @@ Note:
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
           elif self._inWater[a] and a.element == 'O':
             # We're an acceptor and not a donor.
+            # @todo Original Probe code only cleared the donor status if it found a bonded
+            # Hydrogen in the same conformation whose occupancy was > 0.1.  Here, we're turning
+            # it off regardless of the occupancy.
             ei = self._extraAtomInfo.getMappingFor(a)
             ei.isDonor = False
             ei.isAcceptor = True
