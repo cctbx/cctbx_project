@@ -1888,12 +1888,6 @@ Note:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms, self.params.probe))
 
       ################################################################################
-      # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
-      # between two atoms that are both bonded to the same ion (such as Nitrogens on
-      # Histidine rings around Cu or Zn).
-      Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
-
-      ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
@@ -2012,6 +2006,13 @@ Note:
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
+
+      ################################################################################
+      # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
+      # between two atoms that are both bonded to the same ion (such as Nitrogens on
+      # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
+      # so that we don't see ionic bonds in those checks.
+      Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
 
       # If we have a dump file specified, write the atom information into it.
       if self.params.output.dump_file_name is not None:
