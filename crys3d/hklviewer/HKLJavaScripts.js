@@ -1966,7 +1966,9 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
   if (buffer.parameters.opacity < 0.3) // use the same threshold as when tooltips won't show
     return [hkls_infrustums, rotid_infrustum];
 
-  for (let i = 0; i < buffer.picking.cartpos.length; i++) {
+  for (let i = 0; i < buffer.picking.cartpos.length; i++)
+  {
+    let radius = buffer.geometry.attributes.radius.array[i];
     let x = buffer.picking.cartpos[i][0];
     let y = buffer.picking.cartpos[i][1];
     let z = buffer.picking.cartpos[i][2];
@@ -1975,7 +1977,8 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let currenthklpos = hklpos.applyMatrix4(m);
     let childZ = currenthklpos.z - stage.viewer.camera.position.z;
     let infrustum = false;
-    if (childZ <= stage.viewer.parameters.clipFar && childZ >= stage.viewer.parameters.clipNear) {
+    if ((childZ + radius) <stage.viewer.parameters.clipFar && (childZ - radius) > stage.viewer.parameters.clipNear)
+    {
       infrustum = true;
       let hklid = buffer.picking.ids[i + 1];
       let rotid = buffer.picking.ids[0];

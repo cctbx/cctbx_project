@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'HKLviewer4.ui'
 ##
-## Created by: Qt User Interface Compiler version 5.15.2
+## Created by: Qt User Interface Compiler version 5.14.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -25,7 +25,7 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-        if not MainWindow.objectName():
+        if MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(998, 863)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -103,7 +103,18 @@ class Ui_MainWindow(object):
         self.gridLayout_25.setSpacing(4)
         self.gridLayout_25.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_25.setObjectName(u"gridLayout_25")
-        self.PresetButtonsFrame = QFrame(self.tab_6)
+        self.scrollArea_2 = QScrollArea(self.tab_6)
+        self.scrollArea_2.setObjectName(u"scrollArea_2")
+        self.scrollArea_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollArea_2.setWidgetResizable(True)
+        self.scrollAreaWidgetContents_2 = QWidget()
+        self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 711))
+        self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
+        self.gridLayout_29.setSpacing(4)
+        self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
+        self.gridLayout_29.setObjectName(u"gridLayout_29")
+        self.PresetButtonsFrame = QFrame(self.scrollAreaWidgetContents_2)
         self.PresetButtonsFrame.setObjectName(u"PresetButtonsFrame")
         sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy2.setHorizontalStretch(0)
@@ -116,8 +127,13 @@ class Ui_MainWindow(object):
         self.gridLayout_24.setSpacing(4)
         self.gridLayout_24.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_24.setObjectName(u"gridLayout_24")
+        self.gridLayout_24.setContentsMargins(0, 0, 0, 0)
 
-        self.gridLayout_25.addWidget(self.PresetButtonsFrame, 0, 0, 1, 1)
+        self.gridLayout_29.addWidget(self.PresetButtonsFrame, 0, 0, 1, 1)
+
+        self.scrollArea_2.setWidget(self.scrollAreaWidgetContents_2)
+
+        self.gridLayout_25.addWidget(self.scrollArea_2, 0, 0, 1, 1)
 
         self.tabWidget.addTab(self.tab_6, "")
         self.tab_7 = QWidget()
@@ -192,7 +208,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 428, 392))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 453, 392))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -952,7 +968,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         self.functionTabWidget.setCurrentIndex(1)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)

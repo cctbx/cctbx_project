@@ -23,12 +23,31 @@ buttonsdeflist = [
                                         NGL {
                                           bin_opacities = "[(1.0, 0), (1.0, 1), (0.0, 2), (0.0, 3), (0.0, 4), (0.0, 5), (1.0, 6), (1.0, 7), (0.0, 8), (0.0, 9), (0.0, 10), (0.0, 11)]"
                                           show_tooltips = none click *hover
+                                          fontsize = 10
                                         }
 
   """),
-  ("INAT", "INAT,SIGINAT test", """
+  ("aniso3", "Rotate around anisotropy principal axis3", """
+                                        clip_plane {
+                                          angle_around_vector = "['ANISO3', 0.0]"
+                                          animate_rotation_around_vector = "['ANISO3', 5.0]"
+                                        }
+                                        binlabel = "ANISO"
+                                        nbins = 8
                                         viewer {
-                                          data_array.phasertng_tag = "INAT,SIGINAT"
+                                          data_array.label = "ANISO"
+                                          show_vector = "['ANISO1', True]"
+                                          show_vector = "['ANISO2', True]"
+                                          show_vector = "['ANISO3', True]"
+                                          is_parallel = True
+                                          fixorientation = *vector None
+                                          expand_to_p1 = True
+                                          expand_anomalous = True
+                                        }
+                                        NGL {
+                                          bin_opacities = "[(1.0, 0), (1.0, 1), (0.0, 2), (0.0, 3), (0.0, 4), (0.0, 5), (1.0, 6), (1.0, 7), (0.0, 8), (0.0, 9), (0.0, 10), (0.0, 11)]"
+                                          show_tooltips = none click *hover
+                                          fontsize = 10
                                         }
   """),
   ("TNCS", "Slice perpendicular to TNCS vector", """
@@ -49,8 +68,9 @@ buttonsdeflist = [
                                           expand_anomalous = True
                                           color_scheme = *rainbow
                                         }
+                                        NGL.fontsize = 10
 """),
-  ("TNCSpar", "Show TNCS parallel", """
+  ("TNCSpar", "Rotate around TNCS vector", """
                                         clip_plane {
                                           angle_around_vector = "['TNCS', 0.0]"
                                           animate_rotation_around_vector = "['TNCS', 5.000000]"
@@ -67,6 +87,7 @@ buttonsdeflist = [
                                           expand_anomalous = True
                                           color_scheme = *rainbow
                                         }
+                                        NGL.fontsize = 10
 
   """),
 
@@ -74,9 +95,9 @@ buttonsdeflist = [
 
                                         clip_plane {
                                           angle_around_vector = "['twin', 0.0]"
-                                          animate_rotation_around_vector = "[0, -1.0]"
+                                          animate_rotation_around_vector = "['twin', -1.0]"
                                           hkldist = 0
-                                          normal_vector = "2-fold_twin"
+                                          normal_vector = "twin"
                                           clip_width = 1
                                           auto_clip_width = False
                                         }
@@ -94,6 +115,7 @@ buttonsdeflist = [
                                         }
                                         NGL {
                                           show_tooltips = *click
+                                          fontsize = 10
                                         }
   """)
 

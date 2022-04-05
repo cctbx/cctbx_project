@@ -16,6 +16,7 @@ buttonsdeflist = [
                                                   expand_to_p1 = True
                                                   expand_anomalous = True
                                                 }
+                                                NGL.fontsize = 10
 """),
   ("K_I", "Show plane of intensities with constant K", """
                                                 clip_plane {
@@ -32,6 +33,7 @@ buttonsdeflist = [
                                                   expand_to_p1 = True
                                                   expand_anomalous = True
                                                 }
+                                                NGL.fontsize = 10
   """),
   ("L_I", "Show plane of intensities with constant L", """
                                                 clip_plane {
@@ -48,6 +50,7 @@ buttonsdeflist = [
                                                   expand_to_p1 = True
                                                   expand_anomalous = True
                                                 }
+                                                NGL.fontsize = 10
 """),
   ("H_F", "Show plane of amplitudes with constant H", """
                                               clip_plane {
@@ -64,6 +67,7 @@ buttonsdeflist = [
                                                 expand_to_p1 = True
                                                 expand_anomalous = True
                                               }
+                                               NGL.fontsize = 10
 
   """),
 
@@ -82,6 +86,7 @@ buttonsdeflist = [
                                                 expand_to_p1 = True
                                                 expand_anomalous = True
                                               }
+                                               NGL.fontsize = 10
 
   """),
 
@@ -100,7 +105,7 @@ buttonsdeflist = [
                                                 expand_to_p1 = True
                                                 expand_anomalous = True
                                               }
-
+                                               NGL.fontsize = 10
   """),
 
 

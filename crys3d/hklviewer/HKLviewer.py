@@ -963,6 +963,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.BinDataComboBox.addItem(label, (labeltype, idx) )
             self.BinDataComboBox.view().setMinimumWidth(self.comboviewwidth)
 
+          if self.infodict.get("binner_idx"):
+            self.BinDataComboBox.setCurrentIndex(self.infodict.get("binner_idx", 0))
+
           if self.infodict.get("used_nth_power_scale_radii", None) is not None:
             self.unfeedback = True
             self.power_scale_spinBox.setValue( self.infodict.get("used_nth_power_scale_radii", 0.0))
@@ -1532,10 +1535,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         if label is None:
           return
         if col==0:
-          #if item.checkState()==Qt.Checked:
-          #  self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, True ))
-          #else:
-          #  self.send_message(" viewer.show_vector = '[%d, %s]'" %(row, False ))
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
               self.send_message("""clip_plane {
                 angle_around_vector = '[%d, 0]'
@@ -1943,7 +1942,7 @@ clip_plane {
            )
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx))
+          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx), msgtype= "GUI_dialog")
 
 
   def DisplayData(self, idx, row):

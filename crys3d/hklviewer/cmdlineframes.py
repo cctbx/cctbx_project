@@ -77,6 +77,8 @@ class HKLViewFrame() :
     self.outputmsgtypes = []
     self.userpresetbuttonsfname = os.path.join( Path.home(), ".HKLviewerButtons.py")
     self.infostr = ""
+    self.msgtype = ""
+    self.lastmsgtype = ""
     self.allbuttonslist = []
     self.hklfile_history = []
     self.arrayinfos = []
@@ -174,25 +176,28 @@ class HKLViewFrame() :
         if msgstr == "":
           continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
-        msgtype, mstr = eval(msgstr)
-        if msgtype=="debug_show_phil":
+        self.msgtype, mstr = eval(msgstr)
+        if self.msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
-        if msgtype=="datatypedict":
+        if self.msgtype=="datatypedict":
           self.viewer.datatypedict = eval(mstr)
-        if msgtype=="clipper_crystdict":
+        if self.msgtype=="clipper_crystdict":
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
-          #self.mprint("got clipper dict")
-        if msgtype=="philstr":
+        if self.msgtype=="philstr" or self.msgtype=="GUI_dialog":
+          if self.lastmsgtype=="preset_philstr" and self.msgtype != "GUI_dialog":
+            self.ResetPhil()
+            self.viewer.sceneisdirty = True
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil)
-        if msgtype=="preset_philstr":
+        if self.msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.ResetPhil()
           self.viewer.sceneisdirty = True
           self.viewer.executing_preset_btn = True
           self.update_settings(new_phil)
           self.viewer.executing_preset_btn = False
+        self.lastmsgtype = self.msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
@@ -288,11 +293,10 @@ class HKLViewFrame() :
           phl.viewer.data_array.label = self.get_label_from_phasertng_tag(phl.viewer.data_array.phasertng_tag)
         phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
                                                                           phl.viewer.data_array.datatype)
-
       if view_3d.has_phil_path(diff_phil, "binlabel"):
         phl.binner_idx = self.viewer.get_binner_idx_from_label(phl.binlabel)
 
-      elif view_3d.has_phil_path(diff_phil, "scene_id"):
+      if view_3d.has_phil_path(diff_phil, "scene_id"):
         phl.viewer.data_array.label = None
         phl.viewer.data_array.datatype = None
 
@@ -342,7 +346,7 @@ class HKLViewFrame() :
         self.add_user_vector()
         self.validated_preset_buttons = False
 
-      if view_3d.has_phil_path(diff_phil, "selected_info"):
+      if view_3d.has_phil_path(diff_phil, "selected_info", "openfilename"):
         self.viewer.array_info_format_tpl = []
         for i,array in enumerate(self.procarrays):
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
@@ -359,7 +363,7 @@ class HKLViewFrame() :
           arrayinfo = ArrayInfo(array,wrap_labels)
           info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
           self.viewer.array_info_format_tpl.append( info_fmt )
-          self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
+        self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
 
         colnames_select_lst = []
         for philname,selected in list(self.params.selected_info.__dict__.items()):
@@ -729,7 +733,6 @@ class HKLViewFrame() :
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       self.update_space_group_choices(0) # get the default spacegroup choice
       mydict = { "info": self.infostr,
-                  "array_infotpls": self.viewer.array_info_format_tpl,
                   "bin_infotpls": self.viewer.bin_infotpls,
                   "ano_spg_tpls": self.ano_spg_tpls,
                   "html_url": self.viewer.url,
