@@ -5,8 +5,32 @@
 #include <simtbx/nanoBragg/nanoBraggCUDA.cuh>
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
+using simtbx::nanoBragg::SQUARE;
+using simtbx::nanoBragg::ROUND;
+using simtbx::nanoBragg::GAUSS;
+using simtbx::nanoBragg::GAUSS_ARGCHK;
+using simtbx::nanoBragg::TOPHAT;
 
-__global__ void nanoBraggSpotsCUDAKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
+__device__ static CUDAREAL sincg(CUDAREAL x, CUDAREAL N);
+//__device__ static CUDAREAL sincgrad(CUDAREAL x, CUDAREAL N);
+/* Fourier transform of a sphere */
+__device__ static CUDAREAL sinc3(CUDAREAL x);
+
+/* Fourier transform of a grating */
+__device__ CUDAREAL sincg(CUDAREAL x, CUDAREAL N) {
+	if (x != 0.0)
+		return sin(x * N) / sin(x);
+	return N;
+}
+
+/* Fourier transform of a sphere */
+__device__ CUDAREAL sinc3(CUDAREAL x) {
+	if (x != 0.0)
+		return 3.0 * (sin(x) / x - cos(x)) / (x * x);
+	return 1.0;
+}
+
+__global__ void debranch_SpotsCUDAKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     int roi_ymin, int roi_ymax, int oversample, int point_pixel,
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thickstep,
     int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
@@ -28,11 +52,361 @@ __global__ void nanoBraggSpotsCUDAKernel(int spixels, int fpixels, int roi_xmin,
     CUDAREAL fluence, CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form,
     CUDAREAL default_F,
     int interpolate, const CUDAREAL * __restrict__ Fhkl,
-    const hklParams * __restrict__ Fhklparams, int nopolar,
+    const hklParams * __restrict__ FhklParams, int nopolar,
     const CUDAREAL * __restrict__ polar_vector, CUDAREAL polarization, CUDAREAL fudge,
     const int unsigned short * __restrict__ maskimage, float * floatimage /*out*/,
     float * omega_reduction/*out*/, float * max_I_x_reduction/*out*/,
-    float * max_I_y_reduction /*out*/, bool * rangemap);
+    float * max_I_y_reduction /*out*/, bool * rangemap) {
+
+    //__shared__ int s_vec_len;
+	__shared__ CUDAREAL s_dmin;
+
+	__shared__ bool s_nopolar;
+
+	__shared__ int s_phisteps;
+	__shared__ CUDAREAL s_phi0, s_phistep;
+	__shared__ int s_mosaic_domains;
+    __shared__ CUDAREAL s_mosaic_spread;
+    __shared__ shapetype s_xtal_shape;
+
+	__shared__ CUDAREAL s_Na, s_Nb, s_Nc;
+    //__shared__ bool s_interpolate;
+	__shared__ int s_h_min, s_k_min, s_l_min, s_h_range, s_k_range, s_l_range,
+                       s_h_max, s_k_max, s_l_max;
+
+	if (threadIdx.x == 0 && threadIdx.y == 0) {
+        //s_vec_len = vec_len;
+		s_dmin = dmin;
+
+		s_nopolar = nopolar;
+
+		s_phisteps = phisteps;
+		s_phi0 = phi0;
+		s_phistep = phistep;
+
+		s_mosaic_domains = mosaic_domains;
+        s_mosaic_spread = mosaic_spread;
+
+        s_xtal_shape = xtal_shape;
+		s_Na = Na;
+		s_Nb = Nb;
+		s_Nc = Nc;
+
+        //s_interpolate = interpolate;
+
+        // s_hkls ??? needed or not?
+		s_h_min = FhklParams->h_min;
+		s_k_min = FhklParams->k_min;
+		s_l_min = FhklParams->l_min;
+		s_h_range = FhklParams->h_range;
+		s_k_range = FhklParams->k_range;
+		s_l_range = FhklParams->l_range;
+        s_h_max = s_h_min + s_h_range - 1;
+        s_k_max = s_k_min + s_k_range - 1;
+        s_l_max = s_l_min + s_l_range - 1;
+
+	}
+	__syncthreads();
+/* Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
+1) mosaicity non-zero positive
+2) xtal shape is "Gauss" i.e. 3D spheroid.
+3) No bounds check for access to the structure factor array.
+4) No check for Flatt=0.
+*/
+	//NKS new design, one-function call covers all panels with mask
+    const int total_pixels = spixels * fpixels;
+	const int fstride = gridDim.x * blockDim.x;
+	const int sstride = gridDim.y * blockDim.y;
+	const int stride = fstride * sstride;
+
+	/* add background from something amorphous */
+	CUDAREAL F_bg = water_F;
+	CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
+
+	for (int pixIdx = (blockDim.y * blockIdx.y + threadIdx.y) * fstride + blockDim.x * blockIdx.x + threadIdx.x;
+             pixIdx < total_pixels;
+             pixIdx += stride) {
+
+        //const int i_panel = j / (fpixels*spixels); // the panel number
+        //const int j_panel = j % (fpixels*spixels); // the pixel number within the panel
+		const int fpixel = pixIdx % fpixels;
+		const int spixel = pixIdx / fpixels;
+
+		/* allow for just one part of detector to be rendered */
+		if (fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) { //ROI region of interest
+			continue;
+		}        
+		/* position in pixel array */
+		const int j = pixIdx;
+
+        /* allow for the use of a mask */
+		if (maskimage != NULL) {
+			/* skip any flagged pixels in the mask */
+			if (maskimage[j] == 0) {
+				continue;
+			}
+		}
+
+		/* reset photon count for this pixel */
+		CUDAREAL I = I_bg;
+		CUDAREAL omega_sub_reduction = 0.0;
+		CUDAREAL max_I_x_sub_reduction = 0.0;
+		CUDAREAL max_I_y_sub_reduction = 0.0;
+		CUDAREAL polar = 0.0;
+		if (s_nopolar) {
+			polar = 1.0;
+		}
+
+		/* add this now to avoid problems with skipping later */
+		// move this to the bottom to avoid accessing global device memory. floatimage[j] = I_bg;
+		/* loop over sub-pixels */
+		int subS, subF;
+		for (subS = 0; subS < oversample; ++subS) { // Y voxel
+			for (subF = 0; subF < oversample; ++subF) { // X voxel
+				/* absolute mm position on detector (relative to its origin) */
+				CUDAREAL Fdet = subpixel_size * (fpixel * oversample + subF) + subpixel_size / 2.0; // X voxel
+				CUDAREAL Sdet = subpixel_size * (spixel * oversample + subS) + subpixel_size / 2.0; // Y voxel
+				//                  Fdet = pixel_size*fpixel;
+				//                  Sdet = pixel_size*spixel;
+
+				max_I_x_sub_reduction = Fdet;
+				max_I_y_sub_reduction = Sdet;
+
+				int thick_tic;
+				for (thick_tic = 0; thick_tic < detector_thicksteps; ++thick_tic) {
+					/* assume "distance" is to the front of the detector sensor layer */
+					CUDAREAL Odet = thick_tic * detector_thickstep; // Z Orthagonal voxel.
+
+					/* construct detector subpixel position in 3D space */
+					//                      pixel_X = distance;
+					//                      pixel_Y = Sdet-Ybeam;
+					//                      pixel_Z = Fdet-Xbeam;
+					//CUDAREAL * pixel_pos = tmpVector1;
+					CUDAREAL pixel_pos[4];
+                    int iVL = 0; //4 * i_panel;
+                    pixel_pos[1] = Fdet * __ldg(&fdet_vector[iVL+1]) +
+                                   Sdet * __ldg(&sdet_vector[iVL+1]) +
+                                   Odet * __ldg(&odet_vector[iVL+1]) +
+                                          __ldg(&pix0_vector[iVL+1]); // X
+                    pixel_pos[2] = Fdet * __ldg(&fdet_vector[iVL+2]) +
+                                   Sdet * __ldg(&sdet_vector[iVL+2]) +
+                                   Odet * __ldg(&odet_vector[iVL+2]) +
+                                          __ldg(&pix0_vector[iVL+2]); // Y
+                    pixel_pos[3] = Fdet * __ldg(&fdet_vector[iVL+3]) +
+                                   Sdet * __ldg(&sdet_vector[iVL+3]) +
+                                   Odet * __ldg(&odet_vector[iVL+3]) +
+                                          __ldg(&pix0_vector[iVL+3]); // Z
+
+					if (curved_detector) {
+						/* construct detector pixel that is always "distance" from the sample */
+						CUDAREAL dbvector[4];
+						dbvector[1] = distance * beam_vector[1];
+						dbvector[2] = distance * beam_vector[2];
+						dbvector[3] = distance * beam_vector[3];
+						/* treat detector pixel coordinates as radians */
+						CUDAREAL newvector[] = { 0.0, 0.0, 0.0, 0.0 };
+						rotate_axis_ldg(dbvector, newvector, sdet_vector, pixel_pos[2] / distance);
+						rotate_axis_ldg(newvector, pixel_pos, fdet_vector, pixel_pos[3] / distance);
+						//                          rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
+					}
+
+					/* construct the diffracted-beam unit vector to this sub-pixel */
+					//CUDAREAL * diffracted = tmpVector2;
+					CUDAREAL diffracted[4];
+					CUDAREAL airpath = unitize(pixel_pos, diffracted);
+
+					/* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
+					CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance / airpath;
+					/* option to turn off obliquity effect, inverse-square-law only */
+					if (point_pixel) {
+						omega_pixel = 1.0 / airpath / airpath;
+					}
+
+					/* now calculate detector thickness effects */
+					CUDAREAL capture_fraction = 1.0;
+					if (detector_thick > 0.0 && detector_mu> 0.0) {
+						/* inverse of effective thickness increase */
+						CUDAREAL parallax = dot_product_ldg(odet_vector, diffracted);
+						capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
+								- exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
+					}
+
+					/* loop over sources now */
+					int source;
+					for (source = 0; source < sources; ++source) {
+
+						/* retrieve stuff from cache */
+						CUDAREAL incident[4];
+						incident[1] = -__ldg(&source_X[source]);
+						incident[2] = -__ldg(&source_Y[source]);
+						incident[3] = -__ldg(&source_Z[source]);
+						CUDAREAL lambda = __ldg(&source_lambda[source]);
+						CUDAREAL source_fraction = __ldg(&source_I[source]);
+
+						/* construct the incident beam unit vector while recovering source distance */
+						// TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
+						unitize(incident, incident);
+
+						/* construct the scattering vector for this pixel */
+						CUDAREAL scattering[4];
+						scattering[1] = (diffracted[1] - incident[1]) / lambda;
+						scattering[2] = (diffracted[2] - incident[2]) / lambda;
+						scattering[3] = (diffracted[3] - incident[3]) / lambda;
+
+						CUDAREAL stol = 0.5 * norm3d(scattering[1], scattering[2], scattering[3]);
+
+						/* rough cut to speed things up when we aren't using whole detector */
+						if (s_dmin > 0.0 && stol > 0.0) {
+							if (s_dmin > 0.5 / stol) {
+								continue;
+							}
+						}
+
+						/* polarization factor */
+						if (!s_nopolar) {
+							/* need to compute polarization factor */
+							polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+						} else {
+							polar = 1.0;
+						}
+
+						/* sweep over phi angles */
+						for (int phi_tic = 0; phi_tic < s_phisteps; ++phi_tic) {
+							CUDAREAL phi = s_phistep * phi_tic + s_phi0;
+
+							CUDAREAL ap[4];
+							CUDAREAL bp[4];
+							CUDAREAL cp[4];
+
+							/* rotate about spindle if necessary */
+							rotate_axis_ldg(a0, ap, spindle_vector, phi);
+							rotate_axis_ldg(b0, bp, spindle_vector, phi);
+							rotate_axis_ldg(c0, cp, spindle_vector, phi);
+
+							/* enumerate mosaic domains */
+							for (int mos_tic = 0; mos_tic < s_mosaic_domains; ++mos_tic) {
+								/* apply mosaic rotation after phi rotation */
+								CUDAREAL a[4];
+								CUDAREAL b[4];
+								CUDAREAL c[4];
+
+                                if (s_mosaic_spread > 0.0) {
+								    rotate_umat_ldg(ap, a, &mosaic_umats[mos_tic * 9]);
+							    	rotate_umat_ldg(bp, b, &mosaic_umats[mos_tic * 9]);
+							    	rotate_umat_ldg(cp, c, &mosaic_umats[mos_tic * 9]);
+                                } else {
+                                    a[1] = ap[1];
+									a[2] = ap[2];
+									a[3] = ap[3];
+									b[1] = bp[1];
+									b[2] = bp[2];
+									b[3] = bp[3];
+									c[1] = cp[1];
+									c[2] = cp[2];
+									c[3] = cp[3];        
+                                }
+
+								/* construct fractional Miller indicies */
+
+								CUDAREAL h = dot_product(a, scattering);
+								CUDAREAL k = dot_product(b, scattering);
+								CUDAREAL l = dot_product(c, scattering);
+
+								/* round off to nearest whole index */
+								int h0 = ceil(h - 0.5);
+								int k0 = ceil(k - 0.5);
+								int l0 = ceil(l - 0.5);
+
+																/* structure factor of the lattice (paralelpiped crystal)
+								 F_latt = sin(M_PI*Na*h)*sin(M_PI*Nb*k)*sin(M_PI*Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
+								 */
+								CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
+								CUDAREAL hrad_sqr = 0.0;
+								if (s_xtal_shape == SQUARE) {
+									/* xtal is a paralelpiped */
+									if (Na > 1) {
+//										F_latt *= sincgrad(h, s_Na);
+										F_latt *= sincg(M_PI * h, s_Na);
+									}
+									if (Nb > 1) {
+//										F_latt *= sincgrad(k, s_Nb);
+										F_latt *= sincg(M_PI * k, s_Nb);
+									}
+									if (Nc > 1) {
+//										F_latt *= sincgrad(l, s_Nc);
+										F_latt *= sincg(M_PI * l, s_Nc);
+									}
+								} else {
+									/* handy radius in reciprocal space, squared */
+									hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
+								}
+								if (s_xtal_shape == ROUND) {
+									/* use sinc3 for elliptical xtal shape,
+									 correcting for sqrt of volume ratio between cube and sphere */
+									F_latt = Na * Nb * Nc * 0.723601254558268 * sinc3(M_PI * sqrt(hrad_sqr * fudge));
+								}
+								if (s_xtal_shape == GAUSS) {
+									/* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+									F_latt = Na * Nb * Nc * exp(-(hrad_sqr / 0.63 * fudge));
+								}
+                                if (s_xtal_shape == GAUSS_ARGCHK) {
+                                    /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+                                    double my_arg = hrad_sqr / 0.63 * fudge;
+                                    if (my_arg<35.) { 
+                                        F_latt = Na * Nb * Nc * exp(-(my_arg));
+                                    } else { 
+                                        F_latt = 0.;
+                                    } // warps coalesce when blocks of 32 pixels have no Bragg signal
+                                }
+								if (s_xtal_shape == TOPHAT) {
+									/* make a flat-top spot of same height and volume as square_xtal spots */
+									F_latt = Na * Nb * Nc * (hrad_sqr * fudge < 0.3969);
+								}
+								/* no need to go further if result will be zero? */
+								if (F_latt == 0.0 && water_size == 0.0)
+									continue;
+
+								/* structure factor of the unit cell */
+								CUDAREAL F_cell = default_F;
+								//F_cell = quickFcell_ldg(s_hkls, s_h_max, s_h_min, s_k_max, s_k_min, s_l_max, s_l_min, h0, k0, l0, s_h_range, s_k_range, s_l_range, default_F, Fhkl);
+                                if (
+                                    h0 < s_h_min ||
+                                    k0 < s_k_min ||
+                                    l0 < s_l_min ||
+                                    h0 > s_h_max ||
+                                    k0 > s_k_max ||
+                                    l0 > s_l_max
+                                    )
+                                    F_cell = 0.;
+                                else
+                                    F_cell = __ldg(&Fhkl[(h0-s_h_min)*s_k_range*s_l_range + (k0-s_k_min)*s_l_range + (l0-s_l_min)]);
+
+								/* now we have the structure factor for this pixel */
+
+								/* convert amplitudes into intensity (photons per steradian) */
+								I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
+								omega_sub_reduction += omega_pixel;
+							}
+							/* end of mosaic loop */
+						}
+						/* end of phi loop */
+					}
+					/* end of source loop */
+				}
+				/* end of detector thickness loop */
+			}
+			/* end of sub-pixel y loop */
+		}
+		/* end of sub-pixel x loop */
+		const double photons = I_bg + (r_e_sqr * spot_scale * fluence * polar * I) / steps;
+		floatimage[j] = photons;
+		omega_reduction[j] = omega_sub_reduction; // shared contention
+		max_I_x_reduction[j] = max_I_x_sub_reduction;
+		max_I_y_reduction[j] = max_I_y_sub_reduction;
+		rangemap[j] = true;
+	}
+
+}
 
 __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixels, int total_pixels,
     int oversample, int point_pixel,
@@ -62,7 +436,8 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
     const int * __restrict__ pixel_lookup,
     float * floatimage /*out*/, float * omega_reduction/*out*/,
     float * max_I_x_reduction/*out*/, float * max_I_y_reduction /*out*/, bool * rangemap) {
-        __shared__ int s_vec_len;
+    
+    __shared__ int s_vec_len;
 	__shared__ CUDAREAL s_dmin;
 
 	__shared__ bool s_nopolar;
@@ -76,7 +451,7 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
                        s_h_max, s_k_max, s_l_max;
 
 	if (threadIdx.x == 0 && threadIdx.y == 0) {
-                s_vec_len = vec_len;
+        s_vec_len = vec_len;
 		s_dmin = dmin;
 
 		s_nopolar = nopolar;
@@ -97,9 +472,9 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
 		s_h_range = FhklParams->h_range;
 		s_k_range = FhklParams->k_range;
 		s_l_range = FhklParams->l_range;
-                s_h_max = s_h_min + s_h_range - 1;
-                s_k_max = s_k_min + s_k_range - 1;
-                s_l_max = s_l_min + s_l_range - 1;
+        s_h_max = s_h_min + s_h_range - 1;
+        s_k_max = s_k_min + s_k_range - 1;
+        s_l_max = s_l_min + s_l_range - 1;
 
 	}
 	__syncthreads();

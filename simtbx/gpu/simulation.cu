@@ -113,7 +113,7 @@ namespace af = scitbx::af;
         // the for loop around panels.  Offsets given.
         for (std::size_t idx_p = 0; idx_p < gdt.cu_n_panels; idx_p++){
           // loop thru panels and increment the array ptrs
-          nanoBraggSpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(
+          debranch_SpotsCUDAKernel<<<numBlocks, threadsPerBlock>>>(
           gdt.cu_slow_pixels, gdt.cu_fast_pixels, SIM.roi_xmin,
           SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
           SIM.pixel_size, cu_subpixel_size, cu_steps, SIM.detector_thickstep, SIM.detector_thicksteps,
