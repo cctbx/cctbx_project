@@ -116,7 +116,9 @@ class MillerArrayDataManager(DataManagerBase):
       self._miller_array_arrays[filename] = {}
     if filename not in self._miller_array_types.keys():
       self._miller_array_types[filename] = {}
-    miller_arrays = self.get_miller_array(filename).as_miller_arrays()
+    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
+    miller_arrays = self.get_miller_array(filename).\
+      as_miller_arrays(merge_equivalents=merge_equivalents)
     labels = []
     for array in miller_arrays:
       label = array.info().label_string()
@@ -223,10 +225,12 @@ class MillerArrayDataManager(DataManagerBase):
 
     # crystal_symmetry and force_symmetry should be set by now
     miller_arrays = []
+    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
     for filename, file_labels in zip(filenames, labels):
       file_arrays = self.get_miller_array(filename).\
         as_miller_arrays(crystal_symmetry=crystal_symmetry,
-                         force_symmetry=force_symmetry)
+                         force_symmetry=force_symmetry,
+                         merge_equivalents=merge_equivalents)
       if file_labels is None:
         file_labels = self.get_miller_array_labels(filename)
       for miller_array in file_arrays:
@@ -445,7 +449,8 @@ class MillerArrayDataManager(DataManagerBase):
     if datatype not in MillerArrayDataManager.miller_array_child_datatypes:
       raise Sorry('%s is not a valid child datatype of miller_array.')
     data = self.get_miller_array(filename)
-    miller_arrays = data.as_miller_arrays()
+    merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
+    miller_arrays = data.as_miller_arrays(merge_equivalents=merge_equivalents)
     labels = []
     types = {}
     datatype_dict = getattr(self, '_%s_arrays' % datatype)
