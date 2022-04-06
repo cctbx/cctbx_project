@@ -141,7 +141,7 @@ def fetch_peptide_expectations():
       test=os.path.isfile)
     if (picklefile is None):
       sys.stderr.write("\nCould not find a needed pickle file for category "+
-        category+" in chem_data.\nExiting.\n")
+        category+" in chem_data.\nPlease run mmtbx.rebuild_cablam_cache\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[category] = ndt
@@ -162,7 +162,7 @@ def fetch_ca_expectations():
       test=os.path.isfile)
     if (picklefile is None):
       sys.stderr.write("\nCould not find a needed pickle file for category "+
-        category+" in chem_data.\nExiting.\n")
+        category+" in chem_data.\nPlease run mmtbx.rebuild_cablam_cache\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[category] = ndt
@@ -183,7 +183,7 @@ def fetch_motif_contours():
       test=os.path.isfile)
     if (picklefile is None):
       sys.stderr.write("\nCould not find a needed pickle file for motif "+
-        motif+" in chem_data.\nExiting.\n")
+        motif+" in chem_data.\nPlease run mmtbx.rebuild_cablam_cache\nExiting.\n")
       sys.exit()
     ndt = easy_pickle.load(file_name=picklefile)
     unpickled[motif] = ndt
