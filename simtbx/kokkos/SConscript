@@ -40,7 +40,7 @@ cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
 cfg_default.env['KOKKOS_ARCH'] = "HSW"
 cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
-cfg_default.env['LDLIBS'] = "-lkokkos -ldl"
+cfg_default.env['LDLIBS'] = "-lkokkoscontainers -lkokkoscore -ldl"
 cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
 cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
 cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
@@ -280,7 +280,7 @@ kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-kokkos_env.Append(LIBS=['kokkos'])
+kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
@@ -311,7 +311,8 @@ if not env_etc.no_boost_python:
     "scitbx_boost_python",
     env_etc.boost_python_lib,
     "cctbx",
-    "kokkos"]
+    "kokkoscontainers",
+    "kokkoscore"]
   if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'compat')])
