@@ -77,8 +77,6 @@ class HKLViewFrame() :
     self.outputmsgtypes = []
     self.userpresetbuttonsfname = os.path.join( Path.home(), ".HKLviewerButtons.py")
     self.infostr = ""
-    self.msgtype = ""
-    self.lastmsgtype = ""
     self.allbuttonslist = []
     self.hklfile_history = []
     self.arrayinfos = []
@@ -170,34 +168,27 @@ class HKLViewFrame() :
   def zmq_listen(self):
     #time.sleep(5)
     nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
+    lastmsgtype = ""
     while not self.STOP:
       try:
         msgstr = self.guisocket.recv().decode("utf-8")
         if msgstr == "":
           continue
         self.mprint("Received string:\n" + msgstr, verbose=1)
-        self.msgtype, mstr = eval(msgstr)
-        if self.msgtype=="debug_show_phil":
+        msgtype, mstr = eval(msgstr)
+        if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
-        if self.msgtype=="datatypedict":
+        if msgtype=="datatypedict":
           self.viewer.datatypedict = eval(mstr)
-        if self.msgtype=="clipper_crystdict":
+        if msgtype=="clipper_crystdict":
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
-        if self.msgtype=="philstr" or self.msgtype=="GUI_dialog":
-          if self.lastmsgtype=="preset_philstr" and self.msgtype != "GUI_dialog":
-            self.ResetPhil()
-            self.viewer.sceneisdirty = True
+
+        if msgtype=="philstr" or msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
-          self.update_settings(new_phil)
-        if self.msgtype=="preset_philstr":
-          new_phil = libtbx.phil.parse(mstr)
-          self.ResetPhil()
-          self.viewer.sceneisdirty = True
-          self.viewer.executing_preset_btn = True
-          self.update_settings(new_phil)
-          self.viewer.executing_preset_btn = False
-        self.lastmsgtype = self.msgtype
+          self.update_settings(new_phil, msgtype, lastmsgtype)
+
+        lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
         self.mprint( str(e) + traceback.format_exc(limit=10), verbose=1)
@@ -270,17 +261,31 @@ class HKLViewFrame() :
      self.master_phil.fetch_diff(source = self.currentphil).as_str()
 
 
-  def update_settings(self, new_phil=None):
+  def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
+      oldsceneid = self.viewer.viewerparams.scene_id
+
+      if msgtype=="preset_philstr":
+        self.ResetPhil()
+        self.viewer.sceneisdirty = True
+        self.viewer.executing_preset_btn = True
+      # selecting a new scene_id resets phil parameters if the previous phil was from a preset button
+      if lastmsgtype=="preset_philstr" and view_3d.has_phil_path(new_phil, "scene_id"):
+        self.ResetPhil()
+
       if not new_phil:
-        #self.params = self.viewer.params
         new_phil = self.master_phil.format(python_object = self.params)
-      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
-      #diff = None
+
       self.params = self.currentphil.extract()
       phl = self.params
       self.viewer.viewerparams = phl.viewer
+      # once a preset phil setting has been enabled allow changing a phil parameter
+      # without having to change scene_id
+      if (msgtype=="philstr") and (lastmsgtype=="preset_philstr") and (oldsceneid is not None) and \
+         view_3d.has_phil_path(diff_phil, "scene_id") == False:
+        self.viewer.viewerparams.scene_id = oldsceneid
+        self.viewer.sceneisdirty = True
 
       if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
         self.mprint( "Nothing's changed", verbose=1)
@@ -288,6 +293,8 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
+      # Scene_id is then inferred from data_array and used throughout
       if view_3d.has_phil_path(diff_phil, "data_array"):
         if view_3d.has_phil_path(diff_phil, "phasertng_tag"):
           phl.viewer.data_array.label = self.get_label_from_phasertng_tag(phl.viewer.data_array.phasertng_tag)
@@ -301,7 +308,6 @@ class HKLViewFrame() :
         phl.viewer.data_array.datatype = None
 
       if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
-        #phl = self.ResetPhilandViewer(self.currentphil)
         if not self.load_miller_arrays():
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id

@@ -1942,7 +1942,7 @@ clip_plane {
            )
           self.makenewdataform.show()
         if strval=="tabulate_data":
-          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx), msgtype= "GUI_dialog")
+          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx))
 
 
   def DisplayData(self, idx, row):
