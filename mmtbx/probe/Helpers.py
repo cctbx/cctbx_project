@@ -209,11 +209,11 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
           # We're in range; bond each of us to the other.
           try:
             bondedNeighborLists[a].append(n)
-          except:
+          except Exception:
             bondedNeighborLists[a] = [n]
           try:
             bondedNeighborLists[n].append(a)
-          except:
+          except Exception:
             bondedNeighborLists[n] = [a]
 
 def compatibleConformations(a1, a2):
