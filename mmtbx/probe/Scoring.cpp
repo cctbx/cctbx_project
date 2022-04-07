@@ -179,14 +179,12 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   if (keepDot) {
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
          e != exclude.end(); e++) {
-      // Dots on dummy Hydrogens cannot be blocked by excluded atoms that are acceptors.
-      // We skip the check in that case.
-      if (!sourceExtra.getIsDummyHydrogen() || !m_extraInfoMap.getMappingFor(*e).getIsAcceptor()) {
-        double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-        if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
-          keepDot = false;
-          break;
-        }
+      // The original Probe code does internal checks for Phantom Hydrogens, but we handle that
+      // in the calling routine by properly adjusting the list of atoms to be excluded.
+      double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+        keepDot = false;
+        break;
       }
     }
   }

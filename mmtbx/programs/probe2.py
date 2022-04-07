@@ -763,7 +763,7 @@ Note:
         excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
           excluded_bond_chain_length, 3)
 
-        # For Phantom Hydrogens, move any non-Acceptor atom in the atom list into the
+        # For Phantom Hydrogens, add any non-Acceptor atom in the atom list into the
         # excluded list and also add nearby Phantom Hydrogens into the excluded list.
         # @todo Consider whether we'd rather handle this by making bonds between the
         # Phantoms and their water Oxygens (both directions), which will shield their
@@ -1964,16 +1964,17 @@ Note:
                 self._inSideChain[p] = self._inSideChain[a]
                 self._inHet[p] = self._inHet[a]
 
+                # Mark the Phantom Hydrogens as being bonded to their Oxygen so that
+                # dots on a Phantom Hydrogen within its Oxygen will be excluded.
+                bondedNeighborLists[p] = [a]
+                self._allBondedNeighborLists[p] = [a]
+
                 # @todo In the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
                 # original Probe.  For now, we separately handle Phantom Hydrogen
                 # interactions as special cases in the code.
-                bondedNeighborLists[p] = []
-                self._allBondedNeighborLists[p] = []
-                #bondedNeighborLists[p] = [a]
                 #bondedNeighborLists[a].append(p)
-                #self._allBondedNeighborLists[p] = [a]
                 #self._allBondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
