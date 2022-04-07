@@ -55,7 +55,6 @@ namespace lookup_utils{
       hkl_lookup_(),
       anomalous_flag_(anomalous_flag)
     {
-#pragma omp parallel for
       for (int ii=0;ii<hkl.size();ii++){
         cctbx::miller::asym_index asumap(space_group_,
                                          asu_choice_,
