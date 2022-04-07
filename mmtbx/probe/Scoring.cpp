@@ -194,7 +194,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // If this dot is a keeper, fill in non-default return values.
   if (keepDot) {
     // Determine the overlap type and amount of overlap.
-    if (ret.gap >= 0) {
+    if (ret.gap > 0) {
       ret.overlap = 0;
       if (m_weakHBonds && isHydrogenBond) {
         ret.overlapType = DotScorer::HydrogenBond;
@@ -212,7 +212,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       } else {
         ret.overlapType = DotScorer::HydrogenBond;
       }
-    } else {  // ret.gap < 0 and not a hydrogen bond
+    } else {  // ret.gap <= 0 and not a hydrogen bond
       ret.overlap = -overlapScale * ret.gap;
       ret.overlapType = DotScorer::Clash;
     }
