@@ -1,5 +1,3 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.table_one
-
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import dummy_validation
 from mmtbx.validation import molprobity
