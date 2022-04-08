@@ -60,11 +60,11 @@ def make_rank_outdir(root, subfolder):
 
 class Script:
     def __init__(self):
-        from dials.util.options import OptionParser
+        from dials.util.options import ArgumentParser
 
         self.params = self.parser = None
         if COMM.rank == 0:
-            self.parser = OptionParser(
+            self.parser = ArgumentParser(
                 usage="",  # stage 1 (per-shot) diffBragg refinement",
                 sort_options=True,
                 phil=phil_scope,

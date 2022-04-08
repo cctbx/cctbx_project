@@ -6,7 +6,7 @@ import numpy as np
 import h5py
 import iotbx.phil
 import libtbx.load_env
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 import sys, os
 from six.moves import range
 
@@ -78,7 +78,7 @@ def run(args):
     if arg.endswith(".h5") or arg.endswith(".hdf5"):
       h5s.append(args.pop(args.index(arg)))
   sys.argv = [sys.argv[0]] + args
-  parser = OptionParser(phil=phil_scope)
+  parser = ArgumentParser(phil=phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   for h5 in h5s:
     print("Processing image %s..." % h5)

@@ -8,7 +8,7 @@ from six.moves import range
 # $Id: frame_extractor.py idyoung $
 
 from dials.array_family import flex
-from dials.util.options import Importer, flatten_reflections, flatten_experiments, OptionParser
+from dials.util.options import Importer, flatten_reflections, flatten_experiments, ArgumentParser
 from cctbx import crystal, miller
 from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
@@ -258,7 +258,7 @@ def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None)
     easy_pickle.dump(os.path.join(outdir, name), frame)
 
 if __name__ == "__main__":
-  parser = OptionParser(phil=phil_scope)
+  parser = ArgumentParser(phil=phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   if params.output.dirname is not None:
     assert os.path.isdir(params.output.dirname)

@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 # cbf header file. Note hardcoded distance of 100 isn't relevant for just a cbf header
 
 from dials.util import show_mail_on_error
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from dials.util.options import flatten_experiments
 from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf, map_detector_to_basis_dict
 from libtbx import phil
@@ -20,7 +20,7 @@ phil_scope = phil.parse("""
 class Script(object):
   def __init__(self):
     # Create the parser
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       phil = phil_scope,
       read_experiments = True,
       check_format = False)

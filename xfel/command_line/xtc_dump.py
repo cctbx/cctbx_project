@@ -12,7 +12,7 @@ import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util import show_mail_on_error
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
 
@@ -110,7 +110,7 @@ class Script(object):
  format.file_format=pickle format.pickle.cfg=path
     """%(libtbx.env.dispatcher_name, libtbx.env.dispatcher_name)
 
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage = self.usage,
       phil = phil_scope)
 

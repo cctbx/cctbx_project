@@ -47,7 +47,7 @@ class Script(object):
 
   def __init__(self):
     '''Initialise the script.'''
-    from dials.util.options import OptionParser
+    from dials.util.options import ArgumentParser
     import libtbx.load_env
 
     # The script usage
@@ -57,7 +57,7 @@ class Script(object):
     self.reference_detector = None
 
     # Create the parser
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage=usage,
       phil=phil_scope,
       read_experiments=True,

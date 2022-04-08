@@ -18,7 +18,7 @@ import pycbf, os, sys, copy, socket
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util import show_mail_on_error
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from libtbx.phil import parse
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
@@ -459,7 +459,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 %s input.experiment=experimentname input.run_num=N input.address=address
  format.file_format=pickle input.cfg=filename
     """%(libtbx.env.dispatcher_name, libtbx.env.dispatcher_name)
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage = self.usage,
       phil = phil_scope)
 

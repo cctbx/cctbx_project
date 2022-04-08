@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 # $Id: riso.py idyoung $
 
 import iotbx.phil
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from iotbx import mtz
 from cctbx.array_family import flex
 from libtbx.str_utils import format_value
@@ -167,7 +167,7 @@ def run(args):
   elif ("--config" in args) or ("-c" in args):
     iotbx.phil.parse(master_phil).show(attributes_level=2)
     return
-  parser = OptionParser(phil=phil_scope)
+  parser = ArgumentParser(phil=phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   # XXX TODO: find out how to auto recognize .mtz files as data_X
   extracted_data = []

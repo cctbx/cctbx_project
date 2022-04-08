@@ -81,9 +81,9 @@ output {
 class Script:
 
   def __init__(self):
-    from dials.util.options import OptionParser
+    from dials.util.options import ArgumentParser
 
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage="",
       sort_options=True,
       phil=phil_scope,

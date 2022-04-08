@@ -39,11 +39,11 @@ phil_scope = parse(philz)
 class Script:
 
     def __init__(self):
-        from dials.util.options import OptionParser
+        from dials.util.options import ArgumentParser
 
         self.parser = None
         if COMM.rank == 0:
-            self.parser = OptionParser(
+            self.parser = ArgumentParser(
                 usage="",  # stage 1 (per-shot) diffBragg refinement",
                 sort_options=True,
                 phil=phil_scope,

@@ -42,11 +42,11 @@ class Script(object):
 
   def __init__(self):
     ''' Set the expected options. '''
-    from dials.util.options import OptionParser
+    from dials.util.options import ArgumentParser
 
     # Create the option parser
     usage = "usage: %s tag=tagname" % libtbx.env.dispatcher_name
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage=usage,
       sort_options=True,
       phil=phil_scope,

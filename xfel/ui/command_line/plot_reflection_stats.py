@@ -40,14 +40,14 @@ class Script(object):
 
   def __init__(self):
     '''Initialise the script.'''
-    from dials.util.options import OptionParser
+    from dials.util.options import ArgumentParser
     import libtbx.load_env
 
     # The script usage
     usage = "usage: %s [options] [param.phil] filenames" % libtbx.env.dispatcher_name
 
     # Create the parser
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage=usage,
       phil=phil_scope,
       check_format=False,

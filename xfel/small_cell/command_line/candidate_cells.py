@@ -2,7 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.candidate_cells
 from __future__ import division
 from iotbx.phil import parse
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from cctbx import uctbx, miller, crystal
 from libtbx import easy_mp
 from cctbx.uctbx import d_as_d_star_sq, d_star_sq_as_two_theta
@@ -300,7 +300,7 @@ def print_results(candidates, params):
 class Script(object):
   def __init__(self):
     usage = None
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
          usage=usage,
          phil=phil_scope,
          epilog=help_message,

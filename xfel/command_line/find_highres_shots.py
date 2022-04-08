@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 import os, glob
 import libtbx.load_env
 from dials.util import show_mail_on_error
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from libtbx.phil import parse
 from libtbx import easy_pickle
 from scitbx.array_family import flex
@@ -53,7 +53,7 @@ class Script(object):
   def __init__(self):
     """ Set up the option parser. Arguments come from the command line or a phil file """
     self.usage = "%s data=path"%(libtbx.env.dispatcher_name)
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
       usage = self.usage,
       phil = phil_scope,
       epilog = help_message)

@@ -6,7 +6,7 @@ import logging
 from iotbx.phil import parse
 from dials.util import log
 from dials.util import show_mail_on_error
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from xfel.small_cell.spotfinder_radial_average import Spotfinder_radial_average
 
 logger = logging.getLogger("dials.command_line.powder_from_spots")
@@ -107,7 +107,7 @@ output {
 class Script(object):
   def __init__(self):
     usage = "$ cctbx.xfel.powder_from_spots EXPERIMENTS REFLECTIONS [options]"
-    self.parser = OptionParser(
+    self.parser = ArgumentParser(
         usage=usage,
         phil=phil_scope,
         epilog=help_message,

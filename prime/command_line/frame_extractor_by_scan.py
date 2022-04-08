@@ -7,7 +7,7 @@ Desc        : Taking the original code from xfel/command_line/frame_extractor.py
 from __future__ import absolute_import, division, print_function
 
 from dials.array_family import flex
-from dials.util.options import Importer, flatten_reflections, flatten_experiments, OptionParser
+from dials.util.options import Importer, flatten_reflections, flatten_experiments, ArgumentParser
 from cctbx import crystal, miller
 from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
@@ -205,7 +205,7 @@ if __name__ == "__main__":
       .type = path
       .help = if set, path to directory to save the new pickle file
       """)
-  parser = OptionParser(phil=master_phil_scope)
+  parser = ArgumentParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
   #get scan range number
   importer = Importer([params.pickle_name, params.json_name], read_experiments=True, read_reflections=True, check_format=False)

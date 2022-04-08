@@ -10,7 +10,7 @@ from dials.array_family import flex
 from scitbx.array_family import flex as sciflex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-from dials.util.options import OptionParser
+from dials.util.options import ArgumentParser
 from dxtbx.model import BeamFactory, DetectorFactory
 from dxtbx.format import FormatMultiImage
 from dxtbx.model import Experiment, ExperimentList
@@ -314,7 +314,7 @@ if __name__ == "__main__":
       .type = bool
       .help = override raising exceptions if no image can be found. Write a json with a dummy image (pickle name)
     """)
-  parser = OptionParser(phil=master_phil_scope)
+  parser = ArgumentParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=False)
   for pickle_file in os.listdir(params.pickle_location):
     pickle_path = os.path.join(params.pickle_location, pickle_file)

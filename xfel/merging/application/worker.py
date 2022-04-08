@@ -42,9 +42,9 @@ class factory(object):
 def exercise_worker(worker_class):
   """ Boilerplate code for testing a worker class """
   from xfel.merging.application.phil.phil import phil_scope
-  from dials.util.options import OptionParser
+  from dials.util.options import ArgumentParser
   # Create the parser
-  parser = OptionParser(phil=phil_scope)
+  parser = ArgumentParser(phil=phil_scope)
 
   # Parse the command line. quick_parse is required for MPI compatibility
   params, options = parser.parse_args(show_diff_phil=True,quick_parse=True)
