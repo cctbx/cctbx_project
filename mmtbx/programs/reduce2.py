@@ -100,6 +100,17 @@ Output:
   with _reduced added to it; 1xs0.pdb would be written to ./1xso_reduced.cif by default.
 
 NOTES:
+  If multiple alternates are present in the file and a specific one is not specified on the
+  command line, they will all be processed in reverse order, such that the lowest-named
+  one (perhaps A) will be processed last.  The hydrogen addition and arrangements for
+  residues that are not part of any alternate will be left in the configuration that is best
+  for the final alternate tested.  This may leave other alternates in sub-optimal configurations.
+  When a single alternate is selected using alt_id= on the command line, everything is
+  optimized a single time and for that configuration.
+
+  Note that the program also takes probe Phil arguments; run with --show_defaults to see
+  all Phil arguments.
+
   Equivalent PHIL arguments for original Reduce command-line options:
     -quiet: No equivalent; metadata is never written to the model file, it is always
             written to the description file, and progress information is always written
@@ -112,7 +123,8 @@ NOTES:
     -nobuild9999: approach=add preference_magnitude=9999
     -noflip: approach=add add_flip_movers=True preference_magnitude=9999
     -onlya: alt_id=A
-     @todo
+    -nuclear: use_neutron_distances
+    -demandflipallnhqs: add_flip_movers = True
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
@@ -120,7 +132,7 @@ NOTES:
                           'model_skip_ss_annotations']
   citations = program_citations
   epilog = '''
-  For additional information and help, see http://kinemage.biochem.duke.edu/software/probe
+  For additional information and help, see http://kinemage.biochem.duke.edu/software/reduce
   and http://molprobity.biochem.duke.edu
   '''
 
@@ -128,8 +140,6 @@ NOTES:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
-    #if self.params.output.model_file_name is None:
-    #  raise Sorry("Must specify output.model_file_name")
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
 
