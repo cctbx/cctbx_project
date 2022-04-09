@@ -86,9 +86,9 @@ class hydrogens(geometrical.any):
     pivot_element = pivot.scattering_type
     d = self.room_temperature_bond_length.get(pivot_element)
     if d is None:
-      raise InvalidConstraint(
-        "Invalid %s constraint involving %s:"
-        " ideal bond length not defined to atom type %s" %(
+      d = 1.0
+      print("Warning: %s constraint involving %s:"
+        " ideal bond length not defined to atom type %s, using 1A" %(
           self.__class__.__name__, pivot.label, pivot_element))
     if temperature is not None:
       if   temperature < -70: d += 0.02
