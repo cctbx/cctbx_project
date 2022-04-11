@@ -10,7 +10,8 @@ bohrang = 0.52918
 def qm_runner(qmm,
               cleanup=True,
               file_read=False,
-              log=StringIO(),
+              # log=StringIO(),
+              log=None,
               ):
   def get_func(manager, attr):
     return getattr(manager, 'get_%s' % attr, None)
