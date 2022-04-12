@@ -12,7 +12,9 @@ on Probe2 and not on the original code base.
 
 The C++ classes, wrapped for use in Python, make use of CCTBX and Boost structures and define all of
 their classes and functions in the molprobity::probe C++ namespace.  These are wrapped in Python and
-can be imported as **mmtbx_probe_ext**.
+can be imported as **mmtbx_probe_ext**.  As described below, the use of the Helpers.create*() functions
+is preferred to constructing these objects directly because it handles all Probe Phil parameters, including
+any that are added in the future.
 
 * **Common.h:** Definition of the type of floating-point number to be used as a coordinate (Coord) and of
 a three-dimensional **Point** representation to be used internally.
@@ -32,7 +34,7 @@ and is a combination of the codes from the original Probe and original Reduce co
 workhorse, with the other classes providing structured input and output for this class.
 
 * **boost_python/probe_pbl.cpp:** As is usual for CCTBX projects, this file contains the wrapper code for the
-above functions that uses Boost Python to wrap them to be called from Python.  It places 
+above functions that uses Boost Python to wrap them to be called from Python.
 
 * **tst_probe.cpp** Compiles into a program that tests all of the C++ methods.  It is compiled by CMakeLists.txt
 but not by SConscript, so it is not normally used and is not deployed within CCTBX.
@@ -48,17 +50,32 @@ to know how to handle them during Probe2 calculations.  The **IsAromatic()** fun
 a specified atom from a specified residue is part of an aromatic ring in a standard residue.
 
 * **Helpers.py.** This contains helper functions needed by both Probe2 and Reduce2.  See the file itself for a complete
-list of functions and parameters.  **getBondedNeighborLists()** converts bond proxy information into a dictionary of
-lists, providing a list of bonded atoms looked up by atom.  **compatibleConformations()** tells whether two atoms
-are in compatible conformations.  **getAtomsWithinNBonds()** returns the list of atoms from compatible conformations
-that are bonded within N hops from a specified atom.  **getExtraAtomInfo()** looks up extra information needed to
-determine interactions and returns it encapsulated in a C++ structure reference.  **dihedralChoicesForRotatableHydrogens()**
+list of functions and parameters.  Notable ones include:
+    * **probe_phil_parameters**: These are a description of CCTBX Phil parameters that control the
+behavior of Probe2 library functions.  They can be used by a client program to automatically update its
+command-line arguments whenever the library is updated.  This can be done by adding
+`from mmtbx.probe import Helpers; master_phil_str += Helpers.probe_phil_parameters` in the Program Template.
+    * **create** functions for SpatialQuery, DotSphereCache, and DotScorer C++ objects take in the probe
+Phil parameters as an argument and apply them to the object construction as needed.  These functions will be
+updated as new Phil parameters (and corresponding object parameters) are added, so that a client program can
+make use of new default and settable options without having to change their code.  For this reason, the
+use of these functions is preferred to constructing the objects directly.
+    * **getBondedNeighborLists()** converts bond proxy information into a dictionary of
+lists, providing a list of bonded atoms looked up by atom.
+    * **compatibleConformations()** tells whether two atoms
+are in compatible conformations.
+    * **getAtomsWithinNBonds()** returns the list of atoms from compatible conformations
+that are bonded within N hops from a specified atom.
+    * **getExtraAtomInfo()** looks up extra information needed to
+determine interactions and returns it encapsulated in a C++ structure reference.
+    * **dihedralChoicesForRotatableHydrogens()**
 determines which of the Hydrogens passed in should be paired with which of the potential dihedral-determining
 atoms passed in to compute the dihedral angle for the Hydrogen; this is used for placement and angle description.
-**getPhantomHydrogensFor()** produces a list of potential hydrogens for a water oxygen that point
-towards nearby acceptors (or all nearby atoms).  **fixupExplicitDonors()** adjusts the extra atom information for
-a set of atoms once hydrogens have been explicitly added to the model, adjusting the donor status.  **rvec3()**
-and **lvec3()** return **scitbx.matrix.rec** elements for left-side and right-side multiplication, enabling the use
+    * **getPhantomHydrogensFor()** produces a list of potential hydrogens for a water oxygen that point
+towards nearby acceptors (or all nearby atoms).
+    * **fixupExplicitDonors()** adjusts the extra atom information for
+a set of atoms once hydrogens have been explicitly added to the model, adjusting the donor status.
+    * **rvec3()** and **lvec3()** return **scitbx.matrix.rec** elements for left-side and right-side multiplication, enabling the use
 of these built-in C++ types' methods from within Python.
 
 ## Testing
@@ -185,8 +202,10 @@ It will fail with an assertion failure if there is a problem with the tests:
 
 ## Regression testing
 
-Regression tests were performed between Probe2 and the original Probe code in March 2022 before the release
-of Probe2:
+Regression tests were performed between Probe2 and the original Probe code in March-April 2022 before the release
+of Probe2.  Note that Probe2 does not separately report Car contacts; they are included in C:
+- 1bti run through Reduce2: after bug fixes, Probe and Probe2 have the exact same total counts, scores, and surface areas.
+- 1xso run through Reduce2: after bux fixes, 
 
 **@todo**
 
