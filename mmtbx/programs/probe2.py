@@ -957,7 +957,7 @@ Note:
     srcDots = self._dots[src]
     realBonded = []
     for b in bonded:
-      if self._atomClasses[b] != 'ignore' and not self._extraAtomInfo.getMappingFor(b).isDummyHydrogen:
+      if self._atomClasses[b] != 'ignore':
         realBonded.append(b)
 
     # Check all of the dots for the atom and see if they should be
