@@ -2103,11 +2103,11 @@ Note:
           nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
 
           # Select those that are actually within the contact distance based on their
-          # particular radius.
+          # particular radius.  Only accept atoms that are in compatible conformations.
           atomList = []
           for n in nearby:
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-            if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+            if Helpers.compatibleConformations(src, n) and (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
                 self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
               atomList.append(n)
 
