@@ -203,9 +203,34 @@ It will fail with an assertion failure if there is a problem with the tests:
 ## Regression testing
 
 Regression tests were performed between Probe2 and the original Probe code in March-April 2022 before the release
-of Probe2.  Note that Probe2 does not separately report Car contacts; they are included in C:
-- 1bti run through Reduce2: after bug fixes, Probe and Probe2 have the exact same total counts, scores, and surface areas.
-- 1xso run through Reduce2: after bux fixes, 
+of Probe2.  The following sets of command-line arguments were used to compare the two when run with different comparisons.
+These are listed for the file 1bti_reduced but similar :
+- Comparing dot scores and extra atom information:
+    - `probe -quiet -kin -mc -self "all" -count -sepworse -DUMPATOMS outputs/1bti_reduced.orig.dump 1bti_reduced.pdb > outputs/1bti_reduced.old.out`
+    - `mmtbx.probe2 source_selection="all" approach=self count_dots=True output.separate_worse_clashes=True output.file_name=outputs/1bti_reduced.new.out output.dump_file_name=outputs/1bti_reduced.new.dump 1bti_reduced.pdb`
+    - The two atom-dump files were compared to ensure that all atoms were present in both files,
+    that they were within 0.05 Angstroms of each other, and that they matched in radius and in acceptor, donor,
+    and metallic status.
+    - The 'tot' lines from the old and new outputs were compared to ensure that they were identical.
+    (**Note:** Probe2 does not separately report Car contacts; they are included in the C reports.)
+- Comparing dot distributions for -self case:
+    - `probe -quiet -DUMPH2O -kin -mc -self "all" -sepworse 1bti_reduced.pdb > outputs/1bti_reduced.old.out`
+    - `mmtbx.probe2 source_selection="all" output.add_kinemage_keyword=True record_added_hydrogens=True approach=self output.separate_worse_clashes=True output.file_name=outputs/1bti_reduced.new.out 1bti_reduced.pdb`
+    - Both the original and new output files were opened in King, with each set of dots turned on and off to see
+    if there were visible missing or moved dots between the two cases.  This includes looking at the
+    Phantom Hydrogens added in each case.
+- Comparing dot distributions for -surface case:
+    - `probe -quiet -DUMPH2O -kin -mc -outside "all" -sepworse 1bti_reduced.pdb > outputs/1bti_reduced.old.out`
+    - `mmtbx.probe2 source_selection="all" output.add_kinemage_keyword=True approach=surface output.file_name=outputs/1bti_reduced.new.out 1bti_reduced.pdb`
+    - Both the original and new output files were opened in King, with each set of dots turned on and off to see
+    if there were visible missing or moved dots between the two cases.
+**@todo:** Test -once and -both and -count_atoms
+
+The following files were tested and passed the above tests.  Each was run through Reduce2 to produce
+the corresponding _reduced.pdb file:
+- 1bti (has alternates): **@todo:** -surface differences
+- 1xso (has ions): **@todo:** -surface differences **@todo:** surface-area differences in -self
+
 
 **@todo**
 
