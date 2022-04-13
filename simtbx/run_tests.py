@@ -46,6 +46,7 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb crystal Nabc G"],
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb crystal Nabc G detz_shift"],
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb Nabc G"],
+    ["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb spec"],
     ["$D/diffBragg/tests/tst_diffBragg_Fcell_deriv.py", "--curvatures"],
     ["$D/diffBragg/tests/tst_diffBragg_eta_derivs.py", "--curvatures"],
     "$D/diffBragg/tests/tst_diffBragg_eta_derivs.py",
