@@ -6,6 +6,15 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+terminate_after_n_converged_iter = None
+  .type = int
+  .help = optionally converge if all parameters seem converged for this many iterations. See
+  .help = converged_param_percent_change
+converged_param_percent_change = 0.1
+  .type = float
+  .help = if a parameter's value changes by less than this amount (percent) between iterations, for a
+  .help = a ceterain number of iters (determined by terminate_after_n_converged_iter), then
+  .help = optimization is considered done, and is stopped
 mask_highest_values = None
   .type = int
   .help = mask out the N highest-valued pixels in a shoebox when performing diffBragg refinement
@@ -311,6 +320,9 @@ sigmas
   .help = sensitivity of target to parameter (experimental)
   .expert_level=10
 {
+  spec = [1,1]
+    .type=floats(size=2)
+    .help = spectrum offset and scale factor sigmas
   roiPerScale = 1
     .type = float
   detz_shift = 1
@@ -351,6 +363,9 @@ init
   .help = initial value of model parameter (will be overrided if best pickle is provided)
   .expert_level=0
 {
+  spec = [0,1]
+    .type = floats(size=2)
+    .help = initial offset and scale factor applied to each energy channel wavelength
   detz_shift = 0
     .type = float
     .help = initial value for the detector position overall shift along z-direction in millimeters
@@ -457,6 +472,9 @@ fix
   .help = flags for fixing parameters during refinement
   .expert_level = 0
 {
+  spec = True
+    .type = bool
+    .help = fix the spectrum. If False, a spectrum correction is refined (wavelength shift and scale)
   perRoiScale = True
     .type = bool
     .help = a per-roi scale factor
@@ -585,6 +603,12 @@ logging
   .help = controls the logging module for hopper and stage_two
   .expert_level = 10
 {
+  show_params_at_minimum = True
+    .type = bool
+    .help = show the optimized parameters once a basinhopping minimum is reached
+  parameters = False
+    .type = bool
+    .help = whether to display hopper refinement parameters at each iteration
   disable = False
     .type = bool
     .help = turn off logging
