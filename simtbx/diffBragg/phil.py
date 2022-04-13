@@ -57,6 +57,12 @@ gen_gauss_spec = False
   .type = bool
   .help = If the experimental data dont include spectra, one can try generating gaussian spectra.
   .help = See the diffBragg/phil.py under simulator.spectrum.gauss_spec.
+use_perpixel_dark_rms = False
+  .type = bool
+  .help = some Jungfrau formats have per-pixel RMS values that change shot-to-shot with the dynamic
+  .help = gain mode switching. If this flag is true, then the per-pixel gain modes will be extracted from the image
+  .help = format . The image format class is expected to have a method named  get_pedestal_rms(self, index=None)
+  .help = See the method xfel/util/jungfrau/get_pedestalRMS-from_jungfrau
 isotropic {
   diffuse_gamma = False
     .type = bool
