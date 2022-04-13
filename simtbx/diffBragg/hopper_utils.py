@@ -9,6 +9,7 @@ from collections import Counter
 from scitbx.matrix import sqr, col
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
+from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
@@ -126,6 +127,7 @@ class DataModeler:
         self.best_model = None  # best model value at each pixel
         self.best_model_includes_background = False  # whether the best model includes the background scattering estimate
         self.all_data =None  # data at each pixel (photon units)
+        self.all_sigma_rdout = None  # this is either a float or an array. if the phil param use_perpixel_dark_rms=True, then these are different per pixel, per shot
         self.all_gain = None  # gain value per pixel (used during diffBragg/refiners/stage_two_refiner)
         self.all_sigmas =None  # error model for each pixel (photon units)
         self.all_trusted =None  # trusted pixel flags (True is trusted and therefore used during refinement)
@@ -142,7 +144,7 @@ class DataModeler:
         self.simple_weights = None  # not used
         self.refls_idx = None  # position of modeled spot in original refl array
         self.refls = None  # reflection table
-        self.sigma_rdout = None   # the value of the readout noise in photon units
+        self.nominal_sigma_rdout = None   # the value of the readout noise in photon units
         self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
         self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
         self.spec_name = None  # optional name specifying spectrum file(.lam)
@@ -151,7 +153,7 @@ class DataModeler:
         self.Hi_asu = None  # miller index (high symmetry)
 
         # which attributes to save when pickling a data modeler
-        self.saves = ["all_data", "all_background", "all_trusted", "best_model", "sigma_rdout",
+        self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
 
@@ -202,6 +204,11 @@ class DataModeler:
         self.__setattr__("%s_unique" % attr_name, unique_vals)
         logging.debug("Modeler has data on %d unique vals from attribute %s" % (len(unique_vals) , attr_name))
         self.__setattr__("%s_slices" % attr_name, vals_id_slices)
+
+    @property
+    def sigma_rdout(self):
+        print("WARNING ,this attribute will soon be deprecated, use nominal_sigma_rdout instead!")
+        return self.nominal_sigma_rdout
 
     def clean_up(self):
         free_SIM_mem(self.SIM)
@@ -310,7 +317,7 @@ class DataModeler:
 
         # can be used for Bfactor modeling
         self.Q = np.linalg.norm(self.refls["rlp"], axis=1)
-        self.sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
+        self.nominal_sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
 
         self.Hi = list(self.refls["miller_index"])
         if sg_symbol is not None:
@@ -342,7 +349,7 @@ class DataModeler:
         if self.params.roi.hotpixel_mask is not None:
             is_trusted = utils.load_mask(self.params.roi.hotpixel_mask)
             hotpix_mask = ~is_trusted
-        self.sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
+        self.nominal_sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
 
         roi_packet = utils.get_roi_background_and_selection_flags(
             refls, img_data, shoebox_sz=self.params.roi.shoebox_size,
@@ -353,7 +360,7 @@ class DataModeler:
             use_robust_estimation=not self.params.roi.fit_tilt,
             set_negative_bg_to_zero=self.params.roi.force_negative_background_to_zero,
             pad_for_background_estimation=self.params.roi.pad_shoebox_for_background_estimation,
-            sigma_rdout=self.sigma_rdout, deltaQ=self.params.roi.deltaQ, experiment=self.E,
+            sigma_rdout=self.nominal_sigma_rdout, deltaQ=self.params.roi.deltaQ, experiment=self.E,
             weighted_fit=self.params.roi.fit_tilt_using_weights,
             allow_overlaps=self.params.roi.allow_overlapping_spots,
             ret_cov=True, skip_roi_with_negative_bg=self.params.roi.skip_roi_with_negative_bg,
@@ -409,6 +416,7 @@ class DataModeler:
 
     def data_to_one_dim(self, img_data, is_trusted, background):
         all_data = []
+        all_sigma_rdout = []
         all_pid = []
         all_fast = []
         all_slow = []
@@ -424,6 +432,11 @@ class DataModeler:
         self.all_nominal_hkl = []
         self.hi_asu_perpix = []
         numOutOfRange = 0
+        perpixel_dark_rms = None
+        if self.params.use_perpixel_dark_rms:
+            perpixel_dark_rms = get_pedestalRMS_from_jungfrau(self.E)
+            perpixel_dark_rms /= self.params.refiner.adu_per_photon
+
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
             x1, x2, y1, y2 = self.rois[i_roi]
@@ -434,6 +447,10 @@ class DataModeler:
             data = data.ravel()
             all_background += list(background[pid, y1:y2, x1:x2].ravel())
             trusted = is_trusted[pid, y1:y2, x1:x2].ravel()
+            if perpixel_dark_rms is not None:
+                sigma_rdout = perpixel_dark_rms[pid, y1:y2, x1:x2].ravel()
+            else:
+                sigma_rdout = np.ones_like(data)*self.nominal_sigma_rdout
 
             if self.params.roi.mask_outside_trusted_range:
                 minDat, maxDat = self.E.detector[pid].get_trusted_range()
@@ -456,7 +473,8 @@ class DataModeler:
             #trusted[d_strong_order[-1:]] = False
             all_trusted += list(trusted)
             #TODO ignore invalid value warning (handled below), or else mitigate it!
-            all_sigmas += list(np.sqrt(data + self.sigma_rdout ** 2))
+            all_sigmas += list(np.sqrt(data + sigma_rdout ** 2))
+            all_sigma_rdout += list(sigma_rdout)
             all_fast += list(X.ravel() + x1)
             all_fast_relative += list(X.ravel())
             all_slow += list(Y.ravel() + y1)
@@ -492,6 +510,10 @@ class DataModeler:
         self.all_background = np.array(all_background)
         self.roi_id = np.array(roi_id)
         self.all_data = np.array(all_data)
+        if np.allclose(all_sigma_rdout, self.nominal_sigma_rdout):
+            self.all_sigma_rdout = self.nominal_sigma_rdout
+        else:
+            self.all_sigma_rdout = np.array(all_sigma_rdout)
         self.all_sigmas = np.array(all_sigmas)
         # note rare chance for sigmas to be nan if the args of sqrt is below 0
         self.all_trusted = np.logical_and(np.array(all_trusted), ~np.isnan(all_sigmas))
@@ -801,6 +823,7 @@ class DataModeler:
         all_dat_img, all_mod_img = [], []
         all_trusted = []
         all_bragg = []
+        all_sigma_rdout = []
         for i_roi in range(len(self.rois)):
             x1, x2, y1, y2 = self.rois[i_roi]
             mod = self.best_model[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
@@ -812,6 +835,9 @@ class DataModeler:
 
             dat = self.all_data[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
             all_dat_img.append(dat)
+            if isinstance(self.all_sigma_rdout, np.ndarray):
+                sig = self.all_sigma_rdout[self.roi_id==i_roi].reshape((y2-y1, x2-x1))
+                all_sigma_rdout.append(sig)
             if self.all_background is not None:
                 bg = self.all_background[self.roi_id == i_roi].reshape((y2-y1, x2-x1))
                 if self.best_model_includes_background:
@@ -823,7 +849,10 @@ class DataModeler:
             else:  # assume mod contains background
                 all_mod_img.append(mod)
                 all_bragg.append(None)
-        return all_dat_img, all_mod_img, all_trusted, all_bragg
+        ret_subimgs = all_dat_img, all_mod_img, all_trusted, all_bragg
+        if all_sigma_rdout:
+            ret_subimgs += (all_sigma_rdout, )
+        return ret_subimgs
 
     def Minimize(self, x0):
         target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
@@ -875,14 +904,14 @@ class DataModeler:
                 self.SIM.D.refine(DIFFUSE_ID)
 
             args = (self.SIM, self.pan_fast_slow, self.all_data,
-                    self.all_sigmas, self.all_trusted, self.all_background, True, self.params, True)
+                    self.all_sigma_rdout, self.all_trusted, self.all_background, True, self.params, True)
             min_kwargs = {'args': args, "method": method, "jac": target.jac,
                           'hess': self.params.hess, 'callback':callback}
             if method=="L-BFGS-B":
                 min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":self.params.lbfgs_maxiter}
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
-                    self.all_sigmas, self.all_trusted, self.all_background, True, self.params, False)
+                    self.all_sigma_rdout, self.all_trusted, self.all_background, True, self.params, False)
             min_kwargs = {'args': args, "method": method,
                           'callback': callback,
                           'options': {'maxfev': maxfev,
@@ -1253,7 +1282,7 @@ class TargetFunc:
             raise StopIteration()  # Refinement has reached convergence!
 
 
-def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, verbose=True, params=None, compute_grad=True):
+def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, verbose=True, params=None, compute_grad=True):
 
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg
@@ -1291,7 +1320,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
                 SIM.D.let_loose(lam_id)
     else:
         _compute_grad = False
-    model_bragg, Jac = model(x, SIM, pfs,compute_grad=_compute_grad)
+    model_bragg, Jac = model(x, SIM, pfs, compute_grad=_compute_grad)
 
     if udpate_terms is not None:
         # try a Broyden update ?
@@ -1310,7 +1339,6 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     resid = data - model_pix
 
     # data contributions to target function
-    sigma_rdout = params.refiner.sigma_r / params.refiner.adu_per_photon
     V = model_pix + sigma_rdout**2
     # TODO:what if V is allowed to be negative? The logarithm/sqrt will explore below
     resid_square = resid**2
@@ -1502,7 +1530,10 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
     :param old_refl_tag: exisiting columns will be renamed with this tag as a prefix
     :return: refl table with xyzcalcs derived from the modeling results
     """
-    _,_,_, bragg_subimg = Modeler.get_data_model_pairs()
+    if isinstance(Modeler.all_sigma_rdout, np.ndarray):
+        _, _, _, bragg_subimg, _ = Modeler.get_data_model_pairs()
+    else:
+        _,_,_, bragg_subimg = Modeler.get_data_model_pairs()
     new_refls = deepcopy(Modeler.refls)
 
     reflkeys = list(new_refls.keys())

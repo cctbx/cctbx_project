@@ -253,7 +253,11 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     if Modeler.SIM.num_xtals == 1:
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
 
-    data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
+    if isinstance(Modeler.all_sigma_rdout, np.ndarray):
+        data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
+    else:
+        data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
+        sigma_rdout_subimg = None
 
     wavelen_subimg = []
     if Modeler.SIM.D.store_ave_wavelength_image:
@@ -278,7 +282,10 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
             dat = data_subimg[i_roi]
             fit = model_subimg[i_roi]
             trust = trusted_subimg[i_roi]
-            sig = np.sqrt(fit + Modeler.sigma_rdout**2)
+            if sigma_rdout_subimg is not None:
+                sig = np.sqrt(fit + sigma_rdout_subimg[i_roi]**2)
+            else:
+                sig = np.sqrt(fit + Modeler.nominal_sigma_rdout**2)
             Z = (dat - fit) / sig
             sigmaZ = Z[trust].std()
             sigmaZs.append(sigmaZ)
@@ -306,7 +313,7 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
 
         h5.create_dataset("rois", data=Modeler.rois)
         h5.create_dataset("pids", data=Modeler.pids)
-        h5.create_dataset("sigma_rdout", data=Modeler.sigma_rdout)
+        h5.create_dataset("sigma_rdout", data=Modeler.all_sigma_rdout)
         h5.create_dataset("sigmaZ_vals", data=sigmaZs)
         if Modeler.Hi_asu is not None:
             h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
