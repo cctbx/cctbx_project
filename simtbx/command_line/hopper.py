@@ -5,6 +5,8 @@ from copy import deepcopy
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 import h5py
+import time
+import sys
 from dxtbx.model.experiment_list import ExperimentList
 try:
     import pandas
@@ -62,7 +64,7 @@ class Script:
     def __init__(self):
         from dials.util.options import ArgumentParser
 
-        self.params = self.parser = None
+        self.params = None
         if COMM.rank == 0:
             self.parser = ArgumentParser(
                 usage="",  # stage 1 (per-shot) diffBragg refinement",
@@ -74,11 +76,15 @@ class Script:
                 epilog="PyCuties")
             self.params, _ = self.parser.parse_args(show_diff_phil=True)
             assert self.params.outdir is not None
+            utils.safe_makedirs(self.params.outdir)
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            diff_phil_outname = os.path.join(self.params.outdir, "diff_phil_run_at_%s.txt" % ts)
+            with open(diff_phil_outname, "w") as o:
+                o.write("command line:\n%s\n" % (" ".join(sys.argv)))
+                o.write("workding directory: \n%s\n" %os.getcwd())
+                o.write("diff phil:\n")
+                o.write(self.parser.diff_phil.as_str())
         self.params = COMM.bcast(self.params)
-        if COMM.rank == 0:
-            if not os.path.exists(self.params.outdir):
-                utils.safe_makedirs(self.params.outdir)
-        COMM.barrier()
 
         if self.params.logging.logname is None:
             self.params.logging.logname = "main_stage1.log"
@@ -148,7 +154,6 @@ class Script:
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
-            MAIN_LOGGER.info("Modeling %s" % exp)
             Modeler = hopper_utils.DataModeler(self.params)
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
@@ -157,6 +162,7 @@ class Script:
             if not gathered:
                 logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue
+            MAIN_LOGGER.info("Modeling %s (%d refls)" % (exp, len(Modeler.refls)))
             if self.params.dump_gathers:
                 output_name = os.path.splitext(os.path.basename(exp))[0]
                 output_name += "_withData.refl"
@@ -206,7 +212,10 @@ class Script:
 
             nparam = len(Modeler.SIM.P)
             x0 = [1] * nparam
-            x = Modeler.Minimize(x0)
+            try:
+                x = Modeler.Minimize(x0)
+            except StopIteration:
+                x = Modeler.target.x0
             if self.params.profile:
                 Modeler.SIM.D.show_timings(COMM.rank) #, out)
             save_up(Modeler, x, exp, i_exp, ref)
@@ -398,17 +407,11 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers")
     rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas")
 
-    #if SIM.num_xtals > 1:
-    #    raise NotImplemented("cant save pandas for multiple crystals yet")
     scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
     if params.isotropic.diffuse_gamma:
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:
         diff_sig_b = diff_sig_c = diff_sig_a
-    shift = np.nan
-    #if SIM.shift_param is not None:
-    #    shift = SIM.shift_param.get_val(x[-1])
-    xtal_scales = [scale]
     eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
@@ -428,11 +431,18 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     SIM.crystal.dxtbx_crystal.set_B(ucman.B_recipspace)
 
     Amat = SIM.crystal.dxtbx_crystal.get_A()
-    ncells_def_vals = [(0, 0, 0)]
-    ncells_vals = [(Na, Nb, Nc)]
     eta = [0]
-    lam0 = [-1]
-    lam1 = [-1]
+    lam_coefs = [0], [1]
+    if hasattr(SIM, "P"):
+        names = "lambda_offset", "lambda_scale"
+        if names[0] in SIM.P and names[1] in SIM.P:
+            lam_coefs = []
+            for name in names:
+                if name in SIM.P:
+                    p = SIM.P[name]
+                    val = p.get_val(x[p.xpos])
+                    lam_coefs.append([val])
+            lam_coefs = tuple(lam_coefs)
 
     basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
     opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
@@ -457,7 +467,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         rotXYZ=(rotX, rotY, rotZ),
         ucell_p = (a,b,c,al,be,ga),
         ucell_p_init=(a_init, b_init, c_init, al_init, be_init, ga_init),
-        lam0_lam1 = (lam0, lam1),
+        lam0_lam1 = lam_coefs,
         spec_file=params.simulator.spectrum.filename,
         spec_stride=params.simulator.spectrum.stride,
         flux=sum(flux_vals), beamsize_mm=SIM.beam.size_mm,
