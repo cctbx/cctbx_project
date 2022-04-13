@@ -160,14 +160,20 @@ class Target:
         self.g = None
         self.ref_params = ref_params
         self.iternum = 0
+        self.all_times = []
 
     def __call__(self, x, *args, **kwargs):
         self.iternum += 1
+        t = time.time()
         self.x0[self.vary] = x
+        #time_per_iter = (time.time()-self.tstart) / self.iternum
 
         f, self.g, self.sigmaZ = target_and_grad(self.x0, self.ref_params, *args, **kwargs)
+        t = time.time()-t
         if COMM.rank==0:
-            print("Iteration %d:\n\tResid=%f, sigmaZ %f" % (self.iternum, f, self.sigmaZ), flush=True)
+            self.all_times.append(t)
+            time_per_iter = np.mean(self.all_times)
+            print("Iteration %d:\n\tResid=%f, sigmaZ %f, t-per-iter=%.4f sec" % (self.iternum, f, self.sigmaZ, time_per_iter), flush=True)
         return f
 
     def jac(self, x, *args):
