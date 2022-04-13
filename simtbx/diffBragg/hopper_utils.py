@@ -36,6 +36,7 @@ DETZ_ID = 10
 FHKL_ID = 11
 ETA_ID = 19
 DIFFUSE_ID = 23
+LAMBDA_IDS = 12, 13
 
 DEG = 180 / np.pi
 
@@ -375,7 +376,7 @@ class DataModeler:
             res = 1. / np.linalg.norm(refls["rlp"], axis=1)
             for dmin,dmax in utils.parse_reso_string(self.params.refiner.res_ranges):
                 MAIN_LOGGER.debug("Parsing res range %.3f - %.3f Angstrom" % (dmin, dmax))
-                in_resShell = np.logical_and(res >= dmin, res <= dmax)
+                in_resShell = np.logical_and(res >= dmin, res < dmax)
                 res_flags[in_resShell] = True
 
             MAIN_LOGGER.info("Resolution filter removed %d/%d refls outside of all resolution ranges " \
@@ -644,7 +645,7 @@ class DataModeler:
                                   center=centers.RotXYZ[ii], beta=betas.RotXYZ)
                 P.add(p)
 
-            p = ParameterType(init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
+            p = RangedParameter(init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
                               minval=mins.G, maxval=maxs.G,
                               fix=fix.G, name="G_xtal%d" %i_xtal,
                               center=centers.G, beta=betas.G)
@@ -759,18 +760,36 @@ class DataModeler:
         self.set_slices("roi_id")  # this creates roi_id_unique
         refls_have_scales = "scale_factor" in list(self.refls.keys())
         for roi_id in self.roi_id_unique:
+            slc = self.roi_id_slices[roi_id][0]
             if refls_have_scales:
-                slc = self.roi_id_slices[roi_id][0]
                 refl_idx = int(self.all_refls_idx[slc][0])
                 init_scale = self.refls[refl_idx]["scale_factor"]
             else:
                 init_scale = 1
-            p = ParameterType(init=init_scale, sigma=self.params.sigmas.roiPerScale,
+            p = RangedParameter(init=init_scale, sigma=self.params.sigmas.roiPerScale,
                               minval=0, maxval=1e12,
                               fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
                               center=1,
                               beta=1e12)
+            if isinstance(self.all_q_perpix, np.ndarray) and self.all_q_perpix.size:
+                q = self.all_q_perpix[slc][0]
+                reso = 1./q
+                hkl = self.all_nominal_hkl[slc][0]
+                p.misc_data = reso, hkl
             P.add(p)
+
+
+        # two parameters for optimizing the spectrum
+        p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0], minval=-0.01, maxval=0.01, fix=fix.spec,
+                            name="lambda_offset", center=0, beta=1e12)
+        P.add(p)
+        p = RangedParameter(init=self.params.init.spec[1], sigma=self.params.sigmas.spec[1], minval=0.95, maxval=1.05, fix=fix.spec,
+                            name="lambda_scale", center=1, beta=1e12)
+        P.add(p)
+        if not fix.spec:
+            self.SIM.D.use_lambda_coefficients = True
+            self.SIM.D.lambda_coefficients = tuple(self.params.init.spec)
+
         self.SIM.P = P
         # TODO , fix this attribute hacking
         self.SIM.roi_id_unique = self.roi_id_unique
@@ -829,9 +848,16 @@ class DataModeler:
         if self.params.nelder_mead_maxfev is not None:
             maxfev = self.params.nelder_mead_maxfev * self.npix_total
 
-        at_min = target.at_minimum
-
+        at_min = None
+        if self.params.logging.show_params_at_minimum:
+            at_min = target.at_minimum
+        callback = lambda x: target.callback(x, verbose=self.params.logging.parameters)
+        target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
+        target.percent_change_of_converged = self.params.converged_param_percent_change
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
+            if self.SIM.P["lambda_offset"].refine:
+                for lam_id in LAMBDA_IDS:
+                    self.SIM.D.refine(lam_id)
             if self.SIM.P["RotXYZ0_xtal0"].refine:
                 self.SIM.D.refine(ROTX_ID)
                 self.SIM.D.refine(ROTY_ID)
@@ -851,26 +877,32 @@ class DataModeler:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, True, self.params, True)
             min_kwargs = {'args': args, "method": method, "jac": target.jac,
-                          'hess': self.params.hess}
+                          'hess': self.params.hess, 'callback':callback}
             if method=="L-BFGS-B":
                 min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":self.params.lbfgs_maxiter}
         else:
             args = (self.SIM, self.pan_fast_slow, self.all_data,
                     self.all_sigmas, self.all_trusted, self.all_background, True, self.params, False)
             min_kwargs = {'args': args, "method": method,
+                          'callback': callback,
                           'options': {'maxfev': maxfev,
                                       'fatol': self.params.nelder_mead_fatol}}
 
         if self.params.global_method=="basinhopping":
             HOPPER = basinhopping
 
-            out = HOPPER(target, x0_for_refinement,
-                               niter=self.params.niter,
-                               minimizer_kwargs=min_kwargs,
-                               T=self.params.temp,
-                               callback=at_min,
-                               disp=False,
-                               stepsize=self.params.stepsize)
+            try:
+                out = HOPPER(target, x0_for_refinement,
+                                   niter=self.params.niter,
+                                   minimizer_kwargs=min_kwargs,
+                                   T=self.params.temp,
+                                   callback=at_min,
+                                   disp=False,
+                                   stepsize=self.params.stepsize)
+                target.x0[vary] = out.x
+            except StopIteration:
+                pass
+
         else:
             bounds = [(-100,100)] * len(x0_for_refinement)  # TODO decide about bounds, usually x remains close to 1 during refinement
             print("Beginning the annealing process")
@@ -890,12 +922,12 @@ class DataModeler:
                                  maxiter=self.params.niter,
                                  local_search_options=min_kwargs,
                                  callback=at_min)
+            target.x0[vary] = out.x
 
-        target.x0[vary] = out.x
         return target.x0
 
 
-def model(x, SIM, pfs,  compute_grad=True):
+def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
     #params_per_xtal = np.array_split(x[:num_per_xtal_params], SIM.num_xtals)
 
@@ -928,6 +960,12 @@ def model(x, SIM, pfs,  compute_grad=True):
     x_shiftZ = x[DetZ.xpos]
     shiftZ = DetZ.get_val(x_shiftZ)
     SIM.D.shift_origin_z(SIM.detector, shiftZ)
+
+    if SIM.P["lambda_offset"].refine:
+        p0 = SIM.P["lambda_offset"]
+        p1 = SIM.P["lambda_scale"]
+        lambda_coef = p0.get_val(x[p0.xpos]), p1.get_val(x[p1.xpos])
+        SIM.D.lambda_coefficients = lambda_coef
 
     # Mosaic block
     Nabc_params = [SIM.P["Nabc%d" % (i_n,)] for i_n in range(3)]
@@ -1061,12 +1099,24 @@ def model(x, SIM, pfs,  compute_grad=True):
                 d = DetZ.get_deriv(x[DetZ.xpos], d)
                 J[DetZ.xpos] += d
 
+            if SIM.P["lambda_offset"].refine:
+                lambda_derivs = SIM.D.get_lambda_derivative_pixels()
+                lambda_param_names = "lambda_offset", "lambda_scale"
+                for d,name in zip(lambda_derivs, lambda_param_names):
+                    p = SIM.P[name]
+                    d = d.as_numpy_array()[:npix]
+                    d = p.get_deriv(x[p.xpos], d)
+                    J[p.xpos] += d
+
     if SIM.P["scale_roi0"].refine and compute_grad:
         if compute_grad:
             for p in perRoiParams:
                 roi_id = int(p.name.split("scale_roi")[1])
                 slc = SIM.roi_id_slices[roi_id][0]
-                d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
+                if dont_rescale_gradient:
+                    d = model_pix_noRoi[slc]
+                else:
+                    d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
                 J[p.xpos, slc] += d
 
     return model_pix, J
@@ -1111,8 +1161,11 @@ def get_param_from_x(x, SIM, i_xtal=0):
 class TargetFunc:
     def __init__(self, SIM, niter_per_J=1, profile=False):
         self.niter_per_J = niter_per_J
+        self.prev_iter_vals = None
         self.global_x = []
+        self.percent_change_of_converged = 0.1
         self.all_x = []
+        self.terminate_after_n_converged_iterations = None
         self.vary = None #boolean numpy array specifying which params to refine
         self.x0 = None  # 1d array of parameters (should be numpy array, same length as vary)
         self.old_J = None
@@ -1120,6 +1173,7 @@ class TargetFunc:
         self.delta_x = None
         self.iteration = 0
         self.minima = []
+        self.all_converged_params = 0
         self.SIM = SIM
 
     def at_minimum(self, x, f, accept):
@@ -1148,6 +1202,56 @@ class TargetFunc:
         self.g = g
         return f
 
+    def callback(self, x, verbose=True):
+        xall = self.x0.copy()
+        xall[self.vary] = x
+        rescaled_vals = np.zeros_like(xall)
+        all_perc_change = []
+        for name in self.SIM.P:
+            p = self.SIM.P[name]
+
+            if not p.refine:
+                continue
+            xpos = p.xpos
+            val = p.get_val(xall[xpos])
+            log_s = "Iter %d: %s = %1.2g ."  %(self.iteration, name, val)
+            if name.startswith("scale_roi") and p.misc_data is not None:
+                reso, (h,k,l) = p.misc_data
+                log_s += "reso=%1.3f Ang. (h,k,l)=%d,%d,%d ." %(reso, h,k,l)
+            rescaled_vals[xpos] = val
+            if self.prev_iter_vals is not None:
+                prev_val = self.prev_iter_vals[xpos]
+                if val - prev_val == 0 and prev_val == 0:
+                    val_percent_diff = 0
+                elif prev_val == 0:
+                    val_percent_diff = np.abs(val - prev_val) / val *100.
+                else:
+                    val_percent_diff = np.abs(val - prev_val) / prev_val *100.
+                log_s += " Percent change = %1.2f%%" % val_percent_diff
+                all_perc_change.append(val_percent_diff)
+
+            if verbose:
+                MAIN_LOGGER.debug(log_s)
+
+        if all_perc_change:
+            all_perc_change = np.abs(all_perc_change)
+            ave_perc_change = np.mean(all_perc_change)
+            num_perc_change_small = np.sum(all_perc_change < self.percent_change_of_converged)
+            max_perc_change = np.max(all_perc_change)
+            if num_perc_change_small == len(all_perc_change):
+                self.all_converged_params += 1
+            else:
+                self.all_converged_params = 0
+            if verbose:
+                MAIN_LOGGER.info("Iter %d: Mean percent change = %1.2f%%. Num param with %%-change < %1.2f: %d/%d. Max %%-change=%1.2f%%"
+                                  % (self.iteration, ave_perc_change, self.percent_change_of_converged,
+                                     num_perc_change_small, len(all_perc_change), max_perc_change))
+
+        self.prev_iter_vals = rescaled_vals
+        if self.terminate_after_n_converged_iterations is not None and self.all_converged_params >= self.terminate_after_n_converged_iterations:
+            # at this point prev_iter_vals are the converged parameters!
+            raise StopIteration()  # Refinement has reached convergence!
+
 
 def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, verbose=True, params=None, compute_grad=True):
 
@@ -1159,6 +1263,8 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
         SIM.D.fix(ROTX_ID)
         SIM.D.fix(ROTY_ID)
         SIM.D.fix(ROTZ_ID)
+        for lam_id in LAMBDA_IDS:
+            SIM.D.fix(lam_id)
         for i_ucell in range(len(SIM.ucell_man.variables)):
             SIM.D.fix(UCELL_ID_OFFSET + i_ucell)
         SIM.D.fix(DETZ_ID)
@@ -1180,6 +1286,9 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
             SIM.D.let_loose(DETZ_ID)
         if SIM.P["eta_abc0"].refine:
             SIM.D.let_loose(ETA_ID)
+        if SIM.P["lambda_offset"].refine:
+            for lam_id in LAMBDA_IDS:
+                SIM.D.let_loose(lam_id)
     else:
         _compute_grad = False
     model_bragg, Jac = model(x, SIM, pfs,compute_grad=_compute_grad)
@@ -1242,13 +1351,29 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigmas, trusted, background, ve
     g = None  # gradient vector
     gnorm = -1  # norm of gradient vector
     if compute_grad:
-        common_grad_term = (0.5 /V * (1-2*resid - resid_square / V))[trusted]
+        common_grad_term_all = (0.5 /V * (1-2*resid - resid_square / V))
+        common_grad_term = common_grad_term_all[trusted]
+
+        g = np.zeros(Jac.shape[0])
+        for name ,p in SIM.P.items():
+            if not p.refine:
+                continue
+            Jac_p = Jac[p.xpos]
+
+            if name.startswith("scale_roi"):
+                roi_id = int(p.name.split("scale_roi")[1])
+                slc = SIM.roi_id_slices[roi_id][0]
+                common_grad_slc = common_grad_term_all[slc]
+                Jac_slc = Jac_p[slc]
+                trusted_slc = trusted[slc]
+                g[p.xpos] += (Jac_slc*common_grad_slc)[trusted_slc].sum()
+            else:
+                g[p.xpos] += (Jac_p[trusted]*common_grad_term).sum()
 
         # trusted pixels portion of Jacobian
-        Jac_t = Jac[:,trusted]
-
+        #Jac_t = Jac[:,trusted]
         # gradient vector
-        g = np.array([np.sum(common_grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
+        #g = np.array([np.sum(common_grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
 
         if params.use_restraints:
             # update gradients according to restraints
