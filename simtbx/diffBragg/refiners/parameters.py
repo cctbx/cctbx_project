@@ -34,6 +34,7 @@ class RangedParameter:
     :param name: str, an optional name for this parameter, for bookkeeping
     :param is_global: bool, useful flag, if True, the parameter is common to all shots in a multi-shot refinement
     """
+    self.misc_data = None  #custom field for user data
     self.minval = minval
     self.maxval = maxval
     self.sigma = sigma
@@ -47,8 +48,8 @@ class RangedParameter:
     # TODO use _rescaled_val in get_restraint_term and get_deriv in order to limit the valls to get_val
     self.xpos = 0  # position of parameter in list of params
     if fix:
-      self.minval = init - 1e-6
-      self.maxval = init + 1e-6
+      self.minval = init - 1
+      self.maxval = init + 1
     self._arcsin_term = None
 
   def get_restraint_deriv(self, reparam_val):
@@ -115,6 +116,33 @@ class RangedParameter:
     dtheta_dx = self.rng / 2 * cos(cos_arg) * self.sigma
     d2theta_dx2 = -sin(sin_arg)*self.sigma*self.sigma * self.rng / 2.
     return dtheta_dx*dtheta_dx*second_deriv + d2theta_dx2*deriv
+
+  @property
+  def misc_data(self):
+    return self._misc_data
+
+  @misc_data.setter
+  def misc_data(self, val):
+    self._misc_data = val
+
+
+class PositiveParameter(RangedParameter):
+
+  def get_val(self, x_current):
+    return self.init*np.exp(self.sigma*(x_current-1))
+
+  def get_deriv(self, x_current, deriv, x_is_theta=False):
+    """
+    :param x_current: unscaled or rescaled parameter (see x_is_theta description)
+    :param deriv: gradient array
+    :param x_is_theta: optional, can skip recomputing the exponential if x_current is the unscaled parameter
+    :return:
+    """
+    if x_is_theta:
+      dtheta_dx = x_current *self.sigma
+    else:
+      dtheta_dx = self.get_val(x_current) * self.sigma
+    return deriv*dtheta_dx
 
 
 class NormalParameter(RangedParameter):
