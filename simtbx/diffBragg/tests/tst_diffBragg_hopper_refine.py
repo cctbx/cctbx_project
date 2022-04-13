@@ -4,7 +4,7 @@ parser = ArgumentParser()
 parser.add_argument("--cuda", action="store_true")
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--readout", type=float, default=0)
-parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal", "eta"], type=str, nargs="+", default=["crystal"] )
+parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal", "eta", "spec"], type=str, nargs="+", default=["crystal"] )
 parser.add_argument("--eta", type=float, nargs=3, default=[.2, .1, .4])
 parser.add_argument("--plot", action="store_true", help="shows the ground truth image")
 args = parser.parse_args()
@@ -20,6 +20,7 @@ from scipy.spatial.transform import Rotation
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.sim_data import SimData
 from simtbx.diffBragg import utils
+from scipy.signal import windows
 from dxtbx.model import Experiment
 from simtbx.nanoBragg import make_imageset
 from simtbx.diffBragg.phil import hopper_phil, philz
@@ -70,6 +71,36 @@ else:
 nbcryst.Ncells_abc = NCELLS_GT
 
 SIM = SimData(use_default_crystal=True)
+if "spec" in args.perturb:
+    # initialize the simulator
+    spec = SIM.beam.spectrum
+    total_flux = spec[0][1]
+    wave = spec[0][0]
+
+    en = utils.ENERGY_CONV / wave
+    delta_en = 1.5
+    ens_gt = np.arange(en - 5, en + 6, delta_en)
+    waves_gt = utils.ENERGY_CONV / ens_gt
+    num_energies = len(ens_gt)
+    fluxes_gt = np.ones(num_energies) * total_flux / num_energies
+    fluxes_gt = fluxes_gt*windows.hann(num_energies)
+    fluxes_gt /= fluxes_gt.sum()
+    fluxes_gt *= total_flux
+
+    spectrum_GT = list(zip(waves_gt, fluxes_gt))
+    gt_lambda0 = waves_gt[0]
+    gt_lambda1 = waves_gt[1] - waves_gt[0]
+    spec_idx = np.arange(num_energies)
+    assert np.allclose(waves_gt, gt_lambda0 + spec_idx*gt_lambda1)
+
+    lam0 = np.random.normal(gt_lambda0, gt_lambda0 * 0.002)
+    lam1 = np.random.normal(gt_lambda1, abs(gt_lambda1) * 0.002)
+    waves_perturbed = lam0 + spec_idx * lam1
+    print("ENERGY TRUTH=%.4f" % (utils.ENERGY_CONV / gt_lambda0))
+    print("ENERGY PERTURBED=%.4f" % (utils.ENERGY_CONV / lam0))
+    perturbed_spec = list(zip(waves_perturbed, fluxes_gt))
+    SIM.beam.spectrum = spectrum_GT
+
 #SIM.detector = SimData.simple_detector(150, 0.1, (513, 512))
 if "eta" in args.perturb:
     shape = 513*3, 512*3
@@ -134,6 +165,16 @@ if "eta" in args.perturb:
     P.simulator.crystal.has_isotropic_mosaicity = False
     P.fix.eta_abc = False
 
+if "spec" in args.perturb:
+    P.fix.spec = False
+    P.init.spec = [0,1]
+    P.fix.Nabc=True
+    P.fix.G=True
+    P.fix.RotXYZ=True
+    P.fix.ucell = True
+    P.fix.detz_shift = True
+    P.ftol=1e-15
+
 E.detector = SIM.detector
 E.beam = SIM.D.beam
 E.imageset = make_imageset([img], E.beam, E.detector)
@@ -159,6 +200,7 @@ SIM.crystal.miller_array.as_mtz_dataset(column_root_label="F").mtz_object().writ
 P.simulator.structure_factors.mtz_name = name
 P.simulator.structure_factors.mtz_column = "F(+),F(-)"
 P.niter = 0
+P.logging.parameters=True
 P.niter_per_J = 1
 P.method="L-BFGS-B"
 P.ftol = 1e-10
@@ -175,7 +217,12 @@ h = logging.StreamHandler(sys.stdout)
 logging.basicConfig(level=logging.DEBUG, handlers=[h])
 
 from simtbx.diffBragg import hopper_utils
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+spec = None
+if "spec" in args.perturb:
+    spec = "tst_hopper_refine_spec.lam"
+    wave, wt = map(np.array, zip(*perturbed_spec))
+    utils.save_spectra_file(spec, wave, wt)
+Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
 
 G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
 eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod.SIM)
@@ -188,7 +235,7 @@ Copt = Eopt.crystal
 misset, misset_init = utils.compare_with_ground_truth(*C.get_real_space_vectors(), dxcryst_models=[Copt, E.crystal], symbol=symbol)
 print(misset_init, "init misset with ground truth")
 print(misset, "misset with ground truth")
-if "detz_shift" in args.perturb:
+if "detz_shift" in args.perturb or "spec" in args.perturb:
     assert misset < 0.007, misset
 else:
     assert misset < 0.005, misset
@@ -226,3 +273,18 @@ if "eta" in args.perturb:
     perc_diff = np.abs(u-v) / v * 100.
     assert np.all(perc_diff < 22)  # this is acceptable for now, as we simulated with 5000 blocks, yet modeled with 600
 print("OK")
+
+if "spec" in args.perturb:
+    p0 = Mod.SIM.P["lambda_offset"]
+    p1 = Mod.SIM.P["lambda_scale"]
+    coef = p0.get_val(x[p0.xpos]), p1.get_val(x[p1.xpos])
+    waves_refined = coef[0] + coef[1] * waves_perturbed
+    fluxsum = sum(fluxes_gt)
+    en_ref_com = utils.ENERGY_CONV / (sum(fluxes_gt * waves_refined) / fluxsum)
+    en_com = utils.ENERGY_CONV / (sum(fluxes_gt * waves_gt) / fluxsum)
+    en_init_com = utils.ENERGY_CONV / (sum(fluxes_gt * waves_perturbed) / fluxsum)
+
+    print("Before refinement: COM energy=%f" % en_init_com)
+    print("AFTER refinement: COM energy=%f" % en_ref_com)
+    print("Ground truth COM energy = %f" % en_com)
+    assert abs(en_ref_com - en_com) < 1
