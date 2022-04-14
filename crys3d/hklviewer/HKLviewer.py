@@ -2236,6 +2236,7 @@ clip_plane {
     self.settings.beginGroup(self.Qtversion)
     use_factory_default_settings = False
     # First see if there are any. If not then use factory defaults stored in .ini file
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if len(self.settings.allKeys()) == 0:
        # no settings for this Qt version. Use defaults then
       use_factory_default_settings = True
@@ -2243,9 +2244,9 @@ clip_plane {
       # GUI complexity. If numbers differs from what is stored in the settings on disk the
       # settings are likely from a newer or older GUI version and should be ignored to prevent
       # messing up GUI layout. Use the defaults instead
-    if self.nsplitters !=  self.settings.value("QSplitter_number", 0):
+    if self.nsplitters !=  int(self.settings.value("QSplitter_number", 0)):
       use_factory_default_settings = True
-    if self.ntabs != self.settings.value("QTabWidget_number", 0):
+    if self.ntabs != int(self.settings.value("QTabWidget_number", 0)):
       use_factory_default_settings = True
     self.settings.endGroup()
 
@@ -2312,9 +2313,6 @@ clip_plane {
     self.splitter1sizes = self.settings.value("splitter1Sizes", None)
     self.splitter2sizes = self.settings.value("splitter2Sizes", None)
     self.splitter3sizes = self.settings.value("splitter3Sizes", None)
-    #self.splitter1sizes = None
-    #self.splitter2sizes = None
-    #self.splitter3sizes = None
     self.settings.endGroup()
     if use_factory_default_settings:
       # Revert to storing settings in the default Qsettings location such as

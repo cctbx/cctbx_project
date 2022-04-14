@@ -114,12 +114,19 @@ class HKLViewFrame() :
     self.viewer = view_3d.hklview_3d( **kwds )
     self.allbuttonslist = buttonsdeflist
     if os.path.exists(self.userpresetbuttonsfname):
-      spec = importlib.util.spec_from_file_location("UserPresetButtons", self.userpresetbuttonsfname)
-      self.mprint("Found UserPresetButtons in the HOME directory")
-      UserPresetButtons_module = importlib.util.module_from_spec(spec)
-      sys.modules["UserPresetButtons"] = UserPresetButtons_module
-      spec.loader.exec_module(UserPresetButtons_module)
-      self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
+      self.mprint("Using existing UserPresetButtons in " + self.userpresetbuttonsfname)
+    else:
+      factorydefault_userbutton_fname = os.path.join(os.path.split(view_3d.__file__)[0], "DefaultUserPresetButtons.py")
+      import shutil
+      shutil.copyfile(factorydefault_userbutton_fname, self.userpresetbuttonsfname)
+      self.mprint("New UserPresetButton file copied to " + self.userpresetbuttonsfname)
+      self.mprint("Taylor button definitions to your own needs.")
+
+    spec = importlib.util.spec_from_file_location("UserPresetButtons", self.userpresetbuttonsfname)
+    UserPresetButtons_module = importlib.util.module_from_spec(spec)
+    sys.modules["UserPresetButtons"] = UserPresetButtons_module
+    spec.loader.exec_module(UserPresetButtons_module)
+    self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
 
     self.ResetPhilandViewer()
     self.firsttime = True

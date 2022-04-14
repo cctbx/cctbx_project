@@ -561,51 +561,6 @@ class Ui_MainWindow(object):
         self.gridLayout_10.setSpacing(4)
         self.gridLayout_10.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_10.setObjectName(u"gridLayout_10")
-        self.radii_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
-        self.radii_scale_spinBox.setObjectName(u"radii_scale_spinBox")
-        sizePolicy14 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
-        sizePolicy14.setHorizontalStretch(0)
-        sizePolicy14.setVerticalStretch(0)
-        sizePolicy14.setHeightForWidth(self.radii_scale_spinBox.sizePolicy().hasHeightForWidth())
-        self.radii_scale_spinBox.setSizePolicy(sizePolicy14)
-        self.radii_scale_spinBox.setDecimals(2)
-        self.radii_scale_spinBox.setMinimum(0.000000000000000)
-        self.radii_scale_spinBox.setMaximum(1000.000000000000000)
-        self.radii_scale_spinBox.setSingleStep(0.200000000000000)
-        self.radii_scale_spinBox.setValue(1.000000000000000)
-
-        self.gridLayout_10.addWidget(self.radii_scale_spinBox, 2, 1, 1, 1)
-
-        self.ManualPowerScalecheckbox = QCheckBox(self.groupBox_3)
-        self.ManualPowerScalecheckbox.setObjectName(u"ManualPowerScalecheckbox")
-        sizePolicy15 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
-        sizePolicy15.setHorizontalStretch(0)
-        sizePolicy15.setVerticalStretch(0)
-        sizePolicy15.setHeightForWidth(self.ManualPowerScalecheckbox.sizePolicy().hasHeightForWidth())
-        self.ManualPowerScalecheckbox.setSizePolicy(sizePolicy15)
-
-        self.gridLayout_10.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
-
-        self.label_10 = QLabel(self.groupBox_3)
-        self.label_10.setObjectName(u"label_10")
-        sizePolicy15.setHeightForWidth(self.label_10.sizePolicy().hasHeightForWidth())
-        self.label_10.setSizePolicy(sizePolicy15)
-        self.label_10.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
-        self.label_10.setIndent(1)
-
-        self.gridLayout_10.addWidget(self.label_10, 1, 2, 1, 1)
-
-        self.power_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
-        self.power_scale_spinBox.setObjectName(u"power_scale_spinBox")
-        sizePolicy14.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
-        self.power_scale_spinBox.setSizePolicy(sizePolicy14)
-        self.power_scale_spinBox.setMinimum(-10.000000000000000)
-        self.power_scale_spinBox.setMaximum(10.000000000000000)
-        self.power_scale_spinBox.setSingleStep(0.050000000000000)
-        self.power_scale_spinBox.setValue(0.500000000000000)
-
-        self.gridLayout_10.addWidget(self.power_scale_spinBox, 1, 3, 1, 1)
-
         self.label_7 = QLabel(self.groupBox_3)
         self.label_7.setObjectName(u"label_7")
         sizePolicy6.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
@@ -617,12 +572,57 @@ class Ui_MainWindow(object):
 
         self.gridLayout_10.addWidget(self.label_7, 0, 0, 1, 4)
 
+        self.ManualPowerScalecheckbox = QCheckBox(self.groupBox_3)
+        self.ManualPowerScalecheckbox.setObjectName(u"ManualPowerScalecheckbox")
+        sizePolicy14 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
+        sizePolicy14.setHorizontalStretch(0)
+        sizePolicy14.setVerticalStretch(0)
+        sizePolicy14.setHeightForWidth(self.ManualPowerScalecheckbox.sizePolicy().hasHeightForWidth())
+        self.ManualPowerScalecheckbox.setSizePolicy(sizePolicy14)
+
+        self.gridLayout_10.addWidget(self.ManualPowerScalecheckbox, 1, 0, 1, 2)
+
+        self.label_10 = QLabel(self.groupBox_3)
+        self.label_10.setObjectName(u"label_10")
+        sizePolicy14.setHeightForWidth(self.label_10.sizePolicy().hasHeightForWidth())
+        self.label_10.setSizePolicy(sizePolicy14)
+        self.label_10.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label_10.setIndent(1)
+
+        self.gridLayout_10.addWidget(self.label_10, 1, 2, 1, 1)
+
+        self.power_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
+        self.power_scale_spinBox.setObjectName(u"power_scale_spinBox")
+        sizePolicy15 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+        sizePolicy15.setHorizontalStretch(0)
+        sizePolicy15.setVerticalStretch(0)
+        sizePolicy15.setHeightForWidth(self.power_scale_spinBox.sizePolicy().hasHeightForWidth())
+        self.power_scale_spinBox.setSizePolicy(sizePolicy15)
+        self.power_scale_spinBox.setMinimum(-10.000000000000000)
+        self.power_scale_spinBox.setMaximum(10.000000000000000)
+        self.power_scale_spinBox.setSingleStep(0.050000000000000)
+        self.power_scale_spinBox.setValue(0.500000000000000)
+
+        self.gridLayout_10.addWidget(self.power_scale_spinBox, 1, 3, 1, 1)
+
         self.label_11 = QLabel(self.groupBox_3)
         self.label_11.setObjectName(u"label_11")
-        sizePolicy15.setHeightForWidth(self.label_11.sizePolicy().hasHeightForWidth())
-        self.label_11.setSizePolicy(sizePolicy15)
+        sizePolicy14.setHeightForWidth(self.label_11.sizePolicy().hasHeightForWidth())
+        self.label_11.setSizePolicy(sizePolicy14)
 
         self.gridLayout_10.addWidget(self.label_11, 2, 0, 1, 1)
+
+        self.radii_scale_spinBox = MyQDoubleSpinBox(self.groupBox_3)
+        self.radii_scale_spinBox.setObjectName(u"radii_scale_spinBox")
+        sizePolicy15.setHeightForWidth(self.radii_scale_spinBox.sizePolicy().hasHeightForWidth())
+        self.radii_scale_spinBox.setSizePolicy(sizePolicy15)
+        self.radii_scale_spinBox.setDecimals(2)
+        self.radii_scale_spinBox.setMinimum(0.000000000000000)
+        self.radii_scale_spinBox.setMaximum(1000.000000000000000)
+        self.radii_scale_spinBox.setSingleStep(0.200000000000000)
+        self.radii_scale_spinBox.setValue(1.000000000000000)
+
+        self.gridLayout_10.addWidget(self.radii_scale_spinBox, 2, 1, 1, 1)
 
 
         self.gridLayout_27.addWidget(self.groupBox_3, 0, 0, 1, 1, Qt.AlignTop)
@@ -968,8 +968,8 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
-        self.functionTabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(1)
+        self.functionTabWidget.setCurrentIndex(2)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
 
@@ -1060,9 +1060,7 @@ class Ui_MainWindow(object):
         self.zHKLbackrotBtn.setText(QCoreApplication.translate("MainWindow", u"-", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Slicing", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Radii size of HKL spheres", None))
-#if QT_CONFIG(tooltip)
-        self.radii_scale_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
+        self.label_7.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Tick the <span style=\" font-weight:600;\">User defined power scaling</span> box for chosing a <span style=\" font-weight:600;\">Power scale factor</span>. Untick this box to get an <span style=\" font-weight:600;\">automatic power scale factor.</span><br/>An <span style=\" font-weight:600;\">automatic power scale</span> factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. <br/>A <span style=\" font-weight:600;\">power scale factor = 1</span> will size the reflections proportional to their data value. <br/>A <span style=\" font-weight:600;\">power scale factor = 0</span> causes all reflections to have the same size regardless of their data values. <br/>A <span style=\" font-weight:600;\">power scale factor &lt; 0</span> will correlate the sizes of reflections negatively to their data values. </p></body></html>", None))
 #if QT_CONFIG(tooltip)
         self.ManualPowerScalecheckbox.setToolTip("")
 #endif // QT_CONFIG(tooltip)
@@ -1071,11 +1069,13 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.power_scale_spinBox.setToolTip("")
 #endif // QT_CONFIG(tooltip)
-        self.label_7.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Tick the &quot;User defined power scaling&quot; box for chosing a power scale factor. Untick this box to get an <span style=\" font-weight:600;\">automatic power scale factor.</span><br/>An <span style=\" font-weight:600;\">automatic power scale</span> factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. <br/>A <span style=\" font-weight:600;\">power scale factor of 1</span> will size the reflections proportional to their data value. <br/>A <span style=\" font-weight:600;\">power scale factor of 0</span> causes all reflections to have the same size regardless of their data values. </p></body></html>", None))
 #if QT_CONFIG(tooltip)
         self.label_11.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Linear scale factor", None))
+#if QT_CONFIG(tooltip)
+        self.radii_scale_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Sizing", None))
         self.groupBox_5.setTitle(QCoreApplication.translate("MainWindow", u"Bin according to", None))
 #if QT_CONFIG(tooltip)

@@ -87,7 +87,7 @@
                </sizepolicy>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <property name="usesScrollButtons">
                <bool>true</bool>
@@ -320,7 +320,7 @@
                         </sizepolicy>
                        </property>
                        <property name="currentIndex">
-                        <number>1</number>
+                        <number>2</number>
                        </property>
                        <widget class="QWidget" name="tab">
                         <attribute name="title">
@@ -920,31 +920,28 @@
                             <bool>false</bool>
                            </property>
                            <layout class="QGridLayout" name="gridLayout_10">
-                            <item row="2" column="1">
-                             <widget class="MyQDoubleSpinBox" name="radii_scale_spinBox">
+                            <item row="0" column="0" colspan="4">
+                             <widget class="QLabel" name="label_7">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
                               </property>
-                              <property name="toolTip">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              <property name="text">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &lt;span style=&quot; font-weight:600;&quot;&gt;User defined power scaling&lt;/span&gt; box for chosing a &lt;span style=&quot; font-weight:600;&quot;&gt;Power scale factor&lt;/span&gt;. Untick this box to get an &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale factor.&lt;/span&gt;&lt;br/&gt;An &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale&lt;/span&gt; factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 1&lt;/span&gt; will size the reflections proportional to their data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 0&lt;/span&gt; causes all reflections to have the same size regardless of their data values. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor &amp;lt; 0&lt;/span&gt; will correlate the sizes of reflections negatively to their data values. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                               </property>
-                              <property name="decimals">
-                               <number>2</number>
+                              <property name="textFormat">
+                               <enum>Qt::RichText</enum>
                               </property>
-                              <property name="minimum">
-                               <double>0.000000000000000</double>
+                              <property name="scaledContents">
+                               <bool>false</bool>
                               </property>
-                              <property name="maximum">
-                               <double>1000.000000000000000</double>
+                              <property name="alignment">
+                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                               </property>
-                              <property name="singleStep">
-                               <double>0.200000000000000</double>
-                              </property>
-                              <property name="value">
-                               <double>1.000000000000000</double>
+                              <property name="wordWrap">
+                               <bool>true</bool>
                               </property>
                              </widget>
                             </item>
@@ -992,7 +989,7 @@
                                </sizepolicy>
                               </property>
                               <property name="toolTip">
-                               <string extracomment="Exponent of 1 means the size of a sphere for each reflection is proportional to its data value. Exponent of 0 means all spheres will have the same size irrespective of their data values."/>
+                               <string/>
                               </property>
                               <property name="minimum">
                                <double>-10.000000000000000</double>
@@ -1005,31 +1002,6 @@
                               </property>
                               <property name="value">
                                <double>0.500000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
-                            <item row="0" column="0" colspan="4">
-                             <widget class="QLabel" name="label_7">
-                              <property name="sizePolicy">
-                               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                               </sizepolicy>
-                              </property>
-                              <property name="text">
-                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &amp;quot;User defined power scaling&amp;quot; box for chosing a power scale factor. Untick this box to get an &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale factor.&lt;/span&gt;&lt;br/&gt;An &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale&lt;/span&gt; factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor of 1&lt;/span&gt; will size the reflections proportional to their data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor of 0&lt;/span&gt; causes all reflections to have the same size regardless of their data values. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                              </property>
-                              <property name="textFormat">
-                               <enum>Qt::RichText</enum>
-                              </property>
-                              <property name="scaledContents">
-                               <bool>false</bool>
-                              </property>
-                              <property name="alignment">
-                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                              </property>
-                              <property name="wordWrap">
-                               <bool>true</bool>
                               </property>
                              </widget>
                             </item>
@@ -1046,6 +1018,34 @@
                               </property>
                               <property name="text">
                                <string>Linear scale factor</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="2" column="1">
+                             <widget class="MyQDoubleSpinBox" name="radii_scale_spinBox">
+                              <property name="sizePolicy">
+                               <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                               </sizepolicy>
+                              </property>
+                              <property name="toolTip">
+                               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A linear scale factor of 1 means that if two reflectiions with the largest data values happen to be next to each other their spheres will touch but not overlap.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                              </property>
+                              <property name="decimals">
+                               <number>2</number>
+                              </property>
+                              <property name="minimum">
+                               <double>0.000000000000000</double>
+                              </property>
+                              <property name="maximum">
+                               <double>1000.000000000000000</double>
+                              </property>
+                              <property name="singleStep">
+                               <double>0.200000000000000</double>
+                              </property>
+                              <property name="value">
+                               <double>1.000000000000000</double>
                               </property>
                              </widget>
                             </item>
