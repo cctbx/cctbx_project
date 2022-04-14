@@ -1590,7 +1590,8 @@ class _():
           rg.remove_atom_group(ag)
           chain = rg.parent()
           chain.remove_residue_group(rg)
-        residues[key] = ag
+        if key not in residues:
+          residues[key] = ag
 
   def flip_symmetric_amino_acids(self):
     import time
