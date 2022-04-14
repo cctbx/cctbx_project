@@ -645,6 +645,8 @@ class HKLViewFrame() :
       for i,e in enumerate(indices_of_matched_hkls):
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
+      self.arrayinfos.append(arrayinfo)
+      self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
                 "ano_spg_tpls": self.ano_spg_tpls,
                 "NewHKLscenes" : True,

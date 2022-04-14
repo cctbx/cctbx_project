@@ -751,6 +751,18 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
             self.make_new_millertable()
 
+            self.MillerComboBox.clear()
+            self.MillerComboBox.addItem("", userData=-1)
+            for k,lbl in enumerate(self.millerarraylabels):
+              self.MillerComboBox.addItem(lbl, userData=k)
+
+            self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
+            self.comboviewwidth = 0
+            for e in self.millerarraylabels:
+              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
+            self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
+
+
           if self.infodict.get("ano_spg_tpls"):
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
@@ -1007,17 +1019,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             if self.millerarraytablemodel:
               self.millerarraytablemodel.clear()
               self.millerarraytablemodel = MillerArrayTableModel([[]], [], self)
-
-            self.MillerComboBox.clear()
-            self.MillerComboBox.addItem("", userData=-1)
-            for k,lbl in enumerate(self.millerarraylabels):
-              self.MillerComboBox.addItem(lbl, userData=k)
-
-            self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
-            self.comboviewwidth = 0
-            for e in self.millerarraylabels:
-              self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
-            self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
             self.make_new_millertable()
             #self.UsePersistedQsettings
