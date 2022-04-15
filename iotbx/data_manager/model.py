@@ -99,7 +99,7 @@ model
     ----------
     filename : str
         Optionally specify which model using its filepath
-        
+
     Returns
     -------
     model
@@ -165,7 +165,7 @@ model
     ----------
     filename : str
         The filepath as a string
-        
+
     Returns
     -------
     None
