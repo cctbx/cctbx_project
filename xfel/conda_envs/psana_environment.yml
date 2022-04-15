@@ -11,10 +11,10 @@ dependencies:
  - scons
 
  # psana
- - psana<=4.0.36 # https://github.com/cctbx/cctbx_project/issues/744
+ - psana
 
  # python
- - python=3.7
+ - python
  - biopython
  - ipython
 
