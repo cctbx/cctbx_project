@@ -92,6 +92,20 @@ model
     return self._set_default(ModelDataManager.datatype, filename)
 
   def get_model(self, filename=None):
+    """
+    Retrieve a stored mmtbx.model.manager object
+
+    Parameters
+    ----------
+    filename : str
+        Optionally specify which model using its filepath
+        
+    Returns
+    -------
+    model
+        The mmtbx.model.manager object
+
+    """
     model = self._get(ModelDataManager.datatype, filename)
     if (self.supports('restraint')):
       restraint_objects = list()
@@ -144,13 +158,27 @@ model
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
   def process_model_file(self, filename):
+    """
+    Parse a model file and store the mmtbx.model.manager object
+
+    Parameters
+    ----------
+    filename : str
+        The filepath as a string
+        
+    Returns
+    -------
+    None
+        The model is added to the DataManager
+
+    """
     # unique because any_file does not return a model object
     if (filename not in self.get_model_names()):
       a = any_file(filename)
       if (a.file_type != 'pdb'):
         raise Sorry('%s is not a recognized model file' % filename)
       else:
-        model_in = iotbx.pdb.input(a.file_name)
+        model_in = a.file_content.input
         expand_with_mtrix = True  # default
         skip_ss_annotations = False
         if 'model_skip_expand_with_mtrix' in self.custom_options:
