@@ -190,11 +190,9 @@ class HKLViewFrame() :
         if msgtype=="clipper_crystdict":
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
-
         if msgtype=="philstr" or msgtype=="preset_philstr":
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil, msgtype, lastmsgtype)
-
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -252,6 +250,7 @@ class HKLViewFrame() :
 
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil, unusedphilparms = oldcurrentphil.fetch(source = pyphilobj, track_unused_definitions=True)
+    #newcurrentphil, unusedphilparms = self.master_phil.fetch(sources = [pyphilobj, oldcurrentphil] , track_unused_definitions=True)
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
@@ -300,6 +299,9 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      if view_3d.has_phil_path(diff_phil, "miller_array_operation"):
+        self.make_new_miller_array(msgtype=="preset_philstr")
+
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
       # Scene_id is then inferred from data_array and used throughout
       if view_3d.has_phil_path(diff_phil, "data_array"):
@@ -328,6 +330,9 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 
+      if view_3d.has_phil_path(diff_phil, "miller_array_operation"):
+        self.make_new_miller_array(msgtype=="preset_philstr")
+
       if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
          "scene_bin_thresholds", "data_array"):
@@ -343,9 +348,6 @@ class HKLViewFrame() :
       if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
         self.tabulate_arrays(phl.tabulate_miller_array_ids)
         #return True
-
-      if view_3d.has_phil_path(diff_phil, "miller_array_operations"):
-        self.make_new_miller_array()
 
       if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
@@ -596,23 +598,25 @@ class HKLViewFrame() :
 
   def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
     # get list of existing new miller arrays and operations if present
-    miller_array_operations_lst = []
-    #if self.params.miller_array_operations:
-    #  miller_array_operations_lst = eval(self.params.miller_array_operations)
     miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
     self.params.miller_array_operations = str( miller_array_operations_lst )
     self.update_settings()
 
 
-  def make_new_miller_array(self):
-    miller_array_operations_lst = eval(self.params.miller_array_operations)
-    unique_miller_array_operations_lst = []
-    for (operation, label, arrid1, arrid2) in miller_array_operations_lst:
-      for arr in self.procarrays:
-        if label in arr.info().labels + [ "", None]:
-          raise Sorry("Provide an unambiguous label for your new miller array!")
-      unique_miller_array_operations_lst.append( (operation, label, arrid1, arrid2) )
-    self.params.miller_array_operations = str(unique_miller_array_operations_lst)
+  def make_new_miller_array(self, is_preset_philstr=False):
+    miller_array_operations_lst = eval(self.params.miller_array_operation)
+    (operation, label, labl1, labl2) = miller_array_operations_lst
+
+    arrid1 = self.viewer.get_scene_id_from_label_or_type(labl1, "")
+    arrid2 = -1
+    if labl2 != "":
+      arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, "")
+
+    for arr in self.procarrays:
+      if label in arr.info().labels + [ "", None]:
+        if is_preset_philstr:
+          return
+        raise Sorry("Provide a label for the new miller array that isn't already used.")
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
@@ -983,6 +987,15 @@ class HKLViewFrame() :
             if vectorlabel in label:
               vectorfound = True
 
+        miller_array_operation_can_be_done = False
+        miller_array_operation_lbls = re.findall('miller_array_operation \s* = \s* .+ , \s* \' (\S*) \' , \s* \' (\S*) \' \)', philstr, re.VERBOSE)
+        if miller_array_operation_lbls:
+          for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if label == miller_array_operation_lbls[0][0] or description == miller_array_operation_lbls[0][0]:
+              miller_array_operation_can_be_done = True
+              self.mprint("Preset button, %s, assigned to data column(s) %s" %(btnname, str(miller_array_operation_lbls[0])), verbose=1)
+              break
+
         if len(rlbl) == 1:
           labelfound = False; typefound= False
           for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -994,7 +1007,7 @@ class HKLViewFrame() :
               typefound = True
               self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label), verbose=1)
               break
-        if (labelfound or typefound) and vectorfound:
+        if ((labelfound or typefound) and vectorfound) or miller_array_operation_can_be_done:
           activebtns.append((self.allbuttonslist[i],True))
         else:
           self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype), verbose=1)
@@ -1567,7 +1580,7 @@ masterphilstr = """
     .type = path
   merge_data = False
     .type = bool
-  miller_array_operations = ''
+  miller_array_operation = ''
     .type = str
   spacegroup_choice = None
     .type = int

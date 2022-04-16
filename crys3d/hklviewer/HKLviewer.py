@@ -1980,9 +1980,14 @@ clip_plane {
 
 
   def onMakeNewData(self):
+    #mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
+    #          self.operate_arrayidx1, self.operate_arrayidx2 )
+    lbl2 = ""
+    if self.operate_arrayidx2 >= 0:
+      lbl2 = self.millerarraylabels[self.operate_arrayidx2]
     mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
-              self.operate_arrayidx1, self.operate_arrayidx2 )
-    self.send_message('miller_array_operations = "[ %s ]"' %str(mtpl) )
+              self.millerarraylabels[self.operate_arrayidx1], lbl2 )
+    self.send_message('miller_array_operation = "%s"' %str(mtpl) )
     self.makenewdataform.accept()
 
 

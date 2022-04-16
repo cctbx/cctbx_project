@@ -37,6 +37,18 @@ buttonsdeflist = [
                                           show_tooltips = *click
                                           fontsize = 10
                                         }
+  """),
+
+  ("FOverSigF", "F/SigF","""
+                                        miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None\\n', 'FoverSigF', 'FOBS,SIGFOBS', '')"
+                                        viewer {
+                                          data_array.label = "FoverSigF"
+                                        }
+                                        NGL {
+                                          fontsize = 10
+                                          show_tooltips = none click *hover
+                                        }
+
   """)
 
 

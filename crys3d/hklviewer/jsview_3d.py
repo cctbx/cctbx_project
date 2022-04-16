@@ -298,7 +298,7 @@ class hklview_3d:
                      "using_space_subgroup",
                      "merge_data",
                      "camera_type",
-                     "miller_array_operations",
+                     "miller_array_operation",
                      ) \
      or has_phil_path(diff_phil, "viewer") \
      and has_phil_path(diff_phil,
@@ -339,8 +339,7 @@ class hklview_3d:
                        "nth_power_scale_radii"
             ):
           self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
-        #else:
-        #  self.ConstructReciprocalSpace(curphilparam )
+          self.params.miller_array_operation = ""
     msg = ""
     if self.viewerparams.scene_id is not None and \
       ( has_phil_path(diff_phil,
@@ -398,11 +397,12 @@ class hklview_3d:
       self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
       self.viewerparams.angle_around_ZHKL_vector = None
 
-    if has_phil_path(diff_phil, "miller_array_operations"):
+    if has_phil_path(diff_phil, "miller_array_operation"):
+      # display the new dataset user has just added which is the last in the list
       self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
       self.viewerparams.sigma_color_radius = False
       self.set_scene()
-      self.params.miller_array_operations = ""
+      #self.params.miller_array_operation = ""
 
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
@@ -414,7 +414,7 @@ class hklview_3d:
                       "nbins",
                       "fontsize",
                       "data_array",
-                      "miller_array_operations",
+                      "miller_array_operation",
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
