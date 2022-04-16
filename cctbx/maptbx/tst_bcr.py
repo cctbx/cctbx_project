@@ -53,12 +53,8 @@ def run(d_min       = 2.0,
       bcr_approx_values_cpp.append( calc.rho(r) )
     r = rfactor(im.image_values, bcr_approx_values)
     if(i == 0): assert r>10, r
-<<<<<<< HEAD
     else:       assert r<0.4, r
-=======
-    else:       assert r<0.3, r
     assert approx_equal(bcr_approx_values, bcr_approx_values_cpp)
->>>>>>> 90b2b05c29 ((Work in progress) Towards BCR-based general map sampling: prototyping basic elements of the procedure.)
 
 if (__name__ == "__main__"):
   run()
