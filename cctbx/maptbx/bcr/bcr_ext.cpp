@@ -16,10 +16,10 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   getinitargs_bcr_model(bcr_model<> const& self)
   {
     return boost::python::make_tuple(
-      self.site_frac,
-      self.b,
-      self.c,
-      self.r);
+      self.scatterer,
+      self.B,
+      self.C,
+      self.R);
   }
 
 namespace {
@@ -28,20 +28,24 @@ namespace {
   {
     using namespace boost::python;
 
-    typedef return_value_policy<return_by_value> rbv;
-    class_<bcr_model<> >("bcr_model")
-      .def(init<scitbx::vec3<double> const&,
-                af::shared<double> const&,
-                af::shared<double> const&,
-                af::shared<double> const& >((arg("site_frac"),arg("b"),arg("c"),
-                                               arg("r"))))
-      .add_property("site_frac", make_getter(&bcr_model<>::site_frac, rbv()))
-      .add_property("b",         make_getter(&bcr_model<>::b,         rbv()))
-      .add_property("c",         make_getter(&bcr_model<>::c,         rbv()))
-      .add_property("r",         make_getter(&bcr_model<>::r,         rbv()))
-      .enable_pickling()
-      .def("__getinitargs__", getinitargs_bcr_model)
-    ;
+    {
+      typedef return_value_policy<return_by_value> rbv;
+      class_<bcr_model<> >("bcr_model")
+        .def(init<cctbx::xray::scatterer<> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const& >((arg("scatterer"),arg("B"),arg("C"),
+                                                 arg("R"))))
+        .add_property("scatterer", make_getter(&bcr_model<>::scatterer, rbv()))
+        .add_property("B",         make_getter(&bcr_model<>::B,         rbv()))
+        .add_property("C",         make_getter(&bcr_model<>::C,         rbv()))
+        .add_property("R",         make_getter(&bcr_model<>::R,         rbv()))
+        .enable_pickling()
+        .def("__getinitargs__", getinitargs_bcr_model)
+        //.def("atom_radius",   &bcr_model<>::atom_radius)
+        //.def("rho",           &bcr_model<>::rho)
+      ;
+    }
 
     {
       class_<image<> >("BCRimage", no_init) // why no_init ?
@@ -55,6 +59,14 @@ namespace {
         .def("fsc",   &image<>::cc)
         .def("d",     &image<>::d)
         .def("d_inv", &image<>::d_inv)
+      ;
+    }
+
+    {
+      class_<calculator<> >("calculator")
+        .def(init<bcr_model<double> const& >((arg("bcr_model") )))
+        .def("atom_radius",   &calculator<>::atom_radius)
+        .def("rho",           &calculator<>::rho)
       ;
     }
 

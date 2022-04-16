@@ -1466,6 +1466,16 @@ Fourier image of specified resolution, etc.
     bpeak, cpeak, rpeak, _,_,_ = bcr.get_BCR(
       dens=im.image_values, dist=im.radii, mxp=mxp, epsc=epsc, kpres=kpres)
     bcr_approx_values = flex.double()
+    # FILTER
+    bpeak_, cpeak_, rpeak_ = [],[],[]
+    for bi, ci, ri in zip(bpeak, cpeak, rpeak):
+      if(abs(bi)<1.e-6 or abs(ci)<1.e-6): continue
+      else:
+        bpeak_.append(bi)
+        cpeak_.append(ci)
+        rpeak_.append(ri)
+    bpeak, cpeak, rpeak = bpeak_, cpeak_, rpeak_
+    #
     for r in im.radii:
       first = 0
       second = 0

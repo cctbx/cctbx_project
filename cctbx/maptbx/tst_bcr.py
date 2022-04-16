@@ -2,6 +2,12 @@ from __future__ import absolute_import, division, print_function
 from cctbx import maptbx
 from scitbx.array_family import flex
 from cctbx.maptbx.bcr import bcr
+from cctbx import xray
+from cctbx import adptbx
+from libtbx.test_utils import approx_equal
+
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
 
 def rfactor(a,b):
   n = flex.sum(flex.abs(a-b))
@@ -29,6 +35,12 @@ def run(d_min       = 2.0,
     im = o.image(
       d_min=d_min, b_iso=b_iso, radius_max=radius_max, radius_step=radius_step)
     bcr_approx_values = flex.double()
+    bcr_approx_values_cpp = flex.double()
+    # c++
+    sc = xray.scatterer("c", site=(0,0,0), u=adptbx.b_as_u(b_iso))
+    bcr_cpp = ext.bcr_model(scatterer=sc, B=b.B, C=b.C, R=b.R)
+    calc = ext.calculator(bcr_model=bcr_cpp)
+    #
     for r in im.radii:
       first = 0
       second = 0
@@ -38,9 +50,15 @@ def run(d_min       = 2.0,
         else:
           second += C*bcr.chi(B=B, R=R, r=r, b_iso=b_iso)
       bcr_approx_values.append(first + second)
+      bcr_approx_values_cpp.append( calc.rho(r) )
     r = rfactor(im.image_values, bcr_approx_values)
     if(i == 0): assert r>10, r
+<<<<<<< HEAD
     else:       assert r<0.4, r
+=======
+    else:       assert r<0.3, r
+    assert approx_equal(bcr_approx_values, bcr_approx_values_cpp)
+>>>>>>> 90b2b05c29 ((Work in progress) Towards BCR-based general map sampling: prototyping basic elements of the procedure.)
 
 if (__name__ == "__main__"):
   run()
