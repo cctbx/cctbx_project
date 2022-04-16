@@ -38,9 +38,6 @@ namespace {
       .add_property("density_array", make_getter(&manager<>::density_array, rbv()))
     ;
 
-    using namespace boost::python;
-    using boost::python::arg;
-    typedef return_value_policy<return_by_value> rbv;
     class_<manager_BCR<> >("manager_BCR",
       init<int const&,
            int const&,

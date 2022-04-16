@@ -1,4 +1,5 @@
-import os, sys
+from __future__ import absolute_import, division, print_function
+import sys
 import mmtbx.model
 from iotbx import pdb
 from libtbx.utils import null_out
