@@ -964,7 +964,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
-        MainWindow.setCentralWidget(self.centralwidget)
+        #MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
 

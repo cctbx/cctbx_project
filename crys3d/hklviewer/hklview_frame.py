@@ -5,12 +5,10 @@ from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
 from cctbx.miller import display2 as display
-from crys3d.hklviewer import jsview_3d as view_3d
-#from crys3d.hklviewer.jsview_3d import ArrayInfo
+from crys3d.hklviewer import jsview_3d
 from cctbx import miller
 from cctbx import crystal
 from libtbx.math_utils import roundoff
-from libtbx.str_utils import format_value
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, to_str
 from scitbx import matrix
@@ -24,35 +22,12 @@ from pathlib import Path
 import importlib.util
 
 try:
-  from .PresetButtons import buttonsdeflist
+  from .preset_buttons import buttonsdeflist
 except Exception as e: # if the user provides their own customised radio buttons for the GUI
   buttonsdeflist = []
 
 
 NOREFLDATA = "No reflection data has been selected"
-
-
-class settings_window () :
-  def set_index_span (self, index_span) :
-    self._index_span = index_span
-
-
-  def update_reflection_info (self, hkl, d_min, value) :
-    print(hkl, value)
-    if (hkl is None) :
-      self.hkl_info.SetValue("")
-      self.d_min_info.SetValue("")
-      self.value_info.SetValue("")
-    else :
-      self.hkl_info.SetValue("%d, %d, %d" % hkl)
-      d_min_str = format_value("%.3g", d_min)
-      self.d_min_info.SetValue(d_min_str)
-      value_str = format_value("%.3g", value, replace_none_with="---")
-      self.value_info.SetValue(value_str)
-
-
-  def clear_reflection_info (self) :
-    self.update_reflection_info(None, None, None)
 
 
 class HKLViewFrame() :
@@ -75,7 +50,7 @@ class HKLViewFrame() :
     kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.outputmsgtypes = []
-    self.userpresetbuttonsfname = os.path.join( Path.home(), ".HKLviewerButtons.py")
+    self.userpresetbuttonsfname = os.path.join( Path.home(), ".hkl_viewer_buttons.py")
     self.infostr = ""
     self.allbuttonslist = []
     self.hklfile_history = []
@@ -101,7 +76,7 @@ class HKLViewFrame() :
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
-      kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by hklview_3d
+      kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
       self.SendInfoToGUI(pyversion )
@@ -111,12 +86,12 @@ class HKLViewFrame() :
     self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()
     kwds['parent'] = self
-    self.viewer = view_3d.hklview_3d( **kwds )
+    self.viewer = jsview_3d.HKLview_3d( **kwds )
     self.allbuttonslist = buttonsdeflist
     if os.path.exists(self.userpresetbuttonsfname):
       self.mprint("Using existing UserPresetButtons in " + self.userpresetbuttonsfname)
     else:
-      factorydefault_userbutton_fname = os.path.join(os.path.split(view_3d.__file__)[0], "DefaultUserPresetButtons.py")
+      factorydefault_userbutton_fname = os.path.join(os.path.split(jsview_3d.__file__)[0], "default_user_preset_buttons.py")
       import shutil
       shutil.copyfile(factorydefault_userbutton_fname, self.userpresetbuttonsfname)
       self.mprint("New UserPresetButton file copied to " + self.userpresetbuttonsfname)
@@ -276,7 +251,7 @@ class HKLViewFrame() :
         self.viewer.sceneisdirty = True
         self.viewer.executing_preset_btn = True
       # selecting a new scene_id resets phil parameters if the previous phil was from a preset button
-      if lastmsgtype=="preset_philstr" and view_3d.has_phil_path(new_phil, "scene_id"):
+      if lastmsgtype=="preset_philstr" and jsview_3d.has_phil_path(new_phil, "scene_id"):
         self.ResetPhil()
 
       if not new_phil:
@@ -289,7 +264,7 @@ class HKLViewFrame() :
       # once a preset phil setting has been enabled allow changing a phil parameter
       # without having to change scene_id
       if (msgtype=="philstr") and (lastmsgtype=="preset_philstr") and (oldsceneid is not None) and \
-         view_3d.has_phil_path(diff_phil, "scene_id") == False:
+         jsview_3d.has_phil_path(diff_phil, "scene_id") == False:
         self.viewer.viewerparams.scene_id = oldsceneid
         self.viewer.sceneisdirty = True
 
@@ -299,30 +274,30 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
-      if view_3d.has_phil_path(diff_phil, "miller_array_operation"):
+      if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         self.make_new_miller_array(msgtype=="preset_philstr")
 
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
       # Scene_id is then inferred from data_array and used throughout
-      if view_3d.has_phil_path(diff_phil, "data_array"):
-        if view_3d.has_phil_path(diff_phil, "phasertng_tag"):
+      if jsview_3d.has_phil_path(diff_phil, "data_array"):
+        if jsview_3d.has_phil_path(diff_phil, "phasertng_tag"):
           phl.viewer.data_array.label = self.get_label_from_phasertng_tag(phl.viewer.data_array.phasertng_tag)
         phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
                                                                           phl.viewer.data_array.datatype)
-      if view_3d.has_phil_path(diff_phil, "binlabel"):
+      if jsview_3d.has_phil_path(diff_phil, "binlabel"):
         phl.binner_idx = self.viewer.get_binner_idx_from_label(phl.binlabel)
 
-      if view_3d.has_phil_path(diff_phil, "scene_id"):
+      if jsview_3d.has_phil_path(diff_phil, "scene_id"):
         phl.viewer.data_array.label = None
         phl.viewer.data_array.datatype = None
 
-      if view_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
+      if jsview_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         if not self.load_miller_arrays():
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
         phl.use_provided_miller_arrays = False # ensure we can do this again
 
-      if view_3d.has_phil_path(diff_phil, "openfilename"):
+      if jsview_3d.has_phil_path(diff_phil, "openfilename"):
         fname = phl.openfilename
         phl = self.ResetPhilandViewer()
         if not self.load_reflections_file(fname):
@@ -330,10 +305,10 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 
-      if view_3d.has_phil_path(diff_phil, "miller_array_operation"):
+      if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         self.make_new_miller_array(msgtype=="preset_philstr")
 
-      if view_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
+      if jsview_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
          "scene_bin_thresholds", "data_array"):
         if self.set_scene(phl.viewer.scene_id):
@@ -342,26 +317,26 @@ class HKLViewFrame() :
                                          binner_idx=phl.binner_idx,
                                          nbins=phl.nbins )
 
-      if view_3d.has_phil_path(diff_phil, "spacegroup_choice"):
+      if jsview_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
 
-      if view_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
+      if jsview_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
         self.tabulate_arrays(phl.tabulate_miller_array_ids)
         #return True
 
-      if view_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
+      if jsview_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
-      if view_3d.has_phil_path(diff_phil, "shape_primitive"):
+      if jsview_3d.has_phil_path(diff_phil, "shape_primitive"):
         self.set_shape_primitive(phl.shape_primitive)
 
-      if view_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op",
+      if jsview_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op",
                                          "add_user_vector_abc",
                                          "add_user_vector_hkl"):
         self.add_user_vector()
         self.validated_preset_buttons = False
 
-      if view_3d.has_phil_path(diff_phil, "selected_info", "openfilename"):
+      if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename"):
         self.viewer.array_info_format_tpl = []
         for i,array in enumerate(self.procarrays):
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
@@ -386,25 +361,25 @@ class HKLViewFrame() :
             colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
         self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
 
-      if view_3d.has_phil_path(diff_phil, "save_image_name"):
+      if jsview_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
         phl.save_image_name = None
 
-      if view_3d.has_phil_path(diff_phil, "action"):
+      if jsview_3d.has_phil_path(diff_phil, "action"):
         ret = self.set_action(phl.action)
         phl.action = "is_running" # ensure the same action in succession can be executed
         if not ret:
           return False
 
-      if view_3d.has_phil_path(diff_phil, "savefilename"):
+      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
         self.SaveReflectionsFile(phl.savefilename)
       phl.savefilename = None # ensure the same action in succession can be executed
 
-      if view_3d.has_phil_path(diff_phil, "viewer"):
+      if jsview_3d.has_phil_path(diff_phil, "viewer"):
         self.viewer.settings = phl.viewer
         self.settings = phl.viewer
 
-      if view_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
+      if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
 
       self.params = self.viewer.update_settings(diff_phil, phl)
@@ -1685,42 +1660,4 @@ masterphilstr = """
   tabulate_miller_array_ids = "[]"
     .type = str
 
-""" %(ArrayInfo.arrayinfo_phil_str, display.philstr, view_3d.ngl_philstr)
-
-
-def run():
-  """
-  utility function for passing keyword arguments more directly to HKLViewFrame()
-  """
-  #time.sleep(15) # enough for attaching debugger
-  # dirty hack for parsing a file path with spaces of a browser if not using default
-  args = sys.argv[1:]
-  sargs = " ".join(args)
-  qchar = "'"
-  if sargs.find("'") > -1:
-    quote1 = sargs.find(qchar)
-    if sargs[ quote1 + 1:].find(qchar) < 0:
-      raise Sorry("Missing quote in arguments")
-    quote2 = sargs[ quote1 + 1:].find(qchar) + quote1 + 1
-    space1 = sargs[ :quote1].rfind(" ")
-    arg = sargs[space1 +1: quote2 +1]
-    sargs2 = sargs.replace(arg,"")
-    args = sargs2.split(" ")
-    arg = arg.replace("'","")
-    arg = arg.replace('"',"")
-    arg = arg.replace('\\', '/') # webbrowser module wants browser paths having unix forward slashes
-    args.append(arg)
-
-  kwargs = dict(arg.split('=') for arg in args if '=' in arg)
-  #check if any argument is a filename
-  for arg in args:
-    # if so add it as a keyword argument
-    if os.path.isfile(arg) and '=' not in arg:
-      kwargs['hklin'] = arg
-
-  myHKLview = HKLViewFrame(**kwargs)
-  return myHKLview # only necessary for aiding debugging or line profiling
-
-
-if __name__ == '__main__':
-  myHKLview = run()
+""" %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
