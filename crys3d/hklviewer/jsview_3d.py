@@ -12,9 +12,9 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
 if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
-  from crys3d.hklviewer.WebBrowserMessengerPy3 import WBmessenger
+  from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
 else: # using websocket_server
-  from crys3d.hklviewer.WebBrowserMessengerPy2 import WBmessenger
+  from crys3d.hklviewer.webbrowser_messenger_py2 import WBmessenger
 
 import os.path, time, copy, re, io
 import libtbx
@@ -87,7 +87,7 @@ lock_timeout=45 # for the sempahores. Rendering could take a while for very larg
 # are undefined
 
 
-class hklview_3d:
+class HKLview_3d:
   def __init__ (self, *args, **kwds) :
     self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
@@ -262,7 +262,7 @@ class hklview_3d:
 
 
   def __exit__(self, exc_type, exc_value, traceback):
-    # not called unless instantiated with a "with hklview_3d ... " statement
+    # not called unless instantiated with a "with HKLview_3d ... " statement
     self.JavaScriptCleanUp()
     self.SendInfoToGUI( { "datatype_dict": self.datatypedict } ) # so the GUI can persist these across sessions
     nwait = 0
@@ -273,7 +273,7 @@ class hklview_3d:
       nwait += self.sleeptime
     if os.path.isfile(self.hklfname):
       os.remove(self.hklfname)
-    self.mprint("Destroying hklview_3d", 1)
+    self.mprint("Destroying HKLview_3d", 1)
 
 
   def SendInfoToGUI(self, mydict):
