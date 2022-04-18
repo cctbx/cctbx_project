@@ -109,4 +109,17 @@ buttonsdeflist = [
   """),
 
 
+  ("FoverSigF", "F/SigF", """
+                miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None\\n', 'FoverSigF', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
+  """),
+
+  ("IoverSigI", "I/SigI", """
+                miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None\\n', 'IoverSigI', ['I,SIGI', 'Intensity'], ['', ''])"
+  """),
+
+  ("NormaliseF", "E-values", """
+                miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'NormaliseF', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
+
+  """),
+
 ]

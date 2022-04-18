@@ -749,9 +749,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.make_new_millertable()
 
             self.MillerComboBox.clear()
-            self.MillerComboBox.addItem("", userData=-1)
+            self.MillerComboBox.addItem("", userData=[-1, ""])
             for k,lbl in enumerate(self.millerarraylabels):
-              self.MillerComboBox.addItem(lbl, userData=k)
+              self.MillerComboBox.addItem(lbl, userData= [k, self.scenearraylabeltypes[k][1]] )
 
             self.MillerComboBox.setCurrentIndex(0) # select the first item which is no miller array
             self.comboviewwidth = 0
@@ -1929,7 +1929,9 @@ clip_plane {
       else:
         (strval, idx) = data
         self.operate_arrayidx1 = idx
+        self.operate_arraytype1 = self.scenearraylabeltypes[idx][1]
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
+        self.operate_arraytype2 = ""
         if strval=="newdata":
           self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
            + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "
@@ -1977,19 +1979,17 @@ clip_plane {
 
 
   def onMakeNewData(self):
-    #mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
-    #          self.operate_arrayidx1, self.operate_arrayidx2 )
-    lbl2 = ""
-    if self.operate_arrayidx2 >= 0:
-      lbl2 = self.millerarraylabels[self.operate_arrayidx2]
+    lbltype2 = ["",""]
+    if self.operate_arrayidx2 >= 0: # a dataset was selected in the millercombobox. Get label and type
+      lbltype2 = [self.millerarraylabels[self.operate_arrayidx2], self.operate_arraytype2]
     mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
-              self.millerarraylabels[self.operate_arrayidx1], lbl2 )
+            [self.millerarraylabels[self.operate_arrayidx1], self.operate_arraytype1], lbltype2 )
     self.send_message('miller_array_operation = "%s"' %str(mtpl) )
     self.makenewdataform.accept()
 
 
   def onMillerComboSelchange(self, i):
-    self.operate_arrayidx2 = self.MillerComboBox.itemData(i)
+    self.operate_arrayidx2, self.operate_arraytype2 = self.MillerComboBox.itemData(i)
     # -1 if first item. Otherwise itemdata is index of the list of miller arrays
 
 

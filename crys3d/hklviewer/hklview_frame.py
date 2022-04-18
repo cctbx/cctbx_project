@@ -305,9 +305,6 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 
-      if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
-        self.make_new_miller_array(msgtype=="preset_philstr")
-
       if jsview_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
          "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
          "scene_bin_thresholds", "data_array"):
@@ -580,12 +577,12 @@ class HKLViewFrame() :
 
   def make_new_miller_array(self, is_preset_philstr=False):
     miller_array_operations_lst = eval(self.params.miller_array_operation)
-    (operation, label, labl1, labl2) = miller_array_operations_lst
+    (operation, label, [labl1, type1], [labl2, type2]) = miller_array_operations_lst
 
-    arrid1 = self.viewer.get_scene_id_from_label_or_type(labl1, "")
+    arrid1 = self.viewer.get_scene_id_from_label_or_type(labl1, type1)
     arrid2 = -1
     if labl2 != "":
-      arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, "")
+      arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, type2)
 
     for arr in self.procarrays:
       if label in arr.info().labels + [ "", None]:
