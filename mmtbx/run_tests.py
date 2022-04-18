@@ -100,7 +100,7 @@ general_tests = [
   "$D/regression/ncs/tst_ncs_search_flips.py",
   "$D/regression/ncs/tst_restraints.py",
   "$D/regression/tst_geometry_minimization.py",
-  '$D/regression/tst__special_term_at_end.py',
+  '$D/regression/tst_special_term_at_end.py',
   ["$D/ncs/ncs.py", "exercise"],
   "$D/regression/tst_adp_restraints.py",
   "$D/regression/tst_metal_link_1.py",
