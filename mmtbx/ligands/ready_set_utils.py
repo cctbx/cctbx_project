@@ -651,6 +651,8 @@ def add_terminal_hydrogens(hierarchy,
 
 def delete_charged_n_terminal_hydrogens(hierarchy):
   for ag in hierarchy.atom_groups():
+    if get_class(ag.resname) not in ['common_amino_acid',
+                                     'modified_amino_acid']: continue
     h1 = ag.get_atom('H1')
     if not h1: continue
     h2 = ag.get_atom('H2')

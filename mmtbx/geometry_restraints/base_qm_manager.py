@@ -207,7 +207,7 @@ class base_qm_manager(base_manager):
         print(lines)
         print('filename',filename)
         print('='*80)
-        assert 0
+        raise Sorry('something has changed making the QM input files different')
     return outl==lines
 
   def opt_setup(self, optimise_ligand=True, optimise_h=True):

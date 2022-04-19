@@ -15,6 +15,8 @@ from mmtbx.geometry_restraints import orca_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
+WRITE_STEPS_GLOBAL=False
+
 class manager(standard_manager):
   def __init__(self,
                params,
@@ -60,7 +62,7 @@ def digester(model,
 
 def write_pdb_file(model, filename, log=None):
   outl = model.model_as_pdb()
-  print('    Writing ligand : %s' % filename, file=log)
+  print('    Writing PDB : %s' % filename, file=log)
   f=open(filename, 'w')
   f.write(outl)
   del f
@@ -221,6 +223,7 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., wri
 
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   from cctbx.maptbx.box import shift_and_box_model
+  if WRITE_STEPS_GLOBAL: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
   #
   # check for to sparse selections like a ligand in two monomers
@@ -250,6 +253,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   add_hydrogen_atoms_to_model(buffer_model, use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
   buffer_model.process(make_restraints=True)
+  if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
   return ligand_model, buffer_model
 
 def show_ligand_buffer_models(ligand_model, buffer_model):

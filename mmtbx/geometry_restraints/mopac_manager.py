@@ -26,7 +26,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
      )
     return outl
 
-  def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True):
+  def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, verbose=False):
     outl = ''
     for i, atom in enumerate(self.atoms):
       ligand_atom = self.ligand_atoms_array[i]
@@ -50,6 +50,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
         # atom.id_str(),
         # i,
         )
+      if verbose and ligand_atom: print(atom.quote())
     outl += '\n'
     return outl
 
