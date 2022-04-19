@@ -26,14 +26,12 @@ def run():
     arg = arg.replace('"',"")
     arg = arg.replace('\\', '/') # webbrowser module wants browser paths having unix forward slashes
     args.append(arg)
-
   kwargs = dict(arg.split('=') for arg in args if '=' in arg)
   #check if any argument is a filename
   for arg in args:
     # if so add it as a keyword argument
     if os.path.isfile(arg) and '=' not in arg:
       kwargs['hklin'] = arg
-
   myHKLview = hklview_frame.HKLViewFrame(**kwargs)
   return myHKLview # only necessary for aiding debugging or line profiling
 
