@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx
+from string import ascii_letters
+
 from mmtbx.ligands.ready_set_basics import construct_xyz
 
 # class smart_add_atoms(list):
@@ -30,6 +32,28 @@ def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   atom.hetero = hetero
   atom.segid = segid
   return atom
+
+def _add_atom_to_chain(atom, ag, icode=None):
+  rg = _add_atom_to_residue_group(atom, ag, icode=icode)
+  chain = ag.parent().parent()
+  tc = iotbx.pdb.hierarchy.chain()
+  tc.id = chain.id
+  tc.append_residue_group(rg)
+  return tc
+
+def _add_atom_to_residue_group(atom, ag, icode=None):
+  tag = iotbx.pdb.hierarchy.atom_group()
+  tag.resname = ag.resname
+  tag.append_atom(atom)
+  rg = iotbx.pdb.hierarchy.residue_group()
+  rg.resseq = ag.parent().resseq
+  if icode is not None: rg.icode=icode
+  rg.append_atom_group(tag)
+  for i, c in enumerate(ascii_letters):
+    if c==ag.parent().parent().id:
+      break
+  atom.tmp = i
+  return rg
 
 def new_atom_with_inheritance(name, element, xyz, parent=None):
   occ=1

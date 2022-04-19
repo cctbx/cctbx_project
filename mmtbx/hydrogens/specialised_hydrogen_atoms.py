@@ -173,6 +173,7 @@ def add_cys_hg_to_residue_group(residue_group,
 def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
                                          residue_group,
                                          element='H',
+                                         append_to_end_of_model=False,
                                          ):
   """Adds HG atom to CYS if no disulfur bridge
 
@@ -183,8 +184,9 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
   # could be more general to include other disulphide amino acids
   resnames = []
   for atom_group in residue_group.atom_groups():
+    print(atom_group,atom_group.resname)
     resnames.append(atom_group.resname)
-  if 'CYS' not in resnames: return -1
+  if 'CYS' not in resnames: return None
   sgs = []
   for atom in residue_group.atoms():
     if atom.name.strip()=='SG' and atom.parent().resname=='CYS':
@@ -203,8 +205,10 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
           sg_bonds.append(p.i_seqs)
   rc = []
   if len(sg_bonds)==0:
-    rc += add_cys_hg_to_residue_group(residue_group, element=element)
-    assert not rc
+    rc += add_cys_hg_to_residue_group(residue_group,
+                                      element=element,
+                                      append_to_end_of_model=append_to_end_of_model,
+                                      )
   return rc
 
 def add_disulfur_hydrogen_atoms(geometry_restraints_manager,
