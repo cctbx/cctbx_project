@@ -4,6 +4,7 @@ from math import sqrt
 
 from libtbx.utils import Sorry
 
+import iotbx
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 
@@ -26,13 +27,15 @@ def bond_as_restraint(bond, atom1, atom2):
   outl = ' %(resname)s %(name1)s %(name2)s coval %(ideal).3f %(esd)s ' % locals()
   return outl
 
-def get_bond_dictionary(ligand_model, ideal=True):
-  ligand_grm = ligand_model.get_restraints_manager()
+def get_bond_dictionary(ligand_model, ligand_grm=None, ideal=True):
+  if ligand_grm is None:
+    ligand_grm = ligand_model.get_restraints_manager()
   bond_proxies_simple, asu = ligand_grm.geometry.get_all_bond_proxies(
     sites_cart=ligand_model.get_sites_cart())
   sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
     'delta',
     ligand_model.get_sites_cart())
+  if sorted_table is None: sorted_table=[]
   atoms = ligand_model.get_atoms()
   rc = {}
   for info in sorted_table:
@@ -47,11 +50,13 @@ def get_bond_dictionary(ligand_model, ideal=True):
       rc[tuple(key)]=distance_model
   return rc
 
-def get_angle_dictionary(ligand_model, ideal=True):
-  ligand_grm = ligand_model.get_restraints_manager()
+def get_angle_dictionary(ligand_model, ligand_grm=None, ideal=True):
+  if ligand_grm is None:
+    ligand_grm = ligand_model.get_restraints_manager()
   sorted_table, n_not_shown = ligand_grm.geometry.angle_proxies.get_sorted(
       'delta',
       ligand_model.get_sites_cart())
+  if sorted_table is None: sorted_table=[]
   atoms = ligand_model.get_atoms()
   rc={}
   for info in sorted_table:
@@ -67,8 +72,9 @@ def get_angle_dictionary(ligand_model, ideal=True):
       rc[tuple(key)]=angle_model
   return rc
 
-def get_torsion_dictionary(ligand_model, ideal=True):
-  ligand_grm = ligand_model.get_restraints_manager()
+def get_torsion_dictionary(ligand_model, ligand_grm=None, ideal=True):
+  if ligand_grm is None:
+    ligand_grm = ligand_model.get_restraints_manager()
   sorted_table, n_not_shown = ligand_grm.geometry.dihedral_proxies.get_sorted(
       'delta',
       ligand_model.get_sites_cart())
@@ -90,10 +96,32 @@ def get_torsion_dictionary(ligand_model, ideal=True):
       rc[tuple(key)]=angle_model
   return rc
 
-def get_restraints_from_model_via_grm(ligand_model, ideal=True, verbose=True):
-  bond_lookup = get_bond_dictionary(ligand_model, ideal=ideal)
-  angle_lookup = get_angle_dictionary(ligand_model, ideal=ideal)
-  torsion_lookup = get_torsion_dictionary(ligand_model, ideal=ideal)
+def get_restraints_from_model_via_grm(ligand_model,
+                                      ligand_grm=None,
+                                      ideal=True,
+                                      cartesian_coordinates=True,
+                                      ):
+  """Write the restraints from the geometry using the CIF object from the beginning
+
+  Args:
+      ligand_model (TYPE): Model object of one entity with no alt. loc.
+      ideal (bool, optional): Use the ideal distance from the proxy rather than the acutal
+      cartesian_coordinates (bool, optional): Update the atom loop with the hierachy coordinates
+
+  Returns:
+      TYPE: CIF object
+
+  Raises:
+      Sorry: Description
+  """
+  from libtbx.utils import null_out
+  ligand_model.unset_restraints_manager()
+  ligand_model.log=null_out()
+  ligand_model.process(make_restraints=True)
+
+  bond_lookup = get_bond_dictionary(ligand_model, ligand_grm=ligand_grm, ideal=ideal)
+  angle_lookup = get_angle_dictionary(ligand_model, ligand_grm=ligand_grm, ideal=ideal)
+  torsion_lookup = get_torsion_dictionary(ligand_model, ligand_grm=ligand_grm, ideal=ideal)
   codes = []
   atoms = ligand_model.get_atoms()
   for atom in atoms:
@@ -102,10 +130,27 @@ def get_restraints_from_model_via_grm(ligand_model, ideal=True, verbose=True):
       codes.append(resname)
   if len(codes)>1:
     raise Sorry('more than one entity sent to restraints writer %s' % codes)
+  #
+  # this should be smarter
+  #
   resname = codes[0]
-  mon_lib_srv = monomer_library.server.server()
-  rc = mon_lib_srv.get_comp_comp_id_direct(resname)
-  co = rc.cif_object
+  restraints = ligand_model.get_restraint_objects()
+  cif_object=None
+  for filename, cif_object in restraints:
+    break
+  if cif_object:
+    pass
+  else:
+    mon_lib_srv = monomer_library.server.server()
+    filename = mon_lib_srv.get_comp_comp_id_direct(resname, return_filename=True)
+    cif_object = iotbx.cif.reader(filename).model()
+  #
+  # find the columns to replace
+  #
+  if 'comp_list' in cif_object.keys():
+    for key, co in cif_object.items():
+      if key!='comp_list':
+        break
   for key, loop in co.loops.items():
     if key=='_chem_comp_bond':
       values = []
@@ -138,7 +183,25 @@ def get_restraints_from_model_via_grm(ligand_model, ideal=True, verbose=True):
                ]
         key.sort()
         angle_ideal = torsion_lookup.get(tuple(key), None)
-        assert angle_ideal
-        values.append(angle_ideal)
+        if angle_ideal:
+          values.append(angle_ideal)
+        else:
+          # print('WARNING: torsion angle %s not transfered' % (row.get('_chem_comp_tor.id', None)))
+          values.append(float(row.get('_chem_comp_tor.value_angle')))
       loop.update_column('_chem_comp_tor.value_angle', values)
-  return co
+    elif key=='_chem_comp_atom' and cartesian_coordinates:
+      ags=[]
+      for i, ag in enumerate(ligand_model.get_hierarchy().atom_groups()):
+        ags.append(ag)
+      assert len(ags)==1
+      ag=ags[0]
+      values=[[],[],[]]
+      for row in loop.iterrows():
+        name = row['_chem_comp_atom.atom_id']
+        atom = ag.get_atom(name)
+        for i in range(3):
+          values[i].append('%.5f' % atom.xyz[i])
+      loop.update_column('_chem_comp_atom.x', values[0])
+      loop.update_column('_chem_comp_atom.y', values[1])
+      loop.update_column('_chem_comp_atom.z', values[2])
+  return cif_object

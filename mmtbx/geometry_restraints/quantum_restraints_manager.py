@@ -58,11 +58,31 @@ def digester(model,
               )
   return qm_grm
 
-def write_pdb_file(model, filename, log):
+def write_pdb_file(model, filename, log=None):
   outl = model.model_as_pdb()
   print('    Writing ligand : %s' % filename, file=log)
   f=open(filename, 'w')
   f.write(outl)
+  del f
+
+def write_restraints(model, filename, header=None, log=None):
+  """Write restraints from a model
+
+  Args:
+      model (model class): Model with one entity and no alt. loc.
+      filename (TYPE): Description
+      log (None, optional): Description
+
+  """
+  co = get_restraints_from_model_via_grm(model, ideal=False)
+  print('    Writing restraints : %s' % filename, file=log)
+  f=open(filename, 'w')
+  if header:
+    for line in header.splitlines():
+      if not line.startswith('#'):
+        line = '# %s' % line
+      f.write('%s\n' % line)
+  f.write(str(co))
   del f
 
 def add_hydrogen_atoms_to_model(model,
@@ -202,6 +222,9 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., wri
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   from cctbx.maptbx.box import shift_and_box_model
   ligand_model = select_and_reindex(model, qmr.selection)
+  #
+  # check for to sparse selections like a ligand in two monomers
+  #
   if len(ligand_model.get_atoms())==0:
     raise Sorry('selection "%s" results in empty model' % qmr.selection)
   if write_steps: write_pdb_file(ligand_model, 'model_selection.pdb', None)
@@ -715,13 +738,16 @@ def update_restraints(model,
       angle_proxy.angle_ideal=angle
 
     print('', file=log)
-    # if qmr.write_restraints:
-    #   print('write_restraints parameter still in development')
-    #   cif_object = get_restraints_from_model_via_grm(ligand_model, ideal=False)
-    #   print('  Writing restraints to %s.cif' % qmm.preamble)
-    #   f=open('%s.cif' % qmm.preamble, 'w')
-    #   f.write(str(cif_object))
-    #   del f
+    if qmr.write_restraints:
+      print(dir(params))
+      header='''
+Restraints written by QMR process in phenix.refine
+      ''' % ()
+      write_restraints(ligand_model,
+                       '%s.cif' % qmm.preamble,
+                       header=header,
+                       log=log,
+                       )
     #
     # final stats
     #

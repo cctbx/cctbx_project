@@ -184,7 +184,6 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
   # could be more general to include other disulphide amino acids
   resnames = []
   for atom_group in residue_group.atom_groups():
-    print(atom_group,atom_group.resname)
     resnames.append(atom_group.resname)
   if 'CYS' not in resnames: return None
   sgs = []
