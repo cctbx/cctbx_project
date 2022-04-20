@@ -594,8 +594,12 @@ class HKLViewFrame() :
     newarray = None
     if arrid2 != -1:
       millarr2 = deepcopy(self.procarrays[arrid2])
+      self.mprint("Creating %s data with array1 as %s and array2 as %s through the operation:\n\n%s" \
+                   %(label, millarr1.info().label_string(), millarr2.info().label_string(), operation))
       newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
     else:
+      self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
+                   %(label, millarr1.info().label_string(), operation))
       newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
     if newarray is not None:
       self.mprint("New dataset has %d reflections." %newarray.size())
@@ -663,6 +667,7 @@ class HKLViewFrame() :
     self.mprint("%d Miller arrays in this dataset:" %len(arrays))
     spgset = set([])
     self.arrayinfos = []
+    previous_ucell = None
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -677,6 +682,8 @@ class HKLViewFrame() :
 
       # A cif file might lack unit cell or space group for all the crystals in the file
       if array.unit_cell() is None:
+        if previous_ucell is None:
+          raise Sorry("No unit cell found in the first miller array.")
         array._unit_cell = previous_ucell
         self.mprint("""No unit cell present in the %d. miller array. Borrowing from previous miller array""" %i)
       if array.space_group() is None:
@@ -688,7 +695,7 @@ class HKLViewFrame() :
         array.set_info(info)
         self.mprint("""No space group present in the %d. miller array. Borrowing from previous miller array""" %i)
       if array.space_group() is None:
-        raise Sorry("No space group definition found in the first miller array. Rendering in reciprocal space is not possible.")
+        raise Sorry("No space group definition found in the first miller array.")
 
       wrap_labels = 25
       arrayinfo = ArrayInfo(array,wrap_labels)
@@ -746,6 +753,7 @@ class HKLViewFrame() :
         self.mprint("Reading file...")
         self.prepare_dataloading()
         hkl_file = any_reflection_file(file_name)
+        self.origarrays = {}
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
           cifreader = hkl_file.file_content()
@@ -778,7 +786,6 @@ class HKLViewFrame() :
                   newlabels.append(label)
                 arr.info().labels = newlabels
           ciforigarrays = cifreader.as_original_arrays()[dataname[0]]
-          self.origarrays = {}
           for key in ciforigarrays:
             if key not in ['_refln.crystal_id', # avoid these un-displayable arrays
                       '_refln.wavelength_id', '_refln.scale_group_code']:
@@ -793,8 +800,6 @@ class HKLViewFrame() :
               self.origarrays[labl] = flex.double(origarray)
             except Exception as e:
               self.origarrays[labl] = origarray
-        else: # some other type of reflection file than cif
-          arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
           self.loaded_file_name = file_name
@@ -824,6 +829,17 @@ class HKLViewFrame() :
               if not b:
                 newarr[i] = nanval
             self.origarrays[mtzlbl] = list(newarr)
+
+        arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
+        if len(self.origarrays.items()) == 0:
+          self.origarrays["HKLs"] = arrays[0].indices()
+          for arr in arrays:
+            if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
+              if arr.sigmas() == None:
+                self.origarrays[arr.info().label_string()] = arr.data()
+              else:
+                self.origarrays[arr.info().labels[0]] = arr.data()
+                self.origarrays[arr.info().labels[1]] = arr.sigmas()
         self.finish_dataloading(arrays)
         self.SendInfoToGUI({"NewFileLoaded": self.NewFileLoaded})
       except Exception as e :

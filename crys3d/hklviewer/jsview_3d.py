@@ -1093,7 +1093,6 @@ class HKLview_3d:
     # lets user specify a python expression operating on millarr
     newarray = millarr.deep_copy()
     dres = newarray.unit_cell().d( newarray.indices() )
-    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
       ldic= {'dres': dres, 'array1': newarray, 'newarray': newarray }
       exec(operation, globals(), ldic)
@@ -1110,7 +1109,6 @@ class HKLview_3d:
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
     newarray = matcharr2.deep_copy()
-    self.mprint("Creating new miller array through the operation:\n%s" %operation)
     try:
       ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
       exec(operation, globals(), ldic)
@@ -1407,8 +1405,8 @@ class HKLview_3d:
       self.mprint(mstr, verbose=1)
       cntbin += 1
 
-    if self.ngl_settings.bin_opacities == "":
-      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+    #if self.ngl_settings.bin_opacities == "":
+    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
 
     self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,

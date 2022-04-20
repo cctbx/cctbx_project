@@ -1887,20 +1887,20 @@ clip_plane {
     for i,(scenelabel,labeltype,arrayid,hassigmas,sceneid) in enumerate(self.scenearraylabeltypes): # loop over scenes
       scenelabelstr = scenelabel
       if self.millerarraylabels[row] == scenelabelstr or self.millerarraylabels[row] + " + " in scenelabelstr:
-        if hassigmas: # then sigmas are present for this array
+        if hassigmas: # sigmas are present for this array
           myqa = QAction("Display data of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((sceneid, row))
+          myqa.setData(("display_data",[sceneid, row]))
           self.millertablemenu.addAction(myqa)
           myqa = QAction("Display sigmas of %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((sceneid + 1000, row)) # want to show the sigmas rather than the data if we add 1000
+          myqa.setData(("display_data",[sceneid + 1000, row])) # want to show the sigmas rather than the data if we add 1000
           self.millertablemenu.addAction(myqa)
-        else:
+        else: # no sigmas present for this array
           myqa = QAction("Display %s" %scenelabelstr, self.window, triggered=self.testaction)
-          myqa.setData((sceneid, row))
+          myqa.setData(("display_data",[sceneid, row]))
           self.millertablemenu.addAction(myqa)
     myqa = QAction("Make a new dataset from this dataset and another dataset...",
                    self.window, triggered=self.testaction)
-    myqa.setData( ("newdata", row ))
+    myqa.setData(("make_newdata", row ))
     self.millertablemenu.addAction(myqa)
 
     if len(self.millertable.selectedrows) > 0:
@@ -1923,26 +1923,25 @@ clip_plane {
     data = action.data()
     # depending on what menu item the user clicked data is either an int or a (string, int) tuple
     if data is not None:
-      if type(data[0]) is int:
-        idx,row = data
+      strval, val = data
+      if strval=="display_data":
+        [idx, row] = val
         self.DisplayData(idx,row)
-      else:
-        (strval, idx) = data
-        self.operate_arrayidx1 = idx
-        self.operate_arraytype1 = self.scenearraylabeltypes[idx][1]
+      if strval=="make_newdata":
+        self.operate_arrayidx1 = val
+        self.operate_arraytype1 = self.scenearraylabeltypes[val][1]
         self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
         self.operate_arraytype2 = ""
-        if strval=="newdata":
-          self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
-           + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "
-           + "(and optionally \"newarray._sigmas\") to a function of the cctbx.miller.array object, "
-           + "\"array1\", representing the " + self.millerarraylabels[idx] + " dataset. Optionally "
-           + "also include the cctbx.miller.array object, \"array2\" representing a dataset "
-           + "selected from the dropdown list below."
-           )
-          self.makenewdataform.show()
-        if strval=="tabulate_data":
-          self.send_message('tabulate_miller_array_ids = "%s"' %str(idx))
+        self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
+          + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "
+          + "(and optionally \"newarray._sigmas\") to a function of the cctbx.miller.array object, "
+          + "\"array1\", representing the " + self.millerarraylabels[val] + " dataset. Optionally "
+          + "also include the cctbx.miller.array object, \"array2\" representing a dataset "
+          + "selected from the dropdown list below."
+          )
+        self.makenewdataform.show()
+      if strval=="tabulate_data":
+        self.send_message('tabulate_miller_array_ids = "%s"' %str(val))
 
 
   def DisplayData(self, idx, row):
