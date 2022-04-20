@@ -674,7 +674,11 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
 
     # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
     # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
-    # and the best hydrogen-bonding overlap.
+    # and the best hydrogen-bonding overlap.  This is an approximation to the situation
+    # where the Hydrogen would rotate around the Oxygen to maintain a proper distance from
+    # the acceptor that does not involve trying to select a rotation direction.  Because
+    # Phantom Hydrogens do not block the Oxygen from collisions with their neighbors, and
+    # because Phantom Hydrogens cannot clash with any atom, this will not interfere with clashes.
     BEST_HBOND_OVERLAP=0.6
     distance = placedHydrogenDistance + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
     try:
