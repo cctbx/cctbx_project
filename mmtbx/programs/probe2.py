@@ -61,7 +61,7 @@ drop_non_selected_atoms = False
 
 minimum_polar_hydrogen_occupancy = 0.25
   .type = float
-  .help = Minimum occupancy for polar hydrogens (0.7 in original Reduce)
+  .help = Minimum occupancy for polar hydrogens (0.66 in original Reduce)
 
 maximum_polar_hydrogen_b = 80.0
   .type = float
@@ -577,15 +577,15 @@ Note:
       atom_radius_offset=1.4
       probe.radius=0.0
       group_name="AS"
-    -scan 0:
+    -scan0:
       source_selection="(altid a or altid '' or altid ' ') and bfactor < 40 occupancy > 0.33"
       approach=self
       excluded_bond_chain_length=4
       include_mainchain_mainchain=True
-    -scan 1:
+    -scan1:
       approach=once
       excluded_bond_chain_length=4
-      source_selection="(altid a or altid '' or altid ' ') and bfactor < 40 and occupancy > 0.33" blt40 ogt65
+      source_selection="(altid a or altid '' or altid ' ') and bfactor < 40 and occupancy > 0.33"
       target_selection="((altid a or altid '' or altid ' ') and bfactor < 40 and occupancy > 0.65) or (not water and occupancy > 0.33)"
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
