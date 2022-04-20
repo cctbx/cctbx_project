@@ -225,7 +225,6 @@ class HKLViewFrame() :
 
   def GetNewCurrentPhilFromPython(self, pyphilobj, oldcurrentphil):
     newcurrentphil, unusedphilparms = oldcurrentphil.fetch(source = pyphilobj, track_unused_definitions=True)
-    #newcurrentphil, unusedphilparms = self.master_phil.fetch(sources = [pyphilobj, oldcurrentphil] , track_unused_definitions=True)
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
@@ -238,8 +237,25 @@ class HKLViewFrame() :
 
 
   def show_current_phil(self):
+    omitparms = ["viewer.nth_power_scale_radii", "viewer.scale", "viewer.color_scheme",
+                 "viewer.color_powscale", "NGL.show_tooltips", "NGL.fontsize"]
+    diffphil = self.master_phil.fetch_diff(source = self.currentphil)
+    for obj in diffphil.objects:
+      if obj.full_path() == "viewer":
+        vobjs = []
+        for vobj in obj.objects:
+          if vobj.full_path() not in omitparms:
+            vobjs.append(vobj)
+        obj.objects = vobjs
+      if obj.full_path() == "NGL":
+        nglobjs = []
+        for nobj in obj.objects:
+          if nobj.full_path() not in omitparms:
+            nglobjs.append(nobj)
+        obj.objects = nglobjs
+
     return "\nCurrent non-default phil parameters:\n\n" + \
-     self.master_phil.fetch_diff(source = self.currentphil).as_str()
+     diffphil.as_str()
 
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
@@ -1601,8 +1617,6 @@ masterphilstr = """
       .caption = "If true compute appropriate clip plane width. Otherwise use clip_width value"
     fractional_vector = reciprocal *realspace
       .type = choice
-    bequiet = False
-      .type = bool
   }
   %s
   scene_bin_thresholds = ''

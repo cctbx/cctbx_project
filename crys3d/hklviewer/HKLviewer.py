@@ -1536,7 +1536,6 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
               self.send_message("""clip_plane {
                 angle_around_vector = '[%d, 0]'
-                bequiet = False
               }""" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
