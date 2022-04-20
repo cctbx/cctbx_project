@@ -1930,7 +1930,7 @@ clip_plane {
       if strval=="make_newdata":
         self.operate_arrayidx1 = val
         self.operate_arraytype1 = self.scenearraylabeltypes[val][1]
-        self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet
+        self.operate_arrayidx2 = -1 # i.e. no second miller array selected yet in MillerComboBox
         self.operate_arraytype2 = ""
         self.operationlabeltxt.setText("Define a new cctbx.miller.array object, \"newarray\", "
           + "by entering a python expression for \"newarray\" or by assigning \"newarray._data\" "

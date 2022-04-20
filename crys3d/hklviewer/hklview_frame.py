@@ -753,14 +753,15 @@ class HKLViewFrame() :
         self.mprint("Reading file...")
         self.prepare_dataloading()
         hkl_file = any_reflection_file(file_name)
+        arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
         self.origarrays = {}
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
           cifreader = hkl_file.file_content()
           cifarrays = cifreader.as_miller_arrays(merge_equivalents=False)
-          arrays = []
-          for arr in cifarrays:
-            if arr.info().labels[-1] not in ['_refln.crystal_id', # avoid these un-displayable arrays
+          arrays = [] # overwrite with simplified label strings
+          for arr in cifarrays: # avoid these un-displayable arrays
+            if arr.info().labels[-1] not in ['_refln.crystal_id',
                       'HKLs','_refln.wavelength_id', '_refln.scale_group_code']:
               arrays.append(arr)
           # sanitise labels by removing redundant strings.
@@ -830,7 +831,6 @@ class HKLViewFrame() :
                 newarr[i] = nanval
             self.origarrays[mtzlbl] = list(newarr)
 
-        arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
         if len(self.origarrays.items()) == 0:
           self.origarrays["HKLs"] = arrays[0].indices()
           for arr in arrays:
