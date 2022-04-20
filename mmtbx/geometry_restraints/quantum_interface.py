@@ -82,7 +82,8 @@ qm_restraints
     .type = bool
   write_restraints = False
     .type = bool
-    .style = hidden
+  restraints_filename = Auto
+    .type = path
   cleanup = all *most None
     .type = choice
   run_in_macro_cycles = *first_only all test

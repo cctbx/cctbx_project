@@ -756,8 +756,14 @@ def update_restraints(model,
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()
+      if qmr.restraints_filename is not Auto:
+        tmp_cif_filename = qmr.restraints_filename
+      else:
+        tmp_cif_filename = '%s.cif' % qmm.preamble
+      if not tmp_cif_filename.endswith('.cif'):
+        tmp_cif_filename = '%s.cif' % tmp_cif_filename
       write_restraints(ligand_model,
-                       '%s.cif' % qmm.preamble,
+                       tmp_cif_filename,
                        header=header,
                        log=log,
                        )
