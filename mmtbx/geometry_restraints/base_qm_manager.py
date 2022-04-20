@@ -202,7 +202,7 @@ class base_qm_manager(base_manager):
         print('differences '*5)
         print('proposed')
         print(outl)
-        print('≠'*80)
+        print('='*80)
         print(filename)
         print(lines)
         print('filename',filename)
