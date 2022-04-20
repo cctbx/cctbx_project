@@ -710,7 +710,7 @@ Note:
         continue
 
       # Find atoms that are close enough that they might touch.
-      nearby = targetQuery.neighbors(src.xyz, 0.001, maxRadius)
+      nearby = targetQuery.neighbors(src.xyz, 0.00001, maxRadius)
 
       # Find our characteristics
       srcMainChain = self._inMainChain[src]
@@ -772,7 +772,7 @@ Note:
         # the inner collision of the water Oxygen with the acceptor that also makes
         # a Hydrogen bond with the Phantom Hydrogen.
         if srcExtra.isDummyHydrogen:
-          nearbyPhantomHydrogens = set(phantomsQuery.neighbors(src.xyz, 0.001, maxRadius))
+          nearbyPhantomHydrogens = set(phantomsQuery.neighbors(src.xyz, 0.00001, maxRadius))
           newExclusions = set()
           for a in atomSet:
             if not self._extraAtomInfo.getMappingFor(a).isAcceptor:
@@ -2093,21 +2093,38 @@ Note:
       elif self.params.approach == 'surface':
         make_sub_header('Find surface dots', out=self.logger)
 
+        # Store constants used frequently
+        minimum_occupancy = self.params.minimum_occupancy
+        include_water_water = self.params.include_water_water
+
         # Produce dots on the surfaces of the selected atoms.
         maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
         for src in self._source_atoms_sorted:
+          srcInWater = self._inWater[src]
+
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + self._maximumVDWRadius +
             2 * self.params.probe.radius)
-          nearby = self._spatialQuery.neighbors(src.xyz, 0.001, maxRadius)
+          nearby = self._spatialQuery.neighbors(src.xyz, 0.00001, maxRadius)
 
           # Select those that are actually within the contact distance based on their
           # particular radius.  Only accept atoms that are in compatible conformations.
           atomList = []
           for n in nearby:
+            nInWater = self._inWater[n]
+
+            # Skip atoms that are marked to be ignored
+            if self._atomClasses[n] == 'ignore':
+              continue
+            # Skip water-water interactions unless they are between atoms in the same residue
+            elif (not include_water_water) and srcInWater and nInWater and (src.parent() != n.parent()):
+              continue
+            # Skip atoms that are in non-compatible alternate conformations
+            elif not Helpers.compatibleConformations(src, n):
+              continue
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
-            if Helpers.compatibleConformations(src, n) and (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
+            if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
                 self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
               atomList.append(n)
 
