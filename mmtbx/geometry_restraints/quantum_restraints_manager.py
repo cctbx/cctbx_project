@@ -254,6 +254,16 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_model.unset_restraints_manager()
   buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
+  ligand_atoms = ligand_model.get_atoms()
+  buffer_atoms = buffer_model.get_atoms()
+  for atom1 in ligand_atoms:
+    for atom2 in buffer_atoms:
+      if atom1.id_str()==atom2.id_str():
+        break
+    else:
+      raise Sorry('''Bug alert
+  Atom %s from ligand does not appear in buffer. Contact Phenix with input files.
+  ''' % atom1.quote())
   return ligand_model, buffer_model
 
 def show_ligand_buffer_models(ligand_model, buffer_model):
@@ -743,7 +753,6 @@ def update_restraints(model,
 
     print('', file=log)
     if qmr.write_restraints:
-      print(dir(params))
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()
