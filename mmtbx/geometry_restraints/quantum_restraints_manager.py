@@ -221,6 +221,18 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., wri
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
   assert len(buffer_model.get_atoms())>0
 
+def use_neutron_distances_in_model_in_place(model):
+  """Changes the X-H distances in place
+
+  Args:
+      model (model): model
+  """
+  params = model.get_current_pdb_interpretation_params()
+  params.pdb_interpretation.use_neutron_distances = True
+  model.process(make_restraints           = True,
+                pdb_interpretation_params = params)
+  model.set_hydrogen_bond_length(show=False)
+
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   from cctbx.maptbx.box import shift_and_box_model
   if WRITE_STEPS_GLOBAL: write_steps=True
@@ -264,6 +276,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
       raise Sorry('''Bug alert
   Atom %s from ligand does not appear in buffer. Contact Phenix with input files.
   ''' % atom1.quote())
+  use_neutron_distances_in_model_in_place(ligand_model)
+  use_neutron_distances_in_model_in_place(buffer_model)
+  if write_steps:
+    write_pdb_file(buffer_model, 'post_neutron_cluster.pdb', None)
+    write_pdb_file(ligand_model, 'post_neutron_ligand.pdb', None)
   return ligand_model, buffer_model
 
 def show_ligand_buffer_models(ligand_model, buffer_model):
