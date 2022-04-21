@@ -236,26 +236,54 @@ class HKLViewFrame() :
     currphil = master_phil.fetch(source = newphil)
 
 
-  def show_current_phil(self):
-    omitparms = ["viewer.nth_power_scale_radii", "viewer.scale", "viewer.color_scheme",
-                 "viewer.color_powscale", "NGL.show_tooltips", "NGL.fontsize"]
+  def show_current_phil(self, useful_for_preset_button=True):
     diffphil = self.master_phil.fetch_diff(source = self.currentphil)
-    for obj in diffphil.objects:
-      if obj.full_path() == "viewer":
-        vobjs = []
-        for vobj in obj.objects:
-          if vobj.full_path() not in omitparms:
-            vobjs.append(vobj)
-        obj.objects = vobjs
-      if obj.full_path() == "NGL":
-        nglobjs = []
-        for nobj in obj.objects:
-          if nobj.full_path() not in omitparms:
-            nglobjs.append(nobj)
-        obj.objects = nglobjs
+    if useful_for_preset_button:
+      # Tidy up diffphil by eliminating a few parameters that are not needed
+      # for preset buttons or are being overwritten by user settings
+      if jsview_3d.has_phil_path(diffphil, "scene_id"):
+        # then merge corresponding label and datatype into the diffphil so these can be used for
+        # preset button phil strings instead of scene_id which may only apply to the current data file
+        label,datatype = self.viewer.get_label_type_from_scene_id(self.params.viewer.scene_id)
+        labeltypephil = libtbx.phil.parse("""
+        viewer.data_array {
+          label = '%s'
+          datatype = '%s'
+        }
+        """ %(label,datatype) )
+        workingphil = self.master_phil.fetch(sources=[labeltypephil, diffphil] )
+        diffphil = self.master_phil.fetch_diff(source=workingphil )
 
-    return "\nCurrent non-default phil parameters:\n\n" + \
-     diffphil.as_str()
+      omitparms = ["viewer.scene_id", "viewer.nth_power_scale_radii", "viewer.scale",
+        "viewer.color_scheme", "viewer.color_powscale", "NGL.show_tooltips",
+        "NGL.fontsize"]
+      remove_bin_opacities = True
+      if jsview_3d.has_phil_path(diffphil, "bin_opacities"):
+        bin_opacitieslst = eval(self.params.NGL.bin_opacities)
+        for alpha,bin in bin_opacitieslst:
+          if alpha < 1.0: # one or more bins are not fully opaque.
+            remove_bin_opacities = False
+            break
+      if remove_bin_opacities:
+        omitparms = omitparms + ["NGL.bin_opacities"]
+      remainingobjs = []
+      for obj in diffphil.objects:
+        if obj.full_path() == "viewer":
+          vobjs = []
+          for vobj in obj.objects:
+            if vobj.full_path() not in omitparms:
+              vobjs.append(vobj)
+          obj.objects = vobjs
+        if obj.full_path() == "NGL":
+          nglobjs = []
+          for nobj in obj.objects:
+            if nobj.full_path() not in omitparms:
+              nglobjs.append(nobj)
+          obj.objects = nglobjs
+        if obj.full_path() != "selected_info": # miller table column layout irrelevant for preset button
+          remainingobjs.append(obj)
+      diffphil.objects = remainingobjs
+    return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
@@ -263,6 +291,7 @@ class HKLViewFrame() :
       oldsceneid = self.viewer.viewerparams.scene_id
 
       if msgtype=="preset_philstr":
+        #current_selected_info = self.master_phil.fetch(source=self.currentphil ).extract().selected_info
         self.ResetPhil()
         self.viewer.sceneisdirty = True
         self.viewer.executing_preset_btn = True
@@ -603,6 +632,7 @@ class HKLViewFrame() :
     for arr in self.procarrays:
       if label in arr.info().labels + [ "", None]:
         if is_preset_philstr:
+          self.params.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(label)
           return
         raise Sorry("Provide a label for the new miller array that isn't already used.")
     from copy import deepcopy
@@ -973,7 +1003,7 @@ class HKLViewFrame() :
     if not self.validated_preset_buttons:
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
-      for i,(btnname, label, philstr) in enumerate(self.allbuttonslist):
+      for i,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
         rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
         rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
         m = re.findall('data_array\.phasertng_tag \s* = \s* \"(\w+) ,? (\w*)\"', philstr, re.VERBOSE)
@@ -987,29 +1017,38 @@ class HKLViewFrame() :
         if len(m):
           vectorfound = False
           vectorlabel = m[0] # see if this substring is present in the labels of vectors
-          for opnr, label, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
-            if vectorlabel in label:
+          for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
+            if vectorlabel in veclabel:
               vectorfound = True
 
         miller_array_operation_can_be_done = False
-        miller_array_operation_lbls = re.findall('miller_array_operation \s* = \s* .+ , \s* \' (\S*) \' , \s* \' (\S*) \' \)', philstr, re.VERBOSE)
+# The miller array operation part in the philstr could look like:
+# miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
+# We want to capture 'I<<FSQ,SIGI<<FSQ' and 'Intensity' strings
+        miller_array_operation_lbls = re.findall("""miller_array_operation \s* =
+                                                \s* \" .+              # not capturing the actual python operation
+                                                \[ \' ( .+ ) \' , \s*  # capturing label of first array
+                                                \' ( .+ )\' \] , \s*   # capturing data type of first array
+                                                \[ \' ( .* ) \' , \s*  # optionally capturing label of second array
+                                                \' ( .* ) \' \] \n     # optionally capturing data type of second array
+                                                """, philstr, re.VERBOSE)
         if miller_array_operation_lbls:
-          for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == miller_array_operation_lbls[0][0] or description == miller_array_operation_lbls[0][0]:
+          for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if label == miller_array_operation_lbls[0][0] or datatype == miller_array_operation_lbls[0][1]:
               miller_array_operation_can_be_done = True
-              self.mprint("Preset button, %s, assigned to data column(s) %s" %(btnname, str(miller_array_operation_lbls[0])), verbose=1)
+              self.mprint("Preset button, %s, assigned to data column(s) %s" %(btn_id, str(miller_array_operation_lbls[0])))
               break
 
         if len(rlbl) == 1:
           labelfound = False; typefound= False
-          for inflst, pidx, fidx, label, description, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+          for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
             if label == rlbl[0]:
               labelfound = True
-              self.mprint("Preset button, %s, assigned to data column %s" %(btnname, label), verbose=1)
+              self.mprint("Preset button, %s, assigned to data column %s" %(btn_id, label))
               break
-            if len(rtype) == 1 and description == rtype[0]:
+            if len(rtype) == 1 and datatype == rtype[0]:
               typefound = True
-              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btnname,description,label), verbose=1)
+              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btn_id, datatype, label))
               break
         if ((labelfound or typefound) and vectorfound) or miller_array_operation_can_be_done:
           activebtns.append((self.allbuttonslist[i],True))

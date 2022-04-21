@@ -398,11 +398,13 @@ class HKLview_3d:
       self.viewerparams.angle_around_ZHKL_vector = None
 
     if has_phil_path(diff_phil, "miller_array_operation"):
-      # display the new dataset user has just added which is the last in the list
-      self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
+      # Display the new dataset user has just added which is the last in the list but not if specified
+      # with data_array scope which happens when clicking a preset button assigned with a miller_array_operation.
+      # data_array.label and data_array.datatype will then already have been matched to a scene_id
+      if not has_phil_path(diff_phil, "data_array"):
+        self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
       self.viewerparams.sigma_color_radius = False
       self.set_scene()
-      #self.params.miller_array_operation = ""
 
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
@@ -427,7 +429,7 @@ class HKLview_3d:
       self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
-      #time.sleep(25)
+      #time.sleep(25) # for debugging
       self.show_rotation_axes()
 
       if has_phil_path(diff_phil, "show_vector"):
@@ -958,7 +960,7 @@ class HKLview_3d:
       self.mapcoef_fom_dict[proc_array.info().label_string()] = fom_arrays_idx
 
 
-  def get_scene_id_from_label_or_type(self, datalabel, datatype):
+  def get_scene_id_from_label_or_type(self, datalabel, datatype=None):
     """ Try finding a matching sceneid to the datalabel provided. As a fallback
     try finding a sceneid for the first matching datatype regardless of its label
     """
@@ -966,10 +968,19 @@ class HKLview_3d:
     for i,e in enumerate(self.hkl_scenes_infos):
       if e[3] == datalabel:
         return i
-    for i,e in enumerate(self.hkl_scenes_infos):
-      if e[4] == datatype:
-        return i
+    if datatype is not None:
+      for i,e in enumerate(self.hkl_scenes_infos):
+        if e[4] == datatype:
+          return i
     return -1
+
+
+  def get_label_type_from_scene_id(self, sceneid):
+    # Find data label and type for a particular sceneid
+    assert sceneid < len(self.hkl_scenes_infos)
+    datalabel = self.hkl_scenes_infos[sceneid][3]
+    datatype = self.hkl_scenes_infos[sceneid][4]
+    return datalabel, datatype
 
 
   def scene_id_to_array_id(self, scene_id):
@@ -1752,9 +1763,7 @@ Distance: %s
     if self.miller_array and bin_opacities_str:
       self.ngl_settings.bin_opacities = bin_opacities_str
       bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
-      for binopacity in bin_opacitieslst:
-        alpha = binopacity[0] # float(binopacity.split(",")[0])
-        bin = binopacity[1] # int(binopacity.split(",")[1])
+      for alpha,bin in bin_opacitieslst:
         retstr += self.set_opacity(bin, alpha)
       self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
     self.mprint( retstr, verbose=1)

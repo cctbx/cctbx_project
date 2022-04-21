@@ -157,7 +157,7 @@ class WebEngineDebugForm(QDialog):
   def __init__(self, parent=None):
     super(WebEngineDebugForm, self).__init__(None,
                         Qt.WindowMinimizeButtonHint | # Want minimise and maximise buttons on window.
-                        Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we must
+                        Qt.WindowMaximizeButtonHint | # As they are not the default for QDialog we
                         Qt.WindowCloseButtonHint |    # add them with flags at creation
                         Qt.CustomizeWindowHint |
                         Qt.WindowTitleHint |
@@ -655,6 +655,7 @@ newarray._sigmas = sigs
     self.settingsform.show()
     # don't know why valueChanged.connect() method only takes effect from here on
     self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
+    self.settingsform.activateWindow()
 
 
   def onColourChartSelect(self, selcolmap, colourpowscale):
@@ -865,6 +866,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.millerarraytableform.SortComboBox.view().setMinimumWidth(self.comboviewwidth)
             self.millerarraytableform.resize(tablewidth, self.millerarraytable.rowHeight(0)*15)
             self.millerarraytableform.show()
+            self.millerarraytableform.activateWindow()
 
           if self.infodict.get("tncsvec"):
             self.tncsvec = self.infodict.get("tncsvec",[])
