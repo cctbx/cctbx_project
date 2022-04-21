@@ -199,7 +199,7 @@ namespace molprobity {
       /// @param [in] ignoreIonInteractions Ignore ions when computing interactions.  An ion source
       ///             atom will have no interactions and an ion will not be considered in the
       ///             target atom calculations (unless it is listed as an excluder).  This is because
-      ///             as of Probe does not properly handle ionic interactions.
+      ///             as of 4/20/2022 Probe does not properly handle ionic interactions.
       /// @todo Consider moving the probe radius into the constructor parameters
       DotScorer(ExtraAtomInfoMap extraInfoMap
         , double gapScale = 0.25
