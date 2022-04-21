@@ -372,8 +372,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # complete (ongoing as of March 2022), this check might be removed
                 # and we'll just use the CCTBX radius.
                 if a.element_is_ion():
-                  warnings += "Using ionic radius for "+a.name.strip()+"\n"
                   extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
+                  warnings += "Using ionic radius for "+a.name.strip()+" ("+str(extra.vdwRadius)+")\n"
                 else:
                   extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
 
