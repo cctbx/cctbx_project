@@ -451,10 +451,6 @@ unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, s
 {
   unsigned ret = 0;
 
-  // Make an interacting list that includes the atom itself.
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
-  interacting.push_back(sourceAtom);
-
   // Run through all of the dots and determine whether each is valid.
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
