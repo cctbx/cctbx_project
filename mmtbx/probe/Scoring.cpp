@@ -464,7 +464,7 @@ unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, s
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
       e != exclude.end(); e++) {
       double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+      if ((absoluteDotLocation - e->data->xyz).length_sq() <= vdwe * vdwe) {
         keepDot = false;
         break;
       }
