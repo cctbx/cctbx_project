@@ -980,12 +980,12 @@ Note:
     # Store parameters that are used in the inner loop
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
 
-    probeRadius = self.params.probe.radius
     for src in atoms:
       # Find the atoms that are bonded to the source atom within the specified hop
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
-      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
+      # We check only out to a probe radius of 0 (atoms actually overlapping)
+      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, 0.0,
         excluded_bond_chain_length, 3)
 
       # Count the skin dots for this atom.
