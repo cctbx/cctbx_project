@@ -22,6 +22,13 @@ Example:
 
 # Create the phil parameters
 phil_scope = parse('''
+max_plots = 10
+  .type = int
+  .help = Maximum number of plots to make
+repredict_input_reflections = True
+  .type = bool
+  .help = Whether to use the input models to repredict reflection positions \
+          prior to making plots
 ''', process_includes=True)
 
 from xfel.command_line.detector_residuals import setup_stats, trumpet_plot
@@ -51,14 +58,25 @@ class Script(object):
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
 
+    total = 0
     for ewrap, rwrap in zip(params.input.experiments, params.input.reflections):
       experiments = ewrap.data
       reflections = rwrap.data
+      if params.repredict_input_reflections:
+        from dials.algorithms.refinement.prediction.managed_predictors import ExperimentsPredictorFactory
+        ref_predictor = ExperimentsPredictorFactory.from_experiments(experiments, force_stills=experiments.all_stills())
+        reflections = ref_predictor(reflections)
       reflections = setup_stats(experiments, reflections)
       for expt_id, expt in enumerate(experiments):
         refls = reflections.select(reflections['id'] == expt_id)
         if len(refls) == 0: continue
         trumpet_plot(expt, refls)
+
+        total += 1
+        if params.max_plots and total >= params.max_plots:
+          break
+      if params.max_plots and total >= params.max_plots:
+        break
     plt.show()
 
 if __name__ == '__main__':
