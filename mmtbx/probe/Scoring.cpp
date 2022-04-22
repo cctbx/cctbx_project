@@ -282,7 +282,7 @@ std::string DotScorer::interaction_type_name(InteractionType t)
   case CloseContact:
     return "close_contact";
   case WeakHydrogenBond:
-    return "weak_H-bonds";
+    return "weak_H-bond";
   case SmallOverlap:
     return "small_overlap";
   case Bump:
@@ -290,7 +290,7 @@ std::string DotScorer::interaction_type_name(InteractionType t)
   case BadBump:
     return "worse_overlap";
   case StandardHydrogenBond:
-    return "H-bonds";
+    return "H-bond";
   case Invalid:
     return "invalid (internal error)";
   default:
