@@ -51,7 +51,7 @@ class integrate(worker):
       try:
         integrated = processor.integrate(experiments[expt_id:expt_id+1], refls)
       except RuntimeError:
-        self.logger.log("Error integrating expt %"%expt_id)
+        self.logger.log("Error integrating expt %d"%expt_id)
         continue
 
       all_integrated_expts.append(expt)

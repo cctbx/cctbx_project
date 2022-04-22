@@ -28,6 +28,8 @@ class reindex_to_abc(worker):
     return 'Reindex according to an a,b,c basis tranformation'
 
   def run(self, experiments, reflections):
+    if len(experiments) == 0:
+      return experiments, reflections
     cb_op_str = self.params.modify.reindex_to_abc.change_of_basis_op
     change_of_basis_op = sgtbx.change_of_basis_op(cb_op_str)
 
