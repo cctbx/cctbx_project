@@ -100,9 +100,11 @@ class HKLViewFrame() :
     spec = importlib.util.spec_from_file_location("UserPresetButtons", self.userpresetbuttonsfname)
     UserPresetButtons_module = importlib.util.module_from_spec(spec)
     sys.modules["UserPresetButtons"] = UserPresetButtons_module
-    spec.loader.exec_module(UserPresetButtons_module)
-    self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
-
+    try:
+      spec.loader.exec_module(UserPresetButtons_module)
+      self.allbuttonslist = buttonsdeflist + UserPresetButtons_module.buttonsdeflist
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10))
     self.ResetPhilandViewer()
     self.firsttime = True
     self.idx_data = None
@@ -210,9 +212,9 @@ class HKLViewFrame() :
     self.params = self.currentphil.fetch().extract()
     self.viewer.viewerparams = self.params.viewer
     self.viewer.params = self.params
-    self.params.binner_idx = 0
-    self.params.nbins = 1
-    self.params.scene_bin_thresholds = ""
+    self.params.binning.binner_idx = 0
+    self.params.binning.nbins = 1
+    self.params.binning.scene_bin_thresholds = ""
     self.params.using_space_subgroup = False
 
 
@@ -254,18 +256,27 @@ class HKLViewFrame() :
         workingphil = self.master_phil.fetch(sources=[labeltypephil, diffphil] )
         diffphil = self.master_phil.fetch_diff(source=workingphil )
 
+      if jsview_3d.has_phil_path(diffphil, "binner_idx"):
+        # then merge corresponding binlabel into the diffphil so it can be used for
+        # preset button phil strings instead of binner_idx which may only apply to the current data file
+        binlabel = self.viewer.get_binlabel_from_binner_idx(self.params.binning.binner_idx)
+        binlabelphil = libtbx.phil.parse("binning.binlabel = '%s'" %binlabel)
+        workingphil = self.master_phil.fetch(sources=[binlabelphil, diffphil] )
+        diffphil = self.master_phil.fetch_diff(source=workingphil )
+
       omitparms = ["viewer.scene_id", "viewer.nth_power_scale_radii", "viewer.scale",
         "viewer.color_scheme", "viewer.color_powscale", "NGL.show_tooltips",
-        "NGL.fontsize"]
+        "NGL.fontsize", "binning.binner_idx"]
       remove_bin_opacities = True
       if jsview_3d.has_phil_path(diffphil, "bin_opacities"):
-        bin_opacitieslst = eval(self.params.NGL.bin_opacities)
+        bin_opacitieslst = eval(self.params.binning.bin_opacities)
         for alpha,bin in bin_opacitieslst:
-          if alpha < 1.0: # one or more bins are not fully opaque.
+          if alpha < 1.0: # at least 1 bin is not fully opaque.
+                          # That's not the default so don't omit opacities
             remove_bin_opacities = False
             break
       if remove_bin_opacities:
-        omitparms = omitparms + ["NGL.bin_opacities"]
+        omitparms = omitparms + ["binning.bin_opacities"]
       remainingobjs = []
       for obj in diffphil.objects:
         if obj.full_path() == "viewer":
@@ -280,7 +291,13 @@ class HKLViewFrame() :
             if nobj.full_path() not in omitparms:
               nglobjs.append(nobj)
           obj.objects = nglobjs
-        if obj.full_path() != "selected_info": # miller table column layout irrelevant for preset button
+        if obj.full_path() == "binning":
+          nglobjs = []
+          for nobj in obj.objects:
+            if nobj.full_path() not in omitparms:
+              nglobjs.append(nobj)
+          obj.objects = nglobjs
+        if obj.full_path() !=  "selected_info": # miller table column layout irrelevant for preset button
           remainingobjs.append(obj)
       diffphil.objects = remainingobjs
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
@@ -289,14 +306,16 @@ class HKLViewFrame() :
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       oldsceneid = self.viewer.viewerparams.scene_id
-
+      currentNGLscope = None
       if msgtype=="preset_philstr":
         #current_selected_info = self.master_phil.fetch(source=self.currentphil ).extract().selected_info
+        currentNGLscope = self.currentphil.extract().NGL
         self.ResetPhil()
         self.viewer.sceneisdirty = True
         self.viewer.executing_preset_btn = True
       # selecting a new scene_id resets phil parameters if the previous phil was from a preset button
       if lastmsgtype=="preset_philstr" and jsview_3d.has_phil_path(new_phil, "scene_id"):
+        currentNGLscope = self.currentphil.extract().NGL
         self.ResetPhil()
 
       if not new_phil:
@@ -305,6 +324,8 @@ class HKLViewFrame() :
 
       self.params = self.currentphil.extract()
       phl = self.params
+      if currentNGLscope is not None:
+        self.params.NGL = currentNGLscope
       self.viewer.viewerparams = phl.viewer
       # once a preset phil setting has been enabled allow changing a phil parameter
       # without having to change scene_id
@@ -330,7 +351,7 @@ class HKLViewFrame() :
         phl.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(phl.viewer.data_array.label,
                                                                           phl.viewer.data_array.datatype)
       if jsview_3d.has_phil_path(diff_phil, "binlabel"):
-        phl.binner_idx = self.viewer.get_binner_idx_from_label(phl.binlabel)
+        phl.binning.binner_idx = self.viewer.get_binner_idx_from_label(phl.binning.binlabel)
 
       if jsview_3d.has_phil_path(diff_phil, "scene_id"):
         phl.viewer.data_array.label = None
@@ -355,9 +376,9 @@ class HKLViewFrame() :
          "scene_bin_thresholds", "data_array"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
-          self.set_scene_bin_thresholds(strbinvals=phl.scene_bin_thresholds,
-                                         binner_idx=phl.binner_idx,
-                                         nbins=phl.nbins )
+          self.set_scene_bin_thresholds(strbinvals=phl.binning.scene_bin_thresholds,
+                                         binner_idx=phl.binning.binner_idx,
+                                         nbins=phl.binning.nbins )
 
       if jsview_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
@@ -368,9 +389,6 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
-
-      if jsview_3d.has_phil_path(diff_phil, "shape_primitive"):
-        self.set_shape_primitive(phl.shape_primitive)
 
       if jsview_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op",
                                          "add_user_vector_abc",
@@ -1004,57 +1022,66 @@ class HKLViewFrame() :
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
       for i,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
-        rlbl = re.findall('data_array\.label \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
-        rtype = re.findall('data_array\.datatype \s* = \s* \"(\S+)\"', philstr, re.VERBOSE)
-        m = re.findall('data_array\.phasertng_tag \s* = \s* \"(\w+) ,? (\w*)\"', philstr, re.VERBOSE)
-        if len(m):
-          phasertng_tags = ",".join(m[0])
-          rlbl = [ self.get_label_from_phasertng_tag(phasertng_tags) ]
-          # find the miller array used by phasertng as specified in the mtz history header
-
-        m = re.findall('show_vector \s* = \s* \"\[ [\'|\"] (\S+) [\'|\"] \s*,' , philstr, re.VERBOSE)
-        vectorfound = True
-        if len(m):
-          vectorfound = False
-          vectorlabel = m[0] # see if this substring is present in the labels of vectors
-          for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
-            if vectorlabel in veclabel:
-              vectorfound = True
-
-        miller_array_operation_can_be_done = False
+        btnphil = libtbx.phil.parse(philstr)
+        philstr_label = None
+        philstr_type = None
+        phasertng_tag = None
+        philstr_vectors = []
+        millaroperationstr = None
+        if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
+          btnphilobj = btnphil.extract()
+          if hasattr(btnphilobj.viewer.data_array, "label"):
+            philstr_label = btnphilobj.viewer.data_array.label[0]
+          if hasattr(btnphilobj.viewer.data_array, "datatype"):
+            philstr_type = btnphilobj.viewer.data_array.datatype[0]
+          if hasattr(btnphilobj.viewer.data_array, "phasertng_tag"):
+            phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag[0]
+            # find the miller array used by phasertng as specified in the mtz history header
+            philstr_label = [ self.get_label_from_phasertng_tag(",".join(phasertng_tag)) ]
+          if hasattr(btnphilobj.viewer, "show_vector"):
+            philstr_vectors = btnphilobj.viewer.show_vector
+          if hasattr(btnphilobj, "miller_array_operation"):
 # The miller array operation part in the philstr could look like:
 # miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
-# We want to capture 'I<<FSQ,SIGI<<FSQ' and 'Intensity' strings
-        miller_array_operation_lbls = re.findall("""miller_array_operation \s* =
-                                                \s* \" .+              # not capturing the actual python operation
-                                                \[ \' ( .+ ) \' , \s*  # capturing label of first array
-                                                \' ( .+ )\' \] , \s*   # capturing data type of first array
-                                                \[ \' ( .* ) \' , \s*  # optionally capturing label of second array
-                                                \' ( .* ) \' \] \n     # optionally capturing data type of second array
-                                                """, philstr, re.VERBOSE)
-        if miller_array_operation_lbls:
+# We want to capture 'I<<FSQ,SIGI<<FSQ' and 'Intensity' strings which will be in arr1label and arr1type
+            millaroperationstr, millarrlabel, (arr1label, arr1type), (arr2label, arr2type) = \
+                                                     eval( btnphilobj.miller_array_operation[0])
+        nvectorsfound = len(philstr_vectors)
+        if philstr_vectors:
+          nvectorsfound = 0
+          for philstrvec in philstr_vectors:
+            philveclabel, philshowvec = eval(philstrvec)
+            for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
+              if philshowvec and philveclabel in veclabel: # allow philveclabel to be just a substring of veclabel
+                nvectorsfound +=1
+        miller_array_operation_can_be_done = False
+        if millaroperationstr:
           for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == miller_array_operation_lbls[0][0] or datatype == miller_array_operation_lbls[0][1]:
+            if label == arr1label or datatype == arr1type:
               miller_array_operation_can_be_done = True
-              self.mprint("Preset button, %s, assigned to data column(s) %s" %(btn_id, str(miller_array_operation_lbls[0])))
               break
-
-        if len(rlbl) == 1:
-          labelfound = False; typefound= False
+          if miller_array_operation_can_be_done:
+            self.mprint("Preset button, %s, declared using %s and %s is assigned to data %s of type %s" \
+                          %(btn_id, arr1label, arr1type, label, datatype))
+            activebtns.append((self.allbuttonslist[i],True))
+          else:
+            self.mprint("Preset button, %s, declared using %s and %s is not assigned to any data" \
+                            %(btn_id, arr1label, arr1type), verbose=1)
+            activebtns.append((self.allbuttonslist[i],False))
+        if philstr_label is not None and millaroperationstr is None:
+          labeltypefound = False
           for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == rlbl[0]:
-              labelfound = True
-              self.mprint("Preset button, %s, assigned to data column %s" %(btn_id, label))
+            if label == philstr_label or philstr_type is not None and datatype == philstr_type:
+              labeltypefound = True
               break
-            if len(rtype) == 1 and datatype == rtype[0]:
-              typefound = True
-              self.mprint("Preset button, %s, assigned to data type %s, with label %s" %(btn_id, datatype, label))
-              break
-        if ((labelfound or typefound) and vectorfound) or miller_array_operation_can_be_done:
-          activebtns.append((self.allbuttonslist[i],True))
-        else:
-          self.mprint("Preset button, %s of type %s not assigned to any data column" %(rlbl,rtype), verbose=1)
-          activebtns.append((self.allbuttonslist[i],False))
+          if labeltypefound and nvectorsfound == len(philstr_vectors):
+            self.mprint("Preset button, %s, assigned to data %s of type %s" \
+                          %(btn_id, label, datatype))
+            activebtns.append((self.allbuttonslist[i],True))
+          else:
+            self.mprint("Preset button, %s of type '%s' is not assigned to any data column" \
+                              %(philstr_label,philstr_type), verbose=1)
+            activebtns.append((self.allbuttonslist[i],False))
 
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
@@ -1227,8 +1254,8 @@ class HKLViewFrame() :
 
   def SetSceneNbins(self, nbins, binner_idx = 0):
     self.params.nbins = nbins
-    self.params.binner_idx = binner_idx
-    self.params.NGL.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
+    self.params.binning.binner_idx = binner_idx
+    self.params.binning.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.update_settings()
 
 
@@ -1243,7 +1270,7 @@ class HKLViewFrame() :
 
 
   def SetOpacities(self, bin_opacities):
-    self.params.NGL.bin_opacities = str(bin_opacities)
+    self.params.bin_opacities = str(bin_opacities)
     self.update_settings()
 
 
@@ -1315,18 +1342,6 @@ class HKLViewFrame() :
     self.params.viewer.color_scheme = color_scheme
     self.params.viewer.color_powscale = color_powscale
     self.update_settings()
-
-
-  def SetShapePrimitive(self, val):
-    self.params.shape_primitive = val
-    self.update_settings()
-
-
-  def set_shape_primitive(self, val):
-    if val == "points":
-      self.viewer.primitivetype = "PointBuffer"
-    else:
-      self.viewer.primitivetype = "sphereBuffer"
 
 
   def SetAction(self, val):
@@ -1658,18 +1673,21 @@ masterphilstr = """
       .type = choice
   }
   %s
-  scene_bin_thresholds = ''
-    .type = str
-  binner_idx = 0
-    .type = int
-    .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
-  binlabel = None
-    .type = str
-    .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
-  nbins = 1
-    .type = int(value_min=1, value_max=40)
-  shape_primitive = *'spheres' 'points'
-    .type = choice
+  binning {
+    scene_bin_thresholds = ''
+      .type = str
+    binner_idx = 0
+      .type = int
+      .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+    binlabel = None
+      .type = str
+      .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+    bin_opacities = ""
+      .type = str
+      .caption = "A list of tuples (alpha, idx) with as many or more elements as the current number of binners. List is cast to a string"
+    nbins = 1
+      .type = int(value_min=1, value_max=40)
+  }
   viewer {
     data_array {
       label = none
@@ -1684,7 +1702,7 @@ masterphilstr = """
         .type = str
         .caption = "In case label is not found this assigns scene_id with a value corresponding to " \
                    "the first miller array of this data type found in the reflection data file."
-      }
+    }
     scene_id = None
       .type = int
     ncolourlabels = 6

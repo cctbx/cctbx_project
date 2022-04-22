@@ -351,8 +351,8 @@ class HKLview_3d:
                       "nbins",
                       )
        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
-      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binner_idx,
-                                                               curphilparam.nbins)
+      self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
+                                                               curphilparam.binning.nbins)
       self.sceneisdirty = True
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
@@ -548,7 +548,7 @@ class HKLview_3d:
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
-      self.SetOpacities(self.ngl_settings.bin_opacities )
+      self.SetOpacities(self.params.binning.bin_opacities )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
@@ -788,8 +788,6 @@ class HKLview_3d:
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
-    #if sceneid is None:
-    #  sceneid = self.viewerparams.scene_id
     if len(self.proc_arrays) == 0:
       return False
 
@@ -983,6 +981,17 @@ class HKLview_3d:
     return datalabel, datatype
 
 
+  def get_binner_idx_from_label(self, binlabel):
+    for i,e in enumerate(self.bin_labels_type_idxs):
+      if binlabel == e[0]:
+        return i
+    return -1
+
+
+  def get_binlabel_from_binner_idx(self, idx):
+    return self.bin_labels_type_idxs[idx][0]
+
+
   def scene_id_to_array_id(self, scene_id):
     for i,array_scene_id in enumerate(self.sceneid_from_arrayid):
       if scene_id == i:
@@ -1071,11 +1080,11 @@ class HKLview_3d:
 
   def MatchBinArrayToSceneArray(self):
     # match bindata with data or sigmas
-    if self.bin_labels_type_idxs[self.params.binner_idx][0] == "Resolution":
+    if self.bin_labels_type_idxs[self.params.binning.binner_idx][0] == "Resolution":
       return 1.0/self.scene.dres
-    binarraydata, dummy = self.get_matched_binarray(self.params.binner_idx)
+    binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
     scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
-    ibinarray = self.bin_labels_type_idxs[self.params.binner_idx][2]
+    ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
     matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
@@ -1281,7 +1290,7 @@ class HKLview_3d:
       radii = self.HKLscene_from_dict(self.radii_scene_id).radii
       self.meanradius = flex.mean(radii)
 
-    bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binner_idx]
+    bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binning.binner_idx]
     self.mprint(".", end="")
     if blankscene:
       points = flex.vec3_double( [ ] )
@@ -1321,7 +1330,7 @@ class HKLview_3d:
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
-        dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binner_idx)
+        dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
         self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
         if self.binvalsboundaries[0] < 0.0:
@@ -1332,7 +1341,7 @@ class HKLview_3d:
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
     if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
-      self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+      self.params.binning.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
@@ -1378,8 +1387,8 @@ class HKLview_3d:
     cntbin = 0
     self.binstrs = []
     self.bin_infotpls = []
-    if self.nuniqueval < self.params.nbins:
-      self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.nbins, colstr, self.nuniqueval), 0)
+    if self.nuniqueval < self.params.binning.nbins:
+      self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.binning.nbins, colstr, self.nuniqueval), 0)
     for ibin in range(self.nbinvalsboundaries+1):
       mstr =""
       nreflsinbin = len(self.radii2[ibin])
@@ -1416,12 +1425,14 @@ class HKLview_3d:
       self.mprint(mstr, verbose=1)
       cntbin += 1
 
-    #if self.ngl_settings.bin_opacities == "":
-    self.ngl_settings.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+    if self.params.binning.bin_opacities != "":
+      opqlist = eval(self.params.binning.bin_opacities)
+      if len(opqlist) < self.params.binning.nbins:
+        self.params.binning.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
 
-    self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities,
+    self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities,
                           "bin_infotpls": self.bin_infotpls,
-                          "binner_idx": self.params.binner_idx,
+                          "binner_idx": self.params.binning.binner_idx,
                           "tooltip_opacity": self.ngl_settings.tooltip_alpha
                          } )
     colourgradstr = []
@@ -1761,11 +1772,11 @@ Distance: %s
   def SetOpacities(self, bin_opacities_str):
     retstr = ""
     if self.miller_array and bin_opacities_str:
-      self.ngl_settings.bin_opacities = bin_opacities_str
-      bin_opacitieslst = eval(self.ngl_settings.bin_opacities)
+      self.params.binning.bin_opacities = bin_opacities_str
+      bin_opacitieslst = eval(self.params.binning.bin_opacities)
       for alpha,bin in bin_opacitieslst:
         retstr += self.set_opacity(bin, alpha)
-      self.SendInfoToGUI( { "bin_opacities": self.ngl_settings.bin_opacities } )
+      self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities } )
     self.mprint( retstr, verbose=1)
 
 
@@ -2682,8 +2693,6 @@ in the space group %s\nwith unit cell %s\n""" \
 ngl_philstr = """
   mouse_sensitivity = 0.06
     .type = float
-  bin_opacities = ""
-    .type = str
   tooltip_alpha = 0.80
     .type = float
   fontsize = 9

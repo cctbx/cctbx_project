@@ -1073,7 +1073,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
 
-    self.Nbins_spinBox.setValue( self.currentphilstringdict['nbins'])
+    self.Nbins_spinBox.setValue( self.currentphilstringdict['binning.nbins'])
     if self.currentphilstringdict['spacegroup_choice'] is not None:
       self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['spacegroup_choice'] )
     #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
@@ -1358,7 +1358,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onBindataComboSelchange(self, i):
     if self.BinDataComboBox.currentText():
       binner_idx = self.BinDataComboBox.currentIndex()
-      self.send_message('binner_idx = %d' % binner_idx )
+      self.send_message('binning.binner_idx = %d' % binner_idx )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
@@ -1433,7 +1433,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         bin_opacitieslst[row] = (alpha, row)
         self.bin_opacities = str(bin_opacitieslst)
         self.SetAllOpaqueCheckboxes()
-        self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities )
+        self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities )
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1458,8 +1458,8 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
         self.send_message('''
-        scene_bin_thresholds = \"%s\"
-        nbins = %d
+        binning.scene_bin_thresholds = \"%s\"
+        binning.nbins = %d
         ''' %(allbinvals, nbins) )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
@@ -1478,7 +1478,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
     self.bin_opacities = str(bin_opacitieslst)
-    self.send_message('NGL.bin_opacities = "%s"' %self.bin_opacities)
+    self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -1487,7 +1487,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     self.nbins = val
-    self.send_message("nbins = %d" %self.nbins)
+    self.send_message("binning.nbins = %d" %self.nbins)
 
 
   def onRadiiScaleEditFinished(self):
