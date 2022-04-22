@@ -284,7 +284,7 @@ def plot_run_stats(stats,
       ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
       ax3.set_yticks([])
     else:
-      ax4.text(start_t, 3.85, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color)
+      ax4.text(start_t, 3.85, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color, rotation=10)
       ax4.text(start_t, .85, "run %s" % str(run_numbers[idx]), fontsize=text_ratio)
       ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
       ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)

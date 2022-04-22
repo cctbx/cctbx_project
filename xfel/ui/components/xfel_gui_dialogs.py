@@ -2248,7 +2248,7 @@ class RunBlockDialog(BaseDialog):
     rg_dict = dict(active=True,
                    open=rg_open,
                    extra_phil_str=self.phil.ctr.GetValue(),
-                   untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue(),
+                   untrusted_pixel_mask_path=self.untrusted_path.ctr.GetValue().strip(),
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
