@@ -1873,9 +1873,9 @@ Note:
 
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
-      # Get the bonded neighbor lists for the atoms that are in this selection.
+      # Re-use the bonded neighbor lists for all atoms; we filter out incompatible ones in the tests.
       all_selected_atoms = source_atoms.union(target_atoms)
-      bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
+      bondedNeighborLists = self._allBondedNeighborLists
 
       ################################################################################
       # Build a spatial-query structure that tells which atoms are nearby.
