@@ -361,6 +361,29 @@ def reflection_wavelength_from_pixels(experiments, reflections):
   table['reflection_wavelength_from_pixels'] = wavelengths
   return table
 
+def trumpet_plot(experiment, reflections, axis = None):
+  half_mosaicity_deg = experiment.crystal.get_half_mosaicity_deg()
+  domain_size_ang = experiment.crystal.get_domain_size_ang()
+  if not axis:
+    fig = plt.figure()
+    axis = plt.gca()
+  two_thetas = reflections['two_theta_cal']
+  delpsi = reflections['delpsical.rad']*180/math.pi
+  axis.scatter(two_thetas, delpsi)
+
+  LR = flex.linear_regression(two_thetas, delpsi)
+  model_y = LR.slope()*two_thetas + LR.y_intercept()
+  axis.plot(two_thetas, model_y, "k-")
+
+  tan_phi_deg = (experiment.crystal.get_unit_cell().d(reflections['miller_index']) / domain_size_ang)*180/math.pi
+  tan_outer_deg = tan_phi_deg + (half_mosaicity_deg/2)
+
+  axis.set_title("Mosaicity FW=%4.2f deg, Dsize=%5.0fA on %d spots"%(2*half_mosaicity_deg, domain_size_ang, len(two_thetas)))
+  axis.plot(two_thetas, tan_phi_deg, "r.")
+  axis.plot(two_thetas, -tan_phi_deg, "r.")
+  axis.plot(two_thetas, tan_outer_deg, "g.")
+  axis.plot(two_thetas, -tan_outer_deg, "g.")
+
 from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name, get_center, detector_plot_dict
 from xfel.command_line.cspad_detector_congruence import Script as DCScript
 class Script(DCScript):
@@ -1170,26 +1193,8 @@ class ResidualsPlotter(object):
       # Trumpet plot
       if params.plots.trumpet_plot:
         expt_id = min(set(reflections['id']))
-        half_mosaicity_deg = experiments[expt_id].crystal.get_half_mosaicity_deg()
-        domain_size_ang = experiments[expt_id].crystal.get_domain_size_ang()
         refls = reflections.select(reflections['id'] == expt_id)
-        fig = plt.figure()
-        two_thetas = refls['two_theta_cal']
-        delpsi = refls['delpsical.rad']*180/math.pi
-        plt.scatter(two_thetas, delpsi)
-
-        LR = flex.linear_regression(two_thetas, delpsi)
-        model_y = LR.slope()*two_thetas + LR.y_intercept()
-        plt.plot(two_thetas, model_y, "k-")
-
-        tan_phi_deg = (experiments[expt_id].crystal.get_unit_cell().d(refls['miller_index']) / domain_size_ang)*180/math.pi
-        tan_outer_deg = tan_phi_deg + (half_mosaicity_deg/2)
-
-        plt.title("%d: mosaicity FW=%4.2f deg, Dsize=%5.0fA on %d spots"%(expt_id, 2*half_mosaicity_deg, domain_size_ang, len(two_thetas)))
-        plt.plot(two_thetas, tan_phi_deg, "r.")
-        plt.plot(two_thetas, -tan_phi_deg, "r.")
-        plt.plot(two_thetas, tan_outer_deg, "g.")
-        plt.plot(two_thetas, -tan_outer_deg, "g.")
+        trumpet_plot(experiments[expt_id], refls)
 
       if params.plots.ewald_offset_plot:
         n_bins = 10
