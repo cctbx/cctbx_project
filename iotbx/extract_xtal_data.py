@@ -12,35 +12,18 @@ import libtbx.callbacks # import dependency
 from six.moves import zip
 from six.moves import range
 from libtbx import group_args
+from io import StringIO
 
-def miller_array_symmetry_safety_check(miller_array,
-                                       data_description,
-                                       working_point_group,
-                                       symmetry_safety_check,
-                                       log):
-  msg = miller_array.crystal_symmetry_is_compatible_with_symmetry_from_file(
+def miller_array_symmetry_safety_check(miller_array, data_description,
+                                       working_point_group):
+  """
+  Returns None or string.
+  """
+  return miller_array.crystal_symmetry_is_compatible_with_symmetry_from_file(
     working_point_group = working_point_group).format_error_message(
       data_description = data_description)
-  if(msg is not None):
-     if(symmetry_safety_check == "warning"):
-        print("*" * 79, file=log)
-        print("WARNING:", msg, file=log)
-        print("*" * 79, file=log)
-     else:
-        raise Sorry(msg + """
-  The program inspects all inputs to determine the working crystal
-  symmetry (unit cell & space group).
-  Please check the working crystal symmetry shown above. If it is
-  not correct, use the --unit_cell, --space_group, or --symmetry
-  option to specify the correct unit cell parameters and space group
-  symbol.
-  If the working crystal symmetry is in fact correct, disable this
-  error by adding
-    refinement.input.symmetry_safety_check=warning
-  to the command line arguments.
-""")
 
-def explain_how_to_generate_array_of_r_free_flags(flags_parameter_scope=""):
+def explain_how_to_generate_array_of_r_free_flags():
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -55,7 +38,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  return part1 + flags_parameter_scope+""".generate=True""" + part3
+  return part1 + """<parent scope>.generate=True""" + part3
 
 data_and_flags_str_part1 = """\
   file_name = None
@@ -220,26 +203,29 @@ class run(object):
   data labels will be as automatic as possible, or will give clear feedback when
   ambiguity exists. If not found in the inputs, the R-free flags can be created
   if desired.
+
+  It is supposed to run silently.
+  Error messages are accumulated in self.err, and can be rised as desired after
+  the execution. Log info messages are stored in self.log and can be flushed
+  after the execution as well.
   """
   def __init__(self,
                reflection_file_server,
                parameters = None,
                experimental_phases_params = None,
                working_point_group = None,
-               symmetry_safety_check = None,
                remark_r_free_flags_md5_hexdigest = None,
                extract_r_free_flags = True,
                keep_going = False,
-               log = None,
                prefer_anomalous = None,
                force_non_anomalous = False,
                allow_mismatch_flags = False,
-               _rise_if_errors = True # XXX PVA: To keep old behavior. Remove later.
+               _rise_if_errors = True, # XXX PVA: To keep old behavior. Remove later.
                ):
     adopt_init_args(self, locals())
     # Buffers for error and log messages.
     self.err = []
-    self.mes = []
+    self.log = StringIO() # container for all log messages
     #
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
@@ -249,22 +235,22 @@ class run(object):
     self.experimental_phases        = None
     self.raw_experimental_phases    = None
     # Get data first
-    self.raw_data            = self.extract_data()
+    self.raw_data            = self._extract_data()
     # Apply resolution and sigma cutoffs, if requested
-    self.raw_data_truncated  = self.apply_cutoffs()
+    self.raw_data_truncated  = self._apply_cutoffs()
     self.raw_flags_truncated = None
     # Convert to usable Fobs
-    self.f_obs               = self.data_as_f_obs()
+    self.f_obs               = self._data_as_f_obs()
     # Then extract or generate flags
     self.raw_flags = None
     if(extract_r_free_flags):
-      self.raw_flags = self.extract_flags()
+      self.raw_flags = self._extract_flags()
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
         self.raw_flags_truncated = self.raw_flags.common_set(
           self.raw_data_truncated)
     if(extract_r_free_flags and self.raw_flags is not None):
-      self.get_r_free_flags()
+      self._get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
     # Make sure they match
     if(self.r_free_flags is not None):
@@ -274,31 +260,47 @@ class run(object):
       self.f_obs        = self.f_obs.set_info(f_obs_info)
       self.r_free_flags = self.r_free_flags.set_info(flags_info)
     # extract phases
-    self.experimental_phases = self.determine_experimental_phases(
+    self.experimental_phases = self._determine_experimental_phases(
       parameters      = experimental_phases_params,
       parameter_scope = "")
-    #
+    # Fill in log
+    self._show_summary()
+    # XXX
+    # XXX remove later XXX
+    # XXX
     if(_rise_if_errors and len(self.err)>0):
       raise Sorry("\n".join(self.err))
 
-  def essence(self):
+  def result(self):
+    """
+    Container for:
+      - raw arrays as extracted from inputs.
+      - arrays that are ready to use (after aply cutoffs, map-to-asu, etc).
+      - error messages (to rise if desired).
+      - log messaged (to flush if desired).
+      - misc.
+
+    """
     o = group_args(
       raw_data                   = self.raw_data,
       raw_flags                  = self.raw_flags,
+      raw_experimental_phases    = self.raw_experimental_phases,
       f_obs                      = self.f_obs,
       r_free_flags               = self.r_free_flags,
-      r_free_flags_md5_hexdigest = self.r_free_flags_md5_hexdigest,
       experimental_phases        = self.experimental_phases,
-      raw_experimental_phases    = self.raw_experimental_phases)
+      r_free_flags_md5_hexdigest = self.r_free_flags_md5_hexdigest,
+      err                        = self.err,
+      log                        = self.log)
     o.stop_dynamic_attributes()
     return o
 
-  def _print(self, m):
-    print(m, file=self.log)
+  def show_summary(self, log, prefix=""):
+    print(self.log.getvalue(), file=log)
 
-  def show_summary(self, prefix=""):
+  def _print(self, m): print(m, file=self.log)
+
+  def _show_summary(self, prefix=""):
     log = self.log
-    if(log is None): log = sys.stdout
     self._print("%sInput data summary:"%prefix)
     self.raw_data.show_comprehensive_summary(f=log, prefix="  "+prefix)
     if(not self.raw_data.indices().all_eq(self.f_obs.indices()) or
@@ -334,7 +336,7 @@ class run(object):
         count_not_equal= True).show(show_unused = False, f = log, prefix="    "+prefix)
       print(file=log)
 
-  def determine_experimental_phases(
+  def _determine_experimental_phases(
         self,
         parameters=None,
         parameter_scope=None,
@@ -360,12 +362,12 @@ class run(object):
       if(parameters is not None):
         parameters.file_name = experimental_phases.info().source
         parameters.labels = [experimental_phases.info().label_string()]
-      miller_array_symmetry_safety_check(
-        miller_array          = experimental_phases,
-        data_description      = "Experimental phases",
-        working_point_group   = self.working_point_group,
-        symmetry_safety_check = self.symmetry_safety_check,
-        log                   = self.log)
+      msg = miller_array_symmetry_safety_check(
+        miller_array        = experimental_phases,
+        data_description    = "Experimental phases",
+        working_point_group = self.working_point_group)
+      if(msg is not None and not self.keep_going):
+        self.err.append(msg)
       experimental_phases = experimental_phases.regularize()
       self.raw_experimental_phases = experimental_phases
       if(not self.f_obs.anomalous_flag()):
@@ -378,13 +380,13 @@ class run(object):
       experimental_phases.set_info(info)
     return experimental_phases
 
-  def get_r_free_flags(self):
+  def _get_r_free_flags(self):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
-      self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags =
+      self._flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags =
       self.raw_flags)
     self.r_free_flags.set_info(self.raw_flags.info())
 
-  def extract_data(self):
+  def _extract_data(self):
     data = self.reflection_file_server.get_xray_data(
       file_name        = self.parameters.file_name,
       labels           = self.parameters.labels,
@@ -393,17 +395,16 @@ class run(object):
       prefer_anomalous = self.prefer_anomalous)
     self.parameters.file_name = data.info().source
     self.parameters.labels    = [data.info().label_string()]
-    if([self.working_point_group,
-       self.symmetry_safety_check].count(None) == 0):
-      miller_array_symmetry_safety_check(
-        miller_array          = data,
-        data_description      = "Reflection data",
-        working_point_group   = self.working_point_group,
-        symmetry_safety_check = self.symmetry_safety_check,
-        log                   = self.log)
+    if(self.working_point_group is not None):
+      msg = miller_array_symmetry_safety_check(
+        miller_array        = data,
+        data_description    = "Reflection data",
+        working_point_group = self.working_point_group)
+      if(msg is not None and not self.keep_going):
+        self.err.append(msg)
     return data.regularize()
 
-  def extract_flags(self, data_description = "R-free flags"):
+  def _extract_flags(self, data_description = "R-free flags"):
     r_free_flags, test_flag_value = None, None
     params = self.parameters.r_free_flags
     # Extract
@@ -427,14 +428,12 @@ class run(object):
         params.file_name       = r_free_flags.info().source
         params.label           = r_free_flags.info().label_string()
         params.test_flag_value = test_flag_value
-        if([self.working_point_group,
-            self.symmetry_safety_check].count(None) == 0):
-          miller_array_symmetry_safety_check(
-            miller_array          = r_free_flags,
-            data_description      = data_description,
-            working_point_group   = self.working_point_group,
-            symmetry_safety_check = self.symmetry_safety_check,
-            log                   = self.log)
+        msg = miller_array_symmetry_safety_check(
+          miller_array        = r_free_flags,
+          data_description    = data_description,
+          working_point_group = self.working_point_group)
+        if(msg is not None and not self.keep_going):
+          self.err.append(msg)
         info = r_free_flags.info()
         try:
           processed = r_free_flags.regularize()
@@ -479,7 +478,7 @@ new flags is undefined.
       r_free_flags.set_info(info)
     return r_free_flags
 
-  def apply_cutoffs(self):
+  def _apply_cutoffs(self):
     if(self.raw_data is None): return None
     selection = self.raw_data.all_selection()
     dd = self.raw_data.d_spacings().data()
@@ -497,7 +496,7 @@ new flags is undefined.
       return None
     return self.raw_data.select(selection)
 
-  def data_as_f_obs(self):
+  def _data_as_f_obs(self):
     """
     Convert input data array to amplitudes, adjusting the data type and
     applying additional filters if necessary.
@@ -548,7 +547,7 @@ new flags is undefined.
     f_obs.set_info(self.raw_data.info())
     return f_obs
 
-  def flags_as_r_free_flags(self,
+  def _flags_as_r_free_flags(self,
         f_obs,
         r_free_flags,
         missing_show_max_lines=10):
@@ -570,7 +569,7 @@ sure the flags are suitable for use.
       r_free_flags.map_to_asu().sort(by_value="packed_indices").data() \
         .md5().hexdigest()
     if(self.remark_r_free_flags_md5_hexdigest is not None):
-      self.verify_r_free_flags_md5_hexdigest(
+      self._verify_r_free_flags_md5_hexdigest(
         ignore_pdb_hexdigest = self.parameters.r_free_flags.ignore_pdb_hexdigest,
         current              = r_free_flags_md5_hexdigest,
         records              = self.remark_r_free_flags_md5_hexdigest)
@@ -618,7 +617,7 @@ sure the flags are suitable for use.
       return None
     return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
 
-  def verify_r_free_flags_md5_hexdigest(self,
+  def _verify_r_free_flags_md5_hexdigest(self,
         ignore_pdb_hexdigest,
         current,
         records):

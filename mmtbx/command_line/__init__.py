@@ -379,8 +379,7 @@ class load_model_and_data(object):
         parameters=params.input.xray_data,
         experimental_phases_params = pp,
         prefer_anomalous=prefer_anomalous,
-        force_non_anomalous=force_non_anomalous,
-        log=self.log)
+        force_non_anomalous=force_non_anomalous)
       self.intensity_flag = data_and_flags.f_obs.is_xray_intensity_array()
       self.raw_data = data_and_flags.raw_data
       self.raw_flags = data_and_flags.raw_flags

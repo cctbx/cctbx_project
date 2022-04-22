@@ -918,9 +918,7 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
     reflection_file_server = rfs,
     parameters             = parameters,
     keep_going             = True,
-    working_point_group = crystal_symmetry.space_group().build_derived_point_group(),
-    log                    = StringIO(),
-    symmetry_safety_check  = True)
+    working_point_group = crystal_symmetry.space_group().build_derived_point_group())
   f_obs = determined_data_and_flags.f_obs
 
   if (params.data_labels is None):

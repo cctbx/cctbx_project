@@ -215,8 +215,8 @@ def run(args, command_name="phenix.twin_map_utils"):
     tmp_params.r_free_flags.file_name=params.twin_utils.input.xray_data.file_name
     tmp_params.r_free_flags.label=params.twin_utils.input.xray_data.free_flag
 
-    tmp_object = extract_xtal_data.run( reflection_file_server = xray_data_server,
-                                                 parameters = tmp_params, log=log )
+    tmp_object = extract_xtal_data.run(
+      reflection_file_server = xray_data_server)
 
     miller_array = tmp_object.extract_data()
     if miller_array.is_xray_intensity_array():

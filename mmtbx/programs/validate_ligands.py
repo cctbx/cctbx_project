@@ -87,9 +87,7 @@ electron density values/CC.
       reflection_file_server = rfs,
       parameters             = parameters,
       keep_going             = True,
-      working_point_group = crystal_symmetry.space_group().build_derived_point_group(),
-      log                    = null_out(),
-      symmetry_safety_check  = True)
+      working_point_group = crystal_symmetry.space_group().build_derived_point_group())
     f_obs = determined_data_and_flags.f_obs
     r_free_flags = determined_data_and_flags.r_free_flags
     return f_obs, r_free_flags

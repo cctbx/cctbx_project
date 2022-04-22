@@ -597,10 +597,9 @@ def run(processed_args, params):
     if(params.data_labels is not None):
       parameters.labels = [processed_args.data_labels]
     determine_data_and_flags_result = extract_xtal_data.run(
-      reflection_file_server  = rfs,
-      parameters              = parameters,
-      keep_going              = True,
-      log                     = StringIO())
+      reflection_file_server = rfs,
+      parameters             = parameters,
+      keep_going             = True)
     f_obs = determine_data_and_flags_result.f_obs
     r_free_flags = determine_data_and_flags_result.r_free_flags
     if(r_free_flags is None):

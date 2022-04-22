@@ -262,8 +262,7 @@ def run(args, log = sys.stdout, use_output_directory=True,
   determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server = reflection_file_server,
     parameters             = reflection_data_params,
-    keep_going             = True,
-    log                    = log)
+    keep_going             = True)
   f_obs = determine_data_and_flags_result.f_obs
   r_free_flags = determine_data_and_flags_result.r_free_flags
   test_flag_value = determine_data_and_flags_result.test_flag_value

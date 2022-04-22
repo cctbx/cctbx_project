@@ -138,7 +138,7 @@ def run(args, log = sys.stdout, as_gui_program=False):
     server,
     parameters=params.input.reflection_data,
     experimental_phases_params=params.input.experimental_phases,
-    extract_r_free_flags=False,log=log)
+    extract_r_free_flags=False)
   fo = o.f_obs
   hl_coeffs = o.experimental_phases
   if params.input.map_coefficients.file_name is not None:

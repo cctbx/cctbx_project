@@ -142,8 +142,7 @@ def extract_data_and_flags(params, crystal_symmetry=None):
     data_and_flags = extract_xtal_data.run(
       reflection_file_server = reflection_file_server,
       parameters             = parameters,
-      extract_r_free_flags   = False, # XXX
-      log                    = StringIO())
+      extract_r_free_flags   = False) #XXX
   return data_and_flags
 
 def compute_map_from_model(high_resolution, low_resolution, xray_structure,

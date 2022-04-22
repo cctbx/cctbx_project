@@ -103,8 +103,7 @@ def run(args,
   determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server = rfs,
     parameters             = parameters,
-    keep_going             = True,
-    log                    = StringIO())
+    keep_going             = True)
   f_obs = determine_data_and_flags_result.f_obs
   # Data
   show_header(l="Data:", log=log)

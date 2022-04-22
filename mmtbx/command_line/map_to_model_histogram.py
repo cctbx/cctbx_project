@@ -76,10 +76,9 @@ def get_f_obs_and_flags(reflection_file_name,
   if(r_free_flags_label is not None):
     parameters.r_free_flags.label = command_line.options.r_free_flags_label
   determine_data_and_flags_result = extract_xtal_data.run(
-    reflection_file_server  = reflection_file_server,
-    parameters              = parameters,
-    keep_going              = True,
-    log                     = log)
+    reflection_file_server = reflection_file_server,
+    parameters             = parameters,
+    keep_going             = True)
   f_obs = determine_data_and_flags_result.f_obs
   r_free_flags = determine_data_and_flags_result.r_free_flags
   return f_obs, r_free_flags

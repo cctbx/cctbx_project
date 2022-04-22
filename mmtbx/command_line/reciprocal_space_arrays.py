@@ -173,8 +173,7 @@ def run(args, log = sys.stdout):
   determine_data_and_flags_result = extract_xtal_data.run(
     reflection_file_server = rfs,
     parameters             = parameters,
-    keep_going             = True,
-    log                    = StringIO())
+    keep_going             = True)
   f_obs = determine_data_and_flags_result.f_obs
   print("Input data:")
   print("  Iobs or Fobs:", f_obs.info().labels)

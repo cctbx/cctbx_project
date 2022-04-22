@@ -422,19 +422,17 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
         if(params.f_obs_1_label is not None):
           parameters.labels = [params.f_obs_1_label]
         determine_data_and_flags_result = extract_xtal_data.run(
-          reflection_file_server  = reflection_file_server,
-          keep_going              = True,
-          parameters              = parameters,
-          log                     = null_out())
+          reflection_file_server = reflection_file_server,
+          keep_going             = True,
+          parameters             = parameters)
       except: # intentional
         parameters = extract_xtal_data.data_and_flags_master_params().extract()
         if(params.f_obs_2_label is not None):
           parameters.labels = [params.f_obs_2_label]
         determine_data_and_flags_result = extract_xtal_data.run(
-          reflection_file_server  = reflection_file_server,
-          keep_going              = True,
-          parameters              = parameters,
-          log                     = null_out())
+          reflection_file_server = reflection_file_server,
+          keep_going             = True,
+          parameters             = parameters)
       f_obss.append(determine_data_and_flags_result.f_obs)
   else:
     if([params.f_obs_1_file_name,params.f_obs_2_file_name].count(None)==2):
@@ -452,10 +450,9 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       if(label is not None):
         parameters.labels = [label]
       determine_data_and_flags_result = extract_xtal_data.run(
-          reflection_file_server  = reflection_file_server,
-          parameters              = parameters,
-          keep_going              = True,
-          log                     = null_out())
+          reflection_file_server = reflection_file_server,
+          parameters             = parameters,
+          keep_going             = True)
       f_obss.append(determine_data_and_flags_result.f_obs)
   if(len(f_obss)!=2):
     raise Sorry(" ".join(errors))

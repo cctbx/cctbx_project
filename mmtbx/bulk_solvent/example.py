@@ -81,8 +81,7 @@ def get_data(pdbf, mtzf):
     keep_going              = True,
     extract_r_free_flags    = True,
     force_non_anomalous     = True,
-    allow_mismatch_flags    = True,
-    log                     = null_out())
+    allow_mismatch_flags    = True)
   f_obs        = determine_data_and_flags_result.f_obs
   r_free_flags = determine_data_and_flags_result.r_free_flags
   fmodel = mmtbx.f_model.manager(

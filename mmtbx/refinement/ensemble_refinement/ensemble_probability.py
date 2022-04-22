@@ -339,8 +339,7 @@ class ensemble_probability(object):
       determine_data_and_flags_result = extract_xtal_data.run(
         reflection_file_server = rfs,
         parameters             = parameters,
-        keep_going             = True,
-        log                    = self.log)
+        keep_going             = True)
       f_obs = determine_data_and_flags_result.f_obs
       number_of_reflections = f_obs.indices().size()
       r_free_flags = determine_data_and_flags_result.r_free_flags
