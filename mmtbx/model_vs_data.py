@@ -101,13 +101,10 @@ def run(args,
   if (params.high_resolution is not None):
     parameters.high_resolution = params.high_resolution
   determine_data_and_flags_result = extract_xtal_data.run(
-    reflection_file_server  = rfs,
-    parameters              = parameters,
-    data_parameter_scope    = "refinement.input.xray_data",
-    flags_parameter_scope   = "refinement.input.xray_data.r_free_flags",
-    data_description        = "X-ray data",
-    keep_going              = True,
-    log                     = StringIO())
+    reflection_file_server = rfs,
+    parameters             = parameters,
+    keep_going             = True,
+    log                    = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
   # Data
   show_header(l="Data:", log=log)
