@@ -399,7 +399,7 @@ done
            command=command, cluster="{cluster}")
 
   bash_name = "generator".join([ph_part_first, ph_part_last]).split(".phil")[0] + ".sh"
-  with open(os.path.join(location, bash_name), "wb") as script:
+  with open(os.path.join(location, bash_name), "w") as script:
     script.write(bash_str)
   return bash_name
 
@@ -441,8 +441,8 @@ class Script(object):
     phil_path = os.path.join(self.params.striping.output_folder, self.intermediates, phil_filename)
     if os.path.isfile(phil_path):
       os.remove(phil_path)
-    with open(phil_path, "wb") as phil_outfile:
-      phil_outfile.write(diff_str.encode() + b"\n")
+    with open(phil_path, "w") as phil_outfile:
+      phil_outfile.write(diff_str + "\n")
     if clustering:
       script = script_to_expand_over_clusters(
         self.params.refinement.input.experiments[0].replace("FILENAME", self.filename),
@@ -491,9 +491,9 @@ class Script(object):
         chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
-        with open(chunk_path, "wb") as outfile:
+        with open(chunk_path, "w") as outfile:
           for i in (0, 1): # expts then refls
-            outfile.write(("\n".join(chunk[i]) + "\n").encode())
+            outfile.write("\n".join(chunk[i]) + "\n")
 
         # set up the params for dials.combine_experiments
         custom_parts = ["  input {"]
@@ -559,7 +559,7 @@ if __name__ == "__main__":
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0
     attr_level = int(sys.argv[sys.argv.index("-a") + 1]) if "-a" in sys.argv[1:] else 0
     phil_scope.show(expert_level=expert_level, attributes_level=attr_level)
-    with open("striping_defaults.phil", "wb") as defaults:
+    with open("striping_defaults.phil", "w") as defaults:
       defaults.write(phil_scope.as_str())
     exit()
   with show_mail_on_error():
