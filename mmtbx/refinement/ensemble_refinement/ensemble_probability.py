@@ -337,13 +337,10 @@ class ensemble_probability(object):
 
       parameters = extract_xtal_data.data_and_flags_master_params().extract()
       determine_data_and_flags_result = extract_xtal_data.run(
-        reflection_file_server  = rfs,
-        parameters              = parameters,
-        data_parameter_scope    = "refinement.input.xray_data",
-        flags_parameter_scope   = "refinement.input.xray_data.r_free_flags",
-        data_description        = "X-ray data",
-        keep_going              = True,
-        log                     = self.log)
+        reflection_file_server = rfs,
+        parameters             = parameters,
+        keep_going             = True,
+        log                    = self.log)
       f_obs = determine_data_and_flags_result.f_obs
       number_of_reflections = f_obs.indices().size()
       r_free_flags = determine_data_and_flags_result.r_free_flags

@@ -377,10 +377,7 @@ class load_model_and_data(object):
       data_and_flags = extract_xtal_data.run(
         reflection_file_server=hkl_server,
         parameters=params.input.xray_data,
-        data_parameter_scope="input.xray_data",
-        flags_parameter_scope="input.xray_data.r_free_flags",
         experimental_phases_params = pp,
-        experimental_phases_parameter_scope = "input.experimental_phases",
         prefer_anomalous=prefer_anomalous,
         force_non_anomalous=force_non_anomalous,
         log=self.log)

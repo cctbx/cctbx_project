@@ -51,8 +51,6 @@ rigid-body refinement on suitable models if requested.""")
   data_and_flags = extract_xtal_data.run(
     reflection_file_server=hkl_in.file_server,
     parameters=params.input.xray_data,
-    data_parameter_scope="input.data",
-    flags_parameter_scope="input.data.r_free_flags",
     log=out)
   model_data = []
   for file_name in params.input.model :

@@ -142,7 +142,6 @@ def extract_data_and_flags(params, crystal_symmetry=None):
     data_and_flags = extract_xtal_data.run(
       reflection_file_server = reflection_file_server,
       parameters             = parameters,
-      data_description       = "X-ray data",
       extract_r_free_flags   = False, # XXX
       log                    = StringIO())
   return data_and_flags

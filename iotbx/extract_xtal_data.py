@@ -40,7 +40,7 @@ def miller_array_symmetry_safety_check(miller_array,
   to the command line arguments.
 """)
 
-def explain_how_to_generate_array_of_r_free_flags(log, flags_parameter_scope):
+def explain_how_to_generate_array_of_r_free_flags(flags_parameter_scope=""):
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -55,7 +55,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  print(part1 + flags_parameter_scope+""".generate=True""" + part3, file=log)
+  return part1 + flags_parameter_scope+""".generate=True""" + part3
 
 data_and_flags_str_part1 = """\
   file_name = None
@@ -215,19 +215,16 @@ def data_and_flags_master_params(master_scope_name=None):
 class run(object):
   """
   Encapsulates logic for extracting experimental amplitudes and R-free flags
-  from the given input file(s).  This expects that the standard parameter block
-  is being used.  Determination of appropriate data labels will be as automatic
-  as possible, or will give clear feedback when ambiguity exists.  If not
-  found in the inputs, the R-free flags can be created if desired.
+  from the given input file(s) via using reflection_file_server. This expects
+  that the standard parameter block is being used.  Determination of appropriate
+  data labels will be as automatic as possible, or will give clear feedback when
+  ambiguity exists. If not found in the inputs, the R-free flags can be created
+  if desired.
   """
   def __init__(self,
                reflection_file_server,
                parameters = None,
-               data_parameter_scope = "",
-               flags_parameter_scope = "",
                experimental_phases_params = None,
-               experimental_phases_parameter_scope = "",
-               data_description = None, # XXX Remove
                working_point_group = None,
                symmetry_safety_check = None,
                remark_r_free_flags_md5_hexdigest = None,
@@ -236,8 +233,14 @@ class run(object):
                log = None,
                prefer_anomalous = None,
                force_non_anomalous = False,
-               allow_mismatch_flags = False):
+               allow_mismatch_flags = False,
+               _rise_if_errors = True # XXX PVA: To keep old behavior. Remove later.
+               ):
     adopt_init_args(self, locals())
+    # Buffers for error and log messages.
+    self.err = []
+    self.mes = []
+    #
     if(self.parameters is None):
       self.parameters = data_and_flags_master_params().extract()
     self.r_free_flags               = None
@@ -273,7 +276,10 @@ class run(object):
     # extract phases
     self.experimental_phases = self.determine_experimental_phases(
       parameters      = experimental_phases_params,
-      parameter_scope = experimental_phases_parameter_scope)
+      parameter_scope = "")
+    #
+    if(_rise_if_errors and len(self.err)>0):
+      raise Sorry("\n".join(self.err))
 
   def essence(self):
     o = group_args(
@@ -383,15 +389,15 @@ class run(object):
       file_name        = self.parameters.file_name,
       labels           = self.parameters.labels,
       ignore_all_zeros = self.parameters.ignore_all_zeros,
-      parameter_scope  = self.data_parameter_scope,
+      parameter_scope  = "",
       prefer_anomalous = self.prefer_anomalous)
     self.parameters.file_name = data.info().source
     self.parameters.labels    = [data.info().label_string()]
-    if([self.data_description, self.working_point_group,
+    if([self.working_point_group,
        self.symmetry_safety_check].count(None) == 0):
       miller_array_symmetry_safety_check(
         miller_array          = data,
-        data_description      = self.data_description,
+        data_description      = "Reflection data",
         working_point_group   = self.working_point_group,
         symmetry_safety_check = self.symmetry_safety_check,
         log                   = self.log)
@@ -409,13 +415,13 @@ class run(object):
             label                    = params.label,
             test_flag_value          = params.test_flag_value,
             disable_suitability_test = params.disable_suitability_test,
-            parameter_scope          = self.flags_parameter_scope)
+            parameter_scope          = "")
       except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
-          explain_how_to_generate_array_of_r_free_flags(log = self.log,
-            flags_parameter_scope = self.flags_parameter_scope)
-          if(self.keep_going): return None
-          raise Sorry("Please try again.")
+          if(not self.keep_going):
+            self.err.append(explain_how_to_generate_array_of_r_free_flags())
+            self.err.append("Please try again.")
+          return None
         r_free_flags, test_flag_value = None, None
       else:
         params.file_name       = r_free_flags.info().source
@@ -433,7 +439,8 @@ class run(object):
         try:
           processed = r_free_flags.regularize()
         except RuntimeError as e:
-          raise Sorry("Bad free-r flags:\n %s"%str(e))
+          self.err.append("Bad free-r flags:\n %s"%str(e))
+          return None
         if (self.force_non_anomalous):
           processed = processed.average_bijvoet_mates()
         r_free_flags = processed.set_info(info)
@@ -442,17 +449,14 @@ class run(object):
       if ((params.fraction is None) or
           (params.lattice_symmetry_max_delta is None) or
           (params.use_lattice_symmetry is None)):
-        raise Sorry("No R-free flags are available, but one or more "+
-          "parameters required to generate new flags is undefined.")
+        msg = """
+No R-free flags are available, but one or more parameters required to generate
+new flags is undefined.
+"""
+        self.err.append(msg)
+        return None
       print("Generating a new array of R-free flags.", file=self.log)
       print(file=self.log)
-      libtbx.call_back(message="warn",
-        data="PHENIX will generate a new array of R-free flags.  Please "+
-          "check to make sure that the input data do not already contain "+
-          "an R-free set; if one is present, you should cancel this job and "+
-          "disable generation of new flags.  If the program you are running "+
-          "outputs an MTZ file, you should be sure to use that file in all "+
-          "future refinements.")
       r_free_flags = self.f_obs.generate_r_free_flags(
         fraction                   = params.fraction,
         max_free                   = params.max_free,
@@ -489,7 +493,8 @@ class run(object):
         s = self.raw_data.data() > self.raw_data.sigmas()*sigma_cutoff
         selection &= s
     if(selection.count(True) == 0):
-      raise Sorry("No data left after applying resolution and sigma cutoffs.")
+      self.err.append("No data left after applying resolution and sigma cutoffs.")
+      return None
     return self.raw_data.select(selection)
 
   def data_as_f_obs(self):
@@ -509,7 +514,8 @@ class run(object):
     #
     d_min = f_obs.d_min()
     if(d_min < 0.25):
-      raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
+      self.err.append("Resolution of data is too high: %-6.4f A"%d_min)
+      return None
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     if(f_obs.is_xray_intensity_array()):
       if(self.parameters.french_wilson_scale):
@@ -547,11 +553,13 @@ class run(object):
         r_free_flags,
         missing_show_max_lines=10):
     test_flag_value = self.parameters.r_free_flags.test_flag_value
-    if (test_flag_value is None):
-      raise Sorry(("PHENIX could not determine an appropriate test flag "+
-        "for the data with label(s) '%s'.  This may happen if they are all "+
-        "a single value; please check the file to make sure the flags are "+
-        "suitable for use.") % self.parameters.r_free_flags.label)
+    if(test_flag_value is None):
+      msg = """
+Could not determine an appropriate test flag for the data with label(s) '%s'.
+This may happen if they are all a single value; please check the file to make
+sure the flags are suitable for use.
+"""
+      self.err.append(msg % self.parameters.r_free_flags.label)
     if (isinstance(r_free_flags.data(), flex.bool)):
       r_free_flags = r_free_flags.array(
         data = r_free_flags.data() == bool(test_flag_value))
@@ -606,7 +614,8 @@ class run(object):
             msg.append("  %3d %3d %3d" % hkl + "   %.6g  %.6g" % (f,s))
         if (n_not_shown != 0):
           msg.append("    ... (remaining %d not shown)" % n_not_shown)
-      raise Sorry("\n".join(msg))
+      self.err.append("\n".join(msg))
+      return None
     return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
 
   def verify_r_free_flags_md5_hexdigest(self,
@@ -618,14 +627,16 @@ class run(object):
       flds = record.split()
       if (len(flds) == 3):
         from_file.add(flds[2])
-    if (len(from_file) > 1):
-      raise Sorry(
-        "Multiple conflicting REMARK r_free_flags.md5.hexdigest records"
-        " found in the input PDB file.")
+    if(len(from_file) > 1):
+      msg="""
+Multiple conflicting REMARK r_free_flags.md5.hexdigest records found in the
+input PDB file.
+"""
+      self.err.append(msg)
     if (len(from_file) == 1 and current not in from_file):
       log = self.log
       for i in range(2): print("*"*79, file=log)
-      if (ignore_pdb_hexdigest):
+      if(ignore_pdb_hexdigest):
         print(file=log)
         print(" ".join(["WARNING"]*9), file=log)
       print("""
