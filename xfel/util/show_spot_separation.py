@@ -193,6 +193,7 @@ def run(args):
   resolutions[0].set_selected(resolutions[0] > 50, 50)
   if params.show_plots:
     plt.imshow(resolutions[0].as_numpy_array(), cmap='gray')
+    plt.gca().format_coord = lambda x, y: f"({x:.2f}, {y:.2f})"
     plt.colorbar()
 
     plt.figure()
