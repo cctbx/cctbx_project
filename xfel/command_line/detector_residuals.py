@@ -268,44 +268,42 @@ save_png = False
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)
 
-def setup_stats(detector, experiments, reflections, two_theta_only = False):
+def setup_stats(experiments, reflections, two_theta_only = False):
   # Compute a set of radial and transverse displacements for each reflection
   print("Setting up stats...")
   tmp = flex.reflection_table()
   # Need to construct a variety of vectors
-  for panel_id, panel in enumerate(detector):
-    panel_refls = reflections.select(reflections['panel'] == panel_id)
-    if len(panel_refls) == 0: continue
-    bcl = flex.vec3_double()
-    tto = flex.double()
-    ttc = flex.double()
-    # Compute the beam center in lab space (a vector pointing from the origin to where the beam would intersect
-    # the panel, if it did intersect the panel)
-    for expt_id in set(panel_refls['id']):
-      beam = experiments[expt_id].beam
+  for expt_id, expt in enumerate(experiments):
+    expt_refls = reflections.select(reflections['id'] == expt_id)
+    if len(expt_refls) == 0: continue
+    for panel_id, panel in enumerate(expt.detector):
+      refls = expt_refls.select(expt_refls['panel'] == panel_id)
+      if len(refls) == 0: continue
+      # Compute the beam center in lab space (a vector pointing from the origin to where the beam would intersect
+      # the panel, if it did intersect the panel)
+      beam = expt.beam
       s0 = beam.get_s0()
-      expt_refls = panel_refls.select(panel_refls['id'] == expt_id)
       beam_centre = panel.get_beam_centre_lab(s0)
-      bcl.extend(flex.vec3_double(len(expt_refls), beam_centre))
-      cal_x, cal_y, _ = expt_refls['xyzcal.px'].parts()
-      ttc.extend(flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in range(len(expt_refls))]))
-      if 'xyzobs.px.value' in expt_refls:
-        obs_x, obs_y, _ = expt_refls['xyzobs.px.value'].parts()
-        tto.extend(flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in range(len(expt_refls))]))
-    panel_refls['beam_centre_lab'] = bcl
-    panel_refls['two_theta_cal'] = ttc * (180/math.pi) #+ (0.5*panel_refls['delpsical.rad']*panel_refls['two_theta_obs'])
-    if 'xyzobs.px.value' in expt_refls:
-      panel_refls['two_theta_obs'] = tto * (180/math.pi)
-    if not two_theta_only:
-      # Compute obs in lab space
-      x, y, _ = panel_refls['xyzobs.mm.value'].parts()
-      c = flex.vec2_double(x, y)
-      panel_refls['obs_lab_coords'] = panel.get_lab_coord(c)
-      # Compute deltaXY in panel space. This vector is relative to the panel origin
-      x, y, _ = (panel_refls['xyzcal.mm'] - panel_refls['xyzobs.mm.value']).parts()
-      # Convert deltaXY to lab space, subtracting off of the panel origin
-      panel_refls['delta_lab_coords'] = panel.get_lab_coord(flex.vec2_double(x,y)) - panel.get_origin()
-    tmp.extend(panel_refls)
+      bcl = flex.vec3_double(len(refls), beam_centre)
+      cal_x, cal_y, _ = refls['xyzcal.px'].parts()
+      ttc = flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in range(len(refls))])
+      if 'xyzobs.px.value' in refls:
+        obs_x, obs_y, _ = refls['xyzobs.px.value'].parts()
+        tto = flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in range(len(refls))])
+      refls['beam_centre_lab'] = bcl
+      refls['two_theta_cal'] = ttc * (180/math.pi) #+ (0.5*panel_refls['delpsical.rad']*panel_refls['two_theta_obs'])
+      if 'xyzobs.px.value' in refls:
+        refls['two_theta_obs'] = tto * (180/math.pi)
+      if not two_theta_only:
+        # Compute obs in lab space
+        x, y, _ = refls['xyzobs.mm.value'].parts()
+        c = flex.vec2_double(x, y)
+        refls['obs_lab_coords'] = panel.get_lab_coord(c)
+        # Compute deltaXY in panel space. This vector is relative to the panel origin
+        x, y, _ = (refls['xyzcal.mm'] - refls['xyzobs.mm.value']).parts()
+        # Convert deltaXY to lab space, subtracting off of the panel origin
+        refls['delta_lab_coords'] = panel.get_lab_coord(flex.vec2_double(x,y)) - panel.get_origin()
+      tmp.extend(refls)
   reflections = tmp
   return reflections
 
@@ -901,7 +899,7 @@ class ResidualsPlotter(object):
     table_data.append(table_header)
     table_data.append(table_header2)
 
-    reflections = setup_stats(detector, experiments, reflections)
+    reflections = setup_stats(experiments, reflections)
 
     # The radial vector points from the center of the reflection to the beam center
     radial_vectors = (reflections['obs_lab_coords'] - reflections['beam_centre_lab']).each_normalize()

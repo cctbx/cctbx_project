@@ -78,13 +78,12 @@ class Script(object):
       """
       Make the plots for a set of reflections and experiments.
       """
-      detector = experiments.detectors()[0]
       beam = experiments.beams()[0] # only used to compute resolution of 2theta
       reflections = reflections.select(reflections['intensity.sum.variance'] > 0)
 
       # Setup up deltaXY and two theta bins
       reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
-      reflections = setup_stats(detector, experiments, reflections, two_theta_only=True) # add two theta to reflection table
+      reflections = setup_stats(experiments, reflections, two_theta_only=True) # add two theta to reflection table
       sorted_two_theta = flex.sorted(reflections['two_theta_obs'])
       bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in range(n_bins)]
       bin_high = [bin_low[i+1] for i in range(n_bins-1)]
