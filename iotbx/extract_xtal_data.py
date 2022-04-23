@@ -11,7 +11,7 @@ import libtbx.callbacks # import dependency
 from six.moves import zip
 from six.moves import range
 from libtbx import group_args
-from io import StringIO
+from six.moves import cStringIO as StringIO
 
 def miller_array_symmetry_safety_check(miller_array, data_description,
                                        working_point_group):
