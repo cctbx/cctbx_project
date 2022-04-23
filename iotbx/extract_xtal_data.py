@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import miller
-from cctbx import crystal
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import iotbx.phil
