@@ -1677,10 +1677,8 @@ class map_manager(map_reader, write_ccp4_map):
        require_match_unit_cell_crystal_symmetry = True):
       return # already fine
 
-    if model.shift_cart() is not None and tuple(model.shift_cart()) != (0,0,0)\
-      and tuple(model.shift_cart()) == tuple(self.shift_cart()):
-      # Model already has same shift cart as map_manager...remove it so that
-      # set_crystal_symmetry below will run. It will be reset below
+    if model.shift_cart() is not None and tuple(model.shift_cart()) != (0,0,0):
+      # remove shift_cart
       model.set_shift_cart((0,0,0))
 
     # Set crystal_symmetry to match map. This changes the xray_structure.
