@@ -161,6 +161,10 @@ master_phil_str = """
           be multiplied by 1/distance**distance_power.
        .short_caption = Distance power (for weighting by CA-CA distance)
 
+     stop_if_no_residues_obtained = True
+      .type = bool
+      .help = Raise Sorry and stop if processing yields no residues
+      .short_caption = Stop if no result
     }
 
     """
@@ -240,6 +244,10 @@ def process_predicted_model(
     If mark_atoms_to_keep_with_occ_one is set, return list of models, each
       of which is complete, but in which occupancy = 1 marks atoms to include
       and occupancy=0 marks those to exclude
+
+    If stop_if_no_residues_obtained (default), stop with Sorry if no residues
+      are obtained after processing
+
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
@@ -361,8 +369,20 @@ def process_predicted_model(
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
     if n_after == 0:
-      raise Sorry("No residues remaining after filtering...please check if "+
-         "B-value field is really '%s'. Adjust maximum_rmsd if necessary." %(p.b_value_field_is))
+      if p.stop_if_no_residues_obtained:
+        raise Sorry("No residues remaining after filtering...please check if "+
+         "B-value field is really '%s'. Adjust maximum_rmsd if necessary." %(
+           p.b_value_field_is))
+      else:
+        return group_args(
+         group_args_type = 'processed predicted model',
+         model = None,
+         model_list = [],
+         chainid_list = [],
+         remainder_sequence_str = "",
+         b_values = [],
+         )
+
     removed_ph = ph.select(~sel)
     from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
        split_model

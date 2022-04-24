@@ -81,6 +81,7 @@ Inputs: Model file (PDB, mmCIF)
       .help = Output file with sequences of deleted parts of model \
           will begin with this prefix
       .short_caption = Output remainder seq file prefix
+
   }
 
   include scope mmtbx.process_predicted_model.master_phil_str
