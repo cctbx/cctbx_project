@@ -610,9 +610,10 @@ def get_lddt_from_b(b_values, input_lddt_is_fractional = True):
 def get_rmsd_from_lddt(lddt_values, is_fractional = None):
   """
   get_rmsd_from_lddt:
-  Purpose:  AlphaFold models are supplied with values of LDDT (confidence)
-   in the B-value field.  This routine uses the formula
-   from the alphafold paper to convert these values to error estimates.
+  Purpose:  AlphaFold models come with predicted LDDT values in the B-value
+   field to indicate confidence.  This routine uses a formula provided in the
+   supplementary material of the RoseTTAFold paper to convert these values
+   to error estimates.
   NOTE: lddt_values can be fractional (0 to 1) or percentage (0 to 100)
   If is_fractional is not set, assume fractional if all between 0 and 1
   rmsd_est = 1.5 * flex.exp(4*(0.7-fractional_values))
