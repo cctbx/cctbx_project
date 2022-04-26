@@ -8,35 +8,49 @@ from scitbx.dtmin.refinebase import RefineBase
 from scitbx.dtmin.reparams import Reparams
 from scitbx.dtmin.bounds import Bounds
 from cctbx import adptbx
+from libtbx import group_args
+from iotbx.map_model_manager import map_model_manager
+from iotbx.data_manager import DataManager
 import sys
 
-class RefineCryoemErrors(RefineBase):
+class RefineCryoemSignal(RefineBase):
   # Set up refinement class for dtmin minimiser (based on Phaser minimiser)
-  def __init__(self, mc1, mc2, ssqr_bins, target_spectrum, start_x):
+  def __init__(self, sumfsqr_lm, f1f2cos_lm, r_star, ssqr_bins, target_spectrum, start_x):
     RefineBase.__init__(self)
-    # Precompute data that will be used repeatedly for fgh evaluation
-    f1 = flex.abs(mc1.data())
-    f2 = flex.abs(mc2.data())
-    p1 = mc1.phases().data()
-    p2 = mc2.phases().data()
-    self.sumfsqr_miller = mc1.customized_copy(data=flex.pow2(f1) + flex.pow2(f2))
-    self.sumfsqr_miller.use_binner_of(mc1)
-    self.f1f2cos_miller = mc1.customized_copy(data=f1 * f2 * flex.cos(p2 - p1))
+    # Prepare data that will be used repeatedly for fgh evaluation
+    # Sample local mean with spacing derived from averaging radius
+    # Assume box is at least close to being a cube
+    self.unit_cell = sumfsqr_lm.unit_cell()
+    recip_params = self.unit_cell.reciprocal_parameters()
+    (astar, bstar, cstar) = recip_params[:3]
+    spacing = int(round(r_star/(2*max(astar,bstar,cstar))))
+    self.subsample = spacing**3
+    h,k,l = sumfsqr_lm.indices().as_vec3_double().parts()
+    ih = h.iround()
+    ik = k.iround()
+    il = l.iround()
+    # Modulus of negative element in flex array is negative or zero, but we need
+    # it to be positive. Subtract 1 so that lowest resolution reflection is 1,1,1
+    ihmod = (ih % spacing + spacing - 1) % spacing
+    ikmod = (ik % spacing + spacing - 1) % spacing
+    ilmod = (il % spacing + spacing - 1) % spacing
+    modsum = ihmod + ikmod + ilmod
+    sel = (modsum == 0)
+    self.sumfsqr_miller = sumfsqr_lm.select(sel)
+    self.sumfsqr_miller.use_binning_of(sumfsqr_lm) # Matches subset
+    self.f1f2cos_miller = f1f2cos_lm.select(sel)
+    self.f1f2cos_miller.use_binner_of(self.sumfsqr_miller)
 
-    self.n_bins = mc1.binner().n_bins_used()  # Assume consistent binning
+    self.n_bins = self.sumfsqr_miller.binner().n_bins_used()  # Assume consistent binning
     self.ssqr_bins = ssqr_bins
-    self.unit_cell = mc1.unit_cell()
     assert (self.n_bins == len(ssqr_bins))
     self.target_spectrum = target_spectrum
     self.start_x = start_x
     self.x = start_x[:]         # Full set of parameters
-    ssqr_max = flex.max(mc1.d_star_sq().data())
-    d_min = math.sqrt(1./ssqr_max)
-    recip_params = self.unit_cell.reciprocal_parameters()
-    (astar, bstar, cstar) = recip_params[:3]
+    d_min = math.sqrt(1./flex.max(sumfsqr_lm.d_star_sq().data()))
     cell_tensor = flex.double((astar*astar, bstar*bstar, cstar*cstar, astar*bstar, astar*cstar, bstar*cstar))
-    self.large_shifts_beta = list(cell_tensor*20.*(d_min/2.5)**2)
-    sigmaSphericity = 100*(d_min/2.5)**2 # 50-200?
+    self.large_shifts_beta = list(cell_tensor*30.*(d_min/2.5)**2)
+    sigmaSphericity = 200*(d_min/2.5)**2
     self.sigmaSphericityBeta = cell_tensor * sigmaSphericity/4
 
   def sphericity_restraint(self, anisoBeta, do_gradient=True, do_hessian=True,
@@ -86,6 +100,7 @@ class RefineCryoemErrors(RefineBase):
     if do_hessian:
       assert (do_gradient)
     # Extract parameters into variables with sensible names
+    subsample = self.subsample
     n_bins = self.n_bins
     i_par = 0
     asqr_scale = self.x[i_par]
@@ -93,12 +108,6 @@ class RefineCryoemErrors(RefineBase):
     sigmaT_bins = self.x[i_par:i_par + n_bins]
     i_par += n_bins
     asqr_beta = tuple(self.x[i_par:i_par + 6])
-    i_par += 6
-    sigmaE_scale = self.x[i_par]
-    i_par += 1
-    sigmaE_bins = self.x[i_par:i_par + n_bins]
-    i_par += n_bins
-    sigmaE_beta = tuple(self.x[i_par:i_par + 6])
     i_par += 6
     assert (i_par == len(self.x))
 
@@ -109,60 +118,59 @@ class RefineCryoemErrors(RefineBase):
     h.reshape(flex.grid(self.nmp, self.nmp))
 
     # Loop over bins to accumulate target, gradient, Hessian
-    ma = self.sumfsqr_miller # Miller array holding associated information
+    sumfsqr_miller = self.sumfsqr_miller
     i_bin_used = 0 # Keep track in case full range of bins not used
-    for i_bin in ma.binner().range_used():
-      sel = ma.binner().selection(i_bin)
-      ma_sel = ma.select(sel)
+    for i_bin in sumfsqr_miller.binner().range_used():
+      sel = sumfsqr_miller.binner().selection(i_bin)
+      sumfsqr_sel = sumfsqr_miller.select(sel)
 
       # Make Miller array as basis for computing aniso corrections in bin
       # Let u = A^2*sigmaT to simplify computation of derivatives
-      ones_array = flex.double(ma_sel.size(), 1)
-      all_ones = ma_sel.customized_copy(data=ones_array)
-      beta_miller_A = all_ones.apply_debye_waller_factors(
+      ones_array = flex.double(sumfsqr_sel.size(), 1)
+      all_ones = sumfsqr_sel.customized_copy(data=ones_array)
+      beta_miller_Asqr = all_ones.apply_debye_waller_factors(
         u_star=adptbx.beta_as_u_star(asqr_beta))
       u_terms = (asqr_scale * sigmaT_bins[i_bin_used]
-        * self.target_spectrum[i_bin_used]) * beta_miller_A.data()
-      beta_miller_E = all_ones.apply_debye_waller_factors(
-        u_star=adptbx.beta_as_u_star(sigmaE_beta))
-      sigmaE_terms = ((sigmaE_scale * sigmaE_bins[i_bin_used])
-        * beta_miller_E.data())
+        * self.target_spectrum[i_bin_used]) * beta_miller_Asqr.data()
 
-      # Variance term per reflection is function of these terms
-      u2sigE = 2 * u_terms + sigmaE_terms
-      var_terms = u2sigE * sigmaE_terms
-
+      # Noise is total power minus signal, but make sure it is positive
       f1f2cos = self.f1f2cos_miller.data().select(sel)
       sumfsqr = self.sumfsqr_miller.data().select(sel)
-      # Leave out constant twologpi*ma_sel.size()
-      minusLL_terms = (sumfsqr * (u_terms + sigmaE_terms)
-        - 2 * u_terms * f1f2cos) / var_terms + flex.log(var_terms)
-      f += flex.sum(minusLL_terms)
+      sigmaE_terms = sumfsqr/2 - f1f2cos
+      mf1000 = sumfsqr/2000
+      sigmaE_terms = (sigmaE_terms+mf1000 + flex.abs(sigmaE_terms - mf1000))/2
+
+      # Use local sphere fsc to compute relative weight of local vs global fitting
+      # Steepness of sigmoid controlled by factor applied to fsc
+      fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+      steep = 12.
+      wt_terms = flex.exp(steep*fsc)
+      wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
+      meanwt = flex.mean_default(wt_terms,0.)
+      sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
+      s2sigE = 2*sigmaS_terms + sigmaE_terms
+      var_terms = s2sigE*sigmaE_terms
+
+      # Leave out constant twologpi * number of reflections involved
+      assert (flex.min(var_terms) > 0.)
+      minusLL_terms = (sumfsqr * (sigmaS_terms + sigmaE_terms)
+        - 2 * sigmaS_terms * f1f2cos) / var_terms + flex.log(var_terms)
+      f += subsample*flex.sum(minusLL_terms)
 
       fgh_a_restraint = self.sphericity_restraint(asqr_beta,
           do_gradient, do_hessian, sigma_factor = 2.) # Looser for amplitude-squared
-      f += fgh_a_restraint[0]
-      fgh_e_restraint = self.sphericity_restraint(sigmaE_beta,
-          do_gradient, do_hessian)
-      f += fgh_e_restraint[0]
+      f += meanwt * fgh_a_restraint[0]
 
       if do_gradient:
-        # Define some intermediate results needed below
-        u2sigE2 = flex.pow2(u2sigE)
-        sigmaE_sqr = flex.pow2(sigmaE_terms)
-        sumsqrcos = sumfsqr + 2 * f1f2cos
-        hyposqr = sumfsqr - 2 * f1f2cos
+        s2sigE2 = flex.pow2(s2sigE)
+        sumsqrcos = sumfsqr + 2*f1f2cos
         if (self.refine_Asqr_scale or self.refine_sigmaT_bins
               or self.refine_Asqr_beta):
-          dmLL_by_du_terms = (2 * u2sigE - sumsqrcos) / u2sigE2
-        if (self.refine_sigmaE_scale or self.refine_sigmaE_bins
-              or self.refine_sigmaE_beta):
-          dmLL_by_dsigE_terms = (
-            (2 * sigmaE_terms - hyposqr) / (2 * sigmaE_sqr)
-            - sumsqrcos / (2 * u2sigE2) + 1. / (u2sigE))
-        if self.refine_Asqr_beta or self.refine_sigmaE_beta:
+          dmLL_by_dsigmaS_terms = (2 * s2sigE - sumsqrcos) / s2sigE2
+          dmLL_by_du_terms = wt_terms * dmLL_by_dsigmaS_terms
+        if self.refine_Asqr_beta:
           h_as_double, k_as_double, l_as_double = (
-            ma_sel.indices().as_vec3_double().parts())
+            sumfsqr_sel.indices().as_vec3_double().parts())
           hh = flex.pow2(h_as_double)
           kk = flex.pow2(k_as_double)
           ll = flex.pow2(l_as_double)
@@ -175,14 +183,13 @@ class RefineCryoemErrors(RefineBase):
         if self.refine_Asqr_scale: # Only affects U
           du_by_dAsqr_scale = u_terms / asqr_scale
           i_Asqr_scale = i_ref # Save for mixed second derivatives
-          g[i_Asqr_scale] += flex.sum(dmLL_by_du_terms * du_by_dAsqr_scale)
+          g[i_Asqr_scale] += subsample*flex.sum(dmLL_by_du_terms*du_by_dAsqr_scale)
           i_ref += 1
         i_par += 1
         if self.refine_sigmaT_bins: # Only affects U, just current bin
-          du_by_dsigmaT_bin = (asqr_scale
-            * self.target_spectrum[i_bin_used]) * beta_miller_A.data()
+          du_by_dsigmaT_bin = u_terms / sigmaT_bins[i_bin_used]
           i_sigmaT_bin = i_ref+i_bin_used # Save for restraint terms below
-          g[i_sigmaT_bin] += flex.sum(dmLL_by_du_terms*du_by_dsigmaT_bin)
+          g[i_sigmaT_bin] += subsample*flex.sum(dmLL_by_du_terms*du_by_dsigmaT_bin)
           i_ref += self.n_bins
         i_par += self.n_bins
         if self.refine_Asqr_beta:  # Only affects U
@@ -191,64 +198,37 @@ class RefineCryoemErrors(RefineBase):
           for i_beta in range(6):
             du_by_dbetaA.append(hh_factors[i_beta]*u_terms)
           for i_beta in range(6):
-            g[i_ref+i_beta] += flex.sum(dmLL_by_du_terms * du_by_dbetaA[i_beta])
-            g[i_ref+i_beta] += fgh_a_restraint[1][i_beta] # Restraint term
+            g[i_ref+i_beta] += subsample*flex.sum(dmLL_by_du_terms * du_by_dbetaA[i_beta])
+            g[i_ref+i_beta] += meanwt * fgh_a_restraint[1][i_beta] # Restraint term
           i_ref += 6
         i_par += 6
 
-        # Note that sigmaE_scale is fixed if sigmaE_bins and/or
-        # sigmaE_beta are refined
-        if self.refine_sigmaE_scale:
-          dsigE_by_dscaleE = sigmaE_terms/sigmaE_scale
-          g[i_ref] += flex.sum(dmLL_by_dsigE_terms * dsigE_by_dscaleE)
-          i_ref += 1
-        i_par += 1
-        if self.refine_sigmaE_bins: # Just current bin
-          dsigE_by_dsigmaE_bin = sigmaE_scale*beta_miller_E.data()
-          g[i_ref+i_bin_used] += flex.sum(
-            dmLL_by_dsigE_terms * dsigE_by_dsigmaE_bin)
-          i_ref += self.n_bins
-        i_par += self.n_bins
-        if self.refine_sigmaE_beta: # Only affects SigmaE
-          dsigE_by_dbetaE = []
-          for i_beta in range(6):
-            dsigE_by_dbetaE.append(hh_factors[i_beta]*sigmaE_terms)
-          for i_beta in range(6):
-            g[i_ref+i_beta] += flex.sum(dmLL_by_dsigE_terms * dsigE_by_dbetaE[i_beta])
-            g[i_ref+i_beta] += fgh_e_restraint[1][i_beta] # Restraint term
-
-          i_ref += 6
-        i_par += 6
         assert (i_par == len(self.x))
         assert (i_ref == self.nmp)
 
         if do_hessian:
-          u2sigE3 = u2sigE * u2sigE2
+          s2sigE3 = s2sigE * s2sigE2
           if (self.refine_Asqr_scale or self.refine_sigmaT_bins
                 or self.refine_Asqr_beta):
-            d2mLL_by_du2_terms = 4 * (
-              sumsqrcos - 2 * u_terms - sigmaE_terms) / u2sigE3
-          if (self.refine_sigmaE_scale or self.refine_sigmaE_bins
-                or self.refine_sigmaE_beta):
-            d2mLL_by_dsigE2_terms = ( (hyposqr - sigmaE_terms)
-              / (sigmaE_sqr * sigmaE_terms) + sumsqrcos/u2sigE3 - 1./u2sigE2)
+
+            d2mLL_by_dsigmaS2_terms = 4 * (
+              sumsqrcos - 2 * sigmaS_terms - sigmaE_terms) / s2sigE3
+            d2mLL_by_du2_terms = flex.pow2(wt_terms) * d2mLL_by_dsigmaS2_terms
 
           i_par = 0 # Keep track of index for unrefined parameters
           i_ref = 0  # Keep track of refined parameters
-          # Note that various second derivatives are zero, i.e. of:
-          #   u wrt Asqr_scale and sigmaT_bins
-          #   sigmaE wrt sigmaE_bins and sigmaE_scale
+          # Note that second derivatives u wrt Asqr_scale and sigmaT_bins are 0
           if self.refine_Asqr_scale: # Only affects U
-            h[i_ref,i_ref] += (flex.sum(d2mLL_by_du2_terms
+            h[i_ref,i_ref] += subsample*(flex.sum(d2mLL_by_du2_terms
               * flex.pow2(du_by_dAsqr_scale)))
             i_ref += 1
           i_par += 1
           if self.refine_sigmaT_bins: # Only affects U, current bin
-            h[i_sigmaT_bin,i_sigmaT_bin] += flex.sum(
+            h[i_sigmaT_bin,i_sigmaT_bin] += subsample*flex.sum(
               d2mLL_by_du2_terms * flex.pow2(du_by_dsigmaT_bin))
             if self.refine_Asqr_scale:
               d2u_by_dAsqr_scale_by_dsigmaT_bin = du_by_dsigmaT_bin / asqr_scale
-              cross_term = flex.sum(
+              cross_term = subsample*flex.sum(
                 d2mLL_by_du2_terms * du_by_dAsqr_scale * du_by_dsigmaT_bin +
                 dmLL_by_du_terms * d2u_by_dAsqr_scale_by_dsigmaT_bin)
               h[i_Asqr_scale,i_sigmaT_bin] += cross_term
@@ -259,64 +239,33 @@ class RefineCryoemErrors(RefineBase):
             for i_beta in range(6):
               if self.refine_Asqr_scale: # Add Asqr_scale mixed derivatives
                 d2u_by_dAsqr_scale_by_dbetaA = du_by_dbetaA[i_beta] / asqr_scale
-                cross_term = flex.sum(
+                cross_term = subsample*flex.sum(
                   d2mLL_by_du2_terms * du_by_dAsqr_scale * du_by_dbetaA[i_beta] +
                   dmLL_by_du_terms * d2u_by_dAsqr_scale_by_dbetaA)
                 h[i_Asqr_scale,i_ref+i_beta] += cross_term
                 h[i_ref+i_beta,i_Asqr_scale] += cross_term
-                # The following mixed derivatives match finite differences, but don't help
-                # if self.refine_sigmaT_bins: # Add sigmaT_bin mixed derivatives
-                #   d2u_by_dsigmaT_bin_by_dbetaA = du_by_dbetaA[i_beta] / sigmaT_bins[i_bin_used]
-                #   cross_term = flex.sum(
-                #     d2mLL_by_du2_terms * du_by_dsigmaT_bin * du_by_dbetaA[i_beta] +
-                #     dmLL_by_du_terms * d2u_by_dsigmaT_bin_by_dbetaA)
-                #   h[i_sigmaT_bin,i_ref+i_beta] += cross_term
-                #   h[i_ref+i_beta,i_sigmaT_bin] += cross_term
               for j_beta in range(6):
-                h[i_ref+i_beta, i_ref+j_beta] += (
+                h[i_ref+i_beta, i_ref+j_beta] += subsample*(
                   flex.sum(d2mLL_by_du2_terms * du_by_dbetaA[i_beta]*du_by_dbetaA[j_beta])
                   + flex.sum(dmLL_by_du_terms * hh_factors[i_beta]*hh_factors[j_beta]*u_terms) )
                 # Also add restraint term
-                h[i_ref+i_beta,i_ref+j_beta] += fgh_a_restraint[2][i_beta, j_beta]
+                h[i_ref+i_beta,i_ref+j_beta] += meanwt * fgh_a_restraint[2][i_beta, j_beta]
             i_ref += 6
           i_par += 6
 
-          # Note that sigmaE_scale and either sigmaE_bins or sigmaE_beta are
-          # mutually exclusive in practice. If scale and bins were refined
-          # simultaneously with no restraints, there would be one redundant parameter
-          if self.refine_sigmaE_scale:
-            h[i_ref, i_ref] += flex.sum(
-              d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dscaleE))
-            i_ref += 1
-          i_par += 1
-          if self.refine_sigmaE_bins:
-            h[i_ref+i_bin_used, i_ref+i_bin_used] += flex.sum(
-              d2mLL_by_dsigE2_terms * flex.pow2(dsigE_by_dsigmaE_bin))
-            i_ref += self.n_bins
-          i_par += self.n_bins
-          if self.refine_sigmaE_beta: # Only affects SigmaE
-            for i_beta in range(6):
-              for j_beta in range(6):
-                h[i_ref+i_beta, i_ref+j_beta] += (
-                  flex.sum(d2mLL_by_dsigE2_terms * dsigE_by_dbetaE[i_beta]*dsigE_by_dbetaE[j_beta])
-                  + flex.sum(dmLL_by_dsigE_terms * hh_factors[i_beta]*hh_factors[j_beta]*sigmaE_terms) )
-                h[i_ref+i_beta,i_ref+j_beta] += fgh_e_restraint[2][i_beta, j_beta]
-            i_ref += 6
-          i_par += 6
           assert (i_par == len(self.x))
           assert (i_ref == self.nmp)
 
-      # Add other restraint terms
       # Restrain log of sigmaT_bins to 0, but downweighting low resolution
-      d_bin = math.sqrt(self.ssqr_bins[i_bin_used])
-      sigmascale = 0.15 + 0.001 / d_bin ** 3
+      d_bin = 1./math.sqrt(self.ssqr_bins[i_bin_used])
+      sigmascale = 0.15 + 0.0005 * d_bin**3
       stbin = sigmaT_bins[i_bin_used]
       logbin = math.log(stbin)
-      f += (logbin/sigmascale)**2 / 2
+      f += meanwt * (logbin/sigmascale)**2 / 2
       if do_gradient and self.refine_sigmaT_bins:
-        g[i_sigmaT_bin] += logbin / (stbin * sigmascale**2)
+        g[i_sigmaT_bin] += meanwt * logbin / (stbin * sigmascale**2)
         if do_hessian:
-          h[i_sigmaT_bin,i_sigmaT_bin] += (1.-logbin)/(stbin*sigmascale)**2
+          h[i_sigmaT_bin,i_sigmaT_bin] += meanwt * (1.-logbin)/(stbin*sigmascale)**2
 
       i_bin_used += 1
 
@@ -367,40 +316,22 @@ class RefineCryoemErrors(RefineBase):
     if self.refine_Asqr_beta:
       large_shifts.extend(self.large_shifts_beta)
     i_par += 6
-    if self.refine_sigmaE_scale:
-      large_shifts.append(0.05)
-    i_par += 1
-    if self.refine_sigmaE_bins:
-      for i_bin in range(self.n_bins):
-        large_shifts.append(self.x[i_par+i_bin]/4.)
-    i_par += self.n_bins
-    if self.refine_sigmaE_beta:
-      large_shifts.extend(self.large_shifts_beta)
-    i_par += 6
     assert (i_par == len(self.x))
     assert (len(large_shifts) == self.nmp)
     return large_shifts
 
   def set_macrocycle_protocol(self, macrocycle_protocol):
     # Possible parameters include overall scale of signal,
-    # bin parameters for signal (BEST-like curve), anisotropy tensor for signal,
-    # bin parameters for error, anisotropy tensor for error
-    # Start with everything being refined, turn some things off for different protocols
+    # bin parameters for signal (BEST-like curve), anisotropy tensor for signal
     self.refine_mask = []  # Indicates "all" if left empty
     self.refine_Asqr_scale = True
     self.refine_sigmaT_bins = True
     self.refine_Asqr_beta = True
-    self.refine_sigmaE_scale = True
-    self.refine_sigmaE_bins = True
-    self.refine_sigmaE_beta = True
 
     # For each protocol, define variables that aren't refined
+    # Currently only have default protocol to refine everything.
     if macrocycle_protocol == ["default"]:
-      self.refine_sigmaE_scale = False
-
-    elif macrocycle_protocol == ["Eprior"]:
-      self.refine_sigmaE_bins = False
-      self.refine_sigmaE_beta = False
+      pass
 
     else:
       print("Macrocycle protocol", macrocycle_protocol, " not recognised")
@@ -428,24 +359,6 @@ class RefineCryoemErrors(RefineBase):
     else:
       self.refine_mask.extend([False for i in range(6)])
 
-    if self.refine_sigmaE_scale:
-      self.refine_mask.append(True)
-      self.nmp += 1
-    else:
-      self.refine_mask.append(False)
-
-    if self.refine_sigmaE_bins:
-      self.refine_mask.extend([True for i in range(self.n_bins)])
-      self.nmp += self.n_bins
-    else:
-      self.refine_mask.extend([False for i in range(self.n_bins)])
-
-    if self.refine_sigmaE_beta:
-      self.refine_mask.extend([True for i in range(6)])
-      self.nmp += 6
-    else:
-      self.refine_mask.extend([False for i in range(6)])
-
     assert (len(self.refine_mask) == len(self.x))
 
   def macrocycle_parameter_names(self, full_list=False):
@@ -462,18 +375,6 @@ class RefineCryoemErrors(RefineBase):
       parameter_names.append("Asqr_beta12")
       parameter_names.append("Asqr_beta13")
       parameter_names.append("Asqr_beta23")
-    if full_list or self.refine_sigmaE_scale:
-      parameter_names.append("sigmaE_scale")
-    if full_list or self.refine_sigmaE_bins:
-      for i in range(self.n_bins):
-        parameter_names.append("sigmaE_bin#" + str(i + 1))
-    if full_list or self.refine_sigmaE_beta:
-      parameter_names.append("sigmaE_beta11")
-      parameter_names.append("sigmaE_beta22")
-      parameter_names.append("sigmaE_beta33")
-      parameter_names.append("sigmaE_beta12")
-      parameter_names.append("sigmaE_beta13")
-      parameter_names.append("sigmaE_beta23")
 
     if not full_list:
       assert (len(parameter_names) == self.nmp)
@@ -497,18 +398,6 @@ class RefineCryoemErrors(RefineBase):
       repar.extend([Reparams(False) for i in range(6)])
     i_par += 6
 
-    if self.refine_sigmaE_scale:
-      repar.append(Reparams(False))
-    i_par += 1
-
-    if self.refine_sigmaE_bins:
-      repar.extend([Reparams(False) for i in range(self.n_bins)])
-    i_par += self.n_bins
-
-    if self.refine_sigmaE_beta:
-      repar.extend([Reparams(False) for i in range(6)])
-    i_par += 6
-
     assert (i_par == len(self.x))
     assert (len(repar) == self.nmp)
 
@@ -520,7 +409,7 @@ class RefineCryoemErrors(RefineBase):
 
     if self.refine_Asqr_scale:
       this_bound = Bounds()
-      this_bound.lower_on(0.001*self.start_x[i_par])
+      this_bound.lower_on(0.0001*self.start_x[i_par])
       bounds_list.append(this_bound)
     i_par += 1
 
@@ -533,28 +422,9 @@ class RefineCryoemErrors(RefineBase):
 
     if self.refine_Asqr_beta:
       this_bound = Bounds()
-      this_bound.off()
+      # this_bound.off()
       for i in range(6):
-        bounds_list.append(this_bound)
-    i_par += 6
-
-    if self.refine_sigmaE_scale:
-      this_bound = Bounds()
-      this_bound.lower_on(0.01)
-      bounds_list.append(this_bound)
-    i_par += 1
-
-    if self.refine_sigmaE_bins:
-      for i_bin in range(self.n_bins):
-        this_bound = Bounds()
-        this_bound.lower_on(0.001*self.start_x[i_par+i_bin])
-        bounds_list.append(this_bound)
-    i_par += self.n_bins
-
-    if self.refine_sigmaE_beta:
-      this_bound = Bounds()
-      this_bound.off()
-      for i in range(6):
+        this_bound.on(-25*self.large_shifts_beta[i],25*self.large_shifts_beta[i])
         bounds_list.append(this_bound)
     i_par += 6
 
@@ -591,61 +461,7 @@ class RefineCryoemErrors(RefineBase):
     self.current_statistics(level=level, full_list=True)
 
   def cleanup(self):
-    # Take out overall scale and isotropic B from sigmaT_bins, put into asqr_scale and asqr_beta
-    # Take out overall isotropic B from anisotropy in errors, put into bins
-
-    n_bins = self.n_bins
-    # Asqr_scale = self.x[0] # Unneeded parameters listed for completeness
-    sigmaT_bins = self.x[1:n_bins + 1]
-    # Asqr_beta = self.x[n_bins + 1 : n_bins + 7]
-    sigmaE_scale = self.x[n_bins + 7]
-    # sigmaE_bins = self.x[n_bins + 8 : 2*n_bins + 8]
-    sigmaE_beta = tuple(self.x[2*n_bins + 8 : 2*n_bins + 14])
-    sumw = sumwx = sumwa = sumwx2 = sumwxa = 0.
-    for i_bin in range(n_bins):
-      x = self.ssqr_bins[i_bin]
-      d_bin = math.sqrt(x)
-      a = math.log(sigmaT_bins[i_bin])
-      sigmascale = 0.15 + 0.001 / d_bin**3  # Downweight low resolution as in refinement
-      w = 1./sigmascale**2
-      sumw += w
-      sumwx += w * x
-      sumwa += w * a
-      sumwx2 += w * x ** 2
-      sumwxa += w * x * a
-
-    if self.refine_sigmaT_bins:
-      # Make sigmaT_bins values as close as possible to 1 by taking out overall scale
-      # and B, and putting them into asqr_scale and asqr_beta terms
-      slope_a = (sumw * sumwxa - (sumwx * sumwa)) / (sumw * sumwx2 - sumwx ** 2)
-      intercept_a = (sumwa - slope_a * sumwx) / sumw
-      scale_a = math.exp(intercept_a)
-      deltaB_a = -4 * slope_a
-      self.x[0] = self.x[0] * scale_a  # Update overall scale
-      for i_bin in range(n_bins): # Take slope out of sigmaT_bins
-        self.x[1 + i_bin] = self.x[1 + i_bin] / scale_a * math.exp(deltaB_a * self.ssqr_bins[i_bin] / 4)
-      delta_beta_a = list(adptbx.u_iso_as_beta(self.unit_cell,adptbx.b_as_u(deltaB_a)))
-      for i_beta in range(6):  # Then put slope into asqr_beta
-        self.x[1 + n_bins + i_beta] = self.x[1 + n_bins + i_beta] + delta_beta_a[i_beta]
-
-    if not (sigmaE_scale == 1.): # Put change into bins before next step
-      assert (sigmaE_scale > 0.)
-      for i_bin in range(n_bins):
-        self.x[8 + n_bins + i_bin] = self.x[8 + n_bins + i_bin] / sigmaE_scale
-      self.x[7 + n_bins] = 1.
-      sigmaE_scale = 1.
-
-    if self.refine_sigmaE_beta:
-      # Extract isotropic B from sigmaE_beta, put it into sigmaE_bins
-      sigmaE_u_iso = adptbx.beta_as_u_iso(self.unit_cell, sigmaE_beta)
-      sigmaE_delta_beta = list(adptbx.u_iso_as_beta(self.unit_cell, sigmaE_u_iso))
-      sigmaE_b_iso = adptbx.u_as_b(sigmaE_u_iso)
-      for i_bin in range(n_bins):  # Put isotropic B into bins
-        self.x[8 + n_bins + i_bin] = (self.x[8 + n_bins + i_bin]
-          * math.exp(-sigmaE_b_iso * self.ssqr_bins[i_bin] / 4))
-      for i_beta in range(6):  # Remove isotropic B from sigmaE_beta
-        self.x[8 + 2*n_bins + i_beta] = (
-          self.x[8 + 2*n_bins + i_beta] - sigmaE_delta_beta[i_beta])
+    pass
 
 def default_target_spectrum(ssqr):
   # Placeholder for something better based on analysis of cryoEM reconstructions
@@ -1014,9 +830,6 @@ def flatten_model_region(mmm, d_min):
   mean_map2 = flex.sum(wmm2.map_data()) / weighted_points
   mm2.set_map_data(map_data = mm2.map_data() +
       mean_map2 * mask_data - delta_mm.map_data()/2)
-  # mm.write_map('masked_map.map')
-  # mm1.write_map('masked_half_map_1.map')
-  # mm2.write_map('masked_half_map_2.map')
   mmm.remove_map_manager_by_id('mask')
 
 def add_local_squared_deviation_map(
@@ -1052,12 +865,10 @@ def add_local_squared_deviation_map(
     mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
 def auto_sharpen_isotropic(mmm, d_min):
-  working_mmm = mmm.deep_copy()
-
-  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min,
-      map_id='map_manager_1')
-  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min,
-      map_id='map_manager_2')
+  mm1 = mmm.map_manager_1()
+  mc1 = mm1.map_as_fourier_coefficients(d_min=d_min)
+  mm2 = mmm.map_manager_2()
+  mc2 = mm2.map_as_fourier_coefficients(d_min=d_min)
 
   nref = mc1.size()
   num_per_bin = 1000
@@ -1098,10 +909,11 @@ def auto_sharpen_isotropic(mmm, d_min):
   all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   mc1 = mc1.customized_copy(data = mc1.data()*b_terms_miller.data())
-  working_mmm.add_map_from_fourier_coefficients(mc1, map_id='map_manager_1')
+  work_mm1 = mm1.fourier_coefficients_as_map_manager(mc1)
   mc2 = mc2.customized_copy(data = mc2.data()*b_terms_miller.data())
-  working_mmm.add_map_from_fourier_coefficients(mc2, map_id='map_manager_2')
-  return working_mmm
+  work_mm2 = mm2.fourier_coefficients_as_map_manager(mc2)
+  work_mmm = map_model_manager(map_manager_1=work_mm1, map_manager_2=work_mm2)
+  return work_mmm
 
 def add_ordered_volume_mask(
     mmm, d_min, rad_factor=2, protein_mw=None, nucleic_mw=None,
@@ -1122,10 +934,12 @@ def add_ordered_volume_mask(
   nucleic_mw*: molecular weight of nucleic acid expected in map
   map_id_out: identifier of output map, defaults to ordered_volume_mask
 
-  * Note that at least one of protein_mw and nucleic_mw must be specified
+  * Note that at least one of protein_mw and nucleic_mw must be specified,
+    and that the map must be complete
   """
 
-  assert((protein_mw is not None) or (nucleic_mw is not None))
+  assert (protein_mw is not None) or (nucleic_mw is not None)
+  assert mmm.map_manager().unit_cell_grid == mmm.map_manager().map_data().all()
 
   # Compute local average of squared density, using a sphere that will cover a
   # sufficient number of independent points and extending at least 5 A to
@@ -1136,20 +950,19 @@ def add_ordered_volume_mask(
   # is enforced to explore next-nearest-neighbour density.
   radius = max(d_min*rad_factor, 5.)
 
-  working_mmm = auto_sharpen_isotropic(mmm,d_min)
+  d_work = (d_min + radius) / 2 # Save some time by lowering resolution
+  working_mmm = auto_sharpen_isotropic(mmm,d_work)
+
+  # Add difference map to map_model_manager
   wmm1 = working_mmm.map_manager_1()
   wmm2 = working_mmm.map_manager_2()
-  # Input map_manager may contain arbitrarily filtered map that is not the
-  # simple average of the two half-maps
-  mm_mean = wmm1.customized_copy(map_data = (wmm1.map_data() + wmm2.map_data()) / 2)
-  working_mmm.set_map_manager(mm_mean)
   delta_mm = wmm1.customized_copy(map_data = wmm1.map_data() - wmm2.map_data())
   working_mmm.add_map_manager_by_id(delta_mm, map_id = 'delta_map')
 
-  add_local_squared_deviation_map(working_mmm, radius, d_min,
+  add_local_squared_deviation_map(working_mmm, radius, d_work,
       map_id_in='map_manager', map_id_out='map_variance')
   mvmm = working_mmm.get_map_manager_by_id('map_variance')
-  add_local_squared_deviation_map(working_mmm, radius, d_min,
+  add_local_squared_deviation_map(working_mmm, radius, d_work,
       map_id_in='delta_map', map_id_out='noise_variance')
   # When maps are masked near the corners and edges, both signal and noise can
   # approach zero. Avoid getting close to dividing zero by zero, by adding a
@@ -1160,9 +973,9 @@ def add_ordered_volume_mask(
   nvmm_max = flex.max(nvmm.map_data())
   nvmm.set_map_data(map_data = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.)
 
-  # Compute Z-score where values much greater than 1 indicate signal
-  mm_Zscore = mvmm.customized_copy(
-      map_data = flex.sqrt(mvmm.map_data()/nvmm.map_data()))
+  # Compute square of Z-score where values much greater than 1 indicate signal
+  mm_Zscore_sqr = mvmm.customized_copy(
+      map_data = mvmm.map_data()/nvmm.map_data())
 
   # Choose enough points in averaged squared density map to covered expected
   # ordered structure. An alternative that could be implemented is to assign
@@ -1171,8 +984,8 @@ def add_ordered_volume_mask(
   # the effective number of independent points in the averaging sphere to
   # calibrate the chi-square distribution.
   map_volume = working_mmm.map_manager().unit_cell().volume()
-  Zscore_map_data = mm_Zscore.map_data()
-  numpoints = Zscore_map_data.size()
+  Zscore_sqr_map_data = mm_Zscore_sqr.map_data()
+  numpoints = Zscore_sqr_map_data.size()
   # Convert content into volume using partial specific volumes
   target_volume = 0.
   if protein_mw is not None:
@@ -1188,8 +1001,8 @@ def add_ordered_volume_mask(
   # Find threshold for target number of masked points
   from cctbx.maptbx.segment_and_split_map import find_threshold_in_map
   threshold = find_threshold_in_map(target_points = target_points,
-      map_data = Zscore_map_data)
-  temp_bool_3D = (Zscore_map_data >=  threshold)
+      map_data = Zscore_sqr_map_data)
+  temp_bool_3D = (Zscore_sqr_map_data >=  threshold)
   # as_double method doesn't work for multidimensional flex.bool
   mask_shape = temp_bool_3D.all()
   overall_mask = temp_bool_3D.as_1d().as_double()
@@ -1243,6 +1056,10 @@ def get_distance_from_center(c, unit_cell, unit_cell_grid = None,
   return d
 
 def get_maximal_mask_radius(mm_ordered_mask):
+
+  # Check assumption that this is a full map
+  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
   d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell)
@@ -1257,6 +1074,10 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   Get radius of sphere around map center enclosing desired fraction of
   ordered density
   """
+
+  # Test assumption that this is a full map
+  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
   d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell)
@@ -1268,12 +1089,179 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   mask_radius = mask_distances[math.floor(frac_coverage*masked_points)-1]
   return mask_radius
 
-def run_refine_cryoem_errors(
+def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
+  d_star_sq = f_array.d_star_sq().data()
+  num_tot = d_star_sq.size()
+  n_bins = round(max(min(num_tot / num_per_bin, max_bins),min_bins))
+  d_star_sq_min = flex.min(d_star_sq)
+  d_star_sq_max = flex.max(d_star_sq) * 1.00001
+  d_star_sq_step = (d_star_sq_max - d_star_sq_min) / n_bins
+  return d_star_sq_step
+
+def get_flex_max(a,b):
+  c = a.deep_copy()
+  sel = (b>a)
+  c.set_selected(sel,b.select(sel))
+  return c
+
+def write_mtz(miller, file_name, root):
+  mtz_dataset = miller.as_mtz_dataset(column_root_label=root)
+  mtz_object=mtz_dataset.mtz_object()
+  dm = DataManager()
+  dm.set_overwrite(True)
+  dm.write_miller_array_file(mtz_object, filename=file_name)
+
+def largest_prime_factor(i):
+  from libtbx.math_utils import prime_factors_of
+  pf = prime_factors_of(i)
+  if len(pf) == 0: # 0 or 1
+    return 1
+  else:
+    return pf[-1]
+
+def next_allowed_grid_size(i, largest_prime=5):
+  if i<2:
+    j = 2
+  elif i%2 == 1:
+    j = i+1
+  else:
+    j = i
+  while (largest_prime_factor(j) > largest_prime):
+    j += 2
+  return j
+
+def intensities_as_expanded_map(mm,marray):
+  '''
+  Take miller array (assumed here to be real-valued and in P1, but could be
+  generalised), place values in a map, offset to the center.
+  '''
+  h_indices, k_indices, l_indices = marray.indices().as_vec3_double().parts()
+  h_indices = h_indices.iround()
+  k_indices = k_indices.iround()
+  l_indices = l_indices.iround()
+  hmin = flex.min(h_indices)
+  hmax = flex.max(h_indices)
+  kmin = flex.min(k_indices)
+  kmax = flex.max(k_indices)
+  lmin = flex.min(l_indices)
+  lmax = flex.max(l_indices)
+  assert ((hmin < 0) and (hmax >= -hmin))
+  assert ((kmin < 0) and (kmax >= -kmin))
+  assert (lmin == 0)
+  data = marray.data()
+
+  # Shift hkl to center, add buffer on edges to get to sensible grid for FFT
+  # Apply Friedel symmetry to get full sphere of Fourier coefficients
+  h_range = next_allowed_grid_size(2*hmax+2)
+  h_offset = h_range//2
+  h_map_indices = h_offset + h_indices
+  h_inverse_indices = h_offset - h_indices
+
+  k_range = next_allowed_grid_size(2*kmax+2)
+  k_offset = k_range//2
+  k_map_indices = k_offset + k_indices
+  k_inverse_indices = k_offset - k_indices
+
+  l_range = next_allowed_grid_size(2*lmax+2)
+  l_offset = l_range//2
+  l_map_indices = l_offset + l_indices
+  l_inverse_indices = l_offset - l_indices
+
+  miller_as_map_data = flex.double(h_range*k_range*l_range,0.)
+  miller_as_map_data.reshape(flex.grid(h_range,k_range,l_range))
+  for ih,ik,il,coeff in zip(h_map_indices,k_map_indices,l_map_indices,data):
+    miller_as_map_data[ih,ik,il] = coeff
+  for ih,ik,il,coeff in zip(h_inverse_indices,k_inverse_indices,l_inverse_indices,data):
+    miller_as_map_data[ih,ik,il] = coeff
+
+  # Unit cell for reciprocal space sphere of data is obtained from the reciprocal cell
+  # parameters for the coefficients computed from the boxed map, times the
+  # extents in h,k,l
+  from cctbx import crystal
+  abcstar = mm.crystal_symmetry().unit_cell().reciprocal_parameters()[:3]
+  ucr = tuple(list(flex.double(abcstar)*flex.double((h_range,k_range,l_range)))+[90,90,90])
+  crystal_symmetry=crystal.symmetry(ucr,1)
+  from iotbx.map_manager import map_manager
+  mm_data = map_manager(map_data=miller_as_map_data,unit_cell_grid=miller_as_map_data.all(),
+      unit_cell_crystal_symmetry=crystal_symmetry,wrapping=False)
+  return group_args(mm_data = mm_data,
+                    h_map_indices = h_map_indices,
+                    k_map_indices = k_map_indices,
+                    l_map_indices = l_map_indices)
+
+def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map_indices):
+  '''
+  Fetch miller array data back from map. Only take unique values, ignoring
+  Friedel mates.
+  '''
+  rmap_data = rmm.map_data()
+  miller_data = flex.double()
+  for ih,ik,il in zip(h_map_indices,k_map_indices,l_map_indices):
+    miller_data.append(rmap_data[ih,ik,il])
+  miller_array = marray.customized_copy(data = miller_data)
+  return miller_array
+
+def local_mean_intensities(mm, d_min, intensities, r_star):
+  """
+  Compute local means of input intensities (or amplitudes)
+
+  Compulsory argument:
+  mm: map_manager corresponding to system from which intensities are obtained
+  d_min: target resolution of locally-averaged intensities
+  intensities: Terms to be locally averaged, extended by r_star from 1/d_min
+  r_star: radius in reciprocal space for averaging
+  """
+
+  # Turn intensity values into a spherical map inside a cube
+  results = intensities_as_expanded_map(mm,intensities)
+  coeffs_as_map = results.mm_data # map_manager with intensities
+  h_map_indices = results.h_map_indices # grid positions for original hkl in order
+  k_map_indices = results.k_map_indices
+  l_map_indices = results.l_map_indices
+
+  # Put map into map_model_manager to ensure matching grid for spherically-averaged map
+  rmmm = map_model_manager(map_manager = coeffs_as_map)
+
+  # Cell for "map" of intensities is reciprocal of real-space cell
+  # Compute reciprocal d_min as twice the grid spacing between intensities
+  rcp = coeffs_as_map.unit_cell().parameters()
+  nu, nv, nw = coeffs_as_map.map_data().all()
+  rdmin = 2*flex.min(flex.double(rcp[:3])/flex.double((nu,nv,nw)))
+  inverse_intensities = coeffs_as_map.map_as_fourier_coefficients(d_min=rdmin)
+
+  # Compute G-function, avoiding divide by zero and numerical precision issues
+  # for the origin term
+  stol = flex.sqrt(inverse_intensities.sin_theta_over_lambda_sq().data())
+  w = 4 * stol * math.pi * r_star
+  sel = (w == 0.)
+  w.set_selected(sel,0.0001)
+  sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+  sphere_reciprocal.set_selected(sel,1.)
+
+  # Spherically-averaged intensities from FT of product of FTs
+  prod_coeffs = inverse_intensities.customized_copy(
+      data = inverse_intensities.data()*sphere_reciprocal)
+  rmmm.add_map_from_fourier_coefficients(prod_coeffs, map_id='local_mean_map')
+  local_mean_as_map = rmmm.get_map_manager_by_id(map_id='local_mean_map')
+
+  # Associate map values with hkl using saved indices, then restrict to dmin
+  extended_mean = expanded_map_as_intensities(local_mean_as_map,intensities,
+      h_map_indices,k_map_indices,l_map_indices)
+
+  min_in = flex.min(intensities.data())
+  if min_in >= 0: # Make sure strictly non-negative remains non-negative
+    extended_mean = extended_mean.customized_copy( data =
+      (extended_mean.data()+min_in + flex.abs(extended_mean.data()-min_in))/2 )
+
+  local_mean = extended_mean.select(extended_mean.d_spacings().data() >= d_min)
+  return local_mean
+
+def assess_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
     ordered_mask_id='ordered_volume_mask',
-    sphere_cent=None, radius=None, verbosity=1, prior_params=None,
-    shift_map_origin=True, keep_full_map=False):
+    sphere_cent=None, radius=None, sphere_points=500,
+    verbosity=1, shift_map_origin=True, keep_full_map=False):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
 
@@ -1286,12 +1274,12 @@ def run_refine_cryoem_errors(
   map_1_id: identifier of first half-map, if different from default of
     map_manager_1
   map_2_id: same for second half-map
+  ordered_mask_id: identifier for mask defining ordered volume
   sphere_cent: center of sphere defining target region for analysis
     default is center of map
   radius: radius of sphere
     default (when sphere center not defined either) is 1/4 narrowest map width
-  prior_params: refined parameters from previous call, usually from the
-    whole reconstruction before focusing on a target region
+  sphere_points: number of reflections to use for local spherical average
   shift_map_origin: should map coefficients be shifted to correspond to
     original origin, rather than the origin being the corner of the box,
     default True
@@ -1300,7 +1288,6 @@ def run_refine_cryoem_errors(
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
   """
 
-  from scipy import interpolate
   from libtbx import group_args
   from iotbx.map_model_manager import map_model_manager
 
@@ -1314,10 +1301,10 @@ def run_refine_cryoem_errors(
   # Get map coefficients for maps after spherical masking
   ucpars = mmm.map_manager().unit_cell().parameters()
   if sphere_cent is None:
-    # Default to sphere in center of cell extending halfway to nearest edge
+    # Default to sphere in center of cell extending 2/3 distance to nearest edge
     sphere_cent = flex.double((ucpars[0], ucpars[1], ucpars[2]))/2.
     if radius is None:
-      radius = min(ucpars[0], ucpars[1], ucpars[2])/4.
+      radius = min(ucpars[0], ucpars[1], ucpars[2])/3.
   else:
     assert radius is not None
     sphere_cent = flex.double(sphere_cent)
@@ -1329,21 +1316,20 @@ def run_refine_cryoem_errors(
   cushion = flex.double(3,radius+padding)
   cart_min = flex.double(sphere_cent) - cushion
   cart_max = flex.double(sphere_cent) + cushion
-  for i in range(3): # Keep within unit cell
+  for i in range(3): # Keep within input map
     cart_min[i] = max(cart_min[i],0)
     cart_max[i] = min(cart_max[i],ucpars[i])
 
   cs = mmm.crystal_symmetry()
   uc = cs.unit_cell()
-  # working_mmm = map_model_manager()
+
   # Set some parameters that will be overwritten if masked and cut out
   over_sampling_factor = 1.
-  weighted_points = mmm.map_data().size()
   box_volume = uc.volume()
   masked_volume = box_volume
   d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
 
-  if keep_full_map:
+  if keep_full_map: # Rearrange later so this choice comes first?
     working_mmm = mmm.deep_copy()
   else:
     # Box the map within xyz bounds, converted to map grid units
@@ -1362,9 +1348,6 @@ def run_refine_cryoem_errors(
     working_mmm.apply_mask_to_maps()
     mask_info = working_mmm.mask_info()
 
-    # Keep track of weighted volume of map (in voxels) for determining relative
-    # scale of sigmaE in different subvolumes: includes disordered volume
-    weighted_points = mask_info.size*mask_info.mean # Weighted volume
     box_volume = uc.volume() * (
         working_mmm.map_data().size()/mmm.map_data().size())
     masked_volume = box_volume * mask_info.mean
@@ -1385,126 +1368,132 @@ def run_refine_cryoem_errors(
     over_sampling_factor = (cutout_ordered_mm.map_data().size() /
         (cutout_ordered_points * 6./math.pi) )
 
-    d_max = 2*(radius+padding) + d_min # Size of sphere plus a bit
+  # Compute local averages needed for initial covariance terms
+  # Do these calculations at extended resolution to avoid edge effects up to
+  # desired resolution
+  wuc = working_mmm.crystal_symmetry().unit_cell()
+  work_mm = working_mmm.map_manager()
+  v_star = 1./wuc.volume()
+  r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
+  d_min_extended = 1./(1./d_min + r_star)
+  map_sampling = flex.max(flex.double(wuc.parameters()[:3])/flex.double(work_mm.map_data().all()))
+  d_min_extended = max(d_min_extended, 2*map_sampling)
 
-  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_1_id)
-  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max, map_id=map_2_id)
+  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
+  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
 
-  # Default binner may be preferable, but probably needs wider tests.
-  # Could use bins of equal width in d_star_sq instead.
-  # mc1.setup_binner_d_star_sq_bin_size()
-  nref = mc1.size()
-  num_per_bin = 1000
-  max_bins = 50
-  min_bins = 6
-  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
-  mc1.setup_binner(n_bins=n_bins)
+  f1 = flex.abs(mc1.data())
+  f2 = flex.abs(mc2.data())
+  p1 = mc1.phases().data()
+  p2 = mc2.phases().data()
+  sumfsqr = mc1.customized_copy(data = flex.pow2(f1) + flex.pow2(f2))
+  f1f2cos = mc1.customized_copy(data = f1 * f2 * flex.cos(p2 - p1))
+
+  # Local mean calculations of covariance terms use data to extended resolution
+  # but return results to desired resolution
+  sumfsqr_local_mean = local_mean_intensities(work_mm, d_min, sumfsqr, r_star)
+  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos, r_star)
+
+  # Sum of f1^2 and f2^2 is always >= 2*f1*f2*cos(delta), but
+  # this may be violated by numerical errors in calculation of local mean
+  # Fix to avoid downstream numerical problems.
+  sumfsqr_local_mean = sumfsqr_local_mean.customized_copy(
+    data=get_flex_max(sumfsqr_local_mean.data(),2*f1f2cos_local_mean.data()))
+
+  # Trim starting data back to desired resolution limit, setup binning
+  mc1 = mc1.select(mc1.d_spacings().data() >= d_min)
+  assert (mc1.size() == sumfsqr_local_mean.size())
+  mc2 = mc2.select(mc2.d_spacings().data() >= d_min)
+  sumfsqr = sumfsqr.select(sumfsqr.d_spacings().data() >= d_min)
+  # f1f2cos = f1f2cos.select(f1f2cos.d_spacings().data() >= d_min)
+  d_star_sq_step = get_d_star_sq_step(mc1)
+  mc1.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
   mc2.use_binner_of(mc1)
-  ssqmin = flex.min(mc1.d_star_sq().data())
-  ssqmax = flex.max(mc1.d_star_sq().data())
+  sumfsqr.use_binner_of(mc1)
+  sumfsqr_local_mean.use_binner_of(mc1)
+  f1f2cos_local_mean.use_binner_of(mc1)
 
-  # Initialise parameters.  This requires slope and intercept of Wilson plot,
-  # plus mapCC per bin.
+  # Prepare starting parameters for signal refinement
+  mapCC_bins = flex.double()
   ssqr_bins = flex.double()
   target_spectrum = flex.double()
-  meanfsq_bins = flex.double()
-  mapCC_bins = flex.double()
   sumw = 0
   sumwx = 0.
   sumwy = 0.
   sumwx2 = 0.
   sumwxy = 0.
-  for i_bin in mc1.binner().range_used():
-    sel = mc1.binner().selection(i_bin)
+  for i_bin in sumfsqr.binner().range_used():
+    sel = sumfsqr.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
     assert (mapCC < 1.) # Ensure these are really independent half-maps
     mapCC = max(mapCC,0.001) # Avoid zero or negative values
     mapCC_bins.append(mapCC)
-    ssqr = mc1sel.d_star_sq().data()
+    # Adjust very low sumfsqr_local_mean values, then divide sum by 2 to get mean)
+    sumfsqsel = sumfsqr.select(sel)
+    mean_sumfsqr_bin = flex.mean_default(sumfsqsel.data(),0.)
+
+    # Adjust very low sumfsqr_local_mean values
+    sfsqlm_sel = sumfsqr_local_mean.select(sel)
+    min_sfsqlm_bin = mean_sumfsqr_bin / 10000
+    sfsqlm_sel = sfsqlm_sel.customized_copy(data =
+      (sfsqlm_sel.data()+min_sfsqlm_bin + flex.abs(sfsqlm_sel.data()-min_sfsqlm_bin)))
+    sumfsqr_local_mean.data().set_selected(sel, sfsqlm_sel.data())
+
+    ssqr = sumfsqsel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
     ssqr_bins.append(x)  # Save for later
-    fsq = flex.pow2(flex.abs(mc1sel.data()))
-    meanfsq = flex.mean_default(fsq, 0)
-    meanfsq_bins.append(meanfsq)
-    y = math.log(meanfsq)
-    w = fsq.size()
+    meanfsq = mean_sumfsqr_bin / 2
+    target_power = default_target_spectrum(x) # Could have a different target
+    target_spectrum.append(target_power)
+    if mapCC < 0.143: # Only fit initial signal estimate where clear overall
+      continue
+    signal = meanfsq * mapCC / target_power
+    y = math.log(signal)
+    w = sumfsqsel.size()
     sumw += w
     sumwx += w * x
     sumwy += w * y
     sumwx2 += w * x**2
     sumwxy += w * x * y
-    target_power = default_target_spectrum(x) # Could have a different target
-    target_spectrum.append(target_power)
 
-  assert (nref == sumw) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
   intercept = (sumwy - slope * sumwx) / sumw
-  wilson_scale_intensity = math.exp(intercept)
-  wilson_b_intensity = -4 * slope
+  wilson_scale_signal = math.exp(intercept)
+  wilson_b_signal = -4 * slope
   n_bins = ssqr_bins.size()
 
-  if prior_params is not None:
-    if d_min < 0.99*math.sqrt(1./prior_params['ssqmax']):
-      print("Requested resolution is higher than prior parameters support")
-      sys.stdout.flush()
-      exit
-    # sigmaE bin values should be proportional to weighted volume, pretty much
-    # independent of which part of map is being sampled.
-    # sigmaE_scale can be refined instead of the bins, which should have about the
-    # right relative size.
-    ssqr_prior = tuple(prior_params['ssqr_bins'])
-    sigmaE_prior = tuple(prior_params['sigmaE_bins'])
-    sEinterp = interpolate.interp1d(ssqr_prior,sigmaE_prior,fill_value="extrapolate")
-    sigmaE_bins = flex.double(sEinterp(ssqr_bins))*(weighted_points/prior_params['weighted_points'])
-    # sigmaE_baniso should also be pretty much independent of position in map
-    sigmaE_baniso = prior_params['sigmaE_baniso']
-    sigmaE_beta = adptbx.u_star_as_beta(adptbx.u_cart_as_u_star(mc1.unit_cell(),adptbx.b_as_u(sigmaE_baniso)))
-  else:
-    sigmaE_bins = []
-    for i_bin in range(n_bins):
-      sigmaE = meanfsq_bins[i_bin] * (1.-mapCC_bins[i_bin])
-      sigmaE_bins.append(sigmaE)  # Error bin parameter
-    sigmaE_beta = list(adptbx.u_iso_as_beta(mc1.unit_cell(), 0.))
-
-  sigmaE_scale = 1.
   sigmaT_bins = [1.]*n_bins
   start_params = []
-  start_params.append(wilson_scale_intensity/3.5) # Asqr_scale, factor out low-res BEST value
+  start_params.append(wilson_scale_signal/3.5) # Asqr_scale, factor out low-res BEST value
   start_params.extend(sigmaT_bins)
-  wilson_u=adptbx.b_as_u(wilson_b_intensity)
+  wilson_u=adptbx.b_as_u(wilson_b_signal)
   asqr_beta=list(adptbx.u_iso_as_beta(mc1.unit_cell(), wilson_u))
   start_params.extend(asqr_beta)
-  start_params.append(sigmaE_scale)
-  start_params.extend(sigmaE_bins)
-  start_params.extend(sigmaE_beta)
 
   # create inputs for the minimizer's run method
   # Constrained refinement using prior parameters could be revisited later.
   # However, this would require all cryo-EM maps to obey the assumption
   # that half-maps are completely unmasked.
-  if prior_params is not None:
-    macro1 = ["Eprior"]
-  else:
-    macro1 = ["default"]        # protocol: fix error terms using prior
-  macro2 = ["default"]       # protocol: refine sigmaE terms too
-  protocol = [macro1, macro2]   # overall minimization protocol
+  macro1 = ["default"]
+  macro2 = ["default"]
+  protocol = [macro1, macro2] # overall minimization protocol
   ncyc = 100                  # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"     # minimizer, bfgs or newton
   study_params = False        # flag for calling studyparams procedure
   output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
-  refine_cryoem_errors = RefineCryoemErrors(
-    mc1=mc1, mc2=mc2,
-    ssqr_bins = ssqr_bins, target_spectrum = target_spectrum,
+  refine_cryoem_signal = RefineCryoemSignal(
+    sumfsqr_lm = sumfsqr_local_mean, f1f2cos_lm = f1f2cos_local_mean,
+    r_star = r_star, ssqr_bins = ssqr_bins, target_spectrum = target_spectrum,
     start_x = start_params)
   minimizer = Minimizer(output_level=output_level)
 
   # Run minimizer
-  minimizer.run(refine_cryoem_errors, protocol, ncyc, minimizer_type, study_params)
-  refined_params=refine_cryoem_errors.x
+  minimizer.run(refine_cryoem_signal, protocol, ncyc, minimizer_type, study_params)
+  refined_params=refine_cryoem_signal.x
 
   # Extract and report refined parameters
   i_par = 0
@@ -1514,20 +1503,13 @@ def run_refine_cryoem_errors(
   i_par += n_bins
   asqr_beta = tuple(refined_params[i_par:i_par + 6])
   i_par += 6
-  sigmaE_scale = refined_params[i_par] # Should be one at this point, but apply in case.
-  i_par += 1
-  sigmaE_bins = list(sigmaE_scale * flex.double(refined_params[i_par:i_par + n_bins]))
-  i_par += n_bins
-  sigmaE_beta = tuple(refined_params[i_par:i_par + 6])
-  i_par += 6
   assert (i_par == len(refined_params))
 
-  # Convert asqr_beta to a_beta for application in weights
+  # Convert asqr_beta to a_beta for reporting
   a_beta = tuple(flex.double(asqr_beta)/2)
 
   # Convert beta parameters to Baniso for (optional) use and output
   a_baniso = adptbx.u_as_b(adptbx.beta_as_u_cart(mc1.unit_cell(), a_beta))
-  sigmaE_baniso = adptbx.u_as_b(adptbx.beta_as_u_cart(mc1.unit_cell(), sigmaE_beta))
 
   if verbosity > 0:
     print("\nRefinement of scales and error terms completed\n")
@@ -1538,21 +1520,10 @@ def run_refine_cryoem_errors(
     print("  A tensor as beta:", a_beta)
     print("  A tensor as Baniso: ", a_baniso)
     es = adptbx.eigensystem(a_baniso)
-    a_beta_ev = es.vectors
     print("  Eigenvalues and eigenvectors:")
     for iv in range(3):
       print("  ",es.values()[iv],es.vectors(iv))
 
-    print("\nParameters for SigmaE")
-    for i_bin in range(n_bins):
-      print("  Bin #", i_bin + 1, "SigmaE base: ", sigmaE_bins[i_bin])
-    print("  SigmaE tensor as beta:", sigmaE_beta)
-    print("  SigmaE tensor as Baniso (intensity scale): ", sigmaE_baniso)
-    es = adptbx.eigensystem(sigmaE_baniso)
-    sigmaE_beta_ev = es.vectors
-    print("  Eigenvalues and eigenvectors:")
-    for iv in range(3):
-      print("  ",es.values()[iv],es.vectors(iv))
     sys.stdout.flush()
 
   # Loop over bins to compute expectedE and Dobs for each Fourier term
@@ -1564,7 +1535,7 @@ def run_refine_cryoem_errors(
   weighted_map_noise = 0.
   if verbosity > 0:
     print("MapCC before and after rescaling as a function of resolution")
-    print("Bin   <ssqr>   mapCC_before   mapCC_after")
+    print("Bin   <ssqr>   mapCC_before   mapCC_after pred_before pred_after")
   for i_bin in mc1.binner().range_used():
     sel = expectE.binner().selection(i_bin)
     eEsel = expectE.select(sel)
@@ -1572,27 +1543,39 @@ def run_refine_cryoem_errors(
     # Make Miller array as basis for computing aniso corrections in this bin
     ones_array = flex.double(eEsel.size(), 1)
     all_ones = eEsel.customized_copy(data=ones_array)
-    beta_a_miller = all_ones.apply_debye_waller_factors(
+    beta_miller_A = all_ones.apply_debye_waller_factors(
       u_star=adptbx.beta_as_u_star(a_beta))
-    beta_sE_miller = all_ones.apply_debye_waller_factors(
-      u_star=adptbx.beta_as_u_star(sigmaE_beta))
+    abeta_terms = beta_miller_A.data()
+    beta_miller_Asqr = beta_miller_A.customized_copy(data = flex.pow2(abeta_terms))
+    u_terms = (asqr_scale * sigmaT_bins[i_bin_used]
+      * target_spectrum[i_bin_used]) * beta_miller_Asqr.data()
 
-    # SigmaT is target_spectrum times sigmaT_bins correction factor
-    sigmaT = sigmaT_bins[i_bin_used] * target_spectrum[i_bin_used]
-    abeta_terms = beta_a_miller.data() # Anisotropy correction per reflection
-    a2beta_terms = flex.pow2(abeta_terms)
-    asqrSigmaT = asqr_scale * sigmaT * a2beta_terms
-    sigmaE_terms = sigmaE_bins[i_bin_used] * beta_sE_miller.data()
+    # Noise is total power minus signal, but make sure it is positive
+    f1f2cos = f1f2cos_local_mean.data().select(sel)
+    sumfsqr = sumfsqr_local_mean.data().select(sel)
+    sigmaE_terms = sumfsqr/2 - f1f2cos
+    mf1000 = sumfsqr/2000
+    sigmaE_terms = (sigmaE_terms+mf1000 + flex.abs(sigmaE_terms - mf1000))/2
 
-    scale_terms = 1./flex.sqrt(asqrSigmaT + sigmaE_terms/2.)
-    dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*asqrSigmaT))
+    fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+    steep = 12.
+    wt_terms = flex.exp(steep*fsc)
+    wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
+    sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
+    sigmaS_terms = (sigmaS_terms+mf1000 + flex.abs(sigmaS_terms-mf1000))/2
+
+    scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
+    dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*sigmaS_terms))
+    # expectedFSC_before = flex.mean_default(u_terms,0.)/flex.mean_default(u_terms + sigmaE_terms,0.)
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
-    weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*asqrSigmaT))
+    weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*sigmaS_terms))
 
     # Apply corrections to mc1 and mc2 to compute mapCC after rescaling
     # SigmaE variance is twice as large for half-maps before averaging
-    scale_terms_12 = 1./(abeta_terms + sigmaE_terms / (asqr_scale * sigmaT * abeta_terms))
+    scale_terms_12 = 1./flex.sqrt(sigmaS_terms + sigmaE_terms)
+    # scale_terms_12 = 1./(abeta_terms + sigmaE_terms / (asqr_scale * sigmaT_bins[i_bin_used] * abeta_terms))
+    # Overwrite mc1 and mc2, but not needed later.
     mc1.data().set_selected(sel, mc1.data().select(sel) * scale_terms_12)
     mc2.data().set_selected(sel, mc2.data().select(sel) * scale_terms_12)
     mc1sel = mc1.select(sel)
@@ -1614,12 +1597,12 @@ def run_refine_cryoem_errors(
     print("Over-sampling factor: ",over_sampling_factor)
     print("Weighted map noise: ",weighted_map_noise)
 
-  # The following code could be used if we wanted to return a map_model_manager
-  # wEmean = dobs*expectE
-  # working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  # Return a map_model_manager with the weighted map
+  wEmean = dobs*expectE
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
-  # working_mmm.remove_map_manager_by_id(map_1_id)
-  # working_mmm.remove_map_manager_by_id(map_2_id)
+  working_mmm.remove_map_manager_by_id(map_1_id)
+  working_mmm.remove_map_manager_by_id(map_2_id)
 
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
@@ -1631,20 +1614,20 @@ def run_refine_cryoem_errors(
     shift_frac = tuple(-flex.double(shift_frac))
     expectE = expectE.translational_shift(shift_frac)
 
+  ssqmin = flex.min(mc1.d_star_sq().data())
+  ssqmax = flex.max(mc1.d_star_sq().data())
   resultsdict = dict(
-    n_bins = n_bins,
-    ssqr_bins = ssqr_bins,
-    ssqmin = ssqmin,
-    ssqmax = ssqmax,
-    weighted_points = weighted_points,
-    asqr_scale = asqr_scale,
-    sigmaT_bins = sigmaT_bins,
-    asqr_beta = asqr_beta,
-    a_baniso = a_baniso,
-    sigmaE_bins = sigmaE_bins,
-    sigmaE_baniso = sigmaE_baniso,
-    mapCC_bins = mapCC_bins)
+      n_bins = n_bins,
+      ssqr_bins = ssqr_bins,
+      ssqmin = ssqmin,
+      ssqmax = ssqmax,
+      asqr_scale = asqr_scale,
+      sigmaT_bins = sigmaT_bins,
+      asqr_beta = asqr_beta,
+      a_baniso = a_baniso,
+      mapCC_bins = mapCC_bins)
   return group_args(
+    new_mmm = working_mmm,
     shift_cart = shift_cart,
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
@@ -1679,8 +1662,6 @@ def run():
   --shift_map_origin: shift output mtz file to match input map on its origin?
           default True
   --file_root: root name for output files
-  --write_params: write out refined parameters as a pickle file
-  --read_params: start with refined parameters from earlier run
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
@@ -1707,6 +1688,8 @@ def run():
   parser.add_argument('--nucleic_mw',
                       help='Molecular weight of nucleic acid component of map',
                       type=float)
+  parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere', type=float)
+  parser.set_defaults(sphere_points=500)
   parser.add_argument('--model',help='Placed model')
   parser.add_argument('--flatten_model',help='Flatten map around model',
                       action='store_true')
@@ -1717,9 +1700,6 @@ def run():
   parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
-  parser.add_argument('--read_params', help='Filename for prior parameters')
-  parser.add_argument('--write_params', help='Write out refined parameters',
-                      action='store_true')
   parser.add_argument('--shift_map_origin', dest='shift_map_origin', type=bool)
   parser.set_defaults(shift_map_origin=True)
   parser.add_argument('-m', '--mute', dest = 'mute',
@@ -1730,6 +1710,7 @@ def run():
                       help='Set output as testing', action='store_true')
   args = parser.parse_args()
   d_min = args.d_min
+  sphere_points = args.sphere_points
   verbosity = 1
   if args.mute: verbosity = 0
   if args.verbose: verbosity = 2
@@ -1775,14 +1756,6 @@ def run():
     radius = radius + d_min # Expand to allow width for density
     cutout_specified = True
 
-  # Get prior parameters if provided
-  if args.read_params is not None:
-    infile = open(args.read_params,"rb")
-    prior_params = pickle.load(infile)
-    infile.close()
-  else:
-    prior_params = None
-
   # Create map_model_manager containing half-maps
   map1_filename = args.map1
   mm1 = dm.get_real_map(map1_filename)
@@ -1797,7 +1770,6 @@ def run():
     assert args.model is not None
     flatten_model_region(mmm, d_min)
 
-  # Add mask map for ordered component of map.
   mask_id = 'ordered_volume_mask'
   add_ordered_volume_mask(mmm, d_min,
       protein_mw=protein_mw, nucleic_mw=nucleic_mw,
@@ -1810,26 +1782,12 @@ def run():
       map_file_name = "ordered_volume_mask.map"
     ordered_mm.write_map(map_file_name)
 
-  if prior_params is None:
-    # Initial refinement to get overall error parameters
-    results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity,
-      shift_map_origin=shift_map_origin)
-    prior_params = results.resultsdict
-    if args.write_params:
-      if args.file_root is not None:
-        paramsfile = args.file_root + ".pickle"
-      else:
-        paramsfile = "prior_params.pickle"
-      outf = open(paramsfile,"wb")
-      pickle.dump(prior_params,outf,2)
-      outf.close()
-
   # The following could loop over different regions
   if cutout_specified:
     # Refine to get scale and error parameters for docking region
-    results = run_refine_cryoem_errors(mmm, d_min, verbosity=verbosity,
-      sphere_cent=sphere_cent, radius=radius, prior_params=prior_params,
-      shift_map_origin=shift_map_origin)
+    results = assess_cryoem_errors(mmm, d_min, verbosity=verbosity,
+      sphere_cent=sphere_cent, radius=radius,
+      shift_map_origin=shift_map_origin, sphere_points=sphere_points)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
