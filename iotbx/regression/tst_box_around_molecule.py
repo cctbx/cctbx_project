@@ -82,7 +82,7 @@ TER""")
     # as well.
 
     import sys
-    if sys.version.startswith("3.8"):
+    if sys.version_info.major == 3:
       assert_lines_in_file(file_name="%s_box_000.cif" % prefix,
       lines="""\
 data_default

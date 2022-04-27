@@ -1,6 +1,17 @@
 from __future__ import absolute_import, division, print_function
-import urlparse
-import os,cgi
+import os,sys,cgi
+
+if sys.version_info.major >= 3:
+    from urllib.parse import urlunsplit
+if sys.version_info.major < 3:
+    from urlparse import urlunsplit
+
+#
+# Won't work in Py3 most likely because pickles here:
+# "$PHENIX_REGRESSION_DIR"/cctbx/web/[a-z]*
+# are incompatible.
+#
+
 
 class FormatError(Exception): pass
 
@@ -26,14 +37,14 @@ class server_info:
       '']
 
   def script(self, query=''):
-    return urlparse.urlunsplit(
+    return urlunsplit(
       self._script[:3] + [query] + self._script[4:])
 
   def base(self):
-    return urlparse.urlunsplit(self._base)
+    return urlunsplit(self._base)
 
   def file(self, target):
-    return urlparse.urlunsplit(
+    return urlunsplit(
       self._base[:2] + [self._base[2] + target] + self._base[3:])
 
 def inp_from_form(form, keys):
