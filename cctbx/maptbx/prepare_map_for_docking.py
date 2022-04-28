@@ -833,22 +833,18 @@ def flatten_model_region(mmm, d_min):
   mmm.remove_map_manager_by_id('mask')
 
 def add_local_squared_deviation_map(
-    mmm, radius, d_min, map_id_in='map_manager', map_id_out='variance_map'):
+    mmm, coeffs_in, radius, d_min, map_id_out):
   """
   Add spherically-averaged squared map to map_model_manager
 
   Compulsory arguments:
-  mmm:    map_model_manager containing input map
-  radius: radius of sphere over which squared deviation is averaged
-  d_min:  estimate of best resolution for map
-
-  Optional arguments:
-  map_id_in:  identifier of input map, defaults to map_manager
-  map_id_out: identifier of output map, defaults to 'variance map'
+  mmm:        map_model_manager to add new map
+  coeffs_in:  Miller array with coefficients for input map
+  radius:     radius of sphere over which squared deviation is averaged
+  d_min:      resolution to use for calculation
+  map_id_out: identifier of output map
   """
 
-  mm_in = mmm.get_map_manager_by_id(map_id = map_id_in)
-  coeffs_in = mm_in.map_as_fourier_coefficients(d_min=d_min)
   map_out = coeffs_in.local_standard_deviation_map(radius=radius, d_min=d_min)
   # map_out is an fft_map object, which can't easily be added to
   # map_model_manager as a similar map_manager object, so cycle through FT
@@ -864,11 +860,7 @@ def add_local_squared_deviation_map(
     offset = -min_map_value
     mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
-def auto_sharpen_isotropic(mmm, d_min):
-  mm1 = mmm.map_manager_1()
-  mc1 = mm1.map_as_fourier_coefficients(d_min=d_min)
-  mm2 = mmm.map_manager_2()
-  mc2 = mm2.map_as_fourier_coefficients(d_min=d_min)
+def auto_sharpen_isotropic(mc1, mc2):
 
   nref = mc1.size()
   num_per_bin = 1000
@@ -908,12 +900,10 @@ def auto_sharpen_isotropic(mmm, d_min):
   b_sharpen = 2 * slope
   all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
-  mc1 = mc1.customized_copy(data = mc1.data()*b_terms_miller.data())
-  work_mm1 = mm1.fourier_coefficients_as_map_manager(mc1)
-  mc2 = mc2.customized_copy(data = mc2.data()*b_terms_miller.data())
-  work_mm2 = mm2.fourier_coefficients_as_map_manager(mc2)
-  work_mmm = map_model_manager(map_manager_1=work_mm1, map_manager_2=work_mm2)
-  return work_mmm
+  mc1s = mc1.customized_copy(data = mc1.data()*b_terms_miller.data())
+  mc2s = mc2.customized_copy(data = mc2.data()*b_terms_miller.data())
+
+  return mc1s, mc2s
 
 def add_ordered_volume_mask(
     mmm, d_min, rad_factor=2, protein_mw=None, nucleic_mw=None,
@@ -951,24 +941,25 @@ def add_ordered_volume_mask(
   radius = max(d_min*rad_factor, 5.)
 
   d_work = (d_min + radius) / 2 # Save some time by lowering resolution
-  working_mmm = auto_sharpen_isotropic(mmm,d_work)
+  mm1 = mmm.map_manager_1()
+  mc1_in = mm1.map_as_fourier_coefficients(d_min=d_work)
+  mm2 = mmm.map_manager_2()
+  mc2_in = mm2.map_as_fourier_coefficients(d_min=d_work)
+  mc1s, mc2s = auto_sharpen_isotropic(mc1_in, mc2_in)
+  mcs_mean  = mc1s.customized_copy(data = (mc1s.data() + mc2s.data())/2)
+  mcs_delta = mc1s.customized_copy(data = (mc1s.data() - mc2s.data()) )
 
-  # Add difference map to map_model_manager
-  wmm1 = working_mmm.map_manager_1()
-  wmm2 = working_mmm.map_manager_2()
-  delta_mm = wmm1.customized_copy(map_data = wmm1.map_data() - wmm2.map_data())
-  working_mmm.add_map_manager_by_id(delta_mm, map_id = 'delta_map')
+  add_local_squared_deviation_map(mmm, mcs_mean, radius, d_work,
+      map_id_out='map_variance')
+  mvmm = mmm.get_map_manager_by_id('map_variance')
+  add_local_squared_deviation_map(mmm, mcs_delta, radius, d_work,
+      map_id_out='noise_variance')
+  nvmm = mmm.get_map_manager_by_id('noise_variance')
 
-  add_local_squared_deviation_map(working_mmm, radius, d_work,
-      map_id_in='map_manager', map_id_out='map_variance')
-  mvmm = working_mmm.get_map_manager_by_id('map_variance')
-  add_local_squared_deviation_map(working_mmm, radius, d_work,
-      map_id_in='delta_map', map_id_out='noise_variance')
   # When maps are masked near the corners and edges, both signal and noise can
   # approach zero. Avoid getting close to dividing zero by zero, by adding a
   # small offset to the noise variance.
   # At the same time, correct noise variance by factor of two for averaging
-  nvmm = working_mmm.get_map_manager_by_id('noise_variance')
   nvmm_min = min(flex.min(nvmm.map_data()) , 0.)
   nvmm_max = flex.max(nvmm.map_data())
   nvmm.set_map_data(map_data = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.)
@@ -983,7 +974,7 @@ def add_ordered_volume_mask(
   # reference to expected content. This might require figuring out
   # the effective number of independent points in the averaging sphere to
   # calibrate the chi-square distribution.
-  map_volume = working_mmm.map_manager().unit_cell().volume()
+  map_volume = mmm.map_manager().unit_cell().volume()
   Zscore_sqr_map_data = mm_Zscore_sqr.map_data()
   numpoints = Zscore_sqr_map_data.size()
   # Convert content into volume using partial specific volumes
@@ -1008,6 +999,10 @@ def add_ordered_volume_mask(
   overall_mask = temp_bool_3D.as_1d().as_double()
   overall_mask.reshape(flex.grid(mask_shape))
   new_mm = mmm.map_manager().customized_copy(map_data=overall_mask)
+
+  # Clean up temporary maps, then add ordered volume mask
+  mmm.remove_map_manager_by_id('map_variance')
+  mmm.remove_map_manager_by_id('noise_variance')
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
 def get_grid_spacings(unit_cell, unit_cell_grid):
