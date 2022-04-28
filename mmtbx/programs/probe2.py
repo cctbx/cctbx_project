@@ -1573,7 +1573,7 @@ Note:
 # ------------------------------------------------------------------------------
 
   def _report_single_interaction(self, groupLabel, selectionName, comparisonString, intersectionName,
-      numModels, modelIndex):
+      numModels, modelIndex, bondedNeighborLists):
     '''
       Print information about a single interaction, either self interaction or once interaction.
       :param groupLabel: Name to give to the group.
@@ -1582,13 +1582,14 @@ Note:
       :param intersectionName: Name of the intersection being done: 'SelfIntersect', 'IntersectOnce'.
       :param numModels: Number of models we are running over.
       :param modelIndex: Current model we are running.
+      :param bondedNeighborLists: List of bonded neighbors for atoms in sourceAtoms.
       :return: String to be added to the output.
     '''
 
     ret = ''
     # Count the dots if we've been asked to do so.
     if self.params.output.count_dots:
-      numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
+      numSkinDots = self._count_skin_dots(self._source_atoms_sorted, bondedNeighborLists)
       if self.params.output.format != 'raw':
         ret += self._describe_run("program:","command:")
         ret += self._describe_selection_and_parameters(groupLabel, selectionName)
@@ -1874,6 +1875,8 @@ Note:
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
       # Get the bonded neighbor lists for the atoms that are in this selection.
+      # We have to do this so that when keep_unselected_atoms is set to False we don't
+      # follow bonds to neighbor atoms that should not exist.
       all_selected_atoms = source_atoms.union(target_atoms)
       bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
@@ -1967,7 +1970,6 @@ Note:
                 # Mark the Phantom Hydrogens as being bonded to their Oxygen so that
                 # dots on a Phantom Hydrogen within its Oxygen will be excluded.
                 bondedNeighborLists[p] = [a]
-                self._allBondedNeighborLists[p] = [a]
 
                 # @todo In the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
@@ -1975,7 +1977,6 @@ Note:
                 # original Probe.  For now, we separately handle Phantom Hydrogen
                 # interactions as special cases in the code.
                 #bondedNeighborLists[a].append(p)
-                #self._allBondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
                 if a in source_atoms:
@@ -2182,7 +2183,7 @@ Note:
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
-            len(atomLists), modelIndex)
+            len(atomLists), modelIndex, bondedNeighborLists)
 
       elif self.params.approach == 'once':
         make_sub_header('Find single-direction intersection dots', out=self.logger)
@@ -2194,7 +2195,7 @@ Note:
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
-            len(atomLists), modelIndex)
+            len(atomLists), modelIndex, bondedNeighborLists)
 
       elif self.params.approach == 'both':
         make_sub_header('Find both-directions intersection dots', out=self.logger)
