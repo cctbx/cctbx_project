@@ -231,7 +231,10 @@ the corresponding _reduced.pdb file.
 - 1bti (tests alternates): Matches.
 - 1xso (tests ions): Probe2 properly identifies a Phantom Hydrogen as bonded to its Oxygen in one instance
 where Probe did not because it was too close to be considered bonded, resulting in a slight difference in the
-surface representation.  **@todo:** surface-area differences in -self
+surface representation.  Other outputs match.
+- 3wrp (tests too-close waters): Probe2 properly identifies clashes between Water Oxygens and heavy atoms,
+possibly because Probe considers them to be bonded.
+- **@todo:** Other molecules and snippets.
 
 - **@todo:** Test -once and -both on specific portions of a specific structure.
 
