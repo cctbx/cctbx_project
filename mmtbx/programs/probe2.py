@@ -1855,6 +1855,7 @@ Note:
 
     for modelIndex, atoms in enumerate(atomLists):
 
+
       ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
       # model.
@@ -1880,7 +1881,7 @@ Note:
       if self.params.keep_unselected_atoms:
         self._spatialQuery = Helpers.createSpatialQuery(atoms, self.params.probe)
       else:
-        self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms, self.params.probe))
+        self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
 
       ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
