@@ -77,6 +77,15 @@ cfg_perlmutter.env['Kokkos_ARCH_VOLTA70'] = "OFF"
 cfg_perlmutter.env['Kokkos_ARCH_AMPERE80'] = "ON"
 list_cfg.append(cfg_perlmutter)
 
+# Generic Linux machine with NVIDIA A100 HW
+cfg_linux_a100 = cfg_corigpu.get_copy()
+cfg_linux_a100.host_variable = 'KOKKOS_HOST'
+cfg_linux_a100.host_name = 'linux_a100'
+cfg_linux_a100.env['KOKKOS_ARCH'] = 'Ampere80'
+cfg_linux_a100.env['Kokkos_ARCH_VOLTA70'] = "OFF"
+cfg_linux_a100.env['Kokkos_ARCH_AMPERE80'] = "ON"
+list_cfg.append(cfg_linux_a100)
+
 cfg_spock = cfg_default.get_copy()
 cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
 cfg_spock.host_name = 'spock'
