@@ -49,9 +49,12 @@ class RefineCryoemSignal(RefineBase):
     self.x = start_x[:]         # Full set of parameters
     d_min = math.sqrt(1./flex.max(sumfsqr_lm.d_star_sq().data()))
     cell_tensor = flex.double((astar*astar, bstar*bstar, cstar*cstar, astar*bstar, astar*cstar, bstar*cstar))
-    self.large_shifts_beta = list(cell_tensor*30.*(d_min/2.5)**2)
-    sigmaSphericity = 200*(d_min/2.5)**2
-    self.sigmaSphericityBeta = cell_tensor * sigmaSphericity/4
+    # Maximum beta should give an exponential argument < 50 at resolution limit
+    self.max_beta = list(cell_tensor*45*d_min**2)
+    # Choose maximum shift in beta to change by less than factor of 2 at resolution limit
+    self.large_shifts_beta = list(cell_tensor*math.log(2.)*d_min**2)
+    # Apply a relatively weak restraint to sphericity of beta
+    self.sigmaSphericityBeta = cell_tensor * 5*d_min**2
 
   def sphericity_restraint(self, anisoBeta, do_gradient=True, do_hessian=True,
       sigma_factor = 1.):
@@ -424,7 +427,7 @@ class RefineCryoemSignal(RefineBase):
       this_bound = Bounds()
       # this_bound.off()
       for i in range(6):
-        this_bound.on(-25*self.large_shifts_beta[i],25*self.large_shifts_beta[i])
+        this_bound.on(-self.max_beta[i],self.max_beta[i])
         bounds_list.append(this_bound)
     i_par += 6
 
@@ -1254,8 +1257,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
 def assess_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
-    ordered_mask_id='ordered_volume_mask',
-    sphere_cent=None, radius=None, sphere_points=500,
+    ordered_mask_id='ordered_volume_mask', sphere_points=500,
+    sphere_cent=None, radius=None,
     verbosity=1, shift_map_origin=True, keep_full_map=False):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
@@ -1530,7 +1533,7 @@ def assess_cryoem_errors(
   weighted_map_noise = 0.
   if verbosity > 0:
     print("MapCC before and after rescaling as a function of resolution")
-    print("Bin   <ssqr>   mapCC_before   mapCC_after pred_before pred_after")
+    print("Bin   <ssqr>   mapCC_before   mapCC_after")
   for i_bin in mc1.binner().range_used():
     sel = expectE.binner().selection(i_bin)
     eEsel = expectE.select(sel)
@@ -1684,7 +1687,6 @@ def run():
                       help='Molecular weight of nucleic acid component of map',
                       type=float)
   parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere', type=float)
-  parser.set_defaults(sphere_points=500)
   parser.add_argument('--model',help='Placed model')
   parser.add_argument('--flatten_model',help='Flatten map around model',
                       action='store_true')
@@ -1705,7 +1707,6 @@ def run():
                       help='Set output as testing', action='store_true')
   args = parser.parse_args()
   d_min = args.d_min
-  sphere_points = args.sphere_points
   verbosity = 1
   if args.mute: verbosity = 0
   if args.verbose: verbosity = 2
@@ -1716,6 +1717,7 @@ def run():
   sphere_cent = None
   radius = None
   model = None
+  sphere_points = None
 
   protein_mw = None
   nucleic_mw = None
@@ -1727,6 +1729,9 @@ def run():
     protein_mw = args.protein_mw
   if args.nucleic_mw is not None:
     nucleic_mw = args.nucleic_mw
+
+  if args.sphere_points is not None:
+    sphere_points = args.sphere_points
 
   if args.model is not None:
     if not (args.cutout_model or args.flatten_model):
@@ -1756,9 +1761,7 @@ def run():
   mm1 = dm.get_real_map(map1_filename)
   map2_filename = args.map2
   mm2 = dm.get_real_map(map2_filename)
-  # delta_mm = mm1.customized_copy(map_data = mm1.map_data() - mm2.map_data())
-  mmm = map_model_manager(model=model, map_manager_1=mm1, map_manager_2=mm2) #,
-      # extra_map_manager_list=[delta_mm], extra_map_manager_id_list=['delta_map'])
+  mmm = map_model_manager(model=model, map_manager_1=mm1, map_manager_2=mm2)
 
   # Prepare maps by flattening model volume if desired
   if args.flatten_model:
@@ -1780,9 +1783,9 @@ def run():
   # The following could loop over different regions
   if cutout_specified:
     # Refine to get scale and error parameters for docking region
-    results = assess_cryoem_errors(mmm, d_min, verbosity=verbosity,
-      sphere_cent=sphere_cent, radius=radius,
-      shift_map_origin=shift_map_origin, sphere_points=sphere_points)
+    results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
+      verbosity=verbosity, sphere_cent=sphere_cent, radius=radius,
+      shift_map_origin=shift_map_origin)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
