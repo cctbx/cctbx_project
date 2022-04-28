@@ -675,7 +675,7 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _generate_interaction_dots(self, sourceAtoms, targetQuery, phantomsQuery):
+  def _generate_interaction_dots(self, sourceAtoms, targetQuery, phantomsQuery, bondedNeighborLists):
     '''
       Find all interaction dots for the specified atom.
       This does not include locations where the probe is inside a bonded neighbor.
@@ -684,6 +684,7 @@ Note:
       (can be the same list as sourceAtoms for some approaches).
       :param phantomsQuery: Spatial-query structure that can be used to look up nearby Phantom
       Hydrogens (whether or not they are in the source or target atoms).
+      :param bondedNeighborLists: List of bonded neighbors for atoms in sourceAtoms.
       :return: Side effect: Add dots to the self._results data structure by
       atomclass and dot type.
     '''
@@ -759,7 +760,7 @@ Note:
         # Find the atoms that are bonded to the source atom within the specified hop
         # count.  Limit the length of the chain to 3 if neither the source nor the final
         # atom is a Hydrogen.
-        excluded = Helpers.getAtomsWithinNBonds(src, self._allBondedNeighborLists, self._extraAtomInfo, probeRadius,
+        excluded = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, probeRadius,
           excluded_bond_chain_length, 3)
 
         # For Phantom Hydrogens, add any non-Acceptor atom in the atom list into the
@@ -965,10 +966,12 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _count_skin_dots(self, atoms):
+  def _count_skin_dots(self, atoms, bondedNeighborLists):
     '''
       Count all skin dots for the atoms passed in.
       :param atoms: Atoms to check.
+      :param bondedNeighborLists: Neighbor list including these atoms.
+      This is used to normalize output scores.
       :return: Number of skin dots on any of the atoms in the source selection.
     '''
 
@@ -982,7 +985,7 @@ Note:
       # count.  Limit the length of the chain to 3 if neither the source nor the final
       # atom is a Hydrogen.
       # We check only out to a probe radius of 0 (atoms actually overlapping)
-      neighbors = Helpers.getAtomsWithinNBonds(src, self._allBondedNeighborLists, self._extraAtomInfo, 0.0,
+      neighbors = Helpers.getAtomsWithinNBonds(src, bondedNeighborLists, self._extraAtomInfo, 0.0,
         excluded_bond_chain_length, 3)
 
       # Count the skin dots for this atom.
@@ -1585,7 +1588,7 @@ Note:
     ret = ''
     # Count the dots if we've been asked to do so.
     if self.params.output.count_dots:
-      numSkinDots = self._count_skin_dots(self._source_atoms_sorted)
+      numSkinDots = self._count_skin_dots(self._source_atoms_sorted, self._allBondedNeighborLists)
       if self.params.output.format != 'raw':
         ret += self._describe_run("program:","command:")
         ret += self._describe_selection_and_parameters(groupLabel, selectionName)
@@ -1870,7 +1873,9 @@ Note:
 
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
+      # Re-use the bonded neighbor lists for all atoms; we filter out incompatible ones in the tests.
       all_selected_atoms = source_atoms.union(target_atoms)
+      bondedNeighborLists = self._allBondedNeighborLists
 
       ################################################################################
       # Build a spatial-query structure that tells which atoms are nearby.
@@ -1932,7 +1937,7 @@ Note:
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
             # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenDistance
             # with phantomHydrogenRadius.
-            if len(self._allBondedNeighborLists[a]) == 0:
+            if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
                               1.0)
               for p in newPhantoms:
@@ -1961,6 +1966,7 @@ Note:
 
                 # Mark the Phantom Hydrogens as being bonded to their Oxygen so that
                 # dots on a Phantom Hydrogen within its Oxygen will be excluded.
+                bondedNeighborLists[p] = [a]
                 self._allBondedNeighborLists[p] = [a]
 
                 # @todo In the future, we may add these bonds, but that will cause the
@@ -1968,6 +1974,7 @@ Note:
                 # clashes with the acceptors, which is a change in behavior from the
                 # original Probe.  For now, we separately handle Phantom Hydrogen
                 # interactions as special cases in the code.
+                #bondedNeighborLists[a].append(p)
                 #self._allBondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
@@ -1999,14 +2006,14 @@ Note:
 
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(all_selected_atoms, self._allBondedNeighborLists, self._extraAtomInfo)
+        Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
 
       ################################################################################
       # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
       # between two atoms that are both bonded to the same ion (such as Nitrogens on
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
       # so that we don't see ionic bonds in those checks.
-      Helpers.addIonicBonds(self._allBondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
+      Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
 
       # If we have a dump file specified, write the atom information into it.
       if self.params.output.dump_file_name is not None:
@@ -2129,7 +2136,7 @@ Note:
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._source_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, bondedNeighborLists)
           if self.params.output.format != 'raw':
             outString += self._describe_selection_and_parameters(groupLabel, "external")
 
@@ -2171,7 +2178,7 @@ Note:
         # Generate dots for the source atom set against itself.
         self._generate_interaction_dots(self._source_atoms_sorted,
           Helpers.createSpatialQuery(self._source_atoms_sorted, self.params.probe),
-          self._phantomHydrogensSpatialQuery)
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "self", "1->1", "SelfIntersect",
@@ -2183,7 +2190,7 @@ Note:
         # Generate dots for the source atom set against the target atom set.
         self._generate_interaction_dots(self._source_atoms_sorted,
           Helpers.createSpatialQuery(self._target_atoms_sorted, self.params.probe),
-          self._phantomHydrogensSpatialQuery)
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Generate our report
         outString += self._report_single_interaction(groupLabel, "once", "1->2", "IntersectOnce",
@@ -2214,11 +2221,11 @@ Note:
         # Generate dots for the source atom set against the target atom set.
         self._generate_interaction_dots(self._source_atoms_sorted,
           Helpers.createSpatialQuery(self._target_atoms_sorted, self.params.probe),
-          self._phantomHydrogensSpatialQuery)
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._source_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self._source_atoms_sorted, bondedNeighborLists)
           nsel = len(self._source_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("1->2", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
@@ -2250,11 +2257,11 @@ Note:
         # Generate dots for the target atom set against the source atom set.
         self._generate_interaction_dots(self._target_atoms_sorted,
           Helpers.createSpatialQuery(self._source_atoms_sorted, self.params.probe),
-          self._phantomHydrogensSpatialQuery)
+          self._phantomHydrogensSpatialQuery, bondedNeighborLists)
 
         # Count the dots if we've been asked to do so.
         if self.params.output.count_dots:
-          numSkinDots = self._count_skin_dots(self._target_atoms_sorted)
+          numSkinDots = self._count_skin_dots(self._target_atoms_sorted, bondedNeighborLists)
           nsel = len(self._target_atoms_sorted)
           if self.params.output.format == 'raw':
             outString += self._rawEnumerate("2->1", nsel, self.params.output.compute_scores, False, numSkinDots, groupLabel)
