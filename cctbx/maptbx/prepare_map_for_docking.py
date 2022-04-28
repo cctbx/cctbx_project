@@ -1669,7 +1669,6 @@ def run():
         The flatten_model option cannot be combined with cutting out a sphere.
   """
   import argparse
-  import pickle
   from iotbx.map_model_manager import map_model_manager
   from iotbx.data_manager import DataManager
   dm = DataManager()

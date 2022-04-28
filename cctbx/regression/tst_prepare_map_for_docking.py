@@ -9,7 +9,6 @@ from cctbx.maptbx.prepare_map_for_docking import write_mtz
 from cctbx import adptbx
 from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import approx_equal
 import random
 
 def get_power_spectrum(mc):
