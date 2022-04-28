@@ -236,7 +236,6 @@ class scene(object):
     else:
       self.foms = flex.double(n_points, float('nan'))
     self.dres = uc.d(self.indices )
-    self.clear_labels()
     self.SceneCreated = True
 
 
@@ -561,25 +560,6 @@ class scene(object):
           self.colors.extend(flex.vec3_double(new_indices.size(), (1.,1.0,0.)))
         else :
           self.colors.extend(flex.vec3_double(new_indices.size(), (1.,0.5,1.)))
-
-
-  def clear_labels(self):
-    self.label_points = set([])
-
-
-  def get_resolution_at_point(self, k):
-    hkl = self.indices[k]
-    return self.unit_cell.d(hkl)
-
-
-  def get_reflection_info(self, k):
-    hkl = self.indices[k]
-    d_min = self.unit_cell.d(hkl)
-    if (self.missing_flags[k]) or (self.sys_absent_flags[k]):
-      value = None
-    else :
-      value = self.data[k]
-    return (hkl, d_min, value)
 
 
 # list of all colour maps from https://matplotlib.org/examples/color/colormaps_reference.html
