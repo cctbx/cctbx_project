@@ -39,7 +39,6 @@ class HKLViewFrame() :
     self.ano_spg_tpls =[]
     self.merge_answer = [None]
     self.dmin = -1
-    self.settings = display.settings()
     self.verbose = 0
     if 'verbose' in kwds:
       try:
@@ -47,7 +46,6 @@ class HKLViewFrame() :
       except Exception as e:
         self.verbose = kwds['verbose']
     self.guiSocketPort=None
-    kwds['settings'] = self.settings
     kwds['mprint'] = self.mprint
     self.outputmsgtypes = []
     self.userpresetbuttonsfname = os.path.join( Path.home(), ".hkl_viewer_buttons.py")
@@ -239,37 +237,63 @@ class HKLViewFrame() :
 
 
   def show_current_phil(self, useful_for_preset_button=True):
+    # When useful_for_preset_button=True the output has integer ids for vectors and scene_id
+    # replaced with label strings for vectors and data arrays
     diffphil = self.master_phil.fetch_diff(source = self.currentphil)
     if useful_for_preset_button:
       # Tidy up diffphil by eliminating a few parameters that are not needed
-      # for preset buttons or are being overwritten by user settings
+      # for preset buttons or are being overwritten by user settings (colour and radii scheme)
+      # First make a copy of all phil parameters some of which may be altered below
+      paramscopy = self.master_phil.format(self.params).copy().extract()
       if jsview_3d.has_phil_path(diffphil, "scene_id"):
         # then merge corresponding label and datatype into the diffphil so these can be used for
         # preset button phil strings instead of scene_id which may only apply to the current data file
-        label,datatype = self.viewer.get_label_type_from_scene_id(self.params.viewer.scene_id)
-        labeltypephil = libtbx.phil.parse("""
-        viewer.data_array {
-          label = '%s'
-          datatype = '%s'
-        }
-        """ %(label,datatype) )
-        workingphil = self.master_phil.fetch(sources=[labeltypephil, diffphil] )
-        diffphil = self.master_phil.fetch_diff(source=workingphil )
+        label,datatype = self.viewer.get_label_type_from_scene_id(paramscopy.viewer.scene_id)
+        paramscopy.viewer.data_array.label = label
+        paramscopy.viewer.data_array.datatype = datatype
+        paramsobj = self.master_phil.format(paramscopy)
+        diffphil = self.master_phil.fetch_diff(source =paramsobj)
+
+      if jsview_3d.has_phil_path(diffphil, "angle_around_vector"):
+        # convert any integer id into corresponding label for this vector
+        # which is needed for userfriendliness when using current phil for preset buttons
+        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.angle_around_vector])
+        paramscopy.clip_plane.angle_around_vector = str(lblvectors[0])
+        diffphil = diffphil.format(paramscopy) # adopt new angle_around_vector value
+
+      if jsview_3d.has_phil_path(diffphil, "animate_rotation_around_vector"):
+        # convert any integer id into corresponding label for this vector
+        # which is needed for userfriendliness when using current phil for preset buttons
+        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.animate_rotation_around_vector])
+        paramscopy.clip_plane.animate_rotation_around_vector = str(lblvectors[0])
+        diffphil = diffphil.format(paramscopy) # adopt new animate_rotation_around_vector value
+
+      if jsview_3d.has_phil_path(diffphil, "show_vector"):
+        # convert any integer id into corresponding label for this vector
+        # which is needed for userfriendliness when using current phil for preset buttons
+        show_vectors_lbl = self.viewer.get_vectors_labels_from_ids(paramscopy.viewer.show_vector)
+        showveclst = []
+        # viewer.show_vector has multiple=True so use a list to add more vectors to the phil parameter
+        for veclbl,isvisible in show_vectors_lbl:
+          if isvisible==True: # default is for vectors not to show, so no need to include those
+            showveclst.append(str([veclbl,isvisible]) )
+        paramscopy.viewer.show_vector =showveclst
+        diffphil = diffphil.format(paramscopy) # adopt new show_vector value
 
       if jsview_3d.has_phil_path(diffphil, "binner_idx"):
         # then merge corresponding binlabel into the diffphil so it can be used for
         # preset button phil strings instead of binner_idx which may only apply to the current data file
-        binlabel = self.viewer.get_binlabel_from_binner_idx(self.params.binning.binner_idx)
+        binlabel = self.viewer.get_binlabel_from_binner_idx(paramscopy.binning.binner_idx)
         binlabelphil = libtbx.phil.parse("binning.binlabel = '%s'" %binlabel)
         workingphil = self.master_phil.fetch(sources=[binlabelphil, diffphil] )
         diffphil = self.master_phil.fetch_diff(source=workingphil )
 
-      omitparms = ["viewer.scene_id", "viewer.nth_power_scale_radii", "viewer.scale",
-        "viewer.color_scheme", "viewer.color_powscale", "NGL.show_tooltips",
+      omitparms = ["viewer.scene_id", "hkls.nth_power_scale_radii", "hkls.scale",
+        "hkls.color_scheme", "hkls.color_powscale", "NGL.show_tooltips",
         "NGL.fontsize", "binning.binner_idx"]
       remove_bin_opacities = True
       if jsview_3d.has_phil_path(diffphil, "bin_opacities"):
-        bin_opacitieslst = eval(self.params.binning.bin_opacities)
+        bin_opacitieslst = eval(paramscopy.binning.bin_opacities)
         for alpha,bin in bin_opacitieslst:
           if alpha < 1.0: # at least 1 bin is not fully opaque.
                           # That's not the default so don't omit opacities
@@ -279,25 +303,16 @@ class HKLViewFrame() :
         omitparms = omitparms + ["binning.bin_opacities"]
       remainingobjs = []
       for obj in diffphil.objects:
-        if obj.full_path() == "viewer":
-          vobjs = []
+        vobjs = []
+        if hasattr(obj, "objects"):
           for vobj in obj.objects:
             if vobj.full_path() not in omitparms:
               vobjs.append(vobj)
           obj.objects = vobjs
-        if obj.full_path() == "NGL":
-          nglobjs = []
-          for nobj in obj.objects:
-            if nobj.full_path() not in omitparms:
-              nglobjs.append(nobj)
-          obj.objects = nglobjs
-        if obj.full_path() == "binning":
-          nglobjs = []
-          for nobj in obj.objects:
-            if nobj.full_path() not in omitparms:
-              nglobjs.append(nobj)
-          obj.objects = nglobjs
-        if obj.full_path() !=  "selected_info": # miller table column layout irrelevant for preset button
+          # miller table column layout irrelevant for preset buttons so skip phil values governing it
+          if len(obj.objects) > 0 and obj.full_path() !=  "selected_info":
+            remainingobjs.append(obj)
+        else:
           remainingobjs.append(obj)
       diffphil.objects = remainingobjs
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
@@ -305,7 +320,7 @@ class HKLViewFrame() :
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
-      oldsceneid = self.viewer.viewerparams.scene_id
+      oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
       if msgtype=="preset_philstr":
         #current_selected_info = self.master_phil.fetch(source=self.currentphil ).extract().selected_info
@@ -326,12 +341,12 @@ class HKLViewFrame() :
       phl = self.params
       if currentNGLscope is not None:
         self.params.NGL = currentNGLscope
-      self.viewer.viewerparams = phl.viewer
+      self.viewer.viewerparams = phl.hkls
       # once a preset phil setting has been enabled allow changing a phil parameter
       # without having to change scene_id
       if (msgtype=="philstr") and (lastmsgtype=="preset_philstr") and (oldsceneid is not None) and \
          jsview_3d.has_phil_path(diff_phil, "scene_id") == False:
-        self.viewer.viewerparams.scene_id = oldsceneid
+        self.params.viewer.scene_id = oldsceneid
         self.viewer.sceneisdirty = True
 
       if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
@@ -371,9 +386,15 @@ class HKLViewFrame() :
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 
-      if jsview_3d.has_phil_path(diff_phil, "scene_id", "merge_data", "show_missing", \
-         "show_only_missing", "show_systematic_absences", "nbins", "binner_idx",\
-         "scene_bin_thresholds", "data_array"):
+      if jsview_3d.has_phil_path(diff_phil, "scene_id",
+                                            "merge_data",
+                                            "show_missing",
+                                            "show_only_missing",
+                                            "show_systematic_absences",
+                                            "nbins",
+                                            "binner_idx",
+                                            "scene_bin_thresholds",
+                                            "data_array"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(strbinvals=phl.binning.scene_bin_thresholds,
@@ -435,9 +456,9 @@ class HKLViewFrame() :
         self.SaveReflectionsFile(phl.savefilename)
       phl.savefilename = None # ensure the same action in succession can be executed
 
-      if jsview_3d.has_phil_path(diff_phil, "viewer"):
-        self.viewer.settings = phl.viewer
-        self.settings = phl.viewer
+      if jsview_3d.has_phil_path(diff_phil, "hkls"):
+        #self.viewer.settings = phl.viewer
+        self.HKLsettings = phl.hkls
 
       if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
@@ -476,14 +497,6 @@ class HKLViewFrame() :
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
       self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
-
-
-  def update_clicked (self, index) :#hkl, d_min=None, value=None) :
-    if (index is None) :
-      self.settings_panel.clear_reflection_info()
-    else :
-      hkl, d_min, value = self.viewer.scene.get_reflection_info(index)
-      self.settings_panel.update_reflection_info(hkl, d_min, value)
 
 
   def detect_Rfree(self, array):
@@ -531,8 +544,8 @@ class HKLViewFrame() :
     self.mprint("Processing reflection data...")
     self.procarrays = []
     if self.params.merge_data == False:
-      self.settings.expand_to_p1 = False
-      self.settings.expand_anomalous = False
+      self.hkls.expand_to_p1 = False
+      self.hkls.expand_anomalous = False
     for c,arr in enumerate(self.valid_arrays):
       procarray, procarray_info = self.process_miller_array(arr)
       self.procarrays.append(procarray)
@@ -710,8 +723,8 @@ class HKLViewFrame() :
     self.spacegroup_choices = []
     self.origarrays = {}
     display.reset_settings()
-    self.settings = display.settings()
-    self.viewer.settings = self.params.viewer
+    self.hkls = display.settings()
+    #self.viewer.settings = self.params.viewer
     self.viewer.mapcoef_fom_dict = {}
     self.viewer.sceneid_from_arrayid = []
     self.hklfile_history = []
@@ -1029,23 +1042,23 @@ class HKLViewFrame() :
         philstr_vectors = []
         millaroperationstr = None
         if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
-          btnphilobj = btnphil.extract()
-          if hasattr(btnphilobj.viewer.data_array, "label"):
-            philstr_label = btnphilobj.viewer.data_array.label[0]
-          if hasattr(btnphilobj.viewer.data_array, "datatype"):
-            philstr_type = btnphilobj.viewer.data_array.datatype[0]
-          if hasattr(btnphilobj.viewer.data_array, "phasertng_tag"):
-            phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag[0]
+          btnphilobj = self.master_phil.fetch(btnphil).extract()
+          if btnphilobj.viewer.data_array.label is not None:
+            philstr_label = btnphilobj.viewer.data_array.label
+          if btnphilobj.viewer.data_array.datatype is not None:
+            philstr_type = btnphilobj.viewer.data_array.datatype
+          if btnphilobj.viewer.data_array.phasertng_tag is not None:
+            phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag
             # find the miller array used by phasertng as specified in the mtz history header
             philstr_label = [ self.get_label_from_phasertng_tag(",".join(phasertng_tag)) ]
-          if hasattr(btnphilobj.viewer, "show_vector"):
+          if len(btnphilobj.viewer.show_vector) > 0:
             philstr_vectors = btnphilobj.viewer.show_vector
-          if hasattr(btnphilobj, "miller_array_operation"):
+          if btnphilobj.miller_array_operation != "":
 # The miller array operation part in the philstr could look like:
 # miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
 # We want to capture 'I<<FSQ,SIGI<<FSQ' and 'Intensity' strings which will be in arr1label and arr1type
             millaroperationstr, millarrlabel, (arr1label, arr1type), (arr2label, arr2type) = \
-                                                     eval( btnphilobj.miller_array_operation[0])
+                                                     eval( btnphilobj.miller_array_operation)
         nvectorsfound = len(philstr_vectors)
         if philstr_vectors:
           nvectorsfound = 0
@@ -1379,31 +1392,28 @@ class HKLViewFrame() :
       # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
       # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
       veclength = self.viewer.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      tncsvec = [(ln, "TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
+      tncsvec = [("TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
 
     anisovectors = []
     if self.aniso1 is not None:
       # anisotropic principal axes vector are specified in cartesian coordinates.
       cartvec = [self.aniso1[0]*self.viewer.renderscale, self.aniso1[1]*self.viewer.renderscale, self.aniso1[2]*self.viewer.renderscale]
-      ln = len(self.viewer.all_vectors)
       # convert vector to fractional coordinates for the table in the GUI
       aniso1frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors = [(ln, "ANISO1", 0, cartvec, "", "", str(roundoff(aniso1frac, 5)), veclength )]
+      anisovectors = [("ANISO1", 0, cartvec, "", "", str(roundoff(aniso1frac, 5)), veclength )]
 
       cartvec = [self.aniso2[0]*self.viewer.renderscale, self.aniso2[1]*self.viewer.renderscale, self.aniso2[2]*self.viewer.renderscale]
-      ln = len(self.viewer.all_vectors)
       # convert vector to fractional coordinates for the table in the GUI
       aniso2frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append((ln, "ANISO2", 0, cartvec, "", "", str(roundoff(aniso2frac, 5)), veclength ) )
+      anisovectors.append(("ANISO2", 0, cartvec, "", "", str(roundoff(aniso2frac, 5)), veclength ) )
 
       cartvec = [self.aniso3[0]*self.viewer.renderscale, self.aniso3[1]*self.viewer.renderscale, self.aniso3[2]*self.viewer.renderscale]
-      ln = len(self.viewer.all_vectors)
       # convert vector to fractional coordinates for the table in the GUI
       aniso3frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append( (ln, "ANISO3", 0, cartvec, "", "", str(roundoff(aniso3frac, 5)), veclength ) )
+      anisovectors.append( ("ANISO3", 0, cartvec, "", "", str(roundoff(aniso3frac, 5)), veclength ) )
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1412,10 +1422,14 @@ class HKLViewFrame() :
     Hlength = math.sqrt( Hcartvec[0]*Hcartvec[0] + Hcartvec[1]*Hcartvec[1] + Hcartvec[2]*Hcartvec[2] )
     Klength = math.sqrt( Kcartvec[0]*Kcartvec[0] + Kcartvec[1]*Kcartvec[1] + Kcartvec[2]*Kcartvec[2] )
     Llength = math.sqrt( Lcartvec[0]*Lcartvec[0] + Lcartvec[1]*Lcartvec[1] + Lcartvec[2]*Lcartvec[2] )
-    hklunit_vectors = [ (ln, "H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
-                        (ln+1, "K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
-                        (ln+2, "L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
-    self.viewer.all_vectors = hklunit_vectors + tncsvec + anisovectors + self.viewer.all_vectors + self.uservectors
+    hklunit_vectors = [ ("H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
+                        ("K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
+                        ("L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
+
+    all_vecs = hklunit_vectors + tncsvec + anisovectors + self.viewer.rotation_operators[:] + self.uservectors
+    self.viewer.all_vectors = []
+    for opnr,(label, order, cartvec, hkl_op, hkl, abc, length) in enumerate(all_vecs):
+      self.viewer.all_vectors.append( (opnr, label, order, cartvec, hkl_op, hkl, abc, length) )
 
     for (opnr, label, order, cartvec, hkl_op, hkl, abc, length) in self.viewer.all_vectors:
       # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
@@ -1427,7 +1441,6 @@ class HKLViewFrame() :
 
   def add_user_vector(self):
     uc = self.viewer.miller_array.unit_cell()
-    ln = len(self.viewer.all_vectors)
     label = self.params.viewer.user_label
     order = 0
     try:
@@ -1462,7 +1475,7 @@ class HKLViewFrame() :
        and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
        and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
         self.mprint("No vector was specified")
-      self.uservectors.append( (ln, label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
+      self.uservectors.append( (label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
       self.list_vectors()
     except Exception as e:
       raise Sorry( str(e))
@@ -1665,7 +1678,7 @@ masterphilstr = """
       .caption = "If value is negative the length of the normal vector is used as the scale."
     clip_width = None
       .type = float
-      .caption = "If value is not None then we are clipping"
+      .caption = "If value is not None then we are clipping. If auto_clip_width is True this value is ignored."
     auto_clip_width = True
       .type = bool
       .caption = "If true compute appropriate clip plane width. Otherwise use clip_width value"
@@ -1690,11 +1703,11 @@ masterphilstr = """
   }
   viewer {
     data_array {
-      label = none
+      label = None
         .type = str
         .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
                    "order the miller array with this label is found in the reflection data file."
-      phasertng_tag = none
+      phasertng_tag = None
         .type = str
         .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
                    "order the miller array with a label found in the parsed history of the MTZ header."
@@ -1734,6 +1747,8 @@ masterphilstr = """
       .type = float
     angle_around_ZHKL_vector = 0.0
       .type = float
+  }
+  hkls {
     %s
   }
   NGL {

@@ -30,7 +30,7 @@ def has_phil_path(philobj, *paths): # variable number of arguments
   return False
 
 
-def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, setts, mprint=sys.stdout.write):
+def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=sys.stdout.write):
   """
   Conpute the hklscene for proc_array. If it's a complex array and foms_array!=None
   then also compute an hklscene with colours of each hkl attenuated by the corresponding FOM value.
@@ -42,19 +42,18 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, setts, mprint
   sceneminsigmas = []
   scenearrayinfos = []
   hklscenes = []
-  settings = setts
-  if (settings.expand_anomalous or settings.expand_to_p1) \
+  if (hkls.expand_anomalous or hkls.expand_to_p1) \
       and not proc_array.is_unique_set_under_symmetry():
-    settings.expand_anomalous = False
-    settings.expand_to_p1 = False
+    hkls.expand_anomalous = False
+    hkls.expand_to_p1 = False
     mprint("The " + proc_array.info().label_string() + \
          " array is not symmetry unique. Expansion may lead to multiple reflections having the same indices.")
-  if (settings.inbrowser==True):
-    settings.expand_anomalous = False
-    settings.expand_to_p1 = False
+  if (hkls.inbrowser==True):
+    hkls.expand_anomalous = False
+    hkls.expand_to_p1 = False
 
   hklscene = display.scene(miller_array=proc_array, merge=None, renderscale=renderscale,
-    settings=settings, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
+    settings=hkls, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
   if not hklscene.SceneCreated:
     mprint("The " + proc_array.info().label_string() + " array was not processed")
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
@@ -83,15 +82,15 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, setts, mprint
 
 
 lock_timeout=45 # for the sempahores. Rendering could take a while for very large file. Until that
-# has been completed geometries of the stage such as clipnear, clipfar, cameraZ and bounding box
-# are undefined
+# has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
+# are undefined.
 
 
 class HKLview_3d:
   def __init__ (self, *args, **kwds) :
-    self.settings = kwds.get("settings")
     self.ngl_settings = None #NGLsettings()
-    self.viewerparams = kwds.get("settings")
+    #self.viewerparams = kwds.get("settings")
+    self.viewerparams = display.settings()
     self.diff_phil = None
     self.params = None
     self.miller_array = None
@@ -266,7 +265,7 @@ class HKLview_3d:
     self.JavaScriptCleanUp()
     self.SendInfoToGUI( { "datatype_dict": self.datatypedict } ) # so the GUI can persist these across sessions
     nwait = 0
-    if self.viewerparams.scene_id is None:
+    if self.params.viewer.scene_id is None:
       self.WBmessenger.StopWebsocket()
     while not self.WBmessenger.isterminating and nwait < 5:
       time.sleep(self.sleeptime)
@@ -287,7 +286,7 @@ class HKLview_3d:
     scripting HKLviewer with python
     """
     self.ngl_settings = curphilparam.NGL
-    self.viewerparams = curphilparam.viewer
+    self.viewerparams = curphilparam.hkls
     self.params = curphilparam
     self.diff_phil = diff_phil
 
@@ -338,10 +337,10 @@ class HKLview_3d:
                        "scale",
                        "nth_power_scale_radii"
             ):
-          self.ConstructReciprocalSpace(curphilparam, scene_id=self.viewerparams.scene_id )
+          self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
           self.params.miller_array_operation = ""
     msg = ""
-    if self.viewerparams.scene_id is not None and \
+    if self.params.viewer.scene_id is not None and \
       ( has_phil_path(diff_phil,
                       "show_missing",
                       "show_only_missing",
@@ -386,23 +385,23 @@ class HKLview_3d:
       self.params.clip_plane.angle_around_vector = str([i, deg])
 
     if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
-      self.rotate_stage_around_cartesian_vector([1,0,0], self.viewerparams.angle_around_XHKL_vector)
-      self.viewerparams.angle_around_XHKL_vector = None
+      self.rotate_stage_around_cartesian_vector([1,0,0], self.params.viewer.angle_around_XHKL_vector)
+      self.params.viewer.angle_around_XHKL_vector = None
 
     if has_phil_path(diff_phil, "angle_around_YHKL_vector"):
-      self.rotate_stage_around_cartesian_vector([0,1,0], self.viewerparams.angle_around_YHKL_vector)
-      self.viewerparams.angle_around_YHKL_vector = None
+      self.rotate_stage_around_cartesian_vector([0,1,0], self.params.viewer.angle_around_YHKL_vector)
+      self.params.viewer.angle_around_YHKL_vector = None
 
     if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
-      self.rotate_stage_around_cartesian_vector([0,0,1], self.viewerparams.angle_around_ZHKL_vector)
-      self.viewerparams.angle_around_ZHKL_vector = None
+      self.rotate_stage_around_cartesian_vector([0,0,1], self.params.viewer.angle_around_ZHKL_vector)
+      self.params.viewer.angle_around_ZHKL_vector = None
 
     if has_phil_path(diff_phil, "miller_array_operation"):
       # Display the new dataset user has just added which is the last in the list but not if specified
       # with data_array scope which happens when clicking a preset button assigned with a miller_array_operation.
       # data_array.label and data_array.datatype will then already have been matched to a scene_id
       if not has_phil_path(diff_phil, "data_array"):
-        self.viewerparams.scene_id = len(self.hkl_scenes_infos)-1
+        self.params.viewer.scene_id = len(self.hkl_scenes_infos)-1
       self.viewerparams.sigma_color_radius = False
       self.set_scene()
 
@@ -424,16 +423,17 @@ class HKLview_3d:
                       "show_symmetry_rotation_axes",
                       "show_vector",
                       "show_all_vectors",
-                      "viewer") and self.viewerparams.scene_id is not None:
+                      "hkls",
+                      "viewer") and self.params.viewer.scene_id is not None:
        # any change to parameters in the master phil in display2.py
-      self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
+      self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25) # for debugging
       self.show_rotation_axes()
 
       if has_phil_path(diff_phil, "show_vector"):
-        self.show_vectors(self.viewerparams.show_vector, diff_phil)
+        self.show_vectors(self.params.viewer.show_vector, diff_phil)
 
       if has_phil_path(diff_phil, "show_all_vectors"):
         self.show_all_vectors()
@@ -447,7 +447,7 @@ class HKLview_3d:
       i,speed = self.animate_rotate_around_vector()
       self.params.clip_plane.animate_rotation_around_vector = str([i, speed])
 
-    if self.viewerparams.scene_id is None:
+    if self.params.viewer.scene_id is None:
       self.DrawNGLJavaScript(blankscene=True)
     return curphilparam
 
@@ -459,8 +459,8 @@ class HKLview_3d:
     but can change the appearance of primitives instantly like opacity or clipplane position. Expansion
     in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
-    if self.viewerparams.scene_id is not None:
-      if self.viewerparams.fixorientation == "vector":
+    if self.params.viewer.scene_id is not None:
+      if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
       self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
       hkldist = -1
@@ -475,9 +475,9 @@ class HKLview_3d:
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
       infomsg = ""
       self.normal_vecnr = -1
-      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
+      for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
         if self.params.clip_plane.normal_vector in label:
-          self.normal_vecnr = i
+          self.normal_vecnr = opnr
 
       if self.normal_vecnr != -1: # then we are orienting clip plane with a vector
         # cartvec can be hklvec vector in cartesian coordinates
@@ -571,11 +571,11 @@ class HKLview_3d:
 
   def set_scene(self):
     self.binvals = []
-    if self.viewerparams.scene_id is None:
+    if self.params.viewer.scene_id is None:
       return False
-    self.colour_scene_id = self.viewerparams.scene_id
-    self.radii_scene_id = self.viewerparams.scene_id
-    self.set_miller_array(self.viewerparams.scene_id)
+    self.colour_scene_id = self.params.viewer.scene_id
+    self.radii_scene_id = self.params.viewer.scene_id
+    self.set_miller_array(self.params.viewer.scene_id)
     if (self.miller_array is None):
       raise Sorry("No data loaded!")
     self.mprint( "Miller array %s runs from hkls: %s to %s" \
@@ -587,11 +587,11 @@ class HKLview_3d:
 
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
-      self.viewerparams.scene_id = scene_id
-    #if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0 and self.HKLscene:
-    if self.viewerparams and self.viewerparams.scene_id is not None and self.viewerparams.scene_id >= 0:
-      self.miller_array = self.HKLscene_from_dict(self.viewerparams.scene_id).miller_array
-      self.scene = self.HKLscene_from_dict(self.viewerparams.scene_id)
+      self.params.viewer.scene_id = scene_id
+    #if self.viewerparams and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0 and self.HKLscene:
+    if self.viewerparams and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0:
+      self.miller_array = self.HKLscene_from_dict(self.params.viewer.scene_id).miller_array
+      self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -600,7 +600,7 @@ class HKLview_3d:
     self.d_min = self.miller_array.d_min()
     array_info = self.miller_array.info()
     # capture the currently selected spacegroup if not the default
-    self.sg = self.proc_arrays[self.scene_id_to_array_id(self.viewerparams.scene_id)].space_group()
+    self.sg = self.proc_arrays[self.scene_id_to_array_id(self.params.viewer.scene_id)].space_group()
     #self.sg = self.miller_array.space_group()
     self.symops = list(self.sg.all_ops())
     if len(self.binvals) == 0:
@@ -886,7 +886,7 @@ class HKLview_3d:
 
   def HKLscene_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -895,7 +895,7 @@ class HKLview_3d:
 
   def HKLMaxData_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -904,7 +904,7 @@ class HKLview_3d:
 
   def HKLMinData_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -913,7 +913,7 @@ class HKLview_3d:
 
   def HKLMaxSigmas_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -922,7 +922,7 @@ class HKLview_3d:
 
   def HKLMinSigmas_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -931,7 +931,7 @@ class HKLview_3d:
 
   def HKLInfo_from_dict(self, sceneid=None):
     if sceneid is None:
-      sceneid = self.viewerparams.scene_id
+      sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
@@ -1011,10 +1011,10 @@ class HKLview_3d:
     binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
-      warray = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).work_array
-      dres = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres
+      warray = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).work_array
+      dres = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).dres
       uc = warray.unit_cell()
-      indices = self.HKLscene_from_dict(int(self.viewerparams.scene_id)).indices
+      indices = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).indices
       dmax,dmin = warray.d_max_min(d_max_is_highest_defined_if_infinite=True) # to avoid any F000 reflection
       if dmax == dmin: # say if only one reflection
         binvals = [dres[0]-0.1, dmin +0.1]
@@ -1052,7 +1052,7 @@ class HKLview_3d:
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
     if nuniquevalues == -1:
       if binner_idx==0:
-        nuniquevalues = len(set(list( self.HKLscene_from_dict(int(self.viewerparams.scene_id)).dres )))
+        nuniquevalues = len(set(list( self.HKLscene_from_dict(int(self.params.viewer.scene_id)).dres )))
       else:
         bindata, dummy = self.get_matched_binarray(binner_idx)
         nuniquevalues = len(set(list(bindata)))
@@ -1083,9 +1083,9 @@ class HKLview_3d:
     if self.bin_labels_type_idxs[self.params.binning.binner_idx][0] == "Resolution":
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
-    scenearraydata = self.HKLscene_from_dict(self.viewerparams.scene_id).data
+    scenearraydata = self.HKLscene_from_dict(self.params.viewer.scene_id).data
     ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
-    matchindices = miller.match_indices(self.HKLscene_from_dict(self.viewerparams.scene_id).indices,
+    matchindices = miller.match_indices(self.HKLscene_from_dict(self.params.viewer.scene_id).indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
@@ -1438,7 +1438,7 @@ class HKLview_3d:
     colourgradstr = []
     if not blankscene:
       self.calc_rotation_axes()
-      nvaluelabels = int(ln/self.viewerparams.ncolourlabels )
+      nvaluelabels = int(ln/self.params.viewer.ncolourlabels )
       colourgradstrs = []
       # if displaying phases from map coefficients together with fom values then
       for g,colourgradarray in enumerate(colourgradarrays):
@@ -1489,7 +1489,7 @@ class HKLview_3d:
       #self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
     self.sceneisdirty = False
-    self.lastscene_id = self.viewerparams.scene_id
+    self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
     self.mprint("\nDone rendering reflections ")
 
@@ -1668,7 +1668,7 @@ Distance: %s
 
 
   def ProcessOrientationMessage(self, message):
-    if self.viewerparams.scene_id is None or self.miller_array is None:
+    if self.params.viewer.scene_id is None or self.miller_array is None:
       return
     if message.find("NaN")>=0 or message.find("undefined")>=0:
       return
@@ -1736,7 +1736,7 @@ Distance: %s
 
 
   def OpenBrowser(self):
-    if self.viewerparams.scene_id is not None and not self.WBmessenger.websockclient \
+    if self.params.viewer.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
       with open(self.hklfname, "w") as f:
         f.write( self.htmlstr )
@@ -2026,8 +2026,8 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def show_rotation_axes(self):
-    if self.viewerparams.show_symmetry_rotation_axes:
-      for i, (opnr, label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
+    if self.params.viewer.show_symmetry_rotation_axes:
+      for i, (label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
         if i < len(self.rotation_operators)-1:
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2, labelpos=1.0)
         else: # supply name to tell javascript to draw all these vectors
@@ -2045,12 +2045,12 @@ in the space group %s\nwith unit cell %s\n""" \
         if label != "":
           self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
           veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-          self.rotation_operators.append( (i, label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )
+          self.rotation_operators.append( (label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )
 
 
   def show_all_vectors(self):
     for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
-      self.show_labelled_vector(self.viewerparams.show_all_vectors==1, label, order, cartvec, hklop, autozoom=False)
+      self.show_labelled_vector(self.params.viewer.show_all_vectors==1, label, order, cartvec, hklop, autozoom=False)
 
 
   def show_vector(self, val, isvisible, autozoom=True):
@@ -2062,14 +2062,14 @@ in the space group %s\nwith unit cell %s\n""" \
       (opnr, label, order, cartvec, hklop, hkl, abc, length) = self.all_vectors[val]
       self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
       if not isvisible:
-        self.viewerparams.show_all_vectors = 0
+        self.params.viewer.show_all_vectors = 0
       return str([val, isvisible])
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
         if val in label:
           self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
           if not isvisible:
-            self.viewerparams.show_all_vectors = 0
+            self.params.viewer.show_all_vectors = 0
           return str([i, isvisible])
 
 
@@ -2153,18 +2153,34 @@ in the space group %s\nwith unit cell %s\n""" \
     if not bigwireframe:
       rad = self.HKLscene_from_dict(self.radii_scene_id).min_radius*0.9
     self.RemovePrimitives("highlight_HKL")
-    if self.viewerparams.show_hkl != "deselect":
-      hkl = eval(self.viewerparams.show_hkl)
+    if self.params.viewer.show_hkl != "deselect":
+      hkl = eval(self.params.viewer.show_hkl)
       if self.sg.info().symbol_and_number() == self.miller_array.space_group().info().symbol_and_number():
         self.draw_sphere(hkl[0],hkl[1],hkl[2], isreciprocal=True, name="highlight_HKL",
                           r=1, g=0.0, b=0.0, radius= rad, mesh=True)
       else:
         self.mprint("Cannot currently associate reflection in original space group with reflection in different space group.")
-    self.viewerparams.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
+    self.params.viewer.show_hkl = "" # to allow clicking on the same entry in the millerarraytable
 
 
-  def rotate_around_numbered_vector(self):
-    val, deg = eval(self.params.clip_plane.angle_around_vector)
+  def get_vectors_labels_from_ids(self, idvectorlst):
+    labelveclst = []
+    for idvecval in idvectorlst:
+      try:
+        id, some_val = eval(idvecval)
+        if isinstance(id, int):
+          for opnr, label, order, cartvec, hklop, hkl, abc, length in self.all_vectors:
+            if opnr==id:
+              labelveclst.append([label, some_val])
+              break
+        if isinstance(id, str):
+          labelveclst.append([id, some_val])
+      except Exception as e:
+        pass
+    return labelveclst
+
+
+  def get_vecid_from_label(self, val ):
     vecnr = -1
     if isinstance(val, int):
       vecnr = val
@@ -2174,6 +2190,12 @@ in the space group %s\nwith unit cell %s\n""" \
           vecnr = i
     if not (vecnr>=0 and vecnr < len(self.all_vectors)):
       raise Sorry("No vector present in file with label or index: %s" %val)
+    return vecnr
+
+
+  def rotate_around_numbered_vector(self):
+    val, deg = eval(self.params.clip_plane.angle_around_vector)
+    vecnr = self.get_vecid_from_label(val)
     self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
     return vecnr,deg
 
@@ -2199,13 +2221,7 @@ in the space group %s\nwith unit cell %s\n""" \
   def animate_rotate_around_vector(self):
     val, speed = eval(self.params.clip_plane.animate_rotation_around_vector)
     vecnr = -1
-    if isinstance(val, int):
-      vecnr = val
-    if isinstance(val, str):
-      for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
-        if val in label:
-          vecnr = i
-    assert (vecnr>=0 and vecnr < len(self.all_vectors))
+    vecnr = self.get_vecid_from_label(val)
     cartvec = self.all_vectors[vecnr][3]
     normR = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
     ux = cartvec[0]/normR
@@ -2322,14 +2338,14 @@ in the space group %s\nwith unit cell %s\n""" \
     cartveclength = math.sqrt(cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
     self.mprint( "cartveclength= %s" %roundoff(cartveclength), verbose=1)
 
-    if self.viewerparams.is_parallel:
+    if self.params.viewer.is_parallel:
       self.PointVectorParallelToScreen(angle_x_xyvec, angle_z_svec)
     else:
       self.PointVectorPerpendicularToScreen(angle_x_xyvec, angle_z_svec)
 
 
   def fix_orientation(self):
-    if self.viewerparams.fixorientation != "None":
+    if self.params.viewer.fixorientation != "None":
       self.DisableMouseRotation()
     else:
       self.EnableMouseRotation()
@@ -2660,12 +2676,12 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def get_current_datatype(self):
     # Amplitudes, Map coeffs, weights, floating points, etc
-    if self.viewerparams.scene_id is None:
+    if self.params.viewer.scene_id is None:
       return None
-    dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][1]
+    dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.params.viewer.scene_id )][1][1]
     # if dtype is boring generic then use the name of the data column for dtype
     if dtype in ["Floating-point", "Integer"]:
-      dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.viewerparams.scene_id )][1][0]
+      dtype = self.array_info_format_tpl[ self.scene_id_to_array_id(self.params.viewer.scene_id )][1][0]
     return dtype
 
 
@@ -2684,7 +2700,7 @@ in the space group %s\nwith unit cell %s\n""" \
       datcolstr = datcolstr + ",".join(lbl[3]) + "\n" + str(i)
       if i < len(self.hkl_scenes_infos)-1:
         datcolstr = datcolstr + "\n\n"
-    datcolstr = datcolstr + "\n\n" + str(self.viewerparams.scene_id)
+    datcolstr = datcolstr + "\n\n" + str(self.params.viewer.scene_id)
     self.AddToBrowserMsgQueue("MakeBrowserDataColumnComboBox", datcolstr)
 
 

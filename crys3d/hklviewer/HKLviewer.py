@@ -661,8 +661,8 @@ newarray._sigmas = sigs
   def onColourChartSelect(self, selcolmap, colourpowscale):
     # called when user clicks OK in helpers.MPLColourSchemes.EnactColourMapSelection()
     if selcolmap != "":
-      self.send_message("""viewer.color_scheme = %s
-viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
+      self.send_message("""hkls.color_scheme = %s
+hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onSelect_millertable_column_dlg(self):
@@ -885,6 +885,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
                 if col == 0:
                   item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) ^ Qt.ItemIsEditable)
                   item.setCheckState(Qt.Unchecked)
+                  item.setData(Qt.UserRole, opnr)
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.vectortable2.setItem(row, col, item)
               self.clipplane_normal_vector_combo.addItem(label, userData=length)
@@ -1058,27 +1059,27 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def UpdateGUI(self):
     self.unfeedback = True
-    self.ManualPowerScalecheckbox.setChecked( math.isnan( self.currentphilstringdict['viewer.nth_power_scale_radii'] )==False )
+    self.ManualPowerScalecheckbox.setChecked( math.isnan( self.currentphilstringdict['hkls.nth_power_scale_radii'] )==False )
     self.power_scale_spinBox.setEnabled( self.ManualPowerScalecheckbox.isChecked() )
-    self.radii_scale_spinBox.setValue( self.currentphilstringdict['viewer.scale'])
-    self.expandP1checkbox.setChecked( self.currentphilstringdict['viewer.expand_to_p1'])
-    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['viewer.expand_anomalous'])
+    self.radii_scale_spinBox.setValue( self.currentphilstringdict['hkls.scale'])
+    self.expandP1checkbox.setChecked( self.currentphilstringdict['hkls.expand_to_p1'])
+    self.expandAnomalouscheckbox.setChecked( self.currentphilstringdict['hkls.expand_anomalous'])
     self.ExpandReflsGroupBox.setChecked(self.expandP1checkbox.isChecked() and self.expandAnomalouscheckbox.isChecked())
-    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['viewer.show_systematic_absences'])
+    self.sysabsentcheckbox.setChecked( self.currentphilstringdict['hkls.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
     vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
-    self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["viewer.color_scheme"]
-    self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["viewer.color_powscale"] )
+    self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["hkls.color_scheme"]
+    self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["hkls.color_powscale"] )
 
     self.Nbins_spinBox.setValue( self.currentphilstringdict['binning.nbins'])
     if self.currentphilstringdict['spacegroup_choice'] is not None:
       self.SpaceGroupComboBox.setCurrentIndex(  self.currentphilstringdict['spacegroup_choice'] )
     #self.clipParallelBtn.setChecked( self.currentphilstringdict['clip_plane.is_parallel'])
-    self.missingcheckbox.setChecked( self.currentphilstringdict['viewer.show_missing'])
-    self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['viewer.show_missing'] )
+    self.missingcheckbox.setChecked( self.currentphilstringdict['hkls.show_missing'])
+    self.onlymissingcheckbox.setEnabled( self.currentphilstringdict['hkls.show_missing'] )
     if self.currentphilstringdict['viewer.scene_id'] is not None:
       self.functionTabWidget.setEnabled(True)
     self.cameraPerspectCheckBox.setChecked( "perspective" in self.currentphilstringdict['NGL.camera_type'])
@@ -1086,7 +1087,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clip_width'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
     self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation'] == "vector" )
-    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['viewer.show_only_missing'])
+    self.onlymissingcheckbox.setChecked( self.currentphilstringdict['hkls.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
       self.unitcellslider.setValue( self.currentphilstringdict['real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
@@ -1282,15 +1283,15 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.ExpandReflsGroupBox.isChecked():
       self.send_message('''
-      viewer.expand_to_p1 = True
-      viewer.expand_anomalous = True
-      viewer.inbrowser = True
+      hkls.expand_to_p1 = True
+      hkls.expand_anomalous = True
+      hkls.inbrowser = True
                       ''' )
     else:
       self.send_message('''
-      viewer.expand_to_p1 = False
-      viewer.expand_anomalous = False
-      viewer.inbrowser = True
+      hkls.expand_to_p1 = False
+      hkls.expand_anomalous = False
+      hkls.inbrowser = True
                       ''' )
 
 
@@ -1299,13 +1300,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.expandP1checkbox.isChecked():
       self.send_message('''
-      viewer.expand_to_p1 = True
-      viewer.inbrowser = True
+      hkls.expand_to_p1 = True
+      hkls.inbrowser = True
                       ''' )
     else:
       self.send_message('''
-      viewer.expand_to_p1 = False
-      viewer.inbrowser = True
+      hkls.expand_to_p1 = False
+      hkls.inbrowser = True
                       ''' )
 
 
@@ -1314,13 +1315,13 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     if self.expandAnomalouscheckbox.isChecked():
       self.send_message('''
-      viewer.expand_anomalous = True
-      viewer.inbrowser = True
+      hkls.expand_anomalous = True
+      hkls.inbrowser = True
                       ''' )
     else:
       self.send_message('''
-      viewer.expand_anomalous = False
-      viewer.inbrowser = True
+      hkls.expand_anomalous = False
+      hkls.inbrowser = True
                       ''' )
 
 
@@ -1328,20 +1329,20 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     if self.sysabsentcheckbox.isChecked():
-      self.send_message('viewer.show_systematic_absences = True')
+      self.send_message('hkls.show_systematic_absences = True')
     else:
-      self.send_message('viewer.show_systematic_absences = False')
+      self.send_message('hkls.show_systematic_absences = False')
 
 
   def showMissing(self):
     if self.unfeedback:
       return
     if self.missingcheckbox.isChecked():
-      self.send_message('viewer.show_missing = True')
+      self.send_message('hkls.show_missing = True')
       self.onlymissingcheckbox.setEnabled(True)
     else:
-      self.send_message("""viewer.show_missing = False
-                             viewer.show_only_missing = False
+      self.send_message("""hkls.show_missing = False
+                             hkls.show_only_missing = False
                           """)
       self.onlymissingcheckbox.setEnabled(False)
 
@@ -1350,9 +1351,9 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.unfeedback:
       return
     if self.onlymissingcheckbox.isChecked():
-      self.send_message('viewer.show_only_missing = True')
+      self.send_message('hkls.show_only_missing = True')
     else:
-      self.send_message('viewer.show_only_missing = False')
+      self.send_message('hkls.show_only_missing = False')
 
 
   def onBindataComboSelchange(self, i):
@@ -1493,22 +1494,22 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def onRadiiScaleEditFinished(self):
     if self.unfeedback:
       return
-    self.send_message("viewer.scale = %f" %self.radii_scale_spinBox.value() )
+    self.send_message("hkls.scale = %f" %self.radii_scale_spinBox.value() )
 
 
   def onPowerScaleEditFinished(self):
     if self.unfeedback:
       return
-    self.send_message("viewer.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
+    self.send_message("hkls.nth_power_scale_radii = %f" %self.power_scale_spinBox.value() )
 
 
   def onManualPowerScale(self, val=None):
     if self.unfeedback:
       return
     if self.ManualPowerScalecheckbox.isChecked():
-      self.send_message('viewer.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
+      self.send_message('hkls.nth_power_scale_radii = %f' %self.power_scale_spinBox.value())
     else:
-      self.send_message('viewer.nth_power_scale_radii = %s' %float("nan"))
+      self.send_message('hkls.nth_power_scale_radii = %s' %float("nan"))
 
 
   def onShowAllVectors(self):
@@ -1529,6 +1530,7 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
     try:
       rc = len(self.all_vectors)
       label = None
+      opnr = -1
       if self.vectortable2.item(row, 0) is not None:
         label = self.vectortable2.item(row, 0).text()
       if row < rc:
@@ -1542,17 +1544,17 @@ viewer.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
           sum = 0
-          ivecs = ""
           ivec= []
           philstr = ""
           for rvrow in range(self.vectortable2.rowCount()):
             if self.vectortable2.item(rvrow, 0) is not None:
+              opnr = self.vectortable2.item(rvrow, 0).data(Qt.UserRole)
               if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
                 self.rotvec = rvrow
                 sum +=1
-                ivec = [rvrow, True]
+                ivec = [opnr, True]
               else:
-                ivec = [rvrow, False]
+                ivec = [opnr, False]
               philstr += "viewer.show_vector = " + str(ivec) + "\n"
           self.send_message(philstr)
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
@@ -1743,12 +1745,12 @@ clip_plane.normal_vector_length_scale = -1
       if self.normal_realspace_vec_btn.isChecked():
         self.clipplane_normal_vector_combo.setEnabled(True)
         self.RotateGroupBox.setEnabled(False)
-        philstr = """viewer {
+        philstr = """hkls {
   slice_mode = False
   inbrowser = True
-  is_parallel = False
-  fixorientation = *vector
 }
+viewer.is_parallel = False
+viewer.fixorientation = *vector
 clip_plane.clip_width = %f
 clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = True
@@ -1757,12 +1759,12 @@ clip_plane.normal_vector_length_scale = -1
       elif self.normal_vec_btn.isChecked():
         self.clipplane_normal_vector_combo.setEnabled(True)
         self.RotateGroupBox.setEnabled(False)
-        philstr = """viewer {
+        philstr = """hkls {
   slice_mode = False
   inbrowser = True
-  is_parallel = False
-  fixorientation = *vector
 }
+viewer.is_parallel = False
+viewer.fixorientation = *vector
 clip_plane.clip_width = %f
 clip_plane.normal_vector = "%s"
 clip_plane.is_assoc_real_space_vector = False
@@ -1771,21 +1773,21 @@ clip_plane.normal_vector_length_scale = -1
       else:
         self.clipplane_normal_vector_combo.setEnabled(False)
         self.RotateGroupBox.setEnabled(True)
-        philstr = """viewer {
+        philstr = """hkls {
   slice_mode = False
   inbrowser = True
-  is_parallel = True
-  fixorientation = *None
 }
+viewer.is_parallel = True
+viewer.fixorientation = *None
 clip_plane.clip_width = %f
 clip_plane.normal_vector = "-1"
           """ %self.clipwidth_spinBox.value()
     else:
-      philstr = """viewer {
+      philstr = """hkls {
   slice_mode = False
   inbrowser = True
-  fixorientation = *None
 }
+viewer.fixorientation = *None
 clip_plane {
   normal_vector = -1
   clip_width = None
@@ -1952,12 +1954,12 @@ clip_plane {
     if (idx - 1000) >= 0:
       idx = idx - 1000
       philstr = """
-      viewer.sigma_color_radius = True
+      hkls.sigma_color_radius = True
       viewer.scene_id = %d
       """ %idx
     else:
       philstr = """
-      viewer.sigma_color_radius = False
+      hkls.sigma_color_radius = False
       viewer.scene_id = %d
       """ %idx
     self.send_message(philstr)
