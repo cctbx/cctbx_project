@@ -1855,7 +1855,6 @@ Note:
 
     for modelIndex, atoms in enumerate(atomLists):
 
-
       ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
       # model.
