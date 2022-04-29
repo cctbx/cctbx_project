@@ -14,7 +14,11 @@ from iotbx.pdb.utils import all_chain_ids
 import scitbx.math
 from libtbx.utils import Sorry
 
-elements=["N","O","S","Se","Fe","Mn","Mg","Mn","Zn","Ca","Cd","Cu","Co"]
+import mmtbx.maps.correlation
+from cctbx import miller
+import mmtbx.refinement.real_space.adp
+
+elements=["N","O","S","Se","Fe","Mn","Mg","Zn","Ca","Cd","Cu","Co"]
 selection_string_interaction = " or ".join(["element %s"%e for e in elements])
 
 hoh_str = "ATOM  %5d  O   HOH S%4d    %8.3f%8.3f%8.3f  1.00  0.00           O"
@@ -245,18 +249,23 @@ class run(object):
   def _run_whole(self):
     self.ma.set_prefix(prefix="  ")
     self.mmm = run_one(
-      ma                = self.ma,
-      map_model_manager = self.mmm,
-      dist_min          = self.params.dist_min,
-      dist_max          = self.params.dist_max,
-      step              = self.params.step,
-      map_threshold     = self.params.map_threshold,
-      scc05             = self.params.scc05,
-      scc1              = self.params.scc1,
-      sphericity_filter = self.params.sphericity_filter,
-      debug             = self.params.debug,
-      total_time        = self.total_time,
-      log               = self.log).map_model_manager
+      ma                       = self.ma,
+      map_model_manager        = self.mmm,
+      resolution               = self.params.resolution,
+      dist_min                 = self.params.dist_min,
+      dist_max                 = self.params.dist_max,
+      step                     = self.params.step,
+      map_threshold_scale      = self.params.map_threshold_scale,
+      scc05                    = self.params.scc05,
+      scc1                     = self.params.scc1,
+      sphericity_filter        = self.params.sphericity_filter,
+      cc_mask_filter           = self.params.cc_mask_filter,
+      cc_mask_filter_threshold = self.params.cc_mask_filter_threshold,
+      atom_radius              = self.params.atom_radius,
+      scattering_table         = self.params.scattering_table,
+      debug                    = self.params.debug,
+      total_time               = self.total_time,
+      log                      = self.log).map_model_manager
     self.ma.set_prefix(prefix="  ")
 
   def _run_per_chain(self):
@@ -272,18 +281,23 @@ class run(object):
       self.ma.add("Working on chain %s:"%chain_ids[0])
       self.ma.set_prefix(prefix="    ")
       box_mmm = run_one(
-        ma                = self.ma,
-        map_model_manager = box_mmm,
-        dist_min          = self.params.dist_min,
-        dist_max          = self.params.dist_max,
-        step              = self.params.step,
-        map_threshold     = self.params.map_threshold,
-        sphericity_filter = self.params.sphericity_filter,
-        scc05             = self.params.scc05,
-        scc1              = self.params.scc1,
-        debug             = self.params.debug,
-        total_time        = self.total_time,
-        log               = self.log).map_model_manager
+        ma                       = self.ma,
+        map_model_manager        = box_mmm,
+        resolution               = self.params.resolution,
+        dist_min                 = self.params.dist_min,
+        dist_max                 = self.params.dist_max,
+        step                     = self.params.step,
+        map_threshold_scale      = self.params.map_threshold_scale,
+        sphericity_filter        = self.params.sphericity_filter,
+        cc_mask_filter           = self.params.cc_mask_filter,
+        cc_mask_filter_threshold = self.params.cc_mask_filter_threshold,
+        scc05                    = self.params.scc05,
+        scc1                     = self.params.scc1,
+        atom_radius              = self.params.atom_radius,
+        scattering_table         = self.params.scattering_table,
+        debug                    = self.params.debug,
+        total_time               = self.total_time,
+        log                      = self.log).map_model_manager
       self.ma.set_prefix(prefix="")
     self.mmm.merge_split_maps_and_models(
       box_info                   = box_info,
@@ -298,13 +312,18 @@ class run_one(object):
   def __init__(self,
                ma, # message_accumulator
                map_model_manager,
+               resolution=None,
                dist_min=2.0,
                dist_max=3.2,
                step=0.3,
-               map_threshold=1.5,
+               map_threshold_scale=1.5,
                sphericity_filter=True,
+               cc_mask_filter = False,
+               cc_mask_filter_threshold = 0.5,
                scc05=0.97,
                scc1=0.9,
+               atom_radius=2,
+               scattering_table="electron",
                debug=False,
                log=None,
                total_time=0,
@@ -319,12 +338,11 @@ class run_one(object):
     self.ma = ma
     self.map_data = self.map_data.deep_copy() # will be changed in-place!
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
-    self.sites_frac = self.model.get_xray_structure().sites_frac()
     self.interaction_selection = self.model.selection(
       selection_string_interaction)
-    self.sites_frac_interaction = self.sites_frac.select(
+    self.sites_frac_interaction = self.model.get_sites_frac().select(
       self.interaction_selection)
-    self.sites_frac_water = None
+    self.xrs_water = None
     self.cutoff = None
     self._wrote_file=0
     # Calculations
@@ -335,14 +353,23 @@ class run_one(object):
     self._call(self._filter_by_distance  , "Filter peaks by distance")
     if(self.sphericity_filter):
       self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
-    self._call(self._filter_by_distance  , "Filter peaks by distance")
+      self._call(self._filter_by_distance  , "Filter peaks by distance")
+    self._call(self._refine_water_adp     , "Refine ADP")
+    if(self.cc_mask_filter):
+      self._call(self._filter_by_map_model_cc, "Filter peaks by CC_mask")
+      self._call(self._filter_by_distance  , "Filter peaks by distance")
     self._call(self._append_to_model     , "Add to model and reset internals")
     if(self.debug):
       self._call(self._show_peak_profiles, "Show peak profiles")
 
+  def _assert_same_model(self):
+    assert self.model.is_same_model(other = self.map_model_manager.model())
+    assert self.model.selection(string="water").count(True)==0
+
   def _call(self, func, msg):
     timer = user_plus_sys_time()
     self.ma.add(msg)
+    self._assert_same_model()
     func()
     t = timer.elapsed()
     self.total_time += t
@@ -405,19 +432,23 @@ class run_one(object):
 
   def _get_cutoff(self):
     map_at_atoms = flex.double()
-    for site_frac in self.sites_frac:
+    for site_frac in self.model.get_sites_frac():
       map_at_atoms.append( self.map_data.tricubic_interpolation(site_frac) )
     mean = flex.mean(map_at_atoms)
-    self.cutoff = self.map_data.as_1d().select(self.map_data.as_1d()>0
-      ).standard_deviation_of_the_sample() * self.map_threshold
+
+    #self.cutoff = self.map_data.as_1d().select(self.map_data.as_1d()>0
+    #  ).standard_deviation_of_the_sample() * self.map_threshold_scale
+
+    self.cutoff = mean * self.map_threshold_scale
+
     self.ma.add("  mean density at atom centers: %8.3f"%mean)
     self.ma.add("  density cutoff for peak search: %8.3f"%self.cutoff)
 
   def _mask_out(self, rad_inside = 1.0, rad_outside = 6.0):
     # Zero inside
-    radii = flex.double(self.sites_frac.size(), rad_inside)
+    radii = flex.double(self.model.size(), rad_inside)
     mask = cctbx_maptbx_ext.mask(
-      sites_frac                  = self.sites_frac,
+      sites_frac                  = self.model.get_sites_frac(),
       unit_cell                   = self.unit_cell,
       n_real                      = self.map_data.all(),
       mask_value_inside_molecule  = 0,
@@ -454,27 +485,74 @@ class run_one(object):
       min_cubicle_edge       = 5)
     psr = cgt.peak_search(parameters = peak_search_parameters,
       map = self.map_data).all(max_clusters = 99999999)
-    self.sites_frac_water = psr.sites()
-    self.ma.add("  total peaks found: %d"%self.sites_frac_water.size())
+    # Convert peaks into water xray.structure
+    mean_b = flex.mean(self.model.get_hierarchy().atoms().extract_b())
+    sp = crystal.special_position_settings(self.model.crystal_symmetry())
+    scatterers = flex.xray_scatterer()
+    for site_frac in psr.sites():
+      sc = xray.scatterer(
+        label="O", site=site_frac, u=adptbx.b_as_u(mean_b), occupancy=1.0)
+      scatterers.append(sc)
+    self.xrs_water = xray.structure(sp, scatterers)
+    #
+    self.ma.add("  total peaks found: %d"%self.xrs_water.scatterers().size())
+    self.ma.add("  B factors set to : %8.3f"%mean_b)
     if(self.debug): self._write_pdb_file(file_name_prefix="hoh_all_peaks")
 
   def _filter_by_distance(self):
+    self.ma.add(
+      "  distance (A), min: %4.2f max: %4.2f"%(self.dist_min, self.dist_max))
+    self.ma.add("  start: %d"%self.xrs_water.scatterers().size())
     sel = mmtbx.utils.filter_water(
       sites_frac_interaction = self.sites_frac_interaction,
-      sites_frac_other       = self.sites_frac.select(~self.interaction_selection),
-      sites_frac_water       = self.sites_frac_water,
+      sites_frac_other       = self.model.get_sites_frac().select(~self.interaction_selection),
+      sites_frac_water       = self.xrs_water.sites_frac(),
       dist_min               = self.dist_min,
       dist_max               = self.dist_max,
       unit_cell              = self.unit_cell)
-    self.sites_frac_water = self.sites_frac_water.select(sel)
-    self.ma.add(
-      "  distance (A), min: %4.2f max: %4.2f"%(self.dist_min, self.dist_max))
-    self.ma.add("  peaks left: %d"%self.sites_frac_water.size())
+    self.xrs_water = self.xrs_water.select(sel)
+    self.ma.add("  final: %d"%self.xrs_water.scatterers().size())
     if(self.debug): self._write_pdb_file(file_name_prefix="hoh_dist")
 
+  def _filter_by_map_model_cc(self):
+    self.ma.add("  start: %d"%self.xrs_water.scatterers().size())
+    # Compute model Fourier map
+    m_all = self.model.deep_copy()
+    m_all.add_solvent(
+      solvent_xray_structure = self.xrs_water,
+      atom_name              = "O",
+      residue_name           = "HOH",
+      chain_id               = "S",
+      refine_adp             = "isotropic")
+    m_all.setup_scattering_dictionaries(scattering_table=self.scattering_table)
+    xrs_all = m_all.get_xray_structure()
+    f_calc = xrs_all.structure_factors(d_min=self.resolution).f_calc()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = xrs_all.unit_cell(),
+      space_group_info      = xrs_all.space_group_info(),
+      pre_determined_n_real = self.map_data.accessor().all())
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = f_calc)
+    map_calc = fft_map.real_map_unpadded()
+    sites_cart = xrs_all.sites_cart()
+    wsel = m_all.selection(string="water")
+    for i, s in enumerate(wsel):
+      if not s: continue
+      cc = mmtbx.maps.correlation.from_map_map_atom(
+        map_1     = self.map_data,
+        map_2     = map_calc,
+        site_cart = sites_cart[i],
+        unit_cell = xrs_all.unit_cell(),
+        radius    = self.atom_radius)
+      if cc < self.cc_mask_filter_threshold: wsel[i]=False
+    self.xrs_water = m_all.select(wsel).get_xray_structure()
+    #
+    self.ma.add("  final: %d"%self.xrs_water.scatterers().size())
+
   def _filter_by_sphericity(self):
-    tmp = flex.vec3_double()
-    for i, site_frac in enumerate(self.sites_frac_water):
+    sel = flex.bool(self.xrs_water.scatterers().size(), False)
+    for i, site_frac in enumerate(self.xrs_water.sites_frac()):
       site_cart = self.unit_cell.orthogonalize(site_frac)
       # XXX make it so it is called once! XXX
       o = maptbx.sphericity_by_heuristics(
@@ -497,7 +575,7 @@ class run_one(object):
       #    plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
       fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>self.scc05 and o2.ccs[0]>self.scc1)
       if(fl):
-        tmp.append(site_frac)
+        sel[i] = True
         #print i, "%6.3f %6.3f %6.3f"%mv.min_max_mean().as_tuple(),\
         #  "%6.3f %6.3f %6.3f"%ccs.min_max_mean().as_tuple(),\
         #  "%6.3f %6.3f %6.3f"%ccs2.min_max_mean().as_tuple()
@@ -507,11 +585,11 @@ class run_one(object):
       #  #print i, "%6.3f %6.3f %6.3f"%mv.min_max_mean().as_tuple(),\
       #  #  "%6.3f %6.3f %6.3f"%ccs.min_max_mean().as_tuple(),\
       #  #  "%6.3f %6.3f %6.3f"%ccs2.min_max_mean().as_tuple(), "<<< REJECTED"
-    self.sites_frac_water = tmp
-    self.ma.add("  peaks left: %d"%self.sites_frac_water.size())
+    self.xrs_water = self.xrs_water.select(sel)
+    self.ma.add("  peaks left: %d"%self.xrs_water.scatterers().size())
 
   def _show_peak_profiles(self):
-    for i, site_frac in enumerate(self.sites_frac_water):
+    for i, site_frac in enumerate(self.xrs_water.sites_frac()):
       site_cart = self.unit_cell.orthogonalize(site_frac)
       o = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
@@ -530,16 +608,38 @@ class run_one(object):
         radius      = 1.0,
         plot_number = str("%d_%4.2f_%4.2f"%(i+1, o.ccs[0],o2.ccs[0])))
 
+  def _refine_water_adp(self):
+    # Make water-only mmm from existing objects: an ugly set of manipulations
+    m = self.model.deep_copy()
+    m.add_solvent(
+      solvent_xray_structure = self.xrs_water,
+      atom_name              = "O",
+      residue_name           = "HOH",
+      chain_id               = "S",
+      refine_adp             = "isotropic")
+    m_w = m.select( m.selection(string="water") )
+
+    self.ma.add("  B (min/max/mean) start: %8.3f %8.3f %8.3f"%
+      m_w.get_b_iso().min_max_mean().as_tuple())
+    m_w.setup_scattering_dictionaries(scattering_table = self.scattering_table)
+    self.map_model_manager.set_model(m_w)
+    # Isotropic ADP refinement: water only
+    o = mmtbx.refinement.real_space.adp.\
+      ncs_aware_refinement(
+        map_model_manager = self.map_model_manager,
+        d_min             = self.resolution,
+        nproc             = 1,
+        atom_radius       = self.atom_radius,
+        individual        = True,
+        restraints_weight = None,
+        log               = self.log)
+    self.xrs_water = self.map_model_manager.model().get_xray_structure()
+    # Reset mmm back to original state
+    self.map_model_manager.set_model(self.model)
+    self.ma.add("  B (min/max/mean) final: %8.3f %8.3f %8.3f"%
+      self.model.get_b_iso().min_max_mean().as_tuple())
+
   def _append_to_model(self):
-    mean_b = flex.mean(self.model.get_hierarchy().atoms().extract_b())
-    self.ma.add("  new water B factors will be set to mean B: %8.3f"%mean_b)
-    sp = crystal.special_position_settings(self.model.crystal_symmetry())
-    scatterers = flex.xray_scatterer()
-    for site_frac in self.sites_frac_water:
-      sc = xray.scatterer(
-        label="O", site=site_frac, u=adptbx.b_as_u(mean_b), occupancy=1.0)
-      scatterers.append(sc)
-    xrs_water = xray.structure(sp, scatterers)
     #
     chain_ids_taken = []
     for chain in self.model.get_hierarchy().chains():
@@ -551,10 +651,10 @@ class run_one(object):
       for solvent_chain in all_chain_ids():
         if(not solvent_chain in chain_ids_taken):
           break
-    self.ma.add("  new water will have chain ID: '%s'"%solvent_chain)
+    self.ma.add("  new water chain ID: '%s'"%solvent_chain)
     #
     self.model.add_solvent(
-      solvent_xray_structure = xrs_water,
+      solvent_xray_structure = self.xrs_water,
       atom_name    = "O",
       residue_name = "HOH",
       chain_id     = solvent_chain,

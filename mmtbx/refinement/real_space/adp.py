@@ -12,9 +12,14 @@ from mmtbx.refinement import adp_refinement
 from cctbx import adp_restraints
 from libtbx import group_args
 from mmtbx.ncs import tncs
+from libtbx.str_utils import format_value
 
 import boost_adaptbx.boost.python as bp
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+
+import random
+random.seed(0)
+flex.set_random_seed(0)
 
 def map_and_model_to_fmodel(map_data, xray_structure, atom_radius, d_min,
                             reset_adp=True):
@@ -73,11 +78,14 @@ class tg(object):
   def __init__(self, fmodel, x, restraints_weight):
     self.restraints_weight = restraints_weight
     self.fmodel = fmodel
-    self.plain_pair_sym_table = get_plain_pair_sym_table(
-      crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry(),
-      sites_frac       = self.fmodel.xray_structure.sites_frac())
-    self.adp_iso_params = \
-      adp_refinement.adp_restraints_master_params.extract().iso
+    self.plain_pair_sym_table = None
+    self.adp_iso_params = None
+    if(self.restraints_weight is not None):
+      self.plain_pair_sym_table = get_plain_pair_sym_table(
+        crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry(),
+        sites_frac       = self.fmodel.xray_structure.sites_frac())
+      self.adp_iso_params = \
+        adp_refinement.adp_restraints_master_params.extract().iso
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.fmodel.xray_structure.scatterers().flags_set_grad_u_iso(
       iselection = self.fmodel.xray_structure.all_selection().iselection())
@@ -88,7 +96,9 @@ class tg(object):
     self.d = None
     self.use_curvatures=False
     #
-    self.weight = self._weight()
+    self.weight = None
+    if(self.restraints_weight is not None):
+      self.weight = self._weight()
     self.tgo = self._compute(x = self.x)
     self.update_target_and_grads(x=x)
 
@@ -114,11 +124,16 @@ class tg(object):
   def _compute(self, x):
     self.fmodel.xray_structure.set_b_iso(values = x)
     self.fmodel.update_xray_structure(update_f_calc = True)
-    R = self._restraints()
     D = self._data()
-    self.tgo = group_args(
-      target   = D.target()*self.weight + R.target*self.restraints_weight,
-      gradient = D.gradient_xray*self.weight + R.gradients*self.restraints_weight)
+    if(self.restraints_weight is not None):
+      R = self._restraints()
+      self.tgo = group_args(
+        target   = D.target()*self.weight + R.target*self.restraints_weight,
+        gradient = D.gradient_xray*self.weight + R.gradients*self.restraints_weight)
+    else:
+      self.tgo = group_args(
+        target   = D.target(),
+        gradient = D.gradient_xray)
     return self.tgo
 
   def update(self, x):
@@ -235,46 +250,64 @@ class ncs_aware_refinement(object):
     #
     if(self.individual):
       if(log is not None):
-        print("r_work (start): %6.4f rms_B_bonded: %4.2f"%(fmodel.r_work(),
-          model.rms_b_iso_or_b_equiv()), file=log)
+        rmsb = format_value("%4.2f", model.rms_b_iso_or_b_equiv()).strip()
+        print("r_work (start): %6.4f rms_B_bonded: %s"%(fmodel.r_work(),
+          rmsb), file=log)
       rw = self.restraints_weight
-      flipped = False
-      for it in range(1,20):
-        x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-        lower = flex.double(x.size(), 0)
-        upper = flex.double(x.size(), flex.max(x)*2)
-        calculator = tg(
-          fmodel = fmodel, x = x, restraints_weight = rw)
-        rw_prev = rw
-        b_isos_prev = b_isos
-        rms_b_prev = model.rms_b_iso_or_b_equiv()
-        m = tncs.minimizer(
-          potential      = calculator,
-          use_bounds     = 2,
-          lower_bound    = lower,
-          upper_bound    = upper,
-          initial_values = x).run()
-        b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-        model.set_b_iso(values = b_isos)
-        if(rms_b_prev is not None):
-          rms_b = model.rms_b_iso_or_b_equiv()
-          if(rms_b<5):
-            rw = rw/2
-            if(flipped):
-              b_isos = b_isos_prev
-              model.set_b_iso(values = b_isos)
-              break
-          else:
-            if(rms_b > rms_b_prev):
-              b_isos = b_isos_prev
-              model.set_b_iso(values = b_isos)
-              break
-            rw = rw*2
-            flipped = True
-        if(log is not None):
-          print("r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
-            fmodel.r_work(), rms_b, rw), file=log)
-        if(rms_b_prev is None): break
+      if(rw is not None):
+        flipped = False
+        for it in range(1,20):
+          x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+          lower = flex.double(x.size(), 0)
+          upper = flex.double(x.size(), flex.max(x)*2)
+          calculator = tg(
+            fmodel = fmodel, x = x, restraints_weight = rw)
+          rw_prev = rw
+          b_isos_prev = b_isos
+          rms_b_prev = model.rms_b_iso_or_b_equiv()
+          m = tncs.minimizer(
+            potential      = calculator,
+            use_bounds     = 2,
+            lower_bound    = lower,
+            upper_bound    = upper,
+            initial_values = x).run()
+          b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+          model.set_b_iso(values = b_isos)
+          if(rms_b_prev is not None):
+            rms_b = model.rms_b_iso_or_b_equiv()
+            if(rms_b<5):
+              rw = rw/2
+              if(flipped):
+                b_isos = b_isos_prev
+                model.set_b_iso(values = b_isos)
+                break
+            else:
+              if(rms_b > rms_b_prev):
+                b_isos = b_isos_prev
+                model.set_b_iso(values = b_isos)
+                break
+              rw = rw*2
+              flipped = True
+          if(log is not None):
+            print("r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
+              fmodel.r_work(), rms_b, rw), file=log)
+          if(rms_b_prev is None): break
+      else:
+        for it in range(1,2):
+          x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+          lower = flex.double(x.size(), 0)
+          upper = flex.double(x.size(), flex.max(x)*2)
+          calculator = tg(fmodel = fmodel, x = x, restraints_weight = None)
+          m = tncs.minimizer(
+            potential      = calculator,
+            use_bounds     = 2,
+            lower_bound    = lower,
+            upper_bound    = upper,
+            initial_values = x).run()
+          b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+          model.set_b_iso(values = b_isos)
+          if(log is not None):
+            print("r_work: %6.4f"%fmodel.r_work(), file=log)
     #
     fmodel.xray_structure.set_b_iso(values = b_isos)
     fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
