@@ -39,6 +39,9 @@ phil_str = """
             splot "uccloud.dat".
   output.image_file = None
     .type = str
+  scale = *linear log
+    .type = choice
+    .help = Z-axis scale for 2d histograms
 """
 phil_scope = parse(phil_str)
 
@@ -122,7 +125,8 @@ class Script(object):
       iqr_ratio = params.iqr_ratio,
       ranges = params.ranges,
       title = params.title,
-      image_fname = params.output.image_file)
+      image_fname = params.output.image_file,
+      hist_scale = params.scale)
     plotter.plt.show()
 
 if __name__ == '__main__':
