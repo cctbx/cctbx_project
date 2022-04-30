@@ -39,12 +39,12 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // extinction_correction_parameter
   af::ref<double> extinction_parameter::components() {
-    return af::ref<double>(&exti->get_value(), 1);
+    return af::ref<double>(&exti->value, 1);
   }
 
   void extinction_parameter::validate() {
-    if (exti->get_value() < 0) {
-      exti->get_value() = 0;
+    if (exti->value < 0) {
+      exti->value = 0;
     }
   }
 

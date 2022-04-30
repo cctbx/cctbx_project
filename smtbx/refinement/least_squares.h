@@ -8,7 +8,7 @@
 #include <scitbx/array_family/ref_reductions.h>
 #include <scitbx/matrix/tensors.h>
 
-#include <cctbx/xray/extinction.h>
+#include <cctbx/xray/fc_correction.h>
 #include <cctbx/xray/observations.h>
 
 #include <smtbx/error.h>
@@ -88,6 +88,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     typedef boost::shared_ptr<f_calc_function_base_t>
       one_miller_index_fcalc_ptr_t;
+    typedef boost::shared_ptr<fc_correction<FloatType> >
+      fc_correction_ptr_t;
 
     build_design_matrix_and_normal_equations(
       cctbx::xray::observations<FloatType> const& reflections,
@@ -96,7 +98,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       f_calc_function_base_t& f_calc_function,
       scitbx::sparse::matrix<FloatType> const&
       jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const& exti,
+      cctbx::xray::fc_correction<FloatType> const& fc_cr,
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false,
@@ -107,7 +109,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       scale_factor(scale_factor),
       f_calc_function(f_calc_function),
       jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
-      exti(exti),
+      fc_cr(fc_cr),
       objective_only(objective_only),
       may_parallelise(may_parallelise),
       use_openmp(use_openmp),
@@ -131,7 +133,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       f_calc_function_base_t &f_calc_function,
       scitbx::sparse::matrix<FloatType> const &
         jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const& exti,
+      cctbx::xray::fc_correction<FloatType> const& fc_cr,
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false,
@@ -142,7 +144,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       scale_factor(scale_factor),
       f_calc_function(f_calc_function),
       jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
-      exti(exti),
+      fc_cr(fc_cr),
       objective_only(objective_only),
       may_parallelise(may_parallelise),
       use_openmp(use_openmp),
@@ -192,7 +194,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
             one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
             jacobian_transpose_matching_grad_fc,
-            exti, objective_only,
+            fc_cr, objective_only,
             f_calc_.ref(), observables_.ref(), weights_.ref(),
             design_matrix_, max_memory);
           job();
@@ -219,7 +221,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
               reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
               one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
               jacobian_transpose_matching_grad_fc,
-              exti, objective_only,
+              fc_correction_ptr_t(fc_cr.fork()),
+              objective_only,
               f_calc_.ref(), observables_.ref(), weights_.ref(),
               design_matrix_));
           accumulators.push_back(accumulator);
@@ -244,7 +247,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
           reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
           one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
           jacobian_transpose_matching_grad_fc,
-          exti, objective_only,
+          fc_correction_ptr_t(fc_cr.fork()),
+          objective_only,
           f_calc_.ref(), observables_.ref(), weights_.ref(),
           design_matrix_);
         job();
@@ -327,7 +331,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       f_calc_function_base_t &f_calc_function;
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc;
-      cctbx::xray::extinction_correction<FloatType> const &exti;
+      boost::shared_ptr<cctbx::xray::fc_correction<FloatType> > fc_cr;
       bool objective_only, compute_grad;
       af::ref<std::complex<FloatType> > f_calc;
       af::ref<FloatType> observables;
@@ -344,7 +348,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         boost::shared_ptr<f_calc_function_base_t> const &f_calc_function_ptr,
         scitbx::sparse::matrix<FloatType> const
           &jacobian_transpose_matching_grad_fc,
-        cctbx::xray::extinction_correction<FloatType> const &exti,
+        boost::shared_ptr<cctbx::xray::fc_correction<FloatType> > const &fc_cr,
         bool objective_only,
         af::ref<std::complex<FloatType> > f_calc,
         af::ref<FloatType> observables,
@@ -357,7 +361,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         scale_factor(scale_factor),
         f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
         jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
-        exti(exti),
+        fc_cr(fc_cr),
         objective_only(objective_only), compute_grad(!objective_only),
         f_calc(f_calc), observables(observables), weights(weights),
         design_matrix(design_matrix)
@@ -400,10 +404,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
               // sort out twinning
               FloatType observable = twp.process(
                 i_h, f_calc_function, gradients);
-              // extinction correction
-              af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
-              observable *= exti_k[0];
-              f_calc[i_h] *= std::sqrt(exti_k[0]);
+              // Fc correction
+              FloatType fc_k = fc_cr->compute(h, observable, compute_grad);
+              if (fc_k != 1) {
+                observable *= fc_k;
+                f_calc[i_h] *= std::sqrt(fc_k);
+              }
               observables[i_h] = observable;
 
               FloatType weight = weighting_scheme(reflections.fo_sq(i_h),
@@ -414,11 +420,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
                   reflections.fo_sq(i_h), weight);
               }
               else {
-                if (exti.grad_value()) {
-                  FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
-                  int grad_index = exti.get_grad_index();
-                  SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradients.size()));
-                  gradients[grad_index] += exti_k[1]* exti_der;
+                if (fc_cr->grad) {
+                  int grad_idx = fc_cr->get_grad_index();
+                  af::const_ref<FloatType> fc_cr_grads = fc_cr->get_gradients();
+                  SMTBX_ASSERT(grad_idx < 0 ||
+                    grad_idx+fc_cr_grads.size() >= gradients.size());
+                  FloatType grad_m = fc_cr->get_grad_Fc_multiplier();
+                  if (grad_m != 1) {
+                    for (int gi = 0; gi < gradients.size(); gi++) {
+                     gradients[gi] *= grad_m;
+                    }
+                  }
+                  for (int gi = 0; gi < fc_cr_grads.size(); gi++) {
+                    gradients[grad_idx + gi] = fc_cr_grads[gi];
+                  }
                 }
                 if (!build_design_matrix) {
                   normal_equations.add_equation(observable,
@@ -454,7 +469,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     f_calc_function_base_t& f_calc_function;
     scitbx::sparse::matrix<FloatType> const&
       jacobian_transpose_matching_grad_fc;
-    cctbx::xray::extinction_correction<FloatType> const& exti;
+    cctbx::xray::fc_correction<FloatType> const& fc_cr;
     bool objective_only,
       may_parallelise,
       use_openmp,
@@ -485,13 +500,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       f_calc_function_base<FloatType>& f_calc_function,
       scitbx::sparse::matrix<FloatType> const
       & jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const& exti,
+      cctbx::xray::fc_correction<FloatType> const& fc_cr,
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false)
       : parent_t(
         reflections, f_mask_data, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
+        jacobian_transpose_matching_grad_fc, fc_cr,
         objective_only, may_parallelise, use_openmp)
     {}
 
@@ -506,7 +521,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const
        &jacobian_transpose_matching_grad_fc,
-       cctbx::xray::extinction_correction<FloatType> const &exti,
+       cctbx::xray::fc_correction<FloatType> const &fc_cr,
        bool objective_only = false,
        bool may_parallelise = false,
        bool use_openmp = false,
@@ -514,7 +529,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        : parent_t(
         normal_equations,
         reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
+        jacobian_transpose_matching_grad_fc, fc_cr,
         objective_only, may_parallelise, use_openmp, max_memory)
     {}
      virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const {
@@ -542,13 +557,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
       f_calc_function_base<FloatType>& f_calc_function,
       scitbx::sparse::matrix<FloatType> const
       & jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const& exti,
+      cctbx::xray::fc_correction<FloatType> const& fc_cr,
       bool objective_only = false,
       bool may_parallelise = false,
       bool use_openmp = false)
       : parent_t(
         reflections, f_mask_data, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
+        jacobian_transpose_matching_grad_fc, fc_cr,
         objective_only, may_parallelise, use_openmp)
     {}
 
@@ -563,7 +578,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        f_calc_function_base<FloatType> &f_calc_function,
        scitbx::sparse::matrix<FloatType> const
        &jacobian_transpose_matching_grad_fc,
-       cctbx::xray::extinction_correction<FloatType> const &exti,
+       cctbx::xray::fc_correction<FloatType> const &fc_cr,
        bool objective_only = false,
        bool may_parallelise = false,
        bool use_openmp = false,
@@ -571,7 +586,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
        : parent_t(
         normal_equations,
         reflections, f_mask_data, weighting_scheme, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
+        jacobian_transpose_matching_grad_fc, fc_cr,
         objective_only, may_parallelise, use_openmp, max_memory)
     {}
 
