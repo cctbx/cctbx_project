@@ -169,7 +169,7 @@ namespace boost_python {
       class_<wt,
              bases<independent_scalar_parameter>,
              std::auto_ptr<wt> >("extinction_parameter", no_init)
-        .def(init<cctbx::xray::extinction_correction<double> *>((
+        .def(init<cctbx::xray::shelx_extinction_correction<double> *>((
           arg("extinction"))));
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }

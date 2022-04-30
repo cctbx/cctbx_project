@@ -163,11 +163,11 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       using namespace std;
       ifstream tsc_file(file_name.c_str(), ios::binary);
 
-      const auto charsize = sizeof(char);
+      const size_t charsize = sizeof(char);
       int head[1] = { 0 };
-      const auto intsize = sizeof(head);
-      const auto complex_doublesize = sizeof(complex<double>);
-      const auto complex_type_size = sizeof(complex_type);
+      const size_t intsize = sizeof(head);
+      const size_t complex_doublesize = sizeof(complex<double>);
+      const size_t complex_type_size = sizeof(complex_type);
       //If the size is not according to double type the binary will not be readable
       SMTBX_ASSERT(complex_doublesize == complex_type_size);
       tsc_file.read((char*)&head, intsize);
@@ -210,7 +210,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       tsc_file.read((char*)&nr_hkl, intsize);
       //read indices and scattering factors row by row
       int index[3] = { 0,0,0 };
-      vector<complex<double>> row(nr_scat);
+      vector<complex<double> > row(nr_scat);
       parent_t::data_.reserve(nr_hkl[0] * nr_scat);
       for (int run = 0; run < *nr_hkl; run++) {
         tsc_file.read((char*)&index, 3*intsize);
@@ -451,7 +451,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     {
       SMTBX_ASSERT(data_.rot_mxs().size() <= 1);
       SMTBX_ASSERT(data_.is_expanded());
-      auto indices = data_.miller_indices();
+      const af::shared<cctbx::miller::index<> > &indices = data_.miller_indices();
       for (size_t i = 0; i < data.size(); i++) {
         mi_lookup[indices[i]] = i;
         data[i].resize(scatterers.size());

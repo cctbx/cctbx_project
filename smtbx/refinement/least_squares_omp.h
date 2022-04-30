@@ -21,7 +21,7 @@ struct accumulate_reflection_chunk_omp {
   f_calc_function_base_t& f_calc_function;
   scitbx::sparse::matrix<FloatType> const
       & jacobian_transpose_matching_grad_fc;
-  cctbx::xray::extinction_correction<FloatType> const& exti;
+  cctbx::xray::fc_correction<FloatType> const& fc_cr;
   bool objective_only, compute_grad;
   af::ref<std::complex<FloatType> > f_calc;
   af::ref<FloatType> observables;
@@ -39,7 +39,7 @@ struct accumulate_reflection_chunk_omp {
     boost::shared_ptr<f_calc_function_base_t> f_calc_function_ptr,
     scitbx::sparse::matrix<FloatType> const&
       jacobian_transpose_matching_grad_fc,
-    cctbx::xray::extinction_correction<FloatType> const& exti,
+    cctbx::xray::fc_correction<FloatType> const& fc_cr,
     bool objective_only,
     af::ref<std::complex<FloatType> > f_calc,
     af::ref<FloatType> observables,
@@ -52,7 +52,7 @@ struct accumulate_reflection_chunk_omp {
     scale_factor(scale_factor),
     f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
     jacobian_transpose_matching_grad_fc(jacobian_transpose_matching_grad_fc),
-    exti(exti),
+    fc_cr(fc_cr),
     objective_only(objective_only), compute_grad(!objective_only),
     f_calc(f_calc), observables(observables), weights(weights),
     design_matrix(design_matrix), max_memory(max_memory)
@@ -67,10 +67,13 @@ struct accumulate_reflection_chunk_omp {
       bool error_flag = false;
       std::string error_string;
       std::vector<FloatType> gradients, matrix, yo_dot_grad_yc_, yc_dot_grad_yc_;
-      boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
-      f_calc_threads.resize(threads);
+      boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> >
+        f_calc_threads(threads);
+      boost::ptr_vector<boost::shared_ptr<fc_correction<FloatType> > >
+        fc_crs(threads);
       for (int i = 0; i < threads; i++) {
         f_calc_threads[i] = f_calc_function.fork();
+        fc_crs[i] = fc_cr.fork();
       }
       const FloatType temp_memory = threads * ((n_rows * (n_rows + 1) / 2) + 3 * n_rows) * sizeof(FloatType) / 1048576.0;
       const FloatType mem_per_size = n_rows * sizeof(FloatType) / 1048576.0;
@@ -160,21 +163,32 @@ struct accumulate_reflection_chunk_omp {
             // sort out twinning
             FloatType observable = twp.process(
               i_h, *f_calc_threads[thread], gradient);
-            // extinction correction
-            af::tiny<FloatType, 2> exti_k = exti.compute(h, observable, compute_grad);
-            observable *= exti_k[0];
-            f_calc[refl_i] *= std::sqrt(exti_k[0]);
+            // Fc correction
+            FloatType fc_k = fc_crs[thread]->compute(h, observable, compute_grad);
+            if (fc_k != 1) {
+              observable *= fc_k;
+              f_calc[i_h] *= std::sqrt(fc_k);
+            }
             observables[refl_i] = observable;
 
             FloatType weight = weighting_scheme(reflections.fo_sq(refl_i),
               reflections.sig(refl_i), observable, scale_factor);
             weights[refl_i] = weight;
             if (!objective_only) {
-              if (exti.grad_value()) {
-                FloatType exti_der = (exti_k[0] + pow(exti_k[0], 3)) / 2;
-                int grad_index = exti.get_grad_index();
-                SMTBX_ASSERT(!(grad_index < 0 || grad_index >= gradient.size()));
-                gradient[grad_index] += exti_k[1] * exti_der;
+              if (fc_crs[thread]->grad) {
+                int grad_idx = fc_crs[thread]->get_grad_index();
+                af::const_ref<FloatType> fc_cr_grads = fc_crs[thread]->get_gradients();
+                SMTBX_ASSERT(grad_idx < 0 ||
+                  grad_idx + fc_cr_grads.size() >= gradients.size());
+                FloatType grad_m = fc_crs[thread]->get_grad_Fc_multiplier();
+                if (grad_m != 1) {
+                  for (int gi = 0; gi < gradients.size(); gi++) {
+                    gradients[gi] *= grad_m;
+                  }
+                }
+                for (int gi = 0; gi < fc_cr_grads.size(); gi++) {
+                  gradients[grad_idx + gi] = fc_cr_grads[gi];
+                }
               }
               if (!build_design_matrix) {
                 memcpy(&gradients[run * n_rows], gradient.begin(), sizeof(FloatType) * n_rows);
