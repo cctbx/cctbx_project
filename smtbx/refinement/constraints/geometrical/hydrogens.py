@@ -373,7 +373,7 @@ class staggered_terminal_tetrahedral_xh_site(
 
 class polyhedral_bh_site(hydrogens):
 
-  n_constrained_sites = 5
+  n_constrained_sites = 1
   room_temperature_bond_length = { 'B': 1.10,
                                    'C': 1.10, }
 
