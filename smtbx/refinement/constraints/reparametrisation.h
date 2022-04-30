@@ -324,14 +324,14 @@ protected:
 
 /// Extinction correction parameter
 class extinction_parameter : public independent_scalar_parameter {
-  typedef cctbx::xray::extinction_correction<double> extinction_correction_t;
+  typedef cctbx::xray::shelx_extinction_correction<double> extinction_correction_t;
 public:
-  extinction_parameter(extinction_correction_t *_exti)
+  extinction_parameter(extinction_correction_t *exti)
   :
   parameter(0),
   independent_scalar_parameter(
-    _exti->get_value(), _exti->grad_value()),
-    exti(_exti)
+    exti->value, exti->grad),
+    exti(exti)
   {}
 
   virtual af::ref<double> components();
