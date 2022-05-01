@@ -67,10 +67,10 @@ struct accumulate_reflection_chunk_omp {
       bool error_flag = false;
       std::string error_string;
       std::vector<FloatType> gradients, matrix, yo_dot_grad_yc_, yc_dot_grad_yc_;
-      boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> >
-        f_calc_threads(threads);
-      boost::ptr_vector<boost::shared_ptr<fc_correction<FloatType> > >
-        fc_crs(threads);
+      boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
+      boost::ptr_vector<boost::shared_ptr<fc_correction<FloatType> > > fc_crs;
+      f_calc_threads.resize(threads);
+      fc_crs.resize(threads);
       for (int i = 0; i < threads; i++) {
         f_calc_threads[i] = f_calc_function.fork();
         fc_crs[i] = fc_cr.fork();
@@ -179,15 +179,15 @@ struct accumulate_reflection_chunk_omp {
                 int grad_idx = fc_crs[thread]->get_grad_index();
                 af::const_ref<FloatType> fc_cr_grads = fc_crs[thread]->get_gradients();
                 SMTBX_ASSERT(grad_idx < 0 ||
-                  grad_idx + fc_cr_grads.size() >= gradients.size());
+                  grad_idx + fc_cr_grads.size() >= gradient.size());
                 FloatType grad_m = fc_crs[thread]->get_grad_Fc_multiplier();
                 if (grad_m != 1) {
-                  for (int gi = 0; gi < gradients.size(); gi++) {
-                    gradients[gi] *= grad_m;
+                  for (int gi = 0; gi < gradient.size(); gi++) {
+                    gradient[gi] *= grad_m;
                   }
                 }
                 for (int gi = 0; gi < fc_cr_grads.size(); gi++) {
-                  gradients[grad_idx + gi] = fc_cr_grads[gi];
+                  gradient[grad_idx + gi] = fc_cr_grads[gi];
                 }
               }
               if (!build_design_matrix) {

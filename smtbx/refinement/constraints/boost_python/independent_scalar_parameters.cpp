@@ -14,7 +14,7 @@ namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
 af::shared<std::size_t>
-mapping_to_grad_fc(af::const_ref<independent_scalar_parameter *> const &params) {
+mapping_to_grad_fc(af::const_ref<independent_parameter *> const &params) {
   af::shared<std::size_t> result((af::reserve(params.size())));
   for (std::size_t i=0; i<params.size(); ++i) {
     if (params[i]->is_variable()) { result.push_back(params[i]->index()); }
@@ -24,7 +24,7 @@ mapping_to_grad_fc(af::const_ref<independent_scalar_parameter *> const &params) 
 
 struct independent_scalar_parameters_wrapper
 {
-  typedef independent_scalar_parameter wt;
+  typedef independent_parameter wt;
 
   static void wrap() {
     using namespace boost::python;
@@ -32,7 +32,7 @@ struct independent_scalar_parameters_wrapper
     rir_t rir;
 
     scitbx::af::boost_python::shared_wrapper<wt *, rir_t>
-    ::wrap("shared_independent_shared_parameters")
+    ::wrap("shared_independent_parameters")
       .def("mapping_to_grad_fc", mapping_to_grad_fc)
       ;
   }

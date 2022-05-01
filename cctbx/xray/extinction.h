@@ -51,6 +51,7 @@ namespace cctbx { namespace xray {
       cr->grad_index = grad_index;
       return boost::shared_ptr<fc_correction_t>(cr);
     }
+    virtual size_t n_param() const { return 1; }
   protected:
     FloatType calc_factor(const miller::index<>& h,
       FloatType fc_sq) const
@@ -115,6 +116,7 @@ namespace cctbx { namespace xray {
       cr->grad_index = grad_index;
       return boost::shared_ptr<fc_correction_t>(cr);
     }
+    virtual size_t n_param() const { return 2; }
   protected:
     uctbx::unit_cell const &u_cell;
   public:

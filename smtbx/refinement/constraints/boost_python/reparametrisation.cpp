@@ -130,6 +130,19 @@ namespace boost_python {
     }
   };
 
+  struct independent_parameter_wrapper
+  {
+    typedef independent_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<parameter>,
+        boost::noncopyable>("independent_parameter", no_init)
+        ;
+    }
+  };
+
   struct independent_scalar_parameter_wrapper
   {
     typedef independent_scalar_parameter wt;
@@ -137,7 +150,7 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-             bases<scalar_parameter>,
+             bases<independent_parameter, scalar_parameter>,
              std::auto_ptr<wt> >("independent_scalar_parameter", no_init)
         .def(init<double, optional<bool> >
              ((arg("value"), arg("variable")=true)));
@@ -152,7 +165,7 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-             bases<independent_scalar_parameter>,
+             bases<independent_parameter>,
              std::auto_ptr<wt> >("twin_fraction_parameter", no_init)
         .def(init<cctbx::xray::twin_fraction<double> *>((
           arg("twin_fraction"))));
@@ -167,10 +180,25 @@ namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt,
-             bases<independent_scalar_parameter>,
+             bases<independent_parameter>,
              std::auto_ptr<wt> >("extinction_parameter", no_init)
         .def(init<cctbx::xray::shelx_extinction_correction<double> *>((
           arg("extinction"))));
+      implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
+    }
+  };
+
+  struct SWAT_parameter_wrapper
+  {
+    typedef SWAT_parameter wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt,
+        bases<independent_parameter>,
+        std::auto_ptr<wt> >("SWAT_parameter", no_init)
+        .def(init<cctbx::xray::shelx_SWAT_correction<double>*>((
+          arg("swat"))));
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
   };
@@ -182,7 +210,7 @@ namespace boost_python {
       using namespace boost::python;
       return_value_policy<return_by_value> rbv;
       class_<wt,
-        bases<independent_scalar_parameter>,
+        bases<independent_parameter>,
         std::auto_ptr<wt> >("thickness_parameter", no_init)
         .def(init<cctbx::xray::thickness<double>*>
           (arg("thickness")))
@@ -606,11 +634,14 @@ namespace boost_python {
     single_asu_scatterer_parameter_wrapper::wrap();
 
     scalar_parameter_wrapper::wrap();
+    independent_parameter_wrapper::wrap();
     independent_scalar_parameter_wrapper::wrap();
 
     twin_fraction_parameter_wrapper::wrap();
 
     extinction_parameter_wrapper::wrap();
+
+    SWAT_parameter_wrapper::wrap();
 
     thickness_parameter_wrapper::wrap();
 

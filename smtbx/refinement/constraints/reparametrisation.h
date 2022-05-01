@@ -277,6 +277,19 @@ private:
   parameter *p;
 };
 
+/// Independent parameter
+class independent_parameter : public virtual parameter {
+public:
+  independent_parameter(bool variable = true)
+    : parameter(0)
+  {
+    set_variable(variable);
+  }
+
+  virtual void linearise(uctbx::unit_cell const& unit_cell,
+    sparse_matrix_type* jacobian_transpose)
+  {}
+};
 
 /// scalar parameter
 class scalar_parameter : public virtual parameter
@@ -289,32 +302,33 @@ public:
 
 
 /// Independent scalar parameter
-class independent_scalar_parameter : public scalar_parameter
+class independent_scalar_parameter : public independent_parameter,
+  public scalar_parameter
 {
 public:
   independent_scalar_parameter(double value, bool variable=true)
-  : parameter(0)
+  : parameter(0),
+    independent_parameter(variable)
   {
     this->value = value;
-    set_variable(variable);
   }
 
-  virtual void linearise(uctbx::unit_cell const &unit_cell,
-                         sparse_matrix_type *jacobian_transpose);
 };
 
 /// Twin component parameter
-class twin_fraction_parameter : public independent_scalar_parameter
-{
+class twin_fraction_parameter : public independent_parameter {
 public:
-  twin_fraction_parameter(cctbx::xray::twin_fraction<double> *twin_fraction_)
+  twin_fraction_parameter(cctbx::xray::twin_fraction<double> *twin_fraction)
   :
-  parameter(0), twin_fraction(twin_fraction_),
-  independent_scalar_parameter(
-    twin_fraction_->value, twin_fraction_->grad)
+  parameter(0),
+    independent_parameter(twin_fraction->grad),
+    twin_fraction(twin_fraction)
   {}
 
-  virtual af::ref<double> components();
+  virtual af::ref<double> components() {
+    return af::ref<double>(&twin_fraction->value, 1);
+  }
+  virtual void validate();
 
 protected:
   /// The twin_component this parameter belongs to
@@ -323,18 +337,18 @@ protected:
 
 
 /// Extinction correction parameter
-class extinction_parameter : public independent_scalar_parameter {
+class extinction_parameter : public independent_parameter {
   typedef cctbx::xray::shelx_extinction_correction<double> extinction_correction_t;
 public:
   extinction_parameter(extinction_correction_t *exti)
-  :
-  parameter(0),
-  independent_scalar_parameter(
-    exti->value, exti->grad),
+  : parameter(0),
+    independent_parameter(exti->grad),
     exti(exti)
   {}
 
-  virtual af::ref<double> components();
+  virtual af::ref<double> components() {
+    return af::ref<double>(&exti->value, 1);
+  }
   virtual void validate();
 
 protected:
@@ -342,20 +356,38 @@ protected:
 };
 
 /// Thickness parameter
-class thickness_parameter : public independent_scalar_parameter {
+class thickness_parameter : public independent_parameter {
   typedef cctbx::xray::thickness<double> thickness_t;
 public:
   thickness_parameter(thickness_t * thickness)
-    :
-    parameter(0),
-    independent_scalar_parameter(thickness->value, thickness->grad),
+    : parameter(0),
+    independent_parameter(thickness->grad),
     thickness(thickness)
   {}
 
-  virtual af::ref<double> components();
+  virtual af::ref<double> components() {
+    return af::ref<double>(&thickness->value, 1);
+  }
   virtual void validate();
 protected:
   thickness_t* thickness;
+};
+
+/// SWAT correction parameter
+class SWAT_parameter : public independent_parameter {
+  typedef cctbx::xray::shelx_SWAT_correction<double> SWAT_correction_t;
+public:
+  SWAT_parameter(SWAT_correction_t* swat)
+    : parameter(0),
+    independent_parameter(swat->grad),
+    swat(swat)
+  {}
+
+  virtual af::ref<double> components() { return swat->values.ref(); }
+  virtual void validate();
+
+protected:
+  SWAT_correction_t* swat;
 };
 
 template <int N>
