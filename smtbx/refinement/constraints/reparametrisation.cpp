@@ -19,40 +19,27 @@ namespace smtbx { namespace refinement { namespace constraints {
     return af::ref<double>(&value, 1);
   }
 
-  // independent_scalar_parameter
-
-  void independent_scalar_parameter
-  ::linearise(uctbx::unit_cell const &unit_cell,
-              sparse_matrix_type *jacobian_transpose)
-  {}
-
   // independent_small_vector_parameter
 
   template class independent_small_vector_parameter<3>;
   template class independent_small_vector_parameter<6>;
 
-  // twin_component_parameter
-
-  af::ref<double> twin_fraction_parameter::components() {
-    return af::ref<double>(&twin_fraction->value, 1);
+  // twin_fraction_parameter correction
+  void twin_fraction_parameter::validate() {
   }
 
-  // extinction_correction_parameter
-  af::ref<double> extinction_parameter::components() {
-    return af::ref<double>(&exti->value, 1);
-  }
-
+  // extinction_component_parameter
   void extinction_parameter::validate() {
     if (exti->value < 0) {
       exti->value = 0;
     }
   }
 
-  // thickness parameter
-  af::ref<double> thickness_parameter::components() {
-    return af::ref<double>(&thickness->value, 1);
+  // SWAT correction
+  void SWAT_parameter::validate() {
   }
 
+  // thickness parameter
   void thickness_parameter::validate() {
     if (thickness->value <= 0) {
       thickness->value = 1e-3;

@@ -25,6 +25,7 @@ namespace cctbx {
       virtual int get_grad_index() const = 0;
       virtual af::const_ref<FloatType> get_gradients() const = 0;
       virtual boost::shared_ptr<fc_correction_t> fork() const = 0;
+      virtual size_t n_param() const = 0;
       bool grad;
     };
 
@@ -52,6 +53,7 @@ namespace cctbx {
         return boost::shared_ptr<fc_correction_t>(
           new dummy_fc_correction());
       }
+      virtual size_t n_param() const { return 0; }
     };
   }
 } // namespace cctbx::xray
