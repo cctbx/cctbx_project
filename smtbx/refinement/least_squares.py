@@ -82,9 +82,11 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
         f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
           self.observations.fo_sq.anomalous_flag(), self.f_mask.data())
 
-      extinction_correction = self.reparametrisation.extinction
-      if extinction_correction is None:
-        extinction_correction = xray.dummy_extinction_correction()
+      fc_correction = self.reparametrisation.extinction
+      if fc_correction is None:
+        fc_correction = self.reparametrisation.swat
+      if fc_correction is None:
+        fc_correction = xray.dummy_fc_correction()
 
       def build_normal_eqns(scale_factor, weighting_scheme, objective_only):
         return ext.build_normal_equations(
@@ -95,7 +97,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
           scale_factor,
           self.one_h_linearisation,
           self.reparametrisation.jacobian_transpose_matching_grad_fc(),
-          extinction_correction,
+          fc_correction,
           objective_only,
           self.may_parallelise,
           self.use_openmp,

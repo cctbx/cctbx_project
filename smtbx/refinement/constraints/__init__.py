@@ -107,6 +107,7 @@ class reparametrisation(ext.reparametrisation):
   extinction = None
   thickness = None
   directions = None
+  swat = None
 
   def __init__(self,
                structure,
@@ -148,9 +149,10 @@ class reparametrisation(ext.reparametrisation):
     scatterers = xs.scatterers()
     self.site_symmetry_table_ = self.structure.site_symmetry_table()
     libtbx.adopt_optional_init_args(self, kwds)
-    self.asu_scatterer_parameters = shared_scatterer_parameters(xs.scatterers())
-    self.independent_scalar_parameters = shared_independent_shared_parameters()
-
+    self.asu_scatterer_parameters = shared_scatterer_parameters(scatterers)
+    self.independent_scalar_parameters = shared_independent_parameters()
+    # only one is allowed!
+    assert self.extinction is None or self.swat is None
     #create referrable parameters
     if self.directions is not None:
       directions = {}
@@ -202,6 +204,9 @@ class reparametrisation(ext.reparametrisation):
     if self.thickness is not None and self.thickness.grad:
       p = self.add(thickness_parameter, self.thickness)
       self.independent_scalar_parameters.append(p)
+    if self.swat is not None and self.swat.grad:
+      p = self.add(SWAT_parameter, self.swat)
+      self.independent_scalar_parameters.append(p)
     self.finalise()
 
   def finalise(self):
@@ -223,6 +228,8 @@ class reparametrisation(ext.reparametrisation):
       independent_grad_cnt += 1
     if self.thickness is not None and self.thickness.grad:
       independent_grad_cnt += 1
+    if self.swat is not None and self.swat.grad:
+      independent_grad_cnt += 2
     # update the grad indices
     independent_grad_i = self.jacobian_transpose.n_rows-independent_grad_cnt
     if self.twin_fractions is not None:
@@ -236,6 +243,9 @@ class reparametrisation(ext.reparametrisation):
     if self.thickness is not None and self.thickness.grad:
       self.thickness.grad_index = independent_grad_i
       independent_grad_i += 1
+    if self.swat is not None and self.swat.grad:
+      self.swat.grad_index = independent_grad_i
+      independent_grad_i += 2
 
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
@@ -372,5 +382,8 @@ class reparametrisation(ext.reparametrisation):
     if self.extinction is not None and self.extinction.grad:
       rv.add_independent_scalar()
     if self.thickness is not None and self.thickness.grad:
+      rv.add_independent_scalar()
+    if self.swat is not None and self.swat.grad:
+      rv.add_independent_scalar()
       rv.add_independent_scalar()
     return rv

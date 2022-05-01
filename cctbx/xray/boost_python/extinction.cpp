@@ -22,6 +22,7 @@ namespace {
         .add_property("grad_index", &wt::get_grad_index)
         .add_property("gradients", &wt::get_gradients)
         .def_readwrite("grad", &wt::grad)
+        .add_property("n_param", &wt::n_param)
         ;
     }
   };
