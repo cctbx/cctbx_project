@@ -289,6 +289,8 @@ public:
   virtual void linearise(uctbx::unit_cell const& unit_cell,
     sparse_matrix_type* jacobian_transpose)
   {}
+
+  virtual size_t n_param() const = 0;
 };
 
 /// scalar parameter
@@ -313,6 +315,9 @@ public:
     this->value = value;
   }
 
+  virtual size_t n_param() const {
+    return 1;
+  }
 };
 
 /// Twin component parameter
@@ -329,6 +334,9 @@ public:
     return af::ref<double>(&twin_fraction->value, 1);
   }
   virtual void validate();
+  virtual size_t n_param() const {
+    return 1;
+  }
 
 protected:
   /// The twin_component this parameter belongs to
@@ -350,6 +358,9 @@ public:
     return af::ref<double>(&exti->value, 1);
   }
   virtual void validate();
+  virtual size_t n_param() const {
+    return 1;
+  }
 
 protected:
   extinction_correction_t *exti;
@@ -369,6 +380,9 @@ public:
     return af::ref<double>(&thickness->value, 1);
   }
   virtual void validate();
+  virtual size_t n_param() const {
+    return 1;
+  }
 protected:
   thickness_t* thickness;
 };
@@ -385,6 +399,9 @@ public:
 
   virtual af::ref<double> components() { return swat->values.ref(); }
   virtual void validate();
+  virtual size_t n_param() const {
+    return 2;
+  }
 
 protected:
   SWAT_correction_t* swat;

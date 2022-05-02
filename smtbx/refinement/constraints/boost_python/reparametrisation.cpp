@@ -139,6 +139,7 @@ namespace boost_python {
       class_<wt,
         bases<parameter>,
         boost::noncopyable>("independent_parameter", no_init)
+        .add_property("n_param", &wt::n_param)
         ;
     }
   };
