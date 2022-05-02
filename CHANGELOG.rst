@@ -1,3 +1,10 @@
+2022.4
+======
+
+* Added option to keep unmerged data in DataManager
+* Bug fixes for cctbx.HKLviewer
+* Improvements to finding water in maps
+
 2022.3
 ======
 
