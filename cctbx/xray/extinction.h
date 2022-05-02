@@ -68,7 +68,7 @@ namespace cctbx { namespace xray {
   };
 
   /* shelx-like extinction correction, shelx manual
-  Fc = Fc*(1 - g*exp(-8 * M_PI^2 * U * stol_sq))
+  Fc_sq = Fc_sq*(1 - g*exp(-8 * PI^2 * U * stol_sq))
   coefficient
   */
   template <typename FloatType>
@@ -90,12 +90,15 @@ namespace cctbx { namespace xray {
     {
       using namespace scitbx::constants;
       FloatType stol_sq = u_cell.stol_sq(h);
-      FloatType ef = exp(-eight_pi_sq * values[1] * stol_sq);
+      FloatType f = eight_pi_sq * stol_sq;
+      FloatType ef = exp(-f * values[1]);
+      FloatType rv = 1 - values[0] * ef;
       if (compute_grad) {
-        grads[0] = -ef;
-        grads[1] = -eight_pi_sq * stol_sq * ef;
+        FloatType dm = 2 * fc_sq * rv * ef;
+        grads[0] = -dm;
+        grads[1] = dm * values[0] * f;
       }
-      return 1 - values[0] * ef;
+      return rv*rv;
     }
 
     FloatType get_g() const { return values[0]; }
