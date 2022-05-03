@@ -20,6 +20,8 @@ here: https://github.com/cctbx/cctbx_project/tree/master/xfel/conda_envs
 
 where DIALS is the base directory of the installation and X is the Python minor
 version for your CCTBX installation.
+
+NOTE: do not try to use `mamba` instead of `conda` for this step!
 """
 
 try:
