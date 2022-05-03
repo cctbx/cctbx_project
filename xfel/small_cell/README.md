@@ -21,8 +21,20 @@ For the work described in Schriber et al., DIALS/CCTBX and dependencies were ins
 described in the "general build" section here:
 https://github.com/cctbx/cctbx_project/tree/master/xfel/conda_envs
 
-GSASII must also be installed in the conda environment. Instructions will be printed when
-calling `cctbx.xfel.candidate_cells` for the first time.
+For unit cell determination, GSASII must be installed in the conda environment. As of 5/2/2022
+we found a problem with a conda-forge distribution of `svn` and thus we alias it to the system
+default version. `cd` into the base directory for the installation and do the following:
+```
+$ svn --version # make sure there is a working system default version
+$ old_svn=$(which svn)
+$ conda activate $PWD/conda_base
+$ mamba install svn -c conda-forge
+$ ln -sf $old_svn $(which svn)
+$ mamba install gsas2pkg -c briantoby -c conda-forge
+$ echo $PWD/conda_base/GSASII > conda_base/lib/python3.*/site-packages/GSASII.pth
+```
+
+(Note that `mamba` can be replaced with `conda` but will take longer.)
 
 </details>
   

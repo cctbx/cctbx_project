@@ -10,18 +10,10 @@ from cctbx import miller, crystal, sgtbx, uctbx
 import functools
 
 conda_message = """
-GSASII is required and must be installed manually. As of 8/12/2021, the
-following steps worked on a build created by the "General build" instructions
-here: https://github.com/cctbx/cctbx_project/tree/master/xfel/conda_envs
+GSASII is required and must be installed manually. Follow the steps in the
+small_cell documentation at:
 
-  $ conda install gsas2pkg -c briantoby -c conda-forge
-  $ cd $DIALS/conda_base
-  $ echo $PWD/GSASII > lib/python3.X/site-packages/GSASII.pth
-
-where DIALS is the base directory of the installation and X is the Python minor
-version for your CCTBX installation.
-
-NOTE: do not try to use `mamba` instead of `conda` for this step!
+  https://github.com/cctbx/cctbx_project/tree/master/xfel/small_cell
 """
 
 try:
