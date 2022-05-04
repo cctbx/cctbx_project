@@ -211,17 +211,23 @@ plots {
             a given radial displacement.
   delta2theta_vs_deltapsi_2dhist = False
     .type = bool
-    .help = For each reflection compute the difference in measured vs pred-   \
+    .help = For each reflection, compute the difference in measured vs pred-   \
             icted two theta and the delta psi. 2D histogram is plotted where  \
             each pixel is the number of reflections with a given delta two    \
             theta and a given delta psi.  10 plots are shown, one for each of \
             10 resolution bins.
   delta2theta_vs_2theta_2dhist = False
     .type = bool
-    .help = For each reflection compute the two theta and the difference in   \
+    .help = For each reflection, compute the two theta and the difference in  \
             measured vs predicted two theta. 2D histogram is plotted where    \
             each pixel is the number of reflections with a given delta two    \
             theta and a given two theta.
+  deltaPsi_vs_2theta_2dhist = False
+    .type = bool
+    .help = For each reflection, compute the delta psi and two theta angles.  \
+            2D histogram is plotted where each pixel is the number of         \
+            reflections with a given delta psi and two theta. Result is       \
+            similar to a trumpet plot but for the whole dataset.
   grouped_stats = False
     .type = bool
     .help = 5 plots are shown with different stats. For each panel group, the \
@@ -515,7 +521,7 @@ class ResidualsPlotter(object):
     lab_coords = panel.get_lab_coord(mm_panel_coords)
 
     lab_coords_x, lab_coords_y, _ = lab_coords.parts()
-    if self.params.residuals.mcd_filter.enable:
+    if self.params.residuals.mcd_filter.enable and len(reflections)>5:
       from xfel.metrology.panel_fitting import Panel_MCD_Filter
       MCD = Panel_MCD_Filter(lab_coords_x, lab_coords_y, data, i_panel = reflections["panel"][0],
                       delta_scalar = self.delta_scalar, params = self.params)
@@ -1149,6 +1155,19 @@ class ResidualsPlotter(object):
         z = np.polyfit(a.select(sel), b.select(sel), 1)
         if params.verbose: print('y=%.7fx+(%.7f)'%(z[0],z[1]))
 
+      if params.plots.deltaPsi_vs_2theta_2dhist:
+        # Plot delta psi vs. 2theta
+        from matplotlib.colors import LogNorm
+        x = reflections['two_theta_obs'].as_numpy_array()
+        y = (reflections['delpsical.rad']*180/math.pi).as_numpy_array()
+        fig = plt.figure()
+        plt.hist2d(x, y, bins=100, range=((0,45), (-1,1)), norm=LogNorm())
+        cb = plt.colorbar()
+        cb.set_label("N reflections")
+        plt.title(r'%s$\Delta\Psi$ vs. 2$\Theta$. %d refls'%(tag,len(x)))
+        plt.xlabel(r'2$\Theta \circ$')
+        plt.ylabel(r'$\Delta\Psi \circ$')
+
       if params.plots.grouped_stats:
         # Plots with single values per panel
         detector_plot_dict(self.params, detector, refl_counts, u"%s N reflections"%t, u"%6d", show=False)
@@ -1247,6 +1266,7 @@ class ResidualsPlotter(object):
         plt.ylabel(u"Median $I/\sigma_I$")
 
         plt.figure()
+        plt.title('Ewald offsets vs. two theta')
         plt.hist2d(all_twothetas.as_numpy_array(), all_offsets.as_numpy_array(), bins=100)
 
       if self.params.save_pdf:
