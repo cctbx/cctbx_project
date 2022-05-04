@@ -18,6 +18,8 @@ import mmtbx.maps.correlation
 from cctbx import miller
 import mmtbx.refinement.real_space.adp
 
+from libtbx.utils import null_out
+
 elements=["N","O","S","Se","Fe","Mn","Mg","Zn","Ca","Cd","Cu","Co"]
 selection_string_interaction = " or ".join(["element %s"%e for e in elements])
 
@@ -256,11 +258,11 @@ class run(object):
       dist_max                 = self.params.dist_max,
       step                     = self.params.step,
       map_threshold_scale      = self.params.map_threshold_scale,
-      scc05                    = self.params.scc05,
-      scc1                     = self.params.scc1,
+      scc                      = self.params.scc,
       sphericity_filter        = self.params.sphericity_filter,
       cc_mask_filter           = self.params.cc_mask_filter,
       cc_mask_filter_threshold = self.params.cc_mask_filter_threshold,
+      cc_mask_threshold_interacting_atoms = self.params.cc_mask_threshold_interacting_atoms,
       atom_radius              = self.params.atom_radius,
       scattering_table         = self.params.scattering_table,
       debug                    = self.params.debug,
@@ -291,8 +293,8 @@ class run(object):
         sphericity_filter        = self.params.sphericity_filter,
         cc_mask_filter           = self.params.cc_mask_filter,
         cc_mask_filter_threshold = self.params.cc_mask_filter_threshold,
-        scc05                    = self.params.scc05,
-        scc1                     = self.params.scc1,
+        cc_mask_threshold_interacting_atoms = self.params.cc_mask_threshold_interacting_atoms,
+        scc                      = self.params.scc,
         atom_radius              = self.params.atom_radius,
         scattering_table         = self.params.scattering_table,
         debug                    = self.params.debug,
@@ -320,9 +322,9 @@ class run_one(object):
                sphericity_filter=True,
                cc_mask_filter = False,
                cc_mask_filter_threshold = 0.5,
-               scc05=0.97,
-               scc1=0.9,
+               scc=0.5,
                atom_radius=2,
+               cc_mask_threshold_interacting_atoms=0.5,
                scattering_table="electron",
                debug=False,
                log=None,
@@ -337,6 +339,7 @@ class run_one(object):
       raise Sorry("Map origin must be zero.")
     self.ma = ma
     self.map_data = self.map_data.deep_copy() # will be changed in-place!
+    self.map_data_resampled = None
     self.unit_cell = self.model.crystal_symmetry().unit_cell()
     self.interaction_selection = self.model.selection(
       selection_string_interaction)
@@ -420,6 +423,7 @@ class run_one(object):
       self.ma.add("  input map (min,max,mean): %s"%self._map_mmm_str())
     if(self.debug):
       self._write_map(file_name = "resampled.mrc")
+    self.map_data_resampled = self.map_data.deep_copy()
 
   def _write_pdb_file(self, file_name_prefix):
     return
@@ -433,14 +437,9 @@ class run_one(object):
   def _get_cutoff(self):
     map_at_atoms = flex.double()
     for site_frac in self.model.get_sites_frac():
-      map_at_atoms.append( self.map_data.tricubic_interpolation(site_frac) )
+      map_at_atoms.append( self.map_data_resampled.tricubic_interpolation(site_frac) )
     mean = flex.mean(map_at_atoms)
-
-    #self.cutoff = self.map_data.as_1d().select(self.map_data.as_1d()>0
-    #  ).standard_deviation_of_the_sample() * self.map_threshold_scale
-
     self.cutoff = mean * self.map_threshold_scale
-
     self.ma.add("  mean density at atom centers: %8.3f"%mean)
     self.ma.add("  density cutoff for peak search: %8.3f"%self.cutoff)
 
@@ -536,17 +535,32 @@ class run_one(object):
       fourier_coefficients = f_calc)
     map_calc = fft_map.real_map_unpadded()
     sites_cart = xrs_all.sites_cart()
+    # Remove water by CC
     wsel = m_all.selection(string="water")
     for i, s in enumerate(wsel):
-      if not s: continue
+      if not s: continue # XXX
       cc = mmtbx.maps.correlation.from_map_map_atom(
-        map_1     = self.map_data,
+        map_1     = self.map_data_resampled,
         map_2     = map_calc,
         site_cart = sites_cart[i],
         unit_cell = xrs_all.unit_cell(),
         radius    = self.atom_radius)
-      if cc < self.cc_mask_filter_threshold: wsel[i]=False
+      if cc < self.cc_mask_filter_threshold: wsel[i] = False
     self.xrs_water = m_all.select(wsel).get_xray_structure()
+    # Exclude poor macro-molecule atoms from interaction analysis
+    sites_cart = self.model.get_sites_cart()
+    for i, s in enumerate(self.interaction_selection):
+      if not s: continue # XXX
+      cc = mmtbx.maps.correlation.from_map_map_atom(
+        map_1     = self.map_data_resampled,
+        map_2     = map_calc,
+        site_cart = sites_cart[i],
+        unit_cell = xrs_all.unit_cell(),
+        radius    = self.atom_radius)
+      if cc < self.cc_mask_threshold_interacting_atoms:
+        self.interaction_selection[i] = False
+    self.sites_frac_interaction = self.model.get_sites_frac().select(
+      self.interaction_selection)
     #
     self.ma.add("  final: %d"%self.xrs_water.scatterers().size())
 
@@ -554,18 +568,12 @@ class run_one(object):
     sel = flex.bool(self.xrs_water.scatterers().size(), False)
     for i, site_frac in enumerate(self.xrs_water.sites_frac()):
       site_cart = self.unit_cell.orthogonalize(site_frac)
-      # XXX make it so it is called once! XXX
       o = maptbx.sphericity_by_heuristics(
         map_data    = self.map_data,
         unit_cell   = self.unit_cell,
         center_cart = site_cart,
-        radius      = 0.5)
-      o2 = maptbx.sphericity_by_heuristics(
-        map_data    = self.map_data,
-        unit_cell   = self.unit_cell,
-        center_cart = site_cart,
         radius      = 1.0)
-      mi,ma,me = o2.rho
+      mi,ma,me = o.rho
       #if(self.debug):
       #  _debug_show_all_plots(
       #    map_data    = self.map_data,
@@ -573,8 +581,7 @@ class run_one(object):
       #    center_cart = site_cart,
       #    radius      = 1.0,
       #    plot_number = str("%d_%4.2f_%4.2f"%(i, o.ccs[0],o2.ccs[0])))
-      fl = (mi>0 and ma>0 and me>0 and o.ccs[0]>self.scc05 and o2.ccs[0]>self.scc1)
-      if(fl):
+      if(o.ccs[0]>self.scc):
         sel[i] = True
         #print i, "%6.3f %6.3f %6.3f"%mv.min_max_mean().as_tuple(),\
         #  "%6.3f %6.3f %6.3f"%ccs.min_max_mean().as_tuple(),\
@@ -632,12 +639,12 @@ class run_one(object):
         atom_radius       = self.atom_radius,
         individual        = True,
         restraints_weight = None,
-        log               = self.log)
+        log               = null_out())
     self.xrs_water = self.map_model_manager.model().get_xray_structure()
     # Reset mmm back to original state
     self.map_model_manager.set_model(self.model)
     self.ma.add("  B (min/max/mean) final: %8.3f %8.3f %8.3f"%
-      self.model.get_b_iso().min_max_mean().as_tuple())
+      m_w.get_b_iso().min_max_mean().as_tuple())
 
   def _append_to_model(self):
     #
