@@ -87,9 +87,6 @@ lock_timeout=45 # for the sempahores. Rendering could take a while for very larg
 
 class HKLview_3d:
   def __init__ (self, *args, **kwds) :
-    self.ngl_settings = None #NGLsettings()
-    #self.viewerparams = kwds.get("settings")
-    self.viewerparams = display.settings()
     self.diff_phil = None
     self.params = None
     self.miller_array = None
@@ -243,7 +240,7 @@ class HKLview_3d:
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
     self.mouse_moved = False
-    self.HKLsceneKey = ( 0, False, self.viewerparams.expand_anomalous, self.viewerparams.expand_to_p1  )
+    self.HKLsceneKey = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
@@ -283,8 +280,6 @@ class HKLview_3d:
     Event handler for zmq messages from the GUI or simply for commandline interaction when
     scripting HKLviewer with python
     """
-    self.ngl_settings = curphilparam.NGL
-    self.viewerparams = curphilparam.hkls
     self.params = curphilparam
     self.diff_phil = diff_phil
 
@@ -312,7 +307,7 @@ class HKLview_3d:
                        "scale",
                        "nth_power_scale_radii"
                        ) \
-     or self.viewerparams.inbrowser==False and \
+     or self.params.hkls.inbrowser==False and \
       ( has_phil_path(diff_phil,
                      "expand_anomalous",
                      "expand_to_p1",
@@ -400,7 +395,7 @@ class HKLview_3d:
       # data_array.label and data_array.datatype will then already have been matched to a scene_id
       if not has_phil_path(diff_phil, "data_array"):
         self.params.viewer.scene_id = len(self.hkl_scenes_infos)-1
-      self.viewerparams.sigma_color_radius = False
+      self.params.hkls.sigma_color_radius = False
       self.set_scene()
 
     if has_phil_path(diff_phil,
@@ -435,7 +430,7 @@ class HKLview_3d:
       self.set_volatile_params()
 
     if has_phil_path(diff_phil, "fontsize"):
-      self.SetFontSize(self.ngl_settings.fontsize)
+      self.SetFontSize(self.params.NGL.fontsize)
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       i,speed = self.animate_rotate_around_vector()
@@ -456,7 +451,7 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
-      self.SetMouseSpeed(self.ngl_settings.mouse_sensitivity)
+      self.SetMouseSpeed(self.params.NGL.mouse_sensitivity)
       hkldist = -1
       clipwidth = None
       self.fix_orientation()
@@ -540,7 +535,7 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      if self.viewerparams.inbrowser:
+      if self.params.hkls.inbrowser:
         self.ExpandInBrowser()
         #self.SetOpacities(self.params.binning.bin_opacities )
         self.SetOpacities(self.params.binning.bin_opacity )
@@ -583,8 +578,8 @@ class HKLview_3d:
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.params.viewer.scene_id = scene_id
-    #if self.viewerparams and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0 and self.HKLscene:
-    if self.viewerparams and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0:
+    #if self.params.hkls and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0 and self.HKLscene:
+    if self.params.hkls and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0:
       self.miller_array = self.HKLscene_from_dict(self.params.viewer.scene_id).miller_array
       self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
     self.merge = merge
@@ -789,20 +784,20 @@ class HKLview_3d:
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
                          curphilparam.merge_data,
-                         self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                         self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                         self.viewerparams.inbrowser,
-                         self.viewerparams.slice_axis,
-                         self.viewerparams.slice_index,
-                         self.viewerparams.show_missing,
-                         self.viewerparams.show_only_missing,
-                         self.viewerparams.show_systematic_absences,
-                         self.viewerparams.sigma_color_radius,
-                         self.viewerparams.color_scheme,
-                         self.viewerparams.color_powscale,
+                         self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
+                         self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
+                         self.params.hkls.inbrowser,
+                         self.params.hkls.slice_axis,
+                         self.params.hkls.slice_index,
+                         self.params.hkls.show_missing,
+                         self.params.hkls.show_only_missing,
+                         self.params.hkls.show_systematic_absences,
+                         self.params.hkls.sigma_color_radius,
+                         self.params.hkls.color_scheme,
+                         self.params.hkls.color_powscale,
                          sceneid,
-                         self.viewerparams.scale,
-                         self.viewerparams.nth_power_scale_radii
+                         self.params.hkls.scale,
+                         self.params.hkls.nth_power_scale_radii
                          )
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
@@ -820,26 +815,26 @@ class HKLview_3d:
       scenemindata, scenemaxsigmas,
         sceneminsigmas, scenearrayinfos
     ) = MakeHKLscene( self.proc_arrays[idx].deep_copy(), fomarray, idx, fdx,
-                     self.renderscale, copy.deepcopy(self.viewerparams), self.mprint )
+                     self.renderscale, copy.deepcopy(self.params.hkls), self.mprint )
     for i,inf in enumerate(scenearrayinfos):
       self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
       self.HKLsceneKey = (curphilparam.spacegroup_choice,
                             curphilparam.using_space_subgroup,
                             curphilparam.merge_data,
-                            self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                            self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                            self.viewerparams.inbrowser,
-                            self.viewerparams.slice_axis,
-                            self.viewerparams.slice_index,
-                            self.viewerparams.show_missing,
-                            self.viewerparams.show_only_missing,
-                            self.viewerparams.show_systematic_absences,
-                            self.viewerparams.sigma_color_radius,
-                            self.viewerparams.color_scheme,
-                            self.viewerparams.color_powscale,
+                            self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
+                            self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
+                            self.params.hkls.inbrowser,
+                            self.params.hkls.slice_axis,
+                            self.params.hkls.slice_index,
+                            self.params.hkls.show_missing,
+                            self.params.hkls.show_only_missing,
+                            self.params.hkls.show_systematic_absences,
+                            self.params.hkls.sigma_color_radius,
+                            self.params.hkls.color_scheme,
+                            self.params.hkls.color_powscale,
                             sceneid,
-                            self.viewerparams.scale,
-                            self.viewerparams.nth_power_scale_radii
+                            self.params.hkls.scale,
+                            self.params.hkls.nth_power_scale_radii
                             )
       self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
         scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
@@ -862,20 +857,20 @@ class HKLview_3d:
     return (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
                       self.params.merge_data,
-                      self.viewerparams.expand_anomalous or self.viewerparams.inbrowser,
-                      self.viewerparams.expand_to_p1 or self.viewerparams.inbrowser,
-                      self.viewerparams.inbrowser,
-                      self.viewerparams.slice_axis,
-                      self.viewerparams.slice_index,
-                      self.viewerparams.show_missing,
-                      self.viewerparams.show_only_missing,
-                      self.viewerparams.show_systematic_absences,
-                      self.viewerparams.sigma_color_radius,
-                      self.viewerparams.color_scheme,
-                      self.viewerparams.color_powscale,
+                      self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
+                      self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
+                      self.params.hkls.inbrowser,
+                      self.params.hkls.slice_axis,
+                      self.params.hkls.slice_index,
+                      self.params.hkls.show_missing,
+                      self.params.hkls.show_only_missing,
+                      self.params.hkls.show_systematic_absences,
+                      self.params.hkls.sigma_color_radius,
+                      self.params.hkls.color_scheme,
+                      self.params.hkls.color_powscale,
                       sceneid,
-                      self.viewerparams.scale,
-                      self.viewerparams.nth_power_scale_radii
+                      self.params.hkls.scale,
+                      self.params.hkls.nth_power_scale_radii
                       )
 
 
@@ -1142,29 +1137,29 @@ class HKLview_3d:
 
   def add_colour_scheme_to_dict(self):
     datatype = self.get_current_datatype_or_default_dict()
-    self.datatypedict[datatype][0] = self.viewerparams.color_scheme
+    self.datatypedict[datatype][0] = self.params.hkls.color_scheme
 
 
   def add_colour_powscale_to_dict(self):
     datatype = self.get_current_datatype_or_default_dict()
-    self.datatypedict[datatype][1] = self.viewerparams.color_powscale
+    self.datatypedict[datatype][1] = self.params.hkls.color_powscale
 
 
   def add_nth_power_scale_radii_to_dict(self):
     datatype = self.get_current_datatype_or_default_dict()
-    self.datatypedict[datatype][2] = self.viewerparams.nth_power_scale_radii
+    self.datatypedict[datatype][2] = self.params.hkls.nth_power_scale_radii
 
 
   def add_radii_scale_to_dict(self):
     datatype = self.get_current_datatype_or_default_dict()
-    self.datatypedict[datatype][3] = self.viewerparams.scale
+    self.datatypedict[datatype][3] = self.params.hkls.scale
 
 
   def get_current_datatype_or_default_dict(self):
     datatype = self.get_current_datatype()
     if datatype is None:
       return
-    if self.viewerparams.sigma_color_radius:
+    if self.params.hkls.sigma_color_radius:
       datatype = datatype + "_sigmas"
     if datatype not in self.datatypedict.keys():
         # ensure individual copies of datatypedefault and not references to the same
@@ -1209,13 +1204,13 @@ class HKLview_3d:
     Lstararrowtxt  = roundoff( [self.unit_l_axis[0][0]*l2, self.unit_l_axis[0][1]*l2, self.unit_l_axis[0][2]*l2] )
 
     if not blankscene:
-      self.viewerparams.color_scheme, self.viewerparams.color_powscale, self.viewerparams.nth_power_scale_radii, \
-        self.viewerparams.scale = self.get_colour_map_radii_power()
+      self.params.hkls.color_scheme, self.params.hkls.color_powscale, self.params.hkls.nth_power_scale_radii, \
+        self.params.hkls.scale = self.get_colour_map_radii_power()
 
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
       mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
       maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
-      if self.viewerparams.sigma_color_radius:
+      if self.params.hkls.sigma_color_radius:
         mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
         maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
       span = maxcolourscalar - mincolourscalar
@@ -1240,7 +1235,7 @@ class HKLview_3d:
           colourscalararray.append( val )
 
         fomarrays = []
-        COL = display.MplColorHelper(self.viewerparams.color_scheme, 0, 360)
+        COL = display.MplColorHelper(self.params.hkls.color_scheme, 0, 360)
         rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ] )
 
         if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
@@ -1270,14 +1265,14 @@ class HKLview_3d:
       else:
         fomln = 1
         fomarrays = [1.0]
-        COL = display.MplColorHelper(self.viewerparams.color_scheme, mincolourscalar, maxcolourscalar)
+        COL = display.MplColorHelper(self.params.hkls.color_scheme, mincolourscalar, maxcolourscalar)
         rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ])
 
         arr = graphics_utils.map_to_rgb_colourmap(
             data_for_colors= colourscalararray,
             colormap = rgbcolarray,
             selection=flex.bool(colourscalararray.size(), True),
-            powscale = self.viewerparams.color_powscale
+            powscale = self.params.hkls.color_powscale
           )
 
         colourgradarrays.append(arr*256)
@@ -1433,7 +1428,7 @@ class HKLview_3d:
     self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binning.binner_idx,
-                          "tooltip_opacity": self.ngl_settings.tooltip_alpha
+                          "tooltip_opacity": self.params.NGL.tooltip_alpha
                          } )
     colourgradstr = []
     if not blankscene:
@@ -1477,7 +1472,7 @@ class HKLview_3d:
       self.mprint(".", end="")
       self.RenderStageObjects()
       self.mprint(".", end="")
-      self.SetFontSize(self.ngl_settings.fontsize)
+      self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       #self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
@@ -1487,7 +1482,7 @@ class HKLview_3d:
       self.OrigClipNear = self.clipNear
       #self.clipplane_msg_sem.release()
       #self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
-      self.SetMouseSpeed( self.ngl_settings.mouse_sensitivity )
+      self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
@@ -1570,7 +1565,7 @@ class HKLview_3d:
           lst = datastr.split(",")
           flst = [float(e) for e in lst]
           if flst[0] is not None and not cmath.isnan(flst[0]):
-            self.ngl_settings.mouse_sensitivity = flst[0]
+            self.params.NGL.mouse_sensitivity = flst[0]
           self.mousespeed_msg_sem.release()
           self.mprint("ProcessBrowserMessage release mousespeed_msg_sem", verbose="threadingmsg")
         elif "tooltip_id:" in message:
@@ -1760,12 +1755,12 @@ Distance: %s
 
 
   def set_show_tooltips(self):
-    msg = "%s" %self.ngl_settings.show_tooltips
+    msg = "%s" %self.params.NGL.show_tooltips
     self.AddToBrowserMsgQueue("DisplayTooltips", msg)
 
 
   def set_tooltip_opacity(self):
-    msg = "%f" %self.ngl_settings.tooltip_alpha
+    msg = "%f" %self.params.NGL.tooltip_alpha
     self.AddToBrowserMsgQueue("TooltipOpacity", msg)
 
 
@@ -1822,7 +1817,7 @@ Distance: %s
     msgtype = "Expand"
     msg = ""
     unique_rot_ops = []
-    if self.viewerparams.expand_to_p1:
+    if self.params.hkls.expand_to_p1:
       msgtype += "P1"
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       retmsg = "Expanding to P1 in browser"
@@ -1832,7 +1827,7 @@ Distance: %s
       self.mprint( retmsg, verbose=1)
     else:
       unique_rot_ops = [ self.symops[0] ] # No P1 expansion. So only submit the identity matrix
-    if self.viewerparams.expand_anomalous and not self.miller_array.anomalous_flag():
+    if self.params.hkls.expand_anomalous and not self.miller_array.anomalous_flag():
       msgtype += "Friedel"
       self.mprint( "Expanding Friedel mates in browser", verbose=1)
     for i, symop in enumerate(unique_rot_ops):
@@ -2385,7 +2380,7 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def set_camera_type(self):
-    self.AddToBrowserMsgQueue("SetCameraType", self.ngl_settings.camera_type)
+    self.AddToBrowserMsgQueue("SetCameraType", self.params.NGL.camera_type)
 
 
   def get_labels_of_data_for_binning(self, arrayinfos):
@@ -2458,7 +2453,7 @@ in the space group %s\nwith unit cell %s\n""" \
     self.mprint("GetMouseSpeed waiting for mousespeed_msg_sem.acquire", verbose="threadingmsg")
     self.mousespeed_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("GetMouseSpeed got mousespeed_msg_sem", verbose="threadingmsg")
-    self.ngl_settings.mouse_sensitivity = None
+    self.params.NGL.mouse_sensitivity = None
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
 
 
@@ -2690,8 +2685,8 @@ in the space group %s\nwith unit cell %s\n""" \
 
   def onClickColourChart(self):
     # if running the GUI show the colour chart selection dialog
-    self.SendInfoToGUI( { "ColourChart": self.viewerparams.color_scheme,
-                          "ColourPowerScale": self.viewerparams.color_powscale,
+    self.SendInfoToGUI( { "ColourChart": self.params.hkls.color_scheme,
+                          "ColourPowerScale": self.params.hkls.color_powscale,
                           "CurrentDatatype": self.get_current_datatype(),
                           "ShowColourMapDialog": 1
                          } )

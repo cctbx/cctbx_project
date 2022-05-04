@@ -209,7 +209,6 @@ class HKLViewFrame() :
       currentparms.clip_plane = default_clipphil
       self.currentphil = self.master_phil.format(python_object = currentparms)
     self.params = self.currentphil.fetch().extract()
-    self.viewer.viewerparams = self.params.viewer
     self.viewer.params = self.params
     self.params.binning.binner_idx = 0
     self.params.binning.nbins = 1
@@ -232,6 +231,8 @@ class HKLViewFrame() :
 
     # bin_opacity and show_vector have the "multiple" attribute. In order to retain any existing
     # list elements we copy them from the oldcurrentphil parameters and assign them to the newphil parameters
+    # Failure to do this would lead to list of bin_opacity elements not being properly updated when
+    # changing one of the bin_opacity elements. Likewise for show_vector.
     if jsview_3d.has_phil_path(pyphilobj, "bin_opacity"):
       bin_opacitylst = self.master_phil.fetch(source = pyphilobj ).extract().binning.bin_opacity
     else:
@@ -373,7 +374,7 @@ class HKLViewFrame() :
       phl = self.params
       if currentNGLscope is not None:
         self.params.NGL = currentNGLscope
-      self.viewer.viewerparams = phl.hkls
+      self.viewer.params = phl
       # once a preset phil setting has been enabled allow changing a phil parameter
       # without having to change scene_id
       if (msgtype=="philstr") and (lastmsgtype=="preset_philstr") and (oldsceneid is not None) and \

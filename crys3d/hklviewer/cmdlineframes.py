@@ -8,7 +8,7 @@ def run():
     utility function for passing keyword arguments more directly to hklview_frame.HKLViewFrame()
     """
     from crys3d.hklviewer import hklview_frame
-    #time.sleep(15) # enough for attaching debugger
+    #import time; time.sleep(15) # enough for attaching debugger
     # dirty hack for parsing a file path with spaces of a browser if not using default
     args = sys.argv[1:]
     sargs = " ".join(args)
