@@ -1,4 +1,11 @@
 from __future__ import division
+import os
+
+SIT_DATA = os.getenv('SIT_DATA')
+SIT_PSDM_DATA = os.getenv('SIT_PSDM_DATA')
+assert SIT_DATA is not None
+assert SIT_PSDM_DATA is not None
+
 sbatch_template = \
 """#!/bin/bash -l
 #SBATCH --qos=<queue>
@@ -26,16 +33,16 @@ echo -n "Finished job @ t="; date +%s
 """
 
 srun_template = \
-"""#!/bin/bash
+f"""#!/bin/bash
 
 #cctbx
 source /img/activate.sh
 
 #for experiment database
-export SIT_DATA=/global/common/software/lcls/psdm/data
+export SIT_DATA={SIT_DATA}
 
 #for psana
-export SIT_PSDM_DATA=/global/cscratch1/sd/psdatmgr/data/psdm
+export SIT_PSDM_DATA={SIT_PSDM_DATA}
 
 #needed to open h5 files from compute nodes
 export HDF5_USE_FILE_LOCKING=FALSE
