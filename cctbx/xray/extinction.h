@@ -68,7 +68,7 @@ namespace cctbx { namespace xray {
   };
 
   /* shelx-like extinction correction, shelx manual
-  Fc_sq = Fc_sq*(1 - g*exp(-8 * PI^2 * U * stol_sq))
+  Fc_sq = Fc_sq*(1 - g*exp(-8 * PI^2 * U * stol_sq))^2
   coefficient
   */
   template <typename FloatType>
@@ -84,6 +84,12 @@ namespace cctbx { namespace xray {
       values[1] = U;
     }
 
+    // for testing
+    FloatType calc(miller::index<> const& h, FloatType Fsq, FloatType g, FloatType U) const {
+      FloatType stol_sq = u_cell.stol_sq(h);
+      return Fsq * std::pow(1-g*std::exp(-scitbx::constants::eight_pi_sq * stol_sq *U), 2);
+    }
+
     virtual FloatType compute(miller::index<> const& h,
       FloatType fc_sq,
       bool compute_grad) const
@@ -97,6 +103,17 @@ namespace cctbx { namespace xray {
         FloatType dm = 2 * fc_sq * rv * ef;
         grads[0] = -dm;
         grads[1] = dm * values[0] * f;
+        /* Testing derivatives shows consistensy with analytical expressions above
+        FloatType eps = 1e-6;
+        FloatType v1 = calc(h, fc_sq, values[0] - eps, values[1]);
+        FloatType v2 = calc(h, fc_sq, values[0] + eps, values[1]);
+        FloatType diff = (v2 - v1) / (2*eps);
+
+        v1 = calc(h, fc_sq, values[0], values[1] - eps);
+        v2 = calc(h, fc_sq, values[0], values[1] + eps);
+        diff = (v2 - v1) / (2 * eps);
+        v1 = 0; // allow for a breakpoint here
+        */
       }
       return rv*rv;
     }

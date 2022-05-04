@@ -372,7 +372,8 @@ class reparametrisation(ext.reparametrisation):
         if fraction.grad:
           rv.add_independent_scalar()
     if self.fc_correction is not None and self.fc_correction.grad:
-      rv.add_independent_scalar()
+      for i in range(self.fc_correction.n_param):
+        rv.add_independent_scalar()
     if self.thickness is not None and self.thickness.grad:
       rv.add_independent_scalar()
     return rv

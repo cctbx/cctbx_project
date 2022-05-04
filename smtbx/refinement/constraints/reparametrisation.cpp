@@ -37,6 +37,15 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // SWAT correction
   void SWAT_parameter::validate() {
+    if (swat->values[0] <= 0) {
+      swat->values[0] = 0.8;
+    }
+    else if (swat->values[0] > 1) {
+      swat->values[0] = 0.8;
+    }
+    if (swat->values[1] < 0) {
+      swat->values[1] = std::abs(swat->values[1])/2;
+    }
   }
 
   // thickness parameter
