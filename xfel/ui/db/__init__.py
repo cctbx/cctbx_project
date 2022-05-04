@@ -38,6 +38,8 @@ def get_db_connection(params, block=True):
         print("Too many connections, retry", retry_count)
       elif  "Can't connect to MySQL server" in str(e):
         print("Couldn't connect to MYSQL, retry", retry_count)
+      elif "Can't create a new thread" in str(e):
+        print("MySQL can't create a new thread. Retry", retry_count)
       else:
         raise e
       import time
