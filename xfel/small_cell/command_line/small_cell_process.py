@@ -21,6 +21,8 @@ phil_scope.adopt_scope(parse(small_cell_phil_str))
 
 # Use the center of mass (com) for the centroid definition for small cell.
 program_defaults_phil_str = """
+dispatch.refine = True
+refinement.parameterisation.crystal.fix = cell
 profile {
   gaussian_rs {
     centroid_definition = *com s1
