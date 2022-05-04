@@ -1978,7 +1978,7 @@ class RunBlockDialog(BaseDialog):
                                    label='Start run:',
                                    label_style='bold',
                                    label_size=(100, -1),
-                                   ctrl_value=(self.first_run or self.first_avail),
+                                   ctrl_value=(self.last_run or self.last_avail),
                                    ctrl_min=self.first_avail,
                                    ctrl_max=self.last_avail)
     self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
