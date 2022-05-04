@@ -18,7 +18,6 @@ else: # using websocket_server
 
 import os.path, time, copy, re, io
 import libtbx
-import libtbx.load_env
 import webbrowser, tempfile
 from six.moves import range
 
@@ -223,10 +222,9 @@ class HKLview_3d:
 </body></html>
 
     """
-    Html2Canvaslibpath = libtbx.env.under_dist("crys3d","hklviewer/html2canvas.min.js")
-    NGLlibpath = libtbx.env.under_dist("crys3d","hklviewer/ngl.js")
-    HKLjscriptpath = libtbx.env.under_dist("crys3d","hklviewer/HKLJavaScripts.js")
-    HKLjscriptpath = os.path.abspath( HKLjscriptpath)
+    Html2Canvaslibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html2canvas.min.js")
+    NGLlibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ngl.js")
+    HKLjscriptpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLJavaScripts.js")
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
@@ -408,11 +406,7 @@ class HKLview_3d:
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
                       "use_provided_miller_arrays",
-                      "scene_bin_thresholds", # TODO: group bin phil parameters together in subscope
-                      "bin_opacities",
-                      "binner_idx",
-                      "binlabel",
-                      "nbins",
+                      "binning",
                       "fontsize",
                       "data_array",
                       "miller_array_operation",
@@ -548,7 +542,8 @@ class HKLview_3d:
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.viewerparams.inbrowser:
         self.ExpandInBrowser()
-      self.SetOpacities(self.params.binning.bin_opacities )
+        #self.SetOpacities(self.params.binning.bin_opacities )
+        self.SetOpacities(self.params.binning.bin_opacity )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
@@ -1341,7 +1336,8 @@ class HKLview_3d:
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
     if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
-      self.params.binning.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+      #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
+      self.params.binning.bin_opacity = [ [1.0, e] for e in range(self.nbinvalsboundaries + 1) ]
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
@@ -1425,12 +1421,16 @@ class HKLview_3d:
       self.mprint(mstr, verbose=1)
       cntbin += 1
 
-    if self.params.binning.bin_opacities != "":
-      opqlist = eval(self.params.binning.bin_opacities)
+    #if self.params.binning.bin_opacities != "":
+    if self.params.binning.bin_opacity != None:
+      #opqlist = eval(self.params.binning.bin_opacities)
+      opqlist = self.params.binning.bin_opacity
       if len(opqlist) < self.params.binning.nbins:
-        self.params.binning.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+        #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
+        self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
 
-    self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities,
+    #self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities,
+    self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binning.binner_idx,
                           "tooltip_opacity": self.ngl_settings.tooltip_alpha
@@ -1769,14 +1769,17 @@ Distance: %s
     self.AddToBrowserMsgQueue("TooltipOpacity", msg)
 
 
-  def SetOpacities(self, bin_opacities_str):
+  def SetOpacities(self, bin_opacities):
     retstr = ""
-    if self.miller_array and bin_opacities_str:
-      self.params.binning.bin_opacities = bin_opacities_str
-      bin_opacitieslst = eval(self.params.binning.bin_opacities)
+    if self.miller_array and bin_opacities:
+      #self.params.binning.bin_opacities = bin_opacities_str
+      #bin_opacitieslst = self.params.binning.bin_opacities
+      self.params.binning.bin_opacity = bin_opacities
+      bin_opacitieslst = self.params.binning.bin_opacity
       for alpha,bin in bin_opacitieslst:
         retstr += self.set_opacity(bin, alpha)
-      self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities } )
+      #self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities } )
+      self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity } )
     self.mprint( retstr, verbose=1)
 
 

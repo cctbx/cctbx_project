@@ -60,8 +60,8 @@ class HKLViewFrame() :
     self.uservectors = []
     self.new_miller_array_operations_lst = []
     self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
-     ("NGL copyright", libtbx.env.under_dist("crys3d","hklviewer/License_for_NGL.txt")),
-     ("html2canvas copyright", libtbx.env.under_dist("crys3d","hklviewer/LICENSE_for_html2canvas.txt"))
+     ("NGL copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "License_for_NGL.txt")),
+     ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
     if 'useGuiSocket' in kwds:
@@ -156,7 +156,7 @@ class HKLViewFrame() :
         msgstr = self.guisocket.recv().decode("utf-8")
         if msgstr == "":
           continue
-        self.mprint("Received string:\n" + msgstr, verbose=1)
+        self.mprint("Received message string:\n" + msgstr, verbose=2)
         msgtype, mstr = eval(msgstr)
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
@@ -166,6 +166,7 @@ class HKLViewFrame() :
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
         if msgtype=="philstr" or msgtype=="preset_philstr":
+          self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil, msgtype, lastmsgtype)
         lastmsgtype = msgtype
@@ -212,7 +213,7 @@ class HKLViewFrame() :
     self.viewer.params = self.params
     self.params.binning.binner_idx = 0
     self.params.binning.nbins = 1
-    self.params.binning.scene_bin_thresholds = ""
+    self.params.binning.scene_bin_thresholds = []
     self.params.using_space_subgroup = False
 
 
@@ -228,6 +229,25 @@ class HKLViewFrame() :
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
+
+    # bin_opacity and show_vector have the "multiple" attribute. In order to retain any existing
+    # list elements we copy them from the oldcurrentphil parameters and assign them to the newphil parameters
+    if jsview_3d.has_phil_path(pyphilobj, "bin_opacity"):
+      bin_opacitylst = self.master_phil.fetch(source = pyphilobj ).extract().binning.bin_opacity
+    else:
+      bin_opacitylst = self.master_phil.fetch(source = oldcurrentphil ).extract().binning.bin_opacity
+    newpyobj = newcurrentphil.extract()
+    newpyobj.binning.bin_opacity = bin_opacitylst
+    newcurrentphil = newcurrentphil.format(python_object= newpyobj )
+
+    if jsview_3d.has_phil_path(pyphilobj, "show_vector"):
+      show_vectorlst = self.master_phil.fetch(source = pyphilobj ).extract().viewer.show_vector
+    else:
+      show_vectorlst = self.master_phil.fetch(source = oldcurrentphil ).extract().viewer.show_vector
+    newpyobj = newcurrentphil.extract()
+    newpyobj.viewer.show_vector = show_vectorlst
+    newcurrentphil = newcurrentphil.format(python_object= newpyobj )
+
     return newcurrentphil, diffphil
 
 
@@ -245,6 +265,11 @@ class HKLViewFrame() :
       # for preset buttons or are being overwritten by user settings (colour and radii scheme)
       # First make a copy of all phil parameters some of which may be altered below
       paramscopy = self.master_phil.format(self.params).copy().extract()
+
+      omitparms = ["viewer.scene_id", "hkls.nth_power_scale_radii", "hkls.scale",
+        "hkls.color_scheme", "hkls.color_powscale", "NGL.show_tooltips",
+        "NGL.fontsize", "binning.binner_idx"]
+
       if jsview_3d.has_phil_path(diffphil, "scene_id"):
         # then merge corresponding label and datatype into the diffphil so these can be used for
         # preset button phil strings instead of scene_id which may only apply to the current data file
@@ -258,14 +283,24 @@ class HKLViewFrame() :
         # convert any integer id into corresponding label for this vector
         # which is needed for userfriendliness when using current phil for preset buttons
         lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.angle_around_vector])
-        paramscopy.clip_plane.angle_around_vector = str(lblvectors[0])
+        strvec, angle = lblvectors[0]
+        # if angle=0 this amounts to the default of not having rotated at all so omit angle_around_vector altogether
+        if angle != 0.0:
+          paramscopy.clip_plane.angle_around_vector = str(lblvectors[0])
+        else:
+          omitparms = omitparms + ["clip_plane.angle_around_vector"]
         diffphil = diffphil.format(paramscopy) # adopt new angle_around_vector value
 
       if jsview_3d.has_phil_path(diffphil, "animate_rotation_around_vector"):
         # convert any integer id into corresponding label for this vector
         # which is needed for userfriendliness when using current phil for preset buttons
         lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.animate_rotation_around_vector])
-        paramscopy.clip_plane.animate_rotation_around_vector = str(lblvectors[0])
+        strvec, speed = lblvectors[0]
+        # if speed <= 0 this amounts to the default of not animating at all so omit animate_rotation_around_vector altogether
+        if speed > 0.0:
+          paramscopy.clip_plane.animate_rotation_around_vector = str(lblvectors[0])
+        else:
+          omitparms = omitparms + ["clip_plane.animate_rotation_around_vector"]
         diffphil = diffphil.format(paramscopy) # adopt new animate_rotation_around_vector value
 
       if jsview_3d.has_phil_path(diffphil, "show_vector"):
@@ -277,7 +312,7 @@ class HKLViewFrame() :
         for veclbl,isvisible in show_vectors_lbl:
           if isvisible==True: # default is for vectors not to show, so no need to include those
             showveclst.append(str([veclbl,isvisible]) )
-        paramscopy.viewer.show_vector =showveclst
+        paramscopy.viewer.show_vector = showveclst
         diffphil = diffphil.format(paramscopy) # adopt new show_vector value
 
       if jsview_3d.has_phil_path(diffphil, "binner_idx"):
@@ -288,19 +323,16 @@ class HKLViewFrame() :
         workingphil = self.master_phil.fetch(sources=[binlabelphil, diffphil] )
         diffphil = self.master_phil.fetch_diff(source=workingphil )
 
-      omitparms = ["viewer.scene_id", "hkls.nth_power_scale_radii", "hkls.scale",
-        "hkls.color_scheme", "hkls.color_powscale", "NGL.show_tooltips",
-        "NGL.fontsize", "binning.binner_idx"]
       remove_bin_opacities = True
-      if jsview_3d.has_phil_path(diffphil, "bin_opacities"):
-        bin_opacitieslst = eval(paramscopy.binning.bin_opacities)
+      if jsview_3d.has_phil_path(diffphil, "bin_opacity"):
+        bin_opacitieslst = paramscopy.binning.bin_opacity
         for alpha,bin in bin_opacitieslst:
           if alpha < 1.0: # at least 1 bin is not fully opaque.
                           # That's not the default so don't omit opacities
             remove_bin_opacities = False
             break
       if remove_bin_opacities:
-        omitparms = omitparms + ["binning.bin_opacities"]
+        omitparms = omitparms + ["binning.bin_opacity"]
       remainingobjs = []
       for obj in diffphil.objects:
         vobjs = []
@@ -350,7 +382,7 @@ class HKLViewFrame() :
         self.viewer.sceneisdirty = True
 
       if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
-        self.mprint( "Nothing's changed", verbose=1)
+        self.mprint( "No change in PHIL parameters\n", verbose=1)
         return False
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
@@ -391,13 +423,11 @@ class HKLViewFrame() :
                                             "show_missing",
                                             "show_only_missing",
                                             "show_systematic_absences",
-                                            "nbins",
-                                            "binner_idx",
-                                            "scene_bin_thresholds",
+                                            "binning",
                                             "data_array"):
         if self.set_scene(phl.viewer.scene_id):
           self.update_space_group_choices()
-          self.set_scene_bin_thresholds(strbinvals=phl.binning.scene_bin_thresholds,
+          self.set_scene_bin_thresholds(phl.binning.scene_bin_thresholds,
                                          binner_idx=phl.binning.binner_idx,
                                          nbins=phl.binning.nbins )
 
@@ -457,11 +487,11 @@ class HKLViewFrame() :
       phl.savefilename = None # ensure the same action in succession can be executed
 
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
-        #self.viewer.settings = phl.viewer
         self.HKLsettings = phl.hkls
 
       if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
         self.list_vectors()
+        self.validated_preset_buttons = False
 
       self.params = self.viewer.update_settings(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
@@ -471,11 +501,11 @@ class HKLViewFrame() :
       self.viewer.mouse_moved = False
       self.validate_preset_buttons()
       if (self.viewer.miller_array is None) :
-        self.mprint( NOREFLDATA)
+        self.mprint( NOREFLDATA, verbose=1)
         return False
       return True
     except Exception as e:
-      self.mprint(to_str(e) + "\n" + traceback.format_exc(), verbose=0)
+      self.mprint(to_str(e) + "\n" + traceback.format_exc())
       return False
 
 
@@ -1034,7 +1064,7 @@ class HKLViewFrame() :
     if not self.validated_preset_buttons:
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
-      for i,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
+      for ibtn,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
         philstr_type = None
@@ -1062,11 +1092,14 @@ class HKLViewFrame() :
         nvectorsfound = len(philstr_vectors)
         if philstr_vectors:
           nvectorsfound = 0
-          for philstrvec in philstr_vectors:
+          for iphilvec,philstrvec in enumerate(philstr_vectors):
             philveclabel, philshowvec = eval(philstrvec)
             for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
               if philshowvec and philveclabel in veclabel: # allow philveclabel to be just a substring of veclabel
                 nvectorsfound +=1
+            if (iphilvec+1) > nvectorsfound:
+              self.mprint("Preset button, \"%s\", is disabled until a vector, \"%s\", has been\n" \
+                   "found in a dataset or by manually adding this vector" %(btnlabel, philveclabel))
         miller_array_operation_can_be_done = False
         if millaroperationstr:
           for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1074,27 +1107,32 @@ class HKLViewFrame() :
               miller_array_operation_can_be_done = True
               break
           if miller_array_operation_can_be_done:
-            self.mprint("Preset button, %s, declared using %s and %s is assigned to data %s of type %s" \
-                          %(btn_id, arr1label, arr1type, label, datatype))
-            activebtns.append((self.allbuttonslist[i],True))
+            self.mprint("Preset button, \"%s\", declared using %s and %s is assigned to data %s of type %s" \
+                          %(btnlabel, arr1label, arr1type, label, datatype))
+            activebtns.append((self.allbuttonslist[ibtn],True))
           else:
-            self.mprint("Preset button, %s, declared using %s and %s is not assigned to any data" \
-                            %(btn_id, arr1label, arr1type), verbose=1)
-            activebtns.append((self.allbuttonslist[i],False))
+            self.mprint("Preset button, \"%s\", declared using %s and %s is not assigned to any dataset" \
+                            %(btnlabel, arr1label, arr1type), verbose=1)
+            activebtns.append((self.allbuttonslist[ibtn],False))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
           for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == philstr_label or philstr_type is not None and datatype == philstr_type:
+            if label == philstr_label:
               labeltypefound = True
               break
+          if not labeltypefound:
+            for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+              if philstr_type is not None and philstr_type == datatype:
+                labeltypefound = True
+                break
           if labeltypefound and nvectorsfound == len(philstr_vectors):
-            self.mprint("Preset button, %s, assigned to data %s of type %s" \
-                          %(btn_id, label, datatype))
-            activebtns.append((self.allbuttonslist[i],True))
+            self.mprint("Preset button, \"%s\", assigned to dataset %s of type %s" \
+                          %(btnlabel, label, datatype))
+            activebtns.append((self.allbuttonslist[ibtn],True))
           else:
-            self.mprint("Preset button, %s of type '%s' is not assigned to any data column" \
-                              %(philstr_label,philstr_type), verbose=1)
-            activebtns.append((self.allbuttonslist[i],False))
+            self.mprint("Preset button, \"%s\", expecting dataset of type \"%s\" has not been assigned to any dataset" \
+                              %(btnlabel, philstr_type), verbose=1)
+            activebtns.append((self.allbuttonslist[ibtn],False))
 
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
@@ -1253,14 +1291,15 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, strbinvals = "", binner_idx = 0,  nbins = 6):
+  def set_scene_bin_thresholds(self, thresholds = [], binner_idx = 0,  nbins = 6):
     nuniquevalues = -1
-    if not strbinvals:
+    bin_thresholds = thresholds[:]
+    if not bin_thresholds:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     else:
-      nan = float("nan")
-      binvals = eval(strbinvals)
-    if binvals and binner_idx == 0:
+      #nan = float("nan")
+      binvals = bin_thresholds
+    if binvals and binner_idx == 0: # binner_idx=0 is for binning against resolution
       binvals = list( 1.0/flex.double(binvals) )
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
 
@@ -1268,7 +1307,8 @@ class HKLViewFrame() :
   def SetSceneNbins(self, nbins, binner_idx = 0):
     self.params.nbins = nbins
     self.params.binning.binner_idx = binner_idx
-    self.params.binning.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
+    #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
+    self.params.binning.bin_opacity = [ [1.0, e] for e in range(nbins) ]
     self.update_settings()
 
 
@@ -1276,14 +1316,16 @@ class HKLViewFrame() :
     return [ (i,e) for i,e in enumerate(self.viewer.bin_labels_type_idxs) ]
 
 
-  def SetSceneBinThresholds(self, binvals=[]):
-    self.params.scene_bin_thresholds = str(binvals)
+  def SetSceneBinThresholds(self, thresholds=[]):
+    bin_thresholds = thresholds[:]
+    self.params.scene_bin_thresholds = bin_thresholds
     self.params.nbins = len(binvals)
     self.update_settings()
 
 
   def SetOpacities(self, bin_opacities):
-    self.params.bin_opacities = str(bin_opacities)
+    #self.params.bin_opacities = str(bin_opacities)
+    self.params.bin_opacities = bin_opacity
     self.update_settings()
 
 
@@ -1685,22 +1727,26 @@ masterphilstr = """
     fractional_vector = reciprocal *realspace
       .type = choice
   }
+
   %s
+
   binning {
-    scene_bin_thresholds = ''
-      .type = str
+    scene_bin_thresholds = []
+      .type = floats
     binner_idx = 0
       .type = int
       .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
     binlabel = None
       .type = str
       .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
-    bin_opacities = ""
-      .type = str
+    bin_opacity = None
+      .type = floats(size=2)
+      .multiple = True
       .caption = "A list of tuples (alpha, idx) with as many or more elements as the current number of binners. List is cast to a string"
     nbins = 1
       .type = int(value_min=1, value_max=40)
   }
+
   viewer {
     data_array {
       label = None

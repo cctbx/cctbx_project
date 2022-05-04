@@ -483,6 +483,7 @@ newarray._sigmas = sigs
     self.NewHKLscenes = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.ipresetbtn = -1
     self.isfirsttime = False
     self.closing = False
     self.indices = None
@@ -537,6 +538,7 @@ newarray._sigmas = sigs
     for i,((btnname, label, philstr), isenabled) in enumerate(self.buttonsdeflist):
       if self.__getattribute__(btnname).isChecked():
         self.send_message(philstr, msgtype = "preset_philstr")
+        self.ipresetbtn = i
         break
 
 
@@ -566,7 +568,7 @@ newarray._sigmas = sigs
       self.out, self.err = self.cctbxproc.communicate(input="exit()", timeout=maxtime)
       print(str(self.out) + "\n" + str(self.err))
     except Exception as e:
-      print("\nUnconditionally exterminating unresponsive cctbx.python process, at will, with impunity, effective immediately!")
+      print("\nExterminating unresponsive cctbx.python process, unconditionally, at will, with impunity, effective immediately!")
       import psutil
       parent_pid = self.cctbxproc.pid   # my example
       parent = psutil.Process(parent_pid)
@@ -810,8 +812,10 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             if self.bin_opacities:
               self.update_table_opacities()
 
-          if self.infodict.get("bin_opacities"):
-            self.bin_opacities = self.infodict["bin_opacities"]
+          #if self.infodict.get("bin_opacities"):
+          if self.infodict.get("bin_opacity"):
+            #self.bin_opacities = self.infodict["bin_opacities"]
+            self.bin_opacities = self.infodict["bin_opacity"]
             if self.binstable.rowCount() > 0:
               self.update_table_opacities()
 
@@ -990,7 +994,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.buttonsdeflist = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
             for i in reversed(range(self.gridLayout_24.count())):
               # first delete any previous widgets from last time a file was loaded
-              #self.gridLayout_24.itemAt(i).widget().setParent(None)
               widgetToRemove = self.gridLayout_24.itemAt(i).widget()
               self.gridLayout_24.removeWidget(widgetToRemove)
               widgetToRemove.setParent(None)
@@ -1002,6 +1005,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.__getattribute__(btnname).setEnabled(isenabled)
               self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
               self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
+              if self.ipresetbtn == i:
+                self.__getattribute__(btnname).setChecked(True)
 
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
@@ -1363,12 +1368,14 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
-      self.bin_opacities = str(bin_opacitieslst)
+      #self.bin_opacities = str(bin_opacitieslst)
+      self.bin_opacities = bin_opacitieslst
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
 
 
   def update_table_opacities(self, allalpha=None):
-    bin_opacitieslst = eval(self.bin_opacities)
+    #bin_opacitieslst = eval(self.bin_opacities)
+    bin_opacitieslst = self.bin_opacities
     self.binstable_isready = False
     for binopacity in bin_opacitieslst:
       if not allalpha:
@@ -1394,7 +1401,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def SetAllOpaqueCheckboxes(self):
     if self.binstableitemchanges:
       return
-    bin_opacitieslst = eval(self.bin_opacities)
+    #bin_opacitieslst = eval(self.bin_opacities)
+    bin_opacitieslst = self.bin_opacities
     nbins = len(bin_opacitieslst)
     sum = 0
     for binopacity in bin_opacitieslst:
@@ -1419,10 +1427,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     try:
       if not self.bin_opacities:
         return
-      bin_opacitieslst = eval(self.bin_opacities)
+      #bin_opacitieslst = eval(self.bin_opacities)
+      bin_opacitieslst = self.bin_opacities
       alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
       try:
         (oldalpha, row) = bin_opacitieslst[row]
+        row = int(row)
         if oldalpha == float(item.text()):
           if item.checkState()==Qt.Unchecked:
             alpha = 0.0
@@ -1432,9 +1442,14 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         pass
       if col==3 and self.binstable_isready: # changing opacity
         bin_opacitieslst[row] = (alpha, row)
-        self.bin_opacities = str(bin_opacitieslst)
+        #self.bin_opacities = str(bin_opacitieslst)
+        self.bin_opacities = bin_opacitieslst
         self.SetAllOpaqueCheckboxes()
-        self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities )
+        #self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities )
+        philstr = ""
+        for opa,bin in self.bin_opacities:
+          philstr += 'binning.bin_opacity = %s %s\n' %(opa, bin)
+        self.send_message(philstr)
       if col==1 and self.binstable_isready: # changing scene_bin_thresholds
         aboveitem = self.binstable.item(row-1, 1)
         belowitem = self.binstable.item(row+1, 1)
@@ -1458,17 +1473,18 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
         nbins = len(allbinvals)
-        self.send_message('''
-        binning.scene_bin_thresholds = \"%s\"
+        self.send_message("""
+        binning.scene_bin_thresholds = %s
         binning.nbins = %d
-        ''' %(allbinvals, nbins) )
+        """ %(" ".join([ str(e) for e in allbinvals]), nbins) )
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
 
   def onOpaqueAll(self):
     self.binstableitemchanges = True
-    bin_opacitieslst = eval(self.bin_opacities)
+    #bin_opacitieslst = eval(self.bin_opacities)
+    bin_opacitieslst = self.bin_opacities
     nbins = len(bin_opacitieslst)
     bin_opacitieslst = []
     self.binstable_isready = False
@@ -1478,8 +1494,13 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
-    self.bin_opacities = str(bin_opacitieslst)
-    self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities)
+    #self.bin_opacities = str(bin_opacitieslst)
+    self.bin_opacities = bin_opacitieslst
+    #self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities)
+    philstr = ""
+    for opa,bin in self.bin_opacities:
+      philstr += 'binning.bin_opacity = %s %s\n' %(opa, bin)
+    self.send_message(philstr)
     self.binstableitemchanges = False
     self.binstable_isready = True
 
@@ -2174,6 +2195,8 @@ clip_plane {
         self.socket.send(bytes(msg,"utf-8"), zmq.NOBLOCK)
       else:
         self.socket.send(bytes(msg), zmq.NOBLOCK)
+      if msgtype == "philstr":
+        self.ipresetbtn = -1 # so we don't tick any of the preset radio buttons after remaking them
       return True
     except Exception as e:
       print( str(e) + "\nFailed sending message to the CCTBX\n" + traceback.format_exc(limit=10))
