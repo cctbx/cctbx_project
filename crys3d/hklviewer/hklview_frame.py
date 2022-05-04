@@ -87,7 +87,7 @@ class HKLViewFrame() :
     self.viewer = jsview_3d.HKLview_3d( **kwds )
     self.allbuttonslist = buttonsdeflist
     if os.path.exists(self.userpresetbuttonsfname):
-      self.mprint("Using existing UserPresetButtons in " + self.userpresetbuttonsfname)
+      self.mprint("Using user defined preset-buttons from " + self.userpresetbuttonsfname)
     else:
       factorydefault_userbutton_fname = os.path.join(os.path.split(jsview_3d.__file__)[0], "default_user_preset_buttons.py")
       import shutil
@@ -228,7 +228,6 @@ class HKLViewFrame() :
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
-
     # bin_opacity and show_vector have the "multiple" attribute. In order to retain any existing
     # list elements we copy them from the oldcurrentphil parameters and assign them to the newphil parameters
     # Failure to do this would lead to list of bin_opacity elements not being properly updated when
@@ -448,7 +447,7 @@ class HKLViewFrame() :
         self.add_user_vector()
         self.validated_preset_buttons = False
 
-      if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename"):
+      if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename", "miller_array_operation"):
         self.viewer.array_info_format_tpl = []
         for i,array in enumerate(self.procarrays):
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
@@ -719,7 +718,6 @@ class HKLViewFrame() :
       self.viewer.has_new_miller_array = True
 
       wrap_labels = 25
-      #self.viewer.SupersetMillerArrays()
       arrayinfo = ArrayInfo(procarray,wrap_labels)
       info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )
       self.viewer.array_info_format_tpl.append( info_fmt )
@@ -1064,7 +1062,7 @@ class HKLViewFrame() :
   def validate_preset_buttons(self):
     if not self.validated_preset_buttons:
       activebtns = []
-      # look for strings like data_array.label="F,SIGFP" and see if that data collumn exists in the file
+      # look for strings like data_array.label="F,SIGFP" and see if that data column exists in the file
       for ibtn,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None

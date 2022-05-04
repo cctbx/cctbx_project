@@ -112,7 +112,40 @@ buttonsdeflist = [
                                                               expand_to_p1 = True
                                                               expand_anomalous = True
                                                             }
-  """),
+ """),
+
+("FoversigF", "F/SigF",
+ """
+                miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
+                viewer {
+                  data_array {
+                    label = "FoverSigF2"
+                    datatype = "Amplitude"
+                  }
+                }
+
+
+ """),
+("IoverSigI", "I/SigI",
+ """
+              miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
+              viewer {
+                data_array {
+                  label = "IoverSigI"
+                  datatype = "Intensity"
+                }
+              }
+ """),
+("Evalues", "E-values",
+ """
+                    miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+                    viewer {
+                      data_array {
+                        label = "E-values"
+                        datatype = "Amplitude"
+                      }
+                    }
+ """),
 
 
 

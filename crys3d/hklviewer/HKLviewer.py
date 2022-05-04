@@ -951,15 +951,18 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
           if self.infodict.get("orig_hkl_ids"):
-            if self.millerarraytablemodel is not None \
-             and self.millerarraytableform.SortComboBox.currentIndex() == 0:
-               # can only match hkls in the unsorted table
-              orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
-              mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
-              self.millerarraytable.activateWindow()
-              self.millerarraytable.setFocus()
-              for ids in orig_hkl_ids:
-                self.millerarraytable.selectRow(ids)
+            if self.millerarraytablemodel is not None and self.millerarraytable.isVisible() :
+              if self.millerarraytableform.SortComboBox.currentIndex() == 0:
+                # can only match hkls in the unsorted table
+                orig_hkl_ids = self.infodict.get("orig_hkl_ids", [])
+                mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
+                self.millerarraytable.activateWindow()
+                self.millerarraytable.setFocus()
+                for ids in orig_hkl_ids:
+                  self.millerarraytable.selectRow(ids)
+              else:
+                self.AddInfoText("Un-sort the table in order to highlight data corresponding " \
+                  "to reflection that was clicked by the mouse.\n")
 
           if self.infodict.get("ColourChart") and self.infodict.get("ColourPowerScale"):
             self.ColourMapSelectDlg.selcolmap = self.infodict.get("ColourChart", "brg")
@@ -997,7 +1000,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               widgetToRemove = self.gridLayout_24.itemAt(i).widget()
               self.gridLayout_24.removeWidget(widgetToRemove)
               widgetToRemove.setParent(None)
-
+            # programmatically create the preset buttons
             for i,((btnname, label, _), isenabled) in enumerate(self.buttonsdeflist):
               self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
               self.__getattribute__(btnname).setObjectName(btnname)

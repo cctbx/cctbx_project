@@ -88,7 +88,7 @@ lock_timeout=45 # for the sempahores. Rendering could take a while for very larg
 class HKLview_3d:
   def __init__ (self, *args, **kwds) :
     self.diff_phil = None
-    self.params = None
+    self.params = None # first assigned in HKLViewFrame().ResetPhil()
     self.miller_array = None
     self.symops = []
     self.sg = None
@@ -704,77 +704,6 @@ class HKLview_3d:
       return -1, -1
     return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
 
-
-  def SupersetMillerArrays(self, origindices):
-    self.match_valarrays = []
-    # First loop over all miller arrays to make a superset of hkls of all
-    # miller arrays. Then loop over all miller arrays and extend them with NaNs
-    # as to contain the same hkls as the superset
-    self.mprint("Gathering superset of miller indices...", verbose=1)
-    superset_array = self.proc_arrays[0].deep_copy()
-    #set_of_indices = set([])
-    #for i,procarray in enumerate(self.proc_arrays):
-    #  set_of_indices |= set( list(procarray.indices()) )
-    #self.mprint("Extending miller arrays to match superset of miller indices...")
-    #indiceslst = flex.miller_index( list( set_of_indices ) )
-    indiceslst = origindices
-    for i,procarray in enumerate(self.proc_arrays):
-      # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(indiceslst, procarray.indices() )
-      #matchindices = miller.match_indices( procarray.indices(), indiceslst )
-      valarray = procarray.select( matchindices.pairs().column(1) )
-      #if valarray.anomalous_flag() != superset_array.anomalous_flag():
-      #  superset_array._anomalous_flag = valarray._anomalous_flag
-      #missing = indiceslst.lone_set( valarray.indices() )
-
-      #missing = indiceslst.select( miller.match_indices(valarray.indices(), indiceslst ).singles(1))
-
-      # insert NAN values for reflections in self.miller_array not found in procarray
-      #valarray = display.ExtendMillerArray(valarray, missing.size(), missing )
-      #match_valarray = valarray
-      #match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
-      match_valindices = miller.match_indices(indiceslst, valarray.indices() )
-      match_valarray = valarray.select( match_valindices.pairs().column(1) )
-      #match_valarray.sort(by_value="packed_indices")
-      match_valarray.set_info(procarray.info() )
-      self.match_valarrays.append( match_valarray )
-    self.mprint("Done making superset", verbose=1)
-
-  """
-  def SupersetMillerArrays(self):
-    self.match_valarrays = []
-    # First loop over all miller arrays to make a superset of hkls of all
-    # miller arrays. Then loop over all miller arrays and extend them with NaNs
-    # as to contain the same hkls as the superset
-    self.mprint("Gathering superset of miller indices...")
-    superset_array = self.proc_arrays[0].deep_copy()
-    for i,procarray in enumerate(self.proc_arrays):
-      if i==0:
-        continue
-      # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(superset_array.indices(), procarray.indices() )
-      valarray = procarray.select( matchindices.pairs().column(1) )
-      if valarray.anomalous_flag() != superset_array.anomalous_flag():
-        superset_array._anomalous_flag = valarray._anomalous_flag
-      missing = procarray.lone_set( superset_array )
-      superset_array = display.ExtendMillerArray(superset_array, missing.size(), missing.indices())
-    self.mprint("Extending miller arrays to match superset of miller indices...")
-    for i,procarray in enumerate(self.proc_arrays):
-      # first match indices in currently selected miller array with indices in the other miller arrays
-      matchindices = miller.match_indices(superset_array.indices(), procarray.indices() )
-      valarray = procarray.select( matchindices.pairs().column(1) )
-      if valarray.anomalous_flag() != superset_array.anomalous_flag():
-        superset_array._anomalous_flag = valarray._anomalous_flag
-      missing = superset_array.lone_set( valarray )
-      # insert NAN values for reflections in self.miller_array not found in procarray
-      valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices())
-      match_valindices = miller.match_indices(superset_array.indices(), valarray.indices() )
-      match_valarray = valarray.select( match_valindices.pairs().column(1) )
-      match_valarray.sort(by_value="packed_indices")
-      match_valarray.set_info(procarray.info() )
-      self.match_valarrays.append( match_valarray )
-    self.mprint("Done making superset")
-  """
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
