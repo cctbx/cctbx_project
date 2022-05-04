@@ -1063,7 +1063,13 @@ class HKLViewFrame() :
     if not self.validated_preset_buttons:
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data column exists in the file
+      uniquebtnids = set([])
       for ibtn,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
+        if btn_id not in uniquebtnids:
+          uniquebtnids.add(btn_id)
+        else:
+          raise Sorry("Button ID, %s, has already been used by another button." %btn_id)
+          
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
         philstr_type = None
