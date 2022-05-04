@@ -28,6 +28,9 @@ input {
   mtz_file = None
     .type = path
     .help = Location of the mtz file to upload
+  disregard_mtz = False
+    .type = bool
+    .help = Flag to bypass the upload of mtz file entirely
   log_file = None
     .type = path
     .help = Location of the log file to upload. If None, guess from mtz name.
@@ -186,7 +189,10 @@ def run_with_preparsed(params):
       params.drive.shared_folder_id
   )
   folders = [dataset_root, version_str]
-  files = [mtz_path, log_path] + params.input.other_files
+  files = [log_path]
+  if not params.input.disregard_mtz:
+    files.append(mtz_path)
+  files.extend(params.input.other_files)
   drive.upload(folders, files)
 
 
