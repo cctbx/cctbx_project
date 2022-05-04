@@ -17,7 +17,11 @@ af::shared<std::size_t>
 mapping_to_grad_fc(af::const_ref<independent_parameter *> const &params) {
   af::shared<std::size_t> result((af::reserve(params.size())));
   for (std::size_t i=0; i<params.size(); ++i) {
-    if (params[i]->is_variable()) { result.push_back(params[i]->index()); }
+    if (params[i]->is_variable()) {
+      for (std::size_t pi=0; pi < params[i]->n_param(); pi++) {
+        result.push_back(params[i]->index()+pi);
+      }
+    }
   }
   return result;
 }
