@@ -18,12 +18,6 @@ jobs:
     maxParallel: 2
     matrix:
       ${{ if not(eq(parameters.prefix, 'xfel_psana_')) }}:
-        python3.7:
-          CONDA: Linux
-          OS: linux
-          PYTHON_VERSION: py37
-          PYTHON_FULL_VERSION: 3.7
-          MODULES: ${{ parameters.modules }}
         python3.8:
           CONDA: Linux
           OS: linux
