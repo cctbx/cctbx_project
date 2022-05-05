@@ -1071,6 +1071,7 @@ class HKLViewFrame() :
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data column exists in the file
       uniquebtnids = set([])
+      self.mprint("Preset buttons:")
       for ibtn,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
         if btn_id not in uniquebtnids:
           uniquebtnids.add(btn_id)
@@ -1080,6 +1081,7 @@ class HKLViewFrame() :
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
         philstr_type = None
+        philstr_userlbl = ""
         phasertng_tag = None
         philstr_vectors = []
         millaroperationstr = None
@@ -1093,6 +1095,8 @@ class HKLViewFrame() :
             phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag
             # find the miller array used by phasertng as specified in the mtz history header
             philstr_label = [ self.get_label_from_phasertng_tag(",".join(phasertng_tag)) ]
+          if btnphilobj.viewer.user_label != "":
+            philstr_userlbl = btnphilobj.viewer.user_label
           if len(btnphilobj.viewer.show_vector) > 0:
             philstr_vectors = btnphilobj.viewer.show_vector
           if btnphilobj.miller_array_operation != "":
@@ -1102,16 +1106,22 @@ class HKLViewFrame() :
             millaroperationstr, millarrlabel, (arr1label, arr1type), (arr2label, arr2type) = \
                                                      eval( btnphilobj.miller_array_operation)
         nvectorsfound = len(philstr_vectors)
+        veclabels = ""
         if philstr_vectors:
           nvectorsfound = 0
           for iphilvec,philstrvec in enumerate(philstr_vectors):
             philveclabel, philshowvec = eval(philstrvec)
             for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
-              if philshowvec and philveclabel in veclabel: # allow philveclabel to be just a substring of veclabel
+              # allow label to be just a substring of veclabel
+              if philshowvec and (len(philstr_userlbl) and philstr_userlbl in veclabel or philveclabel == veclabel):
                 nvectorsfound +=1
+                if philstr_userlbl:
+                  veclabels += "," + philstr_userlbl
+                else:
+                  veclabels += "," + philveclabel
             if (iphilvec+1) > nvectorsfound:
-              self.mprint("Preset button, \"%s\", is disabled until a vector, \"%s\", has been\n" \
-                   "found in a dataset or by manually adding this vector" %(btnlabel, philveclabel))
+              self.mprint("\"%s\", is disabled until a vector, \"%s\", has been " \
+                   "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel))
         miller_array_operation_can_be_done = False
         if millaroperationstr:
           for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1119,11 +1129,11 @@ class HKLViewFrame() :
               miller_array_operation_can_be_done = True
               break
           if miller_array_operation_can_be_done:
-            self.mprint("Preset button, \"%s\", declared using %s and %s is assigned to data %s of type %s" \
+            self.mprint("\"%s\", declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, label, datatype))
             activebtns.append((self.allbuttonslist[ibtn],True))
           else:
-            self.mprint("Preset button, \"%s\", declared using %s and %s is not assigned to any dataset" \
+            self.mprint("\"%s\", declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
             activebtns.append((self.allbuttonslist[ibtn],False))
         if philstr_label is not None and millaroperationstr is None:
@@ -1138,11 +1148,11 @@ class HKLViewFrame() :
                 labeltypefound = True
                 break
           if labeltypefound and nvectorsfound == len(philstr_vectors):
-            self.mprint("Preset button, \"%s\", assigned to dataset %s of type %s" \
-                          %(btnlabel, label, datatype))
-            activebtns.append((self.allbuttonslist[ibtn],True))
+            self.mprint("\"%s\", assigned to dataset %s of type %s." \
+                          %(btnlabel + veclabels, label, datatype))
+            activebtns.append(((btn_id, btnlabel + veclabels, philstr),True))
           else:
-            self.mprint("Preset button, \"%s\", expecting dataset of type \"%s\" has not been assigned to any dataset" \
+            self.mprint("\"%s\", expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
             activebtns.append((self.allbuttonslist[ibtn],False))
 

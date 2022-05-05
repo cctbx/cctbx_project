@@ -2030,7 +2030,11 @@ function MakePlusMinusButtons() {
     onclick: function () {
       WebsockSendMsg('MoveClipPlanesUp');
     },
-  }, { bottom: pmbottom.toString() + "px", left: pmleft.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  },
+    {
+    bottom: pmbottom.toString() + "px", left: pmleft.toString() + "px",
+        width: btnwidth.toString + "px", position: "absolute", fontWeight: "700" // bold font
+    }, fontsize);
   addElement(PlusBtn);
 
   let left2 = btnwidth + pmleft + 20;
@@ -2041,7 +2045,10 @@ function MakePlusMinusButtons() {
     onclick: function () {
       WebsockSendMsg('MoveClipPlanesDown');
     },
-  }, { bottom: pmbottom.toString() + "px", left: left2.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
+  }, {
+      bottom: pmbottom.toString() + "px", left: left2.toString() + "px",
+      width: btnwidth.toString + "px", position: "absolute", fontWeight: "700" // bold font
+  }, fontsize);
   addElement(MinusBtn);
 };
 

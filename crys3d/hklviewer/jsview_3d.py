@@ -537,7 +537,6 @@ class HKLview_3d:
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       if self.params.hkls.inbrowser:
         self.ExpandInBrowser()
-        #self.SetOpacities(self.params.binning.bin_opacities )
         self.SetOpacities(self.params.binning.bin_opacity )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
@@ -1260,7 +1259,6 @@ class HKLview_3d:
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
     if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
-      #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(self.nbinvalsboundaries + 1) ])
       self.params.binning.bin_opacity = [ [1.0, e] for e in range(self.nbinvalsboundaries + 1) ]
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
@@ -1345,15 +1343,11 @@ class HKLview_3d:
       self.mprint(mstr, verbose=1)
       cntbin += 1
 
-    #if self.params.binning.bin_opacities != "":
     if self.params.binning.bin_opacity != None:
-      #opqlist = eval(self.params.binning.bin_opacities)
       opqlist = self.params.binning.bin_opacity
       if len(opqlist) < self.params.binning.nbins:
-        #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(cntbin) ])
         self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
 
-    #self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities,
     self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binning.binner_idx,
@@ -1404,13 +1398,8 @@ class HKLview_3d:
       self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
-      #self.mprint("DrawNGLJavaScript waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-      #self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
-      #self.mprint("DrawNGLJavaScript got clipplane_msg_sem", verbose="threadingmsg")
       self.OrigClipFar = self.clipFar
       self.OrigClipNear = self.clipNear
-      #self.clipplane_msg_sem.release()
-      #self.mprint("DrawNGLJavaScript release clipplane_msg_sem", verbose="threadingmsg")
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
@@ -1434,6 +1423,7 @@ class HKLview_3d:
       if isinstance(message, ustr) and message != "":
         if "JavaScriptError" in message:
           self.mprint( message, verbose=0)
+          # avoid potential deadlock by releasing any pending sempahores
           self.clipplane_msg_sem.release()
           self.autoview_sem.release()
           self.mousespeed_msg_sem.release()
@@ -1699,13 +1689,10 @@ Distance: %s
   def SetOpacities(self, bin_opacities):
     retstr = ""
     if self.miller_array and bin_opacities:
-      #self.params.binning.bin_opacities = bin_opacities_str
-      #bin_opacitieslst = self.params.binning.bin_opacities
       self.params.binning.bin_opacity = bin_opacities
       bin_opacitieslst = self.params.binning.bin_opacity
       for alpha,bin in bin_opacitieslst:
         retstr += self.set_opacity(bin, alpha)
-      #self.SendInfoToGUI( { "bin_opacities": self.params.binning.bin_opacities } )
       self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity } )
     self.mprint( retstr, verbose=1)
 
