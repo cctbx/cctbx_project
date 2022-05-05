@@ -165,6 +165,11 @@ master_phil_str = """
       .type = bool
       .help = Raise Sorry and stop if processing yields no residues
       .short_caption = Stop if no result
+
+     keep_all_if_no_residues_obtained = False
+      .type = bool
+      .help = Keep everything if processing yields no residues
+      .short_caption = Keep all if no result 
     }
 
     """
@@ -246,8 +251,8 @@ def process_predicted_model(
       and occupancy=0 marks those to exclude
 
     If stop_if_no_residues_obtained (default), stop with Sorry if no residues
-      are obtained after processing
-
+      are obtained after processing, except if 
+        keep_all_if_no_residues_obtained (not default), then take everything. 
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
@@ -368,11 +373,16 @@ def process_predicted_model(
     n_after = new_ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
+    keep_all = False
     if n_after == 0:
       if p.stop_if_no_residues_obtained:
         raise Sorry("No residues remaining after filtering...please check if "+
          "B-value field is really '%s'. Adjust maximum_rmsd if necessary." %(
            p.b_value_field_is))
+      elif p.keep_all_if_no_residues_obtained:
+        keep_all = True
+        print("Keeping everything as no residues obtained after filtering",
+           file = log) 
       else:
         return group_args(
          group_args_type = 'processed predicted model',
@@ -383,17 +393,18 @@ def process_predicted_model(
          b_values = [],
          )
 
-    removed_ph = ph.select(~sel)
-    from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
-       split_model
-    remainder_sequence_str = ""
-    for m in split_model(model_info(removed_ph)):
-      seq = m.hierarchy.as_sequence(as_string = True)
-      if len(seq) >= p.minimum_remainder_sequence_length:
-        remainder_sequence_str += "\n> fragment sequence "
-        remainder_sequence_str += "\n%s\n" %(
-          m.hierarchy.as_sequence(as_string = True))
-    ph = new_ph
+    if not keep_all:
+      removed_ph = ph.select(~sel)
+      from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
+         split_model
+      remainder_sequence_str = ""
+      for m in split_model(model_info(removed_ph)):
+        seq = m.hierarchy.as_sequence(as_string = True)
+        if len(seq) >= p.minimum_remainder_sequence_length:
+          remainder_sequence_str += "\n> fragment sequence "
+          remainder_sequence_str += "\n%s\n" %(
+            m.hierarchy.as_sequence(as_string = True))
+      ph = new_ph
   else:
     remainder_sequence_str = None
 
