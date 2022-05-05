@@ -196,7 +196,7 @@ class map_model_manager(object):
         if not m: continue
         self.add_crystal_symmetry_to_model_if_necessary(
             m, map_manager = any_map_manager)
-        self.shift_any_model_to_match(m, map_manager = any_map_manager, 
+        self.shift_any_model_to_match(m, map_manager = any_map_manager,
          set_unit_cell_crystal_symmetry = True)
 
     if any_map_manager and ignore_symmetry_conflicts:
@@ -2882,7 +2882,7 @@ class map_model_manager(object):
           self.add_crystal_symmetry_to_model_if_necessary(target_model,
             map_manager = self.map_manager())
           target_model = target_model.deep_copy()
-        self.shift_any_model_to_match(target_model, 
+        self.shift_any_model_to_match(target_model,
          set_unit_cell_crystal_symmetry = True)
     else:
       target_model = self.get_model_by_id(target_model_id)
@@ -2892,7 +2892,7 @@ class map_model_manager(object):
           self.add_crystal_symmetry_to_model_if_necessary(matching_model,
             map_manager = self.map_manager())
           matching_model = matching_model.deep_copy()
-        self.shift_any_model_to_match(matching_model, 
+        self.shift_any_model_to_match(matching_model,
          set_unit_cell_crystal_symmetry = True)
     else:
       matching_model = self.get_model_by_id(matching_model_id)
@@ -8092,7 +8092,7 @@ class map_model_manager(object):
 
     if have_map_manager:  #  make sure model matches
       if not self.map_manager().is_compatible_model(model):
-         self.shift_any_model_to_match(model, 
+         self.shift_any_model_to_match(model,
          set_unit_cell_crystal_symmetry = True)
 
     map_coeffs = generate_map_coefficients(model = model,
