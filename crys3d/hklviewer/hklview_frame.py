@@ -261,7 +261,7 @@ class HKLViewFrame() :
     # replaced with label strings for vectors and data arrays
     diffphil = self.master_phil.fetch_diff(source = self.currentphil)
     if useful_for_preset_button:
-      # Tidy up diffphil by eliminating a few parameters that are not needed
+      # Tidy up diffphil by eliminating parameters that are not needed
       # for preset buttons or are being overwritten by user settings (colour and radii scheme)
       # First make a copy of all phil parameters some of which may be altered below
       paramscopy = self.master_phil.format(self.params).copy().extract()
@@ -388,7 +388,7 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
-        self.make_new_miller_array(msgtype=="preset_philstr")
+        self.make_new_miller_array( msgtype=="preset_philstr" )
 
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
       # Scene_id is then inferred from data_array and used throughout
@@ -447,9 +447,16 @@ class HKLViewFrame() :
         self.add_user_vector()
         self.validated_preset_buttons = False
 
-      if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename", "miller_array_operation"):
+      make_new_info_tuples=False
+      if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
+        miller_array_operations_lst = eval(self.params.miller_array_operation)
+        (operation, millarroplabel, [labl1, type1], [labl2, type2]) = miller_array_operations_lst
+        if millarroplabel not in [arr.info().label_string() for arr in self.procarrays]:
+          make_new_info_tuples=True
+
+      if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename") or make_new_info_tuples:
         self.viewer.array_info_format_tpl = []
-        for i,array in enumerate(self.procarrays):
+        for array in self.procarrays:
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
             uniquestrings = list(set(array.data()))
             info = array.info()
@@ -1069,7 +1076,7 @@ class HKLViewFrame() :
           uniquebtnids.add(btn_id)
         else:
           raise Sorry("Button ID, %s, has already been used by another button." %btn_id)
-          
+
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
         philstr_type = None
