@@ -1434,6 +1434,11 @@ class HKLview_3d:
       if isinstance(message, ustr) and message != "":
         if "JavaScriptError" in message:
           self.mprint( message, verbose=0)
+          self.clipplane_msg_sem.release()
+          self.autoview_sem.release()
+          self.mousespeed_msg_sem.release()
+          self.hkls_drawn_sem.release()
+          self.mprint( "All sempahores released", verbose="threadingmsg")
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
@@ -1455,8 +1460,6 @@ class HKLview_3d:
           time.sleep(0.5) # time for browser to clean up
           if not self.isnewfile:
             self.WBmessenger.StopWebsocket()
-        elif "JavaScriptError:" in message:
-          self.mprint( message, verbose=0)
         elif "Expanded rotation operator" in message:
           self.mprint( message, verbose="expansionmsg")
         elif "Expand" in message:
