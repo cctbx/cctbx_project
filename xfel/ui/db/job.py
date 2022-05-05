@@ -8,25 +8,30 @@ finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL
 
 class JobFactory(object):
   @staticmethod
-  def from_job(job):
+  def from_job(job, task_type = None):
     if job.task_id is None:
       return IndexingJob(job.app, job.id, **job._db_dict)
 
-    task = job.app.get_task(job.task_id)
-    if task.type == "indexing":
+    if task_type is None:
+      task_type = job.app.get_task(job.task_id).type
+    if task_type == "indexing":
       return IndexingJob(job.app, job.id, **job._db_dict)
-    if task.type == "ensemble_refinement":
+    if task_type == "ensemble_refinement":
       return EnsembleRefinementJob(job.app, job.id, **job._db_dict)
-    if task.type == "scaling":
+    if task_type == "scaling":
       return ScalingJob(job.app, job.id, **job._db_dict)
-    if task.type == "merging":
+    if task_type == "merging":
       return MergingJob(job.app, job.id, **job._db_dict)
-    if task.type == "phenix":
+    if task_type == "phenix":
       return PhenixJob(job.app, job.id, **job._db_dict)
 
   @staticmethod
   def from_args(app, job_id = None, **kwargs):
-    return JobFactory.from_job(Job(app, job_id, **kwargs))
+    if 'task_type' in kwargs:
+      task_type = kwargs.pop('task_type')
+    else:
+      task_type = None
+    return JobFactory.from_job(Job(app, job_id, **kwargs), task_type=task_type)
 
 class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
@@ -886,24 +891,25 @@ class _job(object):
       s += ", dataset %d %s"%(self.dataset.id, self.dataset.name)
     return s
 
-  def __eq__(self, other):
-    ret = True
-    check = ['trial', 'rungroup', 'run', 'task']
-    if getattr(self, 'task') and self.task.scope == 'global':
-      check.append('dataset')
+  @staticmethod
+  def job_hash(job):
+    ret = []
+    check = ['trial', 'rungroup', 'run', 'task', 'dataset']
     for subitem_name in check:
-      subitem = getattr(self, subitem_name)
-      other_subitem_id = getattr(other, subitem_name + '_id')
+      subitem = getattr(job, subitem_name)
       if subitem is None:
-        ret = ret and other_subitem_id is None
+        ret.append(None)
       else:
-        ret = ret and subitem.id == other_subitem_id
-    return ret
+        ret.append(subitem.id)
+    return tuple(ret)
+
+  def __eq__(self, other):
+    return job_hash(self) == job_hash(other)
 
 def submit_all_jobs(app):
-  submitted_jobs = app.get_all_jobs()
+  submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
   if app.params.mp.method == 'local': # only run one job at a time
-    for job in submitted_jobs:
+    for job in submitted_jobs.values():
       if job.status in ['RUN', 'UNKWN', 'SUBMITTED']: return
 
   runs = app.get_all_runs()
@@ -917,7 +923,7 @@ def submit_all_jobs(app):
         needed_jobs.append(_job(trial, rungroup, run))
 
   for job in needed_jobs:
-    if job in submitted_jobs:
+    if _job.job_hash(job) in submitted_jobs:
       continue
 
     print("Submitting job: trial %d, rungroup %d, run %s"%(job.trial.trial, job.rungroup.id, job.run.run))
@@ -957,17 +963,7 @@ def submit_all_jobs(app):
     if not dataset_tags or len(dataset_tags) < len(dataset.tags): continue
     runs_rungroups = []
     for rungroup in trial.rungroups:
-      for run in rungroup.runs:
-        run_tags_ids = [t.id for t in run.tags]
-        if not run_tags_ids: continue
-        if dataset.tag_operator == "union":
-          if any([t.id in run_tags_ids for t in dataset_tags]):
-            runs_rungroups.append((run, rungroup))
-        elif dataset.tag_operator == "intersection":
-          if all([t.id in run_tags_ids for t in dataset_tags]):
-            runs_rungroups.append((run, rungroup))
-        else:
-          assert False
+      runs_rungroups.extend([(run, rungroup) for run in app.get_rungroup_runs_by_tags(rungroup, dataset_tags, dataset.tag_operator)])
 
     # Datasets always start with indexing
     global_tasks = {}
@@ -988,8 +984,8 @@ def submit_all_jobs(app):
         else:
           job = _job(trial, rungroup, run, task)
         try:
-          submitted_job = submitted_jobs[submitted_jobs.index(job)]
-        except ValueError:
+          submitted_job = submitted_jobs[_job.job_hash(job)]
+        except KeyError:
           if not submit_next_task:
             print("Warning, expected to find submitted %s job: trial %d, rungroup %d, run %s, task %d"% \
               (task.type, trial.trial, rungroup.id, run.run, task.id))

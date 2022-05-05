@@ -614,6 +614,9 @@ class xfel_db_application(db_application):
         else:
           sub_ds[n][1][c] = value # this column came from a sub table
 
+      if 'task' in sub_ds:
+        d['task_type'] = sub_ds['task'][1]['type']
+
       # pop the id column as it is passed as name_id to the db_proxy class (ie Job(job_id = 2))
       _id = d.pop("id")
       d["%s_id"%name] = _id
@@ -711,6 +714,31 @@ class xfel_db_application(db_application):
 
   def get_all_runs(self):
     return self.get_all_x(Run, "run")
+
+  def get_rungroup_runs_by_tags(self, rungroup, tags, mode):
+    tag = self.params.experiment_tag
+    tagids = [t.id for t in tags]
+    if mode == "union":
+      # Union is done by using a series of OR statements testing the tag ids
+      return self.get_all_x(Run, 'run', where = """
+        JOIN `%s_rungroup_run` rg_r ON rg_r.run_id = run.id
+        JOIN `%s_rungroup` rg ON rg.id = rg_r.rungroup_id
+        JOIN `%s_run_tag` rt ON rt.run_id = run.id
+        JOIN `%s_tag` tag ON tag.id = rt.tag_id
+        WHERE rg.id = %d AND (%s)
+         """%(tag, tag, tag, tag, rungroup.id, " OR ".join(["tag.id = %d"%i for i in tagids])))
+    elif mode == "intersection":
+      # Intersection is done using a series of INNER JOINS, one full set for each tag
+      return self.get_all_x(Run, 'run', where = """
+        %s
+        WHERE %s
+        """%("".join(["""
+                      INNER JOIN `%s_rungroup_run` rg_r%d ON rg_r%d.run_id = run.id
+                      INNER JOIN `%s_rungroup` rg%d ON rg%d.id = rg_r%d.rungroup_id
+                      INNER JOIN `%s_run_tag` rt%d ON rt%d.run_id = run.id
+                      INNER JOIN `%s_tag` tag%d ON tag%d.id = rt%d.tag_id AND tag%d.id = %d"""%(
+                      tag, i, i, tag, i, i, i, tag, i, i, tag, i, i, i, i, tid) for i, tid in enumerate(tagids)]),
+        " AND ".join(["rg%d.id = %d"%(i, rungroup.id) for i in range(len(tagids))])))
 
   def create_rungroup(self, **kwargs):
     return Rungroup(self, **kwargs)
