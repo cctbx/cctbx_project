@@ -169,7 +169,7 @@ master_phil_str = """
      keep_all_if_no_residues_obtained = False
       .type = bool
       .help = Keep everything if processing yields no residues
-      .short_caption = Keep all if no result 
+      .short_caption = Keep all if no result
     }
 
     """
@@ -251,8 +251,8 @@ def process_predicted_model(
       and occupancy=0 marks those to exclude
 
     If stop_if_no_residues_obtained (default), stop with Sorry if no residues
-      are obtained after processing, except if 
-        keep_all_if_no_residues_obtained (not default), then take everything. 
+      are obtained after processing, except if
+        keep_all_if_no_residues_obtained (not default), then take everything.
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
@@ -382,7 +382,7 @@ def process_predicted_model(
       elif p.keep_all_if_no_residues_obtained:
         keep_all = True
         print("Keeping everything as no residues obtained after filtering",
-           file = log) 
+           file = log)
       else:
         return group_args(
          group_args_type = 'processed predicted model',
