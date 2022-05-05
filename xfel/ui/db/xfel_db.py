@@ -329,7 +329,7 @@ class db_application(object):
             print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
       except OperationalError as e:
-        if "Can't connect to MySQL server" not in str(e):
+        if "Can't connect to MySQL server" not in str(e) and "Lost connection to MySQL server" not in str(e):
           print(query)
           raise e
         retry_count += 1
