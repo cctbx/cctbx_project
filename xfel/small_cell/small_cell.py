@@ -729,6 +729,8 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
     def bronk2(R, P, X, g):
         global degrees, total_calls
         total_calls = total_calls + 1
+        if total_calls > horiz_phil.small_cell.max_calls_to_bronk:
+            raise RuntimeError("cctbx.small_cell: Too many calls to bronk")
         if not any((P, X)):
             unmapped_cliques.append(R)
             return
