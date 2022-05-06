@@ -9,7 +9,7 @@ class Spotfinder_radial_average:
   def __init__(self, params):
     self.params = params
     n_panels = len(params.input.experiments[0].data[0].detector)
-    self.panelsums = [np.zeros(params.n_bins)] * n_panels
+    self.panelsums = [np.zeros(params.n_bins) for _ in range(n_panels)]
 
   def _process_pixel(self, i_panel, s0, panel, xy, value):
     value -= self.params.downweight_weak
@@ -112,8 +112,8 @@ class Spotfinder_radial_average:
     xvalues = np.linspace(d_max_inv, d_min_inv, params.n_bins)
     fig, ax = plt.subplots()
     if params.split_panels:
-      # TODO: better way to stack the split patterns
-      offset = 0.5*max(np.array(self.panelsums[0]))
+      maxes = [max(ps) for ps in self.panelsums]
+      offset = 0.5*max(maxes)
       for i_sums, sums in enumerate(self.panelsums):
         yvalues = np.array(sums)
         plt.plot(xvalues, yvalues+0.5*i_sums*offset)
