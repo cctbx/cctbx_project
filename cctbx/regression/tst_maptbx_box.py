@@ -271,18 +271,28 @@ def exercise_around_model():
 
   assert (box.gridding_first, box.gridding_last) == ([0, 0, 0] , [29, 39, 31])
 
+  # Box around the mask with cubic box
+  box = cctbx.maptbx.box.around_mask(
+    map_manager = mam.mm.deep_copy(),
+    mask_as_map_manager = mask_mm,
+    use_cubic_boxing = True,
+    wrapping = False,
+    )
 
+  assert (box.gridding_first, box.gridding_last) == ([0, 5, 1], [30, 35, 31])
 
   #
   # IF you are about to change this - THINK TWICE!
   #
   import inspect
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'model', 'box_cushion', 'wrapping',
-      'model_can_be_outside_bounds','stay_inside_current_map', 'log'], r.args
+  assert r.args  == ['self', 'map_manager', 'model', 'box_cushion',
+        'wrapping', 'model_can_be_outside_bounds', 'stay_inside_current_map',
+        'use_cubic_boxing', 'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
-  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds', 'model',
-    'wrapping', 'model_can_be_outside_bounds', 'log'], r.args
+  assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds',
+        'model', 'wrapping', 'model_can_be_outside_bounds',
+        'stay_inside_current_map', 'use_cubic_boxing', 'log'], r.args
 
   print ("OK")
 

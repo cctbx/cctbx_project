@@ -34,6 +34,12 @@ class with_bounds(object):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
+  if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
+      if this conflicts with stay_inside_current_map, make box smaller. Normally
+      this option should not be used with with_bounds because the bounds should
+      be directly specified.
+  Note: stay_inside_current_map applies only when using cubic boxing
+
   """
   def __init__(self,
      map_manager,
@@ -42,12 +48,15 @@ class with_bounds(object):
      model = None,
      wrapping = None,
      model_can_be_outside_bounds = False,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      log = sys.stdout):
     self.lower_bounds = lower_bounds
     self.upper_bounds = upper_bounds
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self.use_cubic_boxing = use_cubic_boxing
     self._info = None
 
 
@@ -77,6 +86,10 @@ class with_bounds(object):
 
     self.gridding_first = lower_bounds
     self.gridding_last  = upper_bounds
+
+    # Adjust gridding to make a cubic box if desired
+    if self.use_cubic_boxing:
+      self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -121,6 +134,61 @@ class with_bounds(object):
       return self.map_manager().ncs_object()
     else:
       return None
+
+  def set_cubic_boxing(self, stay_inside_current_map = None,
+    log = sys.stdout):
+    ''' Adjust bounds to make a cubic box.
+      Adjust bounds to make a cubic box by making box bigger.
+      if this conflicts with stay_inside_current_map, make box smaller. Normally
+      this option should not be used with with_bounds because the bounds should
+      be directly specified. '''
+
+    if not self.use_cubic_boxing:
+      return  # nothing to do
+
+    print("\nSetting up cubic box", file = log)
+    map_all = self._map_manager.map_data().all()
+    lmn = [1 + b - a for a,b in zip(self.gridding_first, self.gridding_last)]
+    if lmn[0] == lmn[1] and lmn[0] == lmn[2]:
+      print("Box is already cubic with dimensions ",lmn, file = log)
+      return # all set already
+    # Maximum dimension of box
+    max_dim = max(lmn)
+    # How many grid points to add in each direction
+    dlmn = [max_dim - a for a in lmn]
+    # How many to add before
+    dlmn1= [a//2 for a in dlmn]
+    # How many to add after
+    dlmn2 = [a - b for a,b in zip( dlmn, dlmn1)]
+    # New start, end
+    new_first = [b - a for a, b in zip(dlmn1,self.gridding_first)]
+    new_last = [b + a for a, b in zip(dlmn2,self.gridding_last)]
+    new_lmn = [1 +b - a for a,b in zip(new_first, new_last)]
+
+    print("Original map size: ",map_all, file = log)
+    print("Original box: ",lmn, "cubic:", max_dim, file = log)
+    print("Original start: ",self.gridding_first, file = log)
+    print("Original end: ",self.gridding_last, file = log)
+    print("New box: ",new_lmn, file = log)
+    print("New start: ",new_first, file = log)
+    print("New end: ",new_last, file = log)
+
+    # Now make sure we are inside map if requested
+    lowest_value,highest_value = cube_relative_to_box(
+      new_first, new_last, map_all)
+    if stay_inside_current_map and lowest_value != 0 or highest_value != 0:
+      print("Reboxing cubic map to stay inside current map", file = log)
+      new_first = [a - lowest_value for a in new_first]
+      new_last = [a - highest_value for a in new_last]
+      lowest_value,highest_value = cube_relative_to_box(
+        new_first, new_last, map_all)
+      assert [lowest_value,highest_value] == [0,0]
+    print("Final start: ",new_first, file = log)
+    print("Final end: ",new_last, file = log)
+    print("Final box: ",[1 + b - a for a,b in zip(new_first, new_last)],
+       file = log)
+    self.gridding_first = new_first
+    self.gridding_last = new_last
 
   def set_shifts_and_crystal_symmetry(self):
     '''
@@ -199,7 +267,6 @@ class with_bounds(object):
     bounds_info = get_bounds_of_valid_region(map_data,
       self.gridding_first,
       self.gridding_last)
-
     # Allow override of wrapping
     if isinstance(self._force_wrapping, bool):
       wrapping = self._force_wrapping
@@ -344,16 +411,24 @@ class around_model(with_bounds):
     if model_can_be_outside_bounds, allow model to be outside the bounds
     if stay_inside_current_map, adjust bounds to not go outside current map
       in the case that bounds are entirely outside current map, use current map
+    Note: stay_inside_current_map applies to all boxing in this method
+      because it is a normal part of the boxing process (in other boxing it
+        only applies to cubic boxing which can cause a box to go outside the
+        current map)
+    if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
+      if this conflicts with stay_inside_current_map, make box smaller
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       model_can_be_outside_bounds = False,
-      stay_inside_current_map = None,
+      stay_inside_current_map = None, # Note that this default is different
+      use_cubic_boxing = False,
       log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self.use_cubic_boxing = use_cubic_boxing
 
     self._force_wrapping = wrapping
     if wrapping is None:
@@ -395,6 +470,10 @@ class around_model(with_bounds):
     else: # usual
       self.gridding_first = info.lower_bounds
       self.gridding_last = info.upper_bounds
+
+    # Adjust gridding to make a cubic box if desired
+    if self.use_cubic_boxing:
+      self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -440,6 +519,9 @@ class around_unique(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
+    if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
+      if this conflicts with stay_inside_current_map, make box smaller
+    Note: stay_inside_current_map applies only when using cubic boxing
 
       Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
@@ -486,10 +568,12 @@ class around_unique(with_bounds):
     soft_mask = True,
     mask_expand_ratio = 1,
     wrapping = None,
+    use_cubic_boxing = False,
+    stay_inside_current_map = True,
     log = None):
 
     self.model_can_be_outside_bounds = None  # not used but required to be set
-
+    self.use_cubic_boxing = use_cubic_boxing
     self._map_manager = map_manager
     self._model = model
 
@@ -592,6 +676,10 @@ class around_unique(with_bounds):
     self.gridding_first = lower_bounds
     self.gridding_last  = upper_bounds
 
+    # Adjust gridding to make a cubic box if desired
+    if self.use_cubic_boxing:
+      self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
+
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
@@ -658,18 +746,25 @@ class around_mask(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
+  Note: stay_inside_current_map applies only when using cubic boxing
+  if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
+      if this conflicts with stay_inside_current_map, make box smaller
+
   """
   def __init__(self, map_manager,
      mask_as_map_manager,
      model = None,
      box_cushion = 3,
      wrapping = None,
+     use_cubic_boxing = False,
      model_can_be_outside_bounds = False,
+     stay_inside_current_map = True,
      log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self.use_cubic_boxing = use_cubic_boxing
     assert map_manager.shift_cart()==mask_as_map_manager.shift_cart()
 
     # safeguards
@@ -729,6 +824,9 @@ class around_mask(with_bounds):
     self.gridding_last  = [min(n-1, iceil(gl+c*n)) for c, gl, n in zip(
        cushion, self.gridding_last, all_orig)]
 
+    # Adjust gridding to make a cubic box if desired
+    if self.use_cubic_boxing:
+      self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
 
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
@@ -759,6 +857,10 @@ class around_density(with_bounds):
     undefined.  If a box is specified that uses points outside the defined
     region, those points are set to zero.
 
+   if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
+   Note: stay_inside_current_map applies only when using cubic boxing
+   if this conflicts with stay_inside_current_map, make box smaller
+
   """
   def __init__(self, map_manager,
      threshold = 0.05,
@@ -767,11 +869,14 @@ class around_density(with_bounds):
      model = None,
      wrapping = None,
      model_can_be_outside_bounds = False,
+     use_cubic_boxing = False,
+     stay_inside_current_map = True,
      log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
+    self.use_cubic_boxing = use_cubic_boxing
 
     # safeguards
     assert threshold is not None
@@ -848,11 +953,21 @@ class around_density(with_bounds):
     self.gridding_last  = [ min(n-1, iceil((f+c)*n)) for c, f, n in zip(
        cushion, frac_max, all_orig)]
 
+    # Adjust gridding to make a cubic box if desired
+    if self.use_cubic_boxing:
+      self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
+
     # Ready with gridding...set up shifts and box crystal_symmetry
     self.set_shifts_and_crystal_symmetry()
 
     # Apply boxing to model, ncs, and map (if available)
     self.apply_to_model_ncs_and_map()
+
+def cube_relative_to_box(new_first, new_last, map_all):
+    lowest_value = min(0, min([a for a in new_first]))
+    highest_value = max(0, max([a - b for a, b in zip(new_last,map_all)]))
+    print("lowest, highest out of box:",lowest_value, highest_value)
+    return lowest_value,highest_value
 
 def get_range(value_list, threshold = None, ignore_ends = True,
      keep_near_ends_frac = 0.02, half_height_width = 2., get_half_height_width = None,

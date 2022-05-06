@@ -89,19 +89,23 @@ def test_01():
 
   # Args that should be in common for all calls to specific methods
   method_args_dict = {
-    'with_bounds': ['lower_bounds', 'upper_bounds','model_can_be_outside_bounds'],
-    'around_model':[ 'box_cushion','model_can_be_outside_bounds','stay_inside_current_map'],
+    'with_bounds': ['lower_bounds', 'upper_bounds',
+    'model_can_be_outside_bounds',
+    'stay_inside_current_map', 'use_cubic_boxing'],
+    'around_model':[ 'box_cushion','model_can_be_outside_bounds',
+      'stay_inside_current_map', 'use_cubic_boxing'],
     'around_density':[ 'box_cushion','threshold', 'get_half_height_width',
+       'stay_inside_current_map', 'use_cubic_boxing',
        'model_can_be_outside_bounds'],
-    'around_mask':[ 'box_cushion','model_can_be_outside_bounds'],
+    'around_mask':[ 'box_cushion','model_can_be_outside_bounds',
+      'stay_inside_current_map', 'use_cubic_boxing'],
     'around_unique':['box_cushion', 'target_ncs_au_model',
+        'stay_inside_current_map', 'use_cubic_boxing',
         'use_symmetry_in_extract_unique', 'regions_to_keep',
     'residues_per_region','keep_this_region_only',
         'solvent_content', 'resolution', 'sequence', 'molecular_mass',
          'symmetry', 'chain_type', 'keep_low_density', 'soft_mask',
          'mask_expand_ratio'],
-
-
    }
 
   # Args that should appear in map_manager and map_model_manager calls for

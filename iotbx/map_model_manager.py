@@ -1080,6 +1080,8 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      soft_mask_around_edges = None,
      soft_mask_radius = None,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      model_can_be_outside_bounds = None):
     '''
       Runs box_all_maps_with_bounds_and_shift_origin with extract_box=True
@@ -1091,6 +1093,8 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
   def box_all_maps_with_bounds_and_shift_origin(self,
@@ -1100,6 +1104,8 @@ class map_model_manager(object):
      soft_mask_radius = None,
      soft_mask_around_edges = None,
      boundary_to_smoothing_ratio = 2.,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      extract_box = False):
     '''
        Box all maps using specified bounds, shift origin of maps, model
@@ -1124,6 +1130,8 @@ class map_model_manager(object):
          mask around atoms, density, mask or anything
          else afterwards as you should apply a mask only once.
 
+       If use_cubic_box, make a cubic box (in grid units). If also
+        stay_inside_current_map is set, keep the cubic box inside current map
 
 
     '''
@@ -1155,6 +1163,8 @@ class map_model_manager(object):
       model = model,
       wrapping = self._force_wrapping,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
@@ -1178,6 +1188,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      soft_mask_around_edges = None,
      soft_mask_radius = None,
+     use_cubic_boxing = False,
      ):
     '''
       Runs box_all_maps_around_model_and_shift_origin with extract_box=True
@@ -1192,6 +1203,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
   def box_all_maps_around_model_and_shift_origin(self,
@@ -1204,6 +1216,7 @@ class map_model_manager(object):
      soft_mask_radius = None,
      soft_mask_around_edges = None,
      boundary_to_smoothing_ratio = 2.,
+     use_cubic_boxing = False,
      extract_box = False):
     '''
        Box all maps around the model, shift origin of maps, model
@@ -1234,6 +1247,8 @@ class map_model_manager(object):
        option if you are going to mask around atoms, density, mask or anything
        else afterwards as you should apply a mask only once.
 
+       If use_cubic_box, make a cubic box (in grid units). If also
+        stay_inside_current_map is set, keep the cubic box inside current map
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -1271,6 +1286,7 @@ class map_model_manager(object):
       wrapping = self._force_wrapping,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
       stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
@@ -1294,6 +1310,8 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      soft_mask_around_edges = None,
      soft_mask_radius = None,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      map_id = 'map_manager'):
     '''
       Runs box_all_maps_around_density_and_shift_origin with extract_box=True
@@ -1307,6 +1325,8 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
   def box_all_maps_around_density_and_shift_origin(self,
@@ -1318,6 +1338,8 @@ class map_model_manager(object):
      soft_mask_radius = None,
      soft_mask_around_edges = None,
      boundary_to_smoothing_ratio = 2.,
+     stay_inside_current_map = None,
+     use_cubic_boxing = False,
      extract_box = False):
     '''
        Box all maps around the density in map_id map (default is map_manager)
@@ -1348,6 +1370,8 @@ class map_model_manager(object):
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
 
+       If use_cubic_box, make a cubic box (in grid units). If also
+        stay_inside_current_map is set, keep the cubic box inside current map
     '''
     assert box_cushion is not None
 
@@ -1371,6 +1395,8 @@ class map_model_manager(object):
       threshold   = threshold,
       get_half_height_width = get_half_height_width,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       wrapping    = self._force_wrapping)
 
     # Now box is a copy of map_manager and model that is boxed
@@ -1391,6 +1417,8 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      soft_mask_around_edges = None,
      soft_mask_radius = None,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      mask_id = 'mask'):
     '''
       Runs box_all_maps_around_mask_and_shift_origin with extract_box=True
@@ -1402,6 +1430,8 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
   def box_all_maps_around_mask_and_shift_origin(self,
@@ -1411,6 +1441,8 @@ class map_model_manager(object):
      soft_mask_radius = None,
      soft_mask_around_edges = None,
      boundary_to_smoothing_ratio = 2.,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      extract_box = False):
     '''
        Box all maps around specified mask, shift origin of maps, model
@@ -1430,6 +1462,8 @@ class map_model_manager(object):
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
 
+       If use_cubic_box, make a cubic box (in grid units). If also
+        stay_inside_current_map is set, keep the cubic box inside current map
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -1461,6 +1495,8 @@ class map_model_manager(object):
       model = model,
       box_cushion = box_cushion,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       wrapping = self._force_wrapping,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
@@ -1493,6 +1529,8 @@ class map_model_manager(object):
      residues_per_region = None,
      soft_mask_radius = None,
      mask_expand_ratio = 1,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      use_symmetry_in_extract_unique = True):
 
     '''
@@ -1517,6 +1555,8 @@ class map_model_manager(object):
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       use_symmetry_in_extract_unique = use_symmetry_in_extract_unique,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
   def box_all_maps_around_unique_and_shift_origin(self,
@@ -1538,6 +1578,8 @@ class map_model_manager(object):
      keep_this_region_only = None,
      residues_per_region = None,
      use_symmetry_in_extract_unique = True,
+     stay_inside_current_map = True,
+     use_cubic_boxing = False,
      extract_box = False):
     '''
        Box all maps using bounds obtained with around_unique,
@@ -1566,6 +1608,9 @@ class map_model_manager(object):
       if soft_mask_around_edges, makes a bigger box and makes a soft mask around
        the edges.  Use this option if you are going to calculate a FT of
        the map or otherwise manipulate it in reciprocal space.
+
+      If use_cubic_box, make a cubic box (in grid units). If also
+        stay_inside_current_map is set, keep the cubic box inside current map
 
        Additional parameters:
          mask_expand_ratio:   allows increasing masking radius beyond default at
@@ -1624,6 +1669,8 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       soft_mask = soft_mask,
       mask_expand_ratio = mask_expand_ratio,
+      stay_inside_current_map = stay_inside_current_map,
+      use_cubic_boxing = use_cubic_boxing,
       log = self.log)
 
     info = box.info()
