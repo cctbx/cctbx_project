@@ -2458,6 +2458,9 @@ in the space group %s\nwith unit cell %s\n""" \
 
 
   def RotateMxStage(self, rotmx, quietbrowser=True):
+    if self.cameraPosZ is None:
+      # in case HKLJavaScripts.onMessage() crashed and failed returning cameraPosZ
+      self.GetClipPlaneDistances()
     self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout)
     self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
