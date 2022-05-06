@@ -44,6 +44,10 @@ small_cell {
   write_gnuplot_input = False
     .type = bool
     .help = "Use to produce a series of files as inputs to gnuplot to show the indexing results"
+  max_calls_to_bronk = 100000
+    .type = int
+    .help = "Terminate indexing on this many calls to the maximum clique finder."
+            "This eliminates a long tail of slow images with too many spots."
 }
 """
 
