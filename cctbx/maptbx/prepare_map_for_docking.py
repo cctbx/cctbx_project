@@ -1087,6 +1087,27 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   mask_radius = mask_distances[math.floor(frac_coverage*masked_points)-1]
   return mask_radius
 
+def get_ordered_fraction_slow(mm_ordered_mask,sphere_center,sphere_radius):
+  """
+  Get radius of sphere around map center enclosing desired fraction of
+  ordered density
+  """
+
+  # Test assumption that this is a full map
+  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+
+  unit_cell = mm_ordered_mask.unit_cell()
+  om_data = mm_ordered_mask.map_data()
+  d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell,
+    center = sphere_center)
+  sel = d_from_c < sphere_radius
+  selected_grid_indices = sel.iselection()
+  om_data_sel = om_data.select(selected_grid_indices)
+  sel = om_data_sel > 0
+  ordered_in_sphere = om_data_sel.select(sel)
+  ordered_fraction = ordered_in_sphere.size()/selected_grid_indices.size()
+  return ordered_fraction
+
 def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
   d_star_sq = f_array.d_star_sq().data()
   num_tot = d_star_sq.size()
@@ -1253,6 +1274,35 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
 
   local_mean = extended_mean.select(extended_mean.d_spacings().data() >= d_min)
   return local_mean
+
+def local_mean_density(mm, radius):
+  """
+  Compute spherically-averaged map
+
+  Compulsory argument:
+  mm: map_manager containing map to be averaged
+  radius: radius of sphere for averaging
+  """
+
+  # Put map into map_model_manager to ensure matching grid for spherically-averaged map
+  mmm = map_model_manager(map_manager = mm)
+  mc = mm.map_as_fourier_coefficients(d_min=radius/5.)
+
+  # Compute G-function, avoiding divide by zero and numerical precision issues
+  # for the origin term
+  stol = flex.sqrt(mc.sin_theta_over_lambda_sq().data())
+  w = 4 * stol * math.pi * radius
+  sel = (w == 0.)
+  w.set_selected(sel,0.0001)
+  sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+  sphere_reciprocal.set_selected(sel,1.)
+
+  # Spherically-averaged map values from FT of product of FTs
+  prod_coeffs = mc.customized_copy(data = mc.data()*sphere_reciprocal)
+  mmm.add_map_from_fourier_coefficients(prod_coeffs, map_id='local_mean_map')
+  local_mean_mm = mmm.get_map_manager_by_id(map_id='local_mean_map')
+
+  return local_mean_mm
 
 def assess_cryoem_errors(
     mmm, d_min,
@@ -1426,8 +1476,7 @@ def assess_cryoem_errors(
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
     assert (mapCC < 1.) # Ensure these are really independent half-maps
-    mapCC = max(mapCC,0.001) # Avoid zero or negative values
-    mapCC_bins.append(mapCC)
+    mapCC_bins.append(mapCC) # Store for before/after comparison
     # Adjust very low sumfsqr_local_mean values, then divide sum by 2 to get mean)
     sumfsqsel = sumfsqr.select(sel)
     mean_sumfsqr_bin = flex.mean_default(sumfsqsel.data(),0.)
