@@ -476,7 +476,6 @@ newarray._sigmas = sigs
     self.spacegroups = {}
     self.info = []
     self.infostr = ""
-    self.tncsvec = []
     self.fileisvalid = False
     self.NewFileLoaded = False
     self.NewMillerArray = False
@@ -636,7 +635,6 @@ newarray._sigmas = sigs
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
       self.millertable.clearContents()
-      self.tncsvec = []
       self.expandP1checkbox.setChecked(False)
       self.expandAnomalouscheckbox.setChecked(False)
       self.sysabsentcheckbox.setChecked(False)
@@ -872,8 +870,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.millerarraytableform.show()
             self.millerarraytableform.activateWindow()
 
-          if self.infodict.get("tncsvec"):
-            self.tncsvec = self.infodict.get("tncsvec",[])
           self.unfeedback = True
           if self.infodict.get("all_vectors") is not None:
             self.rotvec = None
@@ -1165,6 +1161,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.vectortable2.item(rvrow, 0).setCheckState(Qt.Checked)
           if show_all_vectors == -1:
             self.vectortable2.item(rvrow, 0).setCheckState(Qt.Unchecked)
+
+    if self.currentphilstringdict.get('viewer.user_vector', None) is not None:
+      self.user_vectors = self.currentphilstringdict['viewer.user_vector']
 
     self.unfeedback = False
 
@@ -1604,16 +1603,25 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
-          self.send_message("""viewer.add_user_vector_hkl_op = '%s'
-          viewer.user_label = %s """ %(hklop, label))
+          self.send_message("""
+viewer.user_vector {
+  hkl_op = '%s'
+  veclabel = %s
+}""" %(hklop, label))
         if col==2:
           hklvec = self.vectortable2.item(row, 2).text()
-          self.send_message("""viewer.add_user_vector_hkl = '(%s)'
-          viewer.user_label = %s """ %(hklvec, label))
+          self.send_message("""
+viewer.user_vector {
+  hkl = '%s'
+  veclabel = %s
+}""" %(hklvec, label))
         if col==3:
           abcvec = self.vectortable2.item(row, 3).text()
-          self.send_message("""viewer.add_user_vector_abc = '(%s)'
-          viewer.user_label = %s """ %(abcvec, label))
+          self.send_message("""
+viewer.user_vector {
+  abc = '%s'
+  veclabel = %s
+}""" %(abcvec, label))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 

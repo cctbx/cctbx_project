@@ -228,10 +228,10 @@ class HKLViewFrame() :
     for parm in unusedphilparms:
       self.mprint( "Received unrecognised phil parameter: " + parm.path, verbose=1)
     diffphil = oldcurrentphil.fetch_diff(source = pyphilobj)
-    # bin_opacity and show_vector have the "multiple" attribute. In order to retain any existing
+    # bin_opacity, show_vector and user_vector have the "multiple" attribute. In order to retain any existing
     # list elements we copy them from the oldcurrentphil parameters and assign them to the newphil parameters
     # Failure to do this would lead to list of bin_opacity elements not being properly updated when
-    # changing one of the bin_opacity elements. Likewise for show_vector.
+    # changing one of the bin_opacity elements. Likewise for show_vector and user_vector.
     if jsview_3d.has_phil_path(pyphilobj, "bin_opacity"):
       bin_opacitylst = self.master_phil.fetch(source = pyphilobj ).extract().binning.bin_opacity
     else:
@@ -247,6 +247,13 @@ class HKLViewFrame() :
     newpyobj = newcurrentphil.extract()
     newpyobj.viewer.show_vector = show_vectorlst
     newcurrentphil = newcurrentphil.format(python_object= newpyobj )
+
+    if jsview_3d.has_phil_path(pyphilobj, "user_vector"):
+      user_vectorlst = self.master_phil.fetch(source = pyphilobj ).extract().viewer.user_vector \
+       + oldcurrentphil.extract().viewer.user_vector
+      newpyobj = newcurrentphil.extract()
+      newpyobj.viewer.user_vector = user_vectorlst
+      newcurrentphil = newcurrentphil.format(python_object= newpyobj )
 
     return newcurrentphil, diffphil
 
@@ -441,10 +448,8 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
 
-      if jsview_3d.has_phil_path(diff_phil, "add_user_vector_hkl_op",
-                                         "add_user_vector_abc",
-                                         "add_user_vector_hkl"):
-        self.add_user_vector()
+      if jsview_3d.has_phil_path(diff_phil, "user_vector"):
+        self.add_user_vector(self.params.viewer.user_vector)
         self.validated_preset_buttons = False
 
       make_new_info_tuples=False
@@ -523,7 +528,9 @@ class HKLViewFrame() :
     for e in self.currentphil.all_definitions():
       # deal with multiple definitions of a phil parameter by appending them to a list and
       # then assigning that list to the dictionary value with the key e.path. This assumes
-      # that e.object is a phil parameter and not a phil scope
+      # that e.object is a phil parameter and not a phil scope.
+      # user_vector is a multiple scope and cannot be cast into a dictionary. Instead it is
+      # sent as part of self.viewer.all_vectors whenever self.list_vectors() is called
       if e.object.multiple == True:
         lst.append(e.object.extract())
         philstrvalsdict[e.path] = lst
@@ -1081,9 +1088,9 @@ class HKLViewFrame() :
         btnphil = libtbx.phil.parse(philstr)
         philstr_label = None
         philstr_type = None
-        philstr_userlbl = ""
         phasertng_tag = None
         philstr_vectors = []
+        philstr_user_vectors_labels = []
         millaroperationstr = None
         if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
           btnphilobj = self.master_phil.fetch(btnphil).extract()
@@ -1095,10 +1102,10 @@ class HKLViewFrame() :
             phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag
             # find the miller array used by phasertng as specified in the mtz history header
             philstr_label = [ self.get_label_from_phasertng_tag(",".join(phasertng_tag)) ]
-          if btnphilobj.viewer.user_label != "":
-            philstr_userlbl = btnphilobj.viewer.user_label
           if len(btnphilobj.viewer.show_vector) > 0:
             philstr_vectors = btnphilobj.viewer.show_vector
+          if len(btnphilobj.viewer.user_vector) > 0:
+            philstr_user_vectors_labels = [ e.label for e in btnphilobj.viewer.user_vector ]
           if btnphilobj.miller_array_operation != "":
 # The miller array operation part in the philstr could look like:
 # miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
@@ -1111,9 +1118,18 @@ class HKLViewFrame() :
           nvectorsfound = 0
           for iphilvec,philstrvec in enumerate(philstr_vectors):
             philveclabel, philshowvec = eval(philstrvec)
+            # see if any of the user_vectors_labels is a substring of the label for the vectors to display
+            if True in [ lbl in philveclabel for lbl in philstr_user_vectors_labels ] :
+              nvectorsfound = len(philstr_vectors)
+              continue # button phil defines a user vector matching the show vector
             for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
               # allow label to be just a substring of veclabel
-              if philshowvec and (len(philstr_userlbl) and philstr_userlbl in veclabel or philveclabel == veclabel):
+              philstr_userlbl = ""
+              for lbl in philstr_user_vectors_labels:
+                if lbl in veclabel: # button phil defines a user vector matching the show vector
+                  philstr_userlbl = lbl
+                  break
+              if philshowvec and philveclabel == veclabel:
                 nvectorsfound +=1
                 if philstr_userlbl:
                   veclabels += "," + philstr_userlbl
@@ -1503,49 +1519,52 @@ class HKLViewFrame() :
     return self.viewer.all_vectors
 
 
-  def add_user_vector(self):
+  def add_user_vector(self, philuser_vectors):
     uc = self.viewer.miller_array.unit_cell()
-    label = self.params.viewer.user_label
-    order = 0
     try:
-      hklvec = ""
-      abcvec = ""
-      hklop = ""
-      unwantedchars = " |(|)|[|]|{|}"
-      # individual characters separated by | substituted with a "" using re.sub()
-      if self.params.viewer.add_user_vector_hkl not in [None, "", "()"]:
-        hklvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl))
-        # convert into cartesian space
-        cartvec = list( self.viewer.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
-        veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      elif self.params.viewer.add_user_vector_abc not in [None, "", "()"]:
-        abcvec = eval(re.sub(unwantedchars, "", self.params.viewer.add_user_vector_abc))
-        # convert into cartesian space
-        cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
-        veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      elif self.params.viewer.add_user_vector_hkl_op not in [None, ""]:
-        hklop = re.sub(unwantedchars, "", self.params.viewer.add_user_vector_hkl_op)
-        rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
-        self.viewer.symops.append( rt ) #
-        (cartvec, a, label, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
-        veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-        if label:
-          label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), self.params.viewer.user_label)
-          self.mprint("Rotation axis, %s, added" %label)
-        if label =="" or order==0:
-          self.mprint("Cannot compute a rotation axis from %s" %self.params.viewer.add_user_vector_hkl_op)
-          return
-      if (self.params.viewer.add_user_vector_hkl in [None, "", "()"] \
-       and self.params.viewer.add_user_vector_abc in [None, "", "()"] \
-       and self.params.viewer.add_user_vector_hkl_op) in [None, ""]:
-        self.mprint("No vector was specified")
-      self.uservectors.append( (label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
+      for phil_uvec in philuser_vectors:
+        label = phil_uvec.label
+        userveclabels = [ e[0] for e in self.uservectors ]
+        if label in userveclabels:
+          continue
+        order = 0
+        hklvec = ""
+        abcvec = ""
+        hklop = ""
+        unwantedchars = " |(|)|[|]|{|}"
+        # individual characters separated by | substituted with a "" using re.sub()
+        if phil_uvec.hkl not in [None, "", "()"]:
+          hklvec = eval(re.sub(unwantedchars, "", phil_uvec.hkl))
+          # convert into cartesian space
+          cartvec = list( self.viewer.renderscale*(hklvec * matrix.sqr(uc.fractionalization_matrix()).transpose()) )
+          veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        elif phil_uvec.abc not in [None, "", "()"]:
+          abcvec = eval(re.sub(unwantedchars, "", phil_uvec.abc))
+          # convert into cartesian space
+          cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
+          veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+        elif phil_uvec.hkl_op not in [None, ""]:
+          hklop = re.sub(unwantedchars, "", phil_uvec.hkl_op)
+          rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
+          self.viewer.symops.append( rt ) #
+          (cartvec, a, rotlabel, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
+          veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+          if rotlabel:
+            label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), label)
+            if label in userveclabels:
+              continue # this vector label is already there. Don't add it
+            self.mprint("Rotation axis, %s, added" %rotlabel)
+          if rotlabel =="" or order==0:
+            self.mprint("Cannot compute a rotation axis from %s" %phil_uvec.hkl_op)
+            return
+        if (phil_uvec.hkl in [None, "", "()"] \
+         and phil_uvec.abc in [None, "", "()"] \
+         and phil_uvec.hkl_op) in [None, ""]:
+          self.mprint("No vector was specified")
+        self.uservectors.append( (label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
       self.list_vectors()
     except Exception as e:
       raise Sorry( str(e))
-    self.params.viewer.add_user_vector_hkl_op = ""
-    self.params.viewer.add_user_vector_hkl = ""
-    self.params.viewer.add_user_vector_abc = ""
 
 
   def AddUserVector(self, hkl_op="", abc="", hkl="", label=""):
@@ -1795,16 +1814,23 @@ masterphilstr = """
       .multiple = True
     show_all_vectors = 0
       .type = int(value_min=-1, value_max=1)
-    add_user_vector_hkl_op = ""
-      .type = str
-    add_user_vector_abc = ""
-      .type = str
-    add_user_vector_hkl = ""
-      .type = str
-    user_label = ""
-      .type = str
+    user_vector
+      .multiple = True
+      .caption = "Vectors the user add in addition to existing vectors (rotations, TNCS, anisotropy principal axes). " \
+                 "A vector has to be entered either as a rotation, a real space or a reciprocal space vector."
+    {
+      label = ""
+        .type = str
+      hkl_op = ""
+        .type = str
+      abc = ""
+        .type = str
+      hkl = ""
+        .type = str
+    }
     show_hkl = ""
       .type = str
+      .caption = "Highlight a reflection with a red meshed wire net surrounding it."
     is_parallel = False
       .type = bool
     fixorientation = vector *None
