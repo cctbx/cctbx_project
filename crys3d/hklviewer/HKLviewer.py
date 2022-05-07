@@ -1606,21 +1606,21 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           self.send_message("""
 viewer.user_vector {
   hkl_op = '%s'
-  veclabel = %s
+  label = %s
 }""" %(hklop, label))
         if col==2:
           hklvec = self.vectortable2.item(row, 2).text()
           self.send_message("""
 viewer.user_vector {
   hkl = '%s'
-  veclabel = %s
+  label = %s
 }""" %(hklvec, label))
         if col==3:
           abcvec = self.vectortable2.item(row, 3).text()
           self.send_message("""
 viewer.user_vector {
   abc = '%s'
-  veclabel = %s
+  label = %s
 }""" %(abcvec, label))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
