@@ -357,8 +357,8 @@ class run_one(object):
     if(self.sphericity_filter):
       self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
-    self._call(self._refine_water_adp     , "Refine ADP")
     if(self.cc_mask_filter):
+      self._call(self._refine_water_adp     , "Refine ADP")
       self._call(self._filter_by_map_model_cc, "Filter peaks by CC_mask")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
     self._call(self._append_to_model     , "Add to model and reset internals")
