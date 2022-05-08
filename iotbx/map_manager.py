@@ -2052,6 +2052,10 @@ class map_manager(map_reader, write_ccp4_map):
        self.map_data().all())]
      )
 
+    # Determine if box is cubic
+    box_dims = self.map_data().all()
+    is_cubic_box = (box_dims[0] == box_dims[1]) and (box_dims[0] == box_dims[2])
+
     # Save NCS object if any and current shift_cart
     if self.ncs_object():
       working_ncs_object = self.ncs_object().deep_copy()
@@ -2075,6 +2079,17 @@ class map_manager(map_reader, write_ccp4_map):
     # New bounds
     lower_bounds = mm_boxed_fs_resample.cart_to_grid_units(lower_bounds_cart)
     upper_bounds = mm_boxed_fs_resample.cart_to_grid_units(upper_bounds_cart)
+    if is_cubic_box:
+      box_dims = [1 + a - b for a,b in zip (upper_bounds,lower_bounds)]
+      min_dim = min(box_dims)
+      max_dim = max(box_dims)
+      if min_dim != max_dim: # make them the same
+       new_upper_bounds = []
+       for lb, ub in zip(lower_bounds, upper_bounds):
+         new_upper_bounds.append(lb + min_dim - 1)
+       upper_bounds = new_upper_bounds
+      box_dims = [1 + a - b for a,b in zip (upper_bounds,lower_bounds)]
+      assert min(box_dims) == max(box_dims)
     mmm_boxed_fs_resample = mm_boxed_fs_resample.as_map_model_manager()
 
     mmm_boxed_fs_resample_boxed = \
@@ -2089,7 +2104,8 @@ class map_manager(map_reader, write_ccp4_map):
       If an ncs_object is present, set its shift_cart too
 
       Allows map to be boxed; if so returns new boxed map of similar size
-      and location
+      and location.  If boxed map has cubic gridding, keep that after
+      resampling.
     '''
 
     assert n_real or target_grid_spacing
