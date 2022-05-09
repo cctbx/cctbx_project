@@ -3,3 +3,4 @@ xfel/ui/db/dxtbx_db.py
 xfel/euxfel/agipd_from_defs.py
 xfel/euxfel/agipd_cxigeom2nexus.py
 xfel/euxfel/read_geom.py
+xfel/ui/db/cfgs/shifter_templates.py
