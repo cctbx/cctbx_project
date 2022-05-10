@@ -1676,6 +1676,7 @@ def assess_cryoem_errors(
   return group_args(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
+    sphere_center = list(sphere_cent),
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
     fraction_scattering = fraction_scattering,
