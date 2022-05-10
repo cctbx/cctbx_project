@@ -136,12 +136,14 @@ class with_bounds(object):
       return None
 
   def set_cubic_boxing(self, stay_inside_current_map = None,
+    require_even_gridding = True,
     log = sys.stdout):
     ''' Adjust bounds to make a cubic box.
       Adjust bounds to make a cubic box by making box bigger.
       if this conflicts with stay_inside_current_map, make box smaller. Normally
       this option should not be used with with_bounds because the bounds should
-      be directly specified. '''
+      be directly specified.
+      Normally creates a box with an even number of grid points '''
 
     if not self.use_cubic_boxing:
       return  # nothing to do
@@ -149,11 +151,15 @@ class with_bounds(object):
     print("\nSetting up cubic box", file = log)
     map_all = self._map_manager.map_data().all()
     lmn = [1 + b - a for a,b in zip(self.gridding_first, self.gridding_last)]
-    if lmn[0] == lmn[1] and lmn[0] == lmn[2]:
+    if lmn[0] == lmn[1] and lmn[0] == lmn[2] and (
+       is_even(lmn[0]) or (not require_even_gridding)):
       print("Box is already cubic with dimensions ",lmn, file = log)
       return # all set already
     # Maximum dimension of box
     max_dim = max(lmn)
+    if not is_even(max_dim):
+      max_dim += 1
+
     # How many grid points to add in each direction
     dlmn = [max_dim - a for a in lmn]
     # How many to add before
@@ -174,14 +180,16 @@ class with_bounds(object):
     print("New end: ",new_last, file = log)
 
     # Now make sure we are inside map if requested
-    lowest_value,highest_value = cube_relative_to_box(
-      new_first, new_last, map_all)
+    lowest_value,highest_value = cube_relative_to_box( # 0 or neg, 0 or pos
+      new_first, new_last, map_all,
+       require_even_gridding = require_even_gridding)
     if stay_inside_current_map and lowest_value != 0 or highest_value != 0:
       print("Reboxing cubic map to stay inside current map", file = log)
       new_first = [a - lowest_value for a in new_first]
       new_last = [a - highest_value for a in new_last]
       lowest_value,highest_value = cube_relative_to_box(
-        new_first, new_last, map_all)
+        new_first, new_last, map_all,
+        require_even_gridding = require_even_gridding)
       assert [lowest_value,highest_value] == [0,0]
     print("Final start: ",new_first, file = log)
     print("Final end: ",new_last, file = log)
@@ -963,9 +971,27 @@ class around_density(with_bounds):
     # Apply boxing to model, ncs, and map (if available)
     self.apply_to_model_ncs_and_map()
 
-def cube_relative_to_box(new_first, new_last, map_all):
+def is_even(n):
+  if n < 0:
+    n = -n
+  if 2 * (n//2) == n:
+    return True
+  else:
+    return False
+
+def cube_relative_to_box(new_first, new_last, map_all,
+       require_even_gridding = None):
+    ''' returns zero or negative number for lowest_value of new_first and
+       zero or positive number for highest value of new_last - map_all
+      If require_even_gridding, make the lowest and highest even by making
+       them further from zero'''
+
     lowest_value = min(0, min([a for a in new_first]))
+    if require_even_gridding and (not is_even(lowest_value)):
+      lowest_value -= 1
     highest_value = max(0, max([a - b for a, b in zip(new_last,map_all)]))
+    if require_even_gridding and (not is_even(highest_value)):
+      highest_value += 1
     print("lowest, highest out of box:",lowest_value, highest_value)
     return lowest_value,highest_value
 
