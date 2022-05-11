@@ -119,7 +119,7 @@ class CCTBXParser(ParserBase):
     # 1) ProgramTemplate.program_name
     # 2) LIBTBX_DISPATCHER_NAME
     # 3) Calling command
-    if sys.argv:
+    if hasattr(sys, 'argv') and sys.argv:
       self.prog = os.getenv('LIBTBX_DISPATCHER_NAME', sys.argv[0])
     else:
       self.prog = 'unknown.unknown'
