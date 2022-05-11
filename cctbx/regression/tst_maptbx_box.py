@@ -279,7 +279,7 @@ def exercise_around_model():
     wrapping = False,
     )
 
-  assert (box.gridding_first, box.gridding_last) == ([0, 5, 1], [30, 35, 31])
+  assert (box.gridding_first, box.gridding_last) == ([1, 6, 2], [30, 35, 31])
 
   #
   # IF you are about to change this - THINK TWICE!
