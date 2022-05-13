@@ -674,6 +674,30 @@ class CCTBXParser(ParserBase):
       citation_format=self.namespace.citations)
 
 # =============================================================================
+def run_pyside_check():
+  '''
+  Function for checking if PySide2 is available
+  '''
+  try:
+    import PySide2
+  except ImportError:
+    msg = '''
+------------------------------------------------------------------------
+To run this GUI, PySide2 is required. To install with conda run
+
+  conda install pyside2
+
+or with pip run
+
+  pip install pyside2
+
+For conda environments, PySide2 is currently not available for Apple
+Silicon. Please use the pip version for now.
+------------------------------------------------------------------------
+'''
+    raise Sorry(msg)
+
+# =============================================================================
 def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arguments=None,
                 unused_phil_raises_sorry=True, args=None, json=False, logger=None):
   '''
