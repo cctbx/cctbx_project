@@ -374,6 +374,7 @@ def process_predicted_model(
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
     keep_all = False
+    remainder_sequence_str = None
     if n_after == 0:
       if p.stop_if_no_residues_obtained:
         raise Sorry("No residues remaining after filtering...please check if "+
