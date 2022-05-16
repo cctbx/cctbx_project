@@ -745,6 +745,7 @@ class StageTwoRefiner(BaseRefiner):
             self.all_sigZ.append(np.std(self._Zscore[trusted]))
         tshots = time.time()-tshots
         LOGGER.info("Time rank worked on shots=%.4f" % tshots)
+        self._MPI_barrier()
         tmpi = time.time()
         LOGGER.info("MPI aggregation of func and grad")
         self._mpi_aggregation()
