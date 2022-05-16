@@ -1887,6 +1887,9 @@ Note:
       make_sub_header('Make spatial-query accelerator', out=self.logger)
       if self.params.keep_unselected_atoms:
         self._spatialQuery = Helpers.createSpatialQuery(atoms, self.params.probe)
+        # Replace the bonded-neighbor list with all bonded neighbors, even ones that
+        # are not selected, so that they will block dots that overlap with bonded atoms.
+        bondedNeighborLists = self._allBondedNeighborLists
       else:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
 
@@ -2014,7 +2017,12 @@ Note:
       # between two atoms that are both bonded to the same ion (such as Nitrogens on
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
       # so that we don't see ionic bonds in those checks.
-      Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
+      if self.params.keep_unselected_atoms:
+        # When we're keeping unselected atoms, be sure to add them to the bonded neighbor
+        # list.
+        Helpers.addIonicBonds(bondedNeighborLists, allAtoms, self._spatialQuery, self._extraAtomInfo)
+      else:
+        Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
 
       # If we have a dump file specified, write the atom information into it.
       if self.params.output.dump_file_name is not None:
