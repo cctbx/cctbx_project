@@ -41,7 +41,7 @@ class Script:
     def __init__(self):
         from dials.util.options import ArgumentParser
 
-        self.parser = None
+        self.params = None
         if COMM.rank == 0:
             self.parser = ArgumentParser(
                 usage="",  # stage 1 (per-shot) diffBragg refinement",
@@ -51,8 +51,8 @@ class Script:
                 read_reflections=False,
                 check_format=False,
                 epilog=help_message)
-        self.parser = COMM.bcast(self.parser)
-        self.params, _ = self.parser.parse_args(show_diff_phil=COMM.rank==0)
+            self.params, _ = self.parser.parse_args(show_diff_phil=COMM.rank==0)
+        self.params = COMM.bcast(self.params)
 
     def run(self):
         #self.params = None
