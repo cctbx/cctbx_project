@@ -161,6 +161,8 @@ def getBondedNeighborLists(atoms, bondProxies):
     using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
     model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
     it should be a flex array of atom positions for the atoms that are in the first argument.
+    It can include atoms that are not in the first parameter, but they will not be added
+    to the lists.
     :returns a dictionary with one entry for each atom that contains a list of all of
     the atoms (within the atoms list) that are bonded to it.
   """
@@ -172,13 +174,14 @@ def getBondedNeighborLists(atoms, bondProxies):
     bondedNeighbors[a] = []
   for bp in bondProxies:
     try:
+      # These lookups will fail if the atoms are not in the list of atoms passed in.
       first = atomDict[bp.i_seqs[0]]
       second = atomDict[bp.i_seqs[1]]
       bondedNeighbors[first].append(second)
       bondedNeighbors[second].append(first)
     except Exception:
-      # When an atom is bonded to an atom in a different conformer (not in our atom list)
-      # we just ignore it.
+      # When an atom is bonded to an atom is not in our atom list (in a different conformer or not
+      # in our selection) we just ignore it.
       pass
   return bondedNeighbors
 
@@ -202,6 +205,9 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
       maxDist = 0.25 + myRad + 3  # overestimate so we don't miss any
       neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
       for n in neighbors:
+        # @todo after regression testing: Never bond with Phantom Hydrogens.
+        #if extraAtomInfo.getMappingFor(n).isDummyHydrogen:
+        #  continue
         # See if we're within range for an ionic bond between the two atoms.
         dist = (rvec3(a.xyz) - rvec3(n.xyz)).length()
         expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius

@@ -237,6 +237,7 @@ possibly because Probe considers them to be bonded.
 - **@todo:** Other molecules and snippets.
 
 - **@todo:** Test -once and -both on specific portions of a specific structure.
+- **@todo:** Test "not water" selection on 3wrp to ensure that selections are working.
 
 **@todo**
 
