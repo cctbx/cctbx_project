@@ -250,7 +250,8 @@ class run(object):
           self.raw_data_truncated)
     if(extract_r_free_flags and self.raw_flags is not None):
       self._get_r_free_flags()
-      self.r_free_flags.set_info(flags_info)
+      if(self.r_free_flags is not None):
+        self.r_free_flags.set_info(flags_info)
     # Make sure they match
     if(self.r_free_flags is not None):
       f_obs_info = self.f_obs.info()
@@ -383,7 +384,8 @@ class run(object):
     self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
       self._flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags =
       self.raw_flags)
-    self.r_free_flags.set_info(self.raw_flags.info())
+    if(self.r_free_flags is not None):
+      self.r_free_flags.set_info(self.raw_flags.info())
 
   def _extract_data(self):
     data = self.reflection_file_server.get_xray_data(
@@ -613,7 +615,7 @@ sure the flags are suitable for use.
         if (n_not_shown != 0):
           msg.append("    ... (remaining %d not shown)" % n_not_shown)
       self.err.append("\n".join(msg))
-      return None
+      return None,None,None
     return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
 
   def _verify_r_free_flags_md5_hexdigest(self,
