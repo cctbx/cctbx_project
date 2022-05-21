@@ -55,8 +55,15 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
-                 scattering_table = None
+                 scattering_table = None # XXX Make part of parameters?
                  ):
+    #
+    if(  array_type == "x_ray"):
+      assert scattering_table in ["wk1995", "it1992", "n_gaussian"]
+    elif(array_type == "neutron"):
+      assert scattering_table == "neutron"
+    elif(array_type == "electron"):
+      assert scattering_table == "electron"
     # Gather models of apropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
@@ -80,6 +87,8 @@ class fmodel_mixins(object):
       experimental_phases_params        = experimental_phases_params,
       working_point_group               = model.crystal_symmetry().space_group().build_derived_point_group(),
       remark_r_free_flags_md5_hexdigest = model.get_header_r_free_flags_md5_hexdigest()).result()
+    if(len(data.err)>0):
+      raise Sorry("\n".join(data.err))
     if(data.f_obs is None):
       raise Sorry("Diffraction date are not available to make fmodel.")
     # Setup scattering table of xray_structure

@@ -219,7 +219,6 @@ class run(object):
                prefer_anomalous = None,
                force_non_anomalous = False,
                allow_mismatch_flags = False,
-               _rise_if_errors = True, # XXX PVA: To keep old behavior. Remove later.
                ):
     adopt_init_args(self, locals())
     # Buffers for error and log messages.
@@ -265,11 +264,6 @@ class run(object):
       parameter_scope = "")
     # Fill in log
     self._show_summary()
-    # XXX
-    # XXX remove later XXX
-    # XXX
-    if(_rise_if_errors and len(self.err)>0):
-      raise Sorry("\n".join(self.err))
 
   def _compose_mtz_object(self):
     f_obs_label = "F-obs"
