@@ -653,7 +653,6 @@ def update_detector(x, ref_params, SIM, save=None):
         #print("Saved detector model to %s (took %.4f sec)" % (save, t), flush=True )
 
 
-
 def target_and_grad(x, ref_params, data_modelers, SIM, params):
     """
     Returns the target functional and the gradients
