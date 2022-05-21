@@ -206,6 +206,7 @@ class RefineLauncher:
                     self.symbol = self.params.refiner.force_symbol
                 else:
                     self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
+                LOGGER.info("Set space group symbol: %s" % self.symbol)
             else:
                 if self.params.refiner.force_symbol is None:
                     if expt.crystal.get_space_group().type().lookup_symbol() != self.symbol:
@@ -222,6 +223,14 @@ class RefineLauncher:
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
+
+            if "miller_index" in list(refls.keys()):
+                is_allowed = flex.bool(len(refls), True)
+                allowed_hkls = set(self.SIM.crystal.miller_array.indices())
+                for i_ref in range(len(refls)):
+                    if refls[i_ref]['miller_index'] not in allowed_hkls:
+                        is_allowed[i_ref] = False
+                refls = refls.select(is_allowed)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
