@@ -161,28 +161,6 @@ class MillerArrayDataManager(DataManagerBase):
 
     return filename
 
-  def get_reflection_data(self,
-                          array_type,
-                          parameters = None,
-                          experimental_phases_params = None,# XXX Need to be part of 'parameters'
-                          working_point_group = None,       # XXX Need to be part of 'parameters'
-                          r_free_md5_hexdig = None          # XXX Need to be part of 'parameters'
-                          ):
-    """
-    Apply heuristics aided by (optional) parameters (parameters,
-    experimental_phases_params) to extract reflections data: (Fobs or Iobs,
-    R-free-flags, HL coefficients). Returns group_args object with said data.
-    """
-    rfs = self.get_reflection_file_server(array_type = array_type)
-    o = extract_xtal_data.run(
-      reflection_file_server            = rfs,
-      parameters                        = parameters,
-      experimental_phases_params        = experimental_phases_params,
-      working_point_group               = working_point_group,
-      remark_r_free_flags_md5_hexdigest = r_free_md5_hexdig)
-    return o.result()
-
-
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,
                                  crystal_symmetry=None, force_symmetry=None,

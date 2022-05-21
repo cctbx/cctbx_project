@@ -271,6 +271,32 @@ class run(object):
     if(_rise_if_errors and len(self.err)>0):
       raise Sorry("\n".join(self.err))
 
+  def _compose_mtz_object(self):
+    f_obs_label = "F-obs"
+    i_obs_label = "I-obs"
+    flag_label  = "R-free-flags"
+    phase_label = "HL"
+    if(self.raw_data.is_xray_intensity_array()):
+      column_root_label = i_obs_label
+    else:
+      column_root_label = f_obs_label
+    mtz_dataset = self.raw_data.as_mtz_dataset(
+      column_root_label = column_root_label)
+    mtz_dataset.add_miller_array(
+      miller_array      = self.raw_flags,
+      column_root_label = flag_label)
+    if(self.experimental_phases is not None):
+      mtz_dataset.add_miller_array(
+        miller_array      = self.raw_experimental_phases,
+        column_root_label = phase_label)
+    labels = group_args(
+      data   = column_root_label,
+      flags  = flag_label,
+      phases = phase_label)
+    return group_args(
+      mtz_dataset = mtz_dataset,
+      labels      = labels)
+
   def result(self):
     """
     Container for:
@@ -281,16 +307,21 @@ class run(object):
       - misc.
 
     """
+    i_obs = None
+    if(self.raw_data.is_xray_intensity_array()):
+      i_obs = self.raw_data
     o = group_args(
       raw_data                   = self.raw_data,
       raw_flags                  = self.raw_flags,
       raw_experimental_phases    = self.raw_experimental_phases,
       f_obs                      = self.f_obs,
+      i_obs                      = i_obs,
       r_free_flags               = self.r_free_flags,
       experimental_phases        = self.experimental_phases,
       r_free_flags_md5_hexdigest = self.r_free_flags_md5_hexdigest,
       err                        = self.err,
-      log                        = self.log)
+      log                        = self.log,
+      mtz_object                 = self._compose_mtz_object())
     o.stop_dynamic_attributes()
     return o
 

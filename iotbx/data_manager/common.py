@@ -6,6 +6,94 @@ from iotbx.data_manager.map_coefficients import MapCoefficientsDataManager
 from iotbx.data_manager.real_map import RealMapDataManager
 from iotbx.map_model_manager import map_model_manager
 from libtbx.utils import Sorry
+import mmtbx.f_model
+from cctbx import crystal
+from iotbx import crystal_symmetry_from_any
+from iotbx import extract_xtal_data
+
+# -----------------------------------------------------------------------------
+# extra functions for model and reflections
+class fmodel_mixins(object):
+  '''
+  Function to extract fmodel when the DataManager supports both the "model"
+  and "miller_array" data types.
+  '''
+
+  def _resolve_symmetry_conflicts(self, model, reflection_file_server,
+                                  params=None):
+    '''
+    Use logic of crystal.select_crystal_symmetry to select consensus crystal
+    symmetry from multiple sources.
+    '''
+    if(reflection_file_server is None): return
+    crystal_symmetries_from_coordinate_file = []
+    crystal_symmetries_from_reflection_file = []
+    rfns = []
+    rfns.extend(reflection_file_server.file_name_miller_arrays.keys())
+    crystal_symmetry_from_any.extract_and_append(
+      file_names  = rfns,
+      target_list = crystal_symmetries_from_reflection_file)
+    crystal_symmetries_from_coordinate_file.append(model.crystal_symmetry())
+    from_parameter_file = None
+    if(params is not None):
+      from_parameter_file = crystal.symmetry(
+          unit_cell        = params.unit_cell,
+          space_group_info = params.space_group)
+    crystal_symmetry = crystal.select_crystal_symmetry(
+      from_parameter_file   = from_parameter_file,
+      from_coordinate_files = crystal_symmetries_from_coordinate_file,
+      from_reflection_files = crystal_symmetries_from_reflection_file)
+    model.set_crystal_symmetry(crystal_symmetry = crystal_symmetry)
+    if(reflection_file_server.crystal_symmetry is None or not
+       crystal_symmetry.is_similar_symmetry(
+       reflection_file_server.crystal_symmetry)):
+      reflection_file_server.update_crystal_symmetry(
+        crystal_symmetry = model.crystal_symmetry())
+
+  def get_fmodel(self,
+                 array_type,
+                 crystal_symmetry = None,
+                 parameters = None,                # XXX Replace with what DataManager uses
+                 experimental_phases_params = None,# XXX Need to be part of 'parameters'
+                 scattering_table = None
+                 ):
+    # Gather models of apropriate type
+    models = []
+    for filename in self.get_model_names(model_type=array_type):
+      models.append(self.get_model(filename))
+    if(len(models) == 0):
+      raise Sorry("No model of '%s' type found to make fmodel."%array_type)
+    if(len(models) > 1):
+      raise Sorry("More than one model of '%s' type found."%array_type)
+    model = models[0]
+    # Get reflection file server
+    rfs = self.get_reflection_file_server(array_type = array_type)
+    # Resolve symmetry issues (nplace)
+    self._resolve_symmetry_conflicts(
+      params                 = crystal_symmetry,
+      model                  = model,
+      reflection_file_server = rfs)
+    # Get reflection data
+    data = extract_xtal_data.run(
+      reflection_file_server            = rfs,
+      parameters                        = parameters,
+      experimental_phases_params        = experimental_phases_params,
+      working_point_group               = model.crystal_symmetry().space_group().build_derived_point_group(),
+      remark_r_free_flags_md5_hexdigest = model.get_header_r_free_flags_md5_hexdigest()).result()
+    if(data.f_obs is None):
+      raise Sorry("Diffraction date are not available to make fmodel.")
+    # Setup scattering table of xray_structure
+    model.setup_scattering_dictionaries(
+      scattering_table = scattering_table,
+      d_min            = data.f_obs.d_min())
+    # Create and return fmodel
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = data.f_obs,
+      r_free_flags   = data.r_free_flags,
+      abcd           = data.experimental_phases,
+      xray_structure = model.get_xray_structure(),
+      origin         = data.mtz_object)
+    return fmodel
 
 # =============================================================================
 # extra functions for maps

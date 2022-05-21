@@ -357,7 +357,9 @@ class manager(manager_mixin):
          b_cart =None,
          _target_memory               = None,
          n_resolution_bins_output     = None,
-         scale_method="combo"):
+         scale_method="combo",
+         origin=None):
+    self._origin = origin
     self.russ = None
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.k_sol, self.b_sol, self.b_cart = k_sol, b_sol, b_cart
@@ -479,6 +481,9 @@ class manager(manager_mixin):
   def __setstate__(self, state):
     assert len(state) == 1
     self.__dict__.update(state[0])
+
+  def origin(self):
+    return self._origin
 
   def is_twin_fmodel_manager(self):
     return False
@@ -722,7 +727,8 @@ class manager(manager_mixin):
       n_resolution_bins_output     = self.n_resolution_bins_output,
       k_sol                        = self.k_sol,
       b_sol                        = self.b_sol,
-      b_cart                       = self.b_cart)
+      b_cart                       = self.b_cart,
+      origin                       = self.origin())
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h

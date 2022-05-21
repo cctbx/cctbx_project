@@ -27,7 +27,7 @@ class ModelDataManager(DataManagerBase):
     # self._model_types = dict()  # [filename] = type
     self._model_types = dict()
     self._default_model_type = 'x_ray'
-    self._possible_model_types = ['x_ray', 'neutron', 'electron']
+    self._possible_model_types = ['x_ray', 'neutron', 'electron', 'reference']
 
     # custom PHIL section
     custom_phil_str = '''
