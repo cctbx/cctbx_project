@@ -152,9 +152,12 @@ class map_reader:
     # Labels
     self.labels=[]
     for i in range(mrc.header.nlabl):
-      text=mrc.header.label[i].strip()
-      if text:
-        self.labels.append(mrc.header.label[i])
+      text=mrc.header.label[i]
+      if not text:
+        continue
+      text = text.decode("utf-8")
+      text = text.strip()
+      self.labels.append(text)
 
     # NOTE phenix calls "origin" the position of the lower left corner
     #   of the map.
