@@ -1,11 +1,28 @@
 from __future__ import division
 
+import os
 import pandas
 import numpy as np
 from dials.array_family import flex
 
 from shutil import copyfile
 from simtbx.diffBragg import hopper_utils, utils
+from dxtbx.model import ExperimentList
+
+
+def load_expt_from_df(df, opt=False):
+    """
+
+    :param df: a hopper-formatted pandas dataframe with a single row
+    :return: experiment
+    """
+    if opt:
+        data_expt_name = df.opt_exp_name.values[0]
+    else:
+        data_expt_name = df.exp_name.values[0]
+    assert os.path.exists(data_expt_name)
+    data_expt = ExperimentList.from_file(data_expt_name)[0]
+    return data_expt
 
 
 def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, verbose=False, devid=0):
@@ -25,7 +42,14 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
         return
     df = pandas.read_pickle(pkl_name)
     Mod.SimulatorFromExperiment(df)
-    spec = utils.load_spectra_from_dataframe(df)
+    if params.spectrum_from_imageset:
+        data_expt = load_expt_from_df(df)
+        spec = hopper_utils.downsamp_spec_from_params(params, data_expt)
+    elif df.spectrum_filename.values[0] is not None:
+        spec = utils.load_spectra_from_dataframe(df)
+    else:
+        data_expt = load_expt_from_df(df)
+        spec = [(data_expt.beam.get_wavelength(), df.total_flux.values[0])]
     Mod.SIM.beam.spectrum = spec
     Mod.SIM.D.xray_beams = Mod.SIM.beam.xray_beams
     Mod.SIM.D.device_Id = devid
@@ -118,8 +142,6 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
     flex_I = flex.double(len(Mod.refls),0)
     sel = flex.bool(len(Mod.refls), False)
 
-
-
     Mod.set_slices("all_refls_idx")
     #for roi_id in Mod.roi_id_unique:
     for refl_idx in Mod.all_refls_idx_unique:
@@ -129,6 +151,7 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
         data_slc = data_slc[0]
         roi_id = int(Mod.roi_id[data_slc][0])
         p = Mod.SIM.P["scale_roi%d" % roi_id]
+        # TODO : double check scale evaluated from x=1
         scale = p.get_val(1)
         var_s = variance_s[p.xpos]
         hkl = Mod.hi_asu_perpix[data_slc][0]
@@ -137,7 +160,7 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
         amp = Fmap[hkl]
         I_hkl = amp**2
         var_I = I_hkl **2 * var_s
-        if var_I <0:
+        if var_I <= 1e-6 or var_I > 1e10:
             continue
         I = scale*I_hkl
         h,k,l=hkl
