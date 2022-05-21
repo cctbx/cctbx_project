@@ -10,6 +10,7 @@ from simtbx.command_line.hopper import single_expt_pandas
 import sys
 from simtbx.command_line import geometry_refiner
 import os
+from cctbx import miller, crystal
 from libtbx.mpi4py import  MPI
 COMM = MPI.COMM_WORLD
 
@@ -415,6 +416,7 @@ def fcalc_min(params):
     if COMM.rank == 0:
         print("Will optimize using %d experiments" %len(df))
     launcher.load_inputs(df, refls_key=params.geometry.refls_key)
+    launcher.SIM.asu_from_idx = launcher.asu_from_idx
 
     for i_shot in launcher.Modelers:
         Modeler = launcher.Modelers[i_shot]
@@ -479,6 +481,7 @@ def fcalc_min(params):
     if COMM.rank == 0:
         geometry_refiner.save_opt_det(params, target.x0, target.ref_params, launcher.SIM)
 
+
 def write_output_files(Xopt, LMP, Modelers, SIM, params):
     """
     Writes refl and exper files for each experiment modeled during
@@ -491,6 +494,14 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
     """
     opt_det = geometry_refiner.get_optimized_detector(Xopt, LMP, SIM)
 
+    # Store the hessian of negative log likelihood for error estimation
+    # must determine total number of refined Fhkls and then create a vector of 0's of that length
+    num_fhkl_param = 0
+    for name in LMP:
+        if "fcell" in name:
+            num_fhkl_param += 1
+    diag_hess = np.zeros(num_fhkl_param)
+
     if params.geometry.pandas_dir is not None and COMM.rank == 0:
         if not os.path.exists(params.geometry.pandas_dir):
             os.makedirs(params.geometry.pandas_dir)
@@ -501,7 +512,6 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
                 os.makedirs(dname)
 
     all_shot_pred_offsets = []
-    diag_Hess = {}
     for i_shot in Modelers:
         Modeler = Modelers[i_shot]
         # these are in simtbx.diffBragg.refiners.parameters.RangedParameter objects
@@ -533,8 +543,8 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
         Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, SIM, return_model=True)
         Modeler.best_model_includes_background = True
 
-        per_roi_scales = np.ones_like(Modeler.best_model)
-        bragg = Modeler.best_mode - Modeler.all_background
+        # Get the bragg-only component of model in order to compute hessian terms
+        bragg = Modeler.best_model - Modeler.all_background
 
         # store the updated per-roi scale factors in the new refl table
         roi_scale_factor = flex.double(len(Modeler.refls), 1)
@@ -543,10 +553,24 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
             scale_fac = p.get_val(Xopt[p.xpos])
             slices = Modeler.fcell_idx_slices[fcell_idx]
             for slc in slices:
+                # update the refl table column
                 roi_refl_ids = Modeler.all_refls_idx[slc]
                 unique_refl_ids = np.unique(roi_refl_ids)
                 for refl_idx in unique_refl_ids:
                     roi_scale_factor[refl_idx] = scale_fac
+
+                # update the hessian of the log likelihood
+                # first derivative is the Bragg component of the model divided by the scale factor
+                # TODO what if scale_fac is close to 0 ?
+                first_deriv = bragg[slc] / scale_fac
+                u = Modeler.all_data[slc] - Modeler.best_model[slc]
+                v = Modeler.best_model[slc] + Modeler.nominal_sigma_rdout**2
+                one_by_v = 1 / v
+                G = 1 - 2 * u - u * u * one_by_v
+                hessian_coef = one_by_v * (one_by_v * G - 2 - 2 * u * one_by_v - u * u * one_by_v * one_by_v)
+                trusted_slc = Modeler.all_trusted[slc]
+                diag_hess[fcell_idx] += -0.5*(hessian_coef * (first_deriv**2))[trusted_slc].sum()
+
         Modeler.refls["global_scale_factor"] = roi_scale_factor
 
         # get the new refls
@@ -615,6 +639,64 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
         median_pred_offset = None
     median_pred_offset = COMM.bcast(median_pred_offset)
 
+    # reduce the hessian over all shots then compute the errors of the structure factors
+    diag_hess = COMM.reduce(diag_hess)
+
+    uc_p = np.zeros(6)
+    nshot = 0
+    for i_shot in Modelers:
+        Mod = Modelers[i_shot]
+        num_uc_p = len(Mod.ucell_man.variables)
+        ucell_pars = [LMP["rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc)] for i_uc in range(num_uc_p)]
+        Mod.ucell_man.variables = [p.get_val(Xopt[p.xpos]) for p in ucell_pars]
+        uc_p += np.array(Mod.ucell_man.unit_cell_parameters)
+        nshot += 1
+    nshot = COMM.reduce(nshot)
+    uc_p = COMM.reduce(uc_p)
+
+
+    if COMM.rank==0:
+
+        ave_uc_p = uc_p / nshot
+
+        fhkl_file = os.path.join(params.geometry.pandas_dir, "final_merge.mtz")
+
+        F = SIM.crystal.miller_array
+        Fmap = {h: amp for h, amp in zip(F.indices(), F.data())}
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            scale_variance = 1 / diag_hess
+
+        indices = flex.miller_index()
+        data = flex.double()
+        sigmas = flex.double()
+        for fcell_idx in range(num_fhkl_param):
+
+            pname = "scale_fcell%d" % fcell_idx
+            p = LMP[pname]
+            scale = p.get_val(Xopt[p.xpos])
+
+            hkl = SIM.asu_from_idx[fcell_idx]
+            F_no_scale = Fmap[hkl]
+            Ihkl = scale* F_no_scale**2
+            Fhkl = np.sqrt(Ihkl)
+            var_scale = scale_variance[fcell_idx]
+            if var_scale <= 0:
+                continue
+            sig_F = 0.5*F_no_scale / np.sqrt(scale) * np.sqrt(var_scale)
+            if np.isinf(sig_F):
+                continue
+            indices.append(hkl)
+            data.append(Fhkl)
+            sigmas.append(sig_F)
+        # store an optimized mtz, and a numpy array with the same information
+
+        sym = crystal.symmetry(tuple(ave_uc_p), SIM.crystal.symbol)
+        mset = miller.set(sym, indices, True)
+        ma = miller.array(mset, data, sigmas)
+        ma = ma.set_observation_type_xray_amplitude().as_anomalous_array()
+        ma.as_mtz_dataset(column_root_label="F").mtz_object().write(fhkl_file)
+
     return median_pred_offset
 
 
@@ -645,5 +727,3 @@ if __name__ == "__main__":
 
     params = working_phil.extract()
     fcalc_min(params)
-
-
