@@ -28,6 +28,7 @@ UCELL_ID_OFFSET = 3
 DETZ_ID = 10
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.hopper
+# LIBTBX_SET_DISPATCHER_NAME hopper
 
 import numpy as np
 np.seterr(invalid='ignore')
@@ -120,9 +121,12 @@ class Script:
 
         if self.params.ignore_existing:
             exp_names_already =None
+            refl_names_already = None
             if COMM.rank==0:
                 exp_names_already = {os.path.basename(f) for f in glob.glob("%s/expers/rank*/*.expt" % self.params.outdir)}
+                refl_names_already = {os.path.basename(f) for f in glob.glob("%s/refls/rank*/*.refl" % self.params.outdir)}
             exp_names_already = COMM.bcast(exp_names_already)
+            refl_names_already = COMM.bcast(refl_names_already)
 
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         for i_exp, line in enumerate(input_lines):
@@ -143,7 +147,8 @@ class Script:
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
                 opt_exp = "%s_%s_%d.expt" % (self.params.tag, basename, i_exp)
-                if opt_exp in exp_names_already:
+                opt_refl = opt_exp.replace(".expt", ".refl")
+                if opt_exp in exp_names_already and opt_refl in refl_names_already:
                     continue
 
             best = None
@@ -207,6 +212,7 @@ class Script:
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
                 logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
+            print("RANK%d, DEV=%d" % (COMM.rank, dev))
 
             Modeler.SIM.D.device_Id = dev
 
@@ -296,16 +302,26 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
             if bragg_subimg[0] is not None:
                 h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
                 if np.any(bragg_subimg[i_roi] > 0):
+                    ref_idx = Modeler.refls_idx[i_roi]
+                    ref = Modeler.refls[ref_idx]
                     I = bragg_subimg[i_roi]
                     Y,X = np.indices(bragg_subimg[i_roi].shape)
-                    x1,_,y1,_ = Modeler.rois[i_roi]
+                    x1,x2,y1,y2 = Modeler.rois[i_roi]
+                    com_x, com_y, _ = ref["xyzobs.px.value"]
+                    com_x = int(com_x - x1 - 0.5)
+                    com_y = int(com_y - y1 - 0.5)
+                    # make sure at least some signal is at the centroid! otherwise this is likely a neighboring spot
+                    try:
+                        if I[com_y, com_x] == 0:
+                            continue
+                    except IndexError:
+                        continue
                     X += x1
                     Y += y1
                     Isum = I.sum()
                     xcom = (X*I).sum() / Isum
                     ycom = (Y*I).sum() / Isum
                     com = xcom+.5, ycom+.5, 0
-                    ref_idx = Modeler.refls_idx[i_roi]
                     h5_roi_id[ref_idx] = i_roi
                     new_xycalcs[ref_idx] = com
                     scale_p = Modeler.SIM.P["scale_roi%d" % i_roi]
@@ -326,6 +342,12 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
         new_refls = new_refls.select(flex.bool(sel))
     new_refls.as_file(new_refls_file)
 
+    if True:
+        modeler_file = os.path.join(rank_imgs_outdir, "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
+        np.save(modeler_file, Modeler)
+        spectrum_file = os.path.join(rank_imgs_outdir, "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
+        hopper_utils.write_SIM_logs(Modeler.SIM, lam=spectrum_file)
+
     if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
         # TODO separate diffBragg logger
         utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
@@ -339,7 +361,7 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
                        rotXYZ, ucell_p, ucell_p_init, lam0_lam1,
                        spec_file, spec_stride,flux, beamsize_mm,
                        orig_exp_name, opt_exp_name, spec_from_imageset, oversample,
-                       opt_det, stg1_refls, stg1_img_path):
+                       opt_det, stg1_refls, stg1_img_path, ncells_init=None, spot_scales_init = None):
     """
 
     :param xtal_scale:
@@ -370,11 +392,17 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
     :param stg1_img_path:
     :return:
     """
+    if ncells_init is None:
+        ncells_init = np.nan, np.nan, np.nan
+    if spot_scales_init is None:
+        spot_scales_init = np.nan
     a,b,c,al,be,ga = ucell_p
     a_init, b_init, c_init, al_init, be_init, ga_init = ucell_p_init
     lam0,lam1 = lam0_lam1
     df = pandas.DataFrame({
         "spot_scales": [xtal_scale], "Amats": [Amat], "ncells": [ncells_abc],
+        "spot_scales_init": [spot_scales_init],
+        "ncells_init": [ncells_init],
         "eta_abc": [eta_abc],
         "detz_shift_mm": [detz_shift * 1e3],
         "ncells_def": [ncells_def],
@@ -415,6 +443,14 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas")
 
     scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
+    scale_p = SIM.P["G_xtal0"]
+    scale_init = scale_p.init
+    Nabc_init = []
+    for i in [0,1,2]:
+        p = SIM.P["Nabc%d" % i]
+        Nabc_init.append( p.init)
+    Nabc_init = tuple(Nabc_init)
+
     if params.isotropic.diffuse_gamma:
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:
@@ -482,7 +518,8 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         spec_from_imageset=params.spectrum_from_imageset,
         oversample=params.simulator.oversample,
         opt_det=params.opt_det, stg1_refls=stg1_refls,
-        stg1_img_path=stg1_img_path)
+        stg1_img_path=stg1_img_path,
+        ncells_init=Nabc_init, spot_scales_init=scale_init)
     df.to_pickle(pandas_path)
     return df
 
