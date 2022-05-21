@@ -812,7 +812,7 @@ def get_complex_fcalc_from_pdb(
         wavelength=None,
         dmin=1,
         dmax=None,
-        k_sol=0.435, b_sol=46):
+        k_sol=0.435, b_sol=46, show_pdb_summary=False):
     """
     produce a structure factor from PDB coords, see mmtbx/command_line/fmodel.py for formulation
     k_sol, b_sol form the solvent component of the Fcalc: Fprotein + k_sol*exp(-b_sol*s^2/4) (I think)
@@ -821,7 +821,8 @@ def get_complex_fcalc_from_pdb(
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
     xray_structure = pdb_in.file_object.xray_structure_simple()
-    xray_structure.show_summary()
+    if show_pdb_summary:
+        xray_structure.show_summary()
     for sc in xray_structure.scatterers():
         if wavelength is not None:
             expected_henke = henke.table(sc.element_symbol()).at_angstrom(wavelength)
