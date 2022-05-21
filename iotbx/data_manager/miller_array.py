@@ -14,7 +14,6 @@ from iotbx.data_manager import DataManagerBase
 from iotbx.reflection_file_utils import reflection_file_server
 from libtbx import Auto
 from libtbx.utils import Sorry
-from iotbx import extract_xtal_data
 
 # =============================================================================
 class MillerArrayDataManager(DataManagerBase):
