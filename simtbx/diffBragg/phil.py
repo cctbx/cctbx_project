@@ -369,6 +369,12 @@ init
   .help = initial value of model parameter (will be overrided if best pickle is provided)
   .expert_level=0
 {
+  random_Gs = None
+    .type = floats
+    .help = list of floats from which to select an init.G at random
+  random_Nabcs = None
+    .type = floats
+    .help = list of random floats from which to select init.Nabc at random
   spec = [0,1]
     .type = floats(size=2)
     .help = initial offset and scale factor applied to each energy channel wavelength
@@ -1035,6 +1041,12 @@ roi {
 }
 
 geometry {
+  save_state_freq = 500
+    .type = int
+    .help = how often to save all model parameters
+  save_state_overwrite = True
+    .type = bool
+    .help = whether to overwrite model parameter files each time they are saved
   pandas_dir = None
     .type = str
     .help = If provided, Pandas dataframes for each shot will be written here
@@ -1044,9 +1056,6 @@ geometry {
     .type = str
     .help = optional tagname, if provided,write optimized refls/expts alongside the
     .help = input refls/expts however using this tag suffix
-  first_n = None
-    .type = int
-    .help = only load the first_n experiments from the input pickle
   refls_key = stage1_refls
     .type = str
     .help = column name for the input pickle which contains the reflection tables to be modeled
@@ -1055,7 +1064,10 @@ geometry {
     .help = lmfit optimization method (lbfgsb uses gradients, nelder is graientless)
   input_pkl = None
     .type = str
-    .help = path to the input pickle containing models and experiment lists
+    .help = path to the input pickle (from hopper) containing models and experiment lists
+  input_pkl_glob = None
+    .type = str
+    .help = path to a glob of input pandas pickles output by hopper or geometry_refiner
   optimize = False
     .type = bool
     .help = flag to specify whether to optimize the geometry
