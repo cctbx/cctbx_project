@@ -16,11 +16,12 @@ import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
 from dxtbx.model import Experiment, ExperimentList
-#from simtbx.diffBragg.command_line.hopper import save_to_pandas
 from dxtbx.model import Detector, Panel
 from simtbx.diffBragg import hopper_utils, ensemble_refine_launcher
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 import pandas
+import glob
+from pylab import plt
 from scipy.optimize import basinhopping
 if COMM.rank > 0:
     sys.tracebacklimit = 0
@@ -37,6 +38,14 @@ PAN_OFS_IDS = PAN_O_ID, PAN_F_ID, PAN_S_ID
 PAN_XYZ_IDS = PAN_X_ID, PAN_Y_ID, PAN_Z_ID
 
 DEG_TO_PI = np.pi/180.
+
+
+def get_dist_from_R(R):
+    """ returns prediction offset, R is reflection table"""
+    x, y, _ = R['xyzobs.px.value'].parts()
+    x2, y2, _ = R['xyzcal.px'].parts()
+    dist = np.sqrt((x - x2) ** 2 + (y - y2) ** 2)
+    return dist
 
 
 class DetectorParameters:
@@ -151,7 +160,12 @@ class CrystalParameters:
 
 
 class Target:
-    def __init__(self, ref_params):
+    def __init__(self, ref_params, save_state_freq=500, overwrite_state=True, plot=False):
+        """
+
+        :param ref_params: instance of refinement Parameters (LMP in code below)
+        :param save_state_freq: how often to save all models (will be overwritten each time)
+        """
         num_params = len(ref_params)
         self.vary = np.zeros(num_params).astype(bool)
         for p in ref_params.values():
@@ -161,6 +175,16 @@ class Target:
         self.ref_params = ref_params
         self.iternum = 0
         self.all_times = []
+        self.save_state_freq = save_state_freq
+        self.overwrite_state = overwrite_state
+        self.med_offsets = [] # median prediction offsets(new number gets added everytime write_output_files is called)
+        self.med_iternums = []
+        self.plot = plot and COMM.rank==0
+        if self.plot:
+            self.fig = plt.figure()
+            self.ax = plt.gca()
+            plt.draw()
+            plt.pause(0.1)
 
     def __call__(self, x, *args, **kwargs):
         self.iternum += 1
@@ -173,7 +197,26 @@ class Target:
         if COMM.rank==0:
             self.all_times.append(t)
             time_per_iter = np.mean(self.all_times)
-            print("Iteration %d:\n\tResid=%f, sigmaZ %f, t-per-iter=%.4f sec" % (self.iternum, f, self.sigmaZ, time_per_iter), flush=True)
+            pred_offset_str = ", ".join(map(lambda x: "%.4f" %x, self.med_offsets))
+            print("Iteration %d:\n\tResid=%f, sigmaZ %f, t-per-iter=%.4f sec, pred_offsets=%s"
+                  % (self.iternum, f, self.sigmaZ, time_per_iter, pred_offset_str), flush=True)
+        if self.iternum % self.save_state_freq==0 and self.iternum >0:
+            if not self.overwrite_state:
+                params = args[-1]  # phil params
+                temp_pandas_dir = params.geometry.pandas_dir
+                params.geometry.pandas_dir=params.geometry.pandas_dir + "-iter%d" % self.iternum
+            med_offset = write_output_files(self.x0, self.ref_params, *args, **kwargs)
+            self.med_offsets.append(med_offset)
+            self.med_iternums.append(self.iternum)
+            if self.plot:
+                self.ax.clear()
+                self.ax.plot(self.med_iternums, self.med_offsets)
+                self.ax.set_ylabel("median |xobs-xcal| (pixels)")
+                self.ax.set_xlabel("iteration #")
+                plt.draw()
+                plt.pause(0.01)
+            if not self.overwrite_state:
+                params.geometry.pandas_dir=temp_pandas_dir
         return f
 
     def jac(self, x, *args):
@@ -271,7 +314,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
     # compute the negative log Likelihood
     resid = (Modeler.all_data - model_pix)
     resid_square = resid ** 2
-    V = model_pix + Modeler.sigma_rdout ** 2
+    V = model_pix + Modeler.nominal_sigma_rdout ** 2
     neg_LL = (.5*(np.log(2*np.pi*V) + resid_square / V))[Modeler.all_trusted].sum()
 
     # compute the z-score sigma as a diagnostic
@@ -433,7 +476,6 @@ def update_detector(x, ref_params, SIM, save=None):
 
 
 
-
 def target_and_grad(x, ref_params, data_modelers, SIM, params):
     """
     Returns the target functional and the gradients
@@ -504,11 +546,30 @@ def geom_min(params):
     """
 
     launcher = ensemble_refine_launcher.RefineLauncher(params)
-    df = pandas.read_pickle(params.geometry.input_pkl)
+    if params.geometry.input_pkl is not None:
+        df = pandas.read_pickle(params.geometry.input_pkl)
+    else:
+        assert params.geometry.input_pkl_glob is not None
+        fnames = glob.glob(params.geometry.input_pkl_glob)
+        dfs = []
+        for i_f, f in enumerate(fnames):
+            if i_f % COMM.size != COMM.rank:
+                continue
+            if COMM.rank==0:
+                print("Loaing hopper pkl %d / %d" %(i_f+1, len(fnames)), flush=True)
+            df_i = pandas.read_pickle(f)
+            dfs.append(df_i)
+        dfs = COMM.reduce(dfs)
+        if COMM.rank==0:
+            df = pandas.concat(dfs)
+        else:
+            df = None
+        df = COMM.bcast(df)
+
     if params.skip is not None:
         df = df.iloc[params.skip:]
-    if params.geometry.first_n is not None:
-        df = df.iloc[:params.geometry.first_n]
+    if params.first_n is not None:
+        df = df.iloc[:params.first_n]
 
     pdir = params.geometry.pandas_dir
     assert pdir is not None, "provide a pandas_dir where output files will be generated"
@@ -567,7 +628,7 @@ def geom_min(params):
             launcher.SIM.D.refine(diffbragg_id)
 
     # do a barrel roll!
-    target = Target(LMP)
+    target = Target(LMP, save_state_freq=params.geometry.save_state_freq, overwrite_state=params.geometry.save_state_overwrite)
     fcn_args = (launcher.Modelers, launcher.SIM, params)
     lbfgs_kws = {"jac": target.jac,
                  "method": "L-BFGS-B",
@@ -586,22 +647,23 @@ def geom_min(params):
     Xopt = target.x0  # optimized, rescaled parameters
 
     if params.geometry.optimized_results_tag is not None:
-        write_output_files(params, Xopt, LMP, launcher)
+        write_output_files(Xopt, LMP, launcher.Modelers, launcher.SIM, params)
 
     if COMM.rank == 0:
         save_opt_det(params, target.x0, target.ref_params, launcher.SIM)
 
 
-def write_output_files(params, Xopt, LMP, launcher):
+def write_output_files(Xopt, LMP, Modelers, SIM, params):
     """
     Writes refl and exper files for each experiment modeled during
     the ensemble refiner
-    :param params: phil params, simtbx.diffBragg.phil.py
     :param Xopt: float array of optimized rescaled parameter values
     :param LMP: simtbx.diffBragg.refiners.parameters.Parameters() object
-    :param launcher: launcher object , instance of simtbx.diffBragg.ensemble_refine_launcher.RefineLauncher
+    :param Modelers: data modelers (launcher.Modleers
+    :param SIM: instance of sim_data (launcher.SIM)
+    :param params: phil params, simtbx.diffBragg.phil.py
     """
-    opt_det = get_optimized_detector(Xopt, LMP, launcher.SIM)
+    opt_det = get_optimized_detector(Xopt, LMP, SIM)
 
     if params.geometry.pandas_dir is not None and COMM.rank == 0:
         if not os.path.exists(params.geometry.pandas_dir):
@@ -612,8 +674,9 @@ def write_output_files(params, Xopt, LMP, launcher):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-    for i_shot in launcher.Modelers:
-        Modeler = launcher.Modelers[i_shot]
+    all_shot_pred_offsets = []
+    for i_shot in Modelers:
+        Modeler = Modelers[i_shot]
         # these are in simtbx.diffBragg.refiners.parameters.RangedParameter objects
         rotX = LMP["rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, 0)]
         rotY = LMP["rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, 1)]
@@ -640,7 +703,7 @@ def write_output_files(params, Xopt, LMP, launcher):
         new_exp.beam.set_wavelength(ave_wave)
         new_exp.detector = opt_det
 
-        Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, launcher.SIM, return_model=True)
+        Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, SIM, return_model=True)
         Modeler.best_model_includes_background = True
 
         # store the updated per-roi scale factors in the new refl table
@@ -667,6 +730,8 @@ def write_output_files(params, Xopt, LMP, launcher):
             new_refl_fname += ".refl"
         new_refl_fname = os.path.join(params.geometry.pandas_dir,"refls",  new_refl_fname)
         new_refl.as_file(new_refl_fname)
+        shot_pred_offsets = get_dist_from_R(new_refl)
+        all_shot_pred_offsets += list(shot_pred_offsets)
 
         new_expt_fname, expt_ext = os.path.splitext(Modeler.exper_name)
         new_expt_fname = "rank%d_%s_%s%s" % (COMM.rank, os.path.basename(new_expt_fname), params.geometry.optimized_results_tag, expt_ext)
@@ -686,7 +751,7 @@ def write_output_files(params, Xopt, LMP, launcher):
             scale_p = LMP["rank%d_shot%d_Scale" %(COMM.rank, i_shot)]
             scale = scale_p.get_val(Xopt[scale_p.xpos])
 
-            _,fluxes = zip(*launcher.SIM.beam.spectrum)
+            _,fluxes = zip(*SIM.beam.spectrum)
             eta_a = eta_b = eta_c = np.nan
             df= single_expt_pandas(xtal_scale=scale, Amat=new_crystal.get_A(),
                 ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
@@ -703,19 +768,27 @@ def write_output_files(params, Xopt, LMP, launcher):
                 lam0_lam1 = (np.nan, np.nan),
                 spec_file=Modeler.spec_name,
                 spec_stride=params.simulator.spectrum.stride,
-                flux=sum(fluxes), beamsize_mm=launcher.SIM.beam.size_mm,
+                flux=sum(fluxes), beamsize_mm=SIM.beam.size_mm,
                 orig_exp_name=Modeler.exper_name,
                 opt_exp_name=os.path.abspath(new_expt_fname),
                 spec_from_imageset=params.spectrum_from_imageset,
-                oversample=launcher.SIM.D.oversample,
+                oversample=SIM.D.oversample,
                 opt_det=params.opt_det, stg1_refls=Modeler.refl_name, stg1_img_path=None)
             pandas_name = os.path.splitext(os.path.basename(new_expt_fname))[0] + ".pkl"
             pandas_name = os.path.join(params.geometry.pandas_dir, pandas_name)
             df.to_pickle(pandas_name)
             modeler_name = pandas_name.replace(".pkl", ".npy")
             np.save(modeler_name, Modeler)
+        #print("Wrote files %s and %s" % (new_refl_fname, new_expt_fname))
 
-        print("Wrote files %s and %s" % (new_refl_fname, new_expt_fname))
+    all_shot_pred_offsets = COMM.reduce(all_shot_pred_offsets)
+    if COMM.rank==0:
+        median_pred_offset = np.median(all_shot_pred_offsets)
+    else:
+        median_pred_offset = None
+    median_pred_offset = COMM.bcast(median_pred_offset)
+
+    return median_pred_offset
 
 
 def save_opt_det(phil_params, x, ref_params, SIM):
