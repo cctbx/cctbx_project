@@ -1,4 +1,25 @@
 from __future__ import division, print_function
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument("mod", type=str, help="path to the data modeler file")
+parser.add_argument("out", type=str, help="output file name")
+parser.add_argument("--cudaDevice", type=int, default=None,
+                    help="use this gpu device (if not provided, will not use CUDA and will instead use OpenMP)")
+parser.add_argument("--plotSpec", action="store_true", help="plot the energy spectrum")
+parser.add_argument("--compareData", action="store_true", help="include the data image in the plot")
+parser.add_argument("--j", type=int, default=8,
+                    help="number of processes to use for background extraction, only relevant if --compareData flag is present (default: 8)")
+parser.add_argument("--filtsz", type=int, default=10,
+                    help="the median filter used to extract backgroun will have this dimension, pixel units, higher values are slower (default: 10)")
+parser.add_argument("--specFile", type=str, default=None,
+                    help="Path to the spectrum .lam file. If None, then assume hopper_process output tree and try to autolocate ")
+parser.add_argument("--pandaFile", type=str, default=None,
+                    help="Path to the pandas model file. If None, then assume hopper_process output tree and try to autolocate ")
+
+args = parser.parse_args()
+
 import glob
 import os
 import pandas
@@ -54,22 +75,7 @@ def get_pandas_name_from_mod_name(mod_name):
 
 
 if __name__=="__main__":
-    from argparse import ArgumentParser
 
-    parser = ArgumentParser()
-    parser.add_argument("--mod", type=str, help="path to the data modeler file", required=True)
-    parser.add_argument("--cudaDevice", type=int, default=None, help="use this gpu device (if not provided, will not use CUDA and will instead use OpenMP)")
-    parser.add_argument("--out", type=str, help="output file name", required=True)
-    parser.add_argument("--plotSpec", action="store_true", help="plot the energy spectrum")
-    parser.add_argument("--compareData", action="store_true", help="include the data image in the plot")
-    parser.add_argument("--j", type=int, default=8,
-                        help="number of processes to use for background extraction, only relevant if --compareData flag is present")
-    parser.add_argument("--filtsz", type=int, default=10,
-                        help="the median filter used to extract backgroun will have this dimension, pixel units, higher values are slower")
-    parser.add_argument("--specFile", type=str, default=None, help="Path to the spectrum .lam file. If None, then assume hopper_process output tree and try to autolocate ")
-    parser.add_argument("--pandaFile", type=str, default=None, help="Path to the pandas model file. If None, then assume hopper_process output tree and try to autolocate ")
-
-    args = parser.parse_args()
 
     # the spectrum file
     spec_file = args.specFile
