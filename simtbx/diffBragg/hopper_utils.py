@@ -390,6 +390,13 @@ class DataModeler:
                               % (sum(~res_flags), len(refls)))
             self.selection_flags[~res_flags] = False
 
+        if "miller_index" in list(refls.keys()):
+            self.Hi = list(refls["miller_index"])
+            if sg_symbol is not None:
+                self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
+            else:
+                self.Hi_asu = self.Hi
+
         if sum(self.selection_flags) == 0:
             MAIN_LOGGER.info("No pixels slected, continuing")
             return False
@@ -404,12 +411,6 @@ class DataModeler:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
         refls = refls.select(flex.bool(self.selection_flags))
 
-        if "miller_index" in list(refls.keys()):
-            self.Hi = list(refls["miller_index"])
-            if sg_symbol is not None:
-                self.Hi_asu = utils.map_hkl_list(self.Hi, True, sg_symbol)
-            else:
-                self.Hi_asu = self.Hi
 
         self.data_to_one_dim(img_data, is_trusted, self.background)
         return True
@@ -658,6 +659,8 @@ class DataModeler:
             betas.ucell = [1,1,1,1,1,1]
         fix = self.params.fix
         P = Parameters()
+        if self.params.init.random_Gs is not None:
+            init.G = np.random.choice(self.params.init.random_Gs)
         for i_xtal in range(self.SIM.num_xtals):
             for ii in range(3):
 
@@ -691,6 +694,8 @@ class DataModeler:
         if self.params.simulator.crystal.has_isotropic_mosaicity:
             fix_eta = [fix_eta[0], True, True]
 
+        if self.params.init.random_Nabcs is not None:
+            init.Nabc = np.random.choice(self.params.init.random_Nabcs, replace=True, size=3)
         for ii in range(3):
             # Mosaic domain tensor
             p = ParameterType(init=init.Nabc[ii], sigma=sigma.Nabc[ii],
