@@ -1364,9 +1364,11 @@ def assess_cryoem_errors(
   cushion = flex.double(3,radius+padding)
   cart_min = flex.double(sphere_cent) - cushion
   cart_max = flex.double(sphere_cent) + cushion
+  unit_cell_grid = mmm.map_manager().map_data().accessor().all()
+  spacings = get_grid_spacings(mmm.map_manager().unit_cell(),unit_cell_grid)
   for i in range(3): # Keep within input map
     cart_min[i] = max(cart_min[i],0)
-    cart_max[i] = min(cart_max[i],ucpars[i])
+    cart_max[i] = min(cart_max[i],ucpars[i]-spacings[i])
 
   cs = mmm.crystal_symmetry()
   uc = cs.unit_cell()
