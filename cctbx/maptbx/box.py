@@ -900,12 +900,28 @@ class around_density(with_bounds):
     self.basis_for_boxing_string = 'around_density, wrapping = %s' %(
       wrapping)
 
-
     # Select box where data are positive (> threshold*max)
     map_data = map_manager.map_data()
     origin = list(map_data.origin())
     assert origin == [0, 0, 0]
     all = list(map_data.all())
+
+    edge_values = flex.double()
+    ux = all[0]-1
+    uy = all[1]-1
+    uz = all[2]-1
+    for lb, ub in (
+      [(0,0,0), (0,uy,uz)],
+      [(ux,0,0), (ux,uy,uz)],
+      [(0,0,0), (ux,0,uz)],
+      [(0,uy,0), (ux,uy,uz)],
+      [(0,0,0), (ux,uy,0)],
+      [(0,0,uz), (ux,uy,uz)],
+      ):
+      new_map_data = maptbx.copy(map_data,lb,ub)
+      edge_values.append(new_map_data.as_1d().as_double().min_max_mean().max)
+    edge_value = edge_values.min_max_mean().mean
+    
     # Get max value vs x, y, z
     value_list = flex.double()
     for i in range(0, all[0]):
@@ -913,7 +929,8 @@ class around_density(with_bounds):
          tuple((i, 0, 0)),
          tuple((i, all[1], all[2]))
        )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+      value_list.append(
+        new_map_data.as_1d().as_double().min_max_mean().max - edge_value)
     ii = 0
     for z in value_list:
       ii+= 1
@@ -926,17 +943,8 @@ class around_density(with_bounds):
          tuple((0, j, 0)),
          tuple((all[0], j, all[2]))
        )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    y_min, y_max = get_range(value_list, threshold = threshold,
-      get_half_height_width = get_half_height_width)
-
-    value_list = flex.double()
-    for j in range(0, all[1]):
-      new_map_data = maptbx.copy(map_data,
-         tuple((0, j, 0)),
-         tuple((all[0], j, all[2]))
-       )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+      value_list.append(
+        new_map_data.as_1d().as_double().min_max_mean().max - edge_value)
     y_min, y_max = get_range(value_list, threshold = threshold,
       get_half_height_width = get_half_height_width)
 
@@ -946,7 +954,8 @@ class around_density(with_bounds):
          tuple((0, 0, k)),
          tuple((all[0], all[1], k))
        )
-      value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+      value_list.append(
+        new_map_data.as_1d().as_double().min_max_mean().max - edge_value)
     z_min, z_max = get_range(value_list, threshold = threshold,
       get_half_height_width = get_half_height_width)
 
@@ -960,7 +969,6 @@ class around_density(with_bounds):
        cushion, frac_min, all_orig)]
     self.gridding_last  = [ min(n-1, iceil((f+c)*n)) for c, f, n in zip(
        cushion, frac_max, all_orig)]
-
     # Adjust gridding to make a cubic box if desired
     if self.use_cubic_boxing:
       self.set_cubic_boxing(stay_inside_current_map = stay_inside_current_map)
@@ -996,18 +1004,24 @@ def cube_relative_to_box(new_first, new_last, map_all,
     return lowest_value,highest_value
 
 def get_range(value_list, threshold = None, ignore_ends = True,
-     keep_near_ends_frac = 0.02, half_height_width = 2., get_half_height_width = None,
-     cutoff_ratio = 4, ratio_max = 0.5): # XXX May need to set cutoff_ratio and
+     keep_near_ends_frac = 0.02, half_height_width = 2.,
+     get_half_height_width = None,
+     cutoff_ratio = 4, ratio_max = 0.5,
+     smooth_list_first = True,
+     smooth_units = 20 ): # XXX May need to set cutoff_ratio and
     #  ratio_max lower.
     # ignore ends allows ignoring the first and last points which may be off
     # if get_half_height_width, find width at half max hieght, go
     #  half_height_width times this width out in either direction, use that as
     #  baseline instead of full cell. Don't do it if the height at this point
     #  is over cutoff_ratio times threshold above original baseline.
+    if smooth_list_first:
+     value_list = flex.double(smooth_list(value_list,
+       smooth_range = max(1, value_list.size()//smooth_units)))
     if get_half_height_width:
       z_min, z_max = get_range(value_list, threshold = 0.5,
         ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-        get_half_height_width = False)
+        get_half_height_width = False, smooth_list_first = False)
       z_mid = 0.5*(z_min+z_max)
       z_width = 0.5*(z_max-z_min)
       z_low = z_mid-2*z_width
@@ -1035,12 +1049,12 @@ def get_range(value_list, threshold = None, ignore_ends = True,
         z_min, z_max = get_range(
           value_list, threshold = threshold+ratio,
           ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-          get_half_height_width = False)
+          get_half_height_width = False, smooth_list_first = False)
         return z_min, z_max
       else:
         z_min, z_max = get_range(value_list, threshold = threshold,
           ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-          get_half_height_width = False)
+          get_half_height_width = False, smooth_list_first = False)
         return z_min, z_max
 
     if threshold is None: threshold = 0
@@ -1049,18 +1063,28 @@ def get_range(value_list, threshold = None, ignore_ends = True,
     min_value = value_list.min_max_mean().min
     max_value = value_list.min_max_mean().max
     cutoff = min_value+(max_value-min_value)*threshold
+
+    # Find lowest point to left and right of highest point
+    vl = list(value_list)
+    max_i = vl.index(max_value)
+    min_to_left = value_list[:max_i].min_max_mean().min
+    min_i_to_left = vl.index(min_to_left,0,max_i-1)
+    min_to_right = value_list[max_i:].min_max_mean().min
+    min_i_to_right = vl.index(min_to_right,max_i+1,len(vl))
     if ignore_ends:
       i_off = 1
     else:
       i_off = 0
     i_low = None
-    for i in range(i_off, n_tot-i_off):
+    for i in range(max(min_i_to_left,i_off), min(min_i_to_right,n_tot-i_off)):
       if value_list[i]>cutoff:
         i_low = max(i_off, i-1)
         break
     i_high = None
-    for i in range(i_off, n_tot-i_off):
-      ii = n_tot-1-i
+    for ii in range(
+         min(min_i_to_right,n_tot-i_off),
+         max(min_i_to_left,i_off),
+          -1):
       if value_list[ii]>cutoff:
         i_high = min(n_tot-1-i_off, ii+1)
         break
@@ -1070,6 +1094,23 @@ def get_range(value_list, threshold = None, ignore_ends = True,
     if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high = n_tot-1
     return i_low/n_tot, i_high/n_tot
 
+
+def smooth_list(working_list,smooth_range = None): # smooth this list of numbers
+    assert smooth_range is not None
+    new_list=[]
+    delta=smooth_range//2
+    for i in range(len(working_list)):
+      sum=0.
+      sumn=0.
+      for j in range(-delta,delta+1):
+        jj=j+i
+        if jj >=0 and jj < len(working_list):
+          sum+=working_list[jj]
+          sumn+=1.
+      if sumn>0.:
+        sum=sum/sumn
+      new_list.append(sum)
+    return new_list
 
 def get_bounds_of_valid_region(map_data,
     gridding_first,
