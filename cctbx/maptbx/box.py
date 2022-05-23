@@ -921,7 +921,7 @@ class around_density(with_bounds):
       new_map_data = maptbx.copy(map_data,lb,ub)
       edge_values.append(new_map_data.as_1d().as_double().min_max_mean().max)
     edge_value = edge_values.min_max_mean().mean
-    
+
     # Get max value vs x, y, z
     value_list = flex.double()
     for i in range(0, all[0]):
