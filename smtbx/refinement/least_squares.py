@@ -55,7 +55,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
       self.reparametrisation = reparametrisation
       adopt_optional_init_args(self, kwds)
       if self.f_mask is not None:
-        assert self.f_mask.size() == observations.fo_sq.size()
+        assert self.f_mask.size() >= observations.fo_sq.size()
       self.one_h_linearisation = one_h_linearisation
       if not self.one_h_linearisation:
         self.one_h_linearisation = f_calc_function_default(direct.f_calc_modulus_squared(
@@ -80,7 +80,7 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
         f_mask_data = MaskData(flex.complex_double())
       else:
         f_mask_data = MaskData(self.observations, self.xray_structure.space_group(),
-          self.observations.fo_sq.anomalous_flag(), self.f_mask.data())
+          self.observations.fo_sq.anomalous_flag(), self.f_mask.indices(), self.f_mask.data())
 
       fc_correction = self.reparametrisation.fc_correction
       if fc_correction is None:

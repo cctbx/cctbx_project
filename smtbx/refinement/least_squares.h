@@ -175,7 +175,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         return;
       }
       // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT((!f_mask_data.f_mask.size() || f_mask_data.f_mask.size() == reflections_.size()))
+      SMTBX_ASSERT((!f_mask_data.f_mask.size() || f_mask_data.f_mask.size() >= reflections_.size()))
                   (f_mask_data.f_mask.size())(reflections_.size());
 
       reflections_.update_prime_fraction();

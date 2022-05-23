@@ -228,10 +228,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def(init<cctbx::xray::observations<FloatType> const&,
             sgtbx::space_group const&,
             bool,
+            af::const_ref<miller::index<> > const&,
             af::const_ref<typename wt::complex_type> const&>(
               (arg("observations"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("f_mask"))))
+                arg("indices"), arg("f_mask"))))
           .def("size", &wt::size)
           .def("__len__", &wt::size)
           .def("get", &wt::get, rbv)
