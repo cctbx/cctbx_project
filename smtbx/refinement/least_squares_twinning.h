@@ -26,12 +26,13 @@ namespace smtbx {
         MaskData(cctbx::xray::observations<FloatType> const& reflections,
           sgtbx::space_group const& space_group,
           bool anomalous_flag,
+          af::const_ref<miller::index<> > const& indices,
           af::const_ref<complex_type> const& f_mask)
           : f_mask(f_mask)
         {
           if (reflections.has_twin_components()) {
             mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
-              reflections.indices().const_ref(), space_group, anomalous_flag);
+              indices, space_group, anomalous_flag);
           }
         }
 
