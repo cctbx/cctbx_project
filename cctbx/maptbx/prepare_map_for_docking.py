@@ -1087,10 +1087,15 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   mask_radius = mask_distances[math.floor(frac_coverage*masked_points)-1]
   return mask_radius
 
-def get_ordered_fraction_slow(mm_ordered_mask,sphere_center,sphere_radius):
+def get_ordered_volume_exact(mm_ordered_mask,sphere_center,sphere_radius):
   """
-  Get radius of sphere around map center enclosing desired fraction of
-  ordered density
+  Get volume of density flagged as ordered inside sphere.
+  Useful as a followup to fast spherical average approach, which can be deceived
+  by counting ordered volume in a neighbouring cell if the cryoEM map is cropped
+  tightly compared to the sphere radius.
+  mm_ordered_mask: mask defining ordered volume
+  sphere_center: centre of sphere in orthogonal coordinates
+  sphere_radius: radius of sphere
   """
 
   # Test assumption that this is a full map
@@ -1098,15 +1103,18 @@ def get_ordered_fraction_slow(mm_ordered_mask,sphere_center,sphere_radius):
 
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
+  sphere_center_frac = unit_cell.fractionalize(tuple(sphere_center))
+  sphere_center_grid = [round(n * f) for n,f in zip(mm_ordered_mask.map_data().all(),
+      sphere_center_frac)]
   d_from_c = get_distance_from_center(om_data, unit_cell = unit_cell,
-    center = sphere_center)
-  sel = d_from_c < sphere_radius
+      center = sphere_center_grid)
+  sel = d_from_c <= sphere_radius
   selected_grid_indices = sel.iselection()
   om_data_sel = om_data.select(selected_grid_indices)
   sel = om_data_sel > 0
   ordered_in_sphere = om_data_sel.select(sel)
-  ordered_fraction = ordered_in_sphere.size()/selected_grid_indices.size()
-  return ordered_fraction
+  ordered_volume = (ordered_in_sphere.size()/om_data.size()) * unit_cell.volume()
+  return ordered_volume
 
 def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
   d_star_sq = f_array.d_star_sq().data()
@@ -1343,10 +1351,12 @@ def assess_cryoem_errors(
     print("\nPrepare map for docking by analysing signal and errors")
 
   # Start from two half-maps and ordered volume mask in map_model_manager
-  # Keep track of ordered volume in whole reconstruction
+  # Determine ordered volume in whole reconstruction and fraction that will be in sphere
   ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
-  total_ordered_points = flex.mean(ordered_mm.map_data()) * ordered_mm.map_data().size()
-  # Get map coefficients for maps after spherical masking
+  unit_cell = ordered_mm.unit_cell()
+  unit_cell_grid = ordered_mm.map_data().accessor().all()
+  spacings = get_grid_spacings(unit_cell,unit_cell_grid)
+  total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
   ucpars = mmm.map_manager().unit_cell().parameters()
   if sphere_cent is None:
     # Default to sphere in center of cell extending 2/3 distance to nearest edge
@@ -1357,6 +1367,10 @@ def assess_cryoem_errors(
     assert radius is not None
     sphere_cent = flex.double(sphere_cent)
 
+  ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent, radius)
+  fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
+
+  # Get map coefficients for maps after spherical masking
   # Define box big enough to hold sphere plus soft masking
   boundary_to_smoothing_ratio = 2
   soft_mask_radius = d_min
@@ -1364,8 +1378,6 @@ def assess_cryoem_errors(
   cushion = flex.double(3,radius+padding)
   cart_min = flex.double(sphere_cent) - cushion
   cart_max = flex.double(sphere_cent) + cushion
-  unit_cell_grid = mmm.map_manager().map_data().accessor().all()
-  spacings = get_grid_spacings(mmm.map_manager().unit_cell(),unit_cell_grid)
   for i in range(3): # Keep within input map
     cart_min[i] = max(cart_min[i],0)
     cart_max[i] = min(cart_max[i],ucpars[i]-spacings[i])
@@ -1400,14 +1412,8 @@ def assess_cryoem_errors(
 
     box_volume = uc.volume() * (
         working_mmm.map_data().size()/mmm.map_data().size())
-    masked_volume = box_volume * mask_info.mean
+    weighted_masked_volume = box_volume * mask_info.mean
 
-    # Use weighted volume of ordered region of map to compute fraction of total
-    # scattering contained in the working map
-    cutout_ordered_mm = working_mmm.get_map_manager_by_id(map_id=ordered_mask_id)
-    cutout_ordered_points = (flex.mean(cutout_ordered_mm.map_data()) *
-          cutout_ordered_mm.map_data().size())
-    fraction_scattering = cutout_ordered_points / total_ordered_points
     # Calculate an oversampling ratio defined as the ratio between the size of
     # the cut-out cube and the size of a cube that could contain a sphere
     # big enough to hold the volume of ordered density. Because the ratio of
@@ -1415,8 +1421,7 @@ def assess_cryoem_errors(
     # close to the factor of two between typical protein volume and unit cell
     # volume in a crystal), this should yield likelihood scores on a similar
     # scale to crystallographic ones.
-    over_sampling_factor = (cutout_ordered_mm.map_data().size() /
-        (cutout_ordered_points * 6./math.pi) )
+    over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
 
   # Compute local averages needed for initial covariance terms
   # Do these calculations at extended resolution to avoid edge effects up to
@@ -1632,19 +1637,19 @@ def assess_cryoem_errors(
     mapCC = mc1sel.map_correlation(other=mc2sel)
     if verbosity > 0:
       print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC)
-      sys.stdout.flush()
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
 
   # At this point, weighted_map_noise is the sum of the noise variance for a
   # weighted half-map. In the following, this sum could be multiplied by two
   # for Friedel symmetry, but then divided by two for effects of averaging.
-  weighted_map_noise = math.sqrt(weighted_map_noise) / masked_volume
+  weighted_map_noise = math.sqrt(weighted_map_noise) / weighted_masked_volume
 
   if verbosity > 0:
     print("Fraction of full map scattering: ",fraction_scattering)
     print("Over-sampling factor: ",over_sampling_factor)
     print("Weighted map noise: ",weighted_map_noise)
+    sys.stdout.flush()
 
   # Return a map_model_manager with the weighted map
   wEmean = dobs*expectE
