@@ -32,7 +32,8 @@ class command_stream(object):
     self.file = file
 
   def __del__(self):
-    self.file.close()
+    if hasattr(self,'file') and hasattr(self.file,'close'): 
+      self.file.close()
 
   _cmd_pat = re.compile(r"""
     ^
