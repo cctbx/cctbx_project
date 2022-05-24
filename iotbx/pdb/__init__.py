@@ -490,7 +490,7 @@ class rna_dna_atom_names_interpretation(object):
           else:
             result.append("H2*")
         else:
-          assert rn == "HOP3" # only atom not covered by monomer library
+          assert rn == "HOP3", '%s!="HOP3"' % rn # only atom not covered by monomer library
           result.append(None)
     return result
 
