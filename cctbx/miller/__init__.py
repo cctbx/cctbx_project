@@ -4382,6 +4382,7 @@ class array(set):
     fft_map_ = mc.fft_map(
       resolution_factor = resolution_factor,
       crystal_gridding  = crystal_gridding,
+      symmetry_flags = maptbx.use_space_group_symmetry,
       grid_step         = grid_step)
     if(apply_sigma_scaling):  fft_map_.apply_sigma_scaling()
     if(apply_volume_scaling): fft_map_.apply_volume_scaling()
