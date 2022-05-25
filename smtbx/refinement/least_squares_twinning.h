@@ -30,10 +30,8 @@ namespace smtbx {
           af::const_ref<complex_type> const& f_mask)
           : f_mask(f_mask)
         {
-          if (reflections.has_twin_components()) {
-            mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
-              indices, space_group, anomalous_flag);
-          }
+          mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
+            indices, space_group, anomalous_flag);
         }
 
         complex_type find(miller::index<> const& h) const {
