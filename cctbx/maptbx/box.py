@@ -1150,7 +1150,7 @@ def too_high_outside_range(value_list, i_start, i_end,
     return True
   else:
     return False
-   
+
 def smooth_list(working_list,smooth_range = None): # smooth this list of numbers
     assert smooth_range is not None
     new_list=[]
