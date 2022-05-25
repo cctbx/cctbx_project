@@ -1004,97 +1004,153 @@ def cube_relative_to_box(new_first, new_last, map_all,
     return lowest_value,highest_value
 
 def get_range(value_list, threshold = None, ignore_ends = True,
-     keep_near_ends_frac = 0.02, half_height_width = 2.,
-     get_half_height_width = None,
-     cutoff_ratio = 4, ratio_max = 0.5,
-     smooth_list_first = True,
-     smooth_units = 20 ): # XXX May need to set cutoff_ratio and
-    #  ratio_max lower.
-    # ignore ends allows ignoring the first and last points which may be off
-    # if get_half_height_width, find width at half max hieght, go
-    #  half_height_width times this width out in either direction, use that as
-    #  baseline instead of full cell. Don't do it if the height at this point
-    #  is over cutoff_ratio times threshold above original baseline.
-    if smooth_list_first:
-     value_list = flex.double(smooth_list(value_list,
-       smooth_range = max(1, value_list.size()//smooth_units)))
-    if get_half_height_width:
-      z_min, z_max = get_range(value_list, threshold = 0.5,
-        ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-        get_half_height_width = False, smooth_list_first = False)
-      z_mid = 0.5*(z_min+z_max)
-      z_width = 0.5*(z_max-z_min)
-      z_low = z_mid-2*z_width
-      z_high = z_mid+2*z_width
-      if ignore_ends:
-        i_max = value_list.size()-2
-        i_min = 1
-      else:
-        i_max = value_list.size()-1
-        i_min = 0
+   keep_near_ends_frac = 0.02, half_height_width = 2.,
+   get_half_height_width = None,
+   cutoff_ratio = 4, ratio_max = 0.5,
+   smooth_list_first = True,
+   smooth_units = 20,
+   max_allowed_outside_of_box = 0.33 ): # XXX May need to set cutoff_ratio and
+  #  ratio_max lower.
+  # ignore ends allows ignoring the first and last points which may be off
+  # if get_half_height_width, find width at half max hieght, go
+  #  half_height_width times this width out in either direction, use that as
+  #  baseline instead of full cell. Don't do it if the height at this point
+  #  is over cutoff_ratio times threshold above original baseline.
+  #  If value outside range is more than max_allowed_outside_of_box of max,
+  #    make it bigger.
+  n_tot = value_list.size()
+  assert n_tot>0
+  if smooth_list_first:
+   value_list = flex.double(smooth_list(value_list,
+     smooth_range = max(1, value_list.size()//smooth_units)))
 
-      i_low =  max(i_min, min(i_max, int(0.5+z_low* value_list.size())))
-      i_high = max(i_min, min(i_max, int(0.5+z_high*value_list.size())))
-      min_value = value_list.min_max_mean().min
-      max_value = value_list.min_max_mean().max
-      ratio_low = (value_list[i_low]-min_value)/max(
-         1.e-10, (max_value-min_value))
-      ratio_high = (value_list[i_high]-min_value)/max(
-         1.e-10, (max_value-min_value))
-      if ratio_low <=  cutoff_ratio*threshold and ratio_low >0 \
-           and ratio_low<ratio_max\
-           and ratio_high <=  cutoff_ratio*threshold and ratio_high > 0 \
-           and ratio_high < ratio_max:
-        ratio = min(ratio_low, ratio_high)
-        z_min, z_max = get_range(
-          value_list, threshold = threshold+ratio,
-          ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-          get_half_height_width = False, smooth_list_first = False)
-        return z_min, z_max
-      else:
-        z_min, z_max = get_range(value_list, threshold = threshold,
-          ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
-          get_half_height_width = False, smooth_list_first = False)
-        return z_min, z_max
+  if get_half_height_width:
+    z_min, z_max = get_range(value_list, threshold = 0.5,
+      ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
+      get_half_height_width = False, smooth_list_first = False)
+    z_mid = 0.5*(z_min+z_max)
+    z_width = 0.5*(z_max-z_min)
+    z_low = z_mid-2*z_width
+    z_high = z_mid+2*z_width
+    if ignore_ends:
+      i_max = value_list.size()-2
+      i_min = 1
+    else:
+      i_max = value_list.size()-1
+      i_min = 0
 
-    if threshold is None: threshold = 0
-    n_tot = value_list.size()
-    assert n_tot>0
+    i_low =  max(i_min, min(i_max, int(0.5+z_low* value_list.size())))
+    i_high = max(i_min, min(i_max, int(0.5+z_high*value_list.size())))
     min_value = value_list.min_max_mean().min
     max_value = value_list.min_max_mean().max
-    cutoff = min_value+(max_value-min_value)*threshold
+    ratio_low = (value_list[i_low]-min_value)/max(
+       1.e-10, (max_value-min_value))
+    ratio_high = (value_list[i_high]-min_value)/max(
+       1.e-10, (max_value-min_value))
+    if ratio_low <=  cutoff_ratio*threshold and ratio_low >0 \
+         and ratio_low<ratio_max\
+         and ratio_high <=  cutoff_ratio*threshold and ratio_high > 0 \
+         and ratio_high < ratio_max:
+      ratio = min(ratio_low, ratio_high)
+      z_min, z_max = get_range(
+        value_list, threshold = threshold+ratio,
+        ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
+        get_half_height_width = False, smooth_list_first = False)
+    else:
+      z_min, z_max = get_range(value_list, threshold = threshold,
+        ignore_ends = ignore_ends, keep_near_ends_frac = keep_near_ends_frac,
+        get_half_height_width = False, smooth_list_first = False)
+    if not too_high_outside_range(value_list, int(0.5+ n_tot * z_min),
+         int(0.5+ n_tot *z_max),
+        max_allowed_outside_of_box): # ok
+      return z_min, z_max
 
-    # Find lowest point to left and right of highest point
-    vl = list(value_list)
-    max_i = vl.index(max_value)
+  if threshold is None: threshold = 0
+  min_value = value_list.min_max_mean().min
+  max_value = value_list.min_max_mean().max
+  cutoff = min_value+(max_value-min_value)*threshold
+
+  # Find lowest point to left and right of highest point
+  vl = list(value_list)
+  max_i = vl.index(max_value)
+  if max_i == 0:
+    min_i_to_left = 0
+  else: # usual
     min_to_left = value_list[:max_i].min_max_mean().min
     min_i_to_left = vl.index(min_to_left,0,max_i-1)
+  if max_i == n_tot - 1:
+    min_i_to_right = n_tot - 1
+  else: # usual
     min_to_right = value_list[max_i:].min_max_mean().min
     min_i_to_right = vl.index(min_to_right,max_i+1,len(vl))
-    if ignore_ends:
-      i_off = 1
-    else:
-      i_off = 0
-    i_low = None
-    for i in range(max(min_i_to_left,i_off), min(min_i_to_right,n_tot-i_off)):
-      if value_list[i]>cutoff:
-        i_low = max(i_off, i-1)
-        break
-    i_high = None
-    for ii in range(
-         min(min_i_to_right,n_tot-i_off),
-         max(min_i_to_left,i_off),
-          -1):
-      if value_list[ii]>cutoff:
-        i_high = min(n_tot-1-i_off, ii+1)
-        break
-    if i_low is None or i_high is None:
-      raise Sorry("Cannot auto-select region...")
-    if i_low/n_tot<keep_near_ends_frac: i_low = 0
-    if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high = n_tot-1
+  if ignore_ends:
+    i_off = 1
+  else:
+    i_off = 0
+  i_low = None
+  for i in range(max(min_i_to_left,i_off), min(min_i_to_right,n_tot-i_off)):
+    if value_list[i]>cutoff:
+      i_low = max(i_off, i-1)
+      break
+  i_high = None
+  for ii in range(
+       min(min_i_to_right,n_tot-i_off),
+       max(min_i_to_left,i_off),
+        -1):
+    if value_list[ii]>cutoff:
+      i_high = min(n_tot-1-i_off, ii+1)
+      break
+  if i_low is None or i_high is None:
+    raise Sorry("Cannot auto-select region...")
+  if i_low/n_tot<keep_near_ends_frac: i_low = 0
+  if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high = n_tot-1
+  if not too_high_outside_range(value_list, i_low, i_high,
+        max_allowed_outside_of_box): # ok
     return i_low/n_tot, i_high/n_tot
 
+  # Failed to include high density...try again not using low point
+  if threshold is None: threshold = 0
+  min_value = value_list.min_max_mean().min
+  max_value = value_list.min_max_mean().max
+  cutoff = min_value+(max_value-min_value)*threshold
+  if ignore_ends:
+    i_off = 1
+  else:
+    i_off = 0
+  i_low = None
+  for i in range(i_off, n_tot-i_off):
+    if value_list[i]>cutoff:
+      i_low = max(i_off, i-1)
+      break
+  i_high = None
+  for i in range(i_off, n_tot-i_off):
+    ii = n_tot-1-i
+    if value_list[ii]>cutoff:
+      i_high = min(n_tot-1-i_off, ii+1)
+      break
+  if i_low is None or i_high is None:
+    raise Sorry("Cannot auto-select region...")
+  if i_low/n_tot<keep_near_ends_frac: i_low = 0
+  if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high = n_tot-1
+  if not too_high_outside_range(value_list, i_low, i_high,
+        max_allowed_outside_of_box): # ok
+    return i_low/n_tot, i_high/n_tot
+  else:  # give up and take the whole thing
+    return i_off/n_tot, (n_tot - i_off - 1)/n_tot
 
+
+
+def too_high_outside_range(value_list, i_start, i_end,
+       max_allowed_outside_of_box):
+  inside_values = flex.double(value_list[i_start:i_end])
+  outside_values = flex.double(value_list[:i_start])
+  outside_values.extend(flex.double(value_list[i_end:]))
+  if outside_values.min_max_mean().max > \
+      max_allowed_outside_of_box * inside_values.min_max_mean().max:
+    return True
+  else:
+    return False
+   
 def smooth_list(working_list,smooth_range = None): # smooth this list of numbers
     assert smooth_range is not None
     new_list=[]
