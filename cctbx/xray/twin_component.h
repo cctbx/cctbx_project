@@ -21,10 +21,10 @@ namespace cctbx { namespace xray {
       : value(tf.value), grad(tf.grad), grad_index(tf.grad_index),
       tag(tf.tag)
     {}
-    twin_fraction(FloatType value_, bool grad_=false)
+    twin_fraction(FloatType value_, bool grad_)
       : value(value_), grad(grad_), grad_index(-1), tag(-1)
     {}
-    twin_fraction(FloatType value_, int tag, bool grad_=false)
+    twin_fraction(FloatType value_, int tag, bool grad_)
       : value(value_), grad(grad_), grad_index(-1), tag(tag)
     {}
     twin_fraction deep_copy() { return twin_fraction(*this); }
