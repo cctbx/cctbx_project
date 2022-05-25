@@ -175,9 +175,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
         return;
       }
       // Accumulate equations Fo(h) ~ Fc(h)
-      SMTBX_ASSERT((!f_mask_data.f_mask.size() || f_mask_data.f_mask.size() >= reflections_.size()))
-                  (f_mask_data.f_mask.size())(reflections_.size());
-
       reflections_.update_prime_fraction();
       twinning_processor<FloatType> twp(reflections_, f_mask_data, !objective_only,
         jacobian_transpose_matching_grad_fc);
@@ -191,7 +188,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             accumulate_reflection_chunk_omp_t;
           accumulate_reflection_chunk_omp_t job(
             normal_equations_ptr_t(&normal_equations, null_deleter()),
-            reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
+            reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
             one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
             jacobian_transpose_matching_grad_fc,
             fc_cr, objective_only,
@@ -218,7 +215,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             new accumulate_reflection_chunk_t(
               scheduler,
               chunk_normal_equations,
-              reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
+              reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
               one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
               jacobian_transpose_matching_grad_fc,
               fc_correction_ptr_t(fc_cr.fork()),
@@ -244,7 +241,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         accumulate_reflection_chunk_t job(
           scheduler,
           normal_equations_ptr_t(&normal_equations, null_deleter()),
-          reflections_, f_mask_data.f_mask, twp, weighting_scheme, scale_factor,
+          reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
           one_miller_index_fcalc_ptr_t(f_calc_function.fork()),
           jacobian_transpose_matching_grad_fc,
           fc_correction_ptr_t(fc_cr.fork()),
@@ -323,7 +320,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
       NormalEquations &normal_equations;
       cctbx::xray::observations<FloatType> const &reflections;
-      af::const_ref<std::complex<FloatType> > const &f_mask;
+      MaskData<FloatType> const& f_mask_data;
       twinning_processor<FloatType> const& twp;
       WeightingScheme<FloatType> const &weighting_scheme;
       boost::optional<FloatType> scale_factor;
@@ -341,7 +338,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         Scheduler& scheduler,
         boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
         cctbx::xray::observations<FloatType> const &reflections,
-        af::const_ref<std::complex<FloatType> > const &f_mask,
+        MaskData<FloatType> const& f_mask_data,
         twinning_processor<FloatType> const& twp,
         WeightingScheme<FloatType> const &weighting_scheme,
         boost::optional<FloatType> scale_factor,
@@ -356,7 +353,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
       : scheduler(scheduler),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
-        reflections(reflections), f_mask(f_mask), twp(twp),
+        reflections(reflections), f_mask_data(f_mask_data), twp(twp),
         weighting_scheme(weighting_scheme),
         scale_factor(scale_factor),
         f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
@@ -383,8 +380,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
               int i_h = ch.idx + i;;
               miller::index<> const& h = reflections.index(i_h);
               const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
-              if (f_mask.size()) {
-                f_calc_function.compute(h, f_mask[i_h], fraction, compute_grad);
+              if (f_mask_data.size()) {
+                f_calc_function.compute(h, f_mask_data.find(h), fraction, compute_grad);
               }
               else {
                 f_calc_function.compute(h, boost::none, fraction, compute_grad);

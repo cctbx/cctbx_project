@@ -13,7 +13,7 @@ struct accumulate_reflection_chunk_omp {
   boost::shared_ptr<NormalEquations> normal_equations_ptr;
   NormalEquations& normal_equations;
   cctbx::xray::observations<FloatType> const& reflections;
-  af::const_ref<std::complex<FloatType> > const& f_mask;
+  MaskData<FloatType> const& f_mask_data;
   twinning_processor<FloatType> const& twp;
   WeightingScheme<FloatType> const& weighting_scheme;
   boost::optional<FloatType> scale_factor;
@@ -32,7 +32,7 @@ struct accumulate_reflection_chunk_omp {
   accumulate_reflection_chunk_omp(
     boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
     cctbx::xray::observations<FloatType> const& reflections,
-    af::const_ref<std::complex<FloatType> > const& f_mask,
+    MaskData<FloatType> const& f_mask_data,
     twinning_processor<FloatType> const& twp,
     WeightingScheme<FloatType> const& weighting_scheme,
     boost::optional<FloatType> scale_factor,
@@ -47,7 +47,7 @@ struct accumulate_reflection_chunk_omp {
     af::versa<FloatType, af::c_grid<2> >& design_matrix,
     int &max_memory)
     : normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
-    reflections(reflections), f_mask(f_mask), twp(twp),
+    reflections(reflections), f_mask_data(f_mask_data), twp(twp),
     weighting_scheme(weighting_scheme),
     scale_factor(scale_factor),
     f_calc_function_ptr(f_calc_function_ptr), f_calc_function(*f_calc_function_ptr),
@@ -129,8 +129,8 @@ struct accumulate_reflection_chunk_omp {
             miller::index<> const& h = reflections.index(refl_i);
             const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
             try {
-              if (f_mask.size()) {
-                f_calc_threads[thread]->compute(h, f_mask[refl_i], fraction, compute_grad);
+              if (f_mask_data.size()) {
+                f_calc_threads[thread]->compute(h, f_mask_data.find(h), fraction, compute_grad);
               }
               else {
                 f_calc_threads[thread]->compute(h, boost::none, fraction, compute_grad);
