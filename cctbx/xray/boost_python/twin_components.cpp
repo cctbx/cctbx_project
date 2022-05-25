@@ -23,9 +23,9 @@ namespace {
       typedef twin_fraction<FloatType> wt;
       using namespace boost::python;
       class_<wt>("twin_fraction", no_init)
-        .def(init<FloatType, optional<bool> >
+        .def(init<FloatType, bool>
              ((arg("value"), arg("grad"))))
-        .def(init<FloatType, int, optional<bool> >
+        .def(init<FloatType, int, bool>
           ((arg("value"), arg("tag"), arg("grad"))))
         .def(init<twin_fraction<FloatType> const&>
              ((arg("source"))))
@@ -81,7 +81,7 @@ namespace {
         af::shared<twin_component<double> *>, bool))
         set_grad_twin_fraction, (
           arg("twin_components"),
-          arg("grad_twin_fraction")=true));
+          arg("grad_twin_fraction")));
 
     def("sum_twin_fractions",
       (double(*)(
