@@ -1077,12 +1077,12 @@ def get_range(value_list, threshold = None, ignore_ends = True,
     min_i_to_left = 0
   else: # usual
     min_to_left = value_list[:max_i].min_max_mean().min
-    min_i_to_left = vl.index(min_to_left,0,max_i-1)
+    min_i_to_left = vl.index(min_to_left,0,max_i)
   if max_i == n_tot - 1:
     min_i_to_right = n_tot - 1
   else: # usual
     min_to_right = value_list[max_i:].min_max_mean().min
-    min_i_to_right = vl.index(min_to_right,max_i+1,len(vl))
+    min_i_to_right = vl.index(min_to_right,min(n_tot-1,max_i+1),n_tot)
   if ignore_ends:
     i_off = 1
   else:
