@@ -50,6 +50,7 @@ namespace smtbx {
           return f_mask[i];
         }
 
+      private:
         af::const_ref<complex_type> f_mask;
         miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
         bool has_lookup;
@@ -99,7 +100,7 @@ namespace smtbx {
             while (itr.has_next()) {
               twc_t twc = itr.next();
               boost::optional<complex_type> f_mask = boost::none;
-              if (f_mask_data.f_mask.size() > 0) {
+              if (f_mask_data.size() > 0) {
                 f_mask = f_mask_data.find(twc.h);
               }
               f_calc_function.compute(twc.h, f_mask, fraction, compute_grad);
