@@ -1093,25 +1093,28 @@ class HKLViewFrame() :
         philstr_user_vectors_labels = []
         millaroperationstr = None
         if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
-          btnphilobj = self.master_phil.fetch(btnphil).extract()
-          if btnphilobj.viewer.data_array.label is not None:
-            philstr_label = btnphilobj.viewer.data_array.label
-          if btnphilobj.viewer.data_array.datatype is not None:
-            philstr_type = btnphilobj.viewer.data_array.datatype
-          if btnphilobj.viewer.data_array.phasertng_tag is not None:
-            phasertng_tag = btnphilobj.viewer.data_array.phasertng_tag
+          btnphilobj, unusedparms = self.master_phil.fetch(btnphil, track_unused_definitions=True)
+          for parm in unusedparms:
+            self.mprint( "Preset button, %s, has unrecognised phil parameter:\n   %s" %(btn_id, parm.path))
+          btnphilextract = btnphilobj.extract()
+          if btnphilextract.viewer.data_array.label is not None:
+            philstr_label = btnphilextract.viewer.data_array.label
+          if btnphilextract.viewer.data_array.datatype is not None:
+            philstr_type = btnphilextract.viewer.data_array.datatype
+          if btnphilextract.viewer.data_array.phasertng_tag is not None:
+            phasertng_tag = btnphilextract.viewer.data_array.phasertng_tag
             # find the miller array used by phasertng as specified in the mtz history header
             philstr_label = [ self.get_label_from_phasertng_tag(",".join(phasertng_tag)) ]
-          if len(btnphilobj.viewer.show_vector) > 0:
-            philstr_vectors = btnphilobj.viewer.show_vector
-          if len(btnphilobj.viewer.user_vector) > 0:
-            philstr_user_vectors_labels = [ e.label for e in btnphilobj.viewer.user_vector ]
-          if btnphilobj.miller_array_operation != "":
+          if len(btnphilextract.viewer.show_vector) > 0:
+            philstr_vectors = btnphilextract.viewer.show_vector
+          if len(btnphilextract.viewer.user_vector) > 0:
+            philstr_user_vectors_labels = [ e.label for e in btnphilextract.viewer.user_vector ]
+          if btnphilextract.miller_array_operation != "":
 # The miller array operation part in the philstr could look like:
 # miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
 # We want to capture 'I<<FSQ,SIGI<<FSQ' and 'Intensity' strings which will be in arr1label and arr1type
             millaroperationstr, millarrlabel, (arr1label, arr1type), (arr2label, arr2type) = \
-                                                     eval( btnphilobj.miller_array_operation)
+                                                     eval( btnphilextract.miller_array_operation)
         nvectorsfound = len(philstr_vectors)
         veclabels = ""
         if philstr_vectors:
@@ -1557,11 +1560,13 @@ class HKLViewFrame() :
           if rotlabel =="" or order==0:
             self.mprint("Cannot compute a rotation axis from %s" %phil_uvec.hkl_op)
             return
-        if (phil_uvec.hkl in [None, "", "()"] \
+        vecundefined = (phil_uvec.hkl in [None, "", "()"] \
          and phil_uvec.abc in [None, "", "()"] \
-         and phil_uvec.hkl_op) in [None, ""]:
-          self.mprint("No vector was specified")
-        self.uservectors.append( (label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
+         and phil_uvec.hkl_op in [None, ""])
+        if not vecundefined:
+          if phil_uvec.label in [None, ""]:
+            raise Sorry("Specify user_vector properly!")
+          self.uservectors.append( (label, order, cartvec, hklop, str(hklvec), str(abcvec), veclength ))
       self.list_vectors()
     except Exception as e:
       raise Sorry( str(e))
