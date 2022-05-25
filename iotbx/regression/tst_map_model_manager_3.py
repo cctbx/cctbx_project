@@ -373,14 +373,14 @@ def exercise(file_name, out = sys.stdout):
   mam2.box_all_maps_around_density_and_shift_origin(box_cushion=0)
   new_mm_2=mam2.map_manager()
   assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
-    ((18, 25, 20),(16, 23, 18)))
+    ((18, 25, 20),(16, 18, 18)))
 
   # extract_around_density (get new mam)
   mam2=mam_dc.deep_copy()
   mam2_b=mam2.extract_all_maps_around_density(box_cushion=0)
   new_mm_2=mam2_b.map_manager()
   assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
-    ((18, 25, 20),(16, 23, 18)))
+    ((18, 25, 20),(16, 18, 18)))
 
   # Repeat as map_model_manager:
   mmm=mam_dc.as_map_model_manager().deep_copy()
@@ -396,7 +396,7 @@ def exercise(file_name, out = sys.stdout):
   mam.box_all_maps_around_density_and_shift_origin(box_cushion=0,soft_mask_around_edges=False)
   new_mm_1=mam.map_manager()
   assert approx_equal( (mam_dc.map_data().all(),new_mm_1.map_data().all()),
-    ((18,25 , 20),(16, 23, 18)))
+    ((18,25 , 20),(16, 18, 18)))
 
   # box around density and soft mask edges
   mam = mam_dc.deep_copy()
