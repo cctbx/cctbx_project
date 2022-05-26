@@ -205,9 +205,9 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
       maxDist = 0.25 + myRad + 3  # overestimate so we don't miss any
       neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
       for n in neighbors:
-        # @todo after regression testing: Never bond with Phantom Hydrogens.
-        #if extraAtomInfo.getMappingFor(n).isDummyHydrogen:
-        #  continue
+        # Never add bonds with Phantom Hydrogens.
+        if extraAtomInfo.getMappingFor(n).isDummyHydrogen:
+          continue
         # See if we're within range for an ionic bond between the two atoms.
         dist = (rvec3(a.xyz) - rvec3(n.xyz)).length()
         expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
@@ -248,6 +248,8 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
     the bonded atoms are from compatible conformations (if the original atom
     is in the empty configuration then this will return atoms from all conformations that
     are in the bonded set).
+    For Phantom Hydrogens only ever check to a depth of one (their parent Oxygen atom)
+    to avoid spurious bonds found through ions.
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using getBondedNeighborLists() and
@@ -268,6 +270,9 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
   aLoc = atom.xyz
   aRad = extraAtomInfo.getMappingFor(atom).vdwRadius
   atomIsHydrogen = atom.element_is_hydrogen()
+  if extraAtomInfo.getMappingFor(atom).isDummyHydrogen:
+    # Only ever allow a Phantom Hydrogen to be bonded to its parent Oxygen
+    N = 1
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
@@ -1180,6 +1185,13 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, smallRadius, N))
     assert count == nestedNeighborsForN4Small[N], ("Helpers.Test(): Nested small-radius count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4Small[N]))
+
+  # Test with Phantom Hydrogens to ensure we don't see more than just the nearest atom.
+  # @todo
+
+  #========================================================================
+  # Test addIonicBonds().
+  # @todo
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
