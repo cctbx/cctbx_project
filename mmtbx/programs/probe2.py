@@ -749,9 +749,14 @@ Note:
           # Skip atoms with too low occupancy
           elif n.occ < minimum_occupancy:
             continue
-          # Skip water-water interactions unless they are allowed
-          elif (not include_water_water) and srcInWater and nInWater:
-            continue
+          # Check for water-water interactions
+          elif srcInWater and nInWater:
+            # Skip water-water interactions unless they are allowed
+            if (not include_water_water):
+              continue
+            # Ensure that we're not from the same water; we don't interact with ourself
+            elif src.parent() == n.parent():
+              continue
           # Skip atoms that are in non-compatible alternate conformations
           elif not Helpers.compatibleConformations(src, n):
             continue
