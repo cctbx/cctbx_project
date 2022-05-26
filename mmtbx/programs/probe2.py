@@ -1890,8 +1890,10 @@ Note:
         # Replace the bonded-neighbor list with all bonded neighbors, even ones that
         # are not selected, so that they will block dots that overlap with bonded atoms.
         bondedNeighborLists = self._allBondedNeighborLists
+        selectedAtomsIncludingKept = allAtoms
       else:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
+        selectedAtomsIncludingKept = list(all_selected_atoms)
 
       ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
@@ -1903,7 +1905,8 @@ Note:
         if self.params.output.record_added_hydrogens:
           outString += '@vectorlist {water H?} color= gray\n'
 
-        # Check all selected atoms
+        # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
+        # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
         for a in all_selected_atoms:
 
           # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
@@ -2010,19 +2013,14 @@ Note:
 
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(all_selected_atoms, bondedNeighborLists, self._extraAtomInfo)
+        Helpers.fixupExplicitDonors(selectedAtomsIncludingKept, bondedNeighborLists, self._extraAtomInfo)
 
       ################################################################################
       # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
       # between two atoms that are both bonded to the same ion (such as Nitrogens on
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
       # so that we don't see ionic bonds in those checks.
-      if self.params.keep_unselected_atoms:
-        # When we're keeping unselected atoms, be sure to add them to the bonded neighbor
-        # list.
-        Helpers.addIonicBonds(bondedNeighborLists, allAtoms, self._spatialQuery, self._extraAtomInfo)
-      else:
-        Helpers.addIonicBonds(bondedNeighborLists, all_selected_atoms, self._spatialQuery, self._extraAtomInfo)
+      Helpers.addIonicBonds(bondedNeighborLists, selectedAtomsIncludingKept, self._spatialQuery, self._extraAtomInfo)
 
       # If we have a dump file specified, write the atom information into it.
       if self.params.output.dump_file_name is not None:
