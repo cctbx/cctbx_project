@@ -2025,7 +2025,7 @@ Note:
       # Add ionic bonds to the bonded-neighbor list so that we won't count interactions
       # between two atoms that are both bonded to the same ion (such as Nitrogens on
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
-      # so that we don't see ionic bonds in those checks.
+      # so that we don't see ionic bonds in the Phantom-Hydrogen addition code checks.
       Helpers.addIonicBonds(bondedNeighborLists, selectedAtomsIncludingKept, self._spatialQuery, self._extraAtomInfo)
 
       # If we have a dump file specified, write the atom information into it.

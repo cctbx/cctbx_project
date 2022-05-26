@@ -233,7 +233,12 @@ the corresponding _reduced.pdb file.
 where Probe did not because it was too close to be considered bonded, resulting in a slight difference in the
 surface representation.  Other outputs match.
 - 3wrp (tests too-close waters): Probe2 properly identifies clashes between Water Oxygens and heavy atoms,
-possibly because Probe considers them to be bonded.
+Probe seems to incorrectly consider them to be bonded due to distance-based bond determination. **Also**
+tested with the selection of only LEU residues, with -DROP and -KEEP; -DROP produces the same results and
+-KEEP produces very similar results with a few extra dots around contact edges.
+- Ca1exr_calmodulin_1.0A_18-68 (tests Calcium): Probe2 properly avoids marking chains of overlapping bonded atoms
+that go from Phantom Hydrogens through their water oxygen and on to other atoms.  Probe allows this when
+the water oxygens gets close to an ion.
 - **@todo:** Other molecules and snippets.
 
 - **@todo:** Test -once and -both on specific portions of a specific structure.
