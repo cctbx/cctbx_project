@@ -233,14 +233,24 @@ the corresponding _reduced.pdb file.
 where Probe did not because it was too close to be considered bonded, resulting in a slight difference in the
 surface representation.  Other outputs match.
 - 3wrp (tests too-close waters): Probe2 properly identifies clashes between Water Oxygens and heavy atoms,
-Probe seems to incorrectly consider them to be bonded due to distance-based bond determination. **Also**
+Probe seems to incorrectly consider them to be bonded due to distance-based bond determination.
+    - **Also**
 tested with the selection of only LEU residues, with -DROP and -KEEP; -DROP produces the same results and
--KEEP produces very similar results with a few extra dots around contact edges.  **Also** tested -wat2wat
+-KEEP produces very similar results with a few extra dots around contact edges.
+    - **Also** tested -wat2wat
 and found that Probe2 properly ignores collisions between a water and its own Phantom Hydrogen whereas
 Probe sometimes draws dots.
 - Ca1exr_calmodulin_1.0A_18-68 (tests Calcium): Probe2 properly avoids marking chains of overlapping bonded atoms
 that go from Phantom Hydrogens through their water oxygen and on to other atoms.  Probe allows this when
 the water oxygens gets close to an ion.
+- 4fen: Carbon radii, hydrogen radii, and acceptor status differ for atoms in the ACT and HPA residues,
+indicating a difference in the underlying chemistry between Probe and CCTBX.  The overall potential surface
+area and score are very close (off by less than one part in 100).
+- Fe_1brf_rubredoxin_0: Probe improperly sees interactions between neighboring Water Oxygen atoms because
+it thinks that they are bonded due to being close together.  This causes it to remove contacts that are
+inside the neighboring Water Oxygen.  One could argue that the waters should hide contacts from other atoms
+in cases like this; that would be a change in behavior that might be useful in the future, but it will
+have impacts on other overlapping cases like 1xso.
 - **@todo:** Other molecules and snippets.
 
 - **@todo:** Test -once and -both on specific portions of a specific structure.
