@@ -10,7 +10,6 @@ import numpy as np
 # from simtbx.nanoBragg import shapetype
 # from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
-from simtbx.diffBragg import utils  as db_utils
 
 pdb_lines = """HEADER TEST
 CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1
@@ -22,7 +21,7 @@ ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O
 ATOM      6 SED  MSE A   6       1.000   2.000   3.000  1.00 20.00          SE
 END
 """
-    
+
 FAST, SLOW=228,104  # center of one of the Bragg peaks
 
 def write_test_pdb(fileout="test.pdb"):
@@ -78,7 +77,7 @@ def run_sim(testpdb, version="nanoBragg", spindle_axis=(1,0,0), phi_start=0, phi
     SIM.D.add_nanoBragg_spots()
     pix = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.free_all()
-    return pix 
+    return pix
   else:
     SIM.instantiate_diffBragg(oversample=1, device_Id=0, default_F=0)
     SIM.D.xray_beams = SIM.beam.xray_beams
@@ -87,7 +86,7 @@ def run_sim(testpdb, version="nanoBragg", spindle_axis=(1,0,0), phi_start=0, phi
     SIM.D.Bmatrix = Bmatrix
 
     npix = int(len(pfs)/3)
-    SIM.D.printout_pixel_fastslow = FAST,SLOW 
+    SIM.D.printout_pixel_fastslow = FAST,SLOW
     setup_rotation(SIM)
     SIM.D.show_params()
 
