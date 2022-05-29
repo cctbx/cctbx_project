@@ -468,7 +468,7 @@ class around_model(with_bounds):
 
     # Make sure working model and map_manager crystal_symmetry match
     assert map_manager.is_compatible_model(model,
-      require_match_unit_cell_crystal_symmetry = 
+      require_match_unit_cell_crystal_symmetry =
          self.require_match_unit_cell_crystal_symmetry)
 
     assert box_cushion >=  0
