@@ -348,6 +348,8 @@ class with_bounds(object):
        this around_model object
 
        Changes the model in place
+
+       Allow relaxed check if require_match_unit_cell_crystal_symmetry=False
     '''
 
     assert isinstance(model, mmtbx.model.manager)
@@ -356,7 +358,13 @@ class with_bounds(object):
     #  model and model original_crystal_symmetry should match
     #   self.map_crystal_symmetry_at_initialization
 
-    if model.shift_cart() is None:  # model not yet initialized for shifts
+    # Allow relaxed check if require_match_unit_cell_crystal_symmetry=False
+    s = getattr(self,'require_match_unit_cell_crystal_symmetry', None)
+    if s is False:
+      assert self.map_manager().crystal_symmetry(
+          ).is_similar_symmetry( model.crystal_symmetry())
+
+    elif model.shift_cart() is None:  # model not yet initialized for shifts
        assert self.map_manager().unit_cell_crystal_symmetry(
           ).is_similar_symmetry( model.crystal_symmetry())
 
@@ -425,19 +433,25 @@ class around_model(with_bounds):
         current map)
     if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
       if this conflicts with stay_inside_current_map, make box smaller
+  If require_match_unit_cell_crystal_symmetry:  require that unit_cell
+    crystal symmetry of map and model match
   """
   def __init__(self, map_manager, model, box_cushion,
       wrapping = None,
       model_can_be_outside_bounds = False,
       stay_inside_current_map = None, # Note that this default is different
       use_cubic_boxing = False,
+      require_match_unit_cell_crystal_symmetry = False,
       log = sys.stdout):
 
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
     self.use_cubic_boxing = use_cubic_boxing
+    self.require_match_unit_cell_crystal_symmetry = \
+       require_match_unit_cell_crystal_symmetry
 
+    s = getattr(self,'require_match_unit_cell_crystal_symmetry', None)
     self._force_wrapping = wrapping
     if wrapping is None:
       wrapping = self.map_manager().wrapping()
@@ -453,7 +467,9 @@ class around_model(with_bounds):
     assert not map_manager.is_dummy_map_manager()
 
     # Make sure working model and map_manager crystal_symmetry match
-    assert map_manager.is_compatible_model(model)
+    assert map_manager.is_compatible_model(model,
+      require_match_unit_cell_crystal_symmetry = 
+         self.require_match_unit_cell_crystal_symmetry)
 
     assert box_cushion >=  0
 
