@@ -276,9 +276,10 @@ class run(object):
       column_root_label = f_obs_label
     mtz_dataset = self.raw_data.as_mtz_dataset(
       column_root_label = column_root_label)
-    mtz_dataset.add_miller_array(
-      miller_array      = self.raw_flags,
-      column_root_label = flag_label)
+    if (self.raw_flags is not None):
+      mtz_dataset.add_miller_array(
+        miller_array      = self.raw_flags,
+        column_root_label = flag_label)
     if(self.experimental_phases is not None):
       mtz_dataset.add_miller_array(
         miller_array      = self.raw_experimental_phases,
