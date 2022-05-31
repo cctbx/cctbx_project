@@ -288,7 +288,8 @@ def exercise_around_model():
   r = inspect.getargspec(cctbx.maptbx.box.around_model.__init__)
   assert r.args  == ['self', 'map_manager', 'model', 'box_cushion',
         'wrapping', 'model_can_be_outside_bounds', 'stay_inside_current_map',
-        'use_cubic_boxing', 'log'], r.args
+        'use_cubic_boxing', 'require_match_unit_cell_crystal_symmetry',
+        'log'], r.args
   r = inspect.getargspec(cctbx.maptbx.box.with_bounds.__init__)
   assert r.args  ==  ['self', 'map_manager', 'lower_bounds', 'upper_bounds',
         'model', 'wrapping', 'model_can_be_outside_bounds',
