@@ -92,7 +92,11 @@ def RunProbeTests(inFileName):
   bondedNeighbors = Helpers.getBondedNeighborLists(atoms, bond_proxies_simple)
 
   # Traverse the hierarchy and look up the extra data to be filled in.
-  ret = Helpers.getExtraAtomInfo(model,bondedNeighbors)
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  ret = Helpers.getExtraAtomInfo(model,bondedNeighbors,useNeutronDistances=False,probePhil=philLike(False))
   extra = ret.extraAtomInfo
 
   # Construct a SpatialQuery and fill in the atoms.  Ensure that we can make a
