@@ -1204,7 +1204,7 @@ class map_model_manager(object):
       soft_mask_radius = soft_mask_radius,
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
-      require_match_unit_cell_crystal_symmetry = 
+      require_match_unit_cell_crystal_symmetry =
         require_match_unit_cell_crystal_symmetry,
       use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
