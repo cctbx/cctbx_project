@@ -1388,7 +1388,7 @@ def assess_cryoem_errors(
   # Set some parameters that will be overwritten if masked and cut out
   over_sampling_factor = 1.
   box_volume = uc.volume()
-  masked_volume = box_volume
+  weighted_masked_volume = box_volume
   d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
 
   if keep_full_map: # Rearrange later so this choice comes first?
@@ -1421,6 +1421,7 @@ def assess_cryoem_errors(
     # close to the factor of two between typical protein volume and unit cell
     # volume in a crystal), this should yield likelihood scores on a similar
     # scale to crystallographic ones.
+    assert(ordered_volume_in_sphere > 0.)
     over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
 
   # Compute local averages needed for initial covariance terms
