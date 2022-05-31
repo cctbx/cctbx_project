@@ -863,7 +863,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   standardChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.55, False, True],
-    ["ND1", 1.55, True,  True],
+    ["ND1", 1.55, False,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -872,7 +872,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   neutronChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.55, False, True],
-    ["ND1", 1.55, True,  True],
+    ["ND1", 1.55, False,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -881,7 +881,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   implicitChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.6,  False, True],
-    ["ND1", 1.6,  True,  True],
+    ["ND1", 1.6,  False,  True],
     ["C",   1.8,  False, False],
     ["CB",  1.92, False, False],
     ["O",   1.52, True,  False],
