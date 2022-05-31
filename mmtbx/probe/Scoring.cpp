@@ -647,6 +647,8 @@ std::string DotScorer::test()
                 a.set_occ(1);
                 if (*targetIon) {
                   a.set_element("CU");
+                } else {
+                  a.set_element("O");
                 }
                 a.data->i_seq = atomSeq++;
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
@@ -662,6 +664,8 @@ std::string DotScorer::test()
                 source.set_occ(1);
                 if (*sourceIon) {
                   source.set_element("CU");
+                } else {
+                  source.set_element("O");
                 }
                 source.data->i_seq = atomSeq++;
                 ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
