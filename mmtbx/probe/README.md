@@ -184,8 +184,8 @@ the Python/C++ linkage is working correctly and that the code works on a standar
 
 The  **mmtbx/programs/probe2.py** script uses the probe library routines above to construct kinemages
 of interactions and surfaces and to generate summary scores for interactions within a model.  It is
-a replacement for the **mmtbx.probe** program, producing similar outputs but taking different
-command-line options.  The following tests are provided for this program:
+a replacement for the **mmtbx.probe** program that can be run as **mmtbx.probe2** to produce similar
+outputs but taking different command-line options.  The following tests are provided for this program:
 * There is a Test() function defined within the module that will test all of its non-class functions.
 To run it, the module can be imported and then probe2.Test() called.
 It will fail with an assertion failure if there is a problem with the tests:
