@@ -928,6 +928,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     class philLike:
       def __init__(self, useImplicitHydrogenDistances = False):
         self.implicit_hydrogens = useImplicitHydrogenDistances
+        self.set_polar_hydrogen_radius = True
     philArgs = philLike(useImplicitHydrogenDistances)
     extras = getExtraAtomInfo(model,bondedNeighborLists,
       useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
