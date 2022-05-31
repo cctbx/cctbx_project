@@ -359,19 +359,19 @@ class with_bounds(object):
     #   self.map_crystal_symmetry_at_initialization
 
     # Allow relaxed check if require_match_unit_cell_crystal_symmetry=False
-    s = getattr(self,'require_match_unit_cell_crystal_symmetry', None)
-    if s is False:
-      assert self.map_manager().crystal_symmetry(
-          ).is_similar_symmetry( model.crystal_symmetry())
 
-    elif model.shift_cart() is None:  # model not yet initialized for shifts
+    if model.shift_cart() is None:  # model not yet initialized for shifts
        assert self.map_manager().unit_cell_crystal_symmetry(
           ).is_similar_symmetry( model.crystal_symmetry())
 
-    else:  # model is initialized: should match
-      assert model.unit_cell_crystal_symmetry()
-      assert self.map_manager().unit_cell_crystal_symmetry(
-         ).is_similar_symmetry( model.unit_cell_crystal_symmetry())
+    else:  # model is initialized: should match unless not requiring it
+      s = getattr(self,'require_match_unit_cell_crystal_symmetry', None)
+      if s is not False: # does not have to have uc if False
+        assert model.unit_cell_crystal_symmetry()
+        assert self.map_manager().unit_cell_crystal_symmetry(
+           ).is_similar_symmetry( model.unit_cell_crystal_symmetry())
+
+
 
     # Shift the model and add self.shift_cart on to whatever shift was there
     model.shift_model_and_set_crystal_symmetry(
