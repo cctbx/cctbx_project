@@ -980,7 +980,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # They are all in a residue that has the specified atom name listed as Aromatic.
     # We change the names and types below to make some not match.
     ag = pdb.hierarchy.atom_group()
-    ag.resname = 'HIS'
+    ag.resname = 'ADE'
     for x in range(-1,2,2):
       for y in range(-1,2,2):
         for z in range(-1,2,2):
@@ -998,7 +998,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
             a.name = 'CB'
             extras.append(probeExt.ExtraAtomInfo(radius, False))
           else: # Aromatic ring atom, also an acceptor
-            a.name = 'ND1'
+            a.name = 'N1'
             a.element = 'N'
             extras.append(probeExt.ExtraAtomInfo(radius, True))
           type += 1
