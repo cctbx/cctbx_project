@@ -234,26 +234,33 @@ where Probe did not because it was too close to be considered bonded, resulting 
 surface representation.  Other outputs match.
 - 3wrp (tests too-close waters): Probe2 properly identifies clashes between Water Oxygens and heavy atoms,
 Probe seems to incorrectly consider them to be bonded due to distance-based bond determination.
-    - **Also**
-tested with the selection of only LEU residues, with -DROP and -KEEP; -DROP produces the same results and
+    - Also tested with the selection of only LEU residues, with -DROP and -KEEP; -DROP produces the same results and
 -KEEP produces very similar results with a few extra dots around contact edges.
-    - **Also** tested -wat2wat
-and found that Probe2 properly ignores collisions between a water and its own Phantom Hydrogen whereas
-Probe sometimes draws dots.
+    - Also tested -wat2wat and found that Probe2 properly ignores collisions between a water and its
+own Phantom Hydrogen whereas Probe sometimes draws dots.
 - Ca1exr_calmodulin_1.0A_18-68 (tests Calcium): Probe2 properly avoids marking chains of overlapping bonded atoms
 that go from Phantom Hydrogens through their water oxygen and on to other atoms.  Probe allows this when
 the water oxygens gets close to an ion.
 - 4fen: Carbon radii, hydrogen radii, and acceptor status differ for atoms in the ACT and HPA residues,
 indicating a difference in the underlying chemistry between Probe and CCTBX.  The overall potential surface
 area and score are very close (off by less than one part in 100).
-- Fe_1brf_rubredoxin_0: Probe improperly sees interactions between neighboring Water Oxygen atoms because
+- Fe_1brf_rubredoxin_0.95A: Probe improperly sees interactions between neighboring Water Oxygen atoms because
 it thinks that they are bonded due to being close together.  This causes it to remove contacts that are
 inside the neighboring Water Oxygen.  One could argue that the waters should hide contacts from other atoms
 in cases like this; that would be a change in behavior that might be useful in the future, but it will
 have impacts on other overlapping cases like 1xso.
-- **@todo:** Other molecules and snippets.
+- Fe6k9j_CytC_0.98A: There are radius differences in HEC Carbon atoms (old is 1.70, new is 1.75),
+indicating a difference in the underlying chemistry between Probe and CCTBX.  The total
+score is off by less than one part in 100.  The differences in the kinemages appear to be around the
+HEC residue.
+- Zn_4m9v_C-167-194_ZnF-DNA_0.97A: No differences in scores or surfaces.  Some atom names were swapped in
+Probe2 (Hydrogens, Nitrogens, Oxygens) but they were in the same locations so produced the same results.
+This indicates a difference between the naming schemes in Probe and Probe2.
 
-- **@todo:** Test -once and -both on specific portions of a specific structure.
+Tested the -once flag against water vs. not water in 1xso and got the same results:
+- `probe.exe -kin -mc -once "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_once_orig.kin`
+- `mmtbx.probe2 source_selection="not water" target_selection="water" approach=once count_dots=False output.separate_worse_clashes=True output.file_name=C:/tmp/1xso_once_new.kin output.add_kinemage_keyword=True include_mainchain_mainchain=True F:/data/richardsons/1xso_reduced.pdb`
 
-**@todo**
-
+Tested the -both flag against water vs. not water in 1xso and got the same results:
+- `probe.exe -kin -mc -both "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_both_orig.kin`
+- `mmtbx.probe2 source_selection="not water" target_selection="water" approach=both count_dots=False output.separate_worse_clashes=True output.file_name=C:/tmp/1xso_both_new.kin output.add_kinemage_keyword=True include_mainchain_mainchain=True F:/data/richardsons/1xso_reduced.pdb`
