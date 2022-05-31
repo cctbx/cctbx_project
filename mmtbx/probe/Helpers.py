@@ -853,6 +853,11 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 """
     )
 
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+
   #========================================================================
   # Run unit test on getExtraAtomInfo().  We use a specific PDB snippet
   # for which we know the answer and then we verify that the results are what
@@ -925,13 +930,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
     # Get the extra atom information for the model using default parameters.
     # Make a PHIL-like structure to hold the parameters.
-    class philLike:
-      def __init__(self, useImplicitHydrogenDistances = False):
-        self.implicit_hydrogens = useImplicitHydrogenDistances
-        self.set_polar_hydrogen_radius = True
-    philArgs = philLike(useImplicitHydrogenDistances)
     extras = getExtraAtomInfo(model,bondedNeighborLists,
-      useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
+      useNeutronDistances=useNeutronDistances,probePhil=philLike(useImplicitHydrogenDistances)).extraAtomInfo
 
     # Get the atoms for the first model in the hierarchy.
     atoms = model.get_hierarchy().models()[0].atoms()
@@ -1031,7 +1031,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
         if occThresh > 0.5:
           expected = 0
         ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
-        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))
+        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))+" (expected "+str(expected)+")"
 
         # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
         # Here we check that we get as many matching directions as we have atoms.
@@ -1154,7 +1154,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # First test with a huge probe radius where all of the atoms are within range.
   # When clamped, we can't go further than the non-Hydrogen bound except for Hydrogens
   nestedNeighborsForN4 = [ None, 3, 5, 8, 9, 9, 9]
-  extraInfo = getExtraAtomInfo(model, bondedNeighborLists).extraAtomInfo
+  extraInfo = getExtraAtomInfo(model, bondedNeighborLists,
+    useNeutronDistances=False,probePhil=philLike(False)).extraAtomInfo
   hugeRadius = 1000
   for N in range(1,7):
     count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, hugeRadius, N, 3))
@@ -1219,7 +1220,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   p.pdb_interpretation.use_neutron_distances = False
   model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
-  ret = getExtraAtomInfo(model, bondedNeighborLists)
+  ret = getExtraAtomInfo(model, bondedNeighborLists, False, philLike(False))
 
   #========================================================================
   # Run unit tests on the dihedralChoicesForRotatableHydrogens class.  Both
