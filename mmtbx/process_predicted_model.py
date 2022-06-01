@@ -872,13 +872,18 @@ def split_model_into_compact_units(
      file = log)
   d_min = min(50, d_min) # limitation in fmodel
 
-  # Make sure the model has crystal_symmetry.  Just put a box around it that is
+  # Make sure the model has P1 crystal_symmetry.  Put a box around it that is
   #  big (do not use original crystal symmetry because it might  be too big
   #  or too small)
 
+  m = m.deep_copy()  # don't modify original
+
   box_cushion = 0.5 * d_min  # big box
   original_crystal_symmetry = m.crystal_symmetry()
+  original_uc_crystal_symmetry = m.unit_cell_crystal_symmetry()
   m.add_crystal_symmetry_if_necessary(box_cushion = box_cushion, force = True)
+  m.set_shift_cart(None)
+  m.set_unit_cell_crystal_symmetry(m.crystal_symmetry())
 
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
