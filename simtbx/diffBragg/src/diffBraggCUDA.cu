@@ -41,8 +41,8 @@ void diffBragg_sum_over_steps_cuda(
 
 
     if (db_cryst.phi0 != 0 || db_cryst.phisteps > 1){
-        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%d\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
-        exit(-1);
+        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%f\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
+        //exit(-1);
     }
 
     int numblocks;

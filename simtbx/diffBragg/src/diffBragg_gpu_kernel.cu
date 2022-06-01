@@ -86,10 +86,10 @@ void gpu_sum_over_steps(
     //__shared__ CUDAREAL s_Nc;
     __shared__ CUDAREAL s_NaNbNc_squared;
     __shared__ int s_h_max, s_k_max, s_l_max, s_h_min, s_k_min, s_l_min, s_k_range, s_l_range;
-    __shared__ int s_oversample, s_detector_thicksteps, s_sources, s_mosaic_domains,  s_printout_fpixel,
+    __shared__ int s_oversample, s_detector_thicksteps, s_sources, s_phisteps, s_mosaic_domains,  s_printout_fpixel,
         s_printout_spixel, s_verbose, s_Nsteps;
     __shared__ CUDAREAL s_detector_thickstep, s_detector_attnlen, s_subpixel_size, s_pixel_size, s_lambda0,
-        s_lambda1, sX0, sY0, sZ0, s_detector_thick, s_default_F,  s_overall_scale, s_kahn_factor;
+        s_lambda1, sX0, sY0, sZ0, s_detector_thick, s_phi0, s_phistep, s_default_F,  s_overall_scale, s_kahn_factor;
     __shared__ bool s_oversample_omega, s_printout, s_nopolar;
     __shared__ VEC3 s_polarization_axis;
 
@@ -161,8 +161,11 @@ void gpu_sum_over_steps(
         s_oversample = oversample;
         s_detector_thicksteps = detector_thicksteps;
         s_sources = sources;
+        s_phisteps = phisteps;
         s_mosaic_domains = mosaic_domains;
         s_detector_thickstep = detector_thickstep;
+        s_phi0 = phi0;
+        s_phistep = phistep;
         s_detector_attnlen = detector_attnlen;
         s_subpixel_size = subpixel_size;
         s_pixel_size = pixel_size;
@@ -337,10 +340,32 @@ void gpu_sum_over_steps(
             texture_scale *= cap_frac_times_omega;
             texture_scale *= sI;
 
+        for (int _phi_tic=0;_phi_tic<s_phisteps;++_phi_tic){
+            
+            CUDAREAL phi = s_phi0 + s_phistep*_phi_tic;
+            MAT3 Bmat = eig_B;
+            if (phi != 0.0) {
+                CUDAREAL cosphi = cos(phi);
+                CUDAREAL sinphi = sin(phi);
+                VEC3 ap_vec(eig_B(0,0), eig_B(1,0), eig_B(2,0));
+                VEC3 bp_vec(eig_B(0,1), eig_B(1,1), eig_B(2,1));
+                VEC3 cp_vec(eig_B(0,2), eig_B(1,2), eig_B(2,2));
+
+                ap_vec = ap_vec*cosphi + spindle_vec.cross(ap_vec)*sinphi + spindle_vec*(spindle_vec.dot(ap_vec))*(1-cosphi);
+                bp_vec = bp_vec*cosphi + spindle_vec.cross(bp_vec)*sinphi + spindle_vec*(spindle_vec.dot(bp_vec))*(1-cosphi);
+                cp_vec = cp_vec*cosphi + spindle_vec.cross(cp_vec)*sinphi + spindle_vec*(spindle_vec.dot(cp_vec))*(1-cosphi);                
+
+                Bmat << ap_vec[0], bp_vec[0], cp_vec[0],
+                                  ap_vec[1], bp_vec[1], cp_vec[1],
+                                  ap_vec[2], bp_vec[2], cp_vec[2];
+            }
+            Bmat *= 1e10;
+
         for(int _mos_tic=0;_mos_tic<s_mosaic_domains;++_mos_tic){
 
             int amat_idx = _mos_tic;
-            MAT3 UBO = Amatrices[amat_idx];
+            //MAT3 UBO = Amatrices[amat_idx];
+            MAT3 UBO = (UMATS_RXYZ[_mos_tic] * eig_U*Bmat*(eig_O.transpose())).transpose();
 
             VEC3 H_vec = UBO*q_vec;
             CUDAREAL _h = H_vec[0];
@@ -851,7 +876,8 @@ void gpu_sum_over_steps(
               }
             }
 
-            } // end of mos_tic loop
+             } // end of mos_tic loop
+            } // end of phi_tic loop
            } // end of source loop
           } // end of thick step loop
          } // end of fpos loop

@@ -150,9 +150,9 @@ def test_sweep():
 def tst_all():
   import os
   # currently only tests CPU implementation
-  if "DIFFBRAGG_USE_CUDA" in os.environ:
-    os.environ.unsetenv("DIFFBRAGG_USE_CUDA")
-  #os.environ["DIFFBRAGG_USE_CUDA"]=1
+  #if "DIFFBRAGG_USE_CUDA" in os.environ:
+  #  os.environ.unsetenv("DIFFBRAGG_USE_CUDA")
+  os.environ["DIFFBRAGG_USE_CUDA"]="1"
   test_range_of_rotation_steps()
   test_sweep()
 
