@@ -1,3 +1,11 @@
+2022.5
+======
+
+* Added function to return fmodel object in DataManager
+* Added options for cubic box and soft masking to resolve_cryo_em
+* Updates to tool for preparing maps for docking
+* More improvements to cctbx.HKLviewer
+
 2022.4
 ======
 
