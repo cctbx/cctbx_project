@@ -1421,6 +1421,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
         # locations.  If one or both of them are near enough to be ionically bound to an
         # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
         # rather than inserting the Mover into the list of those to be optimized.
+        # @todo Consider checking both configurations to see if either one has two bonds.
         hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo)
 
         # Find the four positions to check for Nitrogen ionic bonds
@@ -1748,7 +1749,14 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists)
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  global probePhil
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.

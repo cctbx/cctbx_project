@@ -161,6 +161,8 @@ def getBondedNeighborLists(atoms, bondProxies):
     using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
     model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
     it should be a flex array of atom positions for the atoms that are in the first argument.
+    It can include atoms that are not in the first parameter, but they will not be added
+    to the lists.
     :returns a dictionary with one entry for each atom that contains a list of all of
     the atoms (within the atoms list) that are bonded to it.
   """
@@ -172,13 +174,14 @@ def getBondedNeighborLists(atoms, bondProxies):
     bondedNeighbors[a] = []
   for bp in bondProxies:
     try:
+      # These lookups will fail if the atoms are not in the list of atoms passed in.
       first = atomDict[bp.i_seqs[0]]
       second = atomDict[bp.i_seqs[1]]
       bondedNeighbors[first].append(second)
       bondedNeighbors[second].append(first)
     except Exception:
-      # When an atom is bonded to an atom in a different conformer (not in our atom list)
-      # we just ignore it.
+      # When an atom is bonded to an atom is not in our atom list (in a different conformer or not
+      # in our selection) we just ignore it.
       pass
   return bondedNeighbors
 
@@ -202,6 +205,9 @@ def addIonicBonds(bondedNeighborLists, atoms, spatialQuery, extraAtomInfo):
       maxDist = 0.25 + myRad + 3  # overestimate so we don't miss any
       neighbors = spatialQuery.neighbors(a.xyz, minDist, maxDist)
       for n in neighbors:
+        # Never add bonds with Phantom Hydrogens.
+        if extraAtomInfo.getMappingFor(n).isDummyHydrogen:
+          continue
         # See if we're within range for an ionic bond between the two atoms.
         dist = (rvec3(a.xyz) - rvec3(n.xyz)).length()
         expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
@@ -242,6 +248,8 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
     the bonded atoms are from compatible conformations (if the original atom
     is in the empty configuration then this will return atoms from all conformations that
     are in the bonded set).
+    For Phantom Hydrogens only ever check to a depth of one (their parent Oxygen atom)
+    to avoid spurious bonds found through ions.
     :param atom: The atom to be tested.
     :param bondedNeighborLists: Dictionary of lists that contain all bonded neighbors for
     each atom in a set of atoms.  Should be obtained using getBondedNeighborLists() and
@@ -262,6 +270,9 @@ def getAtomsWithinNBonds(atom, bondedNeighborLists, extraAtomInfo, probeRad, N, 
   aLoc = atom.xyz
   aRad = extraAtomInfo.getMappingFor(atom).vdwRadius
   atomIsHydrogen = atom.element_is_hydrogen()
+  if extraAtomInfo.getMappingFor(atom).isDummyHydrogen:
+    # Only ever allow a Phantom Hydrogen to be bonded to its parent Oxygen
+    N = 1
   # Find all atoms to the specified depth
   atoms = {atom}            # Initialize the set with the atom itself
   for i in range(N):        # Repeat the recursion this many times
@@ -372,8 +383,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # complete (ongoing as of March 2022), this check might be removed
                 # and we'll just use the CCTBX radius.
                 if a.element_is_ion():
-                  warnings += "Using ionic radius for "+a.name.strip()+"\n"
                   extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
+                  warnings += "Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
                 else:
                   extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
 
@@ -674,7 +685,11 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
 
     # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
     # of 1 plus an offset that is clamped to the range -1..0 that is the sum of the overlap
-    # and the best hydrogen-bonding overlap.
+    # and the best hydrogen-bonding overlap.  This is an approximation to the situation
+    # where the Hydrogen would rotate around the Oxygen to maintain a proper distance from
+    # the acceptor that does not involve trying to select a rotation direction.  Because
+    # Phantom Hydrogens do not block the Oxygen from collisions with their neighbors, and
+    # because Phantom Hydrogens cannot clash with any atom, this will not interfere with clashes.
     BEST_HBOND_OVERLAP=0.6
     distance = placedHydrogenDistance + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
     try:
@@ -838,6 +853,11 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 """
     )
 
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+
   #========================================================================
   # Run unit test on getExtraAtomInfo().  We use a specific PDB snippet
   # for which we know the answer and then we verify that the results are what
@@ -848,7 +868,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   standardChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.55, False, True],
-    ["ND1", 1.55, True,  True],
+    ["ND1", 1.55, False,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -857,7 +877,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   neutronChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.55, False, True],
-    ["ND1", 1.55, True,  True],
+    ["ND1", 1.55, False,  True],
     ["C",   1.65, False, False],
     ["CB",  1.7,  False, False],
     ["O",   1.4,  True,  False],
@@ -866,7 +886,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   implicitChecks = [
     # Name, vdwRadius, isAcceptor, isDonor
     ["N",   1.6,  False, True],
-    ["ND1", 1.6,  True,  True],
+    ["ND1", 1.6,  False,  True],
     ["C",   1.8,  False, False],
     ["CB",  1.92, False, False],
     ["O",   1.52, True,  False],
@@ -910,12 +930,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
     # Get the extra atom information for the model using default parameters.
     # Make a PHIL-like structure to hold the parameters.
-    class philLike:
-      def __init__(self, useImplicitHydrogenDistances = False):
-        self.implicit_hydrogens = useImplicitHydrogenDistances
-    philArgs = philLike(useImplicitHydrogenDistances)
     extras = getExtraAtomInfo(model,bondedNeighborLists,
-      useNeutronDistances=useNeutronDistances,probePhil=philArgs).extraAtomInfo
+      useNeutronDistances=useNeutronDistances,probePhil=philLike(useImplicitHydrogenDistances)).extraAtomInfo
 
     # Get the atoms for the first model in the hierarchy.
     atoms = model.get_hierarchy().models()[0].atoms()
@@ -964,7 +980,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # They are all in a residue that has the specified atom name listed as Aromatic.
     # We change the names and types below to make some not match.
     ag = pdb.hierarchy.atom_group()
-    ag.resname = 'HIS'
+    ag.resname = 'ADE'
     for x in range(-1,2,2):
       for y in range(-1,2,2):
         for z in range(-1,2,2):
@@ -982,7 +998,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
             a.name = 'CB'
             extras.append(probeExt.ExtraAtomInfo(radius, False))
           else: # Aromatic ring atom, also an acceptor
-            a.name = 'ND1'
+            a.name = 'N1'
             a.element = 'N'
             extras.append(probeExt.ExtraAtomInfo(radius, True))
           type += 1
@@ -1015,7 +1031,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
         if occThresh > 0.5:
           expected = 0
         ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
-        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))
+        assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))+" (expected "+str(expected)+")"
 
         # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
         # Here we check that we get as many matching directions as we have atoms.
@@ -1138,7 +1154,8 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # First test with a huge probe radius where all of the atoms are within range.
   # When clamped, we can't go further than the non-Hydrogen bound except for Hydrogens
   nestedNeighborsForN4 = [ None, 3, 5, 8, 9, 9, 9]
-  extraInfo = getExtraAtomInfo(model, bondedNeighborLists).extraAtomInfo
+  extraInfo = getExtraAtomInfo(model, bondedNeighborLists,
+    useNeutronDistances=False,probePhil=philLike(False)).extraAtomInfo
   hugeRadius = 1000
   for N in range(1,7):
     count = len(getAtomsWithinNBonds(N4, bondedNeighborLists, extraInfo, hugeRadius, N, 3))
@@ -1171,6 +1188,13 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     assert count == nestedNeighborsForN4Small[N], ("Helpers.Test(): Nested small-radius count for "+N4.name.strip()+
         " for N = "+str(N)+" was "+str(count)+", expected "+str(nestedNeighborsForN4Small[N]))
 
+  # Test with Phantom Hydrogens to ensure we don't see more than just the nearest atom.
+  # @todo
+
+  #========================================================================
+  # Test addIonicBonds().
+  # @todo
+
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
   # from the specified file.
@@ -1196,7 +1220,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   p.pdb_interpretation.use_neutron_distances = False
   model.process(make_restraints=True, pdb_interpretation_params = p) # make restraints
 
-  ret = getExtraAtomInfo(model, bondedNeighborLists)
+  ret = getExtraAtomInfo(model, bondedNeighborLists, False, philLike(False))
 
   #========================================================================
   # Run unit tests on the dihedralChoicesForRotatableHydrogens class.  Both

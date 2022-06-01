@@ -282,7 +282,7 @@ std::string DotScorer::interaction_type_name(InteractionType t)
   case CloseContact:
     return "close_contact";
   case WeakHydrogenBond:
-    return "weak_H-bonds";
+    return "weak_H-bond";
   case SmallOverlap:
     return "small_overlap";
   case Bump:
@@ -290,7 +290,7 @@ std::string DotScorer::interaction_type_name(InteractionType t)
   case BadBump:
     return "worse_overlap";
   case StandardHydrogenBond:
-    return "H-bonds";
+    return "H-bond";
   case Invalid:
     return "invalid (internal error)";
   default:
@@ -451,10 +451,6 @@ unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, s
 {
   unsigned ret = 0;
 
-  // Make an interacting list that includes the atom itself.
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom> interacting;
-  interacting.push_back(sourceAtom);
-
   // Run through all of the dots and determine whether each is valid.
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
@@ -468,7 +464,7 @@ unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, s
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
       e != exclude.end(); e++) {
       double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+      if ((absoluteDotLocation - e->data->xyz).length_sq() <= vdwe * vdwe) {
         keepDot = false;
         break;
       }
@@ -651,6 +647,8 @@ std::string DotScorer::test()
                 a.set_occ(1);
                 if (*targetIon) {
                   a.set_element("CU");
+                } else {
+                  a.set_element("O");
                 }
                 a.data->i_seq = atomSeq++;
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
@@ -666,6 +664,8 @@ std::string DotScorer::test()
                 source.set_occ(1);
                 if (*sourceIon) {
                   source.set_element("CU");
+                } else {
+                  source.set_element("O");
                 }
                 source.data->i_seq = atomSeq++;
                 ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
