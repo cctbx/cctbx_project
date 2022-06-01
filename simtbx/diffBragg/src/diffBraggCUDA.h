@@ -19,6 +19,7 @@ struct diffBragg_cudaPointers {
 
   bool device_is_allocated = false;
   int npix_allocated=0;
+  int previous_nsource = 0;
 
   unsigned int* cu_panels_fasts_slows;
 
@@ -120,4 +121,3 @@ void diffBragg_sum_over_steps_cuda(
 
 
 void freedom(diffBragg_cudaPointers& cp);
-

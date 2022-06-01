@@ -93,6 +93,22 @@ void diffBragg_sum_over_steps_cuda(
         exit(-1);
     }
 
+//  support dynamic allocation for different numbers of sources
+    if ( cp.previous_nsource != 0 && cp.previous_nsource != db_beam.number_of_sources){
+        gpuErr(cudaFree(cp.cu_source_X));
+        gpuErr(cudaFree(cp.cu_source_Y));
+        gpuErr(cudaFree(cp.cu_source_Z));
+        gpuErr(cudaFree(cp.cu_source_I));
+        gpuErr(cudaFree(cp.cu_source_lambda));
+        printf("Reallocating for  %d sources!:\n", db_beam.number_of_sources);
+        gpuErr(cudaMallocManaged(&cp.cu_source_X, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_Y, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_Z, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_I, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        gpuErr(cudaMallocManaged(&cp.cu_source_lambda, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        cp.previous_nsource = db_beam.number_of_sources;
+    }
+
     if(cp.device_is_allocated){
         if (db_flags.verbose){
            printf("Will model %d pixels (GPU has %d pre-allocated pix)\n", Npix_to_model, cp.npix_allocated);
@@ -107,6 +123,7 @@ void diffBragg_sum_over_steps_cuda(
         gpuErr(cudaMallocManaged(&cp.cu_source_Z, db_beam.number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_I, db_beam.number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_lambda, db_beam.number_of_sources*sizeof(CUDAREAL)));
+        cp.previous_nsource = db_beam.number_of_sources;
 
         gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS, db_cryst.UMATS.size()*sizeof(MAT3)));
         gpuErr(cudaMallocManaged((void **)&cp.cu_UMATS_RXYZ, db_cryst.UMATS_RXYZ.size()*sizeof(MAT3)));
@@ -523,6 +540,8 @@ void diffBragg_sum_over_steps_cuda(
     if(db_flags.verbose>1)
         printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
     error_msg(cudaGetLastError(), "After copy to host");
+
+
 }
 
 
