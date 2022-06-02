@@ -607,7 +607,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     :param extraAtomInfo: mmtbx_probe_ext.ExtraAtomInfo mapper that provides radius and other
     information about atoms beyond what is in the pdb.hierarchy.  Used here to determine
     which atoms may be acceptors.
-    :param minOccupancy: Minimum occupancy for an atom to be considered.
+    :param minOccupancy: Minimum occupancy for a nearby atom to be considered.
     :param acceptorOnly: Only allow bonds with atoms that are acceptors when this is True.
     This is false by default because Reduce needs to check whether the bonded atom is either
     an acceptor or a possible flipped position of an acceptor, and that is not something that
