@@ -451,7 +451,7 @@ class _SingletonOptimizer(object):
         # unless it has out-of-bounds parameter values.  If the water Oxygen has out-of-bounds
         # parameters, then we remove it from the atoms to be considered (but not from the
         # model) by removing them from the atom list and from the spatial query structure.
-        phantoms = []
+        phantoms = [] # List of tuples, the Phantom and its parent Oxygen
         watersToDelete = []
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
@@ -473,7 +473,7 @@ class _SingletonOptimizer(object):
                 self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
                 for p in newPhantoms:
                   self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
-              phantoms += newPhantoms
+                  phantoms.append( (p,a) )
 
             else:
               # Occupancy or B factor are out of bounds, so remove this atom from consideration.
@@ -494,16 +494,17 @@ class _SingletonOptimizer(object):
           # Add these atoms to the list of atoms we deal with.
           # Add these atoms to the spatial-query structure.
           # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy and as a donor.
-          # Add to the bondedNeighborList with an empty list.  This prevents them from masking Oxygens.
-          # @todo Consider doing the correct bond structure between them and their Oxygens, in both directions,
-          # so that they will properly mask each other.
+          # Add to the bondedNeighborList with their parent Oxygen as bonded one way so that dots on
+          # a Phantom Hydrogen within its Oxygen will be excluded.  Do not mark the Oxygen as being
+          # bonded to the Phantom Hydrogen to avoid having it mask collisions between the Oxygen and
+          # other atoms.
           origCount = len(self._atoms)
-          for a in phantoms:
-            self._atoms.append(a)
-            self._spatialQuery.add(a)
+          for p in phantoms:
+            self._atoms.append(p[0])
+            self._spatialQuery.add(p[0])
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
-            self._extraAtomInfo.setMappingFor(a, eai)
-            bondedNeighborLists[a] = []
+            self._extraAtomInfo.setMappingFor(p[0], eai)
+            bondedNeighborLists[p[0]] = [p[1]]
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")

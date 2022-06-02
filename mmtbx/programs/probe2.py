@@ -1991,8 +1991,9 @@ Note:
                 # @todo In the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
-                # original Probe.  For now, we separately handle Phantom Hydrogen
-                # interactions as special cases in the code.
+                # original Probe and would have the undesirable effect of a potential
+                # Hydrogen hiding a true collision.  This requires special-case handling
+                # of Phantom Hydrogen interactions in the dot-scoring code.
                 #bondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
