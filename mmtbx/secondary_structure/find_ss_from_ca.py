@@ -321,6 +321,8 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   # The routine extract_segment below assumes that the residues in an individual
   #  model are sequential (no insertion codes)
   # if CA-CA or P-P distance is > distance-cutoff then split there
+  # NOTE: Returns a list of model_info objects (not mmtbx.model objects). These
+  #  objects have an attribute: hierarchy which you can use.
   model_list=[]
   if hierarchy:
     if not info: info={}
