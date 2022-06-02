@@ -652,7 +652,8 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
         for m in self._movers:
           loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(type(m),loc))
+          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
+          self._moverInfo[m],loc))
           self._doFixup(m.FixUp(loc))
         self._infoString += _ReportTiming("fix up Movers")
 
