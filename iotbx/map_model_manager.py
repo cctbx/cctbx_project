@@ -8206,7 +8206,7 @@ class map_model_manager(object):
 
     # Decide what is new
 
-    if model_dict: # take new model_dict without deep_copy
+    if model_dict is not None: # take new model_dict without deep_copy
       new_model_dict = model_dict
     else:  # deep_copy existing model_dict
       new_model_dict = {}
