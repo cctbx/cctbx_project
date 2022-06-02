@@ -208,6 +208,8 @@ class _SingletonOptimizer(object):
     # Initialize internal variables.
     self._infoString = ""
     self._atomDump = ""
+    self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
+    self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
 
     ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
@@ -446,26 +448,46 @@ class _SingletonOptimizer(object):
           phantomHydrogenRadius = 1.0
 
         # Find every Oxygen that is part of a water and get the Phantom Hydrogens for it
+        # unless it has out-of-bounds parameter values.  If the water Oxygen has out-of-bounds
+        # parameters, then we remove it from the atoms to be considered (but not from the
+        # model) by removing them from the atom list and from the spatial query structure.
         phantoms = []
+        watersToDelete = []
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
-            # We're an acceptor and not a donor.
-            ei = self._extraAtomInfo.getMappingFor(a)
-            ei.isDonor = False
-            ei.isAcceptor = True
-            self._extraAtomInfo.setMappingFor(a, ei)
+            if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
 
-            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
-                            False, phantomHydrogenRadius)
-            if len(newPhantoms) > 0:
-              resName = a.parent().resname.strip().upper()
-              resID = str(a.parent().parent().resseq_as_int())
-              chainID = a.parent().parent().parent().id
-              resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-              self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
-              for p in newPhantoms:
-                self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
-            phantoms += newPhantoms
+              # We're an acceptor and not a donor.
+              ei = self._extraAtomInfo.getMappingFor(a)
+              ei.isDonor = False
+              ei.isAcceptor = True
+              self._extraAtomInfo.setMappingFor(a, ei)
+
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
+                              False, phantomHydrogenRadius)
+              if len(newPhantoms) > 0:
+                resName = a.parent().resname.strip().upper()
+                resID = str(a.parent().parent().resseq_as_int())
+                chainID = a.parent().parent().parent().id
+                resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+                self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
+                for p in newPhantoms:
+                  self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
+              phantoms += newPhantoms
+
+            else:
+              # Occupancy or B factor are out of bounds, so remove this atom from consideration.
+              self._infoString += _VerboseCheck(3,"Ignoring "+
+                a.name.strip()+" "+a.parent().resname.strip()+" "+str(a.parent().parent().resseq_as_int())+
+                " "+str(a.parent().parent().parent().id)+
+                " with occupancy "+str(a.occ)+" and B factor "+str(a.b)+"\n")
+              watersToDelete.append(a)
+
+        if len(watersToDelete) > 0:
+          self._infoString += _VerboseCheck(1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
+          for a in watersToDelete:
+            self._atoms.remove(a)
+            self._spatialQuery.remove(a)
 
         if len(phantoms) > 0:
 
