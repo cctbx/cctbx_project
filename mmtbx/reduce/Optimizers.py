@@ -241,6 +241,24 @@ class _SingletonOptimizer(object):
       bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
       self._infoString += _ReportTiming("compute bond proxies")
 
+      ################################################################################
+      # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
+      # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
+      # We won't get bonds between atoms in different conformations.
+      bondedNeighborLists = Helpers.getBondedNeighborLists(myModel.atoms(), bondProxies)
+      self._infoString += _ReportTiming("compute bonded neighbor lists")
+
+      ################################################################################
+      # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+      # This is done for all atoms in the model.
+      global probePhil
+      ret = Helpers.getExtraAtomInfo(
+        model = model, bondedNeighborLists = bondedNeighborLists,
+        useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
+      self._extraAtomInfo = ret.extraAtomInfo
+      self._infoString += ret.warnings
+      self._infoString += _ReportTiming("get extra atom info")
+
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
       # in reverse order so we finalize all non-alternate ones to match the first.
@@ -293,26 +311,10 @@ class _SingletonOptimizer(object):
         _ReportTiming(None)
 
         ################################################################################
-        # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
-        # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
-        # We won't get bonds between atoms in different conformations.
-        bondedNeighborLists = Helpers.getBondedNeighborLists(myModel.atoms(), bondProxies)
-        self._infoString += _ReportTiming("compute bonded neighbor lists")
-
-        ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
         self._spatialQuery = probeExt.SpatialQuery(self._atoms)
         self._infoString += _ReportTiming("construct spatial query")
 
-        ################################################################################
-        # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        global probePhil
-        ret = Helpers.getExtraAtomInfo(
-          model = model, bondedNeighborLists = bondedNeighborLists,
-          useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
-        self._extraAtomInfo = ret.extraAtomInfo
-        self._infoString += ret.warnings
-        self._infoString += _ReportTiming("get extra atom info")
 
         ################################################################################
         # Initialize any per-alternate data structures now that we have the atoms and
