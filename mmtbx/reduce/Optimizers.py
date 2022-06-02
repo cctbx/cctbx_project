@@ -724,11 +724,11 @@ class _SingletonOptimizer(object):
     # consistency with the spatial-query structure.
     for i, doDelete in enumerate(positionReturn.deleteMes[index]):
       if doDelete:
-        self._spatialQuery.add(positionReturn.atoms[i])
+        self._spatialQuery.remove(positionReturn.atoms[i])
         self._deleteMes.add(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Deleting atom\n")
       else:
-        self._spatialQuery.remove(positionReturn.atoms[i])
+        self._spatialQuery.add(positionReturn.atoms[i])
         self._deleteMes.discard(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
 
