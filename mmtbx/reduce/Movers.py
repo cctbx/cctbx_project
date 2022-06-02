@@ -942,15 +942,21 @@ class MoverHisFlip(object):
       raise ValueError("MoverHisFlip(): Could not find CB")
 
     # Find the Hydrogen attached to ND1
-    bonded = bondedNeighborLists[nd1Atom]
-    if len(bonded) != 3:
+    partners = bondedNeighborLists[nd1Atom]
+    if len(partners) != 3:
       raise ValueError("MoverHisFlip(): ND1 does not have three bonded neighbors")
-    nd1HAtom = None
-    for b in bonded:
-      if b.element_is_hydrogen():
-        nd1HAtom = b
-    if nd1HAtom is None:
-      raise ValueError("MoverHisFlip(): ND1 does not have a bonded hydrogen (probably ionically bound)")
+    hydrogens = []
+    carbons = []
+    for a in partners:
+      if a.element_is_hydrogen():
+        hydrogens.append(a)
+      elif a.element == "C":
+        carbons.append(a)
+    if len(hydrogens) != 1:
+      raise ValueError("MoverHisFlip(): ND1 does not have one bonded hydrogen (probably ionically bound)")
+    if len(carbons) != 2:
+      raise ValueError("MoverHisFlip(): ND1 does not have two bonded carbons")
+    nd1HAtom = hydrogens[0]
 
     # Find CA on the other side of CB and find CBs Hydrogens
     caAtom = None
