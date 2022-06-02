@@ -1831,6 +1831,12 @@ END
   # @todo
 
   #========================================================================
+  # Check that the occupancy and B-factor cut-offs for water Oxygens are causing them
+  # to be ignored in the calculations by putting an atom in the way and making sure it
+  # is ignored.
+  # @todo
+
+  #========================================================================
   # Generate an example data model with a small molecule in it or else read
   # from the specified file.
   infoString = ""
