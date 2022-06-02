@@ -49,7 +49,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 # Value of 2 reports timing information.
 # Setting it to 0 removes all informational messages.
 # Setting it above 1 provides additional debugging information.
-verbosity = 5
+verbosity = 3
 
 # Probe PHIL parameters that are passed to Probe methods.  These enable modification of
 # Probe behavior without having to pass individual parameters through the various Optimizer
