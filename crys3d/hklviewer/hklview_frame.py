@@ -32,6 +32,7 @@ NOREFLDATA = "No reflection data has been selected"
 
 class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
+    self.master_phil = libtbx.phil.parse( masterphilstr )
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
@@ -39,7 +40,7 @@ class HKLViewFrame() :
     self.ano_spg_tpls =[]
     self.merge_answer = [None]
     self.dmin = -1
-    self.verbose = 0
+    self.verbose = 1
     if 'verbose' in kwds:
       try:
         self.verbose = eval(kwds['verbose'])
@@ -119,6 +120,7 @@ class HKLViewFrame() :
     self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
+    self.validate_preset_buttons()
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -130,12 +132,16 @@ class HKLViewFrame() :
 
 
   def mprint(self, msg, verbose=0, end="\n"):
-    if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose <= self.verbose) \
-     or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
-      if self.guiSocketPort:
+    if self.guiSocketPort:
+      if  verbose == 0:
+        # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": msg + end } )
-      else:
-        print(msg)
+      if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
+       or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
+        # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
+        self.SendInfoToGUI( { "alert": msg + end } )
+    else:
+      print(msg)
 
 
   def find_free_port(self):
@@ -198,7 +204,6 @@ class HKLViewFrame() :
 
 
   def ResetPhil(self, extraphil=None):
-    self.master_phil = libtbx.phil.parse( masterphilstr )
     self.currentphil = self.master_phil
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
@@ -362,7 +367,6 @@ class HKLViewFrame() :
       oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
       if msgtype=="preset_philstr":
-        #current_selected_info = self.master_phil.fetch(source=self.currentphil ).extract().selected_info
         currentNGLscope = self.currentphil.extract().NGL
         self.ResetPhil()
         self.viewer.sceneisdirty = True
@@ -1078,7 +1082,7 @@ class HKLViewFrame() :
       activebtns = []
       # look for strings like data_array.label="F,SIGFP" and see if that data column exists in the file
       uniquebtnids = set([])
-      self.mprint("Preset buttons:")
+      self.mprint("Preset buttons:", verbose=1)
       for ibtn,(btn_id, btnlabel, philstr) in enumerate(self.allbuttonslist):
         if btn_id not in uniquebtnids:
           uniquebtnids.add(btn_id)
@@ -1095,7 +1099,7 @@ class HKLViewFrame() :
         if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
           btnphilobj, unusedparms = self.master_phil.fetch(btnphil, track_unused_definitions=True)
           for parm in unusedparms:
-            self.mprint( "Preset button, %s, has unrecognised phil parameter:\n   %s" %(btn_id, parm.path))
+            self.mprint( "Preset button, %s, has unrecognised phil parameter:\n   %s" %(btn_id, parm.path), verbose=1)
           btnphilextract = btnphilobj.extract()
           if btnphilextract.viewer.data_array.label is not None:
             philstr_label = btnphilextract.viewer.data_array.label
@@ -1140,40 +1144,40 @@ class HKLViewFrame() :
                   veclabels += "," + philveclabel
             if (iphilvec+1) > nvectorsfound:
               self.mprint("\"%s\", is disabled until a vector, \"%s\", has been " \
-                   "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel))
+                   "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
         miller_array_operation_can_be_done = False
         if millaroperationstr:
-          for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == arr1label or datatype == arr1type:
+          for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if datalabel == arr1label or datatype == arr1type:
               miller_array_operation_can_be_done = True
               break
           if miller_array_operation_can_be_done:
             self.mprint("\"%s\", declared using %s and %s is assigned to data %s of type %s." \
-                          %(btnlabel, arr1label, arr1type, label, datatype))
-            activebtns.append((self.allbuttonslist[ibtn],True))
+                          %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
+            activebtns.append((self.allbuttonslist[ibtn],True, datalabel))
           else:
             self.mprint("\"%s\", declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],False))
+            activebtns.append((self.allbuttonslist[ibtn],False, ""))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
-          for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if label == philstr_label:
+          for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            if datalabel == philstr_label:
               labeltypefound = True
               break
           if not labeltypefound:
-            for inflst, pidx, fidx, label, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
+            for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
               if philstr_type is not None and philstr_type == datatype:
                 labeltypefound = True
                 break
           if labeltypefound and nvectorsfound == len(philstr_vectors):
             self.mprint("\"%s\", assigned to dataset %s of type %s." \
-                          %(btnlabel + veclabels, label, datatype))
-            activebtns.append(((btn_id, btnlabel + veclabels, philstr),True))
+                          %(btnlabel + veclabels, datalabel, datatype), verbose=1)
+            activebtns.append(((btn_id, btnlabel + veclabels, philstr),True, datalabel))
           else:
             self.mprint("\"%s\", expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],False))
+            activebtns.append((self.allbuttonslist[ibtn],False, ""))
 
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True

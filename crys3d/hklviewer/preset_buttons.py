@@ -1,6 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
 buttonsdeflist = [
+  ("Intensities", "Show Intensities", """
+                                            viewer {
+                                              data_array {
+                                                label = "I,SIGI"
+                                                datatype = "Intensity"
+                                              }
+                                            }
+"""),
+  ("amplitudes", "Show Amplitudes", """
+                                            viewer {
+                                              data_array {
+                                                label = "FOBS,SIGFOBS"
+                                                datatype = "Amplitude"
+                                              }
+                                            }
+"""),
   ("H_I", "Show plane of intensities with constant H", """
                                                           clip_plane {
                                                             normal_vector = "H (1,0,0)"
@@ -114,7 +130,7 @@ buttonsdeflist = [
                                                             }
  """),
 
-("FoversigF", "F/SigF",
+("FoversigF", "F/SigF ( miller_array.data()/miller_array.sigmas() )",
  """
                 miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
                 viewer {
@@ -126,7 +142,7 @@ buttonsdeflist = [
 
 
  """),
-("IoverSigI", "I/SigI",
+("IoverSigI", "I/SigI ( miller_array.data()/miller_array.sigmas() )",
  """
               miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
               viewer {
@@ -136,7 +152,7 @@ buttonsdeflist = [
                 }
               }
  """),
-("Evalues", "E-values",
+("Evalues", "E-values ( miller_array.normalize() )",
  """
                     miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
                     viewer {

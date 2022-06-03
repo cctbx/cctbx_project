@@ -476,6 +476,7 @@ newarray._sigmas = sigs
     self.spacegroups = {}
     self.info = []
     self.infostr = ""
+    self.alertstr = ""
     self.fileisvalid = False
     self.NewFileLoaded = False
     self.NewMillerArray = False
@@ -510,13 +511,15 @@ newarray._sigmas = sigs
       self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
       self.actiondebug.triggered.connect(self.DebugInteractively)
       self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
+      self.actionSave_Current_Image.setDisabled(True)
       self.actionSettings.triggered.connect(self.SettingsDialog)
       self.actionAbout.triggered.connect(self.aboutform.show)
       self.actionExit.triggered.connect(self.window.close)
       self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
+      self.actionSave_reflection_file.setDisabled(True)
       self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
     else:
-      self.textInfo.setVisible(False) # stdout sent to chimeraX's console instead
+      self.tabText.setVisible(False) # stdout sent to chimeraX's console instead
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
@@ -534,7 +537,7 @@ newarray._sigmas = sigs
 
 
   def onPresetbtn_click(self):
-    for i,((btnname, label, philstr), isenabled) in enumerate(self.buttonsdeflist):
+    for i,((btnname, label, philstr), isenabled, datalabel) in enumerate(self.buttonsdeflist):
       if self.__getattribute__(btnname).isChecked():
         self.send_message(philstr, msgtype = "preset_philstr")
         self.ipresetbtn = i
@@ -549,6 +552,7 @@ newarray._sigmas = sigs
     self.millerarraytableform.setVisible(False)
     self.ColourMapSelectDlg.setVisible(False)
     self.select_millertable_column_dlg.setVisible(False)
+    self.dockWidget.setVisible(False)
     self.window.setVisible(False)
 
     if self.UseOSBrowser == False:
@@ -622,14 +626,20 @@ newarray._sigmas = sigs
     print("File Downloaded to: %s" %file_path)
 
 
+  def setWindowFilenameTitles(self, fname):
+    self.window.setWindowTitle("HKLviewer: " + fname)
+    self.dockWidget.setWindowTitle("HKLviewer Controls: " + fname)
+
+
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
     if fileName:
-      self.window.setWindowTitle("HKLviewer: " + fileName)
+      self.setWindowFilenameTitles( fileName)
       self.textInfo.setPlainText("")
+      self.textAlerts.setPlainText("")
       self.fileisvalid = False
       self.send_message('openfilename = "%s"' %fileName )
       self.MillerComboBox.clear()
@@ -839,6 +849,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             if "Destroying HKLViewFrame" in currentinfostr:
               self.canexit = True
 
+          currentalertstr = ""
+          if self.infodict.get("alert"):
+            currentalertstr = self.infodict.get("alert",[])
+            if self.closing:
+              print(currentalertstr)
+
           if self.infodict.get("tabulate_miller_array"):
             currentinfostr = "Received table data"
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
@@ -912,7 +928,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
           if self.infodict.get("file_name"):
-            self.window.setWindowTitle("HKLviewer: " + self.infodict.get("file_name", "") )
+            self.setWindowFilenameTitles( self.infodict.get("file_name", ""))
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -968,7 +984,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.ColourMapSelectDlg.activateWindow()
 
           if self.infodict.get("CurrentDatatype"):
+            # sent by jsview_3d.HKLview_3d.DrawNGLJavaScript() once reflection have been rendered
             self.ColourMapSelectDlg.setDataType(self.infodict.get("CurrentDatatype", ""))
+            self.actionSave_Current_Image.setDisabled(False)
 
           if self.infodict.get("bin_labels_type_idxs"):
             bin_labels_type_idxs = self.infodict.get("bin_labels_type_idxs",False)
@@ -996,11 +1014,13 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               widgetToRemove = self.gridLayout_24.itemAt(i).widget()
               self.gridLayout_24.removeWidget(widgetToRemove)
               widgetToRemove.setParent(None)
-            # programmatically create the preset buttons
-            for i,((btnname, label, _), isenabled) in enumerate(self.buttonsdeflist):
+            # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
+            for i,((btnname, label, _), isenabled, datalabel) in enumerate(self.buttonsdeflist):
               self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
               self.__getattribute__(btnname).setObjectName(btnname)
               self.__getattribute__(btnname).setText(label)
+              if datalabel != "":
+                self.__getattribute__(btnname).setToolTip("using " + datalabel)
               self.__getattribute__(btnname).setEnabled(isenabled)
               self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
               self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
@@ -1018,6 +1038,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if currentinfostr:
             self.AddInfoText(currentinfostr)
 
+          if currentalertstr:
+            self.AddAlertsText(currentalertstr)
+
           if (self.NewFileLoaded or self.NewMillerArray) or self.NewHKLscenes:
             self.NewMillerArray = False
             if self.millerarraytablemodel:
@@ -1027,13 +1050,23 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.make_new_millertable()
             #self.UsePersistedQsettings
             self.NewFileLoaded = False
+            self.actionSave_reflection_file.setDisabled(False)
 
           if self.NewHKLscenes:
             self.NewHKLscenes = False
+
       except Exception as e:
         errmsg = str(e)
         if "Resource temporarily unavailable" not in errmsg: # ignore errors from no connection to ZMQ socket
           print( errmsg  +  traceback.format_exc(limit=10) )
+
+
+  def tabTextScrollDownShow(self, textbox):
+    # If tab is not the current one shown scroling down to the bottom of the textbox is exceeded by one pagestep
+    # So subtract a pagestep from the scroll value (and then some) to display the latest addition to the text output
+    textbox.verticalScrollBar().setValue( textbox.verticalScrollBar().maximum() - (textbox.verticalScrollBar().pageStep()-2) )
+    ctextbox = self.tabText.widget( self.tabText.currentIndex() ).children()[1]
+    ctextbox.verticalScrollBar().setValue( ctextbox.verticalScrollBar().maximum()  )
 
 
   def AddInfoText(self, currentinfostr):
@@ -1041,10 +1074,21 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       print(currentinfostr)
     else:
       self.infostr += currentinfostr
-      # display no more than self.bufsize bytes of text
+      # display no more than self.bufsize Kbytes of text
       self.infostr = self.infostr[-1000*self.textinfosize:]
       self.textInfo.setPlainText(self.infostr)
-      self.textInfo.verticalScrollBar().setValue( self.textInfo.verticalScrollBar().maximum()  )
+      self.tabTextScrollDownShow(self.textInfo)
+
+
+  def AddAlertsText(self, currentalertstr):
+    if self.isembedded:
+      print(currentalertstr)
+    else:
+      self.alertstr += currentalertstr
+      # display no more than self.bufsize Kbytes of text
+      self.alertstr = self.alertstr[-1000*self.textinfosize:]
+      self.textAlerts.setPlainText(self.alertstr)
+      self.tabTextScrollDownShow(self.textAlerts)
 
 
   def make_new_millertable(self):
@@ -1241,6 +1285,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
     self.select_millertable_column_dlg.resize()
     self.textInfo.setFont(font)
+    self.textAlerts.setFont(font)
     self.SpaceGrpUCellText.setFont(font)
 
   def onBrowserFontsizeChanged(self, val):
@@ -1250,7 +1295,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
   def onClearTextBuffer(self):
     self.textInfo.clear()
+    self.textAlerts.clear()
     self.infostr = ""
+    self.alertstr = ""
 
 
   def onDebugShowPhil(self):
@@ -1273,9 +1320,11 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if self.wraptextbtn.isChecked():
       self.wraptextinfo = True
       self.textInfo.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+      self.textAlerts.setLineWrapMode(QPlainTextEdit.WidgetWidth)
     else:
       self.wraptextinfo = False
       self.textInfo.setLineWrapMode(QPlainTextEdit.NoWrap)
+      self.textAlerts.setLineWrapMode(QPlainTextEdit.NoWrap)
 
 
   def onCameraPerspect(self,val):
@@ -2250,11 +2299,10 @@ clip_plane {
     self.settings.setValue("TextBufferSize", self.textinfosize )
     self.settings.setValue("BrowserFontSize", self.browserfontsize )
     self.settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
-    self.settings.setValue("windowsize", self.window.size())
+    self.settings.setValue("geometry", self.window.saveGeometry())
+    self.settings.setValue("windowstate", self.window.saveState())
     self.settings.setValue("splitter1Sizes", self.splitter.saveState())
     self.settings.setValue("splitter2Sizes", self.splitter_2.saveState())
-    self.settings.setValue("splitter3Sizes", self.splitter_3.saveState())
-
     self.settings.beginGroup("DataTypesGroups")
     datatypesgroups = self.settings.childGroups()
     for datatype in list(self.datatypedict.keys()):
@@ -2346,10 +2394,10 @@ clip_plane {
     self.fontsize = float(self.settings.value("FontSize", 10))
     self.browserfontsize = float(self.settings.value("BrowserFontSize", 9))
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
-    self.windowsize = self.settings.value("windowsize", None)
+    self.geometry = self.settings.value("geometry", None)
+    self.windowstate = self.settings.value("windowstate", None)
     self.splitter1sizes = self.settings.value("splitter1Sizes", None)
     self.splitter2sizes = self.settings.value("splitter2Sizes", None)
-    self.splitter3sizes = self.settings.value("splitter3Sizes", None)
     self.settings.endGroup()
     if use_factory_default_settings:
       # Revert to storing settings in the default Qsettings location such as
@@ -2397,13 +2445,15 @@ clip_plane {
       self.ttipClickradio.setChecked(self.ttip_click_invoke == "click")
       self.ttipHoverradio.setChecked(self.ttip_click_invoke == "hover")
     if self.splitter1sizes is not None and self.splitter2sizes is not None and \
-       self.splitter3sizes is not None and self.windowsize is not None:
-      self.window.resize(self.windowsize)
+     self.windowstate is not None:
+      self.window.restoreGeometry(self.geometry)
+      self.window.restoreState(self.windowstate)
       if self.webpagedebugform and self.devmode:
         self.webpagedebugform.resize( self.window.size())
       self.splitter.restoreState(self.splitter1sizes)
       self.splitter_2.restoreState(self.splitter2sizes)
-      self.splitter_3.restoreState(self.splitter3sizes)
+      # must make dockWidget visible explicitly for restoring it
+      self.dockWidget.setVisible(True)
     self.setDatatypedict(self.datatypedict)
     if self.make_new_factory_default_settings:
       # Create a new Factory default settings .ini file to be stored alongside this source file.

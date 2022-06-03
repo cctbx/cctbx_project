@@ -462,6 +462,7 @@ class HKLview_3d:
           self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
         clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+        self.mprint("clip plane distance from origin: %s" %hkldist)
       infomsg = ""
       self.normal_vecnr = -1
       for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
@@ -489,11 +490,11 @@ class HKLview_3d:
         # in units of cartvec projected onto real_space_vec
         if self.params.clip_plane.is_assoc_real_space_vector:
           orientvector = real_space_vec
-          self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec))
+          self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec), verbose=1)
         else:
           orientvector = cartvec
           abcvec = self.all_vectors[ self.normal_vecnr ][6]
-          self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec))
+          self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec), verbose=1)
           if self.all_vectors[ self.normal_vecnr ][1] == "TNCS":
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
