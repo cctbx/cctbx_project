@@ -1265,7 +1265,7 @@ Wait for the command to finish, then try again.""" % vars())
         print('  unset LD_LIBRARY_PATH', file=f)
         print('  unset DYLD_LIBRARY_PATH', file=f)
         print('  unset DYLD_FALLBACK_LIBRARY_PATH', file=f)
-        print('  export PATH=${LIBTBX_PREFIX}/bin:${PATH}', file=f)
+        print('  export PATH="${LIBTBX_PREFIX}/bin:${PATH}"', file=f)
         print('fi', file=f)
         source_is_py = False
         if (source_file is not None):
