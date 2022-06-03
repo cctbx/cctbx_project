@@ -18,7 +18,7 @@ def run():
   test_006()
   test_007()
   test_008()
-  test_009()
+  #test_009()
 
 # ------------------------------------------------------------------------------
 
@@ -50,7 +50,11 @@ def compare_models(pdb_str,
   h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
   h_names_added = list(h_atoms_added.extract_name())
   number_h_added = hd_sel_h_added.count(True)
-  #
+
+  #f = open("bla_intermediate.pdb","w")
+  #f.write(model_h_added.model_as_pdb())
+  #f.close()
+
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
   assert(number_h_expected == number_h_added)
@@ -262,17 +266,29 @@ ATOM     50  HG3 PRO A 247      19.387  11.607  11.053  1.00 47.67           H
 ATOM     51  HD2 PRO A 247      17.201  11.896  10.714  1.00 44.76           H
 ATOM     52  HD3 PRO A 247      17.097  10.929  11.971  1.00 44.76           H
 TER
-HETATM   53  N   TAM H   2       9.323  12.496   7.335  1.00 20.00           N
-HETATM   54  C   TAM H   2       8.060  12.492   8.002  1.00 20.00           C
-HETATM   55  C1  TAM H   2       7.540  13.901   8.071  1.00 20.00           C
-HETATM   56  C2  TAM H   2       8.386  11.881   9.335  1.00 20.00           C
-HETATM   57  C3  TAM H   2       7.035  11.686   7.294  1.00 20.00           C
-HETATM   58  C4  TAM H   2       7.128  14.539   6.744  1.00 20.00           C
-HETATM   59  C5  TAM H   2       8.930  10.458   9.271  1.00 20.00           C
-HETATM   60  C6  TAM H   2       5.660  11.992   7.821  1.00 20.00           C
-HETATM   61  O4  TAM H   2       5.710  14.391   6.585  1.00 20.00           O
-HETATM   62  O5  TAM H   2       7.872   9.487   9.299  1.00 20.00           O
-HETATM   63  O6  TAM H   2       5.714  12.262   9.200  1.00 20.00           O
+HETATM   48  N   TAM H   2       9.323  12.496   7.335  1.00 20.00           N
+HETATM   49  C   TAM H   2       8.060  12.492   8.002  1.00 20.00           C
+HETATM   50  C1  TAM H   2       7.540  13.901   8.071  1.00 20.00           C
+HETATM   51  C2  TAM H   2       8.386  11.881   9.335  1.00 20.00           C
+HETATM   52  C3  TAM H   2       7.035  11.686   7.294  1.00 20.00           C
+HETATM   53  C4  TAM H   2       7.128  14.539   6.744  1.00 20.00           C
+HETATM   54  C5  TAM H   2       8.930  10.458   9.271  1.00 20.00           C
+HETATM   55  C6  TAM H   2       5.660  11.992   7.821  1.00 20.00           C
+HETATM   56  O4  TAM H   2       5.710  14.391   6.585  1.00 20.00           O
+HETATM   57  O5  TAM H   2       7.872   9.487   9.299  1.00 20.00           O
+HETATM   58  O6  TAM H   2       5.714  12.262   9.200  1.00 20.00           O
+HETATM   59  H11 TAM H   2       6.779  13.910   8.672  1.00 20.00           H
+HETATM   60  H12 TAM H   2       8.223  14.452   8.485  1.00 20.00           H
+HETATM   61  H21 TAM H   2       7.589  11.879   9.888  1.00 20.00           H
+HETATM   62  H22 TAM H   2       9.038  12.437   9.790  1.00 20.00           H
+HETATM   63  H31 TAM H   2       7.225  10.740   7.392  1.00 20.00           H
+HETATM   64  H32 TAM H   2       7.071  11.859   6.340  1.00 20.00           H
+HETATM   65  H41 TAM H   2       7.600  14.117   6.009  1.00 20.00           H
+HETATM   66  H42 TAM H   2       7.377  15.476   6.732  1.00 20.00           H
+HETATM   67  H61 TAM H   2       5.264  12.763   7.385  1.00 20.00           H
+HETATM   68  H62 TAM H   2       5.044  11.254   7.689  1.00 20.00           H
+HETATM   69  HN1 TAM H   2       9.235  12.859   6.527  1.00 20.00           H
+HETATM   70  HN2 TAM H   2       9.942  12.134   7.862  1.00 20.00           H
 """
 
 pdb_str_002 = """
