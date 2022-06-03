@@ -105,7 +105,22 @@ Get the refined geometry file for the SACLA data; also make sure the environment
 $ pushd $SACLA_DATA/geom; wget https://www.cxidb.org/data/189/sacla2019/step2_refined2.expt; popd
 ```
 
+### CCTBX basics
 
+Most cctbx tools are run from the command line using .phil files to configure the job. An
+introduction to the phil format is here: http://cctbx.sourceforge.net/libtbx_phil.html
+
+Available phil parameters can be printed by adding the `-c` flag. For example:
+
+```
+$ dials.stills_process -c -a2 -e10 | less
+```
+
+will output all parameters up to "expert level 10" with help strings (`-a2`) and display them
+in a pager (`less`).
+
+
+    
 ### Run spotfinding
 
 We will use the DIALS spotfinder on 9 selected runs with a lot of hits; this is enough spots to
