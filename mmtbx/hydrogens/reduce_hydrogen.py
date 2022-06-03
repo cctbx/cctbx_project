@@ -74,8 +74,8 @@ class place_hydrogens():
     self.site_labels_no_para    = list()
     self.charged_atoms          = list()
     self.sl_removed             = list()
-    self.n_H_initial = 0
-    self.n_H_final   = 0
+    self.n_H_initial            = 0
+    self.n_H_final              = 0
 
 # ------------------------------------------------------------------------------
 
@@ -258,16 +258,15 @@ class place_hydrogens():
 # ------------------------------------------------------------------------------
 
   def add_missing_H_atoms_at_bogus_position(self):
-    '''
-    ! this changes hierarchy in place !
-    Add missing H atoms to a pdb_hierarchy object
-    all H atoms will be at center of coordinates (all of them superposed)
+    '''Add missing H atoms at bogus positions to the pdb_hierarchy
 
-    Parameters
-    ----------
-    pdb_hierarchy : cctbx hierarchy object
-      pdb_hierarchy to which missing H atoms will be added
+    This procedure changes the hierarchy in place.
+    All H atoms are placed at center of coordinates + (0.5, 0.5, 0.5)
+    The translation is necessary because sometimes the center of coordinates
+    coincides with the position of a heavy atom.
 
+    In one residue/entity, all newly placed H are superposed, they will be
+    moved to their expected position later.
     '''
     # TODO temporary fix until v3 names are in mon lib
     alternative_names = [
@@ -278,6 +277,7 @@ class place_hydrogens():
       ('HE1', 'HE2', 'HE3'),
       ('HG11', 'HG12', 'HG13')
       ]
+    # end TODO
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
@@ -354,9 +354,14 @@ class place_hydrogens():
 # ------------------------------------------------------------------------------
 
   def exclude_H_on_links(self):
+    """Remove H atoms bound to heavy atoms that form a link
+
+    An exception are HD1 and HE2 of HIS. The mover functionality in reduce will
+    take care of those.
+    """
     origin_ids = linking_class()
-    rm = self.model.get_restraints_manager()
-    bond_proxies_simple, asu = rm.geometry.get_all_bond_proxies(
+    grm = self.model.get_restraints_manager()
+    bond_proxies_simple, asu = grm.geometry.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
     elements = self.model.get_hierarchy().atoms().extract_element()
     exclusion_iseqs = list()
@@ -364,7 +369,7 @@ class place_hydrogens():
     all_proxies = [p for p in bond_proxies_simple]
     for proxy in asu:
       all_proxies.append(proxy)
-    # Loop through bond proxies to find links (origin_id != 0)
+    # Loop through bond proxies to find links (i.e. proxies with origin_id != 0)
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
@@ -375,12 +380,18 @@ class place_hydrogens():
         exclusion_dict[j] = proxy.origin_id
     sel_remove = flex.size_t()
 
-    # Now find H atoms bound to linked atoms
+    atoms = self.model.get_atoms()
+    # Find H atoms bound to linked atoms
     removed_dict = dict()
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
       else: assert 0 # never goes here
+      # Exception for HIS HD1 and HE2
+      if (atoms[i].parent().resname == 'HIS' and
+        atoms[i].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
+      if (atoms[j].parent().resname == 'HIS' and
+        atoms[j].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
       if(elements[i] in ["H","D"] and j in exclusion_iseqs):
         sel_remove.append(i)
         removed_dict[i] = exclusion_dict[j]
@@ -388,17 +399,13 @@ class place_hydrogens():
         sel_remove.append(j)
         removed_dict[j] = exclusion_dict[i]
     #
-
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
                    origin_ids.get_origin_key(removed_dict[atom.i_seq]))
         for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
-#    self.site_labels_removed = list(OrderedDict.fromkeys(sl_removed))
-    self.sl_removed = sl_removed
-    self.exclusion_iseqs = exclusion_iseqs
     #
     self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
-
-
+    self.sl_removed = sl_removed
+    self.exclusion_iseqs = exclusion_iseqs
 
 # ------------------------------------------------------------------------------
 
