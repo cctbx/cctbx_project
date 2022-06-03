@@ -33,8 +33,9 @@ class mpiCommEmulator(object):
     return self.reduce(data, operation, 0)
   def alltoall(self, items):
     return items
-  def scatter(self, items):
-    return items
+  def scatter(self, items, root):
+    assert root == 0 and len(items) == 1
+    return items[0]
   def gather(self, item, root):
     items = []
     items.append(item)
