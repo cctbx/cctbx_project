@@ -7,7 +7,6 @@ import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
 from cctbx.array_family import flex
-from collections import OrderedDict
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from cctbx.geometry_restraints.linking_class import linking_class
 #
