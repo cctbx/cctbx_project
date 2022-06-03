@@ -579,9 +579,9 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Print the final state and score for all Movers
-        def _scoreMoverReportClash(self, m):
+        def _scoreMoverReportClash(self, m, index):
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          score = coarse.preferenceEnergies[index] * self._preferenceMagnitude
           clash = False
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
@@ -608,9 +608,9 @@ class _SingletonOptimizer(object):
             final = self._coarseLocations[m]
             other = (final + numPositions//2) % numPositions
             self._setMoverState(coarse, other)
-            otherScore, otherBump = _scoreMoverReportClash(self, m)
+            otherScore, otherBump = _scoreMoverReportClash(self, m, other)
             self._setMoverState(coarse, final)
-            finalScore, finalBump = _scoreMoverReportClash(self, m)
+            finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
             elif abs(finalScore - otherScore) <= 0.5:
