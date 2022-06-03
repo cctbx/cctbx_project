@@ -25,9 +25,6 @@ def mon_lib_query(residue, mon_lib_srv):
       residue_name=residue.resname,
       atom_names=residue.atoms().extract_name())
     return md
-    # get_func = getattr(mon_lib_srv, "get_comp_comp_id", None)
-    # if (get_func is not None): return get_func(comp_id=residue)
-    # return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
 # ==============================================================================
 
@@ -183,12 +180,6 @@ class place_hydrogens():
     if print_time:
       print("set up riding H manager and some cleanup:", round(time.time()-t0, 2))
 
-#    t0 = time.time()
-#    self.exclude_H_on_disulfides()
-#    #self.exclude_h_on_coordinated_S()
-#    if print_time:
-#      print("find disulfides:", round(time.time()-t0, 2))
-
   #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
 
@@ -205,11 +196,6 @@ class place_hydrogens():
     self.model.idealize_h_riding()
     if print_time:
       print("reset adp, occ; idealize:", round(time.time()-t0, 2))
-
-#    t0 = time.time()
-#    self.exclude_h_on_coordinated_S()
-#    if print_time:
-#      print("coordinated S:", round(time.time()-t0, 2))
 
     t0 = time.time()
     self.exclude_H_on_links()
@@ -407,67 +393,6 @@ class place_hydrogens():
     self.sl_removed = sl_removed
     self.exclusion_iseqs = exclusion_iseqs
 
-# ------------------------------------------------------------------------------
-
-  def exclude_H_on_disulfides(self):
-    rm = self.model.get_restraints_manager()
-    bond_proxies_simple, asu = rm.geometry.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
-    elements = self.model.get_hierarchy().atoms().extract_element()
-    ss_i_seqs = []
-    all_proxies = [p for p in bond_proxies_simple]
-    for proxy in asu:
-      all_proxies.append(proxy)
-    for proxy in all_proxies:
-      if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
-      elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
-      else: assert 0 # never goes here
-      if([elements[i],elements[j]].count("S")==2): # XXX may be coordinated if metal edits used
-        ss_i_seqs.extend([i,j])
-    sel_remove = flex.size_t()
-    for proxy in all_proxies:
-      if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
-      elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
-      else: assert 0 # never goes here
-      if(elements[i] in ["H","D"] and j in ss_i_seqs): sel_remove.append(i)
-      if(elements[j] in ["H","D"] and i in ss_i_seqs): sel_remove.append(j)
-    #
-    sl_disulfides = [atom.id_str().replace('pdb=','').replace('"','')
-        for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
-    self.site_labels_disulfides = list(OrderedDict.fromkeys(sl_disulfides))
-
-    self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
-
-# ------------------------------------------------------------------------------
-
-  def exclude_h_on_coordinated_S(self): # XXX if edits used it should be like in exclude_h_on_SS
-    rm = self.model.get_restraints_manager().geometry
-    elements = self.model.get_hierarchy().atoms().extract_element()
-    # Find possibly coordinated S
-    exclusion_list = ["H","D","T","S","O","P","N","C","SE"]
-    sel_s = []
-    sl = [atom.id_str().replace('pdb=','').replace('"','')
-        for atom in self.model.get_hierarchy().atoms()]
-#    for proxy in rm.pair_proxies().nonbonded_proxies.simple:
-#      i,j = proxy.i_seqs
-#      if(elements[i] == "S" and not elements[j] in exclusion_list): sel_s.append(i)
-#      if(elements[j] == "S" and not elements[i] in exclusion_list): sel_s.append(j)
-#      if(elements[i] == "S" or elements[j]=='S'): print(sl[i], sl[j])
-
-    # Find H attached to possibly coordinated S
-    bond_proxies_simple, asu = rm.get_all_bond_proxies(
-      sites_cart = self.model.get_sites_cart())
-    for proxy in bond_proxies_simple:
-      i,j = proxy.i_seqs
-      if(elements[i] == "S" and not elements[j] in exclusion_list): sel_s.append(i)
-      if(elements[j] == "S" and not elements[i] in exclusion_list): sel_s.append(j)
-    sel_remove = flex.size_t()
-    for proxy in bond_proxies_simple:
-      i,j = proxy.i_seqs
-      if(elements[i] in ["H","D"] and j in sel_s): sel_remove.append(i)
-      if(elements[j] in ["H","D"] and i in sel_s): sel_remove.append(j)
-      #if(elements[i] == "S" or elements[j]=='S'): print(sl[i], sl[j])
-    self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
 
 # ------------------------------------------------------------------------------
 
@@ -522,7 +447,6 @@ heavy atoms or H atoms are missing.'''
       msg = '''Atom %s was not placed because it is involved in %s'''
       for item in self.sl_removed:
         print(msg % (item[0], item[1]), file=log)
-
 
 # ------------------------------------------------------------------------------
 
