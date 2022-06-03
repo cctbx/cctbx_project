@@ -129,8 +129,8 @@ class Script(object):
     self._resolve_persistent_columns()
 
     workers = []
-    steps = self.params.dispatch.step_list if self.params.dispatch.step_list else default_steps
-    for step in steps:
+    self.params.dispatch.step_list = self.params.dispatch.step_list or default_steps
+    for step in self.params.dispatch.step_list:
       step_factory_name = step
       step_additional_info = []
 

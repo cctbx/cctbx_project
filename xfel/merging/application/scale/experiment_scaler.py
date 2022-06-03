@@ -83,7 +83,10 @@ class experiment_scaler(worker):
         high_res_experiments += 1
 
       # apply scale factors
-      if not self.params.postrefinement.enable:
+      if (
+          not self.params.postrefinement.enable or
+          'postrefine' not in self.params.dispatch.step_list
+      ):
         exp_reflections['intensity.sum.value'] *= result.slope
         exp_reflections['intensity.sum.variance'] *= (result.slope**2)
 
