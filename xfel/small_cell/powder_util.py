@@ -3,12 +3,19 @@ from dxtbx.model.experiment_list import DetectorComparison
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
+import numpy as np
+import copy
+from dials.array_family import flex
+from cctbx import uctbx
+from scitbx.math import five_number_summary
 
 class Spotfinder_radial_average:
 
-  def __init__(self, params):
+  def __init__(self, experiments, reflections, params):
+    self.reflections = reflections
+    self.experiments = experiments
     self.params = params
-    n_panels = len(params.input.experiments[0].data[0].detector)
+    n_panels = len(experiments[0].detector)
     self.panelsums = [np.zeros(params.n_bins) for _ in range(n_panels)]
 
   def _process_pixel(self, i_panel, s0, panel, xy, value):
@@ -42,17 +49,13 @@ class Spotfinder_radial_average:
   def calculate(self):
     params = self.params
 
-    # TODO: flatten_xxxx
-    assert len(params.input.reflections)==1, "Please supply 1 reflections file"
-    assert len(params.input.experiments)==1, "Please supply 1 experiments file"
-
     # setup limits and bins
     n_bins = params.n_bins
     d_max, d_min = params.d_max, params.d_min
     d_inv_low, d_inv_high = 1/d_max, 1/d_min
     unit_wt = (params.peak_weighting == "unit")
-    refls = params.input.reflections[0].data
-    expts = params.input.experiments[0].data
+    refls = self.reflections
+    expts = self.experiments
 
     #apply beam center correction to expts
     detector = expts[0].detector
@@ -164,3 +167,93 @@ Currently supported options: %s""" %backend_list
     else:
       plt.show()
 
+
+class Center_scan:
+  def __init__(self, experiments, reflections, params):
+    self.params = params
+
+    self.reflections = reflections
+    self.experiments = experiments
+    assert len(self.experiments.detectors())==1
+
+    self.net_origin_shift = np.array([0.,0.,0.])
+    self.centroid_px_mm_done = False
+    self.px_size = self.experiments.detectors()[0][0].get_pixel_size()
+    self.prune_refls()
+
+
+  def prune_refls(self, margin=0.02):
+    self.refls_pruned = self.reflections
+    self.update_dvals()
+    d_min_inv = 1/self.params.center_scan.d_min + margin
+    d_max_inv = max(1/self.params.center_scan.d_max - margin, 0.001)
+    d_min = 1/d_min_inv
+    d_max = 1/d_max_inv
+    sel_lt = self.reflections['d'] < d_max
+    sel_gt = self.reflections['d'] > d_min
+    sel = sel_lt & sel_gt
+    self.refls_pruned = self.reflections.select(sel)
+
+  def update_dvals(self):
+    refls = self.refls_pruned
+    if not self.centroid_px_mm_done:
+      refls.centroid_px_to_mm(self.experiments)
+      self.centroid_px_mm_done = True
+    refls.map_centroids_to_reciprocal_space(self.experiments)
+    d_star_sq = flex.pow2(refls['rlp'].norms())
+    refls['d'] = uctbx.d_star_sq_as_d(d_star_sq)
+    sel_lt = refls['d'] < self.params.center_scan.d_max
+    sel_gt = refls['d'] > self.params.center_scan.d_min
+    sel = sel_lt & sel_gt
+    self.dvals = refls.select(sel)['d']
+
+  def width(self):
+    _, q1, _, q3, _ = five_number_summary(self.dvals)
+    iqr = q3 - q1
+    sel_lt = self.dvals < q3 + 1.5*iqr
+    sel_gt = self.dvals > q1 - 1.5*iqr
+    sel = sel_lt & sel_gt
+    if sel.count(True) < 0.8*len(self.dvals):
+      return 999
+    else:
+      result = self.dvals.select(sel).sample_standard_deviation()
+      print(f'width {result:.5f} from {sel.count(True)} dvals')
+      return result
+
+  def search_step(self, step_px, nsteps=5, update=True):
+    step_size_mm = np.array(self.px_size + (0.,)) * step_px
+    assert nsteps%2 == 1, "nsteps should be odd"
+    step_min = -1 * (nsteps // 2)
+    step_max = nsteps//2 + 1e-6 # make the range inclusive
+    step_arange = np.arange(step_min, step_max)
+    steps = np.array([(x, y, 0) for x in step_arange for y in step_arange])
+    steps_mm = steps * step_size_mm
+
+    detector = self.experiments.detectors()[0]
+    hierarchy = detector.hierarchy()
+    fast = hierarchy.get_local_fast_axis()
+    slow = hierarchy.get_local_slow_axis()
+    origin = hierarchy.get_local_origin()
+
+    results = []
+    self.update_dvals()
+    print(f'start: {self.width():.5f}')
+
+    for step_mm in steps_mm:
+      new_origin = step_mm + origin
+      hierarchy.set_local_frame(fast, slow, new_origin)
+      self.update_dvals()
+      result = self.width()
+      results.append(result)
+
+    i_best = results.index(min(results))
+    origin_shift = steps_mm[i_best]
+    if update:
+      new_origin = origin + origin_shift
+      self.net_origin_shift += origin_shift
+    else:
+      new_origin = origin
+    hierarchy.set_local_frame(fast, slow, new_origin)
+    print(f'step: {origin_shift}')
+    print(f'end: {min(results):.5f}')
+    print(f'net shift: {self.net_origin_shift}')
