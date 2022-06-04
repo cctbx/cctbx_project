@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Wed Dec  1 15:06:09 2021
+The date of file generation: Sat Jun  4 10:05:43 2022
 """
 from __future__ import absolute_import, division, print_function
 
@@ -33,6 +33,7 @@ lookup = {
   "6FC" : "?",
   "6FU" : "?",
   "6OP" : "?",
+  "7S3" : "?",
   "8AZ" : "?",
   "9V9" : "?",
   "A7C" : "?",
@@ -213,6 +214,7 @@ lookup = {
   "NR1" : "?",
   "NRI" : "?",
   "NYM" : "?",
+  "OFC" : "?",
   "P9G" : "?",
   "PBT" : "?",
   "PDU" : "?",
@@ -220,6 +222,7 @@ lookup = {
   "S6M" : "?",
   "SAY" : "?",
   "SOS" : "?",
+  "T0P" : "?",
   "T0T" : "?",
   "THM" : "?",
   "THP" : "?",
@@ -254,7 +257,10 @@ lookup = {
   "6MZ" : "A",
   "6NW" : "A",
   "7AT" : "A",
+  "8AH" : "A",
   "8AN" : "A",
+  "9SI" : "A",
+  "9SY" : "A",
   "A23" : "A",
   "A2L" : "A",
   "A2M" : "A",
@@ -319,6 +325,7 @@ lookup = {
   "LV2" : "C",
   "M4C" : "C",
   "M5M" : "C",
+  "MMX" : "C",
   "N5M" : "C",
   "N7X" : "C",
   "OMC" : "C",
@@ -428,6 +435,7 @@ lookup = {
   "GCK" : "DC",
   "I5C" : "DC",
   "IMC" : "DC",
+  "J0X" : "DC",
   "MCY" : "DC",
   "ME6" : "DC",
   "NCU" : "DC",
@@ -649,6 +657,7 @@ lookup = {
   "2MG" : "G",
   "2SG" : "G",
   "7MG" : "G",
+  "7SN" : "G",
   "8AA" : "G",
   "8OS" : "G",
   "A6G" : "G",
@@ -672,6 +681,7 @@ lookup = {
   "GOM" : "G",
   "GRB" : "G",
   "IG" : "G",
+  "IOO" : "G",
   "KAG" : "G",
   "KAK" : "G",
   "LG" : "G",
