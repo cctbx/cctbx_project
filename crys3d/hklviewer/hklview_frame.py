@@ -88,7 +88,7 @@ class HKLViewFrame() :
     self.viewer = jsview_3d.HKLview_3d( **kwds )
     self.allbuttonslist = buttonsdeflist
     if os.path.exists(self.userpresetbuttonsfname):
-      self.mprint("Using user defined preset-buttons from " + self.userpresetbuttonsfname)
+      self.mprint("Using user defined preset-buttons from " + self.userpresetbuttonsfname, verbose=1)
     else:
       factorydefault_userbutton_fname = os.path.join(os.path.split(jsview_3d.__file__)[0], "default_user_preset_buttons.py")
       import shutil
@@ -424,6 +424,7 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "openfilename"):
         fname = phl.openfilename
         phl = self.ResetPhilandViewer()
+        phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
           return False
         self.viewer.lastscene_id = phl.viewer.scene_id
@@ -589,7 +590,7 @@ class HKLViewFrame() :
 
 
   def process_all_miller_arrays(self, col):
-    self.mprint("Processing reflection data...")
+    #self.mprint("Processing reflection data")
     self.procarrays = []
     if self.params.merge_data == False:
       self.hkls.expand_to_p1 = False

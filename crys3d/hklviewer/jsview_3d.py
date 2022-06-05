@@ -958,7 +958,7 @@ class HKLview_3d:
         binvals[idiv] = e
       nuniquevalues = len(set(list(bindata)))
     binvals.sort()
-    self.mprint("Bin thresholds are:\n" + str(binvals))
+    self.mprint("Bin thresholds are:\n" + str(binvals), verbose=1)
     return binvals, nuniquevalues
 
 
@@ -2341,9 +2341,9 @@ in the space group %s\nwith unit cell %s\n""" \
 
     self.SendInfoToGUI({ "bin_labels_type_idxs": self.bin_labels_type_idxs})
 
-    self.mprint("Data can be binned according to:")
+    self.mprint("Data can be binned according to:", verbose=1)
     for i,e in enumerate(self.bin_labels_type_idxs):
-      self.mprint("%d, %s" %(i, e[0]))
+      self.mprint("%d, %s" %(i, e[0]), verbose=1)
 
 
   def get_binner_idx_from_label(self, binlabel):
