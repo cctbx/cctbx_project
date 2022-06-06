@@ -735,7 +735,7 @@ class HKLview_3d:
         return True
     if self.has_new_miller_array:
       self.identify_suitable_fomsarrays()
-    self.mprint("Constructing HKL scenes...", verbose=0)
+    self.mprint("Constructing HKL scenes...", verbose=1)
     idx,fdx = self.scene_id_to_array_and_foms_id(scene_id)
     fomarray = None
     if fdx >= 0: # index is -1 if idx is not paired with a FOM array
@@ -778,7 +778,7 @@ class HKLview_3d:
     ) =  self.HKLscenedict[self.HKLsceneKey]
     self.sceneisdirty = True
     self.has_new_miller_array = False
-    self.mprint("Done constructing HKL scenes", verbose=0)
+    self.mprint("Done constructing HKL scenes", verbose=1)
     return True
 
 
@@ -1893,9 +1893,12 @@ Distance: %s
     return rotmx
 
 
-  def GetVectorAndAngleFromRotationMx(self, rot):
+  def GetVectorAndAngleFromRotationMx(self, rot, ma=None):
     RotMx = matrix.sqr(rot.as_double())
-    uc = self.miller_array.unit_cell()
+    if ma==None:
+      ma = self.miller_array
+    uc = ma.unit_cell()
+    spg = ma.space_group()
     OrtMx = matrix.sqr( uc.orthogonalization_matrix())
     InvMx = OrtMx.inverse()
     ortrotmx = (OrtMx * RotMx * InvMx)
@@ -1906,16 +1909,18 @@ Distance: %s
     if not ortrotmx.is_r3_rotation_matrix():
       isProperRotation = False
       self.mprint("""Warning! The operation '%s' is not a proper rotation
-in the space group %s\nwith unit cell %s\n""" \
-        %(rot.as_hkl(), self.miller_array.space_group().info().symbol_and_number(), str(uc) ))
+in the space group %s\nwith unit cell %s""" \
+        %(rot.as_hkl(), spg.info().symbol_and_number(), str(uc) ), verbose=2)
       self.mprint("Inverse of implied rotation matrix,\n%s\nis not equal to its transpose,\n%s" \
-        %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=1)
+        %(str(roundoff(ortrotmx.inverse(),4)), str(roundoff(ortrotmx.transpose(),4))), verbose=2)
       improper_vec_angle = scitbx.math.r3_rotation_axis_and_angle_from_matrix(ortrot)
-      self.mprint("\nTrying to find nearest orthonormal matrix approximtion")
+      self.mprint("\nTrying to find nearest orthonormal matrix approximtion", verbose=2)
       Rmx = matrix.find_nearest_orthonormal_matrix(ortrotmx)
-      self.mprint("New suggested rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=1)
-      if not Rmx.is_r3_rotation_matrix():
-        self.mprint("Failed finding an approximate rotation matrix!")
+      self.mprint("New suggested rotation matrix is\n%s" %str(roundoff(Rmx,4)), verbose=2)
+      if not Rmx.is_r3_rotation_matrix() or (Rmx - ortrotmx).norm_sq() > 0.5:
+      # norm_sq of a rotation matrix should be 3. Deviating from that indicates improper rotation
+        self.mprint("Failed finding an approximate rotation matrix for \"%s\" in %s" \
+         %(rot.as_hkl(), spg.info().symbol_and_number()), verbose=1)
         return (0,0,0), 0.0, label, order
       ortrotmx = Rmx
     ortrot = ortrotmx.as_mat3()
@@ -1935,12 +1940,11 @@ in the space group %s\nwith unit cell %s\n""" \
       usedrotmx = scitbx.math.r3_rotation_axis_and_angle_as_matrix( rotaxis[0], theta )
       self.mprint("Final proper rotation matrix:\n%s" %str(roundoff(matrix.sqr(usedrotmx),4)), verbose=1)
     ## adjust the length of the rotation axes to be compatible with the sphere of reflections
-    #s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
     if abs(theta) > 0.0001 and rotaxis.norm() > 0.01: # avoid nullvector
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
+      forder = roundoff(2*math.pi/theta, 2)
       label = "%s-fold" %str(order)
     return tuple((rotaxis)[0]), theta, label, order
-    #return tuple((s*rotaxis)[0]), theta, label, order
 
 
   def show_rotation_axes(self):

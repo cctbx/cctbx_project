@@ -23,6 +23,7 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -130,7 +131,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 599))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 691))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -1017,7 +1018,7 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
-        self.tabText.setCurrentIndex(0)
+        self.tabText.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1172,5 +1173,5 @@ class Ui_MainWindow(object):
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabDetails), QCoreApplication.translate("MainWindow", u"Details", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
-        self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Alerts", None))
+        self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi

@@ -152,7 +152,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>448</width>
-                  <height>599</height>
+                  <height>691</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -1650,7 +1650,7 @@
           </widget>
           <widget class="QTabWidget" name="tabText">
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="tabInfo">
             <attribute name="title">
@@ -1704,7 +1704,7 @@
            </widget>
            <widget class="QWidget" name="tabWarnings">
             <attribute name="title">
-             <string>Alerts</string>
+             <string>Verbose Info</string>
             </attribute>
             <layout class="QGridLayout" name="gridLayout">
              <property name="leftMargin">

@@ -496,6 +496,7 @@ newarray._sigmas = sigs
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
     self.chimeraxsession = None
+    self.tabText.setCurrentIndex(0)
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -843,16 +844,14 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           currentinfostr = ""
           if self.infodict.get("info"):
-            currentinfostr = self.infodict.get("info",[])
-            if self.closing:
-              print(currentinfostr)
+            currentinfostr = self.infodict.get("info","")
             if "Destroying HKLViewFrame" in currentinfostr:
               self.canexit = True
 
           currentalertstr = ""
-          if self.infodict.get("alert"):
-            currentalertstr = self.infodict.get("alert",[])
-            if self.closing:
+          if self.infodict.get("alert") or self.infodict.get("info"):
+            currentalertstr = self.infodict.get("alert","") + self.infodict.get("info","")
+            if self.closing: # Qt GUI has gone so print oending strings to the shell
               print(currentalertstr)
 
           if self.infodict.get("tabulate_miller_array"):
