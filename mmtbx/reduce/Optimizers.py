@@ -597,7 +597,8 @@ class _SingletonOptimizer(object):
           description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
 
           # If the Mover is a flip of some kind, then the substring "lipped" will be present
-          # in the description.  When that happens, we check the final state and the flipped
+          # in the description (Flipped and Unflipped both have this subtring).
+          # When that happens, we check the final state and the other flip state
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
@@ -1509,8 +1510,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
           # NOTE that we must check the position of the atom in its coarse configuration rather
           # than its FixUp configuration because that is the location that we use to determine if
           # we have an ionic bond.
-          def _modifyIfNeeded(nitro, coarseNitroPos, hydro, infoString):
+          def _modifyIfNeeded(nitro, coarseNitroPos, hydro):
             # Helper function to check and change things for one of the Nitrogens.
+            result = ""
             myRad = extraAtomInfo.getMappingFor(nitro).vdwRadius
             minDist = myRad
             maxDist = 0.25 + myRad + maxVDWRadius
@@ -1520,16 +1522,17 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
                 dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                  infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
+                  result += _VerboseCheck(1,'Not adding Hydrogen to '+resNameAndID+nitro.name+' and marking as an acceptor '+
                     '(ionic bond to '+n.name.strip()+')\n')
                   extra = extraAtomInfo.getMappingFor(nitro)
                   extra.isAcceptor = True
                   extraAtomInfo.setMappingFor(nitro, extra)
                   deleteAtoms.append(hydro)
                   break
+            return result
 
-          _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1], infoString)
-          _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
+          infoString += _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1])
+          infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
           infoString += _VerboseCheck(1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
