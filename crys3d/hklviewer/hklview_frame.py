@@ -1133,8 +1133,8 @@ class HKLViewFrame() :
                   activebtns.append((self.allbuttonslist[ibtn],False, ""))
                   button_fate_decided = True
                   break
-                else:
-                  philstr_user_vectors_labels = uvec.label
+              else:
+                philstr_user_vectors_labels.append( uvec.label)
           if button_fate_decided:
             continue
 

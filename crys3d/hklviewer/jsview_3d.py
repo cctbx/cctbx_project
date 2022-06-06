@@ -456,13 +456,6 @@ class HKLview_3d:
       clipwidth = None
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
-
-      if self.params.clip_plane.clip_width: # then we are clipping
-        if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
-          self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
-        clipwidth = self.params.clip_plane.clip_width
-        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-        self.mprint("clip plane distance from origin: %s" %hkldist)
       infomsg = ""
       self.normal_vecnr = -1
       for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
@@ -474,6 +467,13 @@ class HKLview_3d:
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.normal_vecnr ][3]
         self.L = self.all_vectors[ self.normal_vecnr ][7]
+
+        if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
+          self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
+        clipwidth = self.params.clip_plane.clip_width
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+        self.mprint("clip plane distance from origin: %s" %hkldist)
+
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
@@ -495,6 +495,7 @@ class HKLview_3d:
           orientvector = cartvec
           abcvec = self.all_vectors[ self.normal_vecnr ][6]
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec), verbose=1)
+          infomsg = "Vector distance from origin: %d" %(self.params.clip_plane.hkldist)
           if self.all_vectors[ self.normal_vecnr ][1] == "TNCS":
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
