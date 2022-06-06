@@ -857,7 +857,7 @@ class MoverHisFlip(object):
     if ne2Atom.element != "N":
       raise ValueError("MoverHisFlip(): ne2Atom is not a Nitrogen")
     partners = bondedNeighborLists[ne2Atom]
-    if len(partners) != 3:
+    if len(partners) < 3:
       raise ValueError("MoverHisFlip(): NE2 does not have three bonded neighbors")
     hydrogens = []
     carbons = []
@@ -943,7 +943,7 @@ class MoverHisFlip(object):
 
     # Find the Hydrogen attached to ND1
     partners = bondedNeighborLists[nd1Atom]
-    if len(partners) != 3:
+    if len(partners) < 3:
       raise ValueError("MoverHisFlip(): ND1 does not have three bonded neighbors")
     hydrogens = []
     carbons = []
