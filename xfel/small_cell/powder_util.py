@@ -179,6 +179,7 @@ class Center_scan:
     self.net_origin_shift = np.array([0.,0.,0.])
     self.centroid_px_mm_done = False
     self.px_size = self.experiments.detectors()[0][0].get_pixel_size()
+    self.target_refl_count = 0
     self.prune_refls()
 
 
@@ -205,15 +206,19 @@ class Center_scan:
     sel_lt = refls['d'] < self.params.center_scan.d_max
     sel_gt = refls['d'] > self.params.center_scan.d_min
     sel = sel_lt & sel_gt
+    count = sel.count(True)
+    if count > self.target_refl_count:
+      self.target_refl_count = count
     self.dvals = refls.select(sel)['d']
 
   def width(self):
+    if len(self.dvals) < 3: return 999
     _, q1, _, q3, _ = five_number_summary(self.dvals)
     iqr = q3 - q1
     sel_lt = self.dvals < q3 + 1.5*iqr
     sel_gt = self.dvals > q1 - 1.5*iqr
     sel = sel_lt & sel_gt
-    if sel.count(True) < 0.8*len(self.dvals):
+    if sel.count(True) < 0.8*self.target_refl_count:
       return 999
     else:
       result = self.dvals.select(sel).sample_standard_deviation()
