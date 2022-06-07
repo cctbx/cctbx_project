@@ -79,6 +79,8 @@ var StopAnimateBtn = null;
 var hklequationmsg = "";
 var animatheta = 0.0;
 var animaaxis = new NGL.Vector3();
+var componenttheta = 0.0;
+var componentaxis = new NGL.Vector3();
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
@@ -484,17 +486,10 @@ function AnimateRotation(axis, animatheta) {
 
     if (animationspeed > 0)
       animatheta = (animatheta + deltaTime * animationspeed) % 360;
-    //else
-    //  animatheta = 0.0;
     if (shapeComp == null)
       return;
 
-    m4.makeRotationAxis(axis, animatheta);
-    shapeComp.setTransform(m4);
-    for (let i = 0; i < vectorshapeComps.length; i++) {
-      if (typeof vectorshapeComps[i].reprList != "undefined")
-        vectorshapeComps[i].setTransform(m4);
-    }
+    RotateAxisComponents(axis, animatheta);
     stage.viewer.requestRender();
 
     if (animationspeed > 0)
@@ -502,6 +497,19 @@ function AnimateRotation(axis, animatheta) {
   }
   if (animationspeed > 0)
     requestAnimationFrame(render);
+}
+
+
+function RotateAxisComponents(axis, theta)
+{
+  let m4 = new NGL.Matrix4();
+  m4.makeRotationAxis(axis, theta);
+
+  shapeComp.setTransform(m4);
+  for (let i = 0; i < vectorshapeComps.length; i++) {
+    if (typeof vectorshapeComps[i].reprList != "undefined")
+      vectorshapeComps[i].setTransform(m4);
+  }
 }
 
 
@@ -530,7 +538,7 @@ async function SetAutoview(mycomponent, t)
 
   while (true) {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
-    // asynchroneously in the background. Its completion time is at least t miliseconds and depends on the 
+    // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
     // data size of mycomponent. It will have completed once the condition 
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
@@ -908,7 +916,7 @@ function onMessage(e)
           expansion_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
         }
       }
-
+      RotateAxisComponents(componentaxis, componenttheta); // apply any component rotation if specified on the GUI
       RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
     }
@@ -947,7 +955,7 @@ function onMessage(e)
     }
     
     if (msgtype === "RotateStage")
-    {
+    { // rotate stage and its components
       WebsockSendMsg('Rotating stage ' + pagename);
 
       let sm = new Float32Array(9);
@@ -971,7 +979,7 @@ function onMessage(e)
     }
 
     if (msgtype === "RotateAxisStage")
-    {
+    { // rotate stage and its components
       WebsockSendMsg('Rotating stage around axis' + pagename);
 
       let sm = new Float32Array(9);
@@ -1015,22 +1023,16 @@ function onMessage(e)
       SendComponentRotationMatrixMsg();
     }
 
-    if (msgtype === "RotateAxisComponents" && shapeComp != null) {
+    if (msgtype === "RotateAxisComponents" && shapeComp != null)
+    { // rotating components from "Rotate around Vector" GUI control. Stage remains still
       WebsockSendMsg('Rotating components around axis ' + pagename);
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
-      let axis = new NGL.Vector3();
-      let theta = parseFloat(val[3]);
-      axis.x = parseFloat(val[0]);
-      axis.y = parseFloat(val[1]);
-      axis.z = parseFloat(val[2]);
-      m4.makeRotationAxis(axis, theta);
-
-      shapeComp.setTransform(m4);
-      for (let i = 0; i < vectorshapeComps.length; i++) {
-        if (typeof vectorshapeComps[i].reprList != "undefined")
-          vectorshapeComps[i].setTransform(m4);
-      }
+      componenttheta = parseFloat(val[3]);
+      componentaxis.x = parseFloat(val[0]);
+      componentaxis.y = parseFloat(val[1]);
+      componentaxis.z = parseFloat(val[2]);
+      RotateAxisComponents(componentaxis, componenttheta);
 
       if (val[4] == "verbose")
         postrotmxflag = true;
@@ -1107,6 +1109,14 @@ function onMessage(e)
 
     if (msgtype === "DrawVector")
     {
+      componenttheta = 0.0;
+      componentaxis.x = 0.0;
+      componentaxis.y = 0.0;
+      componentaxis.z = 1.0;
+      // unapply any component rotation if specified on the "rotate around vector" GUI control to avoid 
+      // messing up the stage orientation with the component orientation when aligning stage with a vector
+      RotateAxisComponents(componentaxis, componenttheta);
+
       let r1 = new Float32Array(3);
       let r2 = new Float32Array(3);
       let rgb = new Float32Array(3);

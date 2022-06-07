@@ -372,7 +372,7 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
-
+    
     if has_phil_path(diff_phil, "angle_around_vector"):
       i,deg = self.rotate_around_numbered_vector()
       self.params.clip_plane.angle_around_vector = str([i, deg])
@@ -388,7 +388,7 @@ class HKLview_3d:
     if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
       self.rotate_stage_around_cartesian_vector([0,0,1], self.params.viewer.angle_around_ZHKL_vector)
       self.params.viewer.angle_around_ZHKL_vector = None
-
+    
     if has_phil_path(diff_phil, "miller_array_operation"):
       # Display the new dataset user has just added which is the last in the list but not if specified
       # with data_array scope which happens when clicking a preset button assigned with a miller_array_operation.
@@ -456,6 +456,12 @@ class HKLview_3d:
       clipwidth = None
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
+      if self.params.clip_plane.clip_width: # then we are clipping
+        if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
+          self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
+        clipwidth = self.params.clip_plane.clip_width
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+        self.mprint("clip plane distance from origin: %s" %hkldist)
       infomsg = ""
       self.normal_vecnr = -1
       for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
