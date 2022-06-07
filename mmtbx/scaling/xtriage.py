@@ -1371,8 +1371,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     log_file_name = params.scaling.input.parameters.reporting.log)
 
   if(params.scaling.input.parameters.reporting.log is not None):
-    output_file = open( params.scaling.input.parameters.reporting.log  ,'w')
-    output_file.write(string_buffer.getvalue())
+    with open( params.scaling.input.parameters.reporting.log  ,'w') as output_file:
+      output_file.write(string_buffer.getvalue())
 
   if (params.scaling.input.optional.hklout is not None):
     # FIXME DEPRECATED, replace with mmtbx.command_line.massage_data

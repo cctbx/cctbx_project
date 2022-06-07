@@ -170,10 +170,9 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
         file_name = "%s/%s_%s.pdb" % (
           rotamers_sep_sub_dir, resname, rotamer.id)
         if (verbose): print("Writing file:", file_name)
-        f = open(file_name, "w")
-        print("REMARK %s %s" % (resname, rotamer.id), file=f)
-        f.write(pdb_hierarchy_work.as_pdb_string(append_end=True))
-        del f
+        with  open(file_name, "w") as f:
+          print("REMARK %s %s" % (resname, rotamer.id), file=f)
+          f.write(pdb_hierarchy_work.as_pdb_string(append_end=True))
         #
         rotamer_sites_cart += matrix.col((4,4,4)) * i_rotamer
         pdb_atoms_work.set_xyz(new_xyz=rotamer_sites_cart)
@@ -187,13 +186,12 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
         atom_strings.append(pdb_hierarchy_work.as_pdb_string(append_end=False))
       file_name = "%s/%s.pdb" % (rotamers_sub_dir, resname)
       if (verbose): print("Writing file:", file_name)
-      f = open(file_name, "w")
-      for s in remark_strings:
-        print(s, file=f)
-      for s in atom_strings:
-        f.write(s)
-      print("END", file=f)
-      del f
+      with open(file_name, "w") as f:
+        for s in remark_strings:
+          print(s, file=f)
+        for s in atom_strings:
+          f.write(s)
+        print("END", file=f)
 
 def compare_dihedrals(
       mon_lib_srv,

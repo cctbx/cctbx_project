@@ -85,8 +85,8 @@ def exercise():
   for i_model, conf in enumerate(models):
     conf.id = str(i_model + 1)
     new_hierarchy.append_model(conf)
-  open("shear_frag_naive_ensemble.pdb", "w").write(
-    new_hierarchy.as_pdb_string())
+  with open("shear_frag_naive_ensemble.pdb", "w") as f:
+    f.write(new_hierarchy.as_pdb_string())
 
 def generate_inputs():
   import iotbx.pdb.hierarchy

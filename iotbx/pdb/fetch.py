@@ -235,17 +235,20 @@ def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
   file_name = None
   if data_type == "xray" :
     file_name = os.path.join(os.getcwd(), "%s-sf.cif" % id)
-    open(file_name, "wb").write(data.read())
+    with open(file_name, "wb") as f:
+      f.write(data.read())
     if not quiet :
       print("Structure factors saved to %s" % file_name, file=log)
   elif (data_type in ["fasta", "seq"]):
     file_name = os.path.join(os.getcwd(), "%s.fa" % id)
-    open(file_name, "wb").write(data.read())
+    with open(file_name, "wb") as f:
+      f.write(data.read())
     if not quiet :
       print("Sequence saved to %s" % file_name, file=log)
   else :
     file_name = os.path.join(os.getcwd(), "%s.%s" %(id, format))
-    open(file_name, "wb").write(data.read())
+    with open(file_name, "wb") as f:
+      f.write(data.read())
     if not quiet :
       print("Model saved to %s" % file_name, file=log)
   return file_name
@@ -273,7 +276,8 @@ def get_chemical_components_cif(code, return_none_if_already_present=False):
         raise
     else :
       file_name = "%s.cif" % code
-      open(file_name, "wb").write(data.read())
+      with open(file_name, "wb") as f:
+        f.write(data.read())
       return file_name
   elif (not return_none_if_already_present):
     return chem_comp_cif

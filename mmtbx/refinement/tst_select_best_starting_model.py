@@ -87,7 +87,8 @@ HETATM   66  O   HOH S   3     -11.809   0.108  -9.956  1.00 27.52           O
 HETATM   67  O   HOH S   4       1.580  -3.455 -11.035  1.00 44.76           O
 END
 """
-  open("tst_start_model_base.pdb", "w").write(pdb_base+pdb_base_water)
+  with open("tst_start_model_base.pdb", "w") as f:
+    f.write(pdb_base+pdb_base_water)
   params = """
     high_resolution = 1.75
     add_sigmas = True
@@ -98,7 +99,8 @@ END
       file_name = tst_start_model_base.mtz
     }
   """
-  open("tst_start_model_fmodel.eff", "w").write(params)
+  with open("tst_start_model_fmodel.eff", "w") as f:
+    f.write(params)
   assert (easy_run.fully_buffered(
     "phenix.fmodel tst_start_model_fmodel.eff"
   ).raise_if_errors().return_code == 0)
@@ -130,19 +132,19 @@ END
   xrs_out.set_sites_cart(sites_cart)
   hierarchy_out = hierarchy_in.deep_copy()
   hierarchy_out.adopt_xray_structure(xrs_out)
-  open("tst_start_model_1.pdb", "w").write(
-    hierarchy_out.as_pdb_string(crystal_symmetry=symm2))
+  with open("tst_start_model_1.pdb", "w") as f:
+    f.write(hierarchy_out.as_pdb_string(crystal_symmetry=symm2))
   # Model 2: no sidechains
   mc_sele = selection("(name N or name C or name O or name CA or name CB)")
   hierarchy_out = hierarchy_in.select(mc_sele)
   xrs_out = xrs_in.select(mc_sele)
-  open("tst_start_model_2.pdb", "w").write(
-    hierarchy_out.as_pdb_string(crystal_symmetry=xrs_out))
+  with open("tst_start_model_2.pdb", "w") as f:
+    f.write(hierarchy_out.as_pdb_string(crystal_symmetry=xrs_out))
   # Model 3: P1 symmetry
   symm3 = xrs_in.crystal_symmetry().customized_copy(
     space_group_info=sgtbx.space_group_info("P1"))
-  open("tst_start_model_3.pdb", "w").write(
-    hierarchy_out.as_pdb_string(crystal_symmetry=symm3))
+  with open("tst_start_model_3.pdb", "w") as f:
+    f.write(hierarchy_out.as_pdb_string(crystal_symmetry=symm3))
   # Model 4: shaken coordinates and ADPs
   def random_double(size, factor=1):
     d = flex.double()
@@ -154,10 +156,11 @@ END
   xrs_out.shake_adp()
   hierarchy_out = hierarchy_in.deep_copy()
   hierarchy_out.adopt_xray_structure(xrs_out)
-  open("tst_start_model_4.pdb", "w").write(
-    hierarchy_out.as_pdb_string(crystal_symmetry=xrs_out))
+  with open("tst_start_model_4.pdb", "w") as f:
+    f.write(hierarchy_out.as_pdb_string(crystal_symmetry=xrs_out))
   # Model 5: perfect, but missing CRYST1
-  open("tst_start_model_5.pdb", "w").write(hierarchy_in.as_pdb_string())
+  with open("tst_start_model_5.pdb", "w") as f:
+    f.write(hierarchy_in.as_pdb_string())
   # run method
   params = select_best_starting_model.master_phil.extract()
   params.rigid_body_refine = False
@@ -330,7 +333,8 @@ TER
 END
 """
   pdb_file = "tst_start_model_misc.pdb"
-  open(pdb_file, "w").write(pdb_str)
+  with open(pdb_file, "w") as f:
+    f.write(pdb_str)
   pdb_in = iotbx.pdb.hierarchy.input(pdb_file)
   pdb_hierarchy = pdb_in.hierarchy
   xray_structure = pdb_in.input.xray_structure_simple()
@@ -410,7 +414,8 @@ END
     reset_hetatm_flag=True,
     output_file="tst_start_model_misc_new.pdb",
     log=null_out())
-  lines = open("tst_start_model_misc_new.pdb").readlines()
+  with open("tst_start_model_misc_new.pdb") as f:
+    lines = f.readlines()
   for line in lines :
     assert (not line.startswith("HETATM"))
 

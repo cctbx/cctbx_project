@@ -99,7 +99,8 @@ def exercise():
   print("missing bond values counts:", missing_bond_values_counts)
   print("missing angle values counts:", missing_angle_values_counts)
   print("writing file table_of_contents")
-  open("table_of_contents", "w").write("\n".join(table_of_contents)+"\n")
+  with open("table_of_contents", "w") as f:
+    f.write("\n".join(table_of_contents)+"\n")
 
 if (__name__ == "__main__"):
   exercise()

@@ -22,7 +22,8 @@ ANISOU    7  CD1 LEU A   4     3049   3450   2083    277   -581   -559       C
 ATOM      8  CD2 LEU A   4      23.972  42.321  12.770  1.00 22.51           C
 ANISOU    8  CD2 LEU A   4     3022   3432   2100    219   -528   -600       C
 """
-  open("tmp_rigid_bond_test.pdb", "w").write(pdb_in)
+  with open("tmp_rigid_bond_test.pdb", "w") as f:
+    f.write(pdb_in)
   result = easy_run.fully_buffered(
     "mmtbx.rigid_bond_test tmp_rigid_bond_test.pdb").raise_if_errors()
   assert (result.return_code == 0)

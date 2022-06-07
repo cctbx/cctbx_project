@@ -174,7 +174,8 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
   easy_pickle.dump("%s.pkl" % params.output_base, results)
   print("Wrote %s.pkl" % params.output_base, file=out)
   csv = "\n".join([ r.format_csv() for r in results ])
-  open("%s.csv" % params.output_base, "w").write(csv)
+  with open("%s.csv" % params.output_base, "w") as f:
+    f.write(csv)
   print("Wrote %s.csv" % params.output_base, file=out)
   print("\nReference:", file=out)
   print("""\

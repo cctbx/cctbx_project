@@ -219,9 +219,8 @@ except ImportError as e:
 def main():
   i=0
   filename = 'cdl_nucleotide.pdb'
-  f=open(filename, 'w')
-  f.write(pdb)
-  del f
+  with open(filename, 'w') as f:
+    f.write(pdb)
   for param1 in range(2):
     if param1 and not restraintlib_installed: break
     for param2 in ['phenix', 'csd']:
@@ -238,9 +237,8 @@ def main():
       for line in std_asserts[i]:
         assert line in lines, 'missing %s' % line
 
-      f=open('%s.geo' % filename, 'r')
-      lines=f.read()
-      del f
+      with open('%s.geo' % filename, 'r') as f:
+        lines=f.read()
       for line in geo_asserts[i]:
         assert lines.find(line)>-1, 'missing %s' % line
 

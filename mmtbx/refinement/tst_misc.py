@@ -57,8 +57,9 @@ END""").construct_hierarchy()
   mmm = cs.min_max_mean()
   assert (mmm.min==10) and (mmm.max==10) and (mmm.mean==10)
   cs.save_pdb_file("shifted.pdb")
-  h3 = iotbx.pdb.input(source_info=None,
-    lines=open("shifted.pdb").readlines()).construct_hierarchy()
+  with open("shifted.pdb") as f:
+    lines = f.readlines()
+  h3 = iotbx.pdb.input(source_info=None, lines=lines).construct_hierarchy()
   a3 = h3.atoms()
   shifts = a3.extract_b()
   assert (shifts[-1] == -1.0)

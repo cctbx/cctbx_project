@@ -42,7 +42,8 @@ def exercise_space_group_handling():
     space_group_info=sg_p2,
     sigmas=flex.double(fc_p1.size(), 10.0))
   ic.export_as_scalepack_unmerged(file_name=base + ".sca")
-  open(base + ".pdb", "w").write(model_1yjp)
+  with open(base + ".pdb", "w") as f:
+    f.write(model_1yjp)
   args = [
     base + ".mtz",
     base + ".pdb",

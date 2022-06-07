@@ -280,17 +280,21 @@ def exercise(file_name=None, pdb_file_name = None, map_file_name = None ,
 
   # Read the new map and model
   import iotbx.pdb
+  with open(output_pdb_file_name) as f:
+    lines = f.read()
   new_model =  model_manager(
      model_input = iotbx.pdb.input(
          source_info = None,
-         lines = flex.split_lines(open(output_pdb_file_name).read())),
+         lines = flex.split_lines(lines)),
          crystal_symmetry = crystal_symmetry)
   assert new_model.model_as_pdb() == model.model_as_pdb()
 
+  with open(output_cif_file_name) as f:
+    f.read()
   new_model_from_cif =  model_manager(
      model_input = iotbx.pdb.input(
          source_info = None,
-         lines = flex.split_lines(open(output_cif_file_name).read())),
+         lines = flex.split_lines(lines)),
          crystal_symmetry = crystal_symmetry)
   assert new_model_from_cif.model_as_pdb() == model.model_as_pdb()
 

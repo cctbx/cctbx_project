@@ -16,8 +16,8 @@ The sample file contains alternate conformations.
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_endtoend.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_endtoend.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   count_bonds = 0
   count_angles = 0
   count_chirals = 0
@@ -49,8 +49,8 @@ The sample file contains alternate conformations.
           'outliers_only=True',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_endtoend_outliers_only.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_endtoend_outliers_only.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   count_bonds = 0
   count_angles = 0
   count_chirals = 0

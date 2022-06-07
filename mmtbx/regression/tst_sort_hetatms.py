@@ -80,7 +80,8 @@ HETATM   67  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
 END
 """
   pdb_file = "unsorted.pdb"
-  open(pdb_file, "w").write(pdb_raw)
+  with open(pdb_file, "w") as f:
+    f.write(pdb_raw)
   if (op.exists("unsorted_sorted.pdb")):
     os.remove("unsorted_sorted.pdb")
   out = StringIO()
@@ -136,7 +137,8 @@ HETATM   67  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
 END
 """
   pdb_file = "unsorted2.pdb"
-  open(pdb_file, "w").write(pdb_raw2)
+  with open(pdb_file, "w") as f:
+    f.write(pdb_raw2)
   if (op.exists("unsorted2_sorted.pdb")):
     os.remove("unsorted2_sorted.pdb")
   out = StringIO()
@@ -260,7 +262,8 @@ HETATM 4964  O   HOH X 977      44.190  81.253 -31.435  1.00 48.82           O
 HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
 """
   pdb_file = "unsorted3.pdb"
-  open(pdb_file, "w").write(pdb_raw)
+  with open(pdb_file, "w") as f:
+    f.write(pdb_raw)
   if (op.exists("unsorted3_sorted.pdb")):
     os.remove("unsorted3_sorted.pdb")
   out = StringIO()
@@ -277,8 +280,9 @@ HETATM 4965  O   HOH X 978      41.198  81.209 -30.407  1.00 48.77           O
   sel_cache = pdb_in.file_object.hierarchy.atom_selection_cache()
   sel = sel_cache.selection(sel_str)
   hierarchy_new = pdb_in.file_object.hierarchy.select(sel)
-  open("unsorted4.pdb", "w").write(hierarchy_new.as_pdb_string(
-    crystal_symmetry=pdb_in.file_object.crystal_symmetry()))
+  with open("unsorted4.pdb", "w") as f:
+    f.write(hierarchy_new.as_pdb_string(
+      crystal_symmetry=pdb_in.file_object.crystal_symmetry()))
   if (op.exists("unsorted4_sorted.pdb")):
     os.remove("unsorted4_sorted.pdb")
   out = StringIO()

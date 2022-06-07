@@ -332,7 +332,8 @@ def exercise_with_pdb(verbose):
     out = sys.stdout
   else:
     out = StringIO()
-  open("tmp_cctbx_geometry_restraints.pdb", "w").write(enk_pdb)
+  with open("tmp_cctbx_geometry_restraints.pdb", "w") as f:
+    f.write(enk_pdb)
   pdb_interpretation_params = pdb_interpretation.master_params.extract()
   pdb_interpretation_params.sort_atoms=False
   processed_pdb_file = pdb_interpretation.run(
@@ -556,7 +557,8 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       125.04 -   131.42: 13
   Bond angle restraints: 130''',
   ]
-  open("tst_cctbx_geometry_restraints_2_na.pdb", "w").write(pdb_str_1dpl_cutted)
+  with open("tst_cctbx_geometry_restraints_2_na.pdb", "w") as f:
+    f.write(pdb_str_1dpl_cutted)
   out1 = StringIO()
   out2 = StringIO()
   from mmtbx.monomer_library.server import MonomerLibraryServerError

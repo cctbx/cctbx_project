@@ -155,7 +155,8 @@ HETATM  132  O   HOH B  12      -1.576   1.103  11.035  1.00 44.76           O
 END
 """
   pdb_in = prefix + "_in.pdb"
-  open(pdb_in, "w").write(pdb_raw)
+  with open(pdb_in, "w") as f:
+    f.write(pdb_raw)
   mtz_in = prefix + "_in.mtz"
   params = """
     high_resolution = 1.75
@@ -169,7 +170,8 @@ END
       file_name = %s
     }
   """ % (pdb_in, mtz_in)
-  open("%s_fmodel.eff" % prefix, "w").write(params)
+  with open("%s_fmodel.eff" % prefix, "w") as f:
+    f.write(params)
   assert (easy_run.fully_buffered(
       "phenix.fmodel %s_fmodel.eff" % prefix
     ).raise_if_errors().return_code == 0)
@@ -192,8 +194,9 @@ def exercise():
         residue_group.remove_atom_group(atom_group)
         break
   assert old_ligand is not None
-  open("tst_ligand_ncs_start.pdb", "w").write(hierarchy.as_pdb_string(
-    crystal_symmetry=pdb_file.file_object.crystal_symmetry()))
+  with open("tst_ligand_ncs_start.pdb", "w") as f:
+    f.write(hierarchy.as_pdb_string(
+      crystal_symmetry=pdb_file.file_object.crystal_symmetry()))
   args = [
     "tst_ligand_ncs_start.pdb",
     mtz_in,

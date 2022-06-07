@@ -16,14 +16,15 @@ ATOM     43  CG2 VAL A   5      29.957  31.838  12.352  1.00  9.13           C
 TER
 END
 """
-  open('chiral_volume_validation_cases_val_normal.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_val_normal.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_val_normal.pdb',
           'out_file=chiral_volume_validation_cases_val_normal.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_val_normal.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_val_normal.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_val_base.pdb: A:   5: : :VAL:CA:2.628:0.932:PROTEIN
   #chiral_volume_validation_cases_val_base.pdb: A:   5: : :VAL:CB:-2.762:0.664:PROTEIN
   ca_volume = None
@@ -59,14 +60,15 @@ ATOM     42  CG1 VAL A   5      29.957  31.838  12.352  1.00  9.13           C
 ATOM     43  CG2 VAL A   5      30.211  33.394  14.304  1.00  5.28           C
 END
 """
-  open('chiral_volume_validation_cases_val_misnamed.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_val_misnamed.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_val_misnamed.pdb',
           'out_file=chiral_volume_validation_cases_val_misnamed.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_val_misnamed.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_val_misnamed.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_val_misnamed.pdb: A:   5: : :VAL:CA:2.628:0.932:PROTEIN
   #chiral_volume_validation_cases_val_misnamed.pdb: A:   5: : :VAL:CB:2.762:26.956:PROTEIN
   ca_volume = None
@@ -103,14 +105,15 @@ ATOM     67  CD2 LEU A   8      27.700  39.721  21.228  1.00 18.59           C
 TER
 END
 """
-  open('chiral_volume_validation_cases_leu_normal.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_leu_normal.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_leu_normal.pdb',
           'out_file=chiral_volume_validation_cases_leu_normal.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_leu_normal.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_leu_normal.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_leu_normal.pdb: A:   8: : :LEU:CA:2.369:0.707:PROTEIN
   #chiral_volume_validation_cases_leu_normal.pdb: A:   8: : :LEU:CG:-2.604:0.070:PROTEIN
   ca_volume = None
@@ -147,14 +150,15 @@ ATOM     66  CD1 LEU A   8      27.700  39.721  21.228  1.00 18.59           C
 ATOM     67  CD2 LEU A   8      29.308  39.750  23.095  1.00 19.31           C
 END
 """
-  open('chiral_volume_validation_cases_leu_misnamed.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_leu_misnamed.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_leu_misnamed.pdb',
           'out_file=chiral_volume_validation_cases_leu_misnamed.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_leu_misnamed.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_leu_misnamed.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_leu_misnamed.pdb: A:   8: : :LEU:CA:2.369:0.707:PROTEIN
   #chiral_volume_validation_cases_leu_misnamed.pdb: A:   8: : :LEU:CG:2.604:25.967:PROTEIN
   ca_volume = None
@@ -191,14 +195,15 @@ HETATM14731  S4  SF4 E 501       2.547  46.073  36.852  1.00 45.73           S
 TER
 END
 """
-  open('chiral_volume_validation_cases_sf4_normal.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_sf4_normal.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_sf4_normal.pdb',
           'out_file=chiral_volume_validation_cases_sf4_normal.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_sf4_normal.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_sf4_normal.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_sf4_normal.pdb: E: 501: : :SF4:FE1:-10.788:1.164:UNK
   #chiral_volume_validation_cases_sf4_normal.pdb: E: 501: : :SF4:FE2:11.095:2.699:UNK
   #chiral_volume_validation_cases_sf4_normal.pdb: E: 501: : :SF4:FE3:-10.559:0.020:UNK
@@ -231,14 +236,15 @@ HETATM14730  S2  SF4 E 501       0.157  46.850  39.397  1.00 45.58           S
 HETATM14731  S4  SF4 E 501       2.547  46.073  36.852  1.00 45.73           S
 END
 """
-  open('chiral_volume_validation_cases_sf4_misnamed.pdb', 'w').write(pdb_str)
+  with open('chiral_volume_validation_cases_sf4_misnamed.pdb', 'w') as f:
+    f.write(pdb_str)
   args = ['pdb=chiral_volume_validation_cases_sf4_misnamed.pdb',
           'out_file=chiral_volume_validation_cases_sf4_misnamed.out',
           'outliers_only=False',
           'bonds_and_angles=True']
   mp_geo.run(args)
-  f = open('chiral_volume_validation_cases_sf4_misnamed.out', 'r')
-  lines = [i.rstrip('\n\r') for i in f.readlines()]
+  with open('chiral_volume_validation_cases_sf4_misnamed.out', 'r') as f:
+    lines = [i.rstrip('\n\r') for i in f.readlines()]
   #chiral_volume_validation_cases_sf4_misnamed.pdb: E: 501: : :SF4:FE1:10.788:106.712:UNK
   #chiral_volume_validation_cases_sf4_misnamed.pdb: E: 501: : :SF4:FE2:14.425:19.352:UNK
   #chiral_volume_validation_cases_sf4_misnamed.pdb: E: 501: : :SF4:FE3:-14.365:19.049:UNK

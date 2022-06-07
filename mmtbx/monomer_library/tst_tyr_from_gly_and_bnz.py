@@ -619,7 +619,8 @@ def exercise(args):
     out = StringIO()
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  open("tmp.cif", "w").write(cif_string)
+  with open("tmp.cif", "w") as f:
+    f.write(cif_string)
   mon_lib_srv.process_cif(file_name="tmp.cif")
   mod_gly_plus_c_beta = mon_lib_srv.mod_mod_id_dict[
     "gly_plus_c_beta"]

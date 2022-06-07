@@ -20,7 +20,8 @@ def exercise():
    [2.5, 12, 10880.374304954881, 3.8438000679016113, 97.77777777777779, 0.009, 0.9467311684652722, 0.9467311684652722, 0.7396676207890701, 0.7396676207890701, 20.9016001033, 98.3151904665], eps=0.01)
   assert (95 < result.representative_values[-2] < 100)
   # Insulin S-SAD
-  open("tst_plan_sad_experiment.fa", "w").write("""
+  with open("tst_plan_sad_experiment.fa", "w") as f:
+    f.write("""
 >1ZNI:A|PDBID|CHAIN|SEQUENCE
 GIVEQCCTSICSLYQLENYCN
 >1ZNI:B|PDBID|CHAIN|SEQUENCE

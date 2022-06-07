@@ -159,7 +159,8 @@ ATOM    148  C   ARG A 210       6.081  73.522  -2.641  1.00 28.32           C
 ATOM    149  O   ARG A 210       7.167  74.068  -2.709  1.00 28.23           O
 ATOM    150  CB  ARG A 210       6.178  71.657  -4.275  1.00 27.92           C
 END"""
-  open("tst_dssp_1ywf_helix.pdb", "w").write(pdb_in)
+  with open("tst_dssp_1ywf_helix.pdb", "w") as f:
+    f.write(pdb_in)
   result = easy_run.fully_buffered("mmtbx.dssp tst_dssp_1ywf_helix.pdb"
     ).raise_if_errors()
   assert ("\n".join(result.stdout_lines) == """\

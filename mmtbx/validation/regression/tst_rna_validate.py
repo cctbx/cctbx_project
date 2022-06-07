@@ -84,7 +84,8 @@ ATOM   8018  N3    A Q 141      19.364 135.620  82.917  1.00123.84           N
 ATOM   8019  C4    A Q 141      18.953 136.340  83.979  1.00123.84           C
 TER    8020        A Q 141
 """
-  open("tst_rna_validate_1.pdb", "w").write(pdb_raw)
+  with open("tst_rna_validate_1.pdb", "w") as f:
+    f.write(pdb_raw)
   rv = rna_validate.run(args=["tst_rna_validate_1.pdb"], out=null_out())
   assert len(rv.puckers.results) == 1
   pickle_unpickle(rv)
@@ -147,7 +148,8 @@ ATOM     52  N4    C A   2      37.659  28.519  55.412  1.00 47.02           N
 ATOM     53  C5    C A   2      36.834  29.060  57.597  1.00 46.21           C
 ATOM     54  C6    C A   2      35.840  29.624  58.297  1.00 47.22           C
 """
-  open("tst_rna_validate_2.pdb", "w").write(pdb_raw)
+  with open("tst_rna_validate_2.pdb", "w") as f:
+    f.write(pdb_raw)
   rv = rna_validate.run(args=["tst_rna_validate_2.pdb"], out=null_out())
   pickle_unpickle(rv)
 

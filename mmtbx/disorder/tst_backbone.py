@@ -104,7 +104,8 @@ END
 
 def exercise():
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
-  open("tmp.pdb", "w").write(pdb_in.hierarchy.as_pdb_string())
+  with open("tmp.pdb", "w") as f:
+    f.write(pdb_in.hierarchy.as_pdb_string())
   backrubs = backbone.find_backrubs(
     pdb_hierarchy=pdb_in.hierarchy)
   assert (len(backrubs) == 1)

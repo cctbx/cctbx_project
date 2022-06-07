@@ -1211,7 +1211,8 @@ HETATM   89  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
 TER
 """
   pdb_in = "%s_in.pdb" % prefix
-  open(pdb_in, "w").write(pdb_raw)
+  with open(pdb_in, "w") as f:
+    f.write(pdb_raw)
   if (create_mtz):
     args = [
       pdb_in,
@@ -1231,8 +1232,8 @@ TER
     atom.b = 5
     if (atom.occ < 1.0):
       atom.occ = 0.5
-  open("%s_start.pdb" % prefix, "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open("%s_start.pdb" % prefix, "w") as f:
+    f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
 
 def exercise_regroup_3d(verbose):
   if (verbose): log = sys.stdout

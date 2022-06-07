@@ -420,7 +420,9 @@ def get_and_split_model(pdb_hierarchy=None,
         return []
       if not os.path.isfile (pdb_in):
         raise Sorry("Missing the file %s" %(pdb_in))
-      pdb_hierarchy=get_pdb_hierarchy(text=open(pdb_in).read())
+      with open(pdb_in) as f:
+        text = f.read()
+      pdb_hierarchy=get_pdb_hierarchy(text=text)
     model=model_info(
       hierarchy=pdb_hierarchy,
       info={})
@@ -478,7 +480,9 @@ class segment_library:
       self.model_n_obs=[]
       self.model_rms=[]
       info_number_of_segments=None
-      for line in open(info_file).readlines():
+      with open(info_file) as f:
+        lines = f.readlines()
+      for line in lines:
         spl=line.split()
         if info_number_of_segments is None:
           info_number_of_segments=int(spl[-1])

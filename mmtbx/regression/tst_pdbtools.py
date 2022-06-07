@@ -470,7 +470,8 @@ occupancies
 }
 }
 """
-  open("params", "w").write(params)
+  with open("params", "w") as f:
+    f.write(params)
   cmd = 'phenix.pdbtools exercise_multiple.pdb params'
   print(cmd)
   result = run_command(command=cmd, verbose=False)
@@ -514,13 +515,17 @@ END
   print(cmd)
   run_command(command=cmd, verbose=False)
   lines1 = []
-  for line in open("exercise_no_cryst1.pdb","r").readlines():
+  with open("exercise_no_cryst1.pdb","r") as f:
+    lines = f.readlines()
+  for line in lines:
     line = line.strip()
     assert line.count("CRYST1") == 0
     if(line.startswith("ATOM") or line.startswith("HETATM")):
       lines1.append(line)
   lines2 = []
-  for line in open("exercise_no_cryst1_modified.pdb","r").readlines():
+  with open("exercise_no_cryst1_modified.pdb","r") as f:
+    lines = f.readlines()
+  for line in lines:
     line = line.strip()
     assert line.count("CRYST1") == 0
     if(line.startswith("ATOM") or line.startswith("HETATM")):
@@ -568,7 +573,8 @@ def exercise_set_charge():
 ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
 END
 """
-  open("tmp_cl.pdb", "w").write(input_pdb)
+  with open("tmp_cl.pdb", "w") as f:
+    f.write(input_pdb)
   cmd='phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1'
   print(cmd)
   run_command(command=cmd, verbose=False)
@@ -614,11 +620,14 @@ ATOM     12  O   LEU C   1       5.613  12.448   6.864  1.00  7.32           O
 TER
 """
   ifn = "exercise_renumber_residues.pdb"
-  open(ifn,"w").write(input_pdb)
+  with open(ifn,"w") as f:
+    f.write(input_pdb)
   cmd = 'phenix.pdbtools "%s" renumber_residues=true'%ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  for line1, line2 in zip(open("exercise_renumber_residues_modified.pdb").readlines(), expected_output_pdb.splitlines()):
+  with open("exercise_renumber_residues_modified.pdb") as f:
+    lines = f.readlines()
+  for line1, line2 in zip(lines, expected_output_pdb.splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
     assert line1 == line2,[line1, line2]
@@ -643,13 +652,14 @@ TER
   cmd = "phenix.pdbtools \"%s\" renumber_residues=true modify.selection=\"chain B\"" % ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  new_lines = open("exercise_renumber_residues_modified.pdb").readlines()
-  for line1, line2 in zip(new_lines, expected_output_pdb_2.splitlines()):
-    assert (line1.strip() == line2.strip())
+  with open("exercise_renumber_residues_modified.pdb") as f:
+    for line1, line2 in zip(f.readlines(), expected_output_pdb_2.splitlines()):
+      assert (line1.strip() == line2.strip())
   cmd="phenix.pdbtools \"%s\" increment_resseq=10 modify.selection=\"chain B\"" % ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open("exercise_renumber_residues_modified.pdb").read()
+  with open("exercise_renumber_residues_modified.pdb") as f:
+    pdb_new = f.read()
   expected_output_pdb_3 = """\
 ATOM      1  O   GLY A   3       1.434   1.460   2.496  1.00  6.04           O
 ATOM      2  O   CYS A   7       2.196   4.467   3.911  1.00  4.51           O
@@ -698,11 +708,14 @@ ATOM     11  CZ  TYR    22      -0.846   1.912  -1.877  1.00 10.00           C
 ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
 """
   ifn = "exercise_neutralize_scatterers.pdb"
-  open(ifn,"w").write(input_pdb)
+  with open(ifn,"w") as f:
+    f.write(input_pdb)
   cmd = 'phenix.pdbtools "%s" neutralize_scatterers=true adp.set_b_iso=10'%ifn
   print(cmd)
   run_command(command=cmd, verbose=False)
-  for line1, line2 in zip(open(ifn.replace(".pdb","_modified.pdb")).readlines(), expected_output_pdb.splitlines()):
+  with open(ifn.replace(".pdb","_modified.pdb")) as f:
+    lines = f.readlines()
+  for line1, line2 in zip(lines, expected_output_pdb.splitlines()):
     line1 = line1.strip()
     line2 = line2.strip()
     assert line1 == line2
@@ -783,7 +796,8 @@ END
   assert f>77 and f<100, f # was getting 79.16 on anaconda t96
 
 def exercise_change_of_basis():
-  open("tmp_pdbtools_cb_op.pdb", "w").write("""\
+  with open("tmp_pdbtools_cb_op.pdb", "w") as f:
+    f.write("""\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
@@ -791,8 +805,9 @@ ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
 ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O  """)
   cmd = "phenix.pdbtools tmp_pdbtools_cb_op.pdb change_of_basis='a,c,b'"
   run_command(command=cmd, verbose=False)
-  lines = open("tmp_pdbtools_cb_op_modified.pdb").readlines()
-  for line in lines :
+  with open("tmp_pdbtools_cb_op_modified.pdb") as f:
+    lines = f.readlines()
+  for line in lines:
     if line.startswith("CRYST1"):
       assert (line.strip() ==
         """CRYST1   21.937   23.477    4.866  90.00  90.00 107.08 P 1 1 21""")
@@ -972,11 +987,13 @@ HETATM   19  O  BHOH B   5      43.786  12.615 147.734  0.50 28.43       B   O
 HETATM   20  O   HOH B   6      35.068  19.167 155.349  1.00 15.97       B   O
 END
 """
-  open("tst_pdbtools_move_waters.pdb", "w").write(pdb_in)
+  with open("tst_pdbtools_move_waters.pdb", "w") as f:
+    f.write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_move_waters.pdb move_waters_last=True"
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_move_waters_modified.pdb").read()
+  with open("tst_pdbtools_move_waters_modified.pdb") as f:
+    pdb_new = f.read()
   assert pdb_new == pdb_out, pdb_new
 
 def exercise_stop_for_unknowns():
@@ -987,7 +1004,8 @@ HETATM   18  O   UNK B   4      29.343  12.806 185.898  1.00 35.57       B   O
 HETATM   19  O   UNK B   5      43.786  12.615 147.734  0.50 28.43       B   O
 HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
 """
-  open("tst_pdbtools_unknown.pdb", "w").write(pdb_in)
+  with open("tst_pdbtools_unknown.pdb", "w") as f:
+    f.write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_unknown.pdb set_b_iso=20"
   print(cmd)
   run_command(command=cmd, sorry_expected=True)
@@ -1006,11 +1024,13 @@ ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
 ATOM     18  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
 ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
 """
-  open("tst_pdbtools_alt_confs.pdb", "w").write(pdb_in)
+  with open("tst_pdbtools_alt_confs.pdb", "w") as f:
+    f.write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True"
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_alt_confs_modified.pdb").read()
+  with open("tst_pdbtools_alt_confs_modified.pdb") as f:
+    pdb_new = f.read()
   assert (pdb_new == """\
 ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -1024,7 +1044,8 @@ END
   cmd = "phenix.pdbtools tst_pdbtools_alt_confs.pdb remove_alt_confs=True " +\
     "always_keep_one_conformer=True"
   run_command(command=cmd, verbose=False)
-  pdb_new = open("tst_pdbtools_alt_confs_modified.pdb").read()
+  with open("tst_pdbtools_alt_confs_modified.pdb") as f:
+    pdb_new = f.read()
   assert (pdb_new == """\
 ATOM      1  O   HOH A   2       5.131   5.251   5.823  1.00 10.00           O
 ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
@@ -1128,7 +1149,8 @@ END
         "output.prefix=%s_%s"%(o,prefix)])
     print(cmd)
     run_command(command=cmd, verbose=False)
-    pdb_new = open("%s_%s.pdb"%(o,prefix)).read()
+    with open("%s_%s.pdb"%(o,prefix)) as f:
+      pdb_new = f.read()
     if o == "clear_seg_id":
       assert (pdb_new == """\
 ATOM      1  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N

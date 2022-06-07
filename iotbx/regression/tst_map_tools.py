@@ -23,7 +23,8 @@ ATOM      8  HA2 GLY P  -1     -23.016  -2.261  17.288  1.00  0.00           H
 ATOM      9  HA3 GLY P  -1     -23.352  -3.933  16.803  1.00  0.00           H
 """)
   xrs = pdb_in.input.xray_structure_simple()
-  open(pdb_file, "w").write(pdb_in.hierarchy.as_pdb_string(xrs))
+  with open(pdb_file, "w") as f:
+    f.write(pdb_in.hierarchy.as_pdb_string(xrs))
   fc = xrs.structure_factors(d_min=1.5).f_calc()
   dec = mtz.label_decorator(phases_prefix="PH")
   # part 1: phenix.refine style

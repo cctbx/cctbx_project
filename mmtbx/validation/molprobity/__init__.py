@@ -802,7 +802,8 @@ class pdb_header_info(slots_getstate_setstate):
         self.d_max = published_results.low
       self.refinement_program = pdb_in.input.get_program_name()
       # XXX phenix.refine hack, won't work for other programs
-      lines = open(pdb_file).readlines()
+      with open(pdb_file) as f:
+        lines = f.readlines()
       for line in lines :
         if (line.startswith("REMARK Final:")):
           fields = line.strip().split()

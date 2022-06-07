@@ -453,7 +453,8 @@ def exercise():
   verbose = "--verbose" in sys.argv[1:]
   list_cif = server.mon_lib_list_cif()
   srv = server.server(list_cif=list_cif)
-  open("tmp.cif", "w").write(tmp_cif)
+  with open("tmp.cif", "w") as f:
+    f.write(tmp_cif)
   srv.process_cif(file_name="tmp.cif")
   comp_comp_id = srv.get_comp_comp_id_direct(comp_id="tst")
   motif = comp_comp_id.as_geometry_restraints_motif()

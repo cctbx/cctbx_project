@@ -28,9 +28,8 @@ ATOM         HC  ALA A  10      22.748  70.442  22.485  1.00 43.85           H
 def main(filename=None):
   if filename is None:
     filename = 'ala_term.pdb'
-    f=open(filename, 'w')
-    f.write(pdb_str)
-    del f
+    with open(filename, 'w') as f:
+      f.write(pdb_str)
   pdb_inp = pdb.input(filename)
   hierarchy = pdb_inp.construct_hierarchy()
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()

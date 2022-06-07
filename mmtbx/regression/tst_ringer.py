@@ -217,7 +217,8 @@ def exercise():
   assert (result.return_code == 0)
   result = easy_run.fully_buffered(
     "mmtbx.ringer \"%s\" tmp_ringer_map_coeffs.mtz" % pdb_file).raise_if_errors()
-  _lines1 = open("tmp_ringer_ringer.csv").read().splitlines()
+  with open("tmp_ringer_ringer.csv") as f:
+    _lines1 = f.read().splitlines()
   lines1 = []
   for line in _lines1 :
     if ("2mFo-DFc" in line):
@@ -231,7 +232,8 @@ def exercise():
   result3 = easy_run.fully_buffered(
     "mmtbx.ringer \"%s\" tmp_ringer_map_coeffs_2mFo-DFc.ccp4" % pdb_file)
   assert (result3.return_code == 0) , "DL: crash is expected due to new sanity check. Will replace input map."
-  lines2 = open("tmp_ringer_ringer.csv").read().splitlines()
+  with open("tmp_ringer_ringer.csv") as f:
+    lines2 = f.read().splitlines()
   assert len(lines1) == len(lines2)
   for line1, line2 in zip(lines1, lines2):
     fields1 = line1.split(",")

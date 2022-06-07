@@ -48,7 +48,8 @@ def exercise_omit_atom_selection():
   import mmtbx.command_line.maps
   mtz_file, pdb_file = generate_calcium_inputs(
     file_base="tst_mmtbx_maps_misc2")
-  open("tst_mmtbx_maps_misc2.eff", "w").write("""\
+  with open("tst_mmtbx_maps_misc2.eff", "w") as f:
+    f.write("""\
     maps {
       map {
         map_type = 2mFo-DFc

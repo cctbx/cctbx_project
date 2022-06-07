@@ -75,6 +75,7 @@ TER
   assert approx_equal(cmdline.params.input.wavelength, 1.54018, eps=0.0001)
   # UNMERGED DATA INPUT
   log = cmdline.start_log_file("tst_mmtbx_cmdline.log")
+  log.close()
   fc2 = xrs.structure_factors(d_min=1.3).f_calc().generate_bijvoet_mates()
   fc2 = fc2.randomize_amplitude_and_phase(amplitude_error=0.01,
     phase_error_deg=5, random_seed=12345).customized_copy(
@@ -275,7 +276,8 @@ def exercise_load_unmerged():
     space_group_info=sg_p2,
     sigmas=flex.double(fc_p1.size(), 10.0))
   ic.export_as_scalepack_unmerged(file_name=base + ".sca")
-  open(base + ".pdb", "w").write(model_1yjp)
+  with open(base + ".pdb", "w") as f:
+    f.write(model_1yjp)
   args = [
     base + ".mtz",
     base + ".pdb",

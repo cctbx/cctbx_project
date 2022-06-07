@@ -576,7 +576,8 @@ def run(args,
     final_phil.show(out=out)
     print("#---end", file=out)
     print("", file=out)
-  final_phil.show(out=open("table_one.eff", "w"))
+  with open("table_one.eff", "w") as f:
+    final_phil.show(out=f)
   table1 = table_one(params.table_one, out=out)
   easy_pickle.dump("%s.pkl" % params.table_one.output.base_name, table1)
   table1.save_multiple(

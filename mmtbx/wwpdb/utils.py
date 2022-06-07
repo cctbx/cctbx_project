@@ -12,7 +12,8 @@ import sys
 
 def get_program(pdb_file):
   from iotbx.pdb import remark_3_interpretation
-  lines = open(pdb_file).readlines()
+  with open(pdb_file) as f:
+    lines = f.readlines()
   program = program_full = None
   for line in lines :
     if (line.startswith("REMARK   3")) and ("PROGRAM" in line):

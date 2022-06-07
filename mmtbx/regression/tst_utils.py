@@ -270,7 +270,8 @@ END
   assert approx_equal(f.f_000, 0.25*125*0.687355324074+6, 1.e-3)
 
 def exercise_detect_link_problems():
-  open("tmp_mmtbx_utils_asn_nag.pdb", "w").write("""\
+  with open("tmp_mmtbx_utils_asn_nag.pdb", "w") as f:
+    f.write("""\
 CRYST1  124.702  124.702   71.573  90.00  90.00  90.00 P 4 21 2
 ATOM   3196  N   ASN A 284      36.622 -19.654  35.782  1.00 19.63           N
 ATOM   3197  CA  ASN A 284      36.491 -18.279  35.327  1.00 19.79           C

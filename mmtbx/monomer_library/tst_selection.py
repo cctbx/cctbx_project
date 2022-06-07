@@ -143,7 +143,8 @@ def exercise_atom_selections():
   log = None
   if (verbose):
     log = sys.stdout
-  open("tmp_selection.pdb", "w").write(test_pdb_file)
+  with open("tmp_selection.pdb", "w") as f:
+    f.write(test_pdb_file)
   try:
     mon_lib_srv = monomer_library.server.server()
   except monomer_library.server.MonomerLibraryServerError:

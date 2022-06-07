@@ -97,7 +97,8 @@ class process_chem_comp_atom_buffer(object):
     return result
 
 def process_chem_comps(file_name):
-  lines = open(file_name).read().splitlines()
+  with open(file_name) as f:
+    lines = f.read().splitlines()
   line_iter = iter(lines)
   for line in line_iter:
     if (line.rstrip() == "_chem_comp_atom.descriptor"):

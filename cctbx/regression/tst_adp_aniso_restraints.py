@@ -103,7 +103,8 @@ def exercise():
     return
   from mmtbx.monomer_library import pdb_interpretation
   file_name = "phe_tst_adp_aniso_restraints.pdb"
-  open(file_name, "w").write(phe_pdb)
+  with open(file_name, "w") as f:
+    f.write(phe_pdb)
   out = StringIO()
   processed_pdb_file = pdb_interpretation.run(
                                         args                     = [file_name],

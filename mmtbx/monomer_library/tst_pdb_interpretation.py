@@ -1419,6 +1419,7 @@ _chem_comp_angle.value_angle_esd   3.000
   result = easy_run.fully_buffered(cmd).raise_if_errors()
   geo_file = open(pdb_file.name+".geo", "r")
   geo_file_str = geo_file.read()
+  geo_file.close()
   assert "Bond angle restraints: 1" in geo_file_str
 
 def exercise_do_not_link(mon_lib_srv, ener_lib):
@@ -1871,8 +1872,10 @@ ATOM     13  O   LEU A   5       1.246  -0.440   4.196  1.00  1.23           O
 """
   pdb_1 = "REMARK   3    GEOSTD + MON.LIB. + CDL v1.2\n" + pdbstring
   pdb_2 = pdbstring
-  open("tst_cdl_auto_1.pdb", "w").write(pdb_1)
-  open("tst_cdl_auto_2.pdb", "w").write(pdb_2)
+  with open("tst_cdl_auto_1.pdb", "w") as f:
+    f.write(pdb_1)
+  with open("tst_cdl_auto_2.pdb", "w") as f:
+    f.write(pdb_2)
   cifstring = """\
 data_cdl_refine
 %s
@@ -1913,8 +1916,10 @@ loop_
 _refine.pdbx_stereochemistry_target_values 'GeoStd + Monomer Library + CDL v1.2'
 """
   cif_2 = cifstring % ""
-  open("tst_cdl_auto_1.cif", "w").write(cif_1)
-  open("tst_cdl_auto_2.cif", "w").write(cif_2)
+  with open("tst_cdl_auto_1.cif", "w") as f:
+    f.write(cif_1)
+  with open("tst_cdl_auto_2.cif", "w") as f:
+    f.write(cif_2)
   model_files = [
     ("tst_cdl_auto_1.pdb", "tst_cdl_auto_2.pdb"),
     ("tst_cdl_auto_1.cif", "tst_cdl_auto_2.cif"),

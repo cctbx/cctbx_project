@@ -68,7 +68,8 @@ def exercise_cmdline():
     assert o1.rotamer_name == o2.rotamer_name
   # Part 2: with sequence corrections
   seq_file = "tst_extend_sidechains.fa"
-  open(seq_file, "w").write(">1yjp_new\nGNDQQNY")
+  with open(seq_file, "w") as f:
+    f.write(">1yjp_new\nGNDQQNY")
   pdb_out = "tst_extend_sidechains_out2.pdb"
   extend_sidechains.run(
     args=[pdb_file, mtz_file, seq_file, "output_model=%s" % pdb_out],

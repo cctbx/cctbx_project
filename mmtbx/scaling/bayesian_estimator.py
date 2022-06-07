@@ -599,7 +599,8 @@ def get_table_as_list(lines=None,text="",file_name=None,record_list=None,
     first=True
     n_info=0
     if file_name:
-      text=open(file_name).read()
+      with open(file_name) as f:
+        text=f.read()
     if not lines:
       lines=text.splitlines()
     for line in lines:
@@ -851,7 +852,8 @@ class estimator_group:
         if not file_name:
           raise Sorry("Need file with training data")
         print("\nSetting up Bayesian estimator using data in %s\n" %(file_name), file=self.out)
-        lines=open(file_name).readlines()
+        with open(file_name) as f:
+          lines=f.readlines()
         self.training_file_name=file_name
       return get_table_as_list(
          lines=lines,

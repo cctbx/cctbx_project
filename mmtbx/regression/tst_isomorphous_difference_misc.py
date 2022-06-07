@@ -124,8 +124,10 @@ HETATM   61  O   ACT     1       3.812   8.507   7.193  1.00 19.26           O
 HETATM   62  OXT ACT     1       2.218   9.388   8.383  1.00 18.36           O
 HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
 """
-  open("tst_anom_iso_diff_1.pdb", "w").write(pdb_1)
-  open("tst_anom_iso_diff_2.pdb", "w").write(pdb_2)
+  with open("tst_anom_iso_diff_1.pdb", "w") as f:
+    f.write(pdb_1)
+  with open("tst_anom_iso_diff_2.pdb", "w") as f:
+    f.write(pdb_2)
   base_args = [
     "phenix.fmodel",
     "high_resolution=1.5",

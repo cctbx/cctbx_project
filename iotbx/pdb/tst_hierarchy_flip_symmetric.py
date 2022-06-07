@@ -276,7 +276,8 @@ def run():
   for code, lines in pdbs.items():
     #if code!='VAL': continue
     print(('-%s- ' % code)*10)
-    f=open("tst_symmetric_flips_%s.pdb" % code, "w").write(lines)
+    with open("tst_symmetric_flips_%s.pdb" % code, "w") as f:
+      f.write(lines)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
     cmd += ' flip_symmetric_amino_acids=None'
     print(cmd)

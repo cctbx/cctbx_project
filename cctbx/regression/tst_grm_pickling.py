@@ -192,8 +192,8 @@ def test_simple_protein(
   make_geo_pickle_unpickle(geometry, xrs, prefix)
 
 def test_nucleic_acid(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_na"):
-  open("%s.pdb" % prefix, "w").\
-      write(raw_records2)
+  with open("%s.pdb" % prefix, "w") as f:
+    f.write(raw_records2)
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.secondary_structure.enabled=True
@@ -210,8 +210,8 @@ def test_nucleic_acid(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_na"):
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
 def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
-  open("%s.pdb" % prefix, "w").\
-    write(raw_records3)
+  with open("%s.pdb" % prefix, "w") as f:
+    f.write(raw_records3)
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.peptide_link.ramachandran_restraints=True
@@ -225,8 +225,8 @@ def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
 
 def test_cbeta(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_cbeta"):
-  open("%s.pdb" % prefix, "w").\
-    write(raw_records3)
+  with open("%s.pdb" % prefix, "w") as f:
+    f.write(raw_records3)
   from mmtbx import monomer_library
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.c_beta_restraints=True
@@ -442,6 +442,7 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, model_raw_records)
   geometry.adopt_reference_dihedral_manager(rm)
   make_geo_pickle_unpickle(geometry, xrs, prefix)
+  mstream.close()
 
 def exercise_all(args):
   mon_lib_srv = None

@@ -4,7 +4,8 @@ from libtbx import easy_run
 import os
 
 def exercise():
-  open("tmp_fmodel_fake_p1.pdb", "w").write("""\
+  with open("tmp_fmodel_fake_p1.pdb", "w") as f:
+    f.write("""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
 ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C

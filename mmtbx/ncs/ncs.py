@@ -4186,6 +4186,8 @@ class ncs:
       if out is not None or not quiet: out.write("\n"+text+"\n\n")
       all_text+="\n"+text
     all_text+="\n"
+    if out is not None and file_name is not None:
+      out.close()
     return all_text
 
   def format_all_for_biomt(self,log=None,quiet=False,out=None,):

@@ -105,8 +105,10 @@ ATOM    947  CG  LEU A 125       5.197  11.005  15.504  1.00 22.27           C
 ATOM    948  CD1 LEU A 125       4.812  11.903  14.306  1.00 22.88           C
 ATOM    949  CD2 LEU A 125       6.533  11.408  15.996  1.00 26.02           C
 """
-  open("tst_fmodel_misc.pdb", "w").write(pdb_str)
-  open("tst_fmodel_misc.eff", "w").write("""\
+  with open("tst_fmodel_misc.pdb", "w") as f:
+    f.write(pdb_str)
+  with open("tst_fmodel_misc.eff", "w") as f:
+    f.write("""\
 pdb_file = tst_fmodel_misc.pdb
 high_resolution = 1.0
 output.file_name = tst_fmodel_misc.mtz

@@ -186,7 +186,8 @@ _refln.intensity_sigma
 1 2 1    0   -2  -16  o     307.6     69.9
 1 2 1    0    2  -16  o     265.4     71.5
 """
-  open("r2etd-sf.cif", "w").write(cif_in)
+  with open("r2etd-sf.cif", "w") as f:
+    f.write(cif_in)
   args = ["phenix.cif_as_mtz", "r2etd-sf.cif", "--merge"]
   rc = easy_run.fully_buffered(" ".join(args)).raise_if_errors().return_code
   assert (rc == 0)
@@ -513,7 +514,8 @@ def exercise2():
   Check individual unit cell dimensions and wavelengths of cif datasets are retained when
   reading an mtz file originating from a cif file
   """
-  open("r1vjzsf_snip.cif", "w").write(r1vjzsf_cif_snip)
+  with open("r1vjzsf_snip.cif", "w") as f:
+    f.write(r1vjzsf_cif_snip)
   args = ["phenix.cif_as_mtz", "r1vjzsf_snip.cif", "--merge"]
   rc = easy_run.fully_buffered(" ".join(args)).raise_if_errors().return_code
   assert (rc == 0)
@@ -540,7 +542,8 @@ def exercise3():
   Check individual unit cell dimensions and wavelengths of cif datasets are retained in
   mtz crystals within the same mtz file
   """
-  open("r1vjzsf_snip.cif", "w").write(r1vjzsf_cif_snip)
+  with open("r1vjzsf_snip.cif", "w") as f:
+    f.write(r1vjzsf_cif_snip)
   args = ["phenix.cif_as_mtz", "r1vjzsf_snip.cif", "--merge"]
   rc = easy_run.fully_buffered(" ".join(args)).raise_if_errors().return_code
   assert (rc == 0)

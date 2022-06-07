@@ -92,7 +92,8 @@ HETATM   66  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
 END
 """
   pdb_file = "tst_xtriage_in.pdb"
-  open(pdb_file, "w").write(pdb_raw)
+  with open(pdb_file, "w") as f:
+    f.write(pdb_raw)
   fmodel_args = [
     pdb_file,
     "high_resolution=1.5",
@@ -125,7 +126,8 @@ END
   mtz_file = "tst_xtriage_in.mtz"
   f_obs.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_file)
   seq_file = "tst_xtriage_in.fa"
-  open(seq_file, "w").write("> tst_xtriage\nGNNMQNY")
+  with open(seq_file, "w") as f:
+    f.write("> tst_xtriage\nGNNMQNY")
 
   # check with completeness_as_non_anomalous=True
 
@@ -501,17 +503,19 @@ def exercise_2():
     f_calc = abs(f_calc).generate_bijvoet_mates()
     f_calc = f_calc.set_observation_type_xray_amplitude()
     i_obs, f_calc = i_obs.common_sets(other=f_calc)
-    open("tmp_xtriage.pdb", "w").write(hierarchy.as_pdb_string(
-      crystal_symmetry=i_obs))
+    with open("tmp_xtriage.pdb", "w") as f:
+      f.write(hierarchy.as_pdb_string(crystal_symmetry=i_obs))
     pdb_file = "tmp_xtriage.pdb"
   params = xtriage.master_params.extract()
   params.scaling.input.asu_contents.n_residues = 141
+  text_out = open("logfile3.log", "w")
   result = xtriage.xtriage_analyses(
     miller_obs=i_obs,
     miller_calc=f_calc,
     params=params,
     unmerged_obs=i_obs_raw,
-    text_out=open("logfile3.log", "w"))#sys.stdout)
+    text_out=text_out)#sys.stdout)
+  text_out.close()
   # XXX there appears to be some system-dependence here, hence sloppy limits
   assert (15.5 < result.aniso_b_min < 15.9)
   assert (10 < result.aniso_range_of_b < 11)
@@ -544,7 +548,8 @@ def exercise_2():
   else :
     json_out = xtriage_json.json_output("p9.sca")
     result.show(out=json_out)
-    open("xtriage.json", "w").write(json_out.export())
+    with open("xtriage.json", "w") as f:
+      f.write(json_out.export())
   # unmerged data
   assert result.merging_stats is not None
   out = StringIO()

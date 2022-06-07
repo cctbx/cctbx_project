@@ -205,7 +205,8 @@ END
 
 def prepare_inputs(prefix="tst_build_alt_confs"):
   pdb_in = "%s_in.pdb" % prefix
-  open(pdb_in, "w").write(pdb_raw)
+  with open(pdb_in, "w") as f:
+    f.write(pdb_raw)
   args = [
     pdb_in,
     "high_resolution=1.2",
@@ -231,8 +232,8 @@ def prepare_inputs(prefix="tst_build_alt_confs"):
           atom.occ = 1.0
         atom_groups[0].altloc = ''
   assert hierarchy.atoms().extract_occ().all_eq(1.0)
-  open("%s_start.pdb" % prefix, "w").write(
-    hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  with open("%s_start.pdb" % prefix, "w") as f:
+    f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
 
 def get_rotamers(file_name):
   pdb_in = file_reader.any_file(file_name)

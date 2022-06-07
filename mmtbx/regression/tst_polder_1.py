@@ -193,15 +193,17 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
     prefix = prefix + '_1_')
 
 def exercise_02(fobs_1, flags_1, prefix):
-  fobs_1.export_as_cns_hkl(
-      file_object=open(prefix+"_2.cns", "w"),
+  with open(prefix+"_2.cns", "w") as file_object:
+    fobs_1.export_as_cns_hkl(
+      file_object=file_object,
       file_name=prefix+"_2.cns",
       info=["calculated structure factors FP1"])
   #
-  flags_1.export_as_cns_hkl(
-          file_object=open(prefix+"_2_free"+".cns", "w"),
-          file_name=prefix+"_2_free"+".cns",
-          info=["R-free-flags for FP1"])
+  with open(prefix+"_2_free"+".cns", "w") as file_object:
+    flags_1.export_as_cns_hkl(
+      file_object=file_object,
+      file_name=prefix+"_2_free"+".cns",
+      info=["R-free-flags for FP1"])
   #
   selection = "chain E and resseq 14"
   cmd = " ".join([
@@ -224,10 +226,11 @@ def exercise_02(fobs_1, flags_1, prefix):
 def exercise_03(fobs_2, flags_2, prefix):
   mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
   mtz.mtz_object().write(prefix+"_3.mtz")
-  flags_2.export_as_cns_hkl(
-          file_object=open(prefix+"_3.cns", "w"),
-          file_name=prefix+"_3.cns",
-          info=["R-free-flags for FP1"])
+  with open(prefix+"_3.cns", "w") as file_object:
+    flags_2.export_as_cns_hkl(
+      file_object=file_object,
+      file_name=prefix+"_3.cns",
+      info=["R-free-flags for FP1"])
   #
   selection = "chain E and resseq 7"
   cmd = " ".join([
