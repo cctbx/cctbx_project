@@ -4,3 +4,4 @@ xfel/euxfel/agipd_from_defs.py
 xfel/euxfel/agipd_cxigeom2nexus.py
 xfel/euxfel/read_geom.py
 xfel/ui/db/cfgs/shifter_templates.py
+xfel/small_cell/powder_util.py
