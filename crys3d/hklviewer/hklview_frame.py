@@ -294,13 +294,13 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diffphil, "angle_around_vector"):
         # convert any integer id into corresponding label for this vector
         # which is needed for userfriendliness when using current phil for preset buttons
-        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.angle_around_vector])
+        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.viewer.angle_around_vector])
         strvec, angle = lblvectors[0]
         # if angle=0 this amounts to the default of not having rotated at all so omit angle_around_vector altogether
         if angle != 0.0:
-          paramscopy.clip_plane.angle_around_vector = str(lblvectors[0])
+          paramscopy.viewer.angle_around_vector = str(lblvectors[0])
         else:
-          omitparms = omitparms + ["clip_plane.angle_around_vector"]
+          omitparms = omitparms + ["viewer.angle_around_vector"]
         diffphil = diffphil.format(paramscopy) # adopt new angle_around_vector value
 
       if jsview_3d.has_phil_path(diffphil, "animate_rotation_around_vector"):
@@ -1670,12 +1670,12 @@ class HKLViewFrame() :
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):
-    self.params.clip_plane.animate_rotation_around_vector = str([vecnr, speed])
+    self.params.viewer.animate_rotation_around_vector = str([vecnr, speed])
     self.update_settings()
 
 
   def RotateAroundVector(self, vecnr, dgr):
-    self.params.clip_plane.angle_around_vector = str([vecnr, dgr])
+    self.params.viewer.angle_around_vector = str([vecnr, dgr])
     self.update_settings()
 
 
@@ -1779,10 +1779,6 @@ masterphilstr = """
   reciprocal_unit_cell_scale_fraction = None
     .type = float
   clip_plane {
-    angle_around_vector = \"[0,0]\"
-      .type = str
-    animate_rotation_around_vector = \"[0,0]\"
-      .type = str
     hkldist = 0.0
       .type = float
     normal_vector = "-1"
@@ -1875,6 +1871,10 @@ masterphilstr = """
       .type = float
     angle_around_ZHKL_vector = 0.0
       .type = float
+    angle_around_vector = \"[0,0]\"
+      .type = str
+    animate_rotation_around_vector = \"[0,0]\"
+      .type = str
   }
   hkls {
     %s

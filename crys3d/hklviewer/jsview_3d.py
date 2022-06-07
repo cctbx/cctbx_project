@@ -372,10 +372,10 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "tooltip_alpha"):
       self.set_tooltip_opacity()
-    
+
     if has_phil_path(diff_phil, "angle_around_vector"):
       i,deg = self.rotate_around_numbered_vector()
-      self.params.clip_plane.angle_around_vector = str([i, deg])
+      self.params.viewer.angle_around_vector = str([i, deg])
 
     if has_phil_path(diff_phil, "angle_around_XHKL_vector"):
       self.rotate_stage_around_cartesian_vector([1,0,0], self.params.viewer.angle_around_XHKL_vector)
@@ -388,7 +388,7 @@ class HKLview_3d:
     if has_phil_path(diff_phil, "angle_around_ZHKL_vector"):
       self.rotate_stage_around_cartesian_vector([0,0,1], self.params.viewer.angle_around_ZHKL_vector)
       self.params.viewer.angle_around_ZHKL_vector = None
-    
+
     if has_phil_path(diff_phil, "miller_array_operation"):
       # Display the new dataset user has just added which is the last in the list but not if specified
       # with data_array scope which happens when clicking a preset button assigned with a miller_array_operation.
@@ -434,7 +434,7 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "animate_rotation_around_vector"):
       i,speed = self.animate_rotate_around_vector()
-      self.params.clip_plane.animate_rotation_around_vector = str([i, speed])
+      self.params.viewer.animate_rotation_around_vector = str([i, speed])
 
     if self.params.viewer.scene_id is None:
       self.DrawNGLJavaScript(blankscene=True)
@@ -1467,9 +1467,9 @@ class HKLview_3d:
         elif "Warning!: Web browser closed unexpectedly" in message:
           self.mprint( message, verbose=1)
         elif "ToggleAnimation" in message:
-          vecnr,speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+          vecnr,speed = eval(self.params.viewer.animate_rotation_around_vector)
           speed = -speed # negative speed tells HKLjavascripts to pause animating
-          self.params.clip_plane.animate_rotation_around_vector = "[%s, %s]" %(vecnr,speed)
+          self.params.viewer.animate_rotation_around_vector = "[%s, %s]" %(vecnr,speed)
           philchanged = True
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
@@ -2123,7 +2123,7 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def rotate_around_numbered_vector(self):
-    val, deg = eval(self.params.clip_plane.angle_around_vector)
+    val, deg = eval(self.params.viewer.angle_around_vector)
     vecnr = self.get_vecid_from_label(val)
     self.rotate_components_around_cartesian_vector(self.all_vectors[vecnr][3], deg)
     return vecnr,deg
@@ -2148,7 +2148,7 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def animate_rotate_around_vector(self):
-    val, speed = eval(self.params.clip_plane.animate_rotation_around_vector)
+    val, speed = eval(self.params.viewer.animate_rotation_around_vector)
     vecnr = -1
     vecnr = self.get_vecid_from_label(val)
     cartvec = self.all_vectors[vecnr][3]

@@ -1115,7 +1115,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['hkls.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
-    vecnr, dgr = self.currentphilstringdict['clip_plane.angle_around_vector']
+    vecnr, dgr = self.currentphilstringdict['viewer.angle_around_vector']
     self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["hkls.color_scheme"]
@@ -1146,8 +1146,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       self.DrawReciprocUnitCellBox.setChecked(False)
 
-    if self.currentphilstringdict['clip_plane.animate_rotation_around_vector'] is not None:
-      vecnr,speed = self.currentphilstringdict['clip_plane.animate_rotation_around_vector']
+    if self.currentphilstringdict['viewer.animate_rotation_around_vector'] is not None:
+      vecnr,speed = self.currentphilstringdict['viewer.animate_rotation_around_vector']
       self.AnimaRotCheckBox.setChecked( speed > 0 )
 
     self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clip_width'] != None)
@@ -1609,9 +1609,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           return
         if col==0:
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.send_message("""clip_plane {
-                angle_around_vector = '[%d, 0]'
-              }""" %self.rotvec)
+              self.send_message("viewer.angle_around_vector = '[%d, 0]'" %self.rotvec)
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
           sum = 0
@@ -1629,9 +1627,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               philstr += "viewer.show_vector = " + str(ivec) + "\n"
           self.send_message(philstr)
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.send_message("""clip_plane {
-  animate_rotation_around_vector = '[%d, %f]'
-}""" %(0, -1.0)) #
+            self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(0, -1.0)) #
             self.send_message('viewer.fixorientation = *None')
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
@@ -1639,7 +1635,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.send_message("clip_plane.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            self.send_message("viewer.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
           else:
             self.RotateAroundframe.setDisabled(True)
           if sum >= rc:
@@ -1889,18 +1885,14 @@ clip_plane {
   def onRotaVecAngleChanged(self, val):
     if self.unfeedback or self.rotvec is None:
       return
-    self.send_message("""clip_plane {
-    angle_around_vector = '[%d, %f]'
-}""" %(self.rotvec, val*0.5))
+    self.send_message("viewer.angle_around_vector = '[%d, %f]'" %(self.rotvec, val*0.5))
 
 
   def onFinalRotaVecAngle(self):
     if self.unfeedback or self.rotvec is None:
       return
     val = self.rotavecangle_slider.value()*0.5
-    self.send_message("""clip_plane {
-    angle_around_vector = '[%d, %f]'
-}""" %(self.rotvec, val))
+    self.send_message("viewer.angle_around_vector = '[%d, %f]'" %(self.rotvec, val))
 
 
   def onAnimateRotation(self):
@@ -1909,15 +1901,11 @@ clip_plane {
         self.AnimateSpeedSlider.setEnabled(True)
         self.rotavecangle_slider.setDisabled(True)
         speed = self.AnimateSpeedSlider.value()
-        self.send_message("""clip_plane {
-        animate_rotation_around_vector = '[%d, %f]'
-}""" %(self.rotvec, speed))
+        self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(self.rotvec, speed))
       else:
         self.rotavecangle_slider.setEnabled(True)
         self.AnimateSpeedSlider.setDisabled(True)
-        self.send_message("""clip_plane {
-        animate_rotation_around_vector = '[%d, %f]'
-}""" %(self.rotvec, -1.0))
+        self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(self.rotvec, -1.0))
 
 
   def onClipwidthEditFinished(self):
