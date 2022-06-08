@@ -29,10 +29,8 @@ except Exception as e: # if the user provides their own customised radio buttons
 
 NOREFLDATA = "No reflection data has been selected"
 
-
 class HKLViewFrame() :
   def __init__ (self, *args, **kwds) :
-    self.master_phil = libtbx.phil.parse( masterphilstr )
     self.valid_arrays = []
     self.spacegroup_choices = []
     self.procarrays = []
@@ -204,15 +202,15 @@ class HKLViewFrame() :
 
 
   def ResetPhil(self, extraphil=None):
-    self.currentphil = self.master_phil
+    self.currentphil = master_phil
     if extraphil:
       self.currentphil = self.currentphil.fetch(source = extraphil)
       # Don't retain clip plane values as these are specific to each crystal
       # so use clip plane parameters from the master phil
-      default_clipphil = self.master_phil.fetch().extract().clip_plane
+      default_clipphil = master_phil.fetch().extract().clip_plane
       currentparms = self.currentphil.extract()
       currentparms.clip_plane = default_clipphil
-      self.currentphil = self.master_phil.format(python_object = currentparms)
+      self.currentphil = master_phil.format(python_object = currentparms)
     self.params = self.currentphil.fetch().extract()
     self.viewer.params = self.params
     self.params.binning.binner_idx = 0
@@ -238,23 +236,23 @@ class HKLViewFrame() :
     # Failure to do this would lead to list of bin_opacity elements not being properly updated when
     # changing one of the bin_opacity elements. Likewise for show_vector and user_vector.
     if jsview_3d.has_phil_path(pyphilobj, "bin_opacity"):
-      bin_opacitylst = self.master_phil.fetch(source = pyphilobj ).extract().binning.bin_opacity
+      bin_opacitylst = master_phil.fetch(source = pyphilobj ).extract().binning.bin_opacity
     else:
-      bin_opacitylst = self.master_phil.fetch(source = oldcurrentphil ).extract().binning.bin_opacity
+      bin_opacitylst = master_phil.fetch(source = oldcurrentphil ).extract().binning.bin_opacity
     newpyobj = newcurrentphil.extract()
     newpyobj.binning.bin_opacity = bin_opacitylst
     newcurrentphil = newcurrentphil.format(python_object= newpyobj )
 
     if jsview_3d.has_phil_path(pyphilobj, "show_vector"):
-      show_vectorlst = self.master_phil.fetch(source = pyphilobj ).extract().viewer.show_vector
+      show_vectorlst = master_phil.fetch(source = pyphilobj ).extract().viewer.show_vector
     else:
-      show_vectorlst = self.master_phil.fetch(source = oldcurrentphil ).extract().viewer.show_vector
+      show_vectorlst = master_phil.fetch(source = oldcurrentphil ).extract().viewer.show_vector
     newpyobj = newcurrentphil.extract()
     newpyobj.viewer.show_vector = show_vectorlst
     newcurrentphil = newcurrentphil.format(python_object= newpyobj )
 
     if jsview_3d.has_phil_path(pyphilobj, "user_vector"):
-      user_vectorlst = self.master_phil.fetch(source = pyphilobj ).extract().viewer.user_vector \
+      user_vectorlst = master_phil.fetch(source = pyphilobj ).extract().viewer.user_vector \
        + oldcurrentphil.extract().viewer.user_vector
       newpyobj = newcurrentphil.extract()
       newpyobj.viewer.user_vector = user_vectorlst
@@ -271,12 +269,12 @@ class HKLViewFrame() :
   def show_current_phil(self, useful_for_preset_button=True):
     # When useful_for_preset_button=True the output has integer ids for vectors and scene_id
     # replaced with label strings for vectors and data arrays
-    diffphil = self.master_phil.fetch_diff(source = self.currentphil)
+    diffphil = master_phil.fetch_diff(source = self.currentphil)
     if useful_for_preset_button:
       # Tidy up diffphil by eliminating parameters that are not needed
       # for preset buttons or are being overwritten by user settings (colour and radii scheme)
       # First make a copy of all phil parameters some of which may be altered below
-      paramscopy = self.master_phil.format(self.params).copy().extract()
+      paramscopy = master_phil.format(self.params).copy().extract()
 
       omitparms = ["viewer.scene_id", "hkls.nth_power_scale_radii", "hkls.scale",
         "hkls.color_scheme", "hkls.color_powscale", "NGL.show_tooltips",
@@ -288,8 +286,8 @@ class HKLViewFrame() :
         label,datatype = self.viewer.get_label_type_from_scene_id(paramscopy.viewer.scene_id)
         paramscopy.viewer.data_array.label = label
         paramscopy.viewer.data_array.datatype = datatype
-        paramsobj = self.master_phil.format(paramscopy)
-        diffphil = self.master_phil.fetch_diff(source =paramsobj)
+        paramsobj = master_phil.format(paramscopy)
+        diffphil = master_phil.fetch_diff(source =paramsobj)
 
       if jsview_3d.has_phil_path(diffphil, "angle_around_vector"):
         # convert any integer id into corresponding label for this vector
@@ -306,11 +304,11 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diffphil, "animate_rotation_around_vector"):
         # convert any integer id into corresponding label for this vector
         # which is needed for userfriendliness when using current phil for preset buttons
-        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.clip_plane.animate_rotation_around_vector])
+        lblvectors = self.viewer.get_vectors_labels_from_ids([paramscopy.viewer.animate_rotation_around_vector])
         strvec, speed = lblvectors[0]
         # if speed <= 0 this amounts to the default of not animating at all so omit animate_rotation_around_vector altogether
         if speed > 0.0:
-          paramscopy.clip_plane.animate_rotation_around_vector = str(lblvectors[0])
+          paramscopy.viewer.animate_rotation_around_vector = str(lblvectors[0])
         else:
           omitparms = omitparms + ["clip_plane.animate_rotation_around_vector"]
         diffphil = diffphil.format(paramscopy) # adopt new animate_rotation_around_vector value
@@ -332,8 +330,8 @@ class HKLViewFrame() :
         # preset button phil strings instead of binner_idx which may only apply to the current data file
         binlabel = self.viewer.get_binlabel_from_binner_idx(paramscopy.binning.binner_idx)
         binlabelphil = libtbx.phil.parse("binning.binlabel = '%s'" %binlabel)
-        workingphil = self.master_phil.fetch(sources=[binlabelphil, diffphil] )
-        diffphil = self.master_phil.fetch_diff(source=workingphil )
+        workingphil = master_phil.fetch(sources=[binlabelphil, diffphil] )
+        diffphil = master_phil.fetch_diff(source=workingphil )
 
       remove_bin_opacities = True
       if jsview_3d.has_phil_path(diffphil, "bin_opacity"):
@@ -377,7 +375,7 @@ class HKLViewFrame() :
         self.ResetPhil()
 
       if not new_phil:
-        new_phil = self.master_phil.format(python_object = self.params)
+        new_phil = master_phil.format(python_object = self.params)
       self.currentphil, diff_phil = self.GetNewCurrentPhilFromPython(new_phil, self.currentphil)
 
       self.params = self.currentphil.extract()
@@ -527,7 +525,7 @@ class HKLViewFrame() :
 
 
   def SendCurrentPhilValues(self):
-    self.currentphil = self.master_phil.format(python_object = self.params)
+    self.currentphil = master_phil.format(python_object = self.params)
     philstrvalsdict = {}
     lst = []
     for e in self.currentphil.all_definitions():
@@ -1106,7 +1104,7 @@ class HKLViewFrame() :
         philstr_user_vectors_labels = []
         millaroperationstr = None
         if jsview_3d.has_phil_path(btnphil, "data_array", "show_vector", "miller_array_operation"):
-          btnphilobj, unusedparms = self.master_phil.fetch(btnphil, track_unused_definitions=True)
+          btnphilobj, unusedparms = master_phil.fetch(btnphil, track_unused_definitions=True)
           for parm in unusedparms:
             self.mprint( "Preset button, %s, has unrecognised phil parameter:\n   %s" %(btn_id, parm.path), verbose=1)
           btnphilextract = btnphilobj.extract()
@@ -1322,42 +1320,42 @@ class HKLViewFrame() :
 
 
   def ExpandToP1(self, val, inbrowser=True):
-    self.params.viewer.expand_to_p1 = val
-    self.params.viewer.inbrowser = inbrowser
+    self.params.hkls.expand_to_p1 = val
+    self.params.hkls.inbrowser = inbrowser
     self.update_settings()
 
 
   def ExpandAnomalous(self, val, inbrowser=True):
-    self.params.viewer.expand_anomalous = val
-    self.params.viewer.inbrowser = inbrowser
+    self.params.hkls.expand_anomalous = val
+    self.params.hkls.inbrowser = inbrowser
     self.update_settings()
 
 
   def ShowOnlyMissing(self, val):
-    self.params.viewer.show_only_missing = val
+    self.params.hkls.show_only_missing = val
     self.update_settings()
 
 
   def ShowMissing(self, val):
-    self.params.viewer.show_missing = val
+    self.params.hkls.show_missing = val
     self.update_settings()
 
 
   def ShowDataOverSigma(self, val):
-    self.params.viewer.show_data_over_sigma = val
+    self.params.hkls.show_data_over_sigma = val
     self.update_settings()
 
 
   def ShowSystematicAbsences(self, val):
-    self.params.viewer.show_systematic_absences = val
+    self.params.hkls.show_systematic_absences = val
     self.update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
     axisstr = axis.lower()
-    self.params.viewer.slice_mode = val
-    self.params.viewer.slice_axis = axisstr
-    self.params.viewer.slice_index = index
+    self.params.hkls.slice_mode = val
+    self.params.hkls.slice_axis = axisstr
+    self.params.hkls.slice_index = index
     self.update_settings()
 
 
@@ -1437,12 +1435,12 @@ class HKLViewFrame() :
 
 
   def SetColourScene(self, colourcol):
-    self.params.viewer.colour_scene_id = colourcol
+    self.params.hkls.colour_scene_id = colourcol
     self.update_settings()
 
 
   def SetRadiusScene(self, radiuscol):
-    self.params.viewer.radii_scene_id = radiuscol
+    self.params.hkls.radii_scene_id = radiuscol
     self.update_settings()
 
 
@@ -1453,19 +1451,19 @@ class HKLViewFrame() :
     If nth_power_scale=NaN an automatic power will be computed ensuring the smallest radius
     is 0.1 times the maximum radius
     """
-    self.params.viewer.scale = scale
-    self.params.viewer.nth_power_scale_radii = nth_power_scale
+    self.params.hkls.scale = scale
+    self.params.hkls.nth_power_scale_radii = nth_power_scale
     self.update_settings()
 
 
   def SetColourRadiusToSigmas(self, val):
-    self.params.viewer.sigma_color_radius = val
+    self.params.hkls.sigma_color_radius = val
     self.update_settings()
 
 
   def SetColourScheme(self, color_scheme, color_powscale=1.0):
-    self.params.viewer.color_scheme = color_scheme
-    self.params.viewer.color_powscale = color_powscale
+    self.params.hkls.color_scheme = color_scheme
+    self.params.hkls.color_powscale = color_powscale
     self.update_settings()
 
 
@@ -1574,6 +1572,7 @@ class HKLViewFrame() :
           abcvec = eval(re.sub(unwantedchars, "", phil_uvec.abc))
           # convert into cartesian space
           cartvec = list(abcvec * matrix.sqr(uc.orthogonalization_matrix()))
+          # length unit used by a realspace vector in reciprocal space is the inverse of its realspace length
           veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
         elif phil_uvec.hkl_op not in [None, ""]:
           hklop = re.sub(unwantedchars, "", phil_uvec.hkl_op)
@@ -1638,8 +1637,8 @@ class HKLViewFrame() :
     if use:
       self.params.clip_plane.hkldist = hkldist
       self.params.clip_plane.clip_width = clipwidth
-      self.params.viewer.slice_mode = False
-      self.params.viewer.inbrowser = True
+      self.params.hkls.slice_mode = False
+      self.params.hkls.inbrowser = True
     else:
       self.params.clip_plane.clip_width = None
     self.update_settings()
@@ -1760,41 +1759,60 @@ class HKLViewFrame() :
 masterphilstr = """
   openfilename = None
     .type = path
+    .help = "Name of file with one or more datasets"
   use_provided_miller_arrays = False
     .type = bool
+    .help = "internal flag"
   savefilename = None
     .type = path
+    .help = "Name of file where the user wants to save datasets. Optionally used after making new datasets from existing ones"
   save_image_name = None
     .type = path
+    .help = "Name of image file (PNG format) where the current displayed reflections will be saved to at the users request"
   merge_data = False
     .type = bool
+    .help = "internal flag"
   miller_array_operation = ''
     .type = str
+    .help = "Python syntax string defining a new cctbx.miller_array object from one or two exisitng miller arrays " \
+            "in the loaded data file. The CCTBX API is used for this"
   spacegroup_choice = None
     .type = int
   using_space_subgroup = False
     .type = bool
+    .help = "internal flag"
   real_space_unit_cell_scale_fraction = None
-    .type = float
+    .type = float(value_min=0.0, value_max=1.0)
+    .help = "Parameter specifying the scale at which to display the unit cell compared to reciprocal space. 0 means " \
+            "true to scale of the size of the reciprocal lattice. 1 means close to the radius of the displayed sphere of reflections."
   reciprocal_unit_cell_scale_fraction = None
-    .type = float
-  clip_plane {
+    .type = float(value_min=0.0, value_max=1.0)
+    .help = "Parameter specifying the scale at which to display the reciprocal unit cell compared to reciprocal space. " \
+            "0 means true to scale of the size of the reciprocal lattice. 1 means close to the radius of the displayed sphere of reflections."
+  clip_plane
+    .help = "Optionally imposed clip plane which is always parallel to the screen."
+  {
     hkldist = 0.0
       .type = float
+      .help = "Distance from origin of the center of the clip plane. " \
+              "If the clip plane is normal to a reciprocal lattice vector or the associated real space " \
+              "vector the unit of hkldist is the length of the reciprocal lattice vector. " \
+              "If the clip plane is normal to a real space vector the unit of hkldist is the " \
+              "inverse of its real space length."
     normal_vector = "-1"
       .type = str
     is_assoc_real_space_vector = False
       .type = bool
-      .caption = "Indicate if using associated real space vector to the selected vector"
+      .help = "Indicate if using associated real space vector to the selected reciprocal space vector"
     normal_vector_length_scale = -1
       .type = float
-      .caption = "If value is negative the length of the normal vector is used as the scale."
+      .help = "If value is negative the unit length of hkldist is used as the scale."
     clip_width = None
       .type = float
-      .caption = "If value is not None then we are clipping. If auto_clip_width is True this value is ignored."
+      .help = "If value is not None then we are clipping. If auto_clip_width is True this value is ignored."
     auto_clip_width = True
       .type = bool
-      .caption = "If true compute appropriate clip plane width. Otherwise use clip_width value"
+      .help = "If true compute appropriate clip plane width. Otherwise use clip_width value"
     fractional_vector = reciprocal *realspace
       .type = choice
   }
@@ -1806,14 +1824,14 @@ masterphilstr = """
       .type = floats
     binner_idx = 0
       .type = int
-      .caption = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+      .help = "Index in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
     binlabel = None
       .type = str
-      .caption = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
+      .help = "Element in list of binners, say ['Resolution', 'Singletons', 'I,SIGI', 'Sigmas of I,SIGI',..] "
     bin_opacity = None
       .type = floats(size=2)
       .multiple = True
-      .caption = "A list of tuples (alpha, idx) with as many or more elements as the current number of binners. List is cast to a string"
+      .help = "A list of tuples (alpha, idx) with as many or more elements as the current number of binners. List is cast to a string"
     nbins = 1
       .type = int(value_min=1, value_max=40)
   }
@@ -1822,49 +1840,60 @@ masterphilstr = """
     data_array {
       label = None
         .type = str
-        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+        .help = "If provided this assigns scene_id with a value corresponding to the numbering " \
                    "order the miller array with this label is found in the reflection data file."
       phasertng_tag = None
         .type = str
-        .caption = "If provided this assigns scene_id with a value corresponding to the numbering " \
+        .help = "If provided this assigns scene_id with a value corresponding to the numbering " \
                    "order the miller array with a label found in the parsed history of the MTZ header."
       datatype = None
         .type = str
-        .caption = "In case label is not found this assigns scene_id with a value corresponding to " \
+        .help = "In case label is not found this assigns scene_id with a value corresponding to " \
                    "the first miller array of this data type found in the reflection data file."
     }
     scene_id = None
       .type = int
     ncolourlabels = 6
       .type = int
-    show_symmetry_rotation_axes = False
-      .type = bool
+      .help = "internal"
+    #show_symmetry_rotation_axes = False
+    #  .type = bool
     show_vector = ''
       .type = str
       .multiple = True
+      .help = "Vectors to display. Each show_vector is a stringified python list consisting of the name " \
+              "of the vector as the first element and a boolean value as the second element indicating " \
+              "visibility of the vector, say show_vector = "['4-fold#2', True]""
     show_all_vectors = 0
       .type = int(value_min=-1, value_max=1)
     user_vector
       .multiple = True
-      .caption = "Vectors the user add in addition to existing vectors (rotations, TNCS, anisotropy principal axes). " \
-                 "A vector has to be entered either as a rotation, a real space or a reciprocal space vector."
+      .help = "Vectors the user add in addition to existing vectors (rotations, TNCS, anisotropy principal axes). " \
+              "A vector has to be entered either as a rotation, a real space or a reciprocal space vector. " \
+              "The label is required but only one of hkl_op, abc or hkl must be specified"
     {
       label = ""
         .type = str
       hkl_op = ""
         .type = str
+        .help = "Rotation operation specified with h,k and l"
       abc = ""
         .type = str
+        .help = "Real space vector in real space fractional coordinates"
       hkl = ""
         .type = str
+        .help = "Reciprocal space vector in reciprocal space fractional coordinates"
     }
     show_hkl = ""
       .type = str
-      .caption = "Highlight a reflection with a red meshed wire net surrounding it."
+      .help = "Highlight a reflection with a red meshed wire net surrounding it."
     is_parallel = False
       .type = bool
+      .help = "Specifies if reciprocal space is rotated to have a selected and displayed vector being parallel " \
+              "or perpendicular to the screen."
     fixorientation = vector *None
       .type = choice
+      .help = "fixes orientation of reciprocal space to be aligned with a vector so only mouse zoom will work"
     angle_around_XHKL_vector = 0.0
       .type = float
     angle_around_YHKL_vector = 0.0
@@ -1873,8 +1902,12 @@ masterphilstr = """
       .type = float
     angle_around_vector = \"[0,0]\"
       .type = str
+      .help = "Rotation with a specified angle of all reflections around a specified vector, " \
+              "say angle_around_vector = \"['2-fold#5', 13.0]\""
     animate_rotation_around_vector = \"[0,0]\"
       .type = str
+      .help = "Continuous rotation of all reflections around a specified vector at a certain speed, " \
+              "say animate_rotation_around_vector = \"['2-fold#5', 10.0]\""
   }
   hkls {
     %s
@@ -1888,3 +1921,5 @@ masterphilstr = """
     .type = str
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
+
+master_phil = libtbx.phil.parse( masterphilstr )

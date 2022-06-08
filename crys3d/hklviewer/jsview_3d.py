@@ -409,7 +409,7 @@ class HKLview_3d:
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
                       "clip_plane",
-                      "show_symmetry_rotation_axes",
+                      #"show_symmetry_rotation_axes",
                       "show_vector",
                       "show_all_vectors",
                       "hkls",
@@ -419,7 +419,7 @@ class HKLview_3d:
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25) # for debugging
-      self.show_rotation_axes()
+      #self.show_rotation_axes()
 
       if has_phil_path(diff_phil, "show_vector"):
         self.show_vectors(self.params.viewer.show_vector, diff_phil)
@@ -1953,7 +1953,7 @@ in the space group %s\nwith unit cell %s""" \
       label = "%s-fold" %str(order)
     return tuple((rotaxis)[0]), theta, label, order
 
-
+  """
   def show_rotation_axes(self):
     if self.params.viewer.show_symmetry_rotation_axes:
       for i, (label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
@@ -1963,7 +1963,7 @@ in the space group %s\nwith unit cell %s""" \
           self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2, labelpos=1.0)
     else:
       self.RemovePrimitives("SymRotAxes")
-
+  """
 
   def calc_rotation_axes(self):
     if self.sg:
@@ -2641,12 +2641,15 @@ in the space group %s\nwith unit cell %s""" \
 ngl_philstr = """
   mouse_sensitivity = 0.06
     .type = float
+    .help = "Controls the speed of movement when adjusting view with the mouse"
   tooltip_alpha = 0.80
     .type = float
   fontsize = 9
     .type = int
   show_tooltips = none *click hover
     .type = choice
+    .help = "Specifies whetehr tooltips for reflections should show by hovering or by clicking on a reflection" \
+            "If the displayed data has a very large number of reflections it is best to select "click""
   camera_type = *orthographic perspective
     .type = choice
 """
