@@ -2741,6 +2741,7 @@ class analyze_aniso_object:
 
     self.b_cart=None
     self.b_cart_aniso_removed=None
+    self.b_iso=None
 
   def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None,
      b_cart_to_remove = None, invert = False):
@@ -2752,6 +2753,7 @@ class analyze_aniso_object:
     if b_cart_to_remove and b_iso:
       self.b_cart=b_cart_to_remove
       self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
+      self.b_iso=b_iso
     else:
       from cctbx.maptbx.segment_and_split_map import get_b_iso
       b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,

@@ -8545,7 +8545,7 @@ def renormalize_map_data(
   map_data = None, solvent_fraction = None):
   sd = max(0.0001, map_data.sample_standard_deviation())
   if solvent_fraction >=  10.: solvent_fraction = solvent_fraction/100.
-  assert solvent_fraction > 0 and solvent_fraction < 1
+  solvent_fraction = min(0.999, max(0.001, solvent_fraction))
   scaled_sd = sd/(1-solvent_fraction)**0.5
   map_data = (map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
   return map_data
