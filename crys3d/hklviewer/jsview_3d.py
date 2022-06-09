@@ -46,11 +46,7 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
     hkls.expand_anomalous = False
     hkls.expand_to_p1 = False
     mprint("The " + proc_array.info().label_string() + \
-         " array is not symmetry unique. Expansion may lead to multiple reflections having the same indices.")
-  if (hkls.inbrowser==True):
-    hkls.expand_anomalous = False
-    hkls.expand_to_p1 = False
-
+         " array is not symmetry unique. Expansion may lead to multiple reflections having the same indices.", verbose=1)
   hklscene = display.scene(miller_array=proc_array, merge=None, renderscale=renderscale,
     settings=hkls, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
   if not hklscene.SceneCreated:
@@ -284,65 +280,56 @@ class HKLview_3d:
     self.diff_phil = diff_phil
 
     if has_phil_path(diff_phil,
-                     "openfilename",
-                     "use_provided_miller_arrays",
-                     "spacegroup_choice",
-                     "using_space_subgroup",
-                     "merge_data",
-                     "camera_type",
-                     "miller_array_operation",
-                     ) \
-     or has_phil_path(diff_phil, "viewer") \
-     and has_phil_path(diff_phil,
-                       "show_missing",
-                       "show_only_missing",
-                       "show_systematic_absences",
-                       "slice_axis",
-                       "slice_index",
-                       "sigma_color_radius",
-                       "scene_id",
-                       "data_array",
-                       "color_scheme",
-                       "color_powscale",
-                       "scale",
-                       "nth_power_scale_radii"
-                       ) \
-     or self.params.hkls.inbrowser==False and \
-      ( has_phil_path(diff_phil,
-                     "expand_anomalous",
-                     "expand_to_p1",
-                     "show_anomalous_pairs")
-       ):
-        self.sceneisdirty = True
-        if has_phil_path(diff_phil,
-                       "spacegroup_choice",
-                       "show_missing",
-                       "show_only_missing",
-                       "show_systematic_absences",
-                       "slice_axis",
-                       "slice_index",
-                       "sigma_color_radius",
-                       "scene_id",
-                       "data_array",
-                       "use_provided_miller_arrays",
-                       "color_scheme",
-                       "color_powscale",
-                       "scale",
-                       "nth_power_scale_radii"
-            ):
-          self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
-          self.params.miller_array_operation = ""
+            "openfilename",
+            "use_provided_miller_arrays",
+            "spacegroup_choice",
+            "using_space_subgroup",
+            "camera_type",
+            "miller_array_operation",
+       ) or has_phil_path(diff_phil, "viewer") \
+          and has_phil_path(diff_phil,
+                  "show_missing",
+                  "show_only_missing",
+                  "show_systematic_absences",
+                  "slice_axis",
+                  "slice_index",
+                  "sigma_color_radius",
+                  "scene_id",
+                  "data_array",
+                  "color_scheme",
+                  "color_powscale",
+                  "scale",
+                  "nth_power_scale_radii"
+              ) :
+                  self.sceneisdirty = True
+                  if has_phil_path(diff_phil,
+                          "spacegroup_choice",
+                          "show_missing",
+                          "show_only_missing",
+                          "show_systematic_absences",
+                          "slice_axis",
+                          "slice_index",
+                          "sigma_color_radius",
+                          "scene_id",
+                          "data_array",
+                          "use_provided_miller_arrays",
+                          "color_scheme",
+                          "color_powscale",
+                          "scale",
+                          "nth_power_scale_radii"
+                     ):
+                        self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
+                        self.params.miller_array_operation = ""
     msg = ""
     if self.params.viewer.scene_id is not None and \
-      ( has_phil_path(diff_phil,
-                      "show_missing",
-                      "show_only_missing",
-                      "show_systematic_absences",
-                      "binner_idx",
-                      "binlabel",
-                      "nbins",
-                      )
-       ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
+       has_phil_path(diff_phil,
+            "show_missing",
+            "show_only_missing",
+            "show_systematic_absences",
+            "binner_idx",
+            "binlabel",
+            "nbins",
+        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
@@ -543,9 +530,8 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      if self.params.hkls.inbrowser:
-        self.ExpandInBrowser()
-        self.SetOpacities(self.params.binning.bin_opacity )
+      self.ExpandInBrowser()
+      self.SetOpacities(self.params.binning.bin_opacity )
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
@@ -719,10 +705,8 @@ class HKLview_3d:
 
     self.HKLsceneKey = (curphilparam.spacegroup_choice,
                          curphilparam.using_space_subgroup,
-                         curphilparam.merge_data,
-                         self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
-                         self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
-                         self.params.hkls.inbrowser,
+                         self.params.hkls.expand_anomalous,
+                         self.params.hkls.expand_to_p1,
                          self.params.hkls.slice_axis,
                          self.params.hkls.slice_index,
                          self.params.hkls.show_missing,
@@ -756,10 +740,8 @@ class HKLview_3d:
       self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
       self.HKLsceneKey = (curphilparam.spacegroup_choice,
                             curphilparam.using_space_subgroup,
-                            curphilparam.merge_data,
-                            self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
-                            self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
-                            self.params.hkls.inbrowser,
+                            self.params.hkls.expand_anomalous,
+                            self.params.hkls.expand_to_p1,
                             self.params.hkls.slice_axis,
                             self.params.hkls.slice_index,
                             self.params.hkls.show_missing,
@@ -792,10 +774,8 @@ class HKLview_3d:
   def Sceneid_to_SceneKey(self, sceneid):
     return (self.params.spacegroup_choice,
                       self.params.using_space_subgroup,
-                      self.params.merge_data,
-                      self.params.hkls.expand_anomalous or self.params.hkls.inbrowser,
-                      self.params.hkls.expand_to_p1 or self.params.hkls.inbrowser,
-                      self.params.hkls.inbrowser,
+                      self.params.hkls.expand_anomalous,
+                      self.params.hkls.expand_to_p1,
                       self.params.hkls.slice_axis,
                       self.params.hkls.slice_index,
                       self.params.hkls.show_missing,
@@ -2644,11 +2624,13 @@ ngl_philstr = """
     .help = "Controls the speed of movement when adjusting view with the mouse"
   tooltip_alpha = 0.80
     .type = float
+    .help = "Opacity of tooltips showing data values of reflections when clicking or hovering the mouse on reflections"
   fontsize = 9
     .type = int
+    .help = "Font size for window displaying reflections"
   show_tooltips = none *click hover
     .type = choice
-    .help = "Specifies whetehr tooltips for reflections should show by hovering or by clicking on a reflection" \
+    .help = "Specifies whether tooltips for reflections should show by hovering or by clicking on a reflection" \
             "If the displayed data has a very large number of reflections it is best to select "click""
   camera_type = *orthographic perspective
     .type = choice

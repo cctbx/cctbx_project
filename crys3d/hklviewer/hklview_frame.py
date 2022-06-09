@@ -429,7 +429,6 @@ class HKLViewFrame() :
         self.validated_preset_buttons = False
 
       if jsview_3d.has_phil_path(diff_phil, "scene_id",
-                                            "merge_data",
                                             "show_missing",
                                             "show_only_missing",
                                             "show_systematic_absences",
@@ -1319,15 +1318,13 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ExpandToP1(self, val, inbrowser=True):
+  def ExpandToP1(self, val):
     self.params.hkls.expand_to_p1 = val
-    self.params.hkls.inbrowser = inbrowser
     self.update_settings()
 
 
-  def ExpandAnomalous(self, val, inbrowser=True):
+  def ExpandAnomalous(self, va):
     self.params.hkls.expand_anomalous = val
-    self.params.hkls.inbrowser = inbrowser
     self.update_settings()
 
 
@@ -1638,33 +1635,8 @@ class HKLViewFrame() :
       self.params.clip_plane.hkldist = hkldist
       self.params.clip_plane.clip_width = clipwidth
       self.params.hkls.slice_mode = False
-      self.params.hkls.inbrowser = True
     else:
       self.params.clip_plane.clip_width = None
-    self.update_settings()
-
-
-  def SinglePlaneOfReflections(self, use=True, axis="h", slice_index=0 ):
-    if use:
-      viewer.slice_axis = axis
-      viewer.is_parallel = False
-      viewer.slice_mode = True
-      viewer.inbrowser = False
-      viewer.fixorientation = "reflection_slice"
-      viewer.slice_index = slice_index
-    else:
-      viewer.slice_mode = False
-      viewer.inbrowser = True
-      viewer.fixorientation = "None"
-    self.update_settings()
-
-
-  def OrientVector(self, vecnr, is_parallel, val=True):
-    viewer.fixorientation = "None"
-    if val:
-      viewer.is_parallel = is_parallel
-      viewer.fixorientation = "vector"
-      viewer.show_vector = ['[%d, True]' %vecnr]
     self.update_settings()
 
 

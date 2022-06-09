@@ -941,94 +941,96 @@ delimiter = "|"
   .type = str
   .short_caption = "column delimiter when printing table to standard output"
   .help = "column delimiter"
-selected_info {
+selected_info
+  .help = "If values are set to True then tabulate respective properties of datasets in the reflection file."
+{
     labels = True
       .type = bool
-      .caption = "Name of data array"
+      .help = "Name of data array"
       .short_caption = "Labels"
     description = True
       .type = bool
-      .caption = "Type of data"
+      .help = "Type of data"
       .short_caption = "Type"
     wavelength = True
       .type = bool
-      .caption = "Recorded wavelength/Å"
+      .help = "Recorded wavelength/Å"
       .short_caption = "λ/Å"
     n_reflections = True
       .type = bool
-      .caption = "Number of reflections"
+      .help = "Number of reflections"
       .short_caption = "#HKLs"
     span = True
       .type = bool
-      .caption = "Crude range of hkl indices"
+      .help = "Crude range of hkl indices"
       .short_caption = "Span"
     minmax_data = True
       .type = bool
-      .caption = "minimum, maximum values of data"
+      .help = "minimum, maximum values of data"
       .short_caption = "min,max data"
     minmax_sigmas = True
       .type = bool
-      .caption = "minimum, maximum values of sigmas"
+      .help = "minimum, maximum values of sigmas"
       .short_caption = "min,max sigmas"
     data_sigdata = False
       .type = bool
-      .caption = "Average value of data/sigma"
+      .help = "Average value of data/sigma"
       .short_caption = "DatSigDat"
     data_sigdata_max = False
       .type = bool
-      .caption = "maximum value of data/sigma"
+      .help = "maximum value of data/sigma"
       .short_caption = "MaxDatSigDat"
     d_minmax = True
       .type = bool
-      .caption = "d_min,d_max/Å"
+      .help = "d_min,d_max/Å"
       .short_caption = "d_min,d_max/Å"
     unit_cell = False
       .type = bool
-      .caption = "Unit cell parameters (a/Å, b/Å, c/Å, α°, β°, γ°)"
+      .help = "Unit cell parameters (a/Å, b/Å, c/Å, α°, β°, γ°)"
       .short_caption = "unit cell (a/Å, b/Å, c/Å, α°, β°, γ°)"
     space_group = False
       .type = bool
-      .caption = "Space group"
+      .help = "Space group"
       .short_caption = "space group"
     n_centrics = False
       .type = bool
-      .caption = "Number of centric reflections"
+      .help = "Number of centric reflections"
       .short_caption = "#centrics"
     is_anomalous = True
       .type = bool
-      .caption = "Is data anomalous"
+      .help = "Is data anomalous"
       .short_caption = "Anomalous"
     is_symmetry_unique = True
       .type = bool
-      .caption = "Is data symmetry unique"
+      .help = "Is data symmetry unique"
       .short_caption = "Sym.uniq."
     n_sys_abs = False
       .type = bool
-      .caption = "Systematic absences"
+      .help = "Systematic absences"
       .short_caption = "#Syst.abs."
     data_completeness = True
       .type = bool
-      .caption = "Completeness in resolution range"
+      .help = "Completeness in resolution range"
       .short_caption = "Data compl."
     data_compl_infty = False
       .type = bool
-      .caption = "Completeness with d_max=infinity"
+      .help = "Completeness with d_max=infinity"
       .short_caption = "Compl.inf."
     ano_completeness = False
       .type = bool
-      .caption = "Anomalous completeness in resolution range"
+      .help = "Anomalous completeness in resolution range"
       .short_caption = "Ano.complete"
     ano_mean_diff = False
       .type = bool
-      .caption = "Mean anomalous difference."
+      .help = "Mean anomalous difference."
       .short_caption = "Ano.dif. "
     n_bijvoet = False
       .type = bool
-      .caption = "Number of Bijvoet pairs"
+      .help = "Number of Bijvoet pairs"
       .short_caption = "#Bijvoets"
     n_singletons = False
       .type = bool
-      .caption = "Number of lone anomalous reflections"
+      .help = "Number of lone anomalous reflections"
       .short_caption = "#Singletons"
   }
 
@@ -1040,7 +1042,7 @@ selected_info {
   for objs in philobj.objects:
     if objs.name == "selected_info":
       for obj in objs.objects:
-        caption_dict[obj.name] = (obj.short_caption, obj.caption)
+        caption_dict[obj.name] = (obj.short_caption, obj.help)
 
 
   def get_selected_info_columns_from_phil(self,philxtr=None):

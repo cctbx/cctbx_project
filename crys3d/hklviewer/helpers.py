@@ -86,11 +86,11 @@ class MillerTableColumnHeaderDialog(QDialog):
     self.selectcolumnstable.clearContents()
     self.selectcolumnstable.setColumnCount(1)
     self.selectcolumnstable.setRowCount(nrows)
-    for row,(philname, (short_caption, caption), is_selected) in enumerate(self.parent.colnames_select_lst):
+    for row,(philname, (short_caption, helpstr), is_selected) in enumerate(self.parent.colnames_select_lst):
       item = QTableWidgetItem(short_caption)
       item.setData(Qt.UserRole, philname) # associated phil parameter name is stored with the setData function
       item.setFlags((Qt.ItemIsUserCheckable | Qt.ItemIsEnabled) )
-      item.setToolTip(caption)
+      item.setToolTip(helpstr)
       if is_selected:
         item.setCheckState(Qt.Checked)
       else:

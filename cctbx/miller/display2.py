@@ -58,8 +58,11 @@ def generate_systematic_absences(array,
 
 def nth_power_scale(dataarray, nth_power):
   """
-  set nth_power to appropriate number between 0 and 1 for dampening the
+  set nth_power to a number for dampening or enhancing the
   difference between the smallest and the largest values.
+  A negative number means that a large data value is rendered with a smaller radius than 
+  a small data value. For nth_power=0 all data values are rendered with the same radius
+  For nth_power=1 data values are rendered with radii proportional to the data values.
   If nth_power=NaN then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
@@ -252,16 +255,6 @@ class scene(object):
       self.missing_set = oop.null()
       #if (array.is_xray_intensity_array()):
       #  data.set_selected(data < 0, flex.double(data.size(), 0.))
-      if (array.is_unique_set_under_symmetry()) and (settings.map_to_asu):
-        array = array.map_to_asu()
-        if (multiplicities is not None):
-          multiplicities = multiplicities.map_to_asu()
-
-      if (settings.d_min is not None):
-        array = array.resolution_filter(d_min=settings.d_min)
-        if (multiplicities is not None):
-          multiplicities = multiplicities.resolution_filter(
-            d_min=settings.d_min)
       self.filtered_array = array.deep_copy()
       if (settings.expand_anomalous):
         if not array.is_unique_set_under_symmetry():
@@ -346,7 +339,6 @@ class scene(object):
 
   def generate_view_data(self):
     from scitbx.array_family import flex
-    #from scitbx import graphics_utils
     settings = self.settings
     data_for_colors = data_for_radii = None
     if not self.fullprocessarray:
@@ -355,11 +347,7 @@ class scene(object):
     sigmas = self.sigmas
     if (isinstance(data, flex.double) and data.all_eq(0)):
       data = flex.double(data.size(), 1)
-    if ((self.multiplicities is not None) and
-        (settings.scale_colors_multiplicity)):
-      data_for_colors = self.multiplicities.data().as_double()
-      assert data_for_colors.size() == data.size()
-    elif isinstance(data, flex.complex_double):
+    if isinstance(data, flex.complex_double):
       data_for_colors = self.phases
       foms_for_colours = self.foms
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
@@ -373,13 +361,7 @@ class scene(object):
     self.min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
     min_radius = 0.05 * self.min_dist
     max_radius = 0.5 * self.min_dist
-    if ((self.multiplicities is not None) and
-        (settings.scale_radii_multiplicity)):
-      data_for_radii = self.multiplicities.data().as_double()
-      if (settings.sigma_color_radius) and sigmas is not None:
-        data_for_radii = sigmas * self.multiplicities.as_double()
-      assert data_for_radii.size() == data.size()
-    elif (settings.sigma_color_radius) and sigmas is not None:
+    if (settings.sigma_color_radius) and sigmas is not None:
       data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(sigmas.as_double().deep_copy()),
                                        settings.nth_power_scale_radii)
     else :
@@ -387,10 +369,6 @@ class scene(object):
                                        settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
-      if (not settings.keep_constant_scale):
-        data_for_radii = data_for_radii.select(self.slice_selection)
-        data_for_colors = data_for_colors.select(self.slice_selection)
-        foms_for_colours = foms_for_colours.select(self.slice_selection)
     # Computing rgb colours of each reflection is slow so make a small array
     # of precomputed colours to use as a lookup table for each reflection
     if isinstance(data, flex.complex_double):
@@ -428,11 +406,9 @@ class scene(object):
         color_all=False
         )
 
-    if (settings.slice_mode) and (settings.keep_constant_scale):
+    if (settings.slice_mode):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
-    #if (settings.sqrt_scale_radii) and (not settings.scale_radii_multiplicity):
-    #  data_for_radii = flex.sqrt(flex.abs(data_for_radii))
     if len(data_for_radii):
       #dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
       dat2 = flex.abs(flex.double( graphics_utils.NoNansArray( data_for_radii, 0.1 ) ))
@@ -568,61 +544,56 @@ colormaps = " ".join(plt.colormaps())
 colormaps = colormaps.replace("brg ", "*brg ")
 
 philstr = """
-  data = None
-    .type = path
-    .optional = False
-  labels = None
-    .type = str
-  symmetry_file = None
-    .type = str
-  black_background = True
-    .type = bool
-  show_axes = True
-    .type = bool
   nth_power_scale_radii = 0.0
     .type = float
+    .help = "A number for dampening or enhancing the difference between the smallest and the largest values. "
+            "A negative number means that a large data value is rendered with a smaller radius than "
+            "a small data value will be. For nth_power_scale_radii=0 all data values are rendered with "
+            "the same radius. For nth_power_scale_radii=1 data values are rendered with radii proportional "
+            "to the data values. If nth_power_scale_radii=NaN an automatic value is computed that maps the "
+            "smallest values to 0.1 of the largest values."
   scale = 1
     .type = float
+    .help = "Increase/decrease radii with this factor."
   sigma_color_radius = False
     .type = bool
+    .help = "If set to True then colour mapping is based on sigma values if dataset contains sigmas."
   expand_to_p1 = False
     .type = bool
+    .help = "Expand data to P1."
   expand_anomalous = False
     .type = bool
-  inbrowser = True
-    .type = bool
+    .help = "Expand data to Friedel pairs."
   show_missing = False
     .type = bool
+    .help = "Show those reflections within the highest resolution sphere that are missing from the dataset."
   show_only_missing = False
     .type = bool
   show_systematic_absences = False
     .type = bool
   slice_mode = False
     .type = bool
-  keep_constant_scale = True
-    .type = bool
+    .help = "Deprecated: Show only a slice of reflections. Superseeded by applying clip planes."
   slice_axis = *h k l
     .type = choice
+    .help = "Deprecated: Show only a slice of reflections. Superseeded by applying clip planes."
   slice_index = 0
     .type = int
+    .help = "Deprecated: Show only a slice of reflections. Superseeded by applying clip planes."
   color_scheme = %s
     .type = choice(multi=False)
+    .help = "The selected colour scheme for colouring reflections. These are all defined by MatPlotLib."
   color_powscale = 1.0
     .type = float
-  show_labels = True
-    .type = bool
-  uniform_size = False
-    .type = bool
-  d_min = None
-    .type = float
-  map_to_asu = False
-    .type = bool
-  scale_radii_multiplicity = False
-    .type = bool
-  scale_colors_multiplicity = False
-    .type = bool
+    .help = "color_powscale skews the colour mapping towards the smaller data values for color_powscale > 1"
+            "but skews it towards the larger data values for 0 < powscale < 1. Typically for intensity data a"
+            "value around 0.25 is appropriate for emphasizing differences between stronger and weaker data."
+            "For amplitude data a value of around 0.5 is better. When displaying"
+            "map coefficients where complex values are converted into amplitudes and phases color_powscale "
+            "remains equal to 1."
   show_anomalous_pairs = False
     .type = bool
+    .help = "Internal use only. Applies when merging data."
 """ %colormaps
 
 master_phil = libtbx.phil.parse( philstr )
