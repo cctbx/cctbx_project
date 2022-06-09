@@ -10,7 +10,6 @@ from cctbx.array_family import flex
 import libtbx.phil
 from scitbx import graphics_utils
 from libtbx import object_oriented_patterns as oop # causes crash in easy_mp.multi_core_run
-from math import sqrt
 import math, traceback
 import math, sys
 from six.moves import zip
@@ -60,7 +59,7 @@ def nth_power_scale(dataarray, nth_power):
   """
   set nth_power to a number for dampening or enhancing the
   difference between the smallest and the largest values.
-  A negative number means that a large data value is rendered with a smaller radius than 
+  A negative number means that a large data value is rendered with a smaller radius than
   a small data value. For nth_power=0 all data values are rendered with the same radius
   For nth_power=1 data values are rendered with radii proportional to the data values.
   If nth_power=NaN then an automatic value is computed that maps the smallest
