@@ -4776,7 +4776,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   if sequence is not None:
     params.crystal_info.sequence = sequence
   if wrapping is not None:
-    params.crystal_info.use_sg_symmetry =  (not wrapping)
+    params.crystal_info.use_sg_symmetry =  wrapping
   if target_ncs_au_file is not None:
     params.input_files.target_ncs_au_file = target_ncs_au_file
   if regions_to_keep is not None:
@@ -5020,6 +5020,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
       map_data, new_map_coeffs, new_crystal_symmetry, new_si = auto_sharpen(
          args = [], params = local_params,
         map_data = map_data,
+        wrapping = wrapping,
         crystal_symmetry = crystal_symmetry,
         write_output_files = False,
         pdb_inp = sharpening_target_pdb_inp,
@@ -5179,7 +5180,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
     args.append("keep_input_unit_cell_and_grid = False") # for new defaults
 
     assert params.crystal_info.use_sg_symmetry is not None
-    wrapping = (not params.crystal_info.use_sg_symmetry)
+    wrapping = params.crystal_info.use_sg_symmetry
     if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
       bounds_supplied = True
       print("\nRunning map_box with supplied bounds", file = out)
@@ -10196,6 +10197,7 @@ def auto_sharpen_map_or_map_coeffs(
         resolution = None,        # resolution is required
         crystal_symmetry = None,  # supply crystal_symmetry and map or
         map = None,               #  map and n_real
+        wrapping = None,
         half_map_data_list = None,     #  two half-maps matching map
         is_crystal = None,
         map_coeffs = None,
@@ -10346,6 +10348,8 @@ def auto_sharpen_map_or_map_coeffs(
         pdb_inp = pdb_inp,
         ncs_copies = ncs_copies,
         n_residues = n_residues, out = out)
+    if wrapping is not None:
+      si.wrapping = wrapping
     # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction = get_iterated_solvent_fraction(
