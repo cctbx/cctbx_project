@@ -4775,7 +4775,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   # Set params specifically if coming in from call
   if sequence is not None:
     params.crystal_info.sequence = sequence
-  if wrapping is not None:
+  if (wrapping is not None) and (params.crystal_info.use_sg_symmetry is None):
     params.crystal_info.use_sg_symmetry =  wrapping
   if target_ncs_au_file is not None:
     params.input_files.target_ncs_au_file = target_ncs_au_file
