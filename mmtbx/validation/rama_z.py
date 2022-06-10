@@ -124,6 +124,8 @@ class rama_z(object):
         key = "%s" % key
         if key not in used_atoms:
           phi, psi = three.get_phi_psi_angles()
+          if None in (phi, psi):
+            continue
           rkey = three.get_ramalyze_key()
           resname = main_residue.resname
           ss_type = self._figure_out_ss(three)
