@@ -1629,7 +1629,7 @@ Note:
         if self.params.output.add_group_line:
           if numModels > 1:
             # doing one of multiple models of an ensemble
-            ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
+            ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex+1)
           else:
             ret += "@group dominant {{{}}}\n".format(groupLabel)
 
