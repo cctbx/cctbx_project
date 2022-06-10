@@ -88,6 +88,11 @@ start,length.'''
     default=1e-7,
     help='Stop refinement as soon as the Euclidean norm of the vector '
          'of parameter shifts is below the given threshold.')
+  parser.add_argument(
+    '-A', '--adp_global',
+    action='store_true',
+    help='Refine a global ADP scaling parameter (an extremely simple model for'
+         'beam damage)')
   return parser
 
 def run(args):
@@ -151,16 +156,24 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
       sc.flags.set_grad_fdp(True)
       anom_sc_list.append((i, sc))
 
+  if args.adp_global:
+    from smtbx.refinement.constraints.adp import scalar_scaled_u
+    for sc in xm.xray_structure.scatterers():
+      if sc.flags.use_u_aniso():
+        sc.flags.set_grad_u_aniso(True)
+      else:
+        sc.flags.set_grad_u_iso(True)
+    adp_scale = scalar_scaled_u(range(len(xm.xray_structure.scatterers())))
+    xm.constraints.append(adp_scale)
+
+
   ls = xm.least_squares()
   steps = lstbx.normal_eqns_solving.levenberg_marquardt_iterations(
     non_linear_ls=ls,
     n_max_iterations=args.max_cycles,
     gradient_threshold=args.stop_deriv,
     step_threshold=args.stop_shift)
-
-  cov = ls.covariance_matrix()
-  cov_diag = cov.matrix_packed_u_diagonal()
-  param_map = xm.xray_structure.parameter_map()
+  cov_an = ls.covariance_matrix_and_annotations()
 
   # Prepare output
   result = ''
@@ -178,21 +191,13 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
   if args.table_with_su:
     result += ' ' * len(label)
     for i, sc in anom_sc_list:
-      sigma_fp = None
-      params = param_map[i]
-      if params.fp >= 0:
-        sigma_fp = sqrt(cov_diag[params.fp])
-        result += "{:6.3f} ".format(sigma_fp)
-      else:
-        result += "       "
+      label_fp = '{}.fp'.format(sc.label)
+      sigma_fp = sqrt(cov_an.variance_of(label_fp))
+      result += "{:6.3f} ".format(sigma_fp)
     for i, sc in anom_sc_list:
-      sigma_fdp = None
-      params = param_map[i]
-      if params.fdp >= 0:
-        sigma_fdp = sqrt(cov_diag[params.fdp])
-        result += "{:6.3f} ".format(sigma_fdp)
-      else:
-        result += "       "
+      label_fdp = '{}.fdp'.format(sc.label)
+      sigma_fdp = sqrt(cov_an.variance_of(label_fdp))
+      result += "{:6.3f} ".format(sigma_fdp)
     result += '\n'
 
   if not (args.table or args.table_with_su):
@@ -200,13 +205,17 @@ Inelastic form factors for \n non-refined atoms may be inaccurate.\n''')
         as format_float_with_su
     result += "\n### REFINE ANOMALOUS SCATTERING FACTORS ###\n"
     result += "Reflections: {}\n\n".format(args.reflections)
+
+    if args.adp_global:
+      sigma_adp_global = adp_scale.esd(ls)
+      result += "ADP scale: {}\n\n".format(
+          format_float_with_su(adp_scale.scalar.value, sigma_adp_global))
+
     for i, sc in anom_sc_list:
-      sigma_fp = sigma_fdp = None
-      params = param_map[i]
-      if params.fp >= 0:
-        sigma_fp = sqrt(cov_diag[params.fp])
-      if params.fdp >= 0:
-        sigma_fdp = sqrt(cov_diag[params.fdp])
+      label_fp = '{}.fp'.format(sc.label)
+      label_fdp = '{}.fdp'.format(sc.label)
+      sigma_fp = sqrt(cov_an.variance_of(label_fp))
+      sigma_fdp = sqrt(cov_an.variance_of(label_fdp))
       result += "{}:\n\tfp: {}\n\tfdp: {}\n".format(
           sc.label,
           format_float_with_su(sc.fp, sigma_fp),

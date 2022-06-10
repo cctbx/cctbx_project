@@ -3,6 +3,7 @@
 #include <boost/python/return_internal_reference.hpp>
 
 #include <smtbx/refinement/constraints/shared.h>
+#include <smtbx/refinement/constraints/scaled_adp.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
   namespace boost_python {
