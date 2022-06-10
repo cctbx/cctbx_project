@@ -43,10 +43,11 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
   hklscenes = []
   if (hkls.expand_anomalous or hkls.expand_to_p1) \
       and not proc_array.is_unique_set_under_symmetry():
-    hkls.expand_anomalous = False
-    hkls.expand_to_p1 = False
     mprint("The " + proc_array.info().label_string() + \
-         " array is not symmetry unique. Expansion may lead to multiple reflections having the same indices.", verbose=1)
+         " array is not symmetry unique. Expansion may lead to multiple reflections rendered on top of each other.", verbose=1)
+  hkls.expand_anomalous = False # don't expand reflections in display2.py as this now is done in HKLJavaScripts.js
+  hkls.expand_to_p1 = False    #  TODO: remove this functinoality from display2.py
+
   hklscene = display.scene(miller_array=proc_array, merge=None, renderscale=renderscale,
     settings=hkls, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
   if not hklscene.SceneCreated:
@@ -195,6 +196,12 @@ class HKLview_3d:
       self.hklfname = kwds['htmlfname']
     self.hklfname = os.path.abspath( self.hklfname )
     self.isHKLviewer= "false"
+    self.verbose = 1
+    if 'verbose' in kwds:
+      try:
+        self.verbose = eval(kwds['verbose'])
+      except Exception as e:
+        self.verbose = kwds['verbose']
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
@@ -1093,6 +1100,9 @@ class HKLview_3d:
       blankscene = True
     else:
       self.mprint("Rendering reflections.", end="")
+
+    if len(self.scene.indices) > self.miller_array.indices().size():
+      raise Sorry("Error! Displayed reflections not matching number of reflections in miller array.")
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
