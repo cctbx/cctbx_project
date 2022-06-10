@@ -392,7 +392,7 @@ class HKLViewFrame() :
 
       if len(diff_phil.all_definitions()) < 1 and not self.viewer.mouse_moved:
         self.mprint( "No change in PHIL parameters\n", verbose=1)
-        return False
+        return
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
@@ -415,7 +415,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "use_provided_miller_arrays"):
         if not self.load_miller_arrays():
-          return False
+          return
         self.viewer.lastscene_id = phl.viewer.scene_id
         phl.use_provided_miller_arrays = False # ensure we can do this again
 
@@ -424,7 +424,7 @@ class HKLViewFrame() :
         phl = self.ResetPhilandViewer()
         phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
-          return False
+          return
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 
@@ -445,7 +445,6 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "tabulate_miller_array_ids"):
         self.tabulate_arrays(phl.tabulate_miller_array_ids)
-        #return True
 
       if jsview_3d.has_phil_path(diff_phil, "using_space_subgroup") and phl.using_space_subgroup==False:
         self.set_default_spacegroup()
@@ -494,7 +493,7 @@ class HKLViewFrame() :
         ret = self.set_action(phl.action)
         phl.action = "is_running" # ensure the same action in succession can be executed
         if not ret:
-          return False
+          return
 
       if jsview_3d.has_phil_path(diff_phil, "savefilename"):
         self.SaveReflectionsFile(phl.savefilename)
@@ -516,11 +515,9 @@ class HKLViewFrame() :
       self.validate_preset_buttons()
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, verbose=1)
-        return False
-      return True
+      self.mprint( "Ready")
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc())
-      return False
 
 
   def SendCurrentPhilValues(self):
@@ -1728,7 +1725,7 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
 
 
-masterphilstr = """
+master_phil_str = """
   openfilename = None
     .type = path
     .help = "Name of file with one or more datasets"
@@ -1894,4 +1891,4 @@ masterphilstr = """
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 
-master_phil = libtbx.phil.parse( masterphilstr )
+master_phil = libtbx.phil.parse( master_phil_str )

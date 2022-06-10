@@ -1101,7 +1101,8 @@ class HKLview_3d:
     else:
       self.mprint("Rendering reflections.", end="")
 
-    if len(self.scene.indices) > self.miller_array.indices().size():
+    if self.scene is not None and self.miller_array is not None \
+     and len(self.scene.indices) > self.miller_array.indices().size():
       raise Sorry("Error! Displayed reflections not matching number of reflections in miller array.")
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
