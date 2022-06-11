@@ -97,8 +97,6 @@ class HKLview_3d:
     self.merge = False
     self.url = ""
     self.bin_labels_type_idxs = []
-    self.colour_scene_id = None
-    self.radii_scene_id = None
     self.colours = []
     self.positions = []
     self.radii2 = []
@@ -383,15 +381,6 @@ class HKLview_3d:
       self.rotate_stage_around_cartesian_vector([0,0,1], self.params.viewer.angle_around_ZHKL_vector)
       self.params.viewer.angle_around_ZHKL_vector = None
 
-    if has_phil_path(diff_phil, "miller_array_operation"):
-      # Display the new dataset user has just added which is the last in the list but not if specified
-      # with data_array scope which happens when clicking a preset button assigned with a miller_array_operation.
-      # data_array.label and data_array.datatype will then already have been matched to a scene_id
-      if not has_phil_path(diff_phil, "data_array"):
-        self.params.viewer.scene_id = len(self.hkl_scenes_infos)-1
-      self.params.hkls.sigma_color_radius = False
-      self.set_scene()
-
     if has_phil_path(diff_phil,
                       "spacegroup_choice",
                       "use_provided_miller_arrays",
@@ -403,7 +392,6 @@ class HKLview_3d:
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
                       "clip_plane",
-                      #"show_symmetry_rotation_axes",
                       "show_vector",
                       "show_all_vectors",
                       "hkls",
@@ -538,7 +526,15 @@ class HKLview_3d:
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       self.ExpandInBrowser()
-      self.SetOpacities(self.params.binning.bin_opacity )
+
+      retstr = ""
+      if self.miller_array and self.params.binning.bin_opacity:
+        bin_opacitieslst = self.params.binning.bin_opacity
+        for alpha,bin in bin_opacitieslst:
+          retstr += self.set_opacity(bin, alpha)
+        self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity } )
+      self.mprint( retstr, verbose=1)
+
       if self.params.real_space_unit_cell_scale_fraction is None:
         scale = None
       else:
@@ -563,8 +559,6 @@ class HKLview_3d:
     self.binvals = []
     if self.params.viewer.scene_id is None:
       return False
-    self.colour_scene_id = self.params.viewer.scene_id
-    self.radii_scene_id = self.params.viewer.scene_id
     self.set_miller_array(self.params.viewer.scene_id)
     if (self.miller_array is None):
       raise Sorry("No data loaded!")
@@ -578,10 +572,9 @@ class HKLview_3d:
   def set_miller_array(self, scene_id=None, merge=None, details=""):
     if scene_id is not None:
       self.params.viewer.scene_id = scene_id
-    #if self.params.hkls and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0 and self.HKLscene:
     if self.params.hkls and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0:
-      self.miller_array = self.HKLscene_from_dict(self.params.viewer.scene_id).miller_array
-      self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
+      self.miller_array = self.HKLscene_from_dict().miller_array
+      self.scene = self.HKLscene_from_dict()
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -924,10 +917,10 @@ class HKLview_3d:
     binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
-      warray = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).work_array
-      dres = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).dres
+      warray = self.HKLscene_from_dict().work_array
+      dres = self.HKLscene_from_dict().dres
       uc = warray.unit_cell()
-      indices = self.HKLscene_from_dict(int(self.params.viewer.scene_id)).indices
+      indices = self.HKLscene_from_dict().indices
       dmax,dmin = warray.d_max_min(d_max_is_highest_defined_if_infinite=True) # to avoid any F000 reflection
       if dmax == dmin: # say if only one reflection
         binvals = [dres[0]-0.1, dmin +0.1]
@@ -965,7 +958,7 @@ class HKLview_3d:
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
     if nuniquevalues == -1:
       if binner_idx==0:
-        nuniquevalues = len(set(list( self.HKLscene_from_dict(int(self.params.viewer.scene_id)).dres )))
+        nuniquevalues = len(set(list( self.HKLscene_from_dict().dres )))
       else:
         bindata, dummy = self.get_matched_binarray(binner_idx)
         nuniquevalues = len(set(list(bindata)))
@@ -996,9 +989,9 @@ class HKLview_3d:
     if self.bin_labels_type_idxs[self.params.binning.binner_idx][0] == "Resolution":
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
-    scenearraydata = self.HKLscene_from_dict(self.params.viewer.scene_id).data
+    scenearraydata = self.HKLscene_from_dict().data
     ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
-    matchindices = miller.match_indices(self.HKLscene_from_dict(self.params.viewer.scene_id).indices,
+    matchindices = miller.match_indices(self.HKLscene_from_dict().indices,
                                         self.HKLscene_from_dict(ibinarray).indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
     #valarray.sort(by_value="packed_indices")
@@ -1135,11 +1128,11 @@ class HKLview_3d:
         self.params.hkls.scale = self.get_colour_map_radii_power()
 
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-      mincolourscalar = self.HKLMinData_from_dict(self.colour_scene_id)
-      maxcolourscalar = self.HKLMaxData_from_dict(self.colour_scene_id)
+      mincolourscalar = self.HKLMinData_from_dict()
+      maxcolourscalar = self.HKLMaxData_from_dict()
       if self.params.hkls.sigma_color_radius:
-        mincolourscalar = self.HKLMinSigmas_from_dict(self.colour_scene_id)
-        maxcolourscalar = self.HKLMaxSigmas_from_dict(self.colour_scene_id)
+        mincolourscalar = self.HKLMinSigmas_from_dict()
+        maxcolourscalar = self.HKLMaxSigmas_from_dict()
       span = maxcolourscalar - mincolourscalar
       ln = 120
       incr = span/ln
@@ -1150,7 +1143,7 @@ class HKLview_3d:
       for j,sc in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
-      if self.HKLscene_from_dict(self.colour_scene_id).miller_array.is_complex_array():
+      if self.HKLscene_from_dict().miller_array.is_complex_array():
         # When displaying phases from map coefficients together with fom values
         # compute colour map chart as a function of fom and phase values (x,y axis)
         incr = 360.0/ln
@@ -1165,7 +1158,7 @@ class HKLview_3d:
         COL = display.MplColorHelper(self.params.hkls.color_scheme, 0, 360)
         rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ] )
 
-        if self.HKLscene_from_dict(self.colour_scene_id).isUsingFOMs():
+        if self.HKLscene_from_dict().isUsingFOMs():
           fomln = 50
           fom = 1.0
           fomdecr = 1.0/(fomln-1.0)
@@ -1203,8 +1196,8 @@ class HKLview_3d:
           )
 
         colourgradarrays.append(arr*256)
-      colors = self.HKLscene_from_dict(self.colour_scene_id).colors
-      radii = self.HKLscene_from_dict(self.radii_scene_id).radii
+      colors = self.HKLscene_from_dict().colors
+      radii = self.HKLscene_from_dict().radii
       self.meanradius = flex.mean(radii)
 
     bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binning.binner_idx]
@@ -1229,8 +1222,8 @@ class HKLview_3d:
         colstr = self.HKLscene_from_dict(bin_labels_type_idx[2]).work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
-      colourlabel = self.HKLscene_from_dict(self.colour_scene_id).colourlabel
-      fomlabel = self.HKLscene_from_dict(self.colour_scene_id).fomlabel
+      colourlabel = self.HKLscene_from_dict().colourlabel
+      fomlabel = self.HKLscene_from_dict().fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     self.colours = []
@@ -1344,7 +1337,9 @@ class HKLview_3d:
 
     if self.params.binning.bin_opacity != None:
       opqlist = self.params.binning.bin_opacity
-      if len(opqlist) < self.params.binning.nbins:
+      #if len(self.params.binning.scene_bin_thresholds) != self.params.binning.nbins:
+      if len(opqlist) < self.params.binning.nbins-1:
+        # an extra bin may be added when editing scene_bin_thresholds. If so, don't reset opacities to 1
         self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
 
     self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
@@ -1685,17 +1680,6 @@ Distance: %s
     self.AddToBrowserMsgQueue("TooltipOpacity", msg)
 
 
-  def SetOpacities(self, bin_opacities):
-    retstr = ""
-    if self.miller_array and bin_opacities:
-      self.params.binning.bin_opacity = bin_opacities
-      bin_opacitieslst = self.params.binning.bin_opacity
-      for alpha,bin in bin_opacitieslst:
-        retstr += self.set_opacity(bin, alpha)
-      self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity } )
-    self.mprint( retstr, verbose=1)
-
-
   def set_opacity(self, bin, alpha):
     if bin > self.nbinvalsboundaries-1:
       return "There are only %d bins present\n" %self.nbinvalsboundaries
@@ -1944,17 +1928,6 @@ in the space group %s\nwith unit cell %s""" \
       label = "%s-fold" %str(order)
     return tuple((rotaxis)[0]), theta, label, order
 
-  """
-  def show_rotation_axes(self):
-    if self.params.viewer.show_symmetry_rotation_axes:
-      for i, (label, v, xyzop, hklop) in enumerate( self.rotation_operators ): # skip the last op for javascript drawing purposes
-        if i < len(self.rotation_operators)-1:
-          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, radius=0.2, labelpos=1.0)
-        else: # supply name to tell javascript to draw all these vectors
-          self.draw_cartesian_vector(0, 0, 0, v[0], v[1], v[2], label=label, name="SymRotAxes", radius=0.2, labelpos=1.0)
-    else:
-      self.RemovePrimitives("SymRotAxes")
-  """
 
   def calc_rotation_axes(self):
     if self.sg:
@@ -2069,9 +2042,9 @@ in the space group %s\nwith unit cell %s""" \
     Draw a wireframe sphere around a reflection selected with a double click in
     the millerarraytable in the GUI
     """
-    rad = self.HKLscene_from_dict(self.radii_scene_id).max_radius*1.5
+    rad = self.HKLscene_from_dict().max_radius*1.5
     if not bigwireframe:
-      rad = self.HKLscene_from_dict(self.radii_scene_id).min_radius*0.9
+      rad = self.HKLscene_from_dict().min_radius*0.9
     self.RemovePrimitives("highlight_HKL")
     if self.params.viewer.show_hkl != "deselect":
       hkl = eval(self.params.viewer.show_hkl)

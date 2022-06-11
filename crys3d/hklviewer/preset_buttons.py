@@ -130,7 +130,7 @@ buttonsdeflist = [
                                                             }
  """),
 
-("FoversigF", "F/SigF ( miller_array.data()/miller_array.sigmas() )",
+("FoversigF", "F/SigF ( from miller_array.data()/miller_array.sigmas() )",
  """
                 miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
                 viewer {
@@ -142,9 +142,25 @@ buttonsdeflist = [
 
 
  """),
-("IoverSigI", "I/SigI ( miller_array.data()/miller_array.sigmas() )",
+("IoverSigI", "I/SigI >= 2 ( from miller_array.data()/miller_array.sigmas() )",
  """
-              miller_array_operation = "('newarray._data = array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
+              miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
+              binning {
+                scene_bin_thresholds = 0 1 2 3 4 5 460 793.55 2750
+                binlabel = 'IoverSigI'
+                bin_opacity = 0 0
+                bin_opacity = 0 1
+                bin_opacity = 1 2
+                bin_opacity = 1 3
+                bin_opacity = 1 4
+                bin_opacity = 1 5
+                bin_opacity = 1 6
+                bin_opacity = 1 7
+                bin_opacity = 1 8
+                bin_opacity = 1 9
+                bin_opacity = 1 10
+                nbins = 9
+              }
               viewer {
                 data_array {
                   label = "IoverSigI"

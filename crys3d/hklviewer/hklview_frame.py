@@ -279,9 +279,8 @@ class HKLViewFrame() :
       paramscopy = master_phil.format(self.params).copy().extract()
 
       omitparms = ["viewer.scene_id", "hkls.nth_power_scale_radii", "hkls.scale",
-        "hkls.color_scheme", "hkls.color_powscale", "NGL.show_tooltips",
-        "NGL.fontsize", "binning.binner_idx"]
-
+        "hkls.color_scheme", "hkls.color_powscale", "binning.binner_idx"]
+        # selected_info and NGL scope are omitted below
       if jsview_3d.has_phil_path(diffphil, "scene_id"):
         # then merge corresponding label and datatype into the diffphil so these can be used for
         # preset button phil strings instead of scene_id which may only apply to the current data file
@@ -353,8 +352,9 @@ class HKLViewFrame() :
             if vobj.full_path() not in omitparms:
               vobjs.append(vobj)
           obj.objects = vobjs
-          # miller table column layout irrelevant for preset buttons so skip phil values governing it
-          if len(obj.objects) > 0 and obj.full_path() !=  "selected_info":
+          # The miller table column layout irrelevant for preset buttons so skip phil values governing it.
+          # Applies as well to NGL phil scope
+          if len(obj.objects) > 0 and obj.full_path() !=  "selected_info" and obj.full_path() !=  "NGL":
             remainingobjs.append(obj)
         else:
           remainingobjs.append(obj)
@@ -399,7 +399,8 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
-        self.make_new_miller_array( msgtype=="preset_philstr" )
+        phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
+        phl.hkls.sigma_color_radius = False
 
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
       # Scene_id is then inferred from data_array and used throughout
@@ -707,9 +708,8 @@ class HKLViewFrame() :
 
     for arr in self.procarrays:
       if label in arr.info().labels + [ "", None]:
-        if is_preset_philstr:
-          self.params.viewer.scene_id = self.viewer.get_scene_id_from_label_or_type(label)
-          return
+        if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
+          return self.viewer.get_scene_id_from_label_or_type(label)
         raise Sorry("Provide a label for the new miller array that isn't already used.")
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
@@ -754,21 +754,18 @@ class HKLViewFrame() :
                 "NewMillerArray" : True
                 }
       self.SendInfoToGUI(mydict)
+    return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
 
 
   def prepare_dataloading(self):
     self.viewer.isnewfile = True
-    #self.params.mergedata = None
     self.params.viewer.scene_id = None
-    self.viewer.colour_scene_id = None
-    self.viewer.radii_scene_id = None
     self.viewer.match_valarrays = []
     self.viewer.proc_arrays = {}
     self.spacegroup_choices = []
     self.origarrays = {}
     display.reset_settings()
     self.hkls = display.settings()
-    #self.viewer.settings = self.params.viewer
     self.viewer.mapcoef_fom_dict = {}
     self.viewer.sceneid_from_arrayid = []
     self.hklfile_history = []
@@ -1407,8 +1404,6 @@ class HKLViewFrame() :
     self.viewer.binvals = []
     if scene_id is None:
       return False
-    self.viewer.colour_scene_id = scene_id
-    self.viewer.radii_scene_id = scene_id
     self.viewer.set_miller_array(scene_id)
     if (self.viewer.miller_array is None):
       raise Sorry("No data loaded!")
@@ -1427,16 +1422,6 @@ class HKLViewFrame() :
 
   def SetMergeData(self, val):
     self.params.merge_data = val
-    self.update_settings()
-
-
-  def SetColourScene(self, colourcol):
-    self.params.hkls.colour_scene_id = colourcol
-    self.update_settings()
-
-
-  def SetRadiusScene(self, radiuscol):
-    self.params.hkls.radii_scene_id = radiuscol
     self.update_settings()
 
 
