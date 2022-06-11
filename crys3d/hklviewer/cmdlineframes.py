@@ -28,13 +28,17 @@ def run():
       args.append(arg)
 
     kwargs = dict(arg.split('=') for arg in args if '=' in arg)
+    sysargs = []
     #check if any argument is a filename
     for arg in args:
+      if '=' not in arg:
       # if so add it as a keyword argument
-      if os.path.isfile(arg) and '=' not in arg:
-        kwargs['hklin'] = arg
+        if os.path.isfile(arg):
+          kwargs['hklin'] = arg
+        else:
+          sysargs.append(arg)
 
-    myHKLview = hklview_frame.HKLViewFrame(**kwargs)
+    myHKLview = hklview_frame.HKLViewFrame(*sysargs, **kwargs)
     return myHKLview # only necessary for aiding debugging or line profiling
   except Exception as e:
     print( str(e) + "\n" + traceback.format_exc(limit=10))

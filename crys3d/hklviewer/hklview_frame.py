@@ -119,6 +119,8 @@ class HKLViewFrame() :
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
+    if 'show_master_phil' in args:
+      self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=1) + "-"*80)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):

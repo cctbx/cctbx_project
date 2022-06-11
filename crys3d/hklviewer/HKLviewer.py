@@ -2377,7 +2377,9 @@ clip_plane {
     self.QWebEngineViewFlags = self.settings.value("QWebEngineViewFlags", None)
     self.mousespeed = float(self.settings.value("MouseSpeed", 0.3))
     self.textinfosize = int(self.settings.value("TextBufferSize", 30))
-    self.wraptextinfo = bool(self.settings.value("WordWrapTextInfo", 0))
+    # Get a boolean from the stored value which on windows is an int but a string on linux.
+    # Do this by casting it into a string and compare with "1"
+    self.wraptextinfo = (str(self.settings.value("WordWrapTextInfo", "0")) == "1")
     self.fontsize = float(self.settings.value("FontSize", 10))
     self.browserfontsize = float(self.settings.value("BrowserFontSize", 9))
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
