@@ -1352,14 +1352,12 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def set_scene_bin_thresholds(self, thresholds = [], binner_idx = 0,  nbins = 6):
+  def set_scene_bin_thresholds(self, thresholds = None, binner_idx = 0,  nbins = 6):
     nuniquevalues = -1
-    bin_thresholds = thresholds[:]
-    if not bin_thresholds:
+    if not thresholds:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     else:
-      #nan = float("nan")
-      binvals = bin_thresholds
+      binvals = thresholds[:]
     if binvals and binner_idx == 0: # binner_idx=0 is for binning against resolution
       binvals = list( 1.0/flex.double(binvals) )
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
@@ -1368,7 +1366,6 @@ class HKLViewFrame() :
   def SetSceneNbins(self, nbins, binner_idx = 0):
     self.params.nbins = nbins
     self.params.binning.binner_idx = binner_idx
-    #self.params.binning.bin_opacities = str([ (1.0, e) for e in range(nbins) ])
     self.params.binning.bin_opacity = [ [1.0, e] for e in range(nbins) ]
     self.update_settings()
 

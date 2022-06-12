@@ -780,9 +780,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
             self.select_millertable_column_dlg.make_new_selection_table()
 
-          #if self.infodict.get("bin_data_label"):
-          #  self.BinDataComboBox.setCurrentText(self.infodict["bin_data_label"])
-
           if self.infodict.get("bin_infotpls"):
             self.bin_infotpls = self.infodict["bin_infotpls"]
 

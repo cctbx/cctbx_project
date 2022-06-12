@@ -146,8 +146,8 @@ buttonsdeflist = [
  """
               miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
               binning {
-                scene_bin_thresholds = 0 1 2 3 4 5 460 793.55 2750
-                binlabel = 'IoverSigI'
+                scene_bin_thresholds = -10000 1 2 3 4 5 460 793.55 2750
+                binlabel = "IoverSigI"
                 bin_opacity = 0 0
                 bin_opacity = 0 1
                 bin_opacity = 1 2

@@ -949,7 +949,7 @@ class HKLview_3d:
     return binvals, nuniquevalues
 
 
-  def UpdateBinValues(self, binner_idx, binvals = [], nuniquevalues = -1):
+  def UpdateBinValues(self, binner_idx, binvals = None, nuniquevalues = -1):
     if binvals:
       binvals.sort()
       self.binvals = binvals
@@ -1243,9 +1243,6 @@ class HKLview_3d:
         dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
         self.binvalsboundaries.extend( self.binvals )
         self.binvalsboundaries.sort()
-        if self.binvalsboundaries[0] < 0.0:
-          self.binvalsboundaries.append(0.0)
-          self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
@@ -1309,6 +1306,7 @@ class HKLview_3d:
         mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
                 colstr, bin1)
       precision = 3
+
       if ibin < (self.nbinvalsboundaries-1):
         bin1 = self.binvalsboundaries[ibin]
         bin2 = self.binvalsboundaries[ibin+1]
