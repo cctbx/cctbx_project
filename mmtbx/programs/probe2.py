@@ -1860,8 +1860,8 @@ Note:
     # when no particular one is selected.
     atomLists = [ self.model.get_atoms() ]
     if (self.params.approach == 'self' and
-        (self.params.source_selection is None or 'model_id' not in self.params.source_selection) and
-        (self.params.target_selection is None or 'model_id' not in self.params.target_selection)):
+        (self.params.source_selection is None or 'model' not in self.params.source_selection) and
+        (self.params.target_selection is None or 'model' not in self.params.target_selection)):
       # Handle the multiple-model case by looping modelID over all models.
       numModels = self.model.get_hierarchy().models_size()
       atomLists = []
