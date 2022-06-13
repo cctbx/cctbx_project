@@ -158,7 +158,8 @@ class DataModeler:
         """adds absolute path to certain params"""
         if self.params.simulator.structure_factors.mtz_name is not None:
             self.params.simulator.structure_factors.mtz_name = os.path.abspath(self.params.simulator.structure_factors.mtz_name)
-
+    # deactivate the selective pickle to send full object via MPI
+    """
     def __getstate__(self):
         # TODO cleanup/compress
         return {name: getattr(self, name) for name in self.saves}
@@ -166,7 +167,7 @@ class DataModeler:
     def __setstate__(self, state):
         for name in state:
             setattr(self, name, state[name])
-
+    """
     def set_slices(self, attr_name):
         """finds the boundaries for each attr in the 1-D array of per-shot data
         :params: attr_name, str
@@ -239,6 +240,12 @@ class DataModeler:
                 is_duplicate[i_ref] = hh in dupe_hkl
 
         return is_duplicate
+
+    def get_roi_size(self):
+        if self.rois is None:
+            return 0
+        x1, x2, y1, y2 = map(np.array, zip(*self.rois))
+        return np.sum((x2-x1)*(y2-y1))
 
     def GatherFromReflectionTable(self, exp, ref, sg_symbol=None):
         self.set_experiment(exp, load_imageset=False)

@@ -172,6 +172,7 @@ class RefineLauncher:
         exper_names = pandas_table.exp_name
         assert len(exper_names) == len(set(exper_names))
         # TODO assert all exper are single-file, probably way before this point
+        workload = np.zeros((len(exper_names),2)) # first column is work,  second column is current rank
         LOGGER.info("EVENT: begin loading inputs")
         for i_exp, exper_name in enumerate(exper_names):
             if i_exp % COMM.size != COMM.rank:
@@ -256,8 +257,8 @@ class RefineLauncher:
                     LOGGER.info("Gathered file approved!")
 
 
-            self.Hi[shot_idx] = shot_modeler.Hi
-            self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
+            ###self.Hi[shot_idx] = shot_modeler.Hi
+            ###self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
 
             LOGGER.info("EVENT: DONE LOADING ROI")
             shot_modeler.ucell_man = UcellMan
@@ -301,8 +302,11 @@ class RefineLauncher:
             shot_modeler.exper_name = exper_name
             shot_modeler.refl_name = refl_name
 
-            shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
-            rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
+            ###shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
+            ###rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
+
+            workload[i_exp, 0] = shot_modeler.get_roi_size()
+            workload[i_exp, 1] = COMM.rank
 
             shot_idx += 1
             if COMM.rank == 0:
@@ -316,6 +320,73 @@ class RefineLauncher:
         COMM.Barrier()
         LOGGER.info("DONE LOADING DATA; EXIT BARRIER")
         self.shot_roi_darkRMS = None
+
+        # balance work load
+        LOGGER.info("ENTER LOAD BALANCING")
+        workload = COMM.allreduce(workload, op=MPI.SUM)
+        descending_order = workload[:,0].argsort()[::-1]
+        new_load = np.zeros(COMM.size)
+        source_list = np.zeros(len(exper_names))
+        target_list = np.zeros(len(exper_names))
+        #new_workload = [[] for x in range(COMM.size)]
+        # calculate better distribution
+        for index in descending_order:
+            work, current_rank = workload[index]
+
+            lightest_rank = new_load.argmin()
+            new_load[lightest_rank] += work
+            source_list[index] = current_rank
+            target_list[index] = lightest_rank
+
+        # switch data according to new workload
+        LOGGER.info("FINISHED NEW WORK PLAN; START DATA SWAP")
+        new_Modelers = {}
+        shot_idx = 0 # each rank keeps index of the shots local to it
+        # TODO add parameter to change buffer size
+        # If you get errors like the one below, increase buffer size
+        #
+        # Fatal error in PMPI_Wait: Other MPI error, error stack:
+        # PMPI_Wait(202).................: MPI_Wait(request=0x7f2410b1d710, status=0x7ffe46377600) failed
+        # MPIR_Wait(93)..................:
+        # MPIR_Wait_impl(41).............:
+        # MPID_Progress_wait(184)........:
+        # MPIDI_Progress_test(80)........:
+        # MPIDI_OFI_handle_cq_error(1059): OFI poll failed (ofi_events.c:1061:MPIDI_OFI_handle_cq_error:Message too long - OK)
+
+        buffr = bytearray(b' ' * 1000 * 1000 * 1000)
+        for idx in range(len(source_list)):
+            COMM.Barrier()
+            source = source_list[idx]
+            target = target_list[idx]
+            if not COMM.rank in [source, target]:
+                continue
+
+            if source==target:
+                shot_modeler = self.Modelers[idx]
+            elif source==COMM.rank:
+                # emulate blocking communication to not overload buffers
+                # (buffer argument is deprecated in recv?!)
+                LOGGER.info("Send shot %d to rank %d" %(idx, target))
+                req = COMM.isend(self.Modelers[idx], dest=target, tag=index)
+                req.wait()
+                continue
+            elif target==COMM.rank:
+                LOGGER.info("Receive shot %d from rank %d" %(idx, source))
+                req = COMM.irecv(buffr, source=source, tag=index)
+                shot_modeler = req.wait()
+
+            self.Hi[shot_idx] = shot_modeler.Hi
+            self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
+            shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
+            rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
+
+            shot_idx += 1
+            new_Modelers[idx] = shot_modeler
+        self.Modelers = new_Modelers
+
+        LOGGER.info("DONE SWAPPING DATA; ENTER BARRIER")
+        COMM.Barrier()
+        LOGGER.info("DONE SWAPPING DATA; EXIT BARRIER")
 
         # TODO warn that per_spot_scale refinement not intended for ensemble mode
         all_refined_groups = COMM.gather(rank_panel_groups_refined)
@@ -366,9 +437,7 @@ class RefineLauncher:
     def _determine_per_rank_max_num_pix(self):
         max_npix = 0
         for i_shot in self.Modelers:
-            modeler = self.Modelers[i_shot]
-            x1, x2, y1, y2 = map(np.array, zip(*modeler.rois))
-            npix = np.sum((x2-x1)*(y2-y1))
+            npix = self.Modelers[i_shot].get_roi_size()
             max_npix = max(npix, max_npix)
             print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
         print("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
