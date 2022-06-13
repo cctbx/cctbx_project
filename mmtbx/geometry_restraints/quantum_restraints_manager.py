@@ -257,6 +257,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_model_p1 = shift_and_box_model(model=buffer_model)
   for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
     atom1.tmp=atom2.tmp
+  for atom1 in buffer_model.get_atoms():
+    for atom2 in ligand_model.get_atoms():
+      if atom1.id_str()==atom2.id_str():
+        atom2.xyz=atom1.xyz
+        break
   buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
@@ -422,7 +427,6 @@ def update_bond_restraints(ligand_model,
     ligand_i_seqs.append(atom.tmp)
   buffer_grm = buffer_model.get_restraints_manager()
   atoms = buffer_model.get_atoms()
-  ligand_atoms = ligand_model.get_atoms()
   bond_proxies_simple, asu = buffer_grm.geometry.get_all_bond_proxies(
     sites_cart=buffer_model.get_sites_cart())
   sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
@@ -469,7 +473,36 @@ def update_bond_restraints(ligand_model,
             bond.distance_ideal,
             distance_model), file=log)
           if not ignore_x_h_distance_protein:
-            raise Sorry('Poor QM optimisation of X-H bond')
+            raise Sorry('''
+  The QM optimisation has caused a X-H covalent bond to exceed 1.5 Angstrom.
+  This may be because the input geometry was not appropriate or the QM method
+  is not providing the biological answer. Check the QM result for issues. This
+  check can be skipped by using ignore_x_h_distance_protein.
+  ''')
+
+def update_bond_restraints_simple(model):
+  """Update bond restraints in model to match the actual model values
+
+  Args:
+      model (model): model!
+  """
+  grm = model.get_restraints_manager()
+  atoms = model.get_atoms()
+  bond_proxies_simple, asu = grm.geometry.get_all_bond_proxies(
+    sites_cart=model.get_sites_cart())
+  sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
+    'delta',
+    model.get_sites_cart())
+  for info in sorted_table:
+    (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
+    i_atom=atoms[i_seq]
+    j_atom=atoms[j_seq]
+    # exclude X-H because x-ray...
+    if i_atom.element_is_hydrogen(): continue
+    if j_atom.element_is_hydrogen(): continue
+    i_seqs=[i_seq, j_seq]
+    bond=grm.geometry.bond_params_table.lookup(*list(i_seqs))
+    bond.distance_ideal=distance_model
 
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
   program_goal='opt' # can be 'opt', 'energy', 'strain'
@@ -628,17 +661,16 @@ def update_restraints(model,
   #
   prefix = params.output.prefix
   for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
-                                                                    zip(objects,
-                                                                        xyzs,
-                                                                        xyzs_buffer,
-                                                                        )):
-    if qmr.package.view_output:
-      qmm.view(qmr.package.view_output)
+    zip(objects,
+        xyzs,
+        xyzs_buffer,
+        )):
+    if qmr.package.view_output: qmm.view(qmr.package.view_output)
     if i: print(' ',file=log)
     print('  Updating QM restraints: "%s"' % qmr.selection, file=log)
     print(show_ligand_buffer_models(ligand_model, buffer_model), file=log)
     gs = ligand_model.geometry_statistics()
-    print('  Starting stats: %s' % gs.show_bond_and_angle(), file=log)
+    print('  Starting stats: %s' % gs.show_bond_and_angle_and_dihedral(), file=log)
     #
     # update coordinates of ligand
     #
@@ -657,7 +689,7 @@ def update_restraints(model,
     # rmsd = old.rms_difference(xyz_buffer)
     buffer_model.get_hierarchy().atoms().set_xyz(xyz_buffer)
     gs = ligand_model.geometry_statistics()
-    print('  Interim stats : %s' % gs.show_bond_and_angle(), file=log)
+    print('  Interim stats : %s' % gs.show_bond_and_angle_and_dihedral(), file=log)
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
     if qmr.write_final_pdb_core:
       write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
@@ -682,6 +714,7 @@ def update_restraints(model,
                            model_grm=model_grm,
                            include_inter_residue_restraints=qmr.include_nearest_neighbours_in_optimisation,
                            log=log)
+    update_bond_restraints_simple(ligand_model)
     #
     #    - angles
     #
@@ -699,9 +732,6 @@ def update_restraints(model,
       i_atom=atoms[int(i_seqs[0])]
       j_atom=atoms[int(i_seqs[1])]
       k_atom=atoms[int(i_seqs[2])]
-      # if i_atom.element_is_hydrogen(): continue
-      # if j_atom.element_is_hydrogen(): continue
-      # if k_atom.element_is_hydrogen(): continue
       key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
       ligand_lookup[key]=angle_model
       i+=1
@@ -788,10 +818,10 @@ Restraints written by QMR process in phenix.refine
     # final stats
     #
     gs = ligand_model.geometry_statistics()
-    print('  Finished stats : %s' % gs.show_bond_and_angle(), file=log)
+    print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(assert_zero=True),
+          file=log)
   print('  Total time for QM restaints: %0.1fs' % (time.time()-t0), file=log)
   print('%s%s' % ('<'*40, '>'*40), file=log)
-  # print('='*80, file=log)
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
