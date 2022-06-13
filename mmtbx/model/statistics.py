@@ -270,6 +270,15 @@ class geometry(object):
     f="bond: %6.3f angle: %6.2f"
     return f%(r.bond.mean, r.angle.mean)
 
+  def show_bond_and_angle_and_dihedral(self, assert_zero=False):
+    r = self.result()
+    f="bond: %6.3f angle: %6.2f dihedral: %6.2f"
+    if assert_zero:
+      assert abs(r.bond.mean)<1e-3, 'bond rmsd is not zero'
+      assert abs(r.angle.mean)<1e-3, 'angle rmsd is not zero'
+      assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero'
+    return f%(r.bond.mean, r.angle.mean, r.dihedral.mean)
+
   def show_short(self):
     r = self.result()
     f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama: f: %6.2f o: %6.2f Z: %6.2f cb: %6.2f"

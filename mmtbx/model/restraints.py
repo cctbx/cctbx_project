@@ -1,5 +1,7 @@
 from __future__ import absolute_import,division, print_function
 
+import copy
+
 from math import sqrt
 
 from libtbx.utils import Sorry
@@ -89,7 +91,6 @@ def get_torsion_dictionary(ligand_model, ligand_grm=None, ideal=True):
     k_atom=atoms[int(i_seqs[2])]
     l_atom=atoms[int(i_seqs[3])]
     key = [i_atom.name.strip(), j_atom.name.strip(), k_atom.name.strip(), l_atom.name.strip()]
-    key.sort()
     if ideal:
       rc[tuple(key)]=angle_ideal
     else:
@@ -115,6 +116,7 @@ def get_restraints_from_model_via_grm(ligand_model,
       Sorry: Description
   """
   from libtbx.utils import null_out
+  ligand_model = copy.deepcopy(ligand_model)
   ligand_model.unset_restraints_manager()
   ligand_model.log=null_out()
   ligand_model.process(make_restraints=True)
@@ -174,6 +176,27 @@ def get_restraints_from_model_via_grm(ligand_model,
         values.append(angle_ideal)
       loop.update_column('_chem_comp_angle.value_angle', values)
     elif key=='_chem_comp_tor':
+      def _find_torsion_match(key):
+        """Matches the torsion keys and flips the sign of the value if needed
+
+        Args:
+            key (List): List of atom names in torsion
+
+        Returns:
+            float: Value of torsion sign corrected
+        """
+        k1 = copy.copy(key)
+        k1.sort()
+        for lookup_key, ai in torsion_lookup.items():
+          k2 = list(copy.copy(lookup_key))
+          k2.sort()
+          if k1==k2:
+            if key[0]!=lookup_key[0]:
+              ai=ai*-1
+            if key[1]!=lookup_key[1]:
+              ai=ai*-1
+            return ai
+        return None
       values = []
       for row in loop.iterrows():
         key = [row['_chem_comp_tor.atom_id_1'],
@@ -181,12 +204,14 @@ def get_restraints_from_model_via_grm(ligand_model,
                row['_chem_comp_tor.atom_id_3'],
                row['_chem_comp_tor.atom_id_4'],
                ]
-        key.sort()
         angle_ideal = torsion_lookup.get(tuple(key), None)
+        if angle_ideal is None: angle_ideal = _find_torsion_match(key)
         if angle_ideal:
           values.append(angle_ideal)
         else:
-          # print('WARNING: torsion angle %s not transfered' % (row.get('_chem_comp_tor.id', None)))
+          tor_id = row.get('_chem_comp_tor.id')
+          if tor_id.find('CONST')==-1:
+            print('WARNING: torsion angle %s not transfered' % (row.get('_chem_comp_tor.id', None)))
           values.append(float(row.get('_chem_comp_tor.value_angle')))
       loop.update_column('_chem_comp_tor.value_angle', values)
     elif key=='_chem_comp_atom' and cartesian_coordinates:
