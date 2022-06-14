@@ -1897,7 +1897,7 @@ Note:
         # Replace the bonded-neighbor list with all bonded neighbors, even ones that
         # are not selected, so that they will block dots that overlap with bonded atoms.
         bondedNeighborLists = self._allBondedNeighborLists
-        selectedAtomsIncludingKept = allAtoms
+        selectedAtomsIncludingKept = atoms
       else:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
         selectedAtomsIncludingKept = list(all_selected_atoms)
@@ -2029,12 +2029,6 @@ Note:
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
       # so that we don't see ionic bonds in the Phantom-Hydrogen addition code checks.
       Helpers.addIonicBonds(bondedNeighborLists, selectedAtomsIncludingKept, self._spatialQuery, self._extraAtomInfo)
-
-      # If we have a dump file specified, write the atom information into it.
-      if self.params.output.dump_file_name is not None:
-        atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
-        with open(self.params.output.dump_file_name,"w") as df:
-          df.write(atomDump)
 
       # Make a query structure to return the Phantom Hydrogens (if there are any)
       self._phantomHydrogensSpatialQuery = Helpers.createSpatialQuery(phantomHydrogens, self.params.probe)
@@ -2303,6 +2297,14 @@ Note:
     of = open(self.params.output.file_name,"w")
     of.write(outString)
     of.close()
+
+    # If we have a dump file specified, write the atom information into it.
+    # We write it at the end because the extra atom info may have been adjusted
+    # during the code that handles hydrogen adjustements.
+    if self.params.output.dump_file_name is not None:
+      atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
+      with open(self.params.output.dump_file_name,"w") as df:
+        df.write(atomDump)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
