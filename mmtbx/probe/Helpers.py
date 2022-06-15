@@ -425,15 +425,18 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                     or AtomTypes.IsSpecialAminoAcidCarbonyl(a.parent().resname.strip().upper(),
                         a.name.upper()) ):
                   if useImplicitHydrogenDistances:
-                    extra.vdwRadius = 1.80
+                    expected = 1.80
                   else:
-                    extra.vdwRadius = 1.65
-                  warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+                    expected = 1.65
+                  if extra.vdwRadius != expected:
+                    extra.vdwRadius = expected
+                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 # If we've been asked to ensure polar hydrogen radius, do so here.
                 if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
-                  extra.vdwRadius = 1.05
-                  warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+                  if extra.vdwRadius != 1.05:
+                    extra.vdwRadius = 1.05
+                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 extras.setMappingFor(a, extra)
 
