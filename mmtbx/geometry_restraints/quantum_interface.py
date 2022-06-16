@@ -28,7 +28,7 @@ program_options = {
   'test' : (is_qm_test_installed, 'PHENIX_QM_TEST'),
   }
 
-def get_qm_restraints_scope(verbose=False):
+def get_qm_restraints_scope(validate=True, verbose=False):
   qm_package_scope = '''
   package
   {
@@ -114,6 +114,8 @@ qm_restraints
       else:
         programs += '   %s' % package
   if verbose: print(programs)
+  if validate:
+    assert programs, 'Need to set some parameters for QM programs %s' % program_options
   qm_package_scope = qm_package_scope % programs
   qm_restraints_scope = qm_restraints_scope % qm_package_scope
   return qm_restraints_scope
