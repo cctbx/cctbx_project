@@ -256,6 +256,12 @@ HEC residue.
 - Zn_4m9v_C-167-194_ZnF-DNA_0.97A: No differences in scores or surfaces.  Some atom names were swapped in
 Probe2 (Hydrogens, Nitrogens, Oxygens) but they were in the same locations so produced the same results.
 This indicates a difference between the naming schemes in Probe and Probe2.
+- 1rrr (multiple models): This is an ensemble NMR structure.  The atom counts for Probe when run without
+a selected model had all atoms (and too-large number of dots and surface area) listed for each model,
+so keeping Probe2 behavior of only listing atoms for that model; this matches Probe behavior when a single
+model is selected.  There are two Hydrogens that are too far from their Oxygens for Probe to consider them
+to be bonded; these cause large clashes and cause H to show up in the output list; the Probe2 bonding
+behavior is correct and so avoids these clashes.
 
 Tested the -once flag against water vs. not water in 1xso and got the same results:
 - `probe.exe -kin -mc -once "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_once_orig.kin`

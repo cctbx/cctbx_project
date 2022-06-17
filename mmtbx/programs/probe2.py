@@ -1989,13 +1989,16 @@ Note:
                 # dots on a Phantom Hydrogen within its Oxygen will be excluded.
                 bondedNeighborLists[p] = [a]
 
-                # @todo In the future, we may add these bonds, but that will cause the
+                # It was thought that in the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
                 # original Probe and would have the undesirable effect of a potential
-                # Hydrogen hiding a true collision.  This requires special-case handling
+                # Hydrogen hiding a true collision.
+                # Not marking these as bonded requires special-case handling
                 # of Phantom Hydrogen interactions in the dot-scoring code.
-                #bondedNeighborLists[a].append(p)
+                # This means that we have a one-way bond, which is unusual but suits our
+                # purposes.
+                # Not done: bondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
                 if a in source_atoms:
