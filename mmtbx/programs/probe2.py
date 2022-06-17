@@ -716,6 +716,7 @@ Note:
       srcHet = self._inHet[src]
       srcInWater = self._inWater[src]
       srcExtra = self._extraAtomInfo.getMappingFor(src)
+      srcModel = src.parent().parent().parent().parent().id
 
       # Select those that are actually within the contact distance based on their
       # particular radius (this query includes only target atoms, so we don't need to check separately for that).
@@ -727,6 +728,7 @@ Note:
         nHet = self._inHet[n]
         nInWater = self._inWater[n]
         nExtra = self._extraAtomInfo.getMappingFor(n)
+        nModel = n.parent().parent().parent().parent().id
 
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
         if (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius):
@@ -755,6 +757,9 @@ Note:
               continue
           # Skip atoms that are in non-compatible alternate conformations
           elif not Helpers.compatibleConformations(src, n):
+            continue
+          # Skip atoms that are in different models.
+          elif srcModel != nModel:
             continue
           atomSet.add(n)
 
@@ -1775,7 +1780,7 @@ Note:
       else:
         # For hydrogen, assign based on what it is bonded to.
         if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+          raise Sorry("Found Hydrogen with number of bonds other than 1: "+
                       str(len(self._allBondedNeighborLists[a])))
         else:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
