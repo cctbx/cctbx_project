@@ -29,9 +29,9 @@ def global_refiner_from_parameters(params):
     pandas_table = pandas.read_pickle(params.pandas_table)
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
-        pandas_table = prep_dataframe(pandas_table, params.prep_time)
+        work_distribution = prep_dataframe(pandas_table)
     LOGGER.info("EVENT: DONE prep dataframe")
-    return launcher.launch_refiner(pandas_table)
+    return launcher.launch_refiner(pandas_table, work_distribution=work_distribution)
 
 
 class RefineLauncher:
@@ -116,13 +116,13 @@ class RefineLauncher:
             if not hasattr(expt, model):
                 raise ValueError("No %s in experiment, exiting. " % model)
 
-    def launch_refiner(self, pandas_table, miller_data=None):
-        self.load_inputs(pandas_table, miller_data=miller_data)
+    def launch_refiner(self, pandas_table, miller_data=None, work_distribution=None):
+        self.load_inputs(pandas_table, miller_data=miller_data, work_distribution=work_distribution)
         LOGGER.info("EVENT: launch refiner")
         self._launch()
         return self.RUC
 
-    def load_inputs(self, pandas_table, miller_data=None, refls_key='predictions'):
+    def load_inputs(self, pandas_table, miller_data=None, work_distribution=None, refls_key='predictions'):
         """
 
         :param pandas_table: contains path to the experiments (pandas column exp_name) to be loaded
@@ -172,10 +172,13 @@ class RefineLauncher:
         exper_names = pandas_table.exp_name
         assert len(exper_names) == len(set(exper_names))
         # TODO assert all exper are single-file, probably way before this point
+        if work_distribution is None:
+            worklist = range(COMM.rank, nshots, COMM.size)
+        else:
+            worklist = work_distribution[COMM.rank]
         LOGGER.info("EVENT: begin loading inputs")
-        for i_exp, exper_name in enumerate(exper_names):
-            if i_exp % COMM.size != COMM.rank:
-                continue
+        for i_exp in worklist:
+            exper_name = exper_names[i_exp]
             LOGGER.info("EVENT: BEGIN loading experiment list")
             expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
             LOGGER.info("EVENT: DONE loading experiment list")
