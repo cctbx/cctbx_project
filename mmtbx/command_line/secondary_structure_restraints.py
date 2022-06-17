@@ -119,6 +119,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   defpars.pdb_interpretation.automatic_linking.link_carbohydrates=False
   defpars.pdb_interpretation.c_beta_restraints=False
   defpars.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  defpars.pdb_interpretation.allow_polymer_cross_special_position=True
   model = mmtbx.model.manager(
       model_input=pdb_structure,
       crystal_symmetry=cs,
