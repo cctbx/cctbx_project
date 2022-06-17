@@ -4,7 +4,7 @@ from iotbx.cli_parser import run_program
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
-from cctbx_project.libtbx.test_utils import Exception_expected, Exception_not_expected
+from libtbx.test_utils import Exception_expected, Exception_not_expected
 
 # =============================================================================
 def test_dry_run():
