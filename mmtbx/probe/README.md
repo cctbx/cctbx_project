@@ -187,14 +187,15 @@ of interactions and surfaces and to generate summary scores for interactions wit
 a replacement for the **mmtbx.probe** program that can be run as **mmtbx.probe2** to produce similar
 outputs but taking different command-line options.  The following tests are provided for this program:
 * There is a Test() function defined within the module that will test all of its non-class functions.
-To run it, the module can be imported and then probe2.Test() called.
+To run it, 'import probe2' can be used in a Python script that is in the mmtbx/programs directory
+and then `probe2.Test()` called.  It will print 'Success!' if it works.
 It will fail with an assertion failure if there is a problem with the tests:
-    * **_condense():** Verify that this method works when sorting and when sorting and condensing.
-    * **_totalInteractionCount():** Verify that this sums the counts of all interaction types.
     * **_color_for_gap():** Verify that this returns the correct color for hydrogen bonds and for
     a sample of values.
     * **_color_for_atom_class():** Verify that this returns the correct color for a sample of values.
-* @todo
+    * **_condense():** Verify that this method works when sorting and when sorting and condensing.
+    * **_totalInteractionCount():** Verify that this sums the counts of all interaction types.
+* @todo Test other internally defined functions within probe2.py.
 
 **@todo Not yet tested:**
 * **annularDots()** and related functions.

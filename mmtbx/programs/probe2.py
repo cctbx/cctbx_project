@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "0.9.1"
+version = "0.9.8"
 
 master_phil_str = '''
 profile = False
@@ -506,6 +506,8 @@ def Test():
   table = [ ["Bob", "magenta"], ["Ag", "white"], ["Cu", "orange"], ["Rn","pinktint"] ]
   for t in table:
     assert _color_for_atom_class(t[0]) == t[1], "probe2:Test(): _color_for_atom_class("+str(t[0])+") failed to return "+t[1]
+
+  print('Success!')
 
 # ------------------------------------------------------------------------------
 
