@@ -265,6 +265,13 @@ class CCTBXParser(ParserBase):
       help='enable profiling and outputs statistics to a file (profile.out).'
     )
 
+    # --dry-run
+    # proceeds until the validate step
+    self.add_argument(
+      '--dry-run', '--dry_run', action='store_true',
+      help='performs basic validation the input arguments, but does not run the program'
+    )
+
     # --citations will use the default format
     # --citations=<format> will use the specified format
     self.add_argument(
@@ -759,7 +766,10 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   namespace = parser.parse_args(args)
 
   # start program
-  print('Starting job', file=logger)
+  if namespace.dry_run:
+    print('Starting dry run', file=logger)
+  else:
+    print('Starting job', file=logger)
   print('='*79, file=logger)
   task = program_class(parser.data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil,
@@ -767,6 +777,12 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
   # validate inputs
   task.validate()
+
+  # stop if dry_run is set
+  if namespace.dry_run:
+    print('\nArguments have been validated by the program.\n', file=logger)
+    print('='*79, file=logger)
+    return
 
   # run program
   task.run()
