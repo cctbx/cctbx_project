@@ -51,7 +51,6 @@ namespace smtbx {
       private:
         af::const_ref<complex_type> f_mask;
         miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
-        bool has_lookup;
       };
 
       template <typename FloatType>
