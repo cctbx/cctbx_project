@@ -82,8 +82,6 @@ def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
 
       fc_correction = self.reparametrisation.fc_correction
       if fc_correction is None:
-        fc_correction = self.reparametrisation.swat
-      if fc_correction is None:
         fc_correction = xray.dummy_fc_correction()
 
       def build_normal_eqns(scale_factor, weighting_scheme, objective_only):
