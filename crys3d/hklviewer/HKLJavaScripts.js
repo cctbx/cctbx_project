@@ -105,6 +105,7 @@ var annodivs = [];
 var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
+var canvaspos = null;
 
 
 function sleep(ms) {
@@ -302,6 +303,7 @@ function RemoveStageObjects()
   vectorshape = null;
   repr = null;
   nbins = 0;
+  tooltip.style.display = "none";
 }
 
 
@@ -715,6 +717,12 @@ function onMessage(e)
     {
       current_ttip = eval(datval[1]).split("\n\n")[0];
       current_ttip_ids = eval(datval[1]).split("\n\n")[1];
+
+	  tooltip.innerText = current_ttip;
+      tooltip.style.bottom = canvaspos.y + 7 + "px";
+      tooltip.style.left = canvaspos.x + 8 + "px";
+      tooltip.style.fontSize = fontsize.toString() + "pt";
+      tooltip.style.display = "block";
     }
 
     if (msgtype === "TooltipOpacity")
@@ -921,8 +929,32 @@ function onMessage(e)
       WebsockSendMsg( 'Done ' + msgtype );
     }
     
-    if (msgtype === "DisableMouseRotation")
-    {
+    if (msgtype === "DisableZoomDrag") {
+      WebsockSendMsg('using camerazoom' + pagename);
+
+      stage.mouseControls.remove("drag-shift-right");
+      stage.mouseControls.remove("drag-shift-left");
+	  stage.mouseControls.remove("drag-middle");
+	  stage.mouseControls.add("drag-middle", CameraZoom);
+      stage.mouseControls.add("drag-shift-right", CameraZoom);
+      stage.mouseControls.add("drag-shift-left", CameraZoom);
+      stage.mouseControls.add("scroll", CameraZoom);
+      rotationdisabled = true;
+    }
+
+    if (msgtype === "EnableZoomDrag") {
+      WebsockSendMsg('using mouse zoomdrag ' + pagename);
+
+      stage.mouseControls.remove("drag-shift-right");
+      stage.mouseControls.remove("drag-shift-left");
+	  stage.mouseControls.remove("drag-middle");
+	  stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
+      stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
+      stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
+      rotationdisabled = false;
+    }
+
+    if (msgtype === "DisableMouseRotation") {
       WebsockSendMsg('Fix mouse rotation' + pagename);
 
       stage.mouseControls.remove("drag-left");
@@ -932,28 +964,20 @@ function onMessage(e)
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
-      stage.mouseControls.add("drag-shift-right", CameraZoom);
-      stage.mouseControls.add("drag-shift-left", CameraZoom);
-      stage.mouseControls.add("scroll", CameraZoom);
       rotationdisabled = true;
     }
 
-    if (msgtype === "EnableMouseRotation")
-    {
-      WebsockSendMsg( 'Can mouse rotate ' + pagename );
+    if (msgtype === "EnableMouseRotation") {
+      WebsockSendMsg('Can mouse rotate ' + pagename);
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
-      //stage.mouseControls.add("scroll", NGL.MouseActions.zoomScroll);
-      stage.mouseControls.add("scroll", CameraZoom);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
-      stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
-      stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
       rotationdisabled = false;
     }
-    
+
     if (msgtype === "RotateStage")
     { // rotate stage and its components
       WebsockSendMsg('Rotating stage ' + pagename);
@@ -1625,7 +1649,7 @@ function PickingProxyfunc(pickingProxy, eventstr) {
   if (pickingProxy
     && (Object.prototype.toString.call(pickingProxy.picker["ids"]) === '[object Array]')
     && displaytooltips) {
-    let cp = pickingProxy.canvasPosition;
+    canvaspos = pickingProxy.canvasPosition;
     let sym_id = -1;
     let hkl_id = -1;
     let ids = [];
@@ -1634,8 +1658,6 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
       ids = pickingProxy.picker["ids"].slice(1); // ids of reflection
-      //hkl_id = ids[pickingProxy.pid % ids.length]; // id of reflection if it's not a friedel mate
-      //if (pickingProxy.pid >= ids.length)
       hkl_id = ids[pickingProxy.pid];
       if (hkl_id < 0)
         is_friedel_mate = 1;
@@ -1643,8 +1665,7 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     // tell python the id of the hkl and id of the rotation operator
     rightnow = timefunc();
     if (rightnow - timenow > tdelay)
-    { // only post every 50 milli second as not to overwhelm python
-      //ttipid = String([hkl_id, sym_id, is_friedel_mate]);
+    { // only post every tdelay milli second as not to overwhelm python
       ttipid = String([hkl_id, sym_id]);
       // send this to python which will send back a tooltip text
       if (pickingProxy.mouse.buttons == 1 || eventstr == 'hover') // left click or hover for tooltips
@@ -1656,22 +1677,6 @@ function PickingProxyfunc(pickingProxy, eventstr) {
 
     if (isdebug)
       console.log("current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid));
-    if ((pickingProxy.mouse.buttons == 1 || eventstr == 'hover') // left click or hover
-      && current_ttip !== ""
-      && current_ttip_ids == ttipid) // received in onMessage() ShowThisTooltip
-    {
-      if (isdebug)
-        if (is_friedel_mate == 1)
-          tooltip.innerText = current_ttip + "\nx,y,z: " + String(pickingProxy.picker["cartpos"][hkl_id + ids.length]);
-        else
-          tooltip.innerText = current_ttip + "\nx,y,z: " + String(pickingProxy.picker["cartpos"][hkl_id]);
-      else
-        tooltip.innerText = current_ttip;
-      tooltip.style.bottom = cp.y + 7 + "px";
-      tooltip.style.left = cp.x + 8 + "px";
-      tooltip.style.fontSize = fontsize.toString() + "pt";
-      tooltip.style.display = "block";
-    }
   }
   else {
     tooltip.style.display = "none";
@@ -2197,9 +2202,9 @@ function HKLscene()
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
   stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
 
-  stage.mouseControls.remove("scroll");
-  stage.mouseControls.remove("scroll-ctrl");
-  stage.mouseControls.remove("scroll-shift");
+  //stage.mouseControls.remove("scroll");
+  //stage.mouseControls.remove("scroll-ctrl");
+  //stage.mouseControls.remove("scroll-shift");
 
 
   stage.viewer.requestRender();

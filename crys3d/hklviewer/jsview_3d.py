@@ -439,11 +439,14 @@ class HKLview_3d:
       self.fix_orientation()
       uc = self.miller_array.unit_cell()
       if self.params.clip_plane.clip_width: # then we are clipping
+        self.UseCameraZoom()
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
           self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
         clipwidth = self.params.clip_plane.clip_width
         hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
         self.mprint("clip plane distance from origin: %s" %hkldist)
+      else:
+        self.UseZoomDrag()
       infomsg = ""
       self.normal_vecnr = -1
       for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
@@ -1683,7 +1686,7 @@ Distance: %s
       return "There are only %d bins present\n" %self.nbinvalsboundaries
     msg = "%d, %f" %(bin, alpha)
     self.AddToBrowserMsgQueue("alpha", msg)
-    return "Opacity %s set on bin[%s]\n" %(alpha, bin)
+    return "Opacity %s set on bin[%d]\n" %(alpha, bin)
 
 
   def RedrawNGL(self):
@@ -2403,6 +2406,14 @@ in the space group %s\nwith unit cell %s""" \
 
   def EnableMouseRotation(self): # enable rotating with the mouse
     self.AddToBrowserMsgQueue("EnableMouseRotation")
+
+
+  def UseCameraZoom(self): # disable zoom with the mouse use webgl camera zoom instead
+    self.AddToBrowserMsgQueue("DisableZoomDrag")
+
+
+  def UseZoomDrag(self): # enable zoom with the mouse
+    self.AddToBrowserMsgQueue("EnableZoomDrag")
 
 
   def ReOrientStage(self):

@@ -22,8 +22,6 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
-
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -88,7 +86,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
-        #MainWindow.setCentralWidget(self.centralwidget)
+        MainWindow.setCentralWidget(self.centralwidget)
         self.dockWidget = QDockWidget(MainWindow)
         self.dockWidget.setObjectName(u"dockWidget")
         self.dockWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
@@ -127,11 +125,11 @@ class Ui_MainWindow(object):
         self.gridLayout_25.setObjectName(u"gridLayout_25")
         self.scrollArea_2 = QScrollArea(self.tabPresetbuttons)
         self.scrollArea_2.setObjectName(u"scrollArea_2")
-        self.scrollArea_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scrollArea_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 691))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 684))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -231,7 +229,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 453, 364))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 449, 379))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)

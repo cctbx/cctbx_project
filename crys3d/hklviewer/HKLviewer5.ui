@@ -141,7 +141,7 @@
              <item row="0" column="0">
               <widget class="QScrollArea" name="scrollArea_2">
                <property name="horizontalScrollBarPolicy">
-                <enum>Qt::ScrollBarAlwaysOff</enum>
+                <enum>Qt::ScrollBarAsNeeded</enum>
                </property>
                <property name="widgetResizable">
                 <bool>true</bool>
@@ -152,7 +152,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>448</width>
-                  <height>691</height>
+                  <height>684</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -347,8 +347,8 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>453</width>
-                   <height>364</height>
+                   <width>449</width>
+                   <height>379</height>
                   </rect>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_4">
