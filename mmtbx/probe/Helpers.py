@@ -617,7 +617,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
     :param placedHydrogenDistance: Maximum distance to use for placed Phantom Hydrogen atoms.
-    The Hydrogens are placed at the optimal overlap distance so may be closer than this.
+    The Phantom Hydrogens are placed at the optimal overlap distance so may be closer than this.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -686,10 +686,10 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     h.element = "H"
     h.name = " H?"
 
-    # Place the hydrogen pointing from the Oxygen towards the candidate at a distance
+    # Place the Phantom Hydrogen pointing from the Oxygen towards the candidate at a distance
     # of the standard H bond length plus an offset that is clamped to the range -1..0 that
     # is the sum of the overlap and the best hydrogen-bonding overlap.  This is an approximation
-    # to the situation where the Hydrogen would rotate around the Oxygen to maintain a proper
+    # to the situation where the Phantom Hydrogen would rotate around the Oxygen to maintain a proper
     # distance from # the acceptor that does not involve trying to select a rotation direction.
     # Because Phantom Hydrogens do not block the Oxygen from collisions with their neighbors, and
     # because Phantom Hydrogens cannot clash with any atom, this will not interfere with clashes.
