@@ -639,9 +639,16 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
       self._overlap = overlap
   candidates = []
 
+  atomModel = atom.parent().parent().parent().parent().id
   for a in nearby:
+    aModel = a.parent().parent().parent().parent().id
+
     # Only check atoms in compatible conformations.
     if not compatibleConformations(atom, a):
+      continue
+
+    # Skip atoms that are in different models.
+    if atomModel != aModel:
       continue
 
     # Check to ensure the occupancy of the neighbor is above threshold and that it is

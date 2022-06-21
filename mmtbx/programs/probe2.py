@@ -2120,6 +2120,7 @@ Note:
         maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
+          srcModel = src.parent().parent().parent().parent().id
 
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
@@ -2132,6 +2133,7 @@ Note:
           atomList = []
           for n in nearby:
             nInWater = self._inWater[n]
+            nModel = n.parent().parent().parent().parent().id
 
             # Skip atoms that are marked to be ignored
             if self._atomClasses[n] == 'ignore':
@@ -2141,6 +2143,9 @@ Note:
               continue
             # Skip atoms that are in non-compatible alternate conformations
             elif not Helpers.compatibleConformations(src, n):
+              continue
+            # Skip atoms that are in different models.
+            elif srcModel != nModel:
               continue
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
             if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
