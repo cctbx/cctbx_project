@@ -2010,7 +2010,7 @@ def show_development_warning(out=sys.stdout):
   !!                                                                        !!
   !! This program is still in development - some functionality may be       !!
   !! missing and/or untested.  Use at your own risk!  For bug reports, etc. !!
-  !! email bugs@phenix-online.org.                                          !!
+  !! email help@phenix-online.org.                                          !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """, file=out)
 

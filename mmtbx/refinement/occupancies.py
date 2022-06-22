@@ -560,7 +560,7 @@ def assemble_constraint_groups_3d(
   !!                                                                        !!
   !! Grouping of occupancy constraints in 3D is experimental and not fully  !!
   !! tested.  Use at your own risk!  For bug reports, etc. contact us by    !!
-  !! email at bugs@phenix-online.org.                                       !!
+  !! email at help@phenix-online.org.                                       !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 """, file=log)
   occupancies = pdb_atoms.extract_occ()

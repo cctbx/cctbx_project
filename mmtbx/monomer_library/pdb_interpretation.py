@@ -3664,7 +3664,7 @@ class build_all_chain_proxies(linking_mixins):
                   + "    - corrupt or missing CIF modifications associated with"
                       " this link\n"
                   + "  If none of this applies, send email to:\n"
-                  + "    bugs@phenix-online.org")
+                  + "    help@phenix-online.org")
             # automatic link creation
             if not mon_lib_srv.link_link_id_dict.get(apply.data_link, False):
               if getattr(apply, "possible_peptide_link", False):

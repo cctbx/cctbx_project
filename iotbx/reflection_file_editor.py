@@ -562,7 +562,7 @@ class process_arrays(object):
         raise Sorry("The array %s:%s ended up empty.  Please check the "+
           "resolution cutoffs to make sure they do not exclude all data "+
           "from the input file.  If you think the parameters were correct, "+
-          "this is probably a bug; please contact bugs@phenix-online.org "+
+          "this is probably a bug; please contact help@phenix-online.org "+
           "with a description of the problem.")
       if is_rfree_array(output_array, info):
         r_free_arrays.append((output_array, info, output_labels,

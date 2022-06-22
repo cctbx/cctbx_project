@@ -222,7 +222,7 @@ def flip(pdb_hierarchy, log=None, mon_lib_srv=None):
       print("         this may indicate a crash or OS conflict", file=log)
       print("         phenix.refine will continue running, but you", file=log)
       print("         should check Asn/Gln/His residues visually.", file=log)
-      print("         contact bugs@phenix-online.org if this problem", file=log)
+      print("         contact help@phenix-online.org if this problem", file=log)
       print("         occurs frequently.", file=log)
       return pdb_hierarchy
     else :

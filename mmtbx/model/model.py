@@ -1956,7 +1956,7 @@ class manager(object):
       # print "Sanity check: '%s' == '%s'" % (a.id_str(), ref_a.id_str())
       if a.id_str() != ref_a.id_str():
         raise Sorry("Something went wrong in setting reference coordinate restraints." + \
-            "Please refer this case to bugs@phenix-online.org"+ \
+            "Please refer this case to help@phenix-online.org"+ \
             "'%s' != '%s'" % (a.id_str(), ref_a.id_str()))
 
     rm.add_reference_coordinate_restraints_in_place(

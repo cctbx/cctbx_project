@@ -696,11 +696,11 @@ class analyze_measurability(scaling.xtriage_analysis):
       else:
          message = """\
  This should not have happend: please contact software authors at
- bugs@phenix-online.org."""
+ help@phenix-online.org."""
     else :
       message = """\
  This should not have happend: please contact software authors at
- bugs@phenix-online.org."""
+ help@phenix-online.org."""
     if message is not None :
       out.show(message)
     # more details
