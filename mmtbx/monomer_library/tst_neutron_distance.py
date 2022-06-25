@@ -91,7 +91,7 @@ def exercise(tolerance=0.01):
         assert approx_equal(dist(a1.xyz, a2.xyz), 0.97, tolerance)
         cntr += 1
       if(n1=="O" and n2 in ["D1","D2"] and a1.resname=="HOH"):
-        assert approx_equal(dist(a1.xyz, a2.xyz), 0.84, tolerance)
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.85, tolerance)
         cntr += 1
   assert cntr == 11, cntr
   # check X-H distances: neutron
@@ -118,7 +118,7 @@ def exercise(tolerance=0.01):
         assert approx_equal(dist(a1.xyz, a2.xyz), 1.09, tolerance)
         cntr += 1
       if(n1=="O" and n2 in ["D1","D2"] and a1.resname=="HOH"):
-        assert approx_equal(dist(a1.xyz, a2.xyz), 0.95, tolerance)
+        assert approx_equal(dist(a1.xyz, a2.xyz), 0.98, tolerance)
         cntr += 1
   assert cntr == 11, cntr
 
