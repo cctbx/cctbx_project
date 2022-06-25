@@ -1128,6 +1128,9 @@ public:
     whiten();
   }
 
+  // returns a list of independent and variable params
+  af::shared<parameter*> independent() const;
+
 private:
   void whiten();
 
