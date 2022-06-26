@@ -12,38 +12,70 @@ namespace scitbx {  namespace math {  namespace euler_angles {
      rz={{cz,-sz,0},{sz,cz,0},{0,0,1}}
      rz1={{cz1,-sz1,0},{sz1,cz1,0},{0,0,1}}
      rz3={{cz3,-sz3,0},{sz3,cz3,0},{0,0,1}}
+
+     Also computes the derivatives by angles when a pointer to 3 matrices is
+     provided.
  */
 
+  template< typename FloatType >
+  const scitbx::mat3< FloatType >
+    xyz_matrix_rad(const FloatType& x_rad, const FloatType& y_rad, const FloatType& z_rad,
+      scitbx::mat3< FloatType >* dm = 0)
+  {
+    FloatType sin_x(std::sin(x_rad));
+    FloatType sin_y(std::sin(y_rad));
+    FloatType sin_z(std::sin(z_rad));
+
+    FloatType cos_x(std::cos(x_rad));
+    FloatType cos_y(std::cos(y_rad));
+    FloatType cos_z(std::cos(z_rad));
+
+    scitbx::mat3< FloatType > rv(
+      cos_y * cos_z,
+      -cos_y * sin_z,
+      sin_y,
+
+      cos_x * sin_z + sin_x * sin_y * cos_z,
+      cos_x * cos_z - sin_x * sin_y * sin_z,
+      -sin_x * cos_y,
+
+      sin_x * sin_z - cos_x * sin_y * cos_z,
+      sin_x * cos_z + cos_x * sin_y * sin_z,
+      cos_x * cos_y);
+    if (dm != 0) {
+      dm[0] = scitbx::mat3< FloatType >(
+        0, 0, 0,
+        cos_x * sin_y * cos_z - sin_x * sin_z, -cos_x * sin_y * sin_z - sin_x * cos_z, -cos_x * cos_y,
+        sin_x * sin_y * cos_z + cos_x * sin_z, -sin_x * sin_y * sin_z + cos_x * cos_z, -sin_x * cos_y
+        );
+      dm[1] = scitbx::mat3<FloatType>(
+        -cos_z * sin_y, sin_z * sin_y, cos_y,
+        sin_x * cos_z * cos_y, -sin_x * sin_z * cos_y, sin_x * sin_y,
+        -cos_x * cos_z * cos_y, cos_x * sin_z * cos_y, -cos_x * sin_y
+        );
+      dm[2] = scitbx::mat3<FloatType >(
+        -cos_y * sin_z, -cos_y * cos_z, 0,
+        -sin_x * sin_y * sin_z + cos_x * cos_z, -sin_x * sin_y * cos_z - cos_x * sin_z, 0,
+        cos_x * sin_y * sin_z + sin_x * cos_z, cos_x * sin_y * cos_z - sin_x * sin_z, 0
+        );
+    }
+    return rv;
+  }
+// angles are in degrees  
 template< typename FloatType >
 const scitbx::mat3< FloatType >
-xyz_matrix( const FloatType& ax, const FloatType& ay, const FloatType& az )
+xyz_matrix( const FloatType& ax, const FloatType& ay, const FloatType& az,
+  scitbx::mat3< FloatType >* dm = 0)
 {
   FloatType x_rad( scitbx::deg_as_rad( ax ) );
   FloatType y_rad( scitbx::deg_as_rad( ay ) );
   FloatType z_rad( scitbx::deg_as_rad( az ) );
 
-  FloatType sin_x( std::sin( x_rad ) );
-  FloatType sin_y( std::sin( y_rad ) );
-  FloatType sin_z( std::sin( z_rad ) );
-
-  FloatType cos_x( std::cos( x_rad ) );
-  FloatType cos_y( std::cos( y_rad ) );
-  FloatType cos_z( std::cos( z_rad ) );
-
-  return scitbx::mat3< FloatType >(
-       cos_y * cos_z,
-      -cos_y * sin_z,
-       sin_y,
-
-       cos_x * sin_z  +  sin_x * sin_y * cos_z,
-       cos_x * cos_z  -  sin_x * sin_y * sin_z,
-      -sin_x * cos_y,
-
-       sin_x * sin_z  -  cos_x * sin_y * cos_z,
-       sin_x * cos_z  +  cos_x * sin_y * sin_z,
-       cos_x * cos_y );
+  return xyz_matrix_rad(scitbx::deg_as_rad(ax),
+      scitbx::deg_as_rad(ay),
+      scitbx::deg_as_rad(az),
+      dm);
 }
-
 
 template< typename FloatType >
 const scitbx::vec3< FloatType >
