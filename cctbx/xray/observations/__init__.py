@@ -16,3 +16,16 @@ def customized_copy(obs, space_group, twin_fractions=None, twin_components=None)
   result.ref_twin_fractions = twin_fractions
   result.ref_twin_components = twin_components
   return result
+
+#convenience method for HKLF5 format to get a full miller index set unique under symmetry
+def full_set(obs):
+  fc_set = []
+  for i,h in enumerate(obs.indices):
+    fc_set.append(h)
+    itr = obs.iterator(i)
+    while itr.has_next():
+      fc_set.append(itr.next().h)
+  fc_set = miller.set(crystal_symmetry=obs.fo_sq.crystal_symmetry(),
+    indices=flex.miller_index(fc_set),
+    anomalous_flag=obs.fo_sq.anomalous_flag())
+  return fc_set.select(fc_set.unique_under_symmetry_selection())

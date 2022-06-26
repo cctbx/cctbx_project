@@ -386,13 +386,13 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::apply_shifts(af::const_ref<double> const &shifts) {
     SMTBX_ASSERT(shifts.size() == n_independents());
     BOOST_FOREACH(parameter *p, all) {
-      // 'composite' params may need validation too!
-      p->validate();
       if (p->is_independent() && p->is_variable()) {
         double const *s = &shifts[p->index()];
         af::ref<double> x = p->components();
         for (std::size_t i=0; i<x.size(); ++i) x[i] += s[i];
       }
+      // 'composite' params may need validation too!
+      p->validate();
     }
   }
 
