@@ -455,27 +455,21 @@ namespace cctbx { namespace xray {
             continue;
           }
           if (scale_indices[i] > 0) {
-            if (filter_.space_group.is_sys_absent(indices[i])) {
-              res.selection[i] = false;
-              int j=i;
-              bool remove = true;
+            bool remove = filter_.space_group.is_sys_absent(indices[i]);
+            if (!remove) {
+              int j = i;
               while (--j >= 0 && scale_indices[j] < 0) {
-                if (!filter_.space_group.is_sys_absent(indices[j]) && res.selection[j]) {
-                  remove = false;
-                  break;
+                if (filter_.space_group.is_sys_absent(indices[j]) && res.selection[j]) {
+                  res.selection[j] = false;
                 }
+              }
+            }
+            else {
+              res.sys_abs_count++;
+              res.selection[i] = false;
+              int j = i;
+              while (--j >= 0 && scale_indices[j] < 0) {
                 res.selection[j] = false;
-              }
-              if (remove) {
-                res.sys_abs_count++;
-                i = j+1;
-              }
-              else { //revert
-                res.selection[i] = true;
-                j = i;
-                while (--j >= 0 && scale_indices[j] < 0) {
-                  res.selection[j] = true;
-                }
               }
             }
           }
