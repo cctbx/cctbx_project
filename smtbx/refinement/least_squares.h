@@ -97,7 +97,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       boost::optional<FloatType> scale_factor,
       f_calc_function_base_t& f_calc_function,
       scitbx::sparse::matrix<FloatType> const&
-      jacobian_transpose_matching_grad_fc,
+        jacobian_transpose_matching_grad_fc,
       cctbx::xray::fc_correction<FloatType> const& fc_cr,
       bool objective_only = false,
       bool may_parallelise = false,

@@ -126,39 +126,51 @@ class shared_rotated_u(object):
     self.value = u_c
     self.angle = angle
 
-class scalar_scaled_u(object):
-  """ u_iso or u_star of a group of atoms all equal to their starting values
-      times a scalar constant
+class shared_rotating_u(object):
+  """ u_eq or u_star of some scatterer constrained to be equal to
+      u_iso or u_start of another scatterer
   """
 
-  def __init__(self, ind_sequence):
-    self.indices = ind_sequence
+  def __init__(self, ind_ref, ind_atom, scale,
+               refine_scale, alpha, beta, gamma, refine_angle):
+    self.ind_ref = ind_ref
+    self.ind_atom = ind_atom
+    self.scale_value = scale
+    self.refine_scale = refine_scale
+    self.alpha_value = alpha
+    self.beta_value = beta
+    self.gamma_value = gamma
+    self.refine_angle = refine_angle
 
   @property
   def constrained_parameters(self):
-    return tuple((idx, "U") for idx in self.indices)
+    return tuple(((self.ind_atom, 'U'),))
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
-    scalar = reparametrisation.add(_.independent_scalar_parameter,
-      value=1., variable=True)
-    for idx in self.indices:
-      use_u_aniso = scatterers[idx].flags.use_u_aniso()
-      if use_u_aniso:
-        param = reparametrisation.add(
-          _.scalar_scaled_u_star,
-          scalar=scalar,
-          scatterer=scatterers[idx])
-      else:
-        param = reparametrisation.add(
-          _.scalar_scaled_u_iso,
-          scalar=scalar,
-          scatterer=scatterers[idx])
-      # reparametrisation.shared_Us[idx] = param # not sure what to do with this
-      reparametrisation.asu_scatterer_parameters[idx].u = param
-    self.scalar = scalar
+    if not scatterers[self.ind_ref].flags.use_u_aniso() or\
+       not scatterers[self.ind_atom].flags.use_u_aniso():
+      raise InvalidConstraint(
+        "only anisotropic atoms are allowed for shared rotating ADP")
 
-  def esd(self, ls):
-    from math import sqrt
-    cov_diag = ls.covariance_matrix().matrix_packed_u_diagonal()
-    return sqrt(cov_diag[self.scalar.index])
+    u_c = reparametrisation.add_new_thermal_displacement_parameter(self.ind_ref)
+    self.scale = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.scale_value, variable=self.refine_scale)
+    self.alpha = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.alpha_value*pi/180, variable=self.refine_angle)
+    self.beta = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.beta_value*pi/180, variable=self.refine_angle)
+    self.gamma = reparametrisation.add(_.independent_scalar_parameter,
+      value=self.gamma_value*pi/180, variable=self.refine_angle)
+    param = reparametrisation.add(
+      _.shared_rotating_u_star,
+      scatterer=scatterers[self.ind_atom],
+      reference=u_c,
+      scale=self.scale,
+      alpha=self.alpha,
+      beta=self.beta,
+      gamma=self.gamma
+    )
+    reparametrisation.shared_Us[self.ind_atom] = u_c
+    reparametrisation.asu_scatterer_parameters[self.ind_atom].u = param
+    self.value = u_c

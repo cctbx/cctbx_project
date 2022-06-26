@@ -1,5 +1,5 @@
 #include <smtbx/refinement/constraints/shared.h>
-
+#include <scitbx/math/euler_angles.h>
 #include <boost/lambda/lambda.hpp>
 #include <scitbx/array_family/tiny_algebra.h>
 
@@ -13,7 +13,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     u_star_parameter *u = reference();
     value = u->value;
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     sparse_matrix_type &jt = *jacobian_transpose;
     for (int i=0; i<6; i++) {
       jt.col(index() + i) = jt.col(u->index() + i);
@@ -47,7 +49,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     value = cctbx::adptbx::u_cart_as_u_star(unit_cell,
       tensor_rank_2_t(u_t[0], u_t[4], u_t[8], u_t[1], u_t[2], u_t[5]));
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     // convenience accessor array for the symmetric matrix...
     static const int sym_acs[] = {0,4,8,1,2,5};
     sparse_matrix_type &jt = *jacobian_transpose;
@@ -58,17 +62,20 @@ namespace smtbx { namespace refinement { namespace constraints {
       tensor_rank_2_t t;
       bool zero = true;
       for (int j=0; j<6; j++) {
-        if ((t[j] = jt(i, ref->index()+j)) != 0 )
+        if ((t[j] = jt(i, ref->index() + j)) != 0) {
           zero = false;
+        }
       }
       if (zero) {
-        for (int j=0; j<6; j++)
-          jt(i, index()+j) = 0;
+        for (int j = 0; j < 6; j++) {
+          jt(i, index() + j) = 0;
+        }
       }
       else {
         scitbx::mat3<double> x = jtm*t*jtm_t;
-        for (int j=0; j<6; j++)
-          jt(i, index()+j) = x[sym_acs[j]];
+        for (int j = 0; j < 6; j++) {
+          jt(i, index() + j) = x[sym_acs[j]];
+        }
       }
     }
     if (ang->is_variable()) {
@@ -82,8 +89,9 @@ namespace smtbx { namespace refinement { namespace constraints {
       scitbx::mat3<double> dm = rm*u_c*rmd.transpose() + rmd*u_c*rm.transpose();
       dm = unit_cell.fractionalization_matrix()*dm*
         unit_cell.fractionalization_matrix().transpose();
-      for (int k=0; k<6; k++)
+      for (int k = 0; k < 6; k++) {
         jt(ang->index(), index() + k) = dm[sym_acs[k]];
+      }
     }
   }
 
@@ -96,7 +104,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     scalar_parameter *u_iso = reference();
     value = u_iso->value;
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     sparse_matrix_type &jt = *jacobian_transpose;
     jt.col(index()) = jt.col(u_iso->index());
   }
@@ -110,10 +120,13 @@ namespace smtbx { namespace refinement { namespace constraints {
     site_parameter *site = reference();
     value = site->value;
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     sparse_matrix_type &jt = *jacobian_transpose;
-    for (int i=0; i < 3; i++)
-      jt.col(index()+i) = jt.col(site->index()+i);
+    for (int i = 0; i < 3; i++) {
+      jt.col(index() + i) = jt.col(site->index() + i);
+    }
   }
 
   // shared fp
@@ -125,7 +138,9 @@ namespace smtbx { namespace refinement { namespace constraints {
     scalar_parameter *fp = reference();
     value = fp->value;
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     sparse_matrix_type &jt = *jacobian_transpose;
     jt.col(index()) = jt.col(fp->index());
   }
@@ -139,9 +154,122 @@ namespace smtbx { namespace refinement { namespace constraints {
     scalar_parameter *fdp = reference();
     value = fdp->value;
 
-    if (!jacobian_transpose) return;
+    if (jacobian_transpose == 0) {
+      return;
+    }
     sparse_matrix_type &jt = *jacobian_transpose;
     jt.col(index()) = jt.col(fdp->index());
   }
+
+  // shared rotated u_star
+  void
+    shared_rotating_u_star
+    ::linearise(uctbx::unit_cell const& unit_cell,
+      sparse_matrix_type* jacobian_transpose)
+  {
+    const scalar_parameter* angles[] = {
+      alpha(), beta(), gamma()
+    };
+    const scalar_parameter* sc = this->scale();
+    scitbx::mat3<double> rmd[3];
+    scitbx::mat3<double> rm = scitbx::math::euler_angles::xyz_matrix_rad(
+      angles[0]->value, angles[1]->value, angles[2]->value, &rmd[0]),
+      rmt = rm.transpose();
+    const u_star_parameter* ref = reference();
+    tensor_rank_2_t u_c =
+      cctbx::adptbx::u_star_as_u_cart(unit_cell, ref->value);
+    scitbx::mat3<double> u_t = rm * u_c * rmt;
+    // update the value
+    value = cctbx::adptbx::u_cart_as_u_star(unit_cell,
+      tensor_rank_2_t(
+        u_t[0], u_t[4], u_t[8],
+        u_t[1], u_t[2], u_t[5]));
+    for (size_t i = 0; i < 3; i++) {
+      value[i] *= sc->value;
+    }
+
+    if (jacobian_transpose == 0) {
+      return;
+    };
+    // convenience accessor array for the symmetric matrix...
+    static const int sym_acs[] = { 0,4,8,1,2,5 };
+    sparse_matrix_type& jt = *jacobian_transpose;
+    // transforms for the jacobian values
+    scitbx::mat3<double> jtm = unit_cell.fractionalization_matrix() *
+      rm * unit_cell.orthogonalization_matrix(),
+      jtm_t = jtm.transpose();
+    for (int i = 0; i < jt.n_rows(); i++) {
+      tensor_rank_2_t t;
+      bool zero = true;
+      for (int j = 0; j < 6; j++) {
+        if ((t[j] = jt(i, ref->index() + j)) != 0) {
+          zero = false;
+        }
+      }
+      if (zero) {
+        for (int j = 0; j < 6; j++) {
+          jt(i, index() + j) = 0;
+        }
+      }
+      else {
+        scitbx::mat3<double> x = jtm * t * jtm_t;
+        for (int j = 0; j < 6; j++) {
+          jt(i, index() + j) = x[sym_acs[j]];
+        }
+      }
+    }
+
+    for (int j = 0; j < 3; j++) {
+      if (!angles[j]->is_variable()) {
+        continue;
+      }
+      scitbx::mat3<double> dm = rm * u_c * rmd[j].transpose() +
+        rmd[j] * u_c * rmt;
+      dm = unit_cell.fractionalization_matrix() * dm *
+        unit_cell.fractionalization_matrix().transpose();
+      for (int k = 0; k < 6; k++) {
+        jt(angles[j]->index(), index() + k) = dm[sym_acs[k]];
+      }
+    }
+
+    // expansion/contraction
+    if (sc->is_variable()) {
+      for (int j = 0; j < 6; j++) {
+        double v = value[j];
+        if (j < 3 && sc->value != 0) {
+          v /= sc->value;
+        }
+        jt(sc->index(), index()+j) = v;
+      }
+    }
+
+  }
+
+  void shared_rotating_u_star::validate() {
+    if (scale()->value < 0) {
+      scale()->value = 1e-3;
+    }
+    double tp = 2 * scitbx::constants::pi;
+    //double tp = 360;
+    while (alpha()->value < 0) {
+      alpha()->value += tp;
+    }
+    while (alpha()->value > tp) {
+      alpha()->value -= tp;
+    }
+    while (beta()->value < 0) {
+      beta()->value += tp;
+    }
+    while (beta()->value > tp) {
+      beta()->value -= tp;
+    }
+    while (gamma()->value < 0) {
+      gamma()->value += tp;
+    }
+    while (gamma()->value > tp) {
+      gamma()->value -= tp;
+    }
+  }
+
 
 }}}

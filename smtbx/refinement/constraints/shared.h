@@ -137,6 +137,50 @@ public:
     sparse_matrix_type *jacobian_transpose);
 };
 
+/** 'borrowed' u_star with orientation and size refined
+*/
+class shared_rotating_u_star : public asu_u_star_parameter {
+public:
+  shared_rotating_u_star(scatterer_type* scatterer,
+    u_star_parameter* reference,
+    independent_scalar_parameter* scale,
+    independent_scalar_parameter* alpha,
+    independent_scalar_parameter* beta,
+    independent_scalar_parameter* gamma)
+    : parameter(5),
+    single_asu_scatterer_parameter(scatterer)
+  {
+    set_arguments(reference, scale, alpha, beta, gamma);
+  }
+
+  u_star_parameter* reference() const {
+    return dynamic_cast<u_star_parameter*>(this->argument(0));
+  }
+
+  independent_scalar_parameter* scale() const {
+    return dynamic_cast<independent_scalar_parameter*>(this->argument(1));
+  }
+
+  independent_scalar_parameter* alpha() const {
+    return dynamic_cast<independent_scalar_parameter*>(this->argument(2));
+  }
+
+  independent_scalar_parameter* beta() const {
+    return dynamic_cast<independent_scalar_parameter*>(this->argument(3));
+  }
+
+  independent_scalar_parameter* gamma() const {
+    return dynamic_cast<independent_scalar_parameter*>(this->argument(4));
+  }
+
+  virtual void linearise(uctbx::unit_cell const& unit_cell,
+    sparse_matrix_type* jacobian_transpose);
+  
+  virtual void validate();
+
+};
+
+
 }}}
 
 #endif // GUARD
