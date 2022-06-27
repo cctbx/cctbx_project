@@ -225,6 +225,8 @@ def exercise():
   # Unit tests
   #
   import mmtbx.ncs.ligands
+  #
+  # This function is not there. Not sure if it ever was...
   operators = mmtbx.ncs.ligands.find_ncs_operators(hierarchy,
     log=null_out())
   assert len(operators) == 1
