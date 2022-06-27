@@ -35,6 +35,32 @@ if (env_etc.enable_cuda):
     source=["src/diffBraggCUDA.cu", "src/diffBragg_gpu_kernel.cu"])
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
 
+if (env_etc.enable_kokkos):
+  kokkos_cxxflags = ['-std=c++14',
+                     '-Xcudafe', 
+                     '--diag_suppress=esa_on_defaulted_function_ignored', 
+                     '-expt-extended-lambda', 
+                     '-arch=sm_80', 
+                     '-I./', 
+                     '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/core/src', 
+                     '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/containers/src', 
+                     '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/algorithms/src']
+
+  if os.getenv('KOKKOS_PATH') is None:
+    os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+  kokkos_env = env_simtbx.Clone()
+  kokkos_env.Replace(CXX=os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper'))    #os.environ['CXX'])
+  kokkos_env.Replace(SHCXX=os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper'))  #os.environ['CXX'])
+  kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
+  kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
+  kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+
+  simtbx_kokkos_lib = kokkos_env.SharedLibrary(
+    target="#lib/libsimtbx_diffBraggKOKKOS",
+    source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp"])
+  env_simtbx.Prepend(LIBS=["simtbx_diffBraggKOKKOS"])
+
 env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
   source=[
