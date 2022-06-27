@@ -219,7 +219,7 @@ MainWindow.setCentralWidget(self.centralwidget)
 # from  the function hklviewer_gui.Ui_MainWindow.setupUi()
 
 """
-timer = QTimer() 
+timer = QTimer()
 
 class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
@@ -697,7 +697,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         pass
     if self.zmq_context:
       if self.cctbxproc.poll() is not None and not self.closing:
-        print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.") 
+        print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.")
         timer.stop()
 
       if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
