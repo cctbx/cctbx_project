@@ -119,6 +119,7 @@ Inputs: Model file (PDB, mmCIF)
     self.model_list = []
     self.processed_model = None
     self.processed_model_file_name = None
+    self.processed_model_file_name_list = []
 
     from mmtbx.process_predicted_model import process_predicted_model
     info = process_predicted_model(model = self.model,
@@ -154,6 +155,20 @@ Inputs: Model file (PDB, mmCIF)
     self.data_manager.write_model_file(
       info.model, self.processed_model_file_name)
 
+    # Split up processed model and write each chain as well
+    if len(info.model.chain_ids()) > 1:
+      model_list = info.model.as_model_manager_each_chain()
+    else:
+      model_list = [info.model]
+    for m in model_list:
+      chain_id = m.first_chain_id()
+      fn = "%s_%s.pdb" %(prefix,chain_id)
+      print("Copying predicted model chain %s to %s" %(
+           chain_id,fn), file = self.logger)
+      self.data_manager.write_model_file(m,fn)
+      self.processed_model_file_name_list.append(fn)
+
+
     # Write out seq file for remainder (unused part) of model
     if info.remainder_sequence_str:
       if self.params.output_files.remainder_seq_file_prefix:
@@ -180,6 +195,7 @@ Inputs: Model file (PDB, mmCIF)
       starting_model = self.starting_model,
       processed_model = self.processed_model,
       processed_model_file_name = self.processed_model_file_name,
+      processed_model_file_name_list = self.processed_model_file_name_list,
       model_list = self.model_list,
       processed_model_text = self.processed_model_text,
       params = self.params)
