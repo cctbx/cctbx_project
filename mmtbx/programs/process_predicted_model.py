@@ -161,11 +161,11 @@ Inputs: Model file (PDB, mmCIF)
       else:
         prefix, ext  = os.path.splitext(self.params.input_files.model)
         prefix = "%s_remainder" %(prefix)
-      self.processed_model_file_name = os.path.join(
+      self.remainder_sequence_file_name = os.path.join(
         os.getcwd(), "%s.seq" %(prefix))
       sequence_str = info.remainder_sequence_str
       self.data_manager.write_sequence_file(sequence_str,
-        filename = self.processed_model_file_name)
+        filename = self.remainder_sequence_file_name)
 
     # Summarize each step
 
