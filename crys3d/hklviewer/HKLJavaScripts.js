@@ -1667,16 +1667,19 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     if (rightnow - timenow > tdelay)
     { // only post every tdelay milli second as not to overwhelm python
       ttipid = String([hkl_id, sym_id]);
-      // send this to python which will send back a tooltip text
-      if (pickingProxy.mouse.buttons == 1 || eventstr == 'hover') // left click or hover for tooltips
-        WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
-      if (pickingProxy.mouse.buttons == 2) // right click for matching hkls in table
-        WebsockSendMsg('match_hkl_id: [' + ttipid + ']');
+	    if (ttipid != "")
+	    {
+        // send this to python which will send back a tooltip text
+        if (pickingProxy.mouse.buttons == 1 || eventstr == 'hover') // left click or hover for tooltips
+          WebsockSendMsg(eventstr + '_tooltip_id: [' + ttipid + ']');
+        if (pickingProxy.mouse.buttons == 2) // right click for matching hkls in table
+          WebsockSendMsg('match_hkl_id: [' + ttipid + ']');
+        if (isdebug)
+          console.log("current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid));
+       }
+	    
       timenow = timefunc();
     }
-
-    if (isdebug)
-      console.log("current_ttip_ids: " + String(current_ttip_ids) + ", ttipid: " + String(ttipid));
   }
   else {
     tooltip.style.display = "none";

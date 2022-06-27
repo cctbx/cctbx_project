@@ -177,7 +177,7 @@ class HKLview_3d:
       self.parent = kwds['parent']
     self.debug = None
     if 'debug' in kwds:
-      self.debug = kwds['debug']
+      self.debug = eval( kwds['debug'])
     self.mprint = sys.stdout.write
     if 'mprint' in kwds:
       self.mprint = kwds['mprint']
@@ -1379,7 +1379,7 @@ class HKLview_3d:
         nreflsinbin = len(self.radii2[ibin])
         if nreflsinbin == 0:
           continue
-        if self.debug == "debug":
+        if self.debug:
           self.SetBrowserDebug("true")
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
