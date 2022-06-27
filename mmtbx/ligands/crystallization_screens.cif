@@ -8,10 +8,11 @@ _xtal.screen_url "http://hamptonresearch.com/product_detail.aspx?sid=17&pid=1"
 _xtal.conditions 96
 _xtal.comments "Consists of two sets of 48 conditions (Crystal Screens I and II), also sold as 96-well block (Crystal Screen HT)"
 loop_
-_xtal_screen.name "Crystal Screen"
-_xtal_screen.name "Crystal Screen I"
-_xtal_screen.name "Crystal Screen II"
-_xtal_screen.name "Crystal Screen HT"
+_xtal_screen.name
+    "Crystal Screen"
+    "Crystal Screen I"
+    "Crystal Screen II"
+    "Crystal Screen HT"
 
 #
 # A few reagents not found in a standard biochemistry textbook:
@@ -152,7 +153,7 @@ _xtal.conditions 96
 _xtal.comments "Sold as set of 96 tubes or a 96-well block (Index HT)"
 loop_
 _xtal_screen.name "Index"
-_xtal_screen.name "Index HT"
+ "Index HT"
 
 loop_
 _lib_screen.screen_number
@@ -267,9 +268,9 @@ _xtal.conditions 96
 _xtal.comments "Consists of two sets of 48 conditions (PEG/Ion I and II), also sold as 96-well block (PEG/Ion HT)"
 loop_
 _xtal_screen.name "PEG/Ion"
-_xtal_screen.name "PEG/Ion I"
-_xtal_screen.name "PEG/Ion II"
-_xtal_screen.name "PEG/Ion HT"
+ "PEG/Ion I"
+ "PEG/Ion II"
+ "PEG/Ion HT"
 
 loop_
 _lib_screen.screen_number
