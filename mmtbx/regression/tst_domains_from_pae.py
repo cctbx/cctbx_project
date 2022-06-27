@@ -42,7 +42,7 @@ def tst_01(log = sys.stdout):
       "(resseq 114:182) or (resseq 188:291)",
       "(resseq 183:183)",
       "(resseq 292:308)"
-   ]
+   ], selections
 
 def tst_02(log = sys.stdout):
 

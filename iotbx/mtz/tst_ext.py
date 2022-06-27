@@ -501,8 +501,15 @@ def exercise_walk(root_dir, full, verbose=False):
     out = StringIO()
   exercise_function = exercise_extract_any(full=full)
   try:
-    os.path.walk(
-      top=root_dir, func=walk_callback, arg=(exercise_function, out))
+    if sys.version_info.major == 3:
+      for root, dirs, files in os.walk(root_dir):
+        walk_callback(
+            arg=(exercise_function, out),
+            top=root,
+            names=files)
+    else:
+      os.path.walk(
+        top=root_dir, func=walk_callback, arg=(exercise_function, out))
   except QuickStop:
     pass
   if (verbose):
