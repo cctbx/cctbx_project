@@ -18,5 +18,9 @@ def run(server_info, inp, status):
   pydoc.cli()
   sys.stdout = sys.__stdout__
   s = s.getvalue()
-  sys.stdout.write(cgi.escape(s))
+  if sys.version_info.major >= 3:
+    import html
+    sys.stdout.write(html.escape(s))
+  else:
+    sys.stdout.write(cgi.escape(s))
   print("</pre>")

@@ -80,7 +80,7 @@ def xyz_from_string(string):
 def fmt_nums(nums):
   result = []
   for num in nums:
-    if (num < 1e-10): num = 0
+    if (float(num) < 1e-10): num = 0
     result.append("%.6g" % num)
   return tuple(result)
 
