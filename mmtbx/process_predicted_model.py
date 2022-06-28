@@ -138,7 +138,7 @@ master_phil_str = """
             pae<pae_cutoff
        .short_caption = PAE cutoff (if PAE matrix supplied)
 
-     pae_graph_resolution = 1
+     pae_graph_resolution = 0.5
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             pae_graph_resolution regulates how aggressively the clustering \
@@ -699,7 +699,7 @@ def split_model_with_pae(
      maximum_domains = None,
      pae_power = 1.,
      pae_cutoff = 5.,
-     pae_graph_resolution = 1.,
+     pae_graph_resolution = 0.5,
      minimum_domain_length = 10,
      weight_by_ca_ca_distance = False,
      distance_power = 1,
@@ -724,7 +724,7 @@ def split_model_with_pae(
        proportional to (1/pae**pae_power)
    pae_cutoff (optional, default=5): graph edges will only be created for
        residue pairs with pae<pae_cutoff
-   pae_graph_resolution (optional, default = 1): regulates how aggressively
+   pae_graph_resolution (optional, default = 0.5): regulates how aggressively
        the clustering algorithm is. Smaller values lead to larger clusters.
        Value should be larger than zero, and values larger than 5 are
         unlikely to be useful
