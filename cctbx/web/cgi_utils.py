@@ -6,13 +6,6 @@ if sys.version_info.major >= 3:
 if sys.version_info.major < 3:
     from urlparse import urlunsplit
 
-#
-# Won't work in Py3 most likely because pickles here:
-# "$PHENIX_REGRESSION_DIR"/cctbx/web/[a-z]*
-# are incompatible.
-#
-
-
 class FormatError(Exception): pass
 
 class empty: pass

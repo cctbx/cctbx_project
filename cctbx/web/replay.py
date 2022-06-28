@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys, pickle
+import importlib
 
 class empty: pass
 
@@ -9,7 +10,7 @@ def run(file_names):
     f = open(file_name, "rb")
     server_info, target_module, inp = pickle.load(f)
     f.close()
-    exec("import " + target_module + " as target")
+    target = importlib.import_module(target_module)
     status = empty()
     status.in_table = False
     target.run(server_info, inp, status)
