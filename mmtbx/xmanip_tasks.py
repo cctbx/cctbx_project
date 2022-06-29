@@ -359,8 +359,11 @@ def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   function_arguments = None
   #these two lines allow me quickly lift the appropriate set of
   #parameters from the file scope without a lengthy set of if statements
-  patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
-  exec(patch)
+  # patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
+  # exec(patch)
+
+  # This is how it can be done, compatible between Py2/Py3
+  function_arguments = getattr(params, params.task)
   result = function_pointer[ params.task ]( names,
                                             miller_arrays,
                                             xray_structure,
