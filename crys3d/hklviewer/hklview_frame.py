@@ -274,7 +274,7 @@ class HKLViewFrame() :
     diffphil = master_phil.fetch_diff(source = self.currentphil)
     if useful_for_preset_button:
       # Tidy up diffphil by eliminating parameters that are not needed
-      # for preset buttons or are being overwritten by user settings (colour and radii scheme)
+      # for preset buttons or are being overwritten by user settings (selected_info, colour and radii scheme)
       # First make a copy of all phil parameters some of which may be altered below
       paramscopy = master_phil.format(self.params).copy().extract()
 
@@ -366,14 +366,17 @@ class HKLViewFrame() :
     try:
       oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
+      currentSelectInfoscope = None
       if msgtype=="preset_philstr":
         currentNGLscope = self.currentphil.extract().NGL
+        currentSelectInfoscope = self.currentphil.extract().selected_info
         self.ResetPhil()
         self.viewer.sceneisdirty = True
         self.viewer.executing_preset_btn = True
       # selecting a new scene_id resets phil parameters if the previous phil was from a preset button
       if lastmsgtype=="preset_philstr" and jsview_3d.has_phil_path(new_phil, "scene_id"):
         currentNGLscope = self.currentphil.extract().NGL
+        currentSelectInfoscope = self.currentphil.extract().selected_info
         self.ResetPhil()
 
       if not new_phil:
@@ -382,8 +385,9 @@ class HKLViewFrame() :
 
       self.params = self.currentphil.extract()
       phl = self.params
-      if currentNGLscope is not None:
+      if msgtype=="preset_philstr":  # override default NGL and selected_info scopes with user settings
         self.params.NGL = currentNGLscope
+        self.params.selected_info = currentSelectInfoscope
       self.viewer.params = phl
       # once a preset phil setting has been enabled allow changing a phil parameter
       # without having to change scene_id
