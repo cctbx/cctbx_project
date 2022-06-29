@@ -38,6 +38,27 @@ KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
 U I S
 """.split()
 
+def print_dict(d):
+  """Print a dictionary with complex keys in a consistent order
+
+  Args:
+      d (dictionary): Dictionary
+
+  Returns:
+      String: Formatted string
+  """
+  def complex_sort(s1):
+    if s1[0] is None: return 'z'*1000 # very late in sort
+    return s1[0]
+  s = '{'
+  for key, item in sorted(d.items(), key=complex_sort):
+    if key is None:
+      s+="%s: %s, " % (key, item)
+    else:
+      s+="'%s': %s, " % (key, item)
+  s='%s}' % s[:-2]
+  return s
+
 class ad_hoc_single_atom_residue(object):
 
   def __init__(self, residue_name, atom_name, atom_element):
@@ -2868,32 +2889,32 @@ class build_chain_proxies(object):
         conformer.residues_size(),
         n_expected_atoms + flex.sum(flex.long(list(unexpected_atoms.values())))), file=log)
       if (len(unknown_residues) > 0):
-        print("          Unknown residues:", unknown_residues, file=log)
+        print("          Unknown residues:", print_dict(unknown_residues), file=log)
       if (len(ad_hoc_single_atom_residues) > 0):
         print("          Ad-hoc single atom residues:", \
           ad_hoc_single_atom_residues, file=log)
       if (len(unusual_residues) > 0):
-        print("          Unusual residues:", unusual_residues, file=log)
+        print("          Unusual residues:", print_dict(unusual_residues), file=log)
       if (len(inner_chain_residues_flagged_as_termini) > 0):
         print("          Inner-chain residues flagged as termini:", \
           inner_chain_residues_flagged_as_termini, file=log)
       if (len(unexpected_atoms) > 0):
-        print("          Unexpected atoms:", unexpected_atoms, file=log)
+        print("          Unexpected atoms:", print_dict(unexpected_atoms), file=log)
       if (len(ignored_atoms) > 0):
-        print("          Ignored atoms:", ignored_atoms, file=log)
+        print("          Ignored atoms:", print_dict(ignored_atoms), file=log)
       if (len(duplicate_atoms) > 0):
-        print("          Duplicate atoms:", duplicate_atoms, file=log)
+        print("          Duplicate atoms:", print_dict(duplicate_atoms), file=log)
       if (len(classifications) > 0):
-        print("          Classifications:", classifications, file=log)
+        print("          Classifications:", print_dict(classifications), file=log)
       if (len(modifications_used) > 0):
-        print("          Modifications used:", modifications_used, file=log)
+        print("          Modifications used:", print_dict(modifications_used), file=log)
       if (len(incomplete_infos) > 0):
-        print("          Incomplete info:", incomplete_infos, file=log)
+        print("          Incomplete info:", print_dict(incomplete_infos), file=log)
       if (len(missing_h_bond_type) > 0):
-        print('          Missing H bond types:', missing_h_bond_type, file=log)
+        print('          Missing H bond types:', print_dict(missing_h_bond_type), file=log)
     if (log is not None):
       if (len(link_ids) > 0):
-        print("          Link IDs:", link_ids, file=log)
+        print("          Link IDs:", print_dict(link_ids), file=log)
         if (len(link_ids) != 1):
           if (not_linked_show_max is None):
             show_max = len(mm_pairs_not_linked)
