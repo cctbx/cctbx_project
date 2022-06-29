@@ -288,14 +288,20 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.UseOSBrowser = False
     self.devmode = False
     self.make_new_factory_default_settings = False
+    self.XtricorderBtn.setVisible(False)
+    self.XtriageBtn.setVisible(False)
     for e in sys.argv:
       if "UseOSBrowser" in e:
         self.UseOSBrowser = True
       if "devmode" in e:
         self.devmode = True
         self.actiondebug.setVisible(True)
+        self.XtricorderBtn.setVisible(True)
+        self.XtriageBtn.setVisible(True)
       if  "debug" in e:
         self.actiondebug.setVisible(True)
+        self.XtricorderBtn.setVisible(True)
+        self.XtriageBtn.setVisible(True)
       if "new_factory_defaults" in e:
         self.make_new_factory_default_settings= True
 
