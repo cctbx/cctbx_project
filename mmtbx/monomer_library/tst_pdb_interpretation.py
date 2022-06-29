@@ -953,7 +953,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 3, 63
           Classifications: {'RNA': 3}
-          Link IDs: {'rna3p': 1, 'rna2p': 1}
+          Link IDs: {'rna2p': 1, 'rna3p': 1}
   Residues with excluded nonbonded symmetry interactions: 2
     residue:
       pdb=" P     C A 857 " occ=0.30
@@ -1169,7 +1169,7 @@ def exercise_d_amino_acid_chain_perfect_in_box_peptide_plane():
   grm = processed_pdb_file.geometry_restraints_manager()
   lv = log.getvalue()
   assert lv.find("Classifications: {'peptide': 16}") >= 0
-  assert lv.find("Link IDs: {'TRANS': 14, 'peptide plane': 15, 'PCIS': 1}")>=0
+  assert lv.find("Link IDs: {'PCIS': 1, 'TRANS': 14, 'peptide plane': 15}")>=0
 
 def exercise_d_amino_acid_chain_perfect_in_box():
   file_path = libtbx.env.find_in_repositories(
@@ -1192,7 +1192,7 @@ def exercise_d_amino_acid_chain_perfect_in_box():
   assert lv.find("'PEPT-D': 1") >= 0
   assert lv.find("'TRANS': 14") >= 0
   assert lv.find("'PCIS': 1") >= 0
-  assert lv.find("Link IDs: {'TRANS': 14, 'PCIS': 1}")>=0
+  assert lv.find("Link IDs: {'PCIS': 1, 'TRANS': 14}")>=0
   assert lv.find("""\
 Simple disulfide: pdb=" SG  DCY A   4 " - pdb=" SG  DCY A  19 " distance=2.03
 """) >= 0
@@ -1267,7 +1267,7 @@ def exercise_asp_glu_acid():
       if (resname == "ASP"):
         pat = "Modifications used: {'ACID-ASP': 1}"
       else:
-        pat = "Modifications used: {'NH1NOTPRO': 1, 'COOH': 1, 'ACID-GLU': 1}"
+        pat = "Modifications used: {'ACID-GLU': 1, 'COOH': 1, 'NH1NOTPRO': 1}"
       assert log.getvalue().find(pat) >= 0
       assert processed_pdb_file.all_chain_proxies \
         .fatal_problems_message() is None
