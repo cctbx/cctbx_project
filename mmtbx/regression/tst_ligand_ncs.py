@@ -224,19 +224,13 @@ def exercise():
   #
   # Unit tests
   #
-  import mmtbx.ncs.ligands
-  #
-  # This function is not there. Not sure if it ever was...
-  operators = mmtbx.ncs.ligands.find_ncs_operators(hierarchy,
-    log=null_out())
-  assert len(operators) == 1
-  group_ops = operators[0]
-  assert len(group_ops) == 2
-  assert (len(group_ops[0].selection) == 7)
-  for g_op in group_ops:
-    out = StringIO()
-    g_op.show_summary(out=out, prefix=" ")
-    assert out.getvalue().count("Rotation:") == 1
+
+  # Excessive testing of NCS search machinery although with ligands. May be removed.
+  import iotbx.ncs
+  ncs_obj = iotbx.ncs.input(hierarchy=hierarchy, log=null_out())
+  nrgl = ncs_obj.get_ncs_restraints_group_list()
+  assert len(nrgl) == 1, len(nrgl)
+  assert len(nrgl[0].master_iselection) == 59, len(nrgl[0].master_iselection)
 
 if (__name__ == "__main__"):
   exercise()
