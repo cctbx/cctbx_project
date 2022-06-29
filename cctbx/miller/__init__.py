@@ -5067,6 +5067,20 @@ class array(set):
     correction = self.shelxl_extinction_correction(x, wavelength)
     return self.customized_copy(data=self.data() * correction)
 
+  def shelxl_SWAT_correction(self, g, U):
+    """
+    Fc_sq(new) = Fc_sq(1 - g.exp[-8 pi^2 U stol^2])^2
+    """
+    stol_sqs = self.unit_cell().stol_sq(self.indices())
+
+    correction = [1 - g*math.exp(-8*math.pi*math.pi*U*stol_sq) for stol_sq in stol_sqs]
+    correction = flex.pow(correction, 2)
+    return correction
+
+  def apply_shelxl_SWAT_correction(self, g, U):
+    correction = self.shelxl_SWAT_correction(g, U)
+    return self.customized_copy(data=self.data() * correction)
+
   def f_obs_f_calc_fan_outlier_selection(self,
         f_calc,
         offset_low=0.05,
