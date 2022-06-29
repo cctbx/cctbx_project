@@ -133,13 +133,26 @@ def get_restraints_from_model_via_grm(ligand_model,
   if len(codes)>1:
     raise Sorry('more than one entity sent to restraints writer %s' % codes)
   #
-  # this should be smarter
+  def get_ligand_code_from_cif_object(cif_object):
+    code=None
+    if 'comp_list' in cif_object.keys():
+      for key, co in cif_object.items():
+        if key=='comp_list':
+          for field, loop in co.loops.items():
+            for row in loop.iterrows():
+              code = row['_chem_comp.id']
+              break
+    return code
+  #
+  # needs to be smarter
   #
   resname = codes[0]
   restraints = ligand_model.get_restraint_objects()
   cif_object=None
   for filename, cif_object in restraints:
-    break
+    code = get_ligand_code_from_cif_object(cif_object)
+    if code==resname:
+      break
   if cif_object:
     pass
   else:
@@ -151,8 +164,10 @@ def get_restraints_from_model_via_grm(ligand_model,
   #
   if 'comp_list' in cif_object.keys():
     for key, co in cif_object.items():
-      if key!='comp_list':
+      if key=='comp_%s' % resname.strip():
         break
+    else:
+      assert 0 # should never get here...
   for key, loop in co.loops.items():
     if key=='_chem_comp_bond':
       values = []
