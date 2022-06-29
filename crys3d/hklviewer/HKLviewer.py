@@ -295,10 +295,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
         self.UseOSBrowser = True
       if "devmode" in e:
         self.devmode = True
-        self.actiondebug.setVisible(True)
-        self.XtricorderBtn.setVisible(True)
-        self.XtriageBtn.setVisible(True)
-      if  "debug" in e:
+      if  "debug" in e or "devmode" in e:
         self.actiondebug.setVisible(True)
         self.XtricorderBtn.setVisible(True)
         self.XtriageBtn.setVisible(True)
