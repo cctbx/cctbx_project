@@ -5,7 +5,7 @@ from cctbx.maptbx import box
 from cctbx.maptbx.mask import create_mask_around_edges, \
       create_mask_around_atoms, create_mask_around_density
 import cctbx
-import inspect
+from libtbx.introspection import getfullargspec
 
 def get_method_text(key, base_method_name):
   if key == 'init':
@@ -52,7 +52,7 @@ def all_expected_in_found(found = None, expected = None):
 
 def check_args(text, method,expected_args,group_text,
        allow_extra_in_found=None):
-    found_args = inspect.getargspec(method).args
+    found_args = getfullargspec(method).args
     expected_args.sort()
     found_args.sort()
     print ("\n%s :\nExpected :%s \nFound   : %s" %(
