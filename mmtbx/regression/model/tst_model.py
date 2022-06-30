@@ -1195,8 +1195,8 @@ def exercise_6():
   # mmtbx.model.statistics without much thinking. Most of parameters should
   # go elsewhere.
   #
-  import inspect
-  r = inspect.getargspec(mmtbx.model.statistics.geometry.__init__)
+  from libtbx.introspection import getfullargspec
+  r = getfullargspec(mmtbx.model.statistics.geometry.__init__)
   assert r.args == ['self', 'model', 'fast_clash', 'condensed_probe',
     'use_hydrogens'], r.args
 

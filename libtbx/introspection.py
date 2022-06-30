@@ -425,6 +425,15 @@ class current_process_status(object):
   def __getitem__(self, field_name):
     return self.field[field_name]
 
+def getfullargspec(function):
+  '''
+  Wrapper for importing getfullargspec
+  '''
+  import inspect
+  if sys.version_info[0] == 3:
+    return inspect.getfullargspec(function)
+  else:
+    return inspect.getargspec(function)
 
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):

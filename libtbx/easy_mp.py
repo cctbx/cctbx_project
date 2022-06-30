@@ -985,8 +985,8 @@ def run_parallel(): # run in parallel
     kw_dict = kw.copy()
 
     # Determine if function has the kw "log"
-    import inspect
-    use_log = 'log' in inspect.getargspec(function).args
+    from libtbx.introspection import getfullargspec
+    use_log = 'log' in getfullargspec(function).args
     if use_log: # capture the log if it is present in the function call
       kw_dict['log'] = log
 
