@@ -30,7 +30,8 @@ class stderr_capturing_process(multiprocessing.Process):
 
     stderr = open( self.errfile, "w" )
     import sys
-    stderr_fileno = sys.stderr.fileno()
+    #  XXX CATCH CASE WHERE SYS.STDERR HAS BEEN MODIFIED
+    stderr_fileno = sys.stderr.fileno() if hasattr(sys.stderr, 'fileno') else 2
     sys.stderr = stderr # adjust Python level
     import os
     os.dup2( stderr.fileno(), stderr_fileno ) # adjust OS level
