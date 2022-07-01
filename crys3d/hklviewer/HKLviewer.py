@@ -858,7 +858,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               print(currentalertstr)
 
           if self.infodict.get("tabulate_miller_array"):
-            currentinfostr = "Received table data"
+            currentinfostr = "Received table data\n"
             self.tabulate_miller_array = self.infodict["tabulate_miller_array"]
             self.indices = self.tabulate_miller_array[0]
             #labels = ["H", "K", "L"] + [ ld[0] for ld in self.tabulate_miller_array[1:] ]
@@ -1421,21 +1421,19 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       bin_opacitieslst = []
       for j in range(self.nbins):
         bin_opacitieslst.append((1.0, j))
-      #self.bin_opacities = str(bin_opacitieslst)
       self.bin_opacities = bin_opacitieslst
       self.OpaqueAllCheckbox.setCheckState(Qt.Checked)
 
 
   def update_table_opacities(self, allalpha=None):
-    #bin_opacitieslst = eval(self.bin_opacities)
     bin_opacitieslst = self.bin_opacities
     self.binstable_isready = False
     for binopacity in bin_opacitieslst:
       if not allalpha:
-        alpha = binopacity[0]  #float(binopacity.split(",")[0])
+        alpha = binopacity[0]
       else:
         alpha = allalpha
-      bin = binopacity[1]  #int(binopacity.split(",")[1])
+      bin = binopacity[1]
       item = QTableWidgetItem()
       item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
       if alpha == 0.0:
@@ -1454,7 +1452,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
   def SetAllOpaqueCheckboxes(self):
     if self.binstableitemchanges:
       return
-    #bin_opacitieslst = eval(self.bin_opacities)
     bin_opacitieslst = self.bin_opacities
     nbins = len(bin_opacitieslst)
     sum = 0
@@ -1469,7 +1466,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onBinsTableitemPressed(self, item):
-    #print( "in itemPressed %s,  %s" %(item.text(), str( item.checkState())) )
     self.binTableCheckState = item.checkState()
     self.bintableAlpha = float(item.text())
 
@@ -1480,7 +1476,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     try:
       if not self.bin_opacities:
         return
-      #bin_opacitieslst = eval(self.bin_opacities)
       bin_opacitieslst = self.bin_opacities
       alpha = max(0.0, min(1.0, float(item.text()) ) ) # between 0 and 1 only
       try:
@@ -1495,10 +1490,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         pass
       if col==3 and self.binstable_isready: # changing opacity
         bin_opacitieslst[row] = (alpha, row)
-        #self.bin_opacities = str(bin_opacitieslst)
         self.bin_opacities = bin_opacitieslst
         self.SetAllOpaqueCheckboxes()
-        #self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities )
         philstr = ""
         for opa,bin in self.bin_opacities:
           philstr += 'binning.bin_opacity = %s %s\n' %(opa, bin)
@@ -1517,26 +1510,17 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           belowval = float(belowitem.text())
           if math.isnan(belowval):
             belowval = float(rightitem.text())
-        # the new value must be between above and below values only
-        newval = min(belowval, max(aboveval, float(item.text()) ) )
-        # but the other way round if binning against resolution
-        if self.BinDataComboBox.currentIndex() == 0:
-          newval = min(aboveval, max(belowval, float(item.text()) ) )
+        newval = float(item.text())
         self.binstable.item(row,col).setText(str(newval))
         self.lowerbinvals[row] = newval
         allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
-        nbins = len(allbinvals)
-        self.send_message("""
-        binning.scene_bin_thresholds = %s
-        binning.nbins = %d
-        """ %(" ".join([ str(e) for e in allbinvals]), nbins) )
+        self.send_message("binning.scene_bin_thresholds = %s" %" ".join([ str(e) for e in allbinvals]))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )
 
 
   def onOpaqueAll(self):
     self.binstableitemchanges = True
-    #bin_opacitieslst = eval(self.bin_opacities)
     bin_opacitieslst = self.bin_opacities
     nbins = len(bin_opacitieslst)
     bin_opacitieslst = []
@@ -1547,9 +1531,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     else:
       for i in range(nbins):
         bin_opacitieslst.append((0.0, i))  #   ("0.0, %d" %i)
-    #self.bin_opacities = str(bin_opacitieslst)
     self.bin_opacities = bin_opacitieslst
-    #self.send_message('binning.bin_opacities = "%s"' %self.bin_opacities)
     philstr = ""
     for opa,bin in self.bin_opacities:
       philstr += 'binning.bin_opacity = %s %s\n' %(opa, bin)
