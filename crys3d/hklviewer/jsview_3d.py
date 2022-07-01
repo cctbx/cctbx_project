@@ -1243,8 +1243,19 @@ class HKLview_3d:
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
+        # get upper and lower bounds for the dataset used for binning
         dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
+        # binvals derived from scene_bin_thresholds must be sorted
+        self.binvals.sort()
+        # if minimum or maximum of binvals are smaller or bigger than lower or
+        # upper bounds then use those values instead
+        if self.binvals[0] < self.binvalsboundaries[0]:
+          self.binvalsboundaries[0] = self.binvals[0]
+        if self.binvals[-1] > self.binvalsboundaries[1]:
+          self.binvalsboundaries[1] = self.binvals[-1]
+
         self.binvalsboundaries.extend( self.binvals )
+        self.binvalsboundaries = list(set(self.binvalsboundaries)) # skip repeated numbers if any
         self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
 
