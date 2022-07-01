@@ -1343,6 +1343,7 @@ class HKLview_3d:
         # an extra bin may be added when editing scene_bin_thresholds. If so, don't reset opacities to 1
         self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
 
+    self.params.binning.nbins = len(self.bin_infotpls)
     self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
                           "bin_infotpls": self.bin_infotpls,
                           "binner_idx": self.params.binning.binner_idx,
