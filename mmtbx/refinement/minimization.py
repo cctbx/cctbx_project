@@ -419,11 +419,18 @@ class run_constrained(object):
                refine_sites           = False,
                refine_u_iso           = False,
                refine_transformations = False):
+    #
+    # XXX Same needs to be done for refine_u_iso
+    #
+    refine_selection = None
+    if(refine_sites):
+      refine_selection = model.refinement_flags.sites_individual.iselection()
+    #
     tg_object = mmtbx.refinement.minimization_ncs_constraints.\
       target_function_and_grads_reciprocal_space(
         fmodel                    = fmodel,
         ncs_restraints_group_list = model.get_ncs_groups(),
-        refine_selection          = None,
+        refine_selection          = refine_selection, # XXX
         restraints_manager        = model.restraints_manager,
         iso_restraints            = params.adp_restraints.iso,
         data_weight               = target_weight,
@@ -434,7 +441,7 @@ class run_constrained(object):
        target_and_grads_object      = tg_object,
        xray_structure               = fmodel.xray_structure,
        ncs_restraints_group_list    = model.get_ncs_groups(),
-       refine_selection             = None,
+       refine_selection             = refine_selection, # XXX
        finite_grad_differences_test = False,
        max_iterations               = params.main.max_number_of_iterations,
        refine_sites                 = refine_sites,
