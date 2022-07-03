@@ -570,9 +570,19 @@ class manager(object):
 
       Also remove all methods attached from pdb_hierarchy or other
       locations and specified in self.attached_methods
+
+      Temporarily add crystal_symmetry for deep_copy if not present or not valid
     '''
 
+    # Get a deep copy.  Need to have valid crystal symmetry to do this
+    cs = self._crystal_symmetry # save original crystal symmetry
+    self.add_crystal_symmetry_if_necessary() # so that we can deep_copy
     self_dc = self.deep_copy() # Avoid changing the model itself
+    self._crystal_symmetry = cs  # Restore original crystal symmetry
+    self_dc._crystal_symmetry = cs # Also restore in copy
+
+    # Now work with the copy only
+
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
     self_dc.log = None
