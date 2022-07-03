@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import time, os
+import time, os, random
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
@@ -8,6 +8,10 @@ import mmtbx.refinement.real_space.explode_and_refine
 from mmtbx.geometry_restraints import reference
 from iotbx import reflection_file_reader
 import libtbx.load_env
+
+#if (1):
+#  random.seed(0)
+#  flex.set_random_seed(0)
 
 def ccp4_map(crystal_symmetry, file_name, map_data):
   from iotbx import mrcfile
@@ -97,5 +101,8 @@ def run(prefix="tst_00"):
   states.write(file_name="%s_refined_all_states.pdb"%prefix)
 
 if (__name__ == "__main__"):
+  rs = 3292014
+  random.seed(rs)
+  flex.set_random_seed(rs)
   run()
   print("OK")
