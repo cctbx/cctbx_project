@@ -572,6 +572,7 @@ class manager(object):
       locations and specified in self.attached_methods
     '''
 
+    self.add_crystal_symmetry_if_necessary()
     self_dc = self.deep_copy() # Avoid changing the model itself
     self_dc._ss_manager = None
     self_dc.unset_restraints_manager()
