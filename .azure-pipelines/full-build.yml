@@ -57,7 +57,7 @@ jobs:
   - template: ./conda-osx.yml
     parameters:
       vmImage: [12]
-      xcode_version: [13, 3, 1]
+      xcode_version: [13, 4, 1]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
