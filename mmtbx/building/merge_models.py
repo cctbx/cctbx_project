@@ -792,8 +792,8 @@ def run(
       if not sorted_working_model_list:
          break # nothing to do
 
-      sorted_working_model_list.sort()
-      sorted_working_model_list.reverse()
+      sorted_working_model_list = sorted(sorted_working_model_list,
+         key = lambda wm: wm[0], reverse = True)
       sorted_working_model_list=sorted_working_model_list[:max_keep]
 
       new_working_score,new_working_model=sorted_working_model_list[0]
