@@ -1,3 +1,11 @@
+2022.6
+======
+
+* Added --dry-run flag to CCTBXParser to validate inputs
+* Bug fixes for cctbx.HKLviewer
+* Updates to reduce2 and probe2
+* Updates to restraints based on quantum mechanics
+
 2022.5
 ======
 
