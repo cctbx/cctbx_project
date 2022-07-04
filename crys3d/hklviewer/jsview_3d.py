@@ -135,7 +135,6 @@ class HKLview_3d:
     self.isnewfile = False
     self.has_new_miller_array = False
     self.sleeptime = 0.01 # 0.025
-    self.colstraliases = ""
     self.binvals = []
     self.binvalsboundaries = []
     self.oldnbinvalsboundaries = None
@@ -934,17 +933,19 @@ class HKLview_3d:
         binvals = [ e for e in binvals if e != -1.0] # delete dummy limit
         binvals = list( 1.0/flex.double(binvals) )
         nuniquevalues = len(set(list(dres)))
-    elif binscenelabel=="Singletons":
+    elif "Singletons" in binscenelabel:
+      binvals = [ -0.1, 0.1 ] # if this dataset hasn't got any singletons
+      if len(set(list(self.scene.singletonsiness))) == 3: # symmetry unique anomalous data with some singletons
         binvals = [ -1.5, -0.5, 0.5, 1.5 ]
-        nuniquevalues = len(binvals)
+      nuniquevalues = len(binvals)
     else:
       bindata, dummy = self.get_matched_binarray(binner_idx)
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
       # get binvals by dividing bindata_sorted with nbins
-      binvals = [bindata_sorted[0]] * nbins #
+      binvals = [bindata_sorted[0]] * (nbins+1) #
       for i,e in enumerate(bindata_sorted):
-        idiv = int(nbins*float(i)/len(bindata_sorted))
+        idiv = int((nbins+1)*float(i)/len(bindata_sorted))
         binvals[idiv] = e
       nuniquevalues = len(set(list(bindata)))
     binvals.sort()
@@ -960,9 +961,14 @@ class HKLview_3d:
       self.binvals = [ 1.0/(self.miller_array.d_max_min()[0]*1.001),
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
     if nuniquevalues == -1:
-      if binner_idx==0:
+      if binner_idx==0: # i.e. the resolution array of the hkls
         nuniquevalues = len(set(list( self.HKLscene_from_dict().dres )))
-      else:
+      elif binner_idx==1:  # i.e. singletons
+        binvals = [ -0.1, 0.1 ] # if this dataset hasn't got any singletons
+        if len(set(list(self.scene.singletonsiness))) == 3: # symmetry unique anomalous data with some singletons
+          binvals = [ -1.5, -0.5, 0.5, 1.5 ]
+        nuniquevalues = len(binvals)
+      else: # one of the normal datasets
         bindata, dummy = self.get_matched_binarray(binner_idx)
         nuniquevalues = len(set(list(bindata)))
     self.nuniqueval = nuniquevalues
@@ -1218,7 +1224,7 @@ class HKLview_3d:
     dres = self.scene.dres
     if bin_labels_type_idx[0] =="Resolution":
       colstr = "dres"
-    elif bin_labels_type_idx[0] =="Singletons":
+    elif "Singletons" in bin_labels_type_idx[0]:
       colstr = "Singleton"
     else:
       if not blankscene:
@@ -1239,7 +1245,7 @@ class HKLview_3d:
       if bin_labels_type_idx[0] =="Resolution":
         self.binvalsboundaries = self.binvals
         self.bindata = 1.0/self.scene.dres
-      elif bin_labels_type_idx[0] =="Singletons":
+      elif "Singletons" in bin_labels_type_idx[0]:
         self.binvalsboundaries = self.binvals
         self.bindata = self.scene.singletonsiness
       else:
@@ -1249,12 +1255,12 @@ class HKLview_3d:
         self.binvals.sort()
         # if minimum or maximum of binvals are smaller or bigger than lower or
         # upper bounds then use those values instead
-        if self.binvals[0] < self.binvalsboundaries[0]:
-          self.binvalsboundaries[0] = self.binvals[0]
-        if self.binvals[-1] > self.binvalsboundaries[1]:
-          self.binvalsboundaries[1] = self.binvals[-1]
-
-        self.binvalsboundaries.extend( self.binvals )
+        vals = self.binvals[:]
+        if self.binvals[0] > self.binvalsboundaries[0]:
+          vals[0] = self.binvalsboundaries[0]
+        if self.binvals[-1] < self.binvalsboundaries[1]:
+          vals[-1] = self.binvalsboundaries[1]
+        self.binvalsboundaries = vals
         self.binvalsboundaries = list(set(self.binvalsboundaries)) # skip repeated numbers if any
         self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
@@ -1304,64 +1310,58 @@ class HKLview_3d:
     elapsed_time = time.time() - start_time
     self.mprint("elapsed time: %s" %elapsed_time, verbose=1)
 
-    spherebufferstr = self.colstraliases
-    cntbin = 0
-    self.binstrs = []
-    self.bin_infotpls = []
-    if self.nuniqueval < self.params.binning.nbins:
-      self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.binning.nbins, colstr, self.nuniqueval), 0)
-    for ibin in range(self.nbinvalsboundaries+1):
-      mstr =""
-      nreflsinbin = len(self.radii2[ibin])
-      if nreflsinbin == 0:
-        continue
-      bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
-      if ibin == self.nbinvalsboundaries:
-        mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
-                colstr, bin1)
-      precision = 3
-
-      if ibin < (self.nbinvalsboundaries-1):
-        bin1 = self.binvalsboundaries[ibin]
-        bin2 = self.binvalsboundaries[ibin+1]
-        bin3 = bin2
-        if ibin < (self.nbinvalsboundaries-2):
-          bin3= self.binvalsboundaries[ibin+2]
-        if colstr=="dres":
-          bin1= 1.0/self.binvalsboundaries[ibin]
-          bin2= 1.0/self.binvalsboundaries[ibin+1]
-          if ibin < (self.nbinvalsboundaries-2):
-            bin3= 1.0/self.binvalsboundaries[ibin+2]
-        #calculate precision by comparing a bin value with bin value below and above it
-        prec1 = getprecision(bin1, bin2)
-        prec2 = prec1
-        if bin2 != bin3:
-          prec2 = getprecision(bin3, bin2)
-        precision = max(prec1, prec2)
-        # format bin values string with necessary decimal places (precision)
-        binformatstr = "]%2." + str(precision) + "f; %2." + str(precision) + "f]"
-        mstr= "bin[%d] has %d reflections with %s in " %(cntbin, nreflsinbin, colstr)
-        mstr += binformatstr %(bin1, bin2)
-      self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
-      self.binstrs.append(mstr)
-      self.mprint(mstr, verbose=1)
-      cntbin += 1
-
-    if self.params.binning.bin_opacity != None:
-      opqlist = self.params.binning.bin_opacity
-      #if len(self.params.binning.scene_bin_thresholds) != self.params.binning.nbins:
-      if len(opqlist) < self.params.binning.nbins-1:
-        # an extra bin may be added when editing scene_bin_thresholds. If so, don't reset opacities to 1
-        self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
-
-    self.params.binning.nbins = len(self.bin_infotpls)
-    self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
-                          "bin_infotpls": self.bin_infotpls,
-                          "binner_idx": self.params.binning.binner_idx,
-                          "tooltip_opacity": self.params.NGL.tooltip_alpha
-                         } )
-    colourgradstr = []
     if not blankscene:
+      cntbin = 0
+      self.binstrs = []
+      self.bin_infotpls = []
+      if self.nuniqueval < self.params.binning.nbins:
+        self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.binning.nbins, colstr, self.nuniqueval), 0)
+      for ibin in range(self.nbinvalsboundaries):
+        mstr =""
+        nreflsinbin = len(self.radii2[ibin])
+        bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+        precision = 3
+
+        if ibin < (self.nbinvalsboundaries-1):
+          bin1 = self.binvalsboundaries[ibin]
+          bin2 = self.binvalsboundaries[ibin+1]
+          bin3 = bin2
+          if ibin < (self.nbinvalsboundaries-2):
+            bin3= self.binvalsboundaries[ibin+2]
+          if colstr=="dres":
+            bin1= 1.0/self.binvalsboundaries[ibin]
+            bin2= 1.0/self.binvalsboundaries[ibin+1]
+            if ibin < (self.nbinvalsboundaries-2):
+              bin3= 1.0/self.binvalsboundaries[ibin+2]
+          #calculate precision by comparing a bin value with bin value below and above it
+          prec1 = getprecision(bin1, bin2)
+          prec2 = prec1
+          if bin2 != bin3:
+            prec2 = getprecision(bin3, bin2)
+          precision = max(prec1, prec2)
+          # format bin values string with necessary decimal places (precision)
+          binformatstr = "]%2." + str(precision) + "f; %2." + str(precision) + "f]"
+          mstr= "bin[%d] has %d reflections with %s in " %(cntbin, nreflsinbin, colstr)
+          mstr += binformatstr %(bin1, bin2)
+          self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
+          self.binstrs.append(mstr)
+          self.mprint(mstr, verbose=1)
+          cntbin += 1
+
+      if self.params.binning.bin_opacity != None:
+        opqlist = self.params.binning.bin_opacity
+        #if len(self.params.binning.scene_bin_thresholds) != self.params.binning.nbins:
+        if len(opqlist) < self.params.binning.nbins-1:
+          # an extra bin may be added when editing scene_bin_thresholds. If so, don't reset opacities to 1
+          self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]
+
+      self.params.binning.nbins = len(self.bin_infotpls)
+      self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity,
+                            "bin_infotpls": self.bin_infotpls,
+                            "binner_idx": self.params.binning.binner_idx,
+                            "tooltip_opacity": self.params.NGL.tooltip_alpha
+                           } )
+
       self.calc_rotation_axes()
       nvaluelabels = int(ln/self.params.viewer.ncolourlabels )
       colourgradstrs = []
@@ -2317,7 +2317,7 @@ in the space group %s\nwith unit cell %s""" \
 
     self.bin_labels_type_idxs = []
     self.bin_labels_type_idxs.append(("Resolution",  "", -1 ))
-    self.bin_labels_type_idxs.append(("Singletons", "", -1 ))
+    self.bin_labels_type_idxs.append(("Singletons (current data)", "", -1 ))
     for label,labeltype,idx,hassigmas,sceneid in scenearraylabeltypes:
       if labeltype not in  ["Map coeffs", "Map coeffs_fom", "HL coeffs"]:
         self.bin_labels_type_idxs.append((label, labeltype, sceneid))
