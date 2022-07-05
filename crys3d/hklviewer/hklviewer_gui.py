@@ -87,7 +87,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
-        MainWindow.setCentralWidget(self.centralwidget)
+        #MainWindow.setCentralWidget(self.centralwidget)
         self.dockWidget = QDockWidget(MainWindow)
         self.dockWidget.setObjectName(u"dockWidget")
         self.dockWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
@@ -1059,7 +1059,7 @@ class Ui_MainWindow(object):
         self.dockWidget.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Controls", None))
         self.XtriageBtn.setText(QCoreApplication.translate("MainWindow", u"Run Phenix.Xtriage", None))
         self.XtricorderBtn.setText(QCoreApplication.translate("MainWindow", u"Run PhaserTNG.Xtricorder", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPresetbuttons), QCoreApplication.translate("MainWindow", u"Overview", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPresetbuttons), QCoreApplication.translate("MainWindow", u"Quick View", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
 #if QT_CONFIG(tooltip)
         self.SpaceGroupComboBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.</p></body></html>", None))

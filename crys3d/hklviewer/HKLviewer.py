@@ -1022,7 +1022,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.__getattribute__(btnname).setObjectName(btnname)
               self.__getattribute__(btnname).setText(label)
               if datalabel != "":
-                self.__getattribute__(btnname).setToolTip("using " + datalabel)
+                self.__getattribute__(btnname).setToolTip("using the " + datalabel + " dataset")
               self.__getattribute__(btnname).setEnabled(isenabled)
               self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
               self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
