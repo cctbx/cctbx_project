@@ -165,7 +165,7 @@ Inputs: Model file (PDB, mmCIF)
       print("Limiting output B values to %.0f" %(
         self.params.output_files.maximum_output_b), file = self.logger)
     mm = limit_output_b(info.model,
-         maximum_b = self.params.output_files.maximum_output_b)
+         maximum_output_b = self.params.output_files.maximum_output_b)
     self.data_manager.write_model_file(mm, self.processed_model_file_name)
 
     # Split up processed model and write each chain as well
@@ -179,7 +179,7 @@ Inputs: Model file (PDB, mmCIF)
       print("Copying predicted model chain %s to %s" %(
            chain_id,fn), file = self.logger)
       mm = limit_output_b(m,
-           maximum_b = self.params.output_files.maximum_output_b)
+           maximum_output_b = self.params.output_files.maximum_output_b)
       self.data_manager.write_model_file(mm,fn)
       self.processed_model_file_name_list.append(fn)
 
@@ -308,14 +308,16 @@ Inputs: Model file (PDB, mmCIF)
     print ("PHENIX VERSION: ",os.environ.get('PHENIX_VERSION','svn'),"\n",
      file=self.logger)
 
-def limit_output_b(m, maximum_b = None):
-  """ create deep copy of model m in which all isotropic values > maximum_b
-      are set to maximum_b. If maximum_b is None or there are no
-      b-values > maximum_b, return original model (not deep copy)"""
+def limit_output_b(m, maximum_output_b = None):
+  """ create deep copy of model m in which all isotropic
+      values > maximum_output_b
+      are set to maximum_output_b. If maximum_output_b is None or there are no
+      b-values > maximum_output_b, return original model (not deep copy)"""
 
-  if maximum_b is not None and m.get_b_iso().min_max_mean().max > maximum_b:
+  if (maximum_output_b is not None) and (
+       m.get_b_iso().min_max_mean().max > maximum_output_b):
     b_values = m.get_b_iso()
-    b_values.set_selected((b_values > maximum_b), maximum_b)
+    b_values.set_selected((b_values > maximum_output_b), maximum_output_b)
     mm = m.deep_copy() # REQUIRED so we do not modify b-values in m itself
     mm.set_b_iso(b_values)
     return mm
