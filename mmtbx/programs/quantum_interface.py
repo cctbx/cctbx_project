@@ -30,8 +30,11 @@ def get_selection_from_user(hierarchy):
   for i, sel in enumerate(opts):
     print('    %2d : "%s"' % (i+1,sel))
   rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
-  rc = int(rc)
-  rc = opts[rc-1]
+  try:
+    rc = int(rc)
+    rc = opts[rc-1]
+  except ValueError:
+    pass
   return rc
 
 class Program(ProgramTemplate):
