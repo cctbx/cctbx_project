@@ -599,8 +599,8 @@ def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
 
   return ret
 
-def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acceptorOnly = False,
-      placedHydrogenDistance = 1.0):
+def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
+      acceptorOnly = False, placedHydrogenRadius = 1.05, placedHydrogenDistance = 0.84):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
@@ -616,8 +616,11 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     an acceptor or a possible flipped position of an acceptor, and that is not something that
     can be determined at the time we're placing phantom hydrogens.  In that case, we want to
     include all possible interactions and weed them out during optimization.
-    :param placedHydrogenDistance: Maximum distance to use for placed Phantom Hydrogen atoms.
-    The Phantom Hydrogens are placed at the optimal overlap distance so may be closer than this.
+    :param placedHydrogenRadius: Radius of the Phantom Hydrogen to be placed.  Default is
+    for electron-cloud distances.
+    :param placedHydrogenDistance: Maximum distance from the placed Phantom Hydrogen to the
+    Water Oxygen. The Phantom Hydrogens are placed at the optimal overlap distance so may be
+    closer than this.  Default is for electron-cloud distances.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
     element type and xyz positions filled in.  They will have i_seq 0 and they should not be
     inserted into a structure.
@@ -654,9 +657,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     # Check to ensure the occupancy of the neighbor is above threshold and that it is
     # close enough to potentially bond to the atom.  We want a minimum overlap of 0.1
     # before we consider possible Hs.
-    OH_BOND_LENGTH = 1.0
     overlap = ( (rvec3(atom.xyz) - rvec3(a.xyz)).length()  -
-                (placedHydrogenDistance + extraAtomInfo.getMappingFor(a).vdwRadius + OH_BOND_LENGTH) )
+                (placedHydrogenRadius + extraAtomInfo.getMappingFor(a).vdwRadius + placedHydrogenDistance) )
     if overlap <= -0.1 and a.occ >= minOccupancy and a.element != "H":
       if not acceptorOnly or extraAtomInfo.getMappingFor(a).isAcceptor:
         # If we have multiple atoms in the same Aromatic ring (part of the same residue)
@@ -694,16 +696,20 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     h.name = " H?"
 
     # Place the Phantom Hydrogen pointing from the Oxygen towards the candidate at a distance
-    # of the standard H bond length plus an offset that is clamped to the range -1..0 that
+    # of the standard H bond length plus an offset that is clamped to the range -H bond length..0 that
     # is the sum of the overlap and the best hydrogen-bonding overlap.  This is an approximation
     # to the situation where the Phantom Hydrogen would rotate around the Oxygen to maintain a proper
-    # distance from # the acceptor that does not involve trying to select a rotation direction.
+    # distance from the acceptor that does not involve trying to select a rotation direction.
     # Because Phantom Hydrogens do not block the Oxygen from collisions with their neighbors, and
     # because Phantom Hydrogens cannot clash with any atom, this will not interfere with clashes.
     # Note that the Phantom Hydrogen also will not block any collision between the Oxygen atom
     # in the Water and a nearby acceptor, so those collisions will still show up.
+    # The bond length will never be lengthened, but might be shortened if there is more than
+    # the ideal amount of overlap, and it will never be shorted to less than 0 (the location
+    # of the Oxygen).
     BEST_HBOND_OVERLAP=0.6
-    distance = placedHydrogenDistance + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
+    distance = placedHydrogenDistance + max(
+      -placedHydrogenDistance, min(0.0, c._overlap + BEST_HBOND_OVERLAP) )
     try:
       normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset
@@ -1033,6 +1039,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
     # Run Phantom placement with different settings for occupancy and acceptorOnly
     # and make sure the atom counts match what is expected.
+    # @todo Test changing the radius and distance for the Hydrogen.
     for occThresh in [0.4,1.0]:
       for acceptorOnly in [False, True]:
         # Check that we get the expected number of contacts
@@ -1042,7 +1049,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           expected = 7 # Only one of the acceptor Aromatics but all other atoms
         if occThresh > 0.5:
           expected = 0
-        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly)
+        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly, 1.0, 1.0)
         assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))+" (expected "+str(expected)+")"
 
         # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.

@@ -1919,18 +1919,20 @@ Note:
         if self.params.output.record_added_hydrogens:
           outString += '@vectorlist {water H?} color= gray\n'
 
+        # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+        # a single water in it and asking about the hydrogen radius.  This could also become a
+        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
+        phantomHydrogenRadius = 1.05
+        placedHydrogenDistance = 0.84
+        if self.params.use_neutron_distances:
+          phantomHydrogenRadius = 1.0
+          placedHydrogenDistance = 0.98
+
+        adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+
         # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
         # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
         for a in all_selected_atoms:
-
-          # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-          # a single water in it and asking about the hydrogen radius.  This could also become a
-          # Phil parameter.
-          phantomHydrogenRadius = 1.05
-          if self.params.use_neutron_distances:
-            phantomHydrogenRadius = 1.0
-
-          adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
           # Ignore Hydrogens whose parameters are out of bounds.
           if a.element_is_hydrogen():
@@ -1958,11 +1960,11 @@ Note:
             self._extraAtomInfo.setMappingFor(a, ei)
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenDistance
-            # with phantomHydrogenRadius.
+            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenRadius
+            # with adjustedHydrogenRadius and the distance with placedHydrogenDistance.
             if len(bondedNeighborLists[a]) == 0:
-              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
-                              1.0)
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo,
+                              0.0, True, 1.0, 1.0)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks

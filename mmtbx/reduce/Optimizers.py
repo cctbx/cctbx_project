@@ -442,10 +442,13 @@ class _SingletonOptimizer(object):
         # info directly.
 
         # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-        # a single water in it and asking about the hydrogen radius.
+        # a single water in it and asking about the hydrogen radius.  This could also become a
+        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
         phantomHydrogenRadius = 1.05
+        placedHydrogenDistance = 0.84
         if useNeutronDistances:
           phantomHydrogenRadius = 1.0
+          placedHydrogenDistance = 0.98
 
         # Find every Oxygen that is part of a water and get the Phantom Hydrogens for it
         # unless it has out-of-bounds parameter values.  If the water Oxygen has out-of-bounds
@@ -464,7 +467,7 @@ class _SingletonOptimizer(object):
               self._extraAtomInfo.setMappingFor(a, ei)
 
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
-                              False, phantomHydrogenRadius)
+                              False, phantomHydrogenRadius, placedHydrogenDistance)
               if len(newPhantoms) > 0:
                 resName = a.parent().resname.strip().upper()
                 resID = str(a.parent().parent().resseq_as_int())
