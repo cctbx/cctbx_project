@@ -170,6 +170,13 @@ master_phil_str = """
       .type = bool
       .help = Keep everything if processing yields no residues
       .short_caption = Keep all if no result
+
+     maximum_b = 999.
+       .type = float
+       .help = Limit output B values (so that they fit in old-style PDB \
+              format). \
+               NOTE: effectively sets a minimum value for plDDT values
+       .short_caption = Maximum output B
     }
 
     """
@@ -253,6 +260,11 @@ def process_predicted_model(
     If stop_if_no_residues_obtained (default), stop with Sorry if no residues
       are obtained after processing, except if
         keep_all_if_no_residues_obtained (not default), then take everything.
+
+    maximum_b: Allows keeping B values in old-style PDB format by
+      limiting maximum values to 999. Effectively sets a lower limit on
+      plDDT values as well. A B of 999 corresponds to a plDDT value of.
+
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field

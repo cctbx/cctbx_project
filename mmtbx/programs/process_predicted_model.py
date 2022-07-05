@@ -82,6 +82,13 @@ Inputs: Model file (PDB, mmCIF)
           will begin with this prefix
       .short_caption = Output remainder seq file prefix
 
+     maximum_output_b = 999.
+       .type = float
+       .help = Limit output B values (so that they fit in old-style PDB \
+              format). Note that this limit is applied just before writing \
+              output model files, it does not affect anything else.
+       .short_caption = Maximum output B
+
   }
 
   include scope mmtbx.process_predicted_model.master_phil_str
@@ -152,8 +159,14 @@ Inputs: Model file (PDB, mmCIF)
       prefix = "%s_processed" %(prefix)
       prefix = os.path.basename(prefix)
     self.processed_model_file_name = "%s.pdb" %(prefix)
-    self.data_manager.write_model_file(
-      info.model, self.processed_model_file_name)
+    if (self.params.output_files.maximum_output_b is not None) and (
+       info.model.get_b_iso().min_max_mean().max >
+       self.params.output_files.maximum_output_b):
+      print("Limiting output B values to %.0f" %(
+        self.params.output_files.maximum_output_b), file = self.logger)
+    mm = limit_output_b(info.model,
+         maximum_b = self.params.output_files.maximum_output_b)
+    self.data_manager.write_model_file(mm, self.processed_model_file_name)
 
     # Split up processed model and write each chain as well
     if len(info.model.chain_ids()) > 1:
@@ -165,7 +178,9 @@ Inputs: Model file (PDB, mmCIF)
       fn = "%s_%s.pdb" %(prefix,chain_id)
       print("Copying predicted model chain %s to %s" %(
            chain_id,fn), file = self.logger)
-      self.data_manager.write_model_file(m,fn)
+      mm = limit_output_b(m,
+           maximum_b = self.params.output_files.maximum_output_b)
+      self.data_manager.write_model_file(mm,fn)
       self.processed_model_file_name_list.append(fn)
 
 
@@ -293,6 +308,19 @@ Inputs: Model file (PDB, mmCIF)
     print ("PHENIX VERSION: ",os.environ.get('PHENIX_VERSION','svn'),"\n",
      file=self.logger)
 
+def limit_output_b(m, maximum_b = None):
+  """ create deep copy of model m in which all isotropic values > maximum_b
+      are set to maximum_b. If maximum_b is None or there are no
+      b-values > maximum_b, return original model (not deep copy)"""
+
+  if maximum_b is not None and m.get_b_iso().min_max_mean().max > maximum_b:
+    b_values = m.get_b_iso()
+    b_values.set_selected((b_values > maximum_b), maximum_b)
+    mm = m.deep_copy() # REQUIRED so we do not modify b-values in m itself
+    mm.set_b_iso(b_values)
+    return mm
+  else:
+    return m
 # =============================================================================
 # for reference documentation keywords
 master_phil_str = Program.master_phil_str
