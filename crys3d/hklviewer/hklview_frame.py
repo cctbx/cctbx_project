@@ -428,10 +428,14 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "openfilename"):
         fname = phl.openfilename
+        currentNGLscope = self.currentphil.extract().NGL
+        currentSelectInfoscope = self.currentphil.extract().selected_info
         phl = self.ResetPhilandViewer()
         phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
           return
+        self.params.NGL = currentNGLscope # override default NGL and selected_info scopes with user settings
+        self.params.selected_info = currentSelectInfoscope
         self.viewer.lastscene_id = phl.viewer.scene_id
         self.validated_preset_buttons = False
 

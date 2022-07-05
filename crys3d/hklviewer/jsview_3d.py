@@ -1317,11 +1317,8 @@ class HKLview_3d:
       if self.nuniqueval < self.params.binning.nbins:
         self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.binning.nbins, colstr, self.nuniqueval), 0)
       for ibin in range(self.nbinvalsboundaries):
-        mstr =""
         nreflsinbin = len(self.radii2[ibin])
-        bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
         precision = 3
-
         if ibin < (self.nbinvalsboundaries-1):
           bin1 = self.binvalsboundaries[ibin]
           bin2 = self.binvalsboundaries[ibin+1]
@@ -1350,7 +1347,6 @@ class HKLview_3d:
 
       if self.params.binning.bin_opacity != None:
         opqlist = self.params.binning.bin_opacity
-        #if len(self.params.binning.scene_bin_thresholds) != self.params.binning.nbins:
         if len(opqlist) < self.params.binning.nbins-1:
           # an extra bin may be added when editing scene_bin_thresholds. If so, don't reset opacities to 1
           self.params.binning.bin_opacity = [ [1.0, e] for e in range(cntbin) ]

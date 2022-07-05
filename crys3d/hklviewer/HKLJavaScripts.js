@@ -639,8 +639,8 @@ function onMessage(e)
 
     if (e.data instanceof ArrayBuffer) { // binary data is received. 
       // Binary data is sent as a pair of messages by send_msg_to_browser(). First a plain string 
-      // containing the message type
-      // is sent.Then the actual data array is sent in binary format as a bytearray.
+      // containing the message type is sent.
+      // Then the actual data array is sent in binary format as a bytearray.
       // When HKLjavascripts notes the second message is in binary format it pairs it up with the 
       // previous message which is the message type so it can be processed
       msgtype = binmsgtype;
