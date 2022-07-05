@@ -55,11 +55,11 @@ excluded_bond_chain_length = 4
   .type = int
   .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
-minimum_polar_hydrogen_occupancy = 0.25
+minimum_water_hydrogen_occupancy = 0.25
   .type = float
   .help = Minimum occupancy for polar hydrogens (0.66 in original Reduce)
 
-maximum_polar_hydrogen_b = 80.0
+maximum_water_hydrogen_b = 80.0
   .type = float
   .help = Minimum b-factor for polar hydrogens (40.0 in original Reduce)
 
@@ -1942,8 +1942,8 @@ Note:
             # If they are not, set the class for the atom to 'ignore'.
             # This handles the case where there were explicit Hydrogens on waters and so
             # we won't add Phantom Hydrogens.
-            if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
-                a.b > self.params.maximum_polar_hydrogen_b):
+            if self._inWater[a] and (a.occ < self.params.minimum_water_hydrogen_occupancy or
+                a.b > self.params.maximum_water_hydrogen_b):
               self._atomClasses[a] = 'ignore'
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
