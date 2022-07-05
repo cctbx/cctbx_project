@@ -279,6 +279,11 @@ class geometry(object):
       assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero'
     return f%(r.bond.mean, r.angle.mean, r.dihedral.mean)
 
+  def show_planarity_details(self):
+    r = self.result()
+    f='planarity (n=%d) mean: %6.3f min:  %6.3f max:  %6.3f'
+    return f%(r.planarity.n, r.planarity.mean, r.planarity.min, r.planarity.max)
+
   def show_short(self):
     r = self.result()
     f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama: f: %6.2f o: %6.2f Z: %6.2f cb: %6.2f"

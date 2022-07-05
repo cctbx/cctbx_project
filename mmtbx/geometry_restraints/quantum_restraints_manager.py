@@ -229,6 +229,7 @@ def use_neutron_distances_in_model_in_place(model):
   """
   params = model.get_current_pdb_interpretation_params()
   params.pdb_interpretation.use_neutron_distances = True
+  model.log=null_out()
   model.process(make_restraints           = True,
                 pdb_interpretation_params = params)
   model.set_hydrogen_bond_length(show=False)
@@ -269,6 +270,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
   add_hydrogen_atoms_to_model(buffer_model, use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
+  buffer_model.log=null_out()
   buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
   ligand_atoms = ligand_model.get_atoms()
@@ -820,6 +822,14 @@ Restraints written by QMR process in phenix.refine
     gs = ligand_model.geometry_statistics()
     print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(assert_zero=True),
           file=log)
+    print('%s%s' % (' '*19, gs.show_planarity_details()), file=log)
+    r=gs.result()
+    if r.planarity.mean>0.02 or r.planarity.max>0.05:
+      print('  %s\n   rmsd values for planarity restraints are high. Check QM minimisation. \n  %s' % (
+            '–'*71,
+            '–'*71,
+            ),
+            file=log)
   print('  Total time for QM restaints: %0.1fs' % (time.time()-t0), file=log)
   print('%s%s' % ('<'*40, '>'*40), file=log)
 
