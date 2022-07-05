@@ -173,7 +173,7 @@ class RefineLauncher:
         assert len(exper_names) == len(set(exper_names))
         # TODO assert all exper are single-file, probably way before this point
         if work_distribution is None:
-            worklist = range(COMM.rank, nshots, COMM.size)
+            worklist = range(COMM.rank, len(exper_names), COMM.size)
         else:
             worklist = work_distribution[COMM.rank]
         LOGGER.info("EVENT: begin loading inputs")
