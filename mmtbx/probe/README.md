@@ -263,6 +263,11 @@ so keeping Probe2 behavior of only listing atoms for that model; this matches Pr
 model is selected.  There are two Hydrogens that are too far from their Oxygens for Probe to consider them
 to be bonded; these cause large clashes and cause H to show up in the output list; the Probe2 bonding
 behavior is correct and so avoids these clashes.
+- 5fa2_edited_reduced.pdb (covalently attached Carbohydrate): Some atom names were swapped in GLU, PHE,
+and TYR.  The N2 in NAG (A 601; B 1, 2) was marked as an acceptor in Probe but not in Probe2.  The total
+scores were the same, and there is only a single potential dot difference between the two files;
+other counts all match.  The acceptor difference appears not to have mattered to the score, and the
+Kinemages look the same.  This is considered a match.
 
 Tested the -once flag against water vs. not water in 1xso and got the same results:
 - `probe.exe -kin -mc -once "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_once_orig.kin`
@@ -271,3 +276,8 @@ Tested the -once flag against water vs. not water in 1xso and got the same resul
 Tested the -both flag against water vs. not water in 1xso and got the same results:
 - `probe.exe -kin -mc -both "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_both_orig.kin`
 - `mmtbx.probe2 source_selection="not water" target_selection="water" approach=both count_dots=False output.separate_worse_clashes=True output.file_name=C:/tmp/1xso_both_new.kin output.add_kinemage_keyword=True include_mainchain_mainchain=True F:/data/richardsons/1xso_reduced.pdb`
+
+Version 1.0.0 is the code that passed all of the above regression tests.  Shortly after, changes will be
+made that will make Probe2 incompatible with Probe; in particular, the Phantom Hydrogen radii and distance
+from their Water Oxygens will be changed to match more recent values; they were both set to 1.0 in the
+original code.
