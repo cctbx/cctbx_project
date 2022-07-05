@@ -700,6 +700,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy, acce
     # distance from # the acceptor that does not involve trying to select a rotation direction.
     # Because Phantom Hydrogens do not block the Oxygen from collisions with their neighbors, and
     # because Phantom Hydrogens cannot clash with any atom, this will not interfere with clashes.
+    # Note that the Phantom Hydrogen also will not block any collision between the Oxygen atom
+    # in the Water and a nearby acceptor, so those collisions will still show up.
     BEST_HBOND_OVERLAP=0.6
     distance = placedHydrogenDistance + max(-1.0, min(0.0, c._overlap + BEST_HBOND_OVERLAP))
     try:
