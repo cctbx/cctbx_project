@@ -150,6 +150,7 @@ class DataModeler:
 
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
+        self.target = None  # placeholder for the Target class instance
 
         # which attributes to save when pickling a data modeler
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
@@ -867,7 +868,7 @@ class DataModeler:
         return ret_subimgs
 
     def Minimize(self, x0):
-        target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
+        self.target = target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
         vary = np.ones(len(x0), bool)
@@ -1216,6 +1217,8 @@ class TargetFunc:
         self.minima = []
         self.all_converged_params = 0
         self.SIM = SIM
+        self.all_f = []  # store the target functionals here, 1 per iteration
+        self.all_sigZ = []  # store the overall z-score sigmas here, 1 per iteration
 
     def at_minimum(self, x, f, accept):
         self.iteration = 0
@@ -1236,7 +1239,9 @@ class TargetFunc:
         if not self.iteration % (self.niter_per_J) == 0:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
-        f, g, modelpix, J = target_func(self.x0, update_terms, *args, **kwargs)
+        f, g, modelpix, J, sigZ = target_func(self.x0, update_terms, *args, **kwargs)
+        self.all_f.append(f)
+        self.all_sigZ.append(sigZ)
         self.old_model = modelpix
         self.old_J = J
         self.iteration += 1
@@ -1434,7 +1439,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
         MAIN_LOGGER.debug("F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
               % (f, zscore_sigma, restraint_debug_s, gnorm))
 
-    return f, g, model_bragg, Jac
+    return f, g, model_bragg, Jac, zscore_sigma
 
 
 def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True):
