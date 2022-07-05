@@ -249,12 +249,20 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     rank_SIMlog_outdir = make_rank_outdir(Modeler.params.outdir, "simulator_state")
     rank_refls_outdir = make_rank_outdir(Modeler.params.outdir, "refls")
     rank_spectra_outdir = make_rank_outdir(Modeler.params.outdir, "spectra")
+    rank_trace_outdir = make_rank_outdir(Modeler.params.outdir, "traces")
 
     basename = os.path.splitext(os.path.basename(exp))[0]
     img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
     SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
     new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
     spectra_path = os.path.join(rank_spectra_outdir, "%s_%s_%d.lam" % (Modeler.params.tag, basename, i_exp))
+
+    trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+
+    # TODO: pretty formatting ?
+    trace1, trace2 = Modeler.target.all_f , Modeler.target.all_sigZ
+    trace_data = np.array([trace1,trace2]).T
+    np.savetxt(trace_path, trace_data, fmt="%s")
 
     if Modeler.SIM.num_xtals == 1:
         save_to_pandas(x, Modeler.SIM, exp, Modeler.params, Modeler.E, i_exp, input_refls, img_path)
