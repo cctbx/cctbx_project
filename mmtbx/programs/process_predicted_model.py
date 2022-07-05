@@ -86,7 +86,9 @@ Inputs: Model file (PDB, mmCIF)
        .type = float
        .help = Limit output B values (so that they fit in old-style PDB \
               format). Note that this limit is applied just before writing \
-              output model files, it does not affect anything else.
+              output model files, it does not affect anything else. Also \
+              if output model is trimmed normally, high-B value residues are\
+              already removed, so in most cases this keyword has no effect.
        .short_caption = Maximum output B
 
   }
