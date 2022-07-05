@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import os, sys
-
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
@@ -32,11 +30,8 @@ def get_selection_from_user(hierarchy):
   for i, sel in enumerate(opts):
     print('    %2d : "%s"' % (i+1,sel))
   rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
-  try:
-    rc=int(rc)
-    rc = opts[rc-1]
-  except: # ValueError, e:
-    pass
+  rc = int(rc)
+  rc = opts[rc-1]
   return rc
 
 class Program(ProgramTemplate):
