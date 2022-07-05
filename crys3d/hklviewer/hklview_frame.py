@@ -1382,9 +1382,11 @@ class HKLViewFrame() :
     return [ (i,e) for i,e in enumerate(self.viewer.bin_labels_type_idxs) ]
 
 
-  def SetSceneBinThresholds(self, thresholds=[]):
-    bin_thresholds = thresholds[:]
-    self.params.scene_bin_thresholds = bin_thresholds
+  def SetSceneBinThresholds(self, thresholds=None):
+    if thresholds==None:
+      self.params.scene_bin_thresholds = []
+    else:
+      self.params.scene_bin_thresholds = thresholds[:]
     self.params.nbins = len(binvals)
     self.update_settings()
 

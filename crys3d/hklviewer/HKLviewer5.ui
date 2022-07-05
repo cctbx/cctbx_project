@@ -135,7 +135,7 @@
            </property>
            <widget class="QWidget" name="tabPresetbuttons">
             <attribute name="title">
-             <string>Overview</string>
+             <string>Quick View</string>
             </attribute>
             <layout class="QGridLayout" name="gridLayout_25">
              <item row="1" column="0" colspan="2">
