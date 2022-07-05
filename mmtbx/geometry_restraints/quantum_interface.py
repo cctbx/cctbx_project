@@ -310,6 +310,9 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)
   assert active
+  if not model.has_hd():
+    from libtbx.utils import Sorry
+    raise Sorry('Model must has Hydrogen atoms')
   if choice=='qm_restraints':
     from mmtbx.geometry_restraints import quantum_restraints_manager
     geometry = quantum_restraints_manager.digester(model,
