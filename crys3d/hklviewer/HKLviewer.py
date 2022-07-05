@@ -2453,7 +2453,8 @@ def run(isembedded=False, chimeraxsession=None):
         # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
         if "debug" in e:
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
-        if "devmode" in e:  # --single-process will freeze the WebEngineDebugForm at breakpoints
+        if "devmode" in e: # Also start our WebEngineDebugForm
+# Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
 
     from .qt import QApplication
