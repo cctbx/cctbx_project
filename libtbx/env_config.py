@@ -1456,36 +1456,37 @@ Wait for the command to finish, then try again.""" % vars())
     print('OPENBLAS_NUM_THREADS="%s"' % openblas_num_threads, file=f)
     print('export OPENBLAS_NUM_THREADS', file=f)
 
-    pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
-    if os.path.exists(pangorc):
-      print('PANGO_RC_FILE="$LIBTBX_BUILD/../base/etc/pango/pangorc"', file=f)
-      print('export PANGO_RC_FILE', file=f)
-    fontconfig = abs(self.build_path / '..' / 'base' / 'etc' / 'fonts')
-    if os.path.exists(fontconfig):
-      print('FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"', file=f)
-      print('export FONTCONFIG_PATH', file=f)
+    if sys.version_info[0] == 2:
+      pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
+      if os.path.exists(pangorc):
+        print('PANGO_RC_FILE="$LIBTBX_BUILD/../base/etc/pango/pangorc"', file=f)
+        print('export PANGO_RC_FILE', file=f)
+      fontconfig = abs(self.build_path / '..' / 'base' / 'etc' / 'fonts')
+      if os.path.exists(fontconfig):
+        print('FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"', file=f)
+        print('export FONTCONFIG_PATH', file=f)
 
-    # set paths for fontconfig and gdk-pixbuf due to gtk2
-    # checks the location of the conda environment
-    if self.build_options.use_conda and sys.platform.startswith('linux'):
-      fontconfig_path = '{conda_base}/etc/fonts'
-      fontconfig_file = '$FONTCONFIG_PATH/fonts.conf'
-      gdk_pixbuf_module_file = '{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
-      gtk_path = '{conda_base}/lib/gtk-2.0/2.10.0'
-      conda_base = get_conda_prefix()
-      if (os.path.exists(fontconfig_path.format(conda_base=conda_base)) and
-          os.path.exists(gdk_pixbuf_module_file.format(conda_base=conda_base))):
-        if conda_base == abs(self.build_path / '..' / 'conda_base'):
-          conda_base = '$LIBTBX_BUILD/../conda_base'
-        print('unset GTK_MODULES', file=f)
-        print('unset GTK2_RC_FILES', file=f)
-        print('unset GTK_RC_FILES', file=f)
-        print('export FONTCONFIG_PATH=' +
-              fontconfig_path.format(conda_base=conda_base), file=f)
-        print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
-        print('export GDK_PIXBUF_MODULE_FILE=' +
-              gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
-        print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
+      # set paths for fontconfig and gdk-pixbuf due to gtk2
+      # checks the location of the conda environment
+      if self.build_options.use_conda and sys.platform.startswith('linux'):
+        fontconfig_path = '{conda_base}/etc/fonts'
+        fontconfig_file = '$FONTCONFIG_PATH/fonts.conf'
+        gdk_pixbuf_module_file = '{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
+        gtk_path = '{conda_base}/lib/gtk-2.0/2.10.0'
+        conda_base = get_conda_prefix()
+        if (os.path.exists(fontconfig_path.format(conda_base=conda_base)) and
+            os.path.exists(gdk_pixbuf_module_file.format(conda_base=conda_base))):
+          if conda_base == abs(self.build_path / '..' / 'conda_base'):
+            conda_base = '$LIBTBX_BUILD/../conda_base'
+          print('unset GTK_MODULES', file=f)
+          print('unset GTK2_RC_FILES', file=f)
+          print('unset GTK_RC_FILES', file=f)
+          print('export FONTCONFIG_PATH=' +
+                fontconfig_path.format(conda_base=conda_base), file=f)
+          print('export FONTCONFIG_FILE=' + fontconfig_file, file=f)
+          print('export GDK_PIXBUF_MODULE_FILE=' +
+                gdk_pixbuf_module_file.format(conda_base=conda_base), file=f)
+          print('export GTK_PATH=' + gtk_path.format(conda_base=conda_base), file=f)
 
     for n,v in essentials:
       if (len(v) == 0): continue
@@ -2268,19 +2269,20 @@ selfx:
       if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
         os.environ[self.ld_library_path_var_name()] = ":".join(
           [abs(p) for p in self.ld_library_path_additions()])
-      if self.build_options.use_conda:
-        # refresh loaders.cache for gdk-pixbuf on linux due to gtk2
-        if sys.platform.startswith("linux"):
-          conda_base = get_conda_prefix()
-          command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
-          loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
-          cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-          if os.path.isfile(command.format(conda_base=conda_base)):
-            command = command + " " + loaders + " > " + cache
-            command = command.format(conda_base=conda_base)
-            call(command)
-      else:
-        regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
+      if sys.version_info[0] == 2:
+        if self.build_options.use_conda:
+          # refresh loaders.cache for gdk-pixbuf on linux due to gtk2
+          if sys.platform.startswith("linux"):
+            conda_base = get_conda_prefix()
+            command = "{conda_base}/bin/gdk-pixbuf-query-loaders"
+            loaders = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so"
+            cache = "{conda_base}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+            if os.path.isfile(command.format(conda_base=conda_base)):
+              command = command + " " + loaders + " > " + cache
+              command = command.format(conda_base=conda_base)
+              call(command)
+        else:
+          regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
       self.pickle()
       print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
 
