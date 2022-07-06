@@ -163,7 +163,13 @@ class base_manager():
   #   assert len(selection_array)==len(self.atoms)
   #   self.freeze_a_ray = selection_array
 
-  def get_opt(self, cleanup=False, file_read=False, log=None):
+  def get_opt(self,
+              cleanup=False,
+              file_read=False,
+              coordinate_filename_ext='.xyz',
+              log_filename_ext='.log',
+              redirect_output=True,
+              log=None):
     import random
     rc = []
     for atom in self.atoms:

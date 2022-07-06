@@ -15,6 +15,9 @@ def qm_runner(qmm,
   def get_func(manager, attr):
     return getattr(manager, 'get_%s' % attr, None)
   redirect_output=True
+  # fake
+  coordinate_filename_ext='.nwm'
+  log_filename_ext='.nwm'
   if qmm.program=='test':
     func = get_func(base_qm_manager.base_manager, qmm.program_goal)
   elif qmm.program=='orca':

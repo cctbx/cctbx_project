@@ -315,7 +315,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
       qmr.package.charge=0
   program = qmr.package.program
   if program=='test':
-    qmm = qm_manager.base_manager
+    qmm = qm_manager.base_qm_manager.base_qm_manager
   elif program=='orca':
     qmm = orca_manager.orca_manager
     default_defaults(qmr)
