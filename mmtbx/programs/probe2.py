@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "0.9.1"
+version = "1.0.0"
 
 master_phil_str = '''
 profile = False
@@ -55,15 +55,11 @@ excluded_bond_chain_length = 4
   .type = int
   .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
-drop_non_selected_atoms = False
-  .type = bool
-  .help = Drop non selected atoms (-drop in probe)
-
-minimum_polar_hydrogen_occupancy = 0.25
+minimum_water_hydrogen_occupancy = 0.25
   .type = float
   .help = Minimum occupancy for polar hydrogens (0.66 in original Reduce)
 
-maximum_polar_hydrogen_b = 80.0
+maximum_water_hydrogen_b = 80.0
   .type = float
   .help = Minimum b-factor for polar hydrogens (40.0 in original Reduce)
 
@@ -511,6 +507,8 @@ def Test():
   for t in table:
     assert _color_for_atom_class(t[0]) == t[1], "probe2:Test(): _color_for_atom_class("+str(t[0])+") failed to return "+t[1]
 
+  print('Success!')
+
 # ------------------------------------------------------------------------------
 
 class Program(ProgramTemplate):
@@ -720,6 +718,7 @@ Note:
       srcHet = self._inHet[src]
       srcInWater = self._inWater[src]
       srcExtra = self._extraAtomInfo.getMappingFor(src)
+      srcModel = src.parent().parent().parent().parent().id
 
       # Select those that are actually within the contact distance based on their
       # particular radius (this query includes only target atoms, so we don't need to check separately for that).
@@ -731,6 +730,7 @@ Note:
         nHet = self._inHet[n]
         nInWater = self._inWater[n]
         nExtra = self._extraAtomInfo.getMappingFor(n)
+        nModel = n.parent().parent().parent().parent().id
 
         d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
         if (d <= nExtra.vdwRadius + srcExtra.vdwRadius + 2*probeRadius):
@@ -759,6 +759,9 @@ Note:
               continue
           # Skip atoms that are in non-compatible alternate conformations
           elif not Helpers.compatibleConformations(src, n):
+            continue
+          # Skip atoms that are in different models.
+          elif srcModel != nModel:
             continue
           atomSet.add(n)
 
@@ -1629,7 +1632,7 @@ Note:
         if self.params.output.add_group_line:
           if numModels > 1:
             # doing one of multiple models of an ensemble
-            ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex)
+            ret += "@group dominant {{{} M{}}} animate\n".format(groupLabel,modelIndex+1)
           else:
             ret += "@group dominant {{{}}}\n".format(groupLabel)
 
@@ -1779,7 +1782,7 @@ Note:
       else:
         # For hydrogen, assign based on what it is bonded to.
         if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+          raise Sorry("Found Hydrogen with number of bonds other than 1: "+
                       str(len(self._allBondedNeighborLists[a])))
         else:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
@@ -1860,8 +1863,8 @@ Note:
     # when no particular one is selected.
     atomLists = [ self.model.get_atoms() ]
     if (self.params.approach == 'self' and
-        (self.params.source_selection is None or 'model_id' not in self.params.source_selection) and
-        (self.params.target_selection is None or 'model_id' not in self.params.target_selection)):
+        (self.params.source_selection is None or 'model' not in self.params.source_selection) and
+        (self.params.target_selection is None or 'model' not in self.params.target_selection)):
       # Handle the multiple-model case by looping modelID over all models.
       numModels = self.model.get_hierarchy().models_size()
       atomLists = []
@@ -1901,7 +1904,7 @@ Note:
         # Replace the bonded-neighbor list with all bonded neighbors, even ones that
         # are not selected, so that they will block dots that overlap with bonded atoms.
         bondedNeighborLists = self._allBondedNeighborLists
-        selectedAtomsIncludingKept = allAtoms
+        selectedAtomsIncludingKept = atoms
       else:
         self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
         selectedAtomsIncludingKept = list(all_selected_atoms)
@@ -1916,18 +1919,20 @@ Note:
         if self.params.output.record_added_hydrogens:
           outString += '@vectorlist {water H?} color= gray\n'
 
+        # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+        # a single water in it and asking about the hydrogen radius.  This could also become a
+        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
+        phantomHydrogenRadius = 1.05
+        placedHydrogenDistance = 0.84
+        if self.params.use_neutron_distances:
+          phantomHydrogenRadius = 1.0
+          placedHydrogenDistance = 0.98
+
+        adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+
         # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
         # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
         for a in all_selected_atoms:
-
-          # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-          # a single water in it and asking about the hydrogen radius.  This could also become a
-          # Phil parameter.
-          phantomHydrogenRadius = 1.05
-          if self.params.use_neutron_distances:
-            phantomHydrogenRadius = 1.0
-
-          adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
           # Ignore Hydrogens whose parameters are out of bounds.
           if a.element_is_hydrogen():
@@ -1939,8 +1944,8 @@ Note:
             # If they are not, set the class for the atom to 'ignore'.
             # This handles the case where there were explicit Hydrogens on waters and so
             # we won't add Phantom Hydrogens.
-            if self._inWater[a] and (a.occ < self.params.minimum_polar_hydrogen_occupancy or
-                a.b > self.params.maximum_polar_hydrogen_b):
+            if self._inWater[a] and (a.occ < self.params.minimum_water_hydrogen_occupancy or
+                a.b > self.params.maximum_water_hydrogen_b):
               self._atomClasses[a] = 'ignore'
 
           # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
@@ -1955,11 +1960,11 @@ Note:
             self._extraAtomInfo.setMappingFor(a, ei)
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenDistance
-            # with phantomHydrogenRadius.
+            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenRadius
+            # with adjustedHydrogenRadius and the distance with placedHydrogenDistance.
             if len(bondedNeighborLists[a]) == 0:
-              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, 0.0, True,
-                              1.0)
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo,
+                              0.0, True, 1.0, 1.0)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
@@ -1988,12 +1993,16 @@ Note:
                 # dots on a Phantom Hydrogen within its Oxygen will be excluded.
                 bondedNeighborLists[p] = [a]
 
-                # @todo In the future, we may add these bonds, but that will cause the
+                # It was thought that in the future, we may add these bonds, but that will cause the
                 # Phantom Hydrogens to mask their water Oxygens from close contacts or
                 # clashes with the acceptors, which is a change in behavior from the
-                # original Probe.  For now, we separately handle Phantom Hydrogen
-                # interactions as special cases in the code.
-                #bondedNeighborLists[a].append(p)
+                # original Probe and would have the undesirable effect of a potential
+                # Hydrogen hiding a true collision.
+                # Not marking these as bonded requires special-case handling
+                # of Phantom Hydrogen interactions in the dot-scoring code.
+                # This means that we have a one-way bond, which is unusual but suits our
+                # purposes.
+                # Not done: bondedNeighborLists[a].append(p)
 
                 # Add the new atom to any selections that the old atom was in.
                 if a in source_atoms:
@@ -2032,12 +2041,6 @@ Note:
       # Histidine rings around Cu or Zn).  Do this after we've added the Phantom Hydrogens
       # so that we don't see ionic bonds in the Phantom-Hydrogen addition code checks.
       Helpers.addIonicBonds(bondedNeighborLists, selectedAtomsIncludingKept, self._spatialQuery, self._extraAtomInfo)
-
-      # If we have a dump file specified, write the atom information into it.
-      if self.params.output.dump_file_name is not None:
-        atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
-        with open(self.params.output.dump_file_name,"w") as df:
-          df.write(atomDump)
 
       # Make a query structure to return the Phantom Hydrogens (if there are any)
       self._phantomHydrogensSpatialQuery = Helpers.createSpatialQuery(phantomHydrogens, self.params.probe)
@@ -2119,6 +2122,7 @@ Note:
         maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
+          srcModel = src.parent().parent().parent().parent().id
 
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
@@ -2131,6 +2135,7 @@ Note:
           atomList = []
           for n in nearby:
             nInWater = self._inWater[n]
+            nModel = n.parent().parent().parent().parent().id
 
             # Skip atoms that are marked to be ignored
             if self._atomClasses[n] == 'ignore':
@@ -2140,6 +2145,9 @@ Note:
               continue
             # Skip atoms that are in non-compatible alternate conformations
             elif not Helpers.compatibleConformations(src, n):
+              continue
+            # Skip atoms that are in different models.
+            elif srcModel != nModel:
               continue
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
             if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
@@ -2306,6 +2314,14 @@ Note:
     of = open(self.params.output.file_name,"w")
     of.write(outString)
     of.close()
+
+    # If we have a dump file specified, write the atom information into it.
+    # We write it at the end because the extra atom info may have been adjusted
+    # during the code that handles hydrogen adjustements.
+    if self.params.output.dump_file_name is not None:
+      atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
+      with open(self.params.output.dump_file_name,"w") as df:
+        df.write(atomDump)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
