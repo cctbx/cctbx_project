@@ -69,6 +69,7 @@ tst_list_base = [
   "$D/examples/pdb_to_map_simple.py",
   "$D/examples/pdb_truncate_to_ala/tst.py",
   "$D/examples/pdb_tardy_conf_sampling_simple.py",
+  "$D/regression/tst_examples.py",
   "$D/cns/space_group_symbols.py",
   "$D/cns/tst_cns.py",
   ["$D/scalepack/tst_merge.py", "P31"],

@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from six.moves import zip
+import sys
+
 #
 # Required input files:
 #   http://journals.iucr.org/c/issues/2001/05/00/vj1132/vj1132Isup2.hkl
@@ -10,9 +12,8 @@ from six.moves import zip
 #   iotbx.python direct_methods_light.py vj1132Isup2.hkl vj1132sup1.cif
 #
 
-def run():
-  import sys
-  reflection_file_name = sys.argv[1]
+def run(args):
+  reflection_file_name = args[0]
   import iotbx.cif
   miller_arrays = iotbx.cif.reader(
     file_path=reflection_file_name).as_miller_arrays()
@@ -85,8 +86,11 @@ def run():
     print("  (%9.6f, %9.6f, %9.6f)" % site, "%10.3f" % height)
   print()
 
-  if (len(sys.argv) > 2):
-    coordinate_file_name = sys.argv[2]
+  if (len(args) > 1):
+    coordinate_file_name = args[1]
+    from cctbx import xray
+    # xray_structure = xray.structure.from_cif(file_path=coordinate_file_name,
+        # data_block_name="I")
     xray_structure = iotbx.cif.reader(
       file_path=coordinate_file_name).build_crystal_structures(
         data_block_name="I")
@@ -117,4 +121,4 @@ def run():
       match.show()
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])
