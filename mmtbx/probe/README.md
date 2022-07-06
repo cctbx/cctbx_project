@@ -187,14 +187,15 @@ of interactions and surfaces and to generate summary scores for interactions wit
 a replacement for the **mmtbx.probe** program that can be run as **mmtbx.probe2** to produce similar
 outputs but taking different command-line options.  The following tests are provided for this program:
 * There is a Test() function defined within the module that will test all of its non-class functions.
-To run it, the module can be imported and then probe2.Test() called.
+To run it, 'import probe2' can be used in a Python script that is in the mmtbx/programs directory
+and then `probe2.Test()` called.  It will print 'Success!' if it works.
 It will fail with an assertion failure if there is a problem with the tests:
-    * **_condense():** Verify that this method works when sorting and when sorting and condensing.
-    * **_totalInteractionCount():** Verify that this sums the counts of all interaction types.
     * **_color_for_gap():** Verify that this returns the correct color for hydrogen bonds and for
     a sample of values.
     * **_color_for_atom_class():** Verify that this returns the correct color for a sample of values.
-* @todo
+    * **_condense():** Verify that this method works when sorting and when sorting and condensing.
+    * **_totalInteractionCount():** Verify that this sums the counts of all interaction types.
+* @todo Test other internally defined functions within probe2.py.
 
 **@todo Not yet tested:**
 * **annularDots()** and related functions.
@@ -256,6 +257,17 @@ HEC residue.
 - Zn_4m9v_C-167-194_ZnF-DNA_0.97A: No differences in scores or surfaces.  Some atom names were swapped in
 Probe2 (Hydrogens, Nitrogens, Oxygens) but they were in the same locations so produced the same results.
 This indicates a difference between the naming schemes in Probe and Probe2.
+- 1rrr (multiple models): This is an ensemble NMR structure.  The atom counts for Probe when run without
+a selected model had all atoms (and too-large number of dots and surface area) listed for each model,
+so keeping Probe2 behavior of only listing atoms for that model; this matches Probe behavior when a single
+model is selected.  There are two Hydrogens that are too far from their Oxygens for Probe to consider them
+to be bonded; these cause large clashes and cause H to show up in the output list; the Probe2 bonding
+behavior is correct and so avoids these clashes.
+- 5fa2_edited_reduced.pdb (covalently attached Carbohydrate): Some atom names were swapped in GLU, PHE,
+and TYR.  The N2 in NAG (A 601; B 1, 2) was marked as an acceptor in Probe but not in Probe2.  The total
+scores were the same, and there is only a single potential dot difference between the two files;
+other counts all match.  The acceptor difference appears not to have mattered to the score, and the
+Kinemages look the same.  This is considered a match.
 
 Tested the -once flag against water vs. not water in 1xso and got the same results:
 - `probe.exe -kin -mc -once "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_once_orig.kin`
@@ -264,3 +276,8 @@ Tested the -once flag against water vs. not water in 1xso and got the same resul
 Tested the -both flag against water vs. not water in 1xso and got the same results:
 - `probe.exe -kin -mc -both "not water" "water" F:\data\Richardsons\1xso_reduced.pdb  > C:\tmp\1xso_both_orig.kin`
 - `mmtbx.probe2 source_selection="not water" target_selection="water" approach=both count_dots=False output.separate_worse_clashes=True output.file_name=C:/tmp/1xso_both_new.kin output.add_kinemage_keyword=True include_mainchain_mainchain=True F:/data/richardsons/1xso_reduced.pdb`
+
+Version 1.0.0 is the code that passed all of the above regression tests.  Shortly after, changes will be
+made that will make Probe2 incompatible with Probe; in particular, the Phantom Hydrogen radii and distance
+from their Water Oxygens will be changed to match more recent values; they were both set to 1.0 in the
+original code.

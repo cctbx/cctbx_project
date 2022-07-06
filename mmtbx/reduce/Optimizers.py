@@ -208,6 +208,8 @@ class _SingletonOptimizer(object):
     # Initialize internal variables.
     self._infoString = ""
     self._atomDump = ""
+    self._waterOccCutoff = 0.66 # @todo Make this a parameter, -WaterOCCcutoff param in reduce
+    self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
 
     ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
@@ -240,6 +242,24 @@ class _SingletonOptimizer(object):
       self._infoString += _ReportTiming("get coordinates")
       bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
       self._infoString += _ReportTiming("compute bond proxies")
+
+      ################################################################################
+      # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
+      # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
+      # We won't get bonds between atoms in different conformations.
+      bondedNeighborLists = Helpers.getBondedNeighborLists(myModel.atoms(), bondProxies)
+      self._infoString += _ReportTiming("compute bonded neighbor lists")
+
+      ################################################################################
+      # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+      # This is done for all atoms in the model.
+      global probePhil
+      ret = Helpers.getExtraAtomInfo(
+        model = model, bondedNeighborLists = bondedNeighborLists,
+        useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
+      self._extraAtomInfo = ret.extraAtomInfo
+      self._infoString += ret.warnings
+      self._infoString += _ReportTiming("get extra atom info")
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
@@ -293,24 +313,10 @@ class _SingletonOptimizer(object):
         _ReportTiming(None)
 
         ################################################################################
-        # Get the bonded neighbor lists for the atoms that are in this conformation.
-        bondedNeighborLists = Helpers.getBondedNeighborLists(self._atoms, bondProxies)
-        self._infoString += _ReportTiming("compute bonded neighbor lists")
-
-        ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
         self._spatialQuery = probeExt.SpatialQuery(self._atoms)
         self._infoString += _ReportTiming("construct spatial query")
 
-        ################################################################################
-        # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-        global probePhil
-        ret = Helpers.getExtraAtomInfo(
-          model = model, bondedNeighborLists = bondedNeighborLists,
-          useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
-        self._extraAtomInfo = ret.extraAtomInfo
-        self._infoString += ret.warnings
-        self._infoString += _ReportTiming("get extra atom info")
 
         ################################################################################
         # Initialize any per-alternate data structures now that we have the atoms and
@@ -436,48 +442,72 @@ class _SingletonOptimizer(object):
         # info directly.
 
         # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-        # a single water in it and asking about the hydrogen radius.
+        # a single water in it and asking about the hydrogen radius.  This could also become a
+        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
         phantomHydrogenRadius = 1.05
+        placedHydrogenDistance = 0.84
         if useNeutronDistances:
           phantomHydrogenRadius = 1.0
+          placedHydrogenDistance = 0.98
 
         # Find every Oxygen that is part of a water and get the Phantom Hydrogens for it
-        phantoms = []
+        # unless it has out-of-bounds parameter values.  If the water Oxygen has out-of-bounds
+        # parameters, then we remove it from the atoms to be considered (but not from the
+        # model) by removing them from the atom list and from the spatial query structure.
+        phantoms = [] # List of tuples, the Phantom and its parent Oxygen
+        watersToDelete = []
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
-            # We're an acceptor and not a donor.
-            ei = self._extraAtomInfo.getMappingFor(a)
-            ei.isDonor = False
-            ei.isAcceptor = True
-            self._extraAtomInfo.setMappingFor(a, ei)
+            if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
 
-            newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
-                            False, phantomHydrogenRadius)
-            if len(newPhantoms) > 0:
-              resName = a.parent().resname.strip().upper()
-              resID = str(a.parent().parent().resseq_as_int())
-              chainID = a.parent().parent().parent().id
-              resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
-              self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
-              for p in newPhantoms:
-                self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
-            phantoms += newPhantoms
+              # We're an acceptor and not a donor.
+              ei = self._extraAtomInfo.getMappingFor(a)
+              ei.isDonor = False
+              ei.isAcceptor = True
+              self._extraAtomInfo.setMappingFor(a, ei)
+
+              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
+                              False, phantomHydrogenRadius, placedHydrogenDistance)
+              if len(newPhantoms) > 0:
+                resName = a.parent().resname.strip().upper()
+                resID = str(a.parent().parent().resseq_as_int())
+                chainID = a.parent().parent().parent().id
+                resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+                self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
+                for p in newPhantoms:
+                  self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
+                  phantoms.append( (p,a) )
+
+            else:
+              # Occupancy or B factor are out of bounds, so remove this atom from consideration.
+              self._infoString += _VerboseCheck(3,"Ignoring "+
+                a.name.strip()+" "+a.parent().resname.strip()+" "+str(a.parent().parent().resseq_as_int())+
+                " "+str(a.parent().parent().parent().id)+
+                " with occupancy "+str(a.occ)+" and B factor "+str(a.b)+"\n")
+              watersToDelete.append(a)
+
+        if len(watersToDelete) > 0:
+          self._infoString += _VerboseCheck(1,"Ignored "+str(len(watersToDelete))+" waters due to occupancy or B factor\n")
+          for a in watersToDelete:
+            self._atoms.remove(a)
+            self._spatialQuery.remove(a)
 
         if len(phantoms) > 0:
 
           # Add these atoms to the list of atoms we deal with.
           # Add these atoms to the spatial-query structure.
           # Insert ExtraAtomInfo for each of these atoms, marking each as a dummy and as a donor.
-          # Add to the bondedNeighborList with an empty list.  This prevents them from masking Oxygens.
-          # @todo Consider doing the correct bond structure between them and their Oxygens, in both directions,
-          # so that they will properly mask each other.
+          # Add to the bondedNeighborList with their parent Oxygen as bonded one way so that dots on
+          # a Phantom Hydrogen within its Oxygen will be excluded.  Do not mark the Oxygen as being
+          # bonded to the Phantom Hydrogen to avoid having it mask collisions between the Oxygen and
+          # other atoms.
           origCount = len(self._atoms)
-          for a in phantoms:
-            self._atoms.append(a)
-            self._spatialQuery.add(a)
+          for p in phantoms:
+            self._atoms.append(p[0])
+            self._spatialQuery.add(p[0])
             eai = probeExt.ExtraAtomInfo(phantomHydrogenRadius, False, True, True)
-            self._extraAtomInfo.setMappingFor(a, eai)
-            bondedNeighborLists[a] = []
+            self._extraAtomInfo.setMappingFor(p[0], eai)
+            bondedNeighborLists[p[0]] = [p[1]]
 
           self._infoString += _VerboseCheck(1,"Added "+str(len(phantoms))+" phantom Hydrogens on waters")
           self._infoString += _VerboseCheck(1," (Old total "+str(origCount)+", new total "+str(len(self._atoms))+")\n")
@@ -552,9 +582,9 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Print the final state and score for all Movers
-        def _scoreMoverReportClash(self, m):
+        def _scoreMoverReportClash(self, m, index):
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          score = coarse.preferenceEnergies[index] * self._preferenceMagnitude
           clash = False
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
@@ -570,7 +600,8 @@ class _SingletonOptimizer(object):
           description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
 
           # If the Mover is a flip of some kind, then the substring "lipped" will be present
-          # in the description.  When that happens, we check the final state and the flipped
+          # in the description (Flipped and Unflipped both have this subtring).
+          # When that happens, we check the final state and the other flip state
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
@@ -581,9 +612,9 @@ class _SingletonOptimizer(object):
             final = self._coarseLocations[m]
             other = (final + numPositions//2) % numPositions
             self._setMoverState(coarse, other)
-            otherScore, otherBump = _scoreMoverReportClash(self, m)
+            otherScore, otherBump = _scoreMoverReportClash(self, m, other)
             self._setMoverState(coarse, final)
-            finalScore, finalBump = _scoreMoverReportClash(self, m)
+            finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
             elif abs(finalScore - otherScore) <= 0.5:
@@ -625,7 +656,8 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
         for m in self._movers:
           loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(type(m),loc))
+          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
+          self._moverInfo[m],loc))
           self._doFixup(m.FixUp(loc))
         self._infoString += _ReportTiming("fix up Movers")
 
@@ -696,11 +728,11 @@ class _SingletonOptimizer(object):
     # consistency with the spatial-query structure.
     for i, doDelete in enumerate(positionReturn.deleteMes[index]):
       if doDelete:
-        self._spatialQuery.add(positionReturn.atoms[i])
+        self._spatialQuery.remove(positionReturn.atoms[i])
         self._deleteMes.add(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Deleting atom\n")
       else:
-        self._spatialQuery.remove(positionReturn.atoms[i])
+        self._spatialQuery.add(positionReturn.atoms[i])
         self._deleteMes.discard(positionReturn.atoms[i])
         self._infoString += _VerboseCheck(10,"Ensuring deletable atom is present\n")
 
@@ -1481,8 +1513,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
           # NOTE that we must check the position of the atom in its coarse configuration rather
           # than its FixUp configuration because that is the location that we use to determine if
           # we have an ionic bond.
-          def _modifyIfNeeded(nitro, coarseNitroPos, hydro, infoString):
+          def _modifyIfNeeded(nitro, coarseNitroPos, hydro):
             # Helper function to check and change things for one of the Nitrogens.
+            result = ""
             myRad = extraAtomInfo.getMappingFor(nitro).vdwRadius
             minDist = myRad
             maxDist = 0.25 + myRad + maxVDWRadius
@@ -1492,16 +1525,17 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
                 dist = (Helpers.rvec3(coarseNitroPos) - Helpers.rvec3(n.xyz)).length()
                 expected = myRad + extraAtomInfo.getMappingFor(n).vdwRadius
                 if dist >= (expected - 0.55) and dist <= (expected + 0.25):
-                  infoString += _VerboseCheck(1,'Removing Hydrogen from '+resNameAndID+nitro.name+' and marking as an acceptor '+
+                  result += _VerboseCheck(1,'Not adding Hydrogen to '+resNameAndID+nitro.name+' and marking as an acceptor '+
                     '(ionic bond to '+n.name.strip()+')\n')
                   extra = extraAtomInfo.getMappingFor(nitro)
                   extra.isAcceptor = True
                   extraAtomInfo.setMappingFor(nitro, extra)
                   deleteAtoms.append(hydro)
                   break
+            return result
 
-          _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1], infoString)
-          _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5], infoString)
+          infoString += _modifyIfNeeded(fixUp.atoms[0], coarsePositions[0], fixUp.atoms[1])
+          infoString += _modifyIfNeeded(fixUp.atoms[4], coarsePositions[4], fixUp.atoms[5])
 
           infoString += _VerboseCheck(1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
@@ -1802,6 +1836,12 @@ END
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
+  # @todo
+
+  #========================================================================
+  # Check that the occupancy and B-factor cut-offs for water Oxygens are causing them
+  # to be ignored in the calculations by putting an atom in the way and making sure it
+  # is ignored.
   # @todo
 
   #========================================================================
