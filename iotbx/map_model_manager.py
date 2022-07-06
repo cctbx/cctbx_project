@@ -3518,7 +3518,9 @@ class map_model_manager(object):
 
     if not map_manager:
       map_manager = self.get_any_map_manager()
-    assert map_manager is not None
+
+    if not map_manager:
+      return # Do not shift model if no map_manager (no shifts known)
 
     self.add_crystal_symmetry_to_model_if_necessary(
         model, map_manager = map_manager)
