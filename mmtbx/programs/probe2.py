@@ -2018,6 +2018,17 @@ Note:
 
         adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
+        # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+        # a single water in it and asking about the hydrogen radius.  This could also become a
+        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
+        phantomHydrogenRadius = 1.05
+        placedHydrogenDistance = 0.84
+        if self.params.use_neutron_distances:
+          phantomHydrogenRadius = 1.0
+          placedHydrogenDistance = 0.98
+
+        adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+
         # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
         # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
         for a in all_selected_atoms:
@@ -2398,6 +2409,14 @@ Note:
 
     # Write the output to the specified file.
     self.data_manager._write_text("Text", outString, self.params.output.filename)
+
+    # If we have a dump file specified, write the atom information into it.
+    # We write it at the end because the extra atom info may have been adjusted
+    # during the code that handles hydrogen adjustements.
+    if self.params.output.dump_file_name is not None:
+      atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
+      with open(self.params.output.dump_file_name,"w") as df:
+        df.write(atomDump)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
