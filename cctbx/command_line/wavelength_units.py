@@ -1,8 +1,7 @@
 from __future__ import absolute_import, division, print_function
 def raise_usage():
   from libtbx.utils import Usage
-  import libtbx.load_env
-  raise Usage("%s 1A|1keV [...]" % libtbx.env.dispatcher_name)
+  raise Usage("cctbx.wavelength_units 1A|1keV [...]")
 
 def run(args):
   if (len(args) == 0): raise_usage()
