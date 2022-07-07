@@ -39,7 +39,7 @@ namespace kokkostbx {
 
         // OPERATORS
         // streaming
-        friend std::ostream& operator<< (std::ostream &os, const vector_base<Derived, NumType, size>& v) const {
+        friend std::ostream& operator<< (std::ostream &os, const vector_base<Derived, NumType, size>& v) {
             for (size_t i=0; i<size; ++i ) {
                 if (i>0) { os << " "; }
                 os << v.data[i];
@@ -53,7 +53,7 @@ namespace kokkostbx {
         }
 
         // addition
-        KOKKOS_FUNCTION friend Derived operator+(const Derived& lhs, const Derived& rhs) const {
+        KOKKOS_FUNCTION friend Derived operator+(const Derived& lhs, const Derived& rhs) {
             Derived sum = lhs;
             sum += rhs;
             return sum;
@@ -82,7 +82,7 @@ namespace kokkostbx {
         }
 
         // subtraction
-        KOKKOS_FUNCTION friend Derived operator-(const Derived& vec) const {
+        KOKKOS_FUNCTION friend Derived operator-(const Derived& vec) {
             Derived negative = vec;
             for (size_t i=0; i<size; ++i) {
                 negative[i] *= -1;
@@ -90,7 +90,7 @@ namespace kokkostbx {
             return negative;
         }
 
-        KOKKOS_FUNCTION friend Derived operator-(const Derived& lhs, const Derived& rhs) const {
+        KOKKOS_FUNCTION friend Derived operator-(const Derived& lhs, const Derived& rhs) {
             Derived sum = lhs;
             sum -= rhs;
             return sum;
@@ -109,7 +109,7 @@ namespace kokkostbx {
         }
 
         // multiplication
-        KOKKOS_FUNCTION friend Derived operator*(const Derived& lhs, const Derived& rhs) const {
+        KOKKOS_FUNCTION friend Derived operator*(const Derived& lhs, const Derived& rhs) {
             Derived prod = lhs;
             prod *= rhs;
             return prod;
@@ -138,7 +138,7 @@ namespace kokkostbx {
         }
 
         // division
-        KOKKOS_FUNCTION friend Derived operator/(const Derived& lhs, const Derived& rhs) const {
+        KOKKOS_FUNCTION friend Derived operator/(const Derived& lhs, const Derived& rhs) {
             Derived quot = lhs;
             quot /= rhs;
             return quot;
