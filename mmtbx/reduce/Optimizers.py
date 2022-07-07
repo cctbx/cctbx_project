@@ -141,15 +141,13 @@ def GetAtomsForConformer(model, conf):
 
 class _SingletonOptimizer(object):
 
-  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
-                probeRadius = 0.25,
-                useNeutronDistances = False,
-                probeDensity = 16.0,
-                minOccupancy = 0.01,
-                preferenceMagnitude = 1.0,
-                polarHydrogenBumpBiasNonIonic = 0.125,
-                polarHydrogenBumpBiasIonic = 0.865
+  def __init__(self, addFlipMovers, model, modelIndex, altID,
+                bondedNeighborDepth,
+                probeRadius,
+                useNeutronDistances,
+                probeDensity,
+                minOccupancy,
+                preferenceMagnitude
               ):
     """Constructor for _SingletonOptimizer.  This is the base class for all optimizers and
     it implements the machinery that finds and optimized Movers.
@@ -170,27 +168,21 @@ class _SingletonOptimizer(object):
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
     :param altID: The conformer alternate location specifier to use.  The value "" will
-    cause it to run on the first conformer found in each model.  If this is set to None
-    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    cause it to run on the first conformer found in each model.  If this is set to None,
+    optimization will be run sequentially for every conformer in the model, starting with
     the last and ending with the first.  This will leave the initial conformer's values as the
     final location for atoms that are not inside a conformer or are in the first conformer.
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
-    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
-    neighbors and their bonded neighbors).
+    A depth of 3 will ignore my bonded neighbors and their bonded
+    neighbors and their bonded neighbors.
     :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
-    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
     :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
-    :param polarHydrogenBumpBiasNonIonic: A polar hydrogen is not placed due to bumping against
-    a non-bonded non-ionic neighbor atom if it is closer than the atomic radius plus this offset
-    (Angstroms). @todo Ignored as of 11/9/2021.
-    :param polarHydrogenBumpBiasIonic: A polar hydrogen is not placed due to bumping against
-    a non-bonded ionic neighbor atom if it is closer than the atomic radius plus this offset
-    (Angstroms). @todo Ignored as of 11/9/2021.
     """
 
     ################################################################################
@@ -201,8 +193,6 @@ class _SingletonOptimizer(object):
     self._probeDensity = probeDensity
     self._minOccupancy = minOccupancy
     self._preferenceMagnitude = preferenceMagnitude
-    self._polarHydrogenBumpBiasNonIonic = polarHydrogenBumpBiasNonIonic
-    self._polarHydrogenBumpBiasIonic = polarHydrogenBumpBiasIonic
 
     ################################################################################
     # Initialize internal variables.
@@ -300,8 +290,6 @@ class _SingletonOptimizer(object):
         self._infoString += _VerboseCheck(1,"  probeDensity = "+str(self._probeDensity)+"\n")
         self._infoString += _VerboseCheck(1,"  minOccupancy = "+str(self._minOccupancy)+"\n")
         self._infoString += _VerboseCheck(1,"  preferenceMagnitude = "+str(self._preferenceMagnitude)+"\n")
-        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasNonIonic = "+str(self._polarHydrogenBumpBiasNonIonic)+"\n")
-        self._infoString += _VerboseCheck(1,"  polarHydrogenBumpBiasIonic = "+str(self._polarHydrogenBumpBiasIonic)+"\n")
 
         # Get the atoms from the specified conformer in the model (the empty string is the name
         # of the first conformation in the model; if there is no empty conformation, then it will
@@ -334,34 +322,6 @@ class _SingletonOptimizer(object):
         # Make a set of atoms that are to be deleted based on analysis.  It is initially
         # empty, keeping all of the added Hydrogens in the model.
         self._deleteMes = set()
-
-        ''' As of 11/9/2021, Jane thinks we probably don't want do to this check.
-            If we do decide to add it later, the remaining checks need to be done and
-            add the Hydrogen to the list of those to be deleted.  See reduce.cpp:1523+
-        ################################################################################
-        # Check all polar hydrogens to make sure they have not been placed where they
-        # will collide with a non-bonded neighbor.  The neighbor must not be a hydrogen
-        # or part of a water and not part of the same amino acid; also, we must be
-        # checking an atom that is part of an amino acid.  The bonded heavy atom of the
-        # Hydrogen must be at a distnce where it could be bonded to the neighbor, so that
-        # what is probably happening is that the heavy atom is bonded to the neighbor.
-        # If a Hydrogen does so collide, then add it to a list of atoms that will be deleted.
-        maxDist = self._maximumVDWRadius + max(self._polarHydrogenBumpBiasNonIonic,self._polarHydrogenBumpBiasIonic)
-        for a in self._atoms and pdb.common_residue_names_get_class(a.parent().resname) == "common_amino_acid":
-          if Helpers.isPolarHydrogen(a, bondedNeighborLists):
-            nearby = self._spatialQuery(a, 0.001, maxDist)
-            for n in nearby:
-              # Make sure we're from a different residue
-              if a.parent().parent() != n.parent().parent():
-                # Make sure the neighbor is not part of a water.
-                if not pdb.common_residue_names_get_class(n.parent().resname) == "common_water":
-                  # Make sure that our bonded heavy element is within reasonable range to bond with the neighbor
-                  # so that what we're probably seeing is a covalent bond with our parent with no need
-                  # for a Hydrogen.
-                  # @todo
-                    # See if we collide.  If so, warn and remove.
-                    # @todo
-        '''
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
@@ -874,13 +834,13 @@ class _SingletonOptimizer(object):
     return maxScore
 
 class _BruteForceOptimizer(_SingletonOptimizer):
-  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
-                probeRadius = 0.25,
-                useNeutronDistances = False,
-                probeDensity = 16.0,
-                minOccupancy = 0.01,
-                preferenceMagnitude = 1.0
+  def __init__(self, addFlipMovers, model, modelIndex, altID,
+                bondedNeighborDepth,
+                probeRadius,
+                useNeutronDistances,
+                probeDensity,
+                minOccupancy,
+                preferenceMagnitude
               ):
     """Constructor for _BruteForceOptimizer.  This tries all combinations of Mover positions
     within a Clique.  It will be too slow for many files, but it provides a baseline against
@@ -898,15 +858,15 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
     :param altID: The conformer alternate location specifier to use.  The value "" will
-    cause it to run on the first conformer found in each model.  If this is set to None
-    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    cause it to run on the first conformer found in each model.  If this is set to None,
+    optimization will be run sequentially for every conformer in the model, starting with
     the last and ending with the first.  This will leave the initial conformer's values as the
     final location for atoms that are not inside a conformer or are in the first conformer.
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
-    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
-    neighbors and their bonded neighbors).
+    A depth of 3 will ignore my bonded neighbors and their bonded
+    neighbors and their bonded neighbors.
     :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
-    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
     :param probeDensity: How many dots per sq Angstroms in VDW calculations.
@@ -981,13 +941,13 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     return ret
 
 class _CliqueOptimizer(_BruteForceOptimizer):
-  def __init__(self, addFlipMovers, model, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
-                probeRadius = 0.25,
-                useNeutronDistances = False,
-                probeDensity = 16.0,
-                minOccupancy = 0.01,
-                preferenceMagnitude = 1.0
+  def __init__(self, addFlipMovers, model, modelIndex, altID,
+                bondedNeighborDepth,
+                probeRadius,
+                useNeutronDistances,
+                probeDensity,
+                minOccupancy,
+                preferenceMagnitude
               ):
     """Constructor for _CliqueOptimizer.  This uses a recursive algorithm to break down the total
     clique into sets of smaller cliques.  It looks for a vertex cut in the Clique it is called with
@@ -1010,15 +970,15 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     If this value is None, optimization will be run sequentially on every model in the
     hierarchy.
     :param altID: The conformer alternate location specifier to use.  The value "" will
-    cause it to run on the first conformer found in each model.  If this is set to None
-    (the default), optimization will be run sequentially for every conformer in the model, starting with
+    cause it to run on the first conformer found in each model.  If this is set to None,
+    optimization will be run sequentially for every conformer in the model, starting with
     the last and ending with the first.  This will leave the initial conformer's values as the
     final location for atoms that are not inside a conformer or are in the first conformer.
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
-    The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
-    neighbors and their bonded neighbors).
+    A depth of 3 will ignore my bonded neighbors and their bonded
+    neighbors and their bonded neighbors.
     :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
-    :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
+    :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
     :param probeDensity: How many dots per sq Angstroms in VDW calculations.
@@ -1130,7 +1090,7 @@ class FastOptimizer(_CliqueOptimizer):
                 probeRadius = 0.25,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
-                minOccupancy = 0.01,
+                minOccupancy = 0.02,
                 preferenceMagnitude = 1.0
               ):
     """Constructor for FastOptimizer.  This uses the same algorithm as the
