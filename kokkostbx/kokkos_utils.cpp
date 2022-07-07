@@ -1,6 +1,6 @@
-#include "simtbx/kokkos/kokkos_utils.h"
+#include "kokkostbx/kokkos_utils.h"
 
-namespace simtbx { namespace Kokkos {
+namespace kokkostbx {
   void
   transfer_double2kokkos(vector_cudareal_t &dst, const double *src, const size_t length) {
     if (true) {
@@ -19,5 +19,4 @@ namespace simtbx { namespace Kokkos {
     }
   }
 
-} // Kokkos
-} // simtbx
+} // kokkostbx

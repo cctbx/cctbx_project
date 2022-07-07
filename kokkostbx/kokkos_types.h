@@ -1,5 +1,5 @@
-#ifndef SIMTBX_KOKKOS_TYPES_H
-#define SIMTBX_KOKKOS_TYPES_H
+#ifndef KOKKOS_TYPES_H
+#define KOKKOS_TYPES_H
 #include <Kokkos_Core.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -47,4 +47,4 @@ void print_view(const view_1d_t<T> &arg_view) {
   print_view(arg_view, 0, arg_view.span());
 }
 
-#endif // SIMTBX_KOKKOS_TYPES_H
+#endif // KOKKOS_TYPES_H

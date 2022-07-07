@@ -1,7 +1,7 @@
 #include "scitbx/array_family/boost_python/flex_fwd.h"
 //#include "cudatbx/cuda_base.cuh"
 #include "simtbx/kokkos/detector.h"
-#include "simtbx/kokkos/kokkos_utils.h"
+#include "kokkostbx/kokkos_utils.h"
 #include "scitbx/vec3.h"
 #include "scitbx/vec2.h"
 
@@ -159,7 +159,7 @@ namespace simtbx { namespace Kokkos {
     // nB.raw_pixels = af::flex_double(af::flex_grid<>(nB.spixels,nB.fpixels));
     // do not reallocate CPU memory for the data write, as it is not needed
 
-    transfer_kokkos2flex(nB.raw_pixels, m_accumulate_floatimage);
+    kokkostbx::transfer_kokkos2flex(nB.raw_pixels, m_accumulate_floatimage);
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
 
@@ -175,7 +175,7 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::get_raw_pixels(){
     //return the data array for the multipanel detector case
     af::flex_double output_array(af::flex_grid<>(m_panel_count,m_slow_dim_size,m_fast_dim_size), af::init_functor_null<double>());
-    transfer_kokkos2flex(output_array, m_accumulate_floatimage);
+    kokkostbx::transfer_kokkos2flex(output_array, m_accumulate_floatimage);
 
     // vector_double_t::HostMirror host_floatimage = create_mirror_view(m_accumulate_floatimage);
     // deep_copy(host_floatimage, m_accumulate_floatimage);
@@ -189,7 +189,7 @@ namespace simtbx { namespace Kokkos {
   void
   kokkos_detector::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {
     m_active_pixel_size = active_pixel_list_value.size();
-    transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
+    kokkostbx::transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
     active_pixel_list = active_pixel_list_value;
   }
 
@@ -212,7 +212,7 @@ namespace simtbx { namespace Kokkos {
     });
 
     af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
-    transfer_kokkos2shared(output_array, active_pixel_results);
+    kokkostbx::transfer_kokkos2shared(output_array, active_pixel_results);
 
     SCITBX_ASSERT(output_array.size() == output_pixel_size);
     return output_array;
@@ -228,13 +228,13 @@ namespace simtbx { namespace Kokkos {
     resize(m_maskimage, m_total_pixel_count);
     resize(m_floatimage, m_total_pixel_count);
 
-    transfer_shared2kokkos(m_sdet_vector, metrology.sdet);
-    transfer_shared2kokkos(m_fdet_vector, metrology.fdet);
-    transfer_shared2kokkos(m_odet_vector, metrology.odet);
-    transfer_shared2kokkos(m_pix0_vector, metrology.pix0);
-    transfer_shared2kokkos(m_distance, metrology.dists);
-    transfer_shared2kokkos(m_Xbeam, metrology.Xbeam);
-    transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
+    kokkostbx::transfer_shared2kokkos(m_sdet_vector, metrology.sdet);
+    kokkostbx::transfer_shared2kokkos(m_fdet_vector, metrology.fdet);
+    kokkostbx::transfer_shared2kokkos(m_odet_vector, metrology.odet);
+    kokkostbx::transfer_shared2kokkos(m_pix0_vector, metrology.pix0);
+    kokkostbx::transfer_shared2kokkos(m_distance, metrology.dists);
+    kokkostbx::transfer_shared2kokkos(m_Xbeam, metrology.Xbeam);
+    kokkostbx::transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
     fence();
 
     // metrology.show();
