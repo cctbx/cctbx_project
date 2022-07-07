@@ -56,10 +56,10 @@ if (env_etc.enable_kokkos):
   kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
   kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
-  simtbx_kokkos_lib = kokkos_env.SharedLibrary(
-    target="#lib/libsimtbx_diffBraggKOKKOS",
-    source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp"])
-  env_simtbx.Prepend(LIBS=["simtbx_diffBraggKOKKOS"])
+  # simtbx_kokkos_lib = kokkos_env.SharedLibrary(
+  #   target="#lib/libsimtbx_diffBraggKOKKOS",
+  #   source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp"])
+  # env_simtbx.Prepend(LIBS=["simtbx_diffBraggKOKKOS"])
 
 env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
