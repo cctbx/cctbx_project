@@ -241,7 +241,7 @@ def get_b_eff(si=None,out=sys.stdout):
     b_eff=None
   else:
     b_eff=8*3.14159*si.rmsd**2
-    print("Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
+    print("Setting b_eff for fall-off at %5.1f A**2 based on model uncertainty of %5.1f A" \
        %( b_eff,si.rmsd), file=out)
   return b_eff
 
@@ -1002,8 +1002,8 @@ def analyze_anisotropy(
   aniso_info = estimate_s_matrix(aniso_info)
 
   # Total correction
-  print("\nD matrix (Error-based scaling correction factor)\n"+
-       "(Negative means errors increase more in this direction)\n " +
+  print("\nD matrix (Uncertainty-based scaling correction factor)\n"+
+       "(Negative means uncertainties increase more in this direction)\n " +
       "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
      tuple(aniso_info.dd_b_cart)), file = out)
 
@@ -1090,7 +1090,7 @@ def analyze_anisotropy(
   a_zero_values:  isotropic fall-off of the data
   fo_b_cart_as_u_cart: anisotropic fall-off of data
   aa_b_cart_as_u_cart: anisotropy of the data
-  bb_b_cart_as_u_cart: anisotropy of the errors
+  bb_b_cart_as_u_cart: anisotropy of the uncertainties 
   ss_b_cart_as_u_cart: anisotropy of the scale factors
   uu_b_cart_as_u_cart: anisotropic fall-off of data relative to ideal
   overall_scale: radial part of overall correction factor
@@ -1185,7 +1185,7 @@ def get_overall_anisotropy(overall_si,
   n_bins_use,
   out = sys.stdout):
   print("\nEstimating overall fall-off with resolution of data"+
-    " and correction including errors", file = out)
+    " and correction including uncertainties", file = out)
 
   overall_si.cc_list.set_selected(overall_si.cc_list<1.e-4,1.e-4)
   overall_si.rms_fo_list.set_selected(overall_si.rms_fo_list <= 1.e-10, 1.e-10)

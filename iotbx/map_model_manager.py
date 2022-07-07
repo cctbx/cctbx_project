@@ -5529,7 +5529,7 @@ class map_model_manager(object):
         file = self.log)
     if get_tls_from_u:
       print ("\nSupplied TLS assumed to be overall fall-off with resolution"+
-       "\nCorrection for errors C = 1/(1+E**2) will be applied",
+       "\nCorrection for uncertainties C = 1/(1+E**2) will be applied",
          file = self.log)
     else:
       print("\nSupplied TLS assumed to be desired anisotropy of scale factors",
@@ -5816,7 +5816,8 @@ class map_model_manager(object):
       scaling_group_info = working_scale_factor_info.value_list[0]
       direction_vectors = scaling_group_info.direction_vectors
 
-      print("\nLocal anisotropy and errors by XYZ with inside_mask = %s:" %(
+      print(
+       "\nLocal anisotropy and uncertainties by XYZ with inside_mask = %s:" %(
           inside), file = self.log)
       self._print_overall_u(aniso_b_cart,b_iso)
 
@@ -6142,7 +6143,7 @@ class map_model_manager(object):
           ['Estimated anisotropic fall-off of the data relative to ideal',
              'uu_b_cart_as_u_cart'],
           ['Anisotropy of the data', 'aa_b_cart_as_u_cart'],
-          ['Anisotropy of the errors', 'bb_b_cart_as_u_cart'],
+          ['Anisotropy of the uncertainties', 'bb_b_cart_as_u_cart'],
           ['Anisotropy of the scale_factors', 'ss_b_cart_as_u_cart'],
            ):
 
@@ -6225,8 +6226,8 @@ class map_model_manager(object):
        tuple(aa_b_cart_as_u_cart)), file = self.log)
 
     if bb_b_cart_as_u_cart:
-      print("\n Anisotropy of the errors\n"+
-        "(Positive means errors decrease more in this direction)\n " +
+      print("\n Anisotropy of the uncertainties\n"+
+        "(Positive means uncertainties decrease more in this direction)\n " +
        "(  X,      Y,      Z,    XY,    XZ,    YZ)\n"+
        "(%.3f, %.3f, %.3f, %.3f, %.3f, %.3f) " %(
        tuple(bb_b_cart_as_u_cart)), file = self.log)

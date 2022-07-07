@@ -79,7 +79,6 @@ def exercise( out = sys.stdout):
   # get r,t to map mmm2 model on mmm1 model
   shift_aware_rt_info= mmm1.shift_aware_rt_to_superpose_other(mmm2)
   rt_info=shift_aware_rt_info.working_rt_info(from_obj=mmm2,to_obj=mmm1)
-  print (rt_info)
 
   # get mmm2 map superimposed on mmm1 map (in region where it is defined, zero
   #   outside that region)
@@ -166,7 +165,6 @@ def exercise( out = sys.stdout):
   dc.add_map_manager_by_id(model_sharpened_mm,'external_map')
   cc_before = dc.map_map_cc(map_id='map_manager',other_map_id='external_map')
   dc.external_sharpen(n_bins=15,map_id_external_map='external_map')
-  print(dc)
   cc_after = dc.map_map_cc(map_id='map_manager_scaled',other_map_id='external_map')
   print("CC before, after external sharpen n_boxes=1: ",cc_before,cc_after)
   assert approx_equal ((cc_before,cc_after), (0.7,0.95),eps=0.10)
@@ -180,7 +178,6 @@ def exercise( out = sys.stdout):
   cc_after = dc.map_map_cc(map_id='map_manager_scaled',other_map_id='external_map')
   print("CC before, after external sharpen local n_boxes=1: ",cc_before,cc_after)
   assert approx_equal ((cc_before,cc_after), (0.70,0.95),eps=0.10)
-
 
 
   dc = local_mmm.deep_copy()
@@ -203,43 +200,42 @@ def exercise( out = sys.stdout):
   # Test mask and map info functions
   mmm1, mmm2 = get_map_model_managers()
   mmm1.create_mask_around_density(soft_mask=False)
-  mask_info = mmm1.mask_info()
+  mask_info = mmm1.mask_info(quiet=True)
   map_info = mmm1.map_info()
-  mask_info_by_id = mmm1.mask_info(mask_id = 'mask')
+  mask_info_by_id = mmm1.mask_info(mask_id = 'mask',quiet=True)
   map_info_by_id = mmm1.map_info(map_id = 'map_manager')
   assert mask_info() == mask_info_by_id()
   assert map_info() == map_info_by_id()
-  assert (approx_equal(mask_info.fraction_marked, 0.207070707071) or
-          approx_equal(mask_info.fraction_marked, 0.210091991342) )
+  assert approx_equal(mask_info.fraction_marked, 0.207070707071, eps=0.01)
 
   assert approx_equal(map_info.fraction_above_sigma_cutoff, 0.0577876984127)
 
   # create a spherical mask around a point
   print("Spherical masks", )
   dc = mmm1.deep_copy()
-  dc.mask_info()
-  print (dc.mask_info().marked_points )
-  assert dc.mask_info().marked_points in  [9184, 9318]
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points )
+  assert dc.mask_info(quiet=True).marked_points in  [9184, 9318]
   dc.create_spherical_mask()
-  dc.mask_info()
-  print (dc.mask_info().marked_points)
-  assert dc.mask_info().marked_points in [1311, 1286]
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points)
+  assert dc.mask_info(quiet=True).marked_points in [1311, 1286]
   dc.create_spherical_mask(soft_mask_radius=1)
-  dc.mask_info()
-  print (dc.mask_info().marked_points)
-  assert dc.mask_info().marked_points in [8990,]
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points)
+  assert dc.mask_info(quiet=True).marked_points in [8990,]
   dc.create_spherical_mask(soft_mask=False)
-  dc.mask_info()
-  print (dc.mask_info().marked_points)
-  assert dc.mask_info().marked_points in [1566, 1458]
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points)
+  assert dc.mask_info(quiet=True).marked_points in [1566, 1458]
   dc.create_spherical_mask(mask_radius = 4)
-  dc.mask_info()
-  print (dc.mask_info().marked_points)
-  assert dc.mask_info().marked_points in [886, 914]
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points)
+  assert dc.mask_info(quiet=True).marked_points in [886, 914]
   dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
-  dc.mask_info()
-  print (dc.mask_info().marked_points)
-  assert dc.mask_info().marked_points == 654
+  dc.mask_info(quiet=True)
+  print (dc.mask_info(quiet=True).marked_points)
+  assert dc.mask_info(quiet=True).marked_points == 654
 
 
 
