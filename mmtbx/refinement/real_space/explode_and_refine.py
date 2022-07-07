@@ -223,6 +223,8 @@ class run(object):
         fragments=None,
         show=True,
         log=None):
+    if not map_data_ref:
+      map_data_ref = map_data # XXX in case map_data_ref is not supplied
     adopt_init_args(self, locals())
     assert self.mode in ["quick", "thorough"]
     if(self.log is None): self.log = sys.stdout
