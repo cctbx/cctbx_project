@@ -1090,7 +1090,7 @@ def analyze_anisotropy(
   a_zero_values:  isotropic fall-off of the data
   fo_b_cart_as_u_cart: anisotropic fall-off of data
   aa_b_cart_as_u_cart: anisotropy of the data
-  bb_b_cart_as_u_cart: anisotropy of the uncertainties 
+  bb_b_cart_as_u_cart: anisotropy of the uncertainties
   ss_b_cart_as_u_cart: anisotropy of the scale factors
   uu_b_cart_as_u_cart: anisotropic fall-off of data relative to ideal
   overall_scale: radial part of overall correction factor
