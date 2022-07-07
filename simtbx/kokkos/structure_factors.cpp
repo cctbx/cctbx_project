@@ -1,6 +1,6 @@
 //#include "cudatbx/cuda_base.cuh"
 #include "simtbx/kokkos/structure_factors.h"
-#include "simtbx/kokkos/kokkos_utils.h"
+#include "kokkostbx/kokkos_utils.h"
 #include <cstdio>
 
 //using Kokkos::create_mirror_view;
@@ -15,7 +15,7 @@ namespace simtbx { namespace Kokkos {
     double * raw_ptr = linear_amplitudes.begin();
 
     vector_cudareal_t device_Fhkl( "device_Fhkl", linear_amplitudes.size() );
-    transfer_shared2kokkos(device_Fhkl, linear_amplitudes);
+    kokkostbx::transfer_shared2kokkos(device_Fhkl, linear_amplitudes);
     d_channel_Fhkl.push_back(device_Fhkl);
 
     if (d_channel_Fhkl.size()==1) { //first time through

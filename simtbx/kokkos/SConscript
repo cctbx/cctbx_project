@@ -296,7 +296,7 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   source=[
     'detector.cpp',
     'kokkos_instance.cpp',
-    'kokkos_utils.cpp',
+    '../../kokkostbx/kokkos_utils.cpp',
     'simulation.cpp',
     'structure_factors.cpp'
   ]

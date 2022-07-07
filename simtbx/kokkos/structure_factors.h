@@ -5,7 +5,7 @@
 #include "scitbx/array_family/shared.h"
 #include "cctbx/miller.h"
 #include "simtbx/nanoBragg/nanotypes.h"
-#include "simtbx/kokkos/kokkos_types.h"
+#include "kokkostbx/kokkos_types.h"
 
 
 using simtbx::nanoBragg::hklParams;

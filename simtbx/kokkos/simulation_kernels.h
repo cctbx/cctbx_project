@@ -1,4 +1,4 @@
-#include <simtbx/kokkos/kokkos_types.h>
+#include <kokkostbx/kokkos_types.h>
 #include <simtbx/nanoBragg/nanotypes.h>
 #include <simtbx/kokkos/kernel_math.h>
 using simtbx::nanoBragg::shapetype;

@@ -5,7 +5,7 @@
 #include "simtbx/nanoBragg/nanoBragg.h"
 #include "simtbx/kokkos/structure_factors.h"
 #include "simtbx/kokkos/detector.h"
-#include "kokkos_types.h"
+#include "kokkostbx/kokkos_types.h"
 
 namespace simtbx { namespace Kokkos {
 

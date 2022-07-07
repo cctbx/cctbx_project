@@ -1,9 +1,9 @@
-#ifndef SIMTBX_KOKKOS_UTILS_H
-#define SIMTBX_KOKKOS_UTILS_H
+#ifndef KOKKOS_UTILS_H
+#define KOKKOS_UTILS_H
 
 #include "scitbx/array_family/shared.h"
 #include "scitbx/array_family/flex_types.h"
-#include "simtbx/kokkos/kokkos_types.h"
+#include "kokkostbx/kokkos_types.h"
 
 //*******************************************************************
 // Transfer data
@@ -55,7 +55,7 @@ add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
   });
 }
 
-namespace simtbx { namespace Kokkos {
+namespace kokkostbx {
 
   namespace af = scitbx::af;
 
@@ -106,7 +106,6 @@ namespace simtbx { namespace Kokkos {
     transfer_kokkos2X(dst, src);
   }
 
-} // Kokkos
-} // simtbx
+} // kokkostbx
 
-#endif // SIMTBX_KOKKOS_UTILS_H
+#endif // KOKKOS_UTILS_H
