@@ -52,6 +52,10 @@ namespace kokkostbx {
             return data[index];
         }
 
+        KOKKOS_FUNCTION NumType operator[](const int index) const {
+            return data[index];
+        }
+
         // addition
         KOKKOS_FUNCTION friend Derived operator+(const Derived& lhs, const Derived& rhs) {
             Derived sum = lhs;
@@ -163,7 +167,11 @@ namespace kokkostbx {
                 print_num(data[i]);
             }
             printf("\n");
-        }  
+        }
+
+        static constexpr KOKKOS_FUNCTION size_t get_size() {
+            return size;
+        }
 
         KOKKOS_FUNCTION void zero() {
             for (size_t i=0; i<size; ++i) {
