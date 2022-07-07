@@ -18,7 +18,7 @@
 # http://www.iucr.org/resources/cif/software.                                #
 #                                                                            #
 # This file may be used for bona fide research purposes within the           #
-# scientific community so long as proper attribution is given to the journal # 
+# scientific community so long as proper attribution is given to the journal #
 # article from which it was obtained.                                        #
 #                                                                            #
 ##############################################################################
