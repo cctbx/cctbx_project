@@ -748,7 +748,7 @@ def split_model_with_pae(
    On failure:  returns None
   """
 
-  print("\nSelecting domains with predicted alignment error estimates",
+  print("\nSelecting domains with predicted alignment uncertainty estimates",
      file = log)
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
