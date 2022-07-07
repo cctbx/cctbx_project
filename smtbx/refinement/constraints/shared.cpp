@@ -178,15 +178,13 @@ namespace smtbx { namespace refinement { namespace constraints {
     const u_star_parameter* ref = reference();
     tensor_rank_2_t u_c =
       cctbx::adptbx::u_star_as_u_cart(unit_cell, ref->value);
-    scitbx::mat3<double> u_t = rm * u_c * rmt;
+    tensor_rank_2_t u_c_s = u_c * sc->value;
+    scitbx::mat3<double> u_t = rm * u_c_s * rmt;
     // update the value
     value = cctbx::adptbx::u_cart_as_u_star(unit_cell,
       tensor_rank_2_t(
         u_t[0], u_t[4], u_t[8],
         u_t[1], u_t[2], u_t[5]));
-    for (size_t i = 0; i < 3; i++) {
-      value[i] *= sc->value;
-    }
 
     if (jacobian_transpose == 0) {
       return;
@@ -195,8 +193,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     static const int sym_acs[] = { 0,4,8,1,2,5 };
     sparse_matrix_type& jt = *jacobian_transpose;
     // transforms for the jacobian values
-    scitbx::mat3<double> jtm = unit_cell.fractionalization_matrix() *
-      rm * unit_cell.orthogonalization_matrix(),
+    scitbx::mat3<double> jtm = unit_cell.fractionalization_matrix() * rm,
       jtm_t = jtm.transpose();
     for (int i = 0; i < jt.n_rows(); i++) {
       tensor_rank_2_t t;
@@ -212,9 +209,11 @@ namespace smtbx { namespace refinement { namespace constraints {
         }
       }
       else {
-        scitbx::mat3<double> x = jtm * t * jtm_t;
+        tensor_rank_2_t t_c =
+          cctbx::adptbx::u_star_as_u_cart(unit_cell, t);
+        scitbx::mat3<double> x = jtm * (t_c * sc->value) * jtm_t;
         for (int j = 0; j < 6; j++) {
-          jt(i, index() + j) = x[sym_acs[j]];
+          jt(i, index() + j) = j < 3 ? x[sym_acs[j]] : 2*x[sym_acs[j]];
         }
       }
     }
@@ -223,23 +222,20 @@ namespace smtbx { namespace refinement { namespace constraints {
       if (!angles[j]->is_variable()) {
         continue;
       }
-      scitbx::mat3<double> dm = rm * u_c * rmd[j].transpose() +
-        rmd[j] * u_c * rmt;
+      scitbx::mat3<double> dm = rm * u_c_s * rmd[j].transpose() +
+        rmd[j] * u_c_s * rmt;
       dm = unit_cell.fractionalization_matrix() * dm *
         unit_cell.fractionalization_matrix().transpose();
       for (int k = 0; k < 6; k++) {
-        jt(angles[j]->index(), index() + k) = dm[sym_acs[k]];
+        jt(angles[j]->index(), index() + k) = k <  3 ? dm[sym_acs[k]] : 2*dm[sym_acs[k]];
       }
     }
 
     // expansion/contraction
     if (sc->is_variable()) {
       for (int j = 0; j < 6; j++) {
-        double v = value[j];
-        if (j < 3 && sc->value != 0) {
-          v /= sc->value;
-        }
-        jt(sc->index(), index()+j) = v;
+        double v = value[j] / sc->value;
+        jt(sc->index(), index()+j) = j < 3 ? v : 2*v;
       }
     }
 
