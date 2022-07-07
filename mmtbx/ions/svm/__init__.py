@@ -121,6 +121,17 @@ def _get_classifier(svm_name=None):
     _CLASSIFIER_OPTIONS[svm_name] = load(options_path)
 
   vector_options, scaling, features = _CLASSIFIER_OPTIONS[svm_name]
+  from libtbx.utils import to_str
+  tmp = {}
+  for key, item in vector_options.items():
+    key=to_str(key)
+    if key=='elements':
+      tmp[key]=[]
+      for e in item:
+        tmp[key].append(to_str(e))
+    else:
+      tmp[key]=item
+  vector_options=tmp
   return _CLASSIFIER[svm_name], vector_options, scaling, features
 
 def ion_class(chem_env):
