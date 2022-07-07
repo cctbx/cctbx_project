@@ -1,9 +1,13 @@
 #ifndef SIMTBX_KOKKOS_KERNEL_MATH_H
 #define SIMTBX_KOKKOS_KERNEL_MATH_H
 
+#include <kokkostbx/kokkos_vector3.h>
+
 #ifndef CUDAREAL
 #define CUDAREAL float
 #endif
+
+using kokkostbx::vector3;
 
 // cubic spline interpolation functions
 KOKKOS_FUNCTION static void polint(const CUDAREAL *xa, const CUDAREAL *ya, CUDAREAL x, CUDAREAL *y);
@@ -14,6 +18,7 @@ KOKKOS_FUNCTION static CUDAREAL dot_product(const CUDAREAL *x, const CUDAREAL *y
 KOKKOS_FUNCTION static CUDAREAL unitize(CUDAREAL * vector, CUDAREAL *new_unit_vector);
 // polarization factor from vectors
 KOKKOS_FUNCTION static CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *incident, CUDAREAL *diffracted, const vector_cudareal_t axis);
+KOKKOS_FUNCTION static CUDAREAL polarization_factor(CUDAREAL kahn_factor, const vector3<CUDAREAL> incident, const vector3<CUDAREAL> diffracted, const vector3<CUDAREAL> axis);
 // vector cross product where vector magnitude is 0th element
 KOKKOS_INLINE_FUNCTION static void cross_product(CUDAREAL *x, CUDAREAL *y, CUDAREAL *z);
 /* rotate a 3-vector about a unit vector axis */
@@ -107,6 +112,41 @@ KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, CUDAREAL *inc
 
                 // compute the angle of the diffracted ray projected onto the incident E-B plane
                 psi = -atan2(B_out[0], E_out[0]);
+        }
+
+        // correction for polarized incident beam
+        return 0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * psi) * sin2theta_sqr);
+}
+
+KOKKOS_FUNCTION CUDAREAL polarization_factor(CUDAREAL kahn_factor, const vector3<CUDAREAL> incident, const vector3<CUDAREAL> diffracted, const vector3<CUDAREAL> axis) {
+        // expects incident, diffracted and axis to be unit vectors
+
+        // component of diffracted unit vector along incident beam unit vector
+        CUDAREAL cos2theta = incident.dot(diffracted);
+        CUDAREAL cos2theta_sqr = cos2theta * cos2theta;
+        CUDAREAL sin2theta_sqr = 1 - cos2theta_sqr;
+
+        CUDAREAL psi = 0.0;
+        if (kahn_factor != 0.0) {
+                // tricky bit here is deciding which direction the E-vector lies in for each source
+                // here we assume it is closest to the "axis" defined above
+
+                // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+                vector3<CUDAREAL> B_in = axis.cross(incident);
+                // make it a unit vector
+                B_in.normalize();
+
+                // cross product with incident beam to get E-vector direction
+                vector3<CUDAREAL> E_in = incident.cross(B_in);
+                // make it a unit vector
+                E_in.normalize();
+
+                // get components of diffracted ray projected onto the E-B plane
+                CUDAREAL E_out = diffracted.dot(E_in);
+                CUDAREAL B_out = diffracted.dot(B_in);
+
+                // compute the angle of the diffracted ray projected onto the incident E-B plane
+                psi = -atan2(B_out, E_out);
         }
 
         // correction for polarized incident beam
