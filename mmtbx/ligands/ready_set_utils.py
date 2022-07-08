@@ -157,6 +157,7 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
                                               bonds=None,
                                               use_capping_hydrogens=False,
                                               append_to_end_of_model=False,
+                                              retain_original_hydrogens=True,
                                              ):
   rc=[]
   for atom_group, atoms in generate_atom_group_atom_names(residue_group,
@@ -169,6 +170,7 @@ def add_n_terminal_hydrogens_to_residue_group(residue_group,
         bonds=bonds,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
+        retain_original_hydrogens=retain_original_hydrogens,
         n_ca_c=atoms,
       )
       assert type(tmp)!=type(''), 'not string "%s" %s' % (tmp, type(tmp))
@@ -576,6 +578,7 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
                                               terminate_all_C_terminals=False,
                                               use_capping_hydrogens=False,
                                               append_to_end_of_model=False,
+                                              retain_original_hydrogens=True,
                                               verbose=False,
                                               ):
   additional_hydrogens = []
@@ -597,6 +600,7 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
           residue_group,
           use_capping_hydrogens=use_capping_hydrogens,
           append_to_end_of_model=append_to_end_of_model,
+          retain_original_hydrogens=retain_original_hydrogens,
         )
       if rc: additional_hydrogens.append(rc)
     if end:
@@ -618,6 +622,7 @@ def add_terminal_hydrogens(hierarchy,
                            terminate_all_C_terminals=False,
                            use_capping_hydrogens=False,
                            append_to_end_of_model=False,
+                           retain_original_hydrogens=True,
                            verbose=False,
                            ):
   """Adds hydrogen atoms to a macromolecular model
@@ -639,6 +644,7 @@ def add_terminal_hydrogens(hierarchy,
     terminate_all_C_terminals=terminate_all_C_terminals,
     use_capping_hydrogens=use_capping_hydrogens,
     append_to_end_of_model=append_to_end_of_model,
+    retain_original_hydrogens=retain_original_hydrogens,
     verbose=verbose,
     )
 

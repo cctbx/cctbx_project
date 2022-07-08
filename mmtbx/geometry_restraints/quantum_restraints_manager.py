@@ -87,21 +87,26 @@ def write_restraints(model, filename, header=None, log=None):
   f.write(str(co))
   del f
 
-def add_hydrogen_atoms_to_model(model,
-                                use_capping_hydrogens=False,
-                               # use_neutron_distances=True,
-                               # n_terminal_charge=True,
-                               ):
+def add_additional_hydrogen_atoms_to_model( model,
+                                            use_capping_hydrogens=False,
+                                            # use_neutron_distances=True,
+                                            retain_original_hydrogens=True,
+                                            append_to_end_of_model=False,
+                                            n_terminal_charge=True,
+                                            ):
   from mmtbx.ligands.ready_set_utils import add_terminal_hydrogens
   from mmtbx.ligands.ready_set_utils import add_water_hydrogen_atoms_simple
   from mmtbx.ligands.ready_set_utils import delete_charged_n_terminal_hydrogens
   rc = add_terminal_hydrogens( model.get_hierarchy(),
                                model.get_restraints_manager().geometry,
                                use_capping_hydrogens=use_capping_hydrogens,
+                               retain_original_hydrogens=retain_original_hydrogens,
+                               append_to_end_of_model=append_to_end_of_model,
                                )
   assert not rc
   rc = add_water_hydrogen_atoms_simple(model.get_hierarchy())
-  rc = delete_charged_n_terminal_hydrogens(model.get_hierarchy())
+  if not n_terminal_charge:
+    rc = delete_charged_n_terminal_hydrogens(model.get_hierarchy())
 
 def select_and_reindex(model,
                        selection_str=None,
@@ -268,7 +273,8 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_model.log=null_out()
   buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
-  add_hydrogen_atoms_to_model(buffer_model, use_capping_hydrogens=qmr.capping_groups)
+  add_additional_hydrogen_atoms_to_model(buffer_model,
+                                         use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
   buffer_model.process(make_restraints=True)
