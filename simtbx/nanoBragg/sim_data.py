@@ -83,6 +83,9 @@ class SimData:
     self.num_xtals = 1  # number of xtals, used in the hopper script
     self.dxtbx_spec = None  # spectrum object from dxtbx
     self.functionals = []  # target functionals  container ?
+    self.use_psf = False  # flag to specify whether psf should be applied to the model
+    self.PSF = None   # place holder for the point-spread-function returned by diffBragg/psf.py method makeMoffat_integPSF
+    self.psf_args = None # place holder for a dictionary containing the 3 PSF arguments (see example in diffBragg/psf.py
 
   @property
   def background_raw_pixels(self):

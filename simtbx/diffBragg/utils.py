@@ -28,6 +28,7 @@ from iotbx import file_reader
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
+from simtbx.diffBragg import psf
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
@@ -805,6 +806,15 @@ def simulator_from_expt_and_params(expt, params=None):
     MAIN_LOGGER.debug("Detector thicksteps = %d" % SIM.D.detector_thicksteps )
     MAIN_LOGGER.debug("Detector thick = %f mm" % SIM.D.detector_thick_mm )
     MAIN_LOGGER.debug("Detector atten len = %f mm" % SIM.D.detector_attenuation_length_mm )
+    if params.simulator.psf.use:
+        SIM.use_psf = True
+        SIM.psf_args = {'pixel_size': SIM.detector[0].get_pixel_size()[0]*1e3,
+                'fwhm': params.simulator.psf.fwhm,
+                'psf_radius': params.simulator.psf.radius}
+        fwhm_pix = SIM.psf_args["fwhm"] / SIM.psf_args["pixel_size"]
+        kern_size = SIM.psf_args["psf_radius"]*2 + 1
+        SIM.PSF = psf.makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
+
     return SIM
 
 
