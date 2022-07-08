@@ -53,13 +53,20 @@ def exercise():
   ]
 
 def exercise_2():
-  fes_binding = rcsb_web_services.chemical_id_search("FES", xray_only=False)
+  fes_binding = rcsb_web_services.chemical_id_search(
+      "FES",
+      xray_only=False,
+      # log=sys.stdout
+      )
   assert len(fes_binding) > 765, len(fes_binding)
-  di1_examples = rcsb_web_services.chemical_id_search('Di1',
-                                                      data_only=True,
-                                                      sort_by_resolution=True,
-                                                      )
-  print(di1_examples)
+  # checking correct work when no results found
+  di1_examples = rcsb_web_services.chemical_id_search(
+      'Di1',
+      data_only=True,
+      sort_by_resolution=True,
+      # log=sys.stdout,
+      )
+  assert len(di1_examples) == 0
 
 if (__name__ == "__main__"):
   # thorough_exercise()

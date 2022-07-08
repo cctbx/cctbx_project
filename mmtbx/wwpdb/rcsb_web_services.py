@@ -113,10 +113,11 @@ def post_query(query_json, xray_only=True, d_max=None, d_min=None,
     print("  will sort by resolution", file=log)
   print("  executing HTTP request...", file=log)
   r = requests.post(search_base_url, json=query_json)
-  r_json = r.json()
   res_ids = []
-  for res in r_json["result_set"]:
-    res_ids.append(str(res["identifier"].replace('_', ':')))
+  if r.status_code == 200:
+    r_json = r.json()
+    for res in r_json["result_set"]:
+      res_ids.append(str(res["identifier"].replace('_', ':')))
   return res_ids
 
 def sequence_search(
