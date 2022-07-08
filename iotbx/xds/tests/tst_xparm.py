@@ -28,7 +28,7 @@ class Test(object):
 
     f = open_tmp_file(suffix='XPARM.XDS', mode='wb')
     f.close()
-    writer = xparm.writer(
+    xds_str = xparm.write(
       handle.starting_frame,
       handle.starting_angle,
       handle.oscillation_range,
@@ -50,7 +50,8 @@ class Test(object):
       handle.detector_normal,
       handle.segments,
       handle.orientation)
-    writer.write_file(f.name)
+    with open(f.name, 'w') as f:
+      f.write(xds_str)
     handle_recycled = xparm.reader()
     # make sure we wrote out version 2
     assert handle_recycled.find_version(f.name) == 2
