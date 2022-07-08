@@ -8,7 +8,7 @@
 namespace kokkostbx {
 
     template <typename NumType>
-    struct matrix3 : public matrix_base<matrix3<NumType>, NumType, 3> { 
+    struct matrix3 : public matrix_base<matrix3<NumType>, NumType, 3> {
 
         using matrix_base = kokkostbx::matrix_base<matrix3<NumType>, NumType, 3>;
 
