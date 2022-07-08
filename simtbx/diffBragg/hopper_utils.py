@@ -15,6 +15,7 @@ from dials.array_family import flex
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 from simtbx.diffBragg.attr_list import NB_BEAM_ATTRS, NB_CRYST_ATTRS, DIFFBRAGG_ATTRS
+from simtbx.diffBragg import psf
 
 
 try:
@@ -962,6 +963,56 @@ class DataModeler:
         return target.x0
 
 
+
+def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args=None,
+        roi_id_slices=None, roi_id_unique=None):
+    if not SIM.use_psf:
+        return model_pix, J
+    if PSF is None:
+        PSF = SIM.PSF
+        assert PSF is not None
+    if psf_args is None:
+        psf_args = SIM.psf_args
+        assert psf_args is not None
+    if roi_id_slices is None:
+        roi_id_slices = SIM.roi_id_slices
+    if roi_id_unique is None:
+        roi_id_unique = SIM.roi_id_unique
+
+    coords = pan_fast_slow.as_numpy_array()
+    pid = coords[0::3]
+    fid = coords[1::3]
+    sid = coords[2::3]
+
+    ref_xpos = []
+    if J is not None:
+        for name in SIM.P:
+            p = SIM.P[name]
+            if p.refine:
+                ref_xpos.append( p.xpos)
+
+    for i in roi_id_unique:
+        for slc in roi_id_slices[i]:
+            pvals = pid[slc]
+            fvals = fid[slc]
+            svals = sid[slc]
+            f0 = fvals.min()
+            s0 = svals.min()
+            f1 = fvals.max()
+            s1 = svals.max()
+            fdim = int(f1-f0+1)
+            sdim = int(s1-s0+1)
+            img = model_pix[slc].reshape((sdim, fdim))
+            img = psf.convolve_with_psf(img, psf=PSF, **psf_args)
+            model_pix[slc] = img.ravel()
+            for xpos in ref_xpos: # if J is None, then ref_xpos should be empty!
+                deriv_img = J[xpos, slc].reshape((sdim, fdim))
+                deriv_img = psf.convolve_with_psf(deriv_img, psf=PSF, **psf_args)
+                J[xpos, slc] = deriv_img.ravel()
+
+    return model_pix, J
+
+
 def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
     #params_per_xtal = np.array_split(x[:num_per_xtal_params], SIM.num_xtals)
@@ -1153,6 +1204,9 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
                 else:
                     d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
                 J[p.xpos, slc] += d
+
+    if SIM.use_psf:
+        model_pix, J = convolve_model_with_psf(model_pix, J, SIM, pfs)
 
     return model_pix, J
 

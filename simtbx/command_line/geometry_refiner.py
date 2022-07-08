@@ -25,6 +25,7 @@ from pylab import plt
 from scipy.optimize import basinhopping
 if COMM.rank > 0:
     sys.tracebacklimit = 0
+from simtbx.diffBragg import psf
 
 # diffBragg internal indices for derivative manager
 ROTXYZ_ID = hopper_utils.ROTXYZ_IDS
@@ -307,6 +308,9 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
 
     # this is the total forward model:
     model_pix = bragg + Modeler.all_background
+    if SIM.use_psf:
+        model_pix,_ = hopper_utils.convolve_model_with_psf(model_pix, None, SIM,  Modeler.pan_fast_slow, roi_id_slices=Modeler.roi_id_slices, roi_id_unique=Modeler.roi_id_unique)
+
 
     if return_model:
         return model_pix
@@ -333,14 +337,24 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
             scale_fac, p = perRoiScaleFactors[roi_id]
             slc = Modeler.roi_id_slices[roi_id][0]  # theres just one slice for each roi_id
             d = p.get_deriv(x[p.xpos], bragg_no_roi[slc])
+
+            if SIM.use_psf:
+                x1,x2,y1,y2 = Modeler.rois[roi_id]
+                sdim, fdim = y2-y1, x2-x1
+                d_img = d.reshape((sdim, fdim))
+                d_img = psf.convolve_with_psf(d_img, psf=SIM.PSF, **SIM.psf_args)
+                d = d_img.ravel()
+
             d_trusted = Modeler.all_trusted[slc]
             common_term_slc = common_grad_term[slc]
             J[p.name] = (common_term_slc*d)[d_trusted].sum()
 
     # scale factor gradients
+    conv_args = {"J": None, "SIM": SIM, "pan_fast_slow": Modeler.pan_fast_slow, "roi_id_slices": Modeler.roi_id_slices, "roi_id_unique": Modeler.roi_id_unique}
     if not G.fix:
         bragg_no_roi_scale = bragg_no_scale*Modeler.per_roi_scales_per_pix
         scale_grad = G.get_deriv(x[G.xpos], bragg_no_roi_scale)
+        scale_grad,_ = hopper_utils.convolve_model_with_psf(scale_grad, **conv_args)
         J[G.name] = (common_grad_term*scale_grad)[Modeler.all_trusted].sum()
 
     # Umat gradients
@@ -349,6 +363,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
             rot_db_id = ROTXYZ_ID[i_rot]
             rot_grad = scale*SIM.D.get_derivative_pixels(rot_db_id).as_numpy_array()[:npix]
             rot_grad = rot.get_deriv(x[rot.xpos], rot_grad)
+            rot_grad,_ = hopper_utils.convolve_model_with_psf(rot_grad, **conv_args)
             J[rot.name] = (common_grad_term*rot_grad)[Modeler.all_trusted].sum()
 
     # mosaic block size gradients
@@ -357,6 +372,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
         for i_N, N in enumerate([Na, Nb, Nc]):
             N_grad = scale*(Nabc_grad[i_N][:npix].as_numpy_array())
             N_grad = N.get_deriv(x[N.xpos], N_grad)
+            N_grad,_ = hopper_utils.convolve_model_with_psf(N_grad, **conv_args)
             J[N.name] = (common_grad_term*N_grad)[Modeler.all_trusted].sum()
 
     # unit cell gradients
@@ -364,13 +380,16 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
         for i_ucell, uc_p in enumerate(ucell_pars):
             d = scale*SIM.D.get_derivative_pixels(hopper_utils.UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
             d = uc_p.get_deriv(x[uc_p.xpos], d)
+            d,_ = hopper_utils.convolve_model_with_psf(d, **conv_args)
             J[ucell_pars[i_ucell].name] = (common_grad_term*d)[Modeler.all_trusted].sum()
 
     # detector model gradients
     detector_derivs = []
     for diffbragg_parameter_id in PAN_OFS_IDS+PAN_XYZ_IDS:
         try:
-            d = common_grad_term*scale*(SIM.D.get_derivative_pixels(diffbragg_parameter_id).as_numpy_array()[:npix])
+            d = SIM.D.get_derivative_pixels(diffbragg_parameter_id).as_numpy_array()[:npix]
+            d,_ = hopper_utils.convolve_model_with_psf(d, **conv_args)
+            d = common_grad_term*scale*d
         except ValueError:
             d = None
         detector_derivs.append(d)

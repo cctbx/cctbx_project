@@ -787,6 +787,17 @@ simulator {
       .help = number of layers within sensor where scattering
       .help = will be averaged over (evenly divided). This is a nanoBragg attribute
   }
+  psf {
+    use = False
+      .type = bool
+      .help = optionally apply a point-spread-function to the model
+    fwhm = 100
+      .type = float
+      .help = PSF full width half max in microns
+    radius = 7
+      .type = int
+      .help = PSF kernel radius (in pixels)
+  }
 }
 """
 
