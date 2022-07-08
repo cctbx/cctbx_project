@@ -642,6 +642,13 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     // const int stride = fstride * sstride;
     Kokkos::parallel_for("add_background", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
 
+        vec3 sdet_tmp {sdet_vector(1), sdet_vector(2), sdet_vector(3)};
+        vec3 fdet_tmp {fdet_vector(1), fdet_vector(2), fdet_vector(3)};
+        vec3 odet_tmp {odet_vector(1), odet_vector(2), odet_vector(3)};
+        vec3 pix0_tmp {pix0_vector(1), pix0_vector(2), pix0_vector(3)};
+
+        vec3 polar_vector_tmp {polar_vector(1), polar_vector(2), polar_vector(3)};
+
         const int fpixel = pixIdx % fpixels;
         const int spixel = pixIdx / fpixels;
         // reset background photon count for this pixel
@@ -657,17 +664,21 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                 for(int thick_tic=0; thick_tic<detector_thicksteps; ++thick_tic) {
                     // assume "distance" is to the front of the detector sensor layer
                     CUDAREAL Odet = thick_tic*detector_thickstep;
-                    CUDAREAL pixel_pos[4];
+                //     CUDAREAL pixel_pos[4];
 
-                    pixel_pos[0] = 0.0;
-                    pixel_pos[1] = Fdet * fdet_vector(1) + Sdet * sdet_vector(1) + Odet * odet_vector(1) + pix0_vector(1); // X
-                    pixel_pos[2] = Fdet * fdet_vector(2) + Sdet * sdet_vector(2) + Odet * odet_vector(2) + pix0_vector(2); // Y
-                    pixel_pos[3] = Fdet * fdet_vector(3) + Sdet * sdet_vector(3) + Odet * odet_vector(3) + pix0_vector(3); // Z
+                //     pixel_pos[0] = 0.0;
+                //     pixel_pos[1] = Fdet * fdet_vector(1) + Sdet * sdet_vector(1) + Odet * odet_vector(1) + pix0_vector(1); // X
+                //     pixel_pos[2] = Fdet * fdet_vector(2) + Sdet * sdet_vector(2) + Odet * odet_vector(2) + pix0_vector(2); // Y
+                //     pixel_pos[3] = Fdet * fdet_vector(3) + Sdet * sdet_vector(3) + Odet * odet_vector(3) + pix0_vector(3); // Z
+
+                    vec3 pixel_pos = Fdet * fdet_tmp + Sdet * sdet_tmp + Odet * odet_tmp + pix0_tmp;
 
                     // no curved detector option (future implementation)
                     // construct the diffracted-beam unit vector to this pixel
-                    CUDAREAL diffracted[4];
-                    CUDAREAL airpath = unitize(pixel_pos, diffracted);
+                //     CUDAREAL diffracted[4];
+                //     CUDAREAL airpath = unitize(pixel_pos, diffracted);
+                    CUDAREAL airpath = pixel_pos.length();
+                    vec3 diffracted = pixel_pos.get_unit_vector();
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                     CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
@@ -678,7 +689,8 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     CUDAREAL capture_fraction = 1.0;
                     if(detector_thick > 0.0){
                         // inverse of effective thickness increase
-                        CUDAREAL parallax = diffracted[1] * odet_vector(1) + diffracted[2] * odet_vector(2) + diffracted[3] * odet_vector(3);
+                        // CUDAREAL parallax = diffracted[1] * odet_vector(1) + diffracted[2] * odet_vector(2) + diffracted[3] * odet_vector(3);
+                        CUDAREAL parallax = diffracted.dot(odet_tmp);
                         capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
                                             -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                     }
@@ -687,23 +699,27 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                     for(int source=source_start; source<sources; ++source) {
 
                         // retrieve stuff from cache
-                        CUDAREAL incident[4];
-                        incident[1] = -source_X(source);
-                        incident[2] = -source_Y(source);
-                        incident[3] = -source_Z(source);
+                        // CUDAREAL incident[4];
+                        // incident[1] = -source_X(source);
+                        // incident[2] = -source_Y(source);
+                        // incident[3] = -source_Z(source);
+                        vec3 incident {-source_X(source), -source_Y(source), -source_Z(source)};
                         CUDAREAL lambda = source_lambda(source);
                         CUDAREAL source_fraction = source_I(source);
                         // construct the incident beam unit vector while recovering source distance
-                        unitize(incident, incident);
+                        incident.normalize();
+                        // unitize(incident, incident);
 
                         // construct the scattering vector for this pixel
-                        CUDAREAL scattering[4];
-                        scattering[1] = (diffracted[1]-incident[1])/lambda;
-                        scattering[2] = (diffracted[2]-incident[2])/lambda;
-                        scattering[3] = (diffracted[3]-incident[3])/lambda;
-                        magnitude(scattering);
+                        vec3 scattering = (diffracted - incident) / lambda;
+                        // CUDAREAL scattering[4];
+                        // scattering[1] = (diffracted[1]-incident[1])/lambda;
+                        // scattering[2] = (diffracted[2]-incident[2])/lambda;
+                        // scattering[3] = (diffracted[3]-incident[3])/lambda;
+                        // magnitude(scattering);
                         // sin(theta)/lambda is half the scattering vector length
-                        CUDAREAL stol = 0.5*scattering[0];
+                        // CUDAREAL stol = 0.5*scattering[0];
+                        CUDAREAL stol = 0.5*scattering.length();
 
                         // now we need to find the nearest four "stol file" points
                         while(stol > stol_of(nearest) && nearest <= stols){ ++nearest; };
@@ -733,8 +749,9 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         CUDAREAL polar = 1.0;
                         if(! nopolar){
                             // need to compute polarization factor
-                            CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
-                            polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+                        //     CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
+                        //     polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+                            polar = polarization_factor(polarization, incident, diffracted, polar_vector_tmp);
                         }
 
                         // accumulate unscaled pixel intensity from this
