@@ -603,6 +603,8 @@ def get_lddt_from_b(b_values, input_lddt_is_fractional = True):
   Outputs:
     lddt_values: flex array of lddt values
   """
+  if not b_values:
+    return None
 
   # b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
   rmsd = flex.sqrt( b_values/ ((8 * (3.14159 ** 2)) / 3.0))
