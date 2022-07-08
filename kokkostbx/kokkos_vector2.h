@@ -8,7 +8,7 @@
 namespace kokkostbx {
 
     template <typename NumType>
-    struct vector2 : public vector_base<vector2<NumType>, NumType, 2> { 
+    struct vector2 : public vector_base<vector2<NumType>, NumType, 2> {
 
         using vector_base = kokkostbx::vector_base<vector2<NumType>, NumType, 2>;
 

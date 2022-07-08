@@ -8,7 +8,7 @@
 namespace kokkostbx {
 
     template <typename Derived, typename NumType, size_t rank>
-    struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, NumType, rank*rank> { 
+    struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, NumType, rank*rank> {
 
         const size_t size = rank*rank;
 
@@ -21,7 +21,7 @@ namespace kokkostbx {
         KOKKOS_FUNCTION matrix_base(NumType arr[]) : vector_base(arr) { };
 
         static Derived KOKKOS_FUNCTION diagonal_matrix(NumType arr[]) {
-            Derived diagonal; 
+            Derived diagonal;
             for (size_t i=0; i<rank; ++i) {
                 diagonal.data[i*(rank+1)] = arr[i];
             }
@@ -51,11 +51,11 @@ namespace kokkostbx {
                 print_num(vector_base::data[i]);
             }
             printf("\n");
-        } 
+        }
     };
 
     template <typename NumType, size_t rank>
-    struct matrix : public matrix_base<matrix<NumType, rank>, NumType, rank> { 
+    struct matrix : public matrix_base<matrix<NumType, rank>, NumType, rank> {
 
         using matrix_base = kokkostbx::matrix_base<matrix<NumType, rank>, NumType, rank>;
 

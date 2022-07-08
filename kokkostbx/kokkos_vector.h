@@ -109,7 +109,7 @@ namespace kokkostbx {
         KOKKOS_FUNCTION void operator-=(const NumType& v) {
             for (size_t i=0; i<size; ++i) {
                 data[i] -= v;
-            }            
+            }
         }
 
         // multiplication
@@ -157,7 +157,7 @@ namespace kokkostbx {
         KOKKOS_FUNCTION void operator/=(const NumType& v) {
             for (size_t i=0; i<size; ++i) {
                 data[i] /= v;
-            }            
+            }
         }
 
         // METHODS
@@ -234,7 +234,7 @@ namespace kokkostbx {
     };
 
     template <typename NumType, size_t size>
-    struct vector : public vector_base<vector<NumType, size>, NumType, size> { 
+    struct vector : public vector_base<vector<NumType, size>, NumType, size> {
 
         using vector_base = kokkostbx::vector_base<vector<NumType, size>, NumType, size>;
 
