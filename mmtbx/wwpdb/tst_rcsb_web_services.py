@@ -55,6 +55,11 @@ def exercise():
 def exercise_2():
   fes_binding = rcsb_web_services.chemical_id_search("FES", xray_only=False)
   assert len(fes_binding) > 765, len(fes_binding)
+  di1_examples = rcsb_web_services.chemical_id_search('Di1',
+                                                      data_only=True,
+                                                      sort_by_resolution=True,
+                                                      )
+  print(di1_examples)
 
 if (__name__ == "__main__"):
   # thorough_exercise()
