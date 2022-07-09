@@ -1836,16 +1836,72 @@ def composition_from_sequence(sequence):
     n_residues += len(seq)
   return n_residues, n_bases
 
-def clear_empty_lines(text):
+def duplicate_multiple_chains(text):
+  # make chains that are marked with >7WZE_1|Chains A, B[Auth X]| or similar
+  #  N times that many chains
+  new_groups = []
+  next_lines = []
+  unused_lines = []
+  for line in text.splitlines():
+    line = line.strip()
+    if line.startswith(">"):
+      next_lines = [line]
+      new_groups.append(next_lines)
+    elif next_lines:
+      next_lines.append(line)
+    else:
+      unused_lines.append(line)
+  if unused_lines and new_groups:
+    return text # could not do anything with this
+
+  elif unused_lines:
+    return text # nothing to do
+
+  else: # usual
+    new_lines = []
+    for new_group in new_groups:
+      if not new_group or not new_group[0]:
+        continue
+      n = get_number_of_dups(new_group[0])
+      lines_in_group= new_group[1:]
+      for i in range(n):
+        new_lines.append("")
+        new_lines+=lines_in_group
+    return "\n\n".join(new_lines)
+
+def get_number_of_dups(line):
+  # looks like >7WZE_1|Chains A, B[Auth X]| or similar
+  if not line.startswith(">"):
+    return 1
+  spl = line.split("|")
+  if len(spl) < 2:
+    return 1
+  text = spl[1].strip()
+  if not text.startswith("Chain"):
+    return 1
+  if text.find("[") > -1:
+    text = text.split("[")[0]
+  text = text.replace("Chains","").replace(",","")
+  values = text.split()
+  return max(1, len(values))
+
+def clear_empty_lines(text, apply_duplicate_multiple_chains = True):
+  # First duplicate any multiple chains, then clear empty lines.
+  if apply_duplicate_multiple_chains:
+    text = duplicate_multiple_chains(text)
   # make empty lines just a blank line.  Includes >>> etc.
   new_lines=[]
+  prev_line = ""
   for line in text.splitlines():
     if not line.replace(">","").replace(" ",""):
        line=""
     elif line.startswith(">"):
        line=""
     line=line.replace("?","")
+    if (not line) and (not prev_line):
+      continue # skip blanks if dup or at beginning
     new_lines.append(line)
+    prev_line = line
   return "\n".join(new_lines)+"\n"
 
 def get_sequences(file_name=None,text=None,remove_duplicates=None):
@@ -1859,7 +1915,6 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
       text = f.read()
   # clear any lines that have only > and nothing else
   text=clear_empty_lines(text)
-
   chain_types=[]
   ( sequences, unknowns ) = parse_sequence( text )
   simple_sequence_list=[]
