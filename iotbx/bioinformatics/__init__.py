@@ -1865,8 +1865,7 @@ def duplicate_multiple_chains(text):
       n = get_number_of_dups(new_group[0])
       lines_in_group= new_group[1:]
       for i in range(n):
-        new_lines.append("")
-        new_lines+=lines_in_group
+        new_lines.append("".join(lines_in_group))
     return "\n\n".join(new_lines)
 
 def get_number_of_dups(line):
