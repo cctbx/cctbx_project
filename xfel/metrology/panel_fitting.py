@@ -128,7 +128,7 @@ class three_feature_fit(Panel_MCD_Filter):
 
     from sklearn.covariance import EmpiricalCovariance, MinCovDet
     # compare estimators learnt from the full data set with true parameters
-    emp_cov = EmpiricalCovariance(assume_centered=True, store_precision=True).fit(X=training_data)
+    self.emp_cov = EmpiricalCovariance(assume_centered=True, store_precision=True).fit(X=training_data)
 
     features = ["ΔR","ΔT","ΔΨ(deg)"]
     if verbose:
@@ -138,12 +138,12 @@ class three_feature_fit(Panel_MCD_Filter):
     self.cross_correl = flex.double(3)
     for idx_report in range(len(features)):
       feature = features[idx_report]
-      diag_elem[idx_report] = math.sqrt(emp_cov.covariance_[idx_report,idx_report])
-      if verbose: print( "%s=%7.2f±%6.2f"%(feature, emp_cov.location_[idx_report], diag_elem[idx_report]),end=" ")
+      diag_elem[idx_report] = math.sqrt(self.emp_cov.covariance_[idx_report,idx_report])
+      if verbose: print( "%s=%7.2f±%6.2f"%(feature, self.emp_cov.location_[idx_report], diag_elem[idx_report]),end=" ")
     for ic, cross_correlation in enumerate([(0,1),(1,2),(0,2)]):
       feature1 = features[cross_correlation[0]]
       feature2 = features[cross_correlation[1]]
-      self.cross_correl[ic] = emp_cov.covariance_[cross_correlation[0],cross_correlation[1]] / (
+      self.cross_correl[ic] = self.emp_cov.covariance_[cross_correlation[0],cross_correlation[1]] / (
                            diag_elem[cross_correlation[0]]*diag_elem[cross_correlation[1]]) # convert Cov to Corr
       if verbose: print( "%s,%s cc=%5.1f%%"%(feature1,feature2,100*self.cross_correl[ic]),end=" ")
     if verbose: print()
