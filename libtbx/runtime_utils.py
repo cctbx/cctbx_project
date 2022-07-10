@@ -242,15 +242,29 @@ class detached_process_server(detached_base):
   def callback_resume(self) : # TODO
     pass
 
-  def callback_other(self, data):
+  def wait_for_lock_to_vanish(self, local_wait_time = 0.1,
+      max_local_wait_time = 5):
+    # Catch case where jobs are very short and returns overlap...wait for lock
+    # XXX looks like info_lock was never actually implemented, just set up.
+    t0 = time.time()
+    while os.path.isfile(self.info_lock):
+        if time.time() - t0 > max_local_wait_time:
+          break  # just crash
+        else:
+          time.sleep(local_wait_time)
+
+  def callback_other(self, data, local_wait_time = 0.1,
+     max_local_wait_time = 1):
     if not data.cached :
       return
     if data.accumulate :
       self._accumulated_callbacks.append(data)
+      self.wait_for_lock_to_vanish()
       touch_file(self.info_lock)
       easy_pickle.dump(self.info_file, self._accumulated_callbacks)
       os.remove(self.info_lock)
     else :
+      self.wait_for_lock_to_vanish()
       touch_file(self.state_lock)
       easy_pickle.dump(self.state_file, data)
       os.remove(self.state_lock)
