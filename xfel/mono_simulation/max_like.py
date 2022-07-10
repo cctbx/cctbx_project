@@ -3,12 +3,12 @@ from __future__ import absolute_import, division, print_function
 import math
 from math import exp,pi,log,pow
 import sys
+import copy
 
 from scitbx.array_family import flex
 from scitbx.lbfgs import run,termination_parameters,exception_handling_parameters,core_parameters
 from six.moves import cPickle as pickle
 from six.moves import range
-
 
 class minimizer:
   def __init__(self, d_i, psi_i, eta_rad, Deff):
@@ -222,6 +222,70 @@ class minimizer:
 
 
     return (f, flex.double([fd_partf_partalpha,fd_partf_parteta]))
+
+class block_size_simplex(minimizer):
+  def __init__(self, d_i, psi_i, eta_rad, Deff, max_cycles=30):
+    self.safelog = -1. + math.log(sys.float_info.max)
+    self.S = pickle.dumps([d_i, psi_i, eta_rad, Deff], 0)
+    assert len(d_i) == len(psi_i)
+    self.d_i = d_i
+    self.psi_i = psi_i
+    self.Nobs = len(d_i)
+    self.escalate = 5. # 10 is a soft switch; 50-100 a hard switch
+    self.eta_param = log(eta_rad) # parameter eta
+    self.x = flex.double([log(2./Deff)]) # parameter alpha
+
+    from scitbx.simplex import simplex_opt
+    self.max_cycles = max_cycles
+    self.n = 1 # the full number of parameters
+    self.iteration = 0
+    initial_values = flex.double([self.x[0]])
+    self.starting_simplex = [ initial_values ]
+    bounding_values = 0.9 * initial_values
+
+    for ii in range(self.n):
+      vertex = copy.deepcopy(initial_values)
+      vertex[ii] = bounding_values[ii]
+      self.starting_simplex.append(vertex)
+    self.optimizer = simplex_opt( dimension=self.n,
+                                        matrix  = self.starting_simplex,
+                                        evaluator = self,
+                                        monitor_cycle=10,
+                                        max_iter=max_cycles-1,
+                                        tolerance=1e-7)
+    self.x = self.optimizer.get_solution()
+    self.x=flex.exp(flex.double([self.x[0], self.eta_param]))
+
+  def target(self,vector):
+    alpha = exp(vector[0])
+    eta = exp(self.eta_param)
+
+    #print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
+    allobs = range(self.Nobs)
+    f = 0.
+
+    for i in allobs:
+      psi_model = (self.d_i[i]*alpha + eta)/2.
+      psi_i = self.psi_i[i]
+      B = self.escalate / psi_model
+      expBarg = B*(psi_i+psi_model)
+      expBnegarg = -B*(psi_i-psi_model)
+
+      if abs(expBarg) > self.safelog or abs(expBnegarg) > self.safelog:
+
+        print("XXescalate",self.escalate)
+        print("XXpsi_model",psi_model)
+        print("XXexp",B,expBarg)
+        print("XXeta",eta)
+        print("XXDeff",1./alpha)
+        print(self.S)
+        raise ValueError("max likelihood exp argument outside of math domain %f %f"%(expBarg,expBnegarg))
+
+      fx = (0.5/psi_model)/(1+exp(expBarg ) ) * (1+exp(self.escalate))
+      gx = 1./(1+exp(expBnegarg ) ) * (1+exp(self.escalate))
+      prob = fx * gx
+      f -= math.log(prob)
+    return f
 
 if __name__=="__main__":
   Deff=3031.86582722
