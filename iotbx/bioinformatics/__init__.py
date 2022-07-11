@@ -1890,7 +1890,8 @@ def get_number_of_dups(line):
     return 1
   if text.find("[") > -1:
     text = text.split("[")[0]
-  text = text.replace("Chains","").replace(",","")
+  text = text.replace("Chains","").replace("Chain","").replace("=",""
+       ).replace(",","")
   values = text.split()
   return max(1, len(values))
 
