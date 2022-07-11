@@ -481,6 +481,8 @@ class structure_base(object):
     end_present = False
     start_resseq = self.start_resseq if isinstance(self.start_resseq, str) else self.convert_resseq(self.start_resseq)
     end_resseq = self.end_resseq if isinstance(self.end_resseq, str) else self.convert_resseq(self.end_resseq)
+    if len(hierarchy.models()) == 0:
+      return False
     for chain in hierarchy.models()[0].chains():
       if chain.id == self.start_chain_id:
         for rg in chain.residue_groups():

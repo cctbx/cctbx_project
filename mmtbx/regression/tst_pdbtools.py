@@ -1227,6 +1227,76 @@ END
   ph_in.flip_symmetric_amino_acids()
   assert h1.is_similar_hierarchy(ph_in)
 
+def exercise_result_is_empty(prefix='exercise_result_is_empty'):
+  pdb_str = """
+HELIX    1   1 GLN A   10  GLN A   14  5                                   5
+HELIX    2   2 ARG A   17  ASN A   29  1                                  13
+SHEET    1   A 2 GLN A  33  GLN A  38  0
+SHEET    2   A 2 GLN A  51  GLN A  56  1  O  VAL A  54   N  ILE A  35
+SSBOND   1 CYS A    4    CYS A   49
+CRYST1   62.654   62.654   45.906  90.00  90.00  90.00 P 43 21 2
+SCALE1      0.015961  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.015961  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.021784        0.00000
+ATOM      1  N   GLN A   3      23.762  12.429   1.265  1.00 45.30           N
+ATOM      2  CA  GLN A   3      22.670  12.004   2.148  1.00 39.46           C
+ATOM      3  C   GLN A   3      21.818  10.942   1.458  1.00 42.86           C
+ATOM      4  O   GLN A   3      21.337  11.133   0.339  1.00 44.81           O
+ATOM      5  CB  GLN A   3      21.794  13.195   2.571  1.00 42.53           C
+ATOM      6  N   CYS A   4      21.620   9.817   2.129  1.00 36.33           N
+ATOM      7  CA  CYS A   4      20.902   8.709   1.518  1.00 31.46           C
+ATOM      8  C   CYS A   4      19.419   8.891   1.670  1.00 34.16           C
+ATOM      9  O   CYS A   4      18.979   9.537   2.607  1.00 38.12           O
+ATOM     10  CB  CYS A   4      21.307   7.409   2.205  1.00 31.53           C
+ATOM     11  SG  CYS A   4      23.070   7.194   2.148  1.00 29.88           S
+ATOM     12  N   SER A   5      18.657   8.290   0.760  1.00 33.83           N
+ATOM     13  CA  SER A   5      17.211   8.293   0.854  1.00 38.94           C
+ATOM     14  C   SER A   5      16.676   6.917   1.254  1.00 32.88           C
+ATOM     15  O   SER A   5      17.295   5.879   0.981  1.00 32.57           O
+ATOM     16  CB  SER A   5      16.603   8.683  -0.488  1.00 39.48           C
+ATOM     17  OG  SER A   5      16.893   7.668  -1.432  1.00 47.16           O
+ATOM     18  N   GLY A   6      15.520   6.924   1.901  1.00 31.69           N
+ATOM     19  CA  GLY A   6      14.811   5.694   2.191  1.00 32.41           C
+ATOM     20  C   GLY A   6      15.257   5.112   3.511  1.00 29.00           C
+ATOM      2  CA  GLN A  10      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  11      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  12      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  13      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  14      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  33      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  34      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  35      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  36      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  37      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  38      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  51      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  52      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  53      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  54      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  55      22.670  12.004   2.148  1.00 39.46           C
+ATOM      2  CA  GLN A  56      22.670  12.004   2.148  1.00 39.46           C
+"""
+
+  with open("%s.pdb"%prefix, 'w') as f:
+    f.write(pdb_str)
+  cmd = " ".join([
+      "phenix.pdbtools",
+      "%s.pdb"%prefix,
+      "keep='resname ALA'",
+      "output.prefix=out_%s"%(prefix)])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  # assert os.path.isfile("out_%s_modified.pdb"%(prefix))
+  with open("out_%s_modified.pdb"%(prefix), 'r') as f:
+    pdb_new = f.read()
+    assert pdb_new == """\
+CRYST1   62.654   62.654   45.906  90.00  90.00  90.00 P 43 21 2
+SCALE1      0.015961  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.015961  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.021784        0.00000
+END
+"""
+
 def exercise(args):
   exercise_flip_symmetric_amino_acids()
   exercise_switch_rotamers()
@@ -1245,6 +1315,7 @@ def exercise(args):
   exercise_remove_atoms()
   exercise_mmcif_support()
   exercise_segid_manipulations()
+  exercise_result_is_empty()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])
