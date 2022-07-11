@@ -109,14 +109,18 @@ def is_glyco_bond(atom1, atom2, verbose=False):
     print(sugar_types)
     print(get_type(atom1.parent().resname).upper())
     print(get_type(atom2.parent().resname).upper())
+    print('-------------------------')
   if get_type(atom1.parent().resname) is None: return False
   if get_type(atom2.parent().resname) is None: return False
   if not get_type(atom1.parent().resname).upper() in sugar_types:
+    if verbose: print('False')
     return False
   if not get_type(atom2.parent().resname).upper() in sugar_types:
+    if verbose: print('False')
     return False
   #
   #if atom2.parent().resname in not_correct_sugars: return False
+  if verbose: print('True')
   return True
 
 def is_glyco_amino_bond(atom1, atom2, verbose=False):
@@ -129,7 +133,9 @@ def is_glyco_amino_bond(atom1, atom2, verbose=False):
     print(sugar_types)
     print(get_type(atom1.parent().resname).upper())
     print(get_type(atom2.parent().resname).upper())
+    print('-------------------------------')
   if get_type(atom1.parent().resname) is None:
+    if verbose: print('False')
     return False
   if get_type(atom2.parent().resname) is None: return False
   sugars = 0
@@ -144,6 +150,8 @@ def is_glyco_amino_bond(atom1, atom2, verbose=False):
     aminos+=1
   if sugars==1 and aminos==1:
     return True
+    if verbose: print('True')
+  if verbose: print('False')
   return False
 
 def is_n_glyco_bond(atom1, atom2):
@@ -455,6 +463,17 @@ Send details to help@phenix-online.org
     if verbose:
       print("AMINO ACIDS",atom1.quote(), atom2.quote())
   #
+  # D-peptide special case...
+  #
+  if class1=='d_amino_acid' or class2=='d_amino_acid':
+    if class1=='d_amino_acid':
+      d_amino_acid=atom1
+    elif class2=='d_amino_acid':
+      d_amino_acid=atom2
+    if d_amino_acid.name.strip() in ['O']:
+      if verbose: print('d_amino_acid do not link O')
+      return False
+  #
   # other
   #
   if lookup==("other", "other"):
@@ -665,52 +684,18 @@ def process_atom_groups_for_linking_single_link(pdb_hierarchy,
       #raise Sorry("Check input geometry")
       return None
   else:
+    if verbose: print('bypass',long_tmp_key)
     key = long_tmp_key
 
   pdbres_pair = []
   for atom in [atom1, atom2]:
     pdbres_pair.append(atom.id_str(pdbres=True))
   if verbose:
-    print("key %s" % key)
+    print("key2 %s" % key)
     print(pdbres_pair)
     print(atom1.quote())
     print(atom2.quote())
   return [pdbres_pair], [key], [(atom1, atom2)]
-
-# def process_atom_groups_for_linking_multiple_links(pdb_hierarchy,
-#                                                    link_atoms,
-#                                                    verbose=False,
-#                                                    ):
-#   assert 0
-#   def _quote(atom):
-#     key = ""
-#     for attr in ["name", "resname", "resseq", "altloc"]:
-#       if getattr(atom, attr, None) is not None:
-#         key += "%s_" % getattr(atom, attr).strip()
-#       elif getattr(atom.parent(), attr, None) is not None:
-#         key += "%s_" % getattr(atom.parent(), attr).strip()
-#       elif getattr(atom.parent().parent(), attr, None) is not None:
-#         key += "%s_" % getattr(atom.parent().parent(), attr).strip()
-#       else:
-#         assert 0
-#     return key[:-1]
-
-#   pdbres_pairs = []
-#   keys = []
-#   atoms = []
-#   for atom1, atom2 in link_atoms:
-#     key = "%s-%s" % (_quote(atom1), _quote(atom2))
-#     pdbres_pair = []
-#     for atom in [atom1, atom2]:
-#       pdbres_pair.append(atom.id_str(pdbres=True))
-#     if verbose:
-#       print atom1.quote()
-#       print atom2.quote()
-#       print key
-#     pdbres_pairs.append(pdbres_pair)
-#     keys.append(key)
-#     atoms.append((atom1, atom2))
-#   return pdbres_pairs, keys, atoms
 
 def print_apply(apply):
   # from libtbx.introspection import show_stack
