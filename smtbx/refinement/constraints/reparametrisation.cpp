@@ -309,7 +309,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     /* Assign variability to each parameter.
      It also evaluates constant parameters once and for all.
      */
-    variability_visitor var(unit_cell);
+    variability_visitor var(unit_cell_);
     accept(var);
 
     // Assign indices to parameters
@@ -378,7 +378,7 @@ namespace smtbx { namespace refinement { namespace constraints {
     for (std::size_t j=n_independents(); j<n_components(); ++j) {
       jacobian_transpose.col(j).zero();
     }
-    evaluator eval(unit_cell, &jacobian_transpose);
+    evaluator eval(unit_cell_, &jacobian_transpose);
     accept(eval);
   }
 
@@ -411,7 +411,7 @@ namespace smtbx { namespace refinement { namespace constraints {
   ::store() {
     BOOST_FOREACH(parameter *p, all) {
       asu_parameter *cp = dynamic_cast<asu_parameter *> (p);
-      if (cp) cp->store(unit_cell);
+      if (cp) cp->store(unit_cell_);
     }
   }
 

@@ -1044,7 +1044,7 @@ public:
   template <class ForwardIteratorType>
   reparametrisation(uctbx::unit_cell const &unit_cell,
                     boost::iterator_range<ForwardIteratorType> const &params)
-    : unit_cell(unit_cell)
+    : unit_cell_(unit_cell)
   {
     // Classify parameters
     typedef std::back_insert_iterator<std::vector<parameter *> >
@@ -1061,7 +1061,7 @@ public:
 
   /// Construct an object without any reparametrisation
   reparametrisation(uctbx::unit_cell const &unit_cell)
-  : unit_cell(unit_cell)
+  : unit_cell_(unit_cell)
   {}
 
   /// Add a new parameter and all its direct or indirect arguments
@@ -1130,7 +1130,11 @@ public:
 
   // returns a list of independent and variable params
   af::shared<parameter*> independent() const;
-
+  
+  // returns the unit cell associated with this object
+  uctbx::unit_cell const& unit_cell() const {
+    return unit_cell_;
+  }
 private:
   void whiten();
 
@@ -1157,7 +1161,7 @@ public:
   }
 
 private:
-  uctbx::unit_cell unit_cell;
+  uctbx::unit_cell unit_cell_;
   parameter_array_t all;
   std::size_t n_independents_, n_intermediates_, n_non_trivial_roots_;
 };
