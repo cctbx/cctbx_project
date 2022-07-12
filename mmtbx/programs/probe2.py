@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "1.0.0"
+version = "1.1.0"
 
 master_phil_str = '''
 profile = False
@@ -1637,6 +1637,8 @@ Note:
             ret += "@group dominant {{{}}}\n".format(groupLabel)
 
         ret += self._writeOutput("{} dots".format(selectionName), groupLabel)
+        # Put the water after so they end up in the right group
+        ret += self._phantomHydrogenOutput
 
       else:
         raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
@@ -1913,11 +1915,13 @@ Note:
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
+      self._phantomHydrogenOutput = ""
       phantomHydrogens = []
       if not self.params.probe.implicit_hydrogens:
         make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
         if self.params.output.record_added_hydrogens:
-          outString += '@vectorlist {water H?} color= gray\n'
+          self._phantomHydrogenOutput += "@master {water H?}\n"
+          self._phantomHydrogenOutput += '@vectorlist {water H?} color= gray master={water H?}\n'
 
         # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
         # a single water in it and asking about the hydrogen radius.  This could also become a
@@ -2018,7 +2022,7 @@ Note:
                   chainID = a.parent().parent().parent().id
                   iCode = a.parent().parent().icode
                   alt = a.parent().altloc
-                  outString += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     a.name, alt, resName, chainID, resID, iCode,
                     a.xyz[0], a.xyz[1], a.xyz[2])
 
@@ -2027,7 +2031,7 @@ Note:
                   chainID = p.parent().parent().parent().id
                   iCode = p.parent().parent().icode
                   alt = p.parent().altloc
-                  outString += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     p.name, alt, resName, chainID, resID, iCode,
                     p.xyz[0], p.xyz[1], p.xyz[2])
 
