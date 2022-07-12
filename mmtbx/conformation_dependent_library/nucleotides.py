@@ -10,10 +10,8 @@ except ImportError as e:
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
-                      # current_geometry=None, # xray_structure!!
-                      # sites_cart=None,
-                      # rdl_proxies=None,
                       use_phenix_esd=True,
+                      csd_factor=1.,
                       log=None,
                       verbose=False,
                       ):
@@ -71,6 +69,7 @@ def update_restraints(hierarchy,
       c_bonds+=1
     bond.distance_ideal=ideal
     if not use_phenix_esd:
+      if csd_factor!=1: esd*=csd_factor
       bond.weight = 1/esd**2
     n_bonds+=1
   remove.reverse()
@@ -103,7 +102,9 @@ def update_restraints(hierarchy,
         c_angles+=1
       angle_proxy.angle_ideal = angle_restraints[i_seqs][0]
       if not use_phenix_esd:
-        angle_proxy.weight = 1/angle_restraints[i_seqs][1]**2
+        esd = angle_restraints[i_seqs][1]
+        if csd_factor!=1: esd*=csd_factor
+        angle_proxy.weight = 1/esd**2
       del angle_restraints[i_seqs]
       n_angles+=1
       if verbose:

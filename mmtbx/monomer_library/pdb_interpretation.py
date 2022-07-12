@@ -170,20 +170,24 @@ restraints_library_str = """
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
         for geometry restraints
       .style = hidden
-    cdl_nucleotides = False
-      .type = bool
-      .short_caption = Use RestraintsLib for DNA and RNA
-      .help = Use RestraintsLib for DNA and RNA \
-        for geometry restraints
-      .style = hidden
-    cdl_nucleotides_esd = *phenix csd
-      .type = choice
-      .short_caption = Apply the e.s.d. values from Phenix or CSD
-      .style = hidden
-    cdl_nucleotides_factor = 2.0
-      .type = float
-      .short_caption = Factor applied to the e.s.d. values from CSD
-      .style = hidden
+    cdl_nucleotides
+      .short_caption = CDL for Nucleotides
+    {
+      enable = False
+        .type = bool
+        .short_caption = Use RestraintsLib for DNA and RNA
+        .help = Use RestraintsLib for DNA and RNA \
+          for geometry restraints
+        .style = hidden
+      esd = *phenix csd
+        .type = choice
+        .short_caption = Apply the e.s.d. values from Phenix or CSD
+        .style = hidden
+      factor = 2.0
+        .type = float
+        .short_caption = Factor applied to the e.s.d. values from CSD (not Phenix)
+        .style = hidden
+    }
     cdl_svl = False
       .type = bool
       .short_caption = Use improved SVL values for CDL classes
@@ -5601,12 +5605,14 @@ class build_all_chain_proxies(linking_mixins):
       print("""\
   Histidine protonation dependent restraints added in %0.1f %sseconds
   """ % utils.greek_time(hpr_time), file=log)
-    if getattr(self.params.restraints_library, "cdl_nucleotides", False):
+    if self.params.restraints_library.cdl_nucleotides.enable:
       from mmtbx.conformation_dependent_library import nucleotides
       from libtbx import utils
-      factor =self.params.restraints_library.cdl_nucleotides_factor
+      factor =self.params.restraints_library.cdl_nucleotides.factor
+      if factor>10 or factor<0.5:
+        raise Sorry('should not change CDL esd by %s' % factor)
       restraints_source += ' + Nucleotide CDL (%0.1f)' % factor
-      use_phenix_esd = self.params.restraints_library.cdl_nucleotides_esd=='phenix'
+      use_phenix_esd = self.params.restraints_library.cdl_nucleotides.esd=='phenix'
       t0=time.time()
       rc = nucleotides.update_restraints(
         self.pdb_hierarchy,
