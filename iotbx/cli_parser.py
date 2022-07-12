@@ -698,8 +698,6 @@ or with pip run
 
   pip install pyside2
 
-For conda environments, PySide2 is currently not available for Apple
-Silicon. Please use the pip version for now.
 ------------------------------------------------------------------------
 '''
     raise Sorry(msg)
