@@ -90,8 +90,9 @@ class extract_from_cif_files(object):
     print("."*79)
     #
     # TODO verify that this values is not a dictionary call
-    O.xray_structure = cctbx.xray.structure.from_cif(
-      file_path=model_file).values()[0]
+    rc = cctbx.xray.structure.from_cif(
+      file_path=model_file)
+    key, O.xray_structure = rc.popitem()
     O.xray_structure = O.xray_structure.customized_copy(
       crystal_symmetry=combined_cs)
     O.xray_structure.show_summary().show_scatterers()
