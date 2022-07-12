@@ -245,6 +245,8 @@ def run(args,
       else :
         print("Kinemage output not available for multiple MODELs.", file=out)
     if (params.output.pickle):
+      if validation.hydrogens is not None:
+        validation.hydrogens.log = None
       easy_pickle.dump("%s.pkl" % params.output.prefix, validation)
       if (not params.output.quiet):
         print("Saved result to %s.pkl" % params.output.prefix, file=out)
