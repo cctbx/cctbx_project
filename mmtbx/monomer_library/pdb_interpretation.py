@@ -180,6 +180,10 @@ restraints_library_str = """
       .type = choice
       .short_caption = Apply the e.s.d. values from Phenix or CSD
       .style = hidden
+    cdl_nucleotides_factor = 2.0
+      .type = float
+      .short_caption = Factor applied to the e.s.d. values from CSD
+      .style = hidden
     cdl_svl = False
       .type = bool
       .short_caption = Use improved SVL values for CDL classes
@@ -5600,7 +5604,8 @@ class build_all_chain_proxies(linking_mixins):
     if getattr(self.params.restraints_library, "cdl_nucleotides", False):
       from mmtbx.conformation_dependent_library import nucleotides
       from libtbx import utils
-      restraints_source += ' + Nucleotide CDL'
+      factor =self.params.restraints_library.cdl_nucleotides_factor
+      restraints_source += ' + Nucleotide CDL (%0.1f)' % factor
       use_phenix_esd = self.params.restraints_library.cdl_nucleotides_esd=='phenix'
       t0=time.time()
       rc = nucleotides.update_restraints(
@@ -5608,6 +5613,7 @@ class build_all_chain_proxies(linking_mixins):
         result, # geometry
         #current_geometry=model.xray_structure,
         use_phenix_esd=use_phenix_esd,
+        csd_factor=factor,
         log=log,
         verbose=False,
         )
