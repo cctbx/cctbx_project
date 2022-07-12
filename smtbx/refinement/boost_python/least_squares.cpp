@@ -6,6 +6,7 @@
 #include <smtbx/refinement/least_squares.h>
 #include <smtbx/refinement/weighting_schemes.h>
 #include <smtbx/refinement/least_squares_fc_ed.h>
+#include <smtbx/refinement/least_squares_fc_ed_n.h>
 #include <smtbx/refinement/least_squares_fc_ed_two_beam.h>
 
 
@@ -219,6 +220,47 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
+      static void wrap_ed_n_shared_data() {
+        using namespace boost::python;
+        typedef ed_n_shared_data<FloatType> wt;
+        typedef f_calc_function_base<FloatType> f_calc_f_t;
+        typedef builder_base<FloatType> data_t;
+
+        class_<wt, std::auto_ptr<wt> >("ed_n_shared_data", no_init)
+          .def(init<data_t const&,
+            reparametrisation const&,
+            FloatType,
+            bool,
+            f_calc_f_t&,
+            cctbx::xray::fc_correction<FloatType> const&,
+            sgtbx::space_group const&,
+            FloatType,
+            scitbx::mat3<FloatType> const&,
+            af::shared<BeamInfo<FloatType> > const&,
+            cctbx::xray::thickness<FloatType> const&,
+            double,
+            bool, bool>(
+              (arg("data"), arg("reparametrisation"), arg("epsilon"),
+                arg("anomalous_flag"), arg("f_calc_function"), arg("fc_correction"),
+                arg("space_group"), arg("wavelength"),
+                arg("UB"), arg("beams"), arg("thickness"),
+                arg("maxSg"), arg("compute_grad"), arg("build") = true)))
+          //.add_property("ratio", &wt::get_ratio)
+          ;
+      }
+
+      static void wrap_ed_n() {
+        using namespace boost::python;
+        typedef f_calc_function_ed_n<FloatType> wt;
+        typedef f_calc_function_base<FloatType> at;
+        class_<wt, bases<f_calc_function_base<FloatType> >,
+          std::auto_ptr<wt> >("f_calc_function_ed_n", no_init)
+          .def(init<ed_n_shared_data<FloatType> const&>(
+              (arg("data"))))
+          //.add_property("ratio", &wt::get_ratio)
+          ;
+      }
+
       static void wrap_mask_data() {
         using namespace boost::python;
         typedef MaskData<FloatType> wt;
@@ -245,6 +287,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         wrap_default();
         wrap_caching();
         wrap_ed();
+        wrap_ed_n_shared_data();
+        wrap_ed_n();
         wrap_ed_two_beam();
         wrap_mask_data();
       }
