@@ -28,6 +28,12 @@ namespace fast_linalg {
   typedef lapack_int(LAPACKE_spftri_t)(int, char, char,
     lapack_int, float *);
 
+  typedef lapack_int(LAPACKE_cheev_t)(int, char, char, lapack_int, float*,
+    lapack_int, float*);
+  typedef lapack_int(LAPACKE_zheev_t)(int, char, char, lapack_int, double*,
+    lapack_int, double*);
+
+
   typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
     int, float *, int);
   typedef void (cblas_dsyr_t)(int, int, int, double, const double *,
@@ -74,6 +80,8 @@ namespace fast_linalg {
       LAPACKE_stpttf = &lib.get<LAPACKE_stpttf_t>("LAPACKE_stpttf");
       LAPACKE_dpftri = &lib.get<LAPACKE_dpftri_t>("LAPACKE_dpftri");
       LAPACKE_spftri = &lib.get<LAPACKE_spftri_t>("LAPACKE_spftri");
+      LAPACKE_cheev = &lib.get<LAPACKE_cheev_t>("LAPACKE_cheev");
+      LAPACKE_zheev = &lib.get<LAPACKE_zheev_t>("LAPACKE_zheev");
 
       openblas_get_num_threads = &lib.get<openblas_get_num_threads_t>(
         "openblas_get_num_threads");
@@ -109,6 +117,8 @@ namespace fast_linalg {
       LAPACKE_stpttf = 0;
       LAPACKE_dpftri = 0;
       LAPACKE_spftri = 0;
+      LAPACKE_cheev = 0;
+      LAPACKE_zheev = 0;
 
       openblas_get_num_threads = 0;
       openblas_get_num_procs = 0;
@@ -139,6 +149,9 @@ namespace fast_linalg {
     LAPACKE_stpttf_t *LAPACKE_stpttf;
     LAPACKE_dpftri_t *LAPACKE_dpftri;
     LAPACKE_spftri_t *LAPACKE_spftri;
+    LAPACKE_cheev_t *LAPACKE_cheev;
+    LAPACKE_zheev_t *LAPACKE_zheev;
+
     openblas_get_num_threads_t *openblas_get_num_threads;
     openblas_get_num_procs_t *openblas_get_num_procs;
     openblas_set_num_threads_t *openblas_set_num_threads;

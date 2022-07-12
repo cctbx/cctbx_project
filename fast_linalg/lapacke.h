@@ -18,6 +18,9 @@
 namespace fast_linalg {
   const int LAPACK_ROW_MAJOR = 101,
     LAPACK_COL_MAJOR = 102;
+
+  const char LAPACK_EIGENVALUES = 'N',
+    LAPACK_EIGENVALUES_ANDEIGENVECTORS = 'V';
 }
 
 #if defined(USE_FAST_LINALG)
@@ -62,6 +65,11 @@ extern "C" {
     char uplo, lapack_int n, double* a);
   fast_linalg_api lapack_int lapack_spftri(int matrix_order, char transr,
     char uplo, lapack_int n, float* a);
+
+  fast_linalg_api lapack_int lapack_zheev(int matrix_order, char jobz,
+    char uplo, lapack_int n, double* a, lapack_int lda, double *w);
+  fast_linalg_api lapack_int lapack_cheev(int matrix_order, char jobz,
+    char uplo, lapack_int n, float* a, lapack_int lda, float* w);
 
   fast_linalg_api void cblas_ssyr(int Order, int Uplo, int N, float Alpha,
     const float *X, int incX, float* A, int lda);
@@ -187,6 +195,24 @@ namespace fast_linalg {
     lapack_int n, float* a)
   {
     return lapack_spftri(matrix_order, transr, uplo, n, a);
+  }
+  //@}
+
+  /// @name Performs eigenvalue decomposition of a Hermitian matrix
+  //@{
+
+  inline lapack_int heev(int matrix_order, char jobz,
+    char uplo, lapack_int n, float* a, lapack_int lda, float* w)
+  {
+
+    return lapack_cheev(matrix_order, jobz, uplo, n, a, lda, w);
+  }
+
+  inline lapack_int heev(int matrix_order, char jobz,
+    char uplo, lapack_int n, double* a, lapack_int lda, double* w)
+  {
+
+    return lapack_zheev(matrix_order, jobz, uplo, n, a, lda, w);
   }
   //@}
 
@@ -319,6 +345,14 @@ namespace fast_linalg {
     SCITBX_NOT_IMPLEMENTED();
   }
 
+  template <typename FloatType>
+  inline lapack_int heev(int, char, char, lapack_int, FloatType*,
+    lapack_int, FloatType*)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+    return 0;
+  }
+  
   template <typename FloatType>
   void syr(int, int, int, FloatType, const FloatType*, int,
     FloatType*, int)
