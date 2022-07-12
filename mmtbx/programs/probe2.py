@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "1.1.0"
+version = "1.2.0"
 
 master_phil_str = '''
 profile = False
@@ -1121,7 +1121,6 @@ Note:
       mast[t] = probeExt.DotScorer.interaction_type_name(t).replace("_"," ")
     extraMaster = ''
     pointid = ''
-    lastpointid = ''
     ptmast = ''
     gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
     # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
@@ -1177,6 +1176,9 @@ Note:
     # Go through all atom types and contact types and report the contacts.
     for atomClass in _allAtomClasses:
       for interactionType in _interactionTypes:
+        # When we switch point types, we need to repeat the point ID.
+        lastPointID = ''
+
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
@@ -1229,8 +1231,8 @@ Note:
           pointid = "{}{:1s}{} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
-          if pointid != lastpointid:
-            lastpointid = pointid
+          if pointid != lastPointID:
+            lastPointID = pointid
             ret += '{{{}}}'.format(pointid)
           else:
             ret += '{"}'
