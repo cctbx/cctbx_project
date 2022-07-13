@@ -260,8 +260,10 @@ def save_up(Modeler, x, exp, i_exp, input_refls):
     trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
 
     # TODO: pretty formatting ?
-    trace1, trace2 = Modeler.target.all_f , Modeler.target.all_sigZ
-    trace_data = np.array([trace1,trace2]).T
+    # hop number, gradient descent index (resets with each new hop), target functional
+    trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
+
+    trace_data = np.array([trace0, trace1,trace2]).T
     np.savetxt(trace_path, trace_data, fmt="%s")
 
     if Modeler.SIM.num_xtals == 1:

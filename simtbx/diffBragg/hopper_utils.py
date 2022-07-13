@@ -984,14 +984,17 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
     fid = coords[1::3]
     sid = coords[2::3]
 
-    ref_xpos = []
+    ref_xpos = []  # Jacobian index (J[xpos]) for the refined  parameters that arent roi scale factors
     if J is not None:
         for name in SIM.P:
+            if name.startswith("scale_roi"):
+                continue
             p = SIM.P[name]
             if p.refine:
                 ref_xpos.append( p.xpos)
 
     for i in roi_id_unique:
+        roi_p = SIM.P["scale_roi%d" % i]
         for slc in roi_id_slices[i]:
             pvals = pid[slc]
             fvals = fid[slc]
@@ -1005,6 +1008,11 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
             img = model_pix[slc].reshape((sdim, fdim))
             img = psf.convolve_with_psf(img, psf=PSF, **psf_args)
             model_pix[slc] = img.ravel()
+            if roi_p.refine and J is not None:
+                deriv_img = J[roi_p.xpos, slc].reshape((sdim, fdim))
+                deriv_img = psf.convolve_with_psf(deriv_img, psf=PSF, **psf_args)
+                J[roi_p.xpos, slc] = deriv_img.ravel()
+
             for xpos in ref_xpos: # if J is None, then ref_xpos should be empty!
                 deriv_img = J[xpos, slc].reshape((sdim, fdim))
                 deriv_img = psf.convolve_with_psf(deriv_img, psf=PSF, **psf_args)
@@ -1266,13 +1274,18 @@ class TargetFunc:
         self.SIM = SIM
         self.all_f = []  # store the target functionals here, 1 per iteration
         self.all_sigZ = []  # store the overall z-score sigmas here, 1 per iteration
+        self.all_hop_id = []
+        self.hop_iter = 0
+        self.lowest_x = None
 
     def at_minimum(self, x, f, accept):
         self.iteration = 0
         self.all_x = []
         self.x0[self.vary] = x
-        look_at_x(self.x0,self.SIM)
+        #look_at_x(self.x0,self.SIM)
+        self.hop_iter += 1
         self.minima.append((f,self.x0,accept))
+        self.lowest_x = x
 
     def jac(self, x, *args):
         if self.g is not None:
@@ -1286,9 +1299,12 @@ class TargetFunc:
         if not self.iteration % (self.niter_per_J) == 0:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
-        f, g, modelpix, J, sigZ = target_func(self.x0, update_terms, *args, **kwargs)
+        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, *args, **kwargs)
+        debug_s = "Hop=%d |it=%d | " % (self.hop_iter, self.iteration) + debug_s
+        MAIN_LOGGER.debug(debug_s)
         self.all_f.append(f)
         self.all_sigZ.append(sigZ)
+        self.all_hop_id.append(self.hop_iter)
         self.old_model = modelpix
         self.old_J = J
         self.iteration += 1
@@ -1346,7 +1362,7 @@ class TargetFunc:
             raise StopIteration()  # Refinement has reached convergence!
 
 
-def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, verbose=True, params=None, compute_grad=True):
+def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, verbose=True, params=None, compute_grad=True, hop_idx=None):
 
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg
@@ -1482,11 +1498,9 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
 
         gnorm = np.linalg.norm(g)
 
-    if verbose:
-        MAIN_LOGGER.debug("F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
-              % (f, zscore_sigma, restraint_debug_s, gnorm))
-
-    return f, g, model_bragg, Jac, zscore_sigma
+    debug_s = "F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
+              % (f, zscore_sigma, restraint_debug_s, gnorm)
+    return f, g, model_bragg, Jac, zscore_sigma, debug_s
 
 
 def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True):
