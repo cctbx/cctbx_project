@@ -46,7 +46,7 @@ def run(args):
       iround(sz_sum/n), sz_ln_fn_ext[n//2][0]))
     import zlib
     print("Size of all files together zlib.compress'ed:", \
-      len(zlib.compress("".join(contents))))
+      len(zlib.compress(b"".join(contents))))
   print()
 
 if (__name__ == "__main__"):

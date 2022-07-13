@@ -205,7 +205,14 @@ def walk_source_tree(top, arg=None):
       del names[:]
       names.extend(names_keep)
   result = []
-  op.walk(top, visitor, result)
+  if sys.version_info.major == 3:
+    for root, dirs, files in os.walk(top):
+      visitor(
+          result=result,
+          dirname=root,
+          names=files)
+  else:
+    op.walk(top, visitor, result)
   return result
 
 def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
