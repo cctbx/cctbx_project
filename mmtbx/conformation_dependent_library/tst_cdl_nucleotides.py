@@ -156,20 +156,20 @@ ATOM    150  N2    G B   4       4.760  -2.849  -4.030  1.00 20.00           N
 
 std_asserts = [
   [
-  'cdl_nucleotides = 0',
-  'cdl_nucleotides_esd = *phenix csd',
+  'enable = 0',
+  'esd = *phenix csd',
   ],
   [
-  'cdl_nucleotides = 0',
-  'cdl_nucleotides_esd = phenix *csd',
+  'enable = 0',
+  'esd = phenix *csd',
   ],
   [
-  'cdl_nucleotides = 1',
-  'cdl_nucleotides_esd = *phenix csd',
+  'enable = 1',
+  'esd = *phenix csd',
   ],
   [
-  'cdl_nucleotides = 1',
-  'cdl_nucleotides_esd = phenix *csd',
+  'enable = 1',
+  'esd = phenix *csd',
   ],
 ]
 geo_asserts = []
@@ -224,11 +224,12 @@ def main():
   for param1 in range(2):
     if param1 and not restraintlib_installed: break
     for param2 in ['phenix', 'csd']:
-      cmd = 'phenix.pdb_interpretation %s write_geo=True cdl_nucleotides=%s cdl_nucleotides_esd=%s' % (
+      cmd = 'phenix.pdb_interpretation %s write_geo=True cdl_nucleotides.enable=%s cdl_nucleotides.esd=%s' % (
         filename,
         param1,
         param2,
         )
+      cmd += ' cdl_nucleotides.factor=1.'
       print(i, param1, param2, cmd)
       rc = easy_run.go(cmd)
       lines=[]

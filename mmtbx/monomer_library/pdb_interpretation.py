@@ -5580,7 +5580,6 @@ class build_all_chain_proxies(linking_mixins):
       rotamers.update_restraints(
         self.pdb_hierarchy,
         result,
-        #current_geometry=model.xray_structure,
         rdl_proxies=rdl_proxies,
         data_version="8000",
         rdl_selection=getattr(self.params.restraints_library, "rdl_selection", None),
@@ -5616,8 +5615,7 @@ class build_all_chain_proxies(linking_mixins):
       t0=time.time()
       rc = nucleotides.update_restraints(
         self.pdb_hierarchy,
-        result, # geometry
-        #current_geometry=model.xray_structure,
+        result,
         use_phenix_esd=use_phenix_esd,
         csd_factor=factor,
         log=log,
