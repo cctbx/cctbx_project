@@ -598,6 +598,10 @@ def geom_min(params):
             os.makedirs(pdir)
     if COMM.rank == 0:
         print("Will optimize using %d experiments" %len(df))
+
+    from simtbx.diffBragg import mpi_logger
+    mpi_logger.setup_logging_from_params(params)
+
     launcher.load_inputs(df, refls_key=params.geometry.refls_key)
 
     for i_shot in launcher.Modelers:

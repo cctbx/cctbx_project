@@ -3,6 +3,7 @@ from __future__ import division
 import numpy as np
 from dials.algorithms.image.filter import convolve
 import math
+from scipy.signal import convolve2d
 from dials.array_family import flex
 
 
@@ -60,7 +61,7 @@ def convolve_padded_img(img, psf, sz=5):
     return conv_img
 
 
-def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=5, psf=None):
+def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=5, psf=None, use_scipy=True):
     ''' Given a 2D numpy array of image data, convolve with a PSF. '''
     # Currently only supporting fiber PSF i.e power law form as proposed in Holton et. al 2012, Journal of Synchotron Radiation
     if psf is None:
@@ -68,13 +69,19 @@ def convolve_with_psf(image_data, fwhm=27.0, pixel_size=177.8, psf_radius=7, sz=
         ypsf=2*psf_radius+1
         fwhm_pixel=fwhm/pixel_size
         psf = makeMoffat_integPSF(fwhm_pixel, xpsf, ypsf)
-    img_shape = image_data.shape
-    psf_shape = psf.focus()
-    if psf_shape[0] > img_shape[0] - sz or psf_shape[1] > img_shape[1] - sz:
-        convolved_image = convolve_padded_img(image_data, psf, sz)
+    if use_scipy:
+        psf_img = psf.as_numpy_array()
+        med_img = (image_data[0,0] + image_data[0,-1] + image_data[-1,0] + image_data[-1,-1])*0.25 #np.median(image_data)
+        convolved_image = convolve2d(image_data, psf_img, mode='same', fillvalue=med_img)
+
     else:
-        convolved_image = convolve(flex.double(image_data), psf)
-        convolved_image = convolved_image.as_numpy_array()
+        img_shape = image_data.shape
+        psf_shape = psf.focus()
+        if psf_shape[0] > img_shape[0] - sz or psf_shape[1] > img_shape[1] - sz:
+            convolved_image = convolve_padded_img(image_data, psf, sz)
+        else:
+            convolved_image = convolve(flex.double(image_data), psf)
+            convolved_image = convolved_image.as_numpy_array()
     return convolved_image
 
 
