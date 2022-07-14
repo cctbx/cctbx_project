@@ -1796,6 +1796,9 @@
    <property name="text">
     <string>Settings</string>
    </property>
+   <property name="toolTip">
+    <string>change mouse speed, font size etc.</string>
+   </property>
   </action>
   <action name="actiondebug">
    <property name="text">
@@ -1845,6 +1848,14 @@
   <action name="actionHKLviewer_Tutorial">
    <property name="text">
     <string>Tutorial</string>
+   </property>
+  </action>
+  <action name="actionBackground_Colour">
+   <property name="text">
+    <string>Background Colour</string>
+   </property>
+   <property name="toolTip">
+    <string>change colour of the background</string>
    </property>
   </action>
  </widget>

@@ -19,9 +19,9 @@ if sys.version_info[0] < 3:
 os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
-from .qt import (  QAction, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
+from .qt import (  QAction, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMenu, QMenuBar, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
+    QMainWindow, QMenu, QMenuBar, QMessageBox, QPalette, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
@@ -233,6 +233,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
+    self.backgroundcolour = QColor(127,127,127)
 
     if isembedded:
       self.window = MyQMainDialog(self)
@@ -264,6 +265,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
       self.menuFile.addAction(self.actionSettings)
       self.menuFile.addAction(self.actiondebug)
       self.menuFile.addAction(self.actionColour_Gradient)
+      self.menuFile.addAction(self.actionBackground_Colour)
       self.menuFile.addAction(self.actionSave_Current_Image)
       self.menuFile.addAction(self.actionExit)
       self.menuHelp.addAction(self.actionLocal_Help)
@@ -399,6 +401,11 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.aboutform = AboutForm(self)
     self.webpagedebugform = None
 
+    self.BgrndColourDlg = QColorDialog(self.window)
+    self.BgrndColourDlg.setOption(QColorDialog.NoButtons)
+    self.BgrndColourDlg.setWindowTitle("HKLviewer Background Colour")
+    self.BgrndColourDlg.currentColorChanged.connect(self.onBackgroundColourChanged)
+
     self.MillerComboBox = QComboBox()
     self.MillerComboBox.activated.connect(self.onMillerComboSelchange)
     self.operationlabeltxt = QLabel()
@@ -523,6 +530,7 @@ newarray._sigmas = sigs
       self.actionSave_reflection_file.triggered.connect(self.onSaveReflectionFile)
       self.actionSave_reflection_file.setDisabled(True)
       self.actionColour_Gradient.triggered.connect(self.ColourMapSelectDlg.show)
+      self.actionBackground_Colour.triggered.connect(self.BgrndColourDlg.show)
     else:
       self.tabText.setVisible(False) # stdout sent to chimeraX's console instead
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
@@ -559,6 +567,7 @@ newarray._sigmas = sigs
     self.select_millertable_column_dlg.setVisible(False)
     self.dockWidget.setVisible(False)
     self.window.setVisible(False)
+    self.BgrndColourDlg.close()
 
     if self.UseOSBrowser == False:
       self.webpage.deleteLater() # avoid "Release of profile requested but WebEnginePage still not deleted. Expect troubles !"
@@ -678,6 +687,13 @@ newarray._sigmas = sigs
     if selcolmap != "":
       self.send_message("""hkls.color_scheme = %s
 hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
+
+
+  def onBackgroundColourChanged(self, color):
+    self.backgroundcolour = color
+    pal = QPalette()
+    pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
+    self.BrowserBox.setPalette(pal)
 
 
   def onSelect_millertable_column_dlg(self):
@@ -837,7 +853,11 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               self.BrowserBox.setUrl(QUrl(self.html_url))
               # workaround for background colour bug in chromium
               # https://bugreports.qt.io/browse/QTBUG-41960
-              self.BrowserBox.page().setBackgroundColor(QColor(127, 127, 127, 0.0) )
+              self.BrowserBox.page().setBackgroundColor(QColor(127, 127, 127, 1) )
+              pal = QPalette()
+              self.BrowserBox.setAutoFillBackground(True)
+              pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
+              self.BrowserBox.setPalette(pal)
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
@@ -1284,6 +1304,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.app.setFont(font);
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
+    self.BgrndColourDlg.setFixedSize( self.BgrndColourDlg.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
     self.select_millertable_column_dlg.resize()
     self.textInfo.setFont(font)
@@ -2266,6 +2287,7 @@ clip_plane {
     self.settings.setValue("QSplitter_number", self.nsplitters )
     self.settings.setValue("QTabWidget_number", self.ntabs )
     self.settings.setValue("FontSize", self.fontsize )
+    self.settings.setValue("BackgroundColour", str(self.backgroundcolour.getRgb()) )
     self.settings.setValue("WordWrapTextInfo", int(self.wraptextinfo ))
     self.settings.setValue("MouseSpeed", self.mousespeed )
     self.settings.setValue("TextBufferSize", self.textinfosize )
@@ -2366,6 +2388,8 @@ clip_plane {
     # Do this by casting it into a string and compare with "1"
     self.wraptextinfo = (str(self.settings.value("WordWrapTextInfo", "0")) == "1")
     self.fontsize = float(self.settings.value("FontSize", 10))
+    bcol = eval(self.settings.value("BackgroundColour", "(127,127,127,255)"))
+    self.backgroundcolour = QColor(*bcol)
     self.browserfontsize = float(self.settings.value("BrowserFontSize", 9))
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
     self.geometry = self.settings.value("geometry", None)
@@ -2399,6 +2423,9 @@ clip_plane {
 
   def UsePersistedQsettings(self):
     # Now assign the users persisted settings to the GUI
+    if self.backgroundcolour is not None:
+      self.BgrndColourDlg.setCurrentColor(self.backgroundcolour)
+      self.onBackgroundColourChanged(self.backgroundcolour)
     if self.mousespeed is not None:
       self.mousemoveslider.setValue(float(self.mousespeed)*self.mousespeedscale)
       self.mousesensitxtbox.setText("%2.1f" %(self.mousemoveslider.value()*10.0/self.mousemoveslider.maximum()) )

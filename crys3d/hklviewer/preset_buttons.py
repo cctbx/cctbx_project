@@ -178,50 +178,5 @@ buttonsdeflist = [
                       }
                     }
  """),
-("EINFO", "eInfo < 0.35",
- """
-                    binning {
-                      scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
-                      binlabel = 'EINFO'
-                      bin_opacity = 1 0
-                      bin_opacity = 0 1
-                      bin_opacity = 0 2
-                      bin_opacity = 0 3
-                      bin_opacity = 0 4
-                      bin_opacity = 0 5
-                      bin_opacity = 0 6
-                      bin_opacity = 0 7
-                      nbins = 8
-                    }
-                    viewer {
-                      data_array {
-                        label = "EINFO"
-                      }
-                    }
- """),
-("INFO", "Info < 0.35",
- """
-                    binning {
-                      scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
-                      binlabel = 'INFO'
-                      bin_opacity = 1 0
-                      bin_opacity = 0 1
-                      bin_opacity = 0 2
-                      bin_opacity = 0 3
-                      bin_opacity = 0 4
-                      bin_opacity = 0 5
-                      bin_opacity = 0 6
-                      bin_opacity = 0 7
-                      nbins = 8
-                    }
-                    viewer {
-                      data_array {
-                        label = "INFO"
-                      }
-                    }
- """),
-
-
-
 
 ]
