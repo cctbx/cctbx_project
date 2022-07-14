@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry, Usage
 import libtbx.phil.command_line
@@ -9,14 +8,12 @@ resname = None
   .type = str
 d_max = None
   .type = float
-polymeric_type = *Any Free Polymeric
-  .type = choice
+protein_only = False
+  .type = bool
 xray_only = True
   .type = bool
 data_only = False
   .type = bool
-identity_cutoff = None
-  .type = int
 quiet = False
   .type = bool
 """)
@@ -45,10 +42,10 @@ Full parameters:
   pdb_ids = rcsb_web_services.chemical_id_search(
     resname=params.resname,
     d_max=params.d_max,
-    polymeric_type=params.polymeric_type,
+    protein_only=params.protein_only,
     xray_only=params.xray_only,
     data_only=params.data_only,
-    identity_cutoff=params.identity_cutoff)
+    )
   pdb_ids = [ id.lower() for id in pdb_ids ]
   if (len(pdb_ids) == 0):
     raise Sorry("No structures found matching the specified criteria.")

@@ -13,7 +13,7 @@ import libtbx.utils
 import json
 import requests
 
-search_base_url = "https://search.rcsb.org/rcsbsearch/v1/query?json="
+search_base_url = "https://search.rcsb.org/rcsbsearch/v2/query?json="
 report_base_url = "https://data.rcsb.org/graphql"
 
 xray_only_filter = {
@@ -114,6 +114,7 @@ def post_query(query_json, xray_only=True, d_max=None, d_min=None,
   print("  executing HTTP request...", file=log)
   r = requests.post(search_base_url, json=query_json)
   res_ids = []
+  # print('r.status_code', r.status_code)
   if r.status_code == 200:
     r_json = r.json()
     for res in r_json["result_set"]:

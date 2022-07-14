@@ -363,6 +363,7 @@ general_tests = [
   #
   "$D/nci/tst_hbond.py",
   "$D/wwpdb/tst_rcsb_web_services.py",
+  "$D/regression/command_line/tst_find_residue_in_pdb.py",
   "$D/wwpdb/tst_utils.py",
   "$D/monomer_library/tst_all_cif_files.py",
   "$D/refinement/tst_misc.py",
