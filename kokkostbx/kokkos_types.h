@@ -27,6 +27,7 @@ using vector_float_t = view_1d_t<float>;
 using vector_cudareal_t = view_1d_t<CUDAREAL>;
 using vector_int_t = view_1d_t<int>;
 using vector_size_t = view_1d_t<std::size_t>;
+using vector_uint_t = view_1d_t<unsigned int>;
 using vector_ushort_t = view_1d_t<unsigned int short>;
 
 template <typename T>
