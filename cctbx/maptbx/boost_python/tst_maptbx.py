@@ -1295,6 +1295,30 @@ def exercise_sample_all_mask_regions():
   assert approx_equal(a[0], (0,0,0))
   assert approx_equal(b[0], (5,5,5))
 
+def exercise_map_values_along_line_connecting_two_points():
+  pdb_str= """
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
+HETATM    1  O   HOH A   1       1.000   2.000   3.000  1.00 10.00           O
+HETATM    2  O   HOH A   2       4.000   5.000   6.000  1.00 20.00           O
+END
+"""
+  import iotbx.pdb
+  xrs = iotbx.pdb.input(lines = pdb_str, source_info=None).xray_structure_simple()
+  fc = xrs.structure_factors(d_min=1).f_calc()
+  fft_map = fc.fft_map(resolution_factor=1/4.)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  r = maptbx.map_values_along_line_connecting_two_points(
+    map_data=map_data, points_cart=xrs.sites_cart(), step=0.001,
+    unit_cell=xrs.unit_cell(), interpolation="tricubic")
+  #
+  sites_frac = xrs.sites_frac()
+  m1 = map_data.tricubic_interpolation(sites_frac[0])
+  m2 = map_data.tricubic_interpolation(sites_frac[1])
+  #
+  assert approx_equal(m1, r.vals[0])
+  assert approx_equal(m2, r.vals[-1])
+
 def run(args):
   assert args in [[], ["--timing"]]
   timing = len(args) != 0
@@ -1328,6 +1352,7 @@ def run(args):
   exercise_region_density_correlation()
   exercise_hoppe_gassman_modification__and__convert_to_non_negative()
   exercise_sample_all_mask_regions()
+  exercise_map_values_along_line_connecting_two_points()
   print("OK")
 
 if (__name__ == "__main__"):

@@ -2218,3 +2218,33 @@ def is_periodic(map_data,
         return False
     else:
         return None # Really do not know
+
+def map_values_along_line_connecting_two_points(map_data, points_cart, step,
+      unit_cell, interpolation):
+  """
+  Calculate interpolated map values along the line connecting two points in
+  space.
+  """
+  assert interpolation in ["eight_point", "tricubic"]
+  points_frac = unit_cell.fractionalize(points_cart)
+  dist = unit_cell.distance(points_frac[0], points_frac[1])
+  assert step<dist, "step cannot be greater than the distance between two points"
+  #
+  alp = 0
+  dist = flex.double()
+  vals = flex.double()
+  while alp <= 1.0+1.e-6:
+    x1,y1,z1 = points_cart[0]
+    x2,y2,z2 = points_cart[1]
+    xp = x1+alp*(x2-x1)
+    yp = y1+alp*(y2-y1)
+    zp = z1+alp*(z2-z1)
+    dist.append(alp)
+    pf = unit_cell.fractionalize([xp,yp,zp])
+    if(interpolation=="eight_point"):
+      mv = map_data.eight_point_interpolation(pf)
+    else:
+      mv = map_data.tricubic_interpolation(pf)
+    vals.append(mv)
+    alp += step
+  return group_args(dist = dist, vals = vals)
