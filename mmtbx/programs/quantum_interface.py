@@ -88,9 +88,12 @@ Usage examples:
                                             'selection = "%s"' % self.params.qi_helper.selection[0])
     qi_phil_string = qi_phil_string.replace('read_output_to_skip_opt_if_available = False',
                                             'read_output_to_skip_opt_if_available = True')
+    qi_phil_string = qi_phil_string.replace('capping_groups = False',
+                                            'capping_groups = True')
+
     outl = ''
     for line in qi_phil_string.splitlines():
-      if line.find('write_')>-1 or line.find('calculate_')>-1:
+      if line.find(' write_')>-1 or line.find(' calculate_')>-1:
         tmp=line.split()
         line = '  %s = True' % tmp[0]
       outl += '%s\n' % line
@@ -101,7 +104,8 @@ Usage examples:
     qi_phil.show()
 
     qi_phil_string = qi_phil_string.replace('qm_restraints',
-                                            'refinement.qi.qm_restraints')
+                                            'refinement.qi.qm_restraints',
+                                            1)
     def safe_filename(s):
       s=s.replace('chain ','')
       s=s.replace('resname ','')
