@@ -57,6 +57,7 @@ general_tests = [
   "$D/rsr/tst.py",
   "$D/polygon/tst.py",
   "$D/polygon/tst_gui.py",
+  "$D/polygon/tst_polygon_data.py",
   "$D/chemical_components/tst.py",
   "$D/regression/tst_add_h_to_water.py",
   "$D/rotamer/rotamer_eval.py",
