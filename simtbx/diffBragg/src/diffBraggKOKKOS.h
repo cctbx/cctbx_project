@@ -1,16 +1,14 @@
 #include <iostream>
 #include <math.h>
 #include <vector>
-#include "simtbx/diffBragg/src/util.h"
-#ifndef CUDAREAL
-#define CUDAREAL double
-#endif
 
-typedef std::vector<CUDAREAL> image_type;
-typedef Eigen::Matrix<CUDAREAL,3,1> VEC3;
-typedef Eigen::Matrix<CUDAREAL,3,3> MAT3;
-typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
-typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
+#include "simtbx/diffBragg/src/util_kokkos.h"
+
+// typedef std::vector<CUDAREAL> image_type;
+// typedef Eigen::Matrix<CUDAREAL,3,1> VEC3;
+// typedef Eigen::Matrix<CUDAREAL,3,3> MAT3;
+// typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
+// typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
 
 struct diffBragg_cudaPointers {
