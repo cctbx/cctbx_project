@@ -3,7 +3,7 @@ import os
 Import ("env_etc")
 
 ncdist_resource_flags=[]
-env_etc.ncdist_resource_common_includes = []
+ncdist_resource_common_includes = []
 
 # Find the modules/ncdist folder, using modules/cctbx_project/cctbx as a starting point
 source_list = ["ext.cpp"]
@@ -11,9 +11,10 @@ env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("cctbx")
 if os.path.isdir(env_etc.ncdist_dist):
     # only get here if the repo is checked out in the modules directory:
     # git clone git@github.com:yayahjb/ncdist.git
-    env_etc.ncdist_resource_common_includes.append(
+    ncdist_resource_common_includes.append(
       env_etc.ncdist_dist
     )
+    env_etc.ncdist_resource_common_includes = ncdist_resource_common_includes
     ncdist_resource_flags.append("HAVE_NCDIST")
     source_list.append(os.path.join(libtbx.env.dist_path("cctbx"), "..", "..", "ncdist", "CS6Dist.c"))
 
@@ -33,7 +34,7 @@ if (not env_etc.no_boost_python):
 
   env_etc.include_registry.append(
     env=env_metrics,
-    paths=env_etc.ncdist_resource_common_includes)
+    paths=ncdist_resource_common_includes)
   Export("env_metrics")
 
 # Other developers: I apologize in advance if this SConscript causes problems. Let me know --NKS.
