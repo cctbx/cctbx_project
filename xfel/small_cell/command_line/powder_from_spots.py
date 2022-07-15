@@ -128,9 +128,10 @@ class Script(object):
     assert len(params.input.experiments) == len(params.input.reflections) == 1
     experiments = params.input.experiments[0].data
     reflections = params.input.reflections[0].data
-    cscan = Center_scan(experiments, reflections, params)
-    for step in params.center_scan.step_px:
-      cscan.search_step(step)
+    if params.center_scan.step_px:
+      cscan = Center_scan(experiments, reflections, params)
+      for step in params.center_scan.step_px:
+        cscan.search_step(step)
 
     if params.output.geom_file is not None:
       experiments.as_file(params.output.geom_file)

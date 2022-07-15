@@ -84,7 +84,13 @@ def miller_array_export_as_shelx_hklf(
           result = "%8.7g" % v
       if ("." not in result): # FORTRAN F8.2 interprets 1234567 as 12345.67
         result = "%7d." % round(v) # Add "."
-      assert len(result) == 8
+      try:
+        assert len(result) == 8
+      except:
+        print(v)
+        print(result)
+        print('fail')
+        import pdb;pdb.set_trace()
       return result
     def fmt_fullrange_sigma(v):
       if (abs(v) >= 1.):

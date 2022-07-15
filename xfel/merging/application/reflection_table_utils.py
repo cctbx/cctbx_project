@@ -2,6 +2,11 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 from dials.array_family import flex
 import math
+import pickle
+import numpy as np
+from scipy.stats import exponnorm
+from libtbx.mpi4py import MPI
+
 
 class reflection_table_utils(object):
 
@@ -52,7 +57,7 @@ class reflection_table_utils(object):
     return table
 
   @staticmethod
-  def merge_reflections(reflections, min_multiplicity):
+  def merge_reflections(reflections, min_multiplicity, debug=True):
     '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
@@ -64,13 +69,34 @@ class reflection_table_utils(object):
       #assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
       refls = refls.select(refls['intensity.sum.variance'] > 0.0)
+      sel_low = refls['intensity.sum.value'] >= np.percentile(refls['intensity.sum.value'], 35)
+      sel_high = refls['intensity.sum.value'] <= np.percentile(refls['intensity.sum.value'], 85)
+      sel = sel_low & sel_high
+      #refls = refls.select(sel)
 
       if refls.size() >= min_multiplicity:
         weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
         weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
 
         weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+        log_i = math.log(max(weighted_mean_intensity, 1), 10)
+        log_i = max(log_i, 1)
+        pct = 17 + 15*log_i
+        pct = min(pct, 72)
+        iarray = refls['intensity.sum.value']
+        fitpars = exponnorm.fit(iarray)
+        try:
+          weighted_mean_intensity = exponnorm.ppf(0.95, *fitpars)
+        except:
+          print(fitpars)
+        #weighted_mean_intensity = np.percentile(refls['intensity.sum.value'], pct)
         standard_error_of_weighted_mean_intensity = 1.0/math.sqrt(flex.sum(weights_array))
+        if debug:
+          #pass
+          _h,_k,_l = hkl
+          outname = 'pickles2/refl.%s.%s.%s.pkl' % (_h, _k, _l)
+          with open(outname, 'wb') as f: pickle.dump(refls, f)
+
 
         merged_reflections.append(
                                   {'miller_index' : hkl,

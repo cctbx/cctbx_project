@@ -17,17 +17,28 @@ class Spotfinder_radial_average:
     self.params = params
     n_panels = len(experiments[0].detector)
     self.panelsums = [np.zeros(params.n_bins) for _ in range(n_panels)]
+    self.panel_xy_counts = {}
 
   def _process_pixel(self, i_panel, s0, panel, xy, value):
     value -= self.params.downweight_weak
     d_max_inv = 1/self.params.d_max
     d_min_inv = 1/self.params.d_min
     res_inv = 1 / panel.get_resolution_at_pixel(s0, xy)
+    d = 1/res_inv
     n_bins = self.params.n_bins
     i_bin = int(
         n_bins * (res_inv - d_max_inv ) / (d_min_inv - d_max_inv)
         )
     if i_bin < 0 or i_bin >= n_bins: return
+    x,y = [int(val) for val in xy]
+    key = (i_panel, x, y)
+    if key in self.panel_xy_counts.keys():
+      count = self.panel_xy_counts[key] + 1
+    else:
+      count = 1
+    self.panel_xy_counts[key] = count
+    if count > 3: 
+      return
     self.panelsums[i_panel][i_bin] += value
 
   def _nearest_peak(self, x, xvalues, yvalues):

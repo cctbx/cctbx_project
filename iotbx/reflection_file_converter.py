@@ -590,7 +590,7 @@ def run(
       data_status = "HKLF 3 (amplitude)"
     print("Writing SHELX", data_status, "file:", file_name)
     processed_array.export_as_shelx_hklf(
-      open(file_name, "w"),full_dynamic_range=True)
+      open(file_name, "w"),full_dynamic_range=False)
     n_output_files += 1
     print()
   if (n_output_files == 0):
