@@ -694,7 +694,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     pal = QPalette()
     pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
     self.BrowserBox.setPalette(pal)
-
+    self.send_message("NGL.background_colour = 'rgb(%d, %d, %d)'" %(color.red(), color.green(), color.blue()) )
 
   def onSelect_millertable_column_dlg(self):
     """

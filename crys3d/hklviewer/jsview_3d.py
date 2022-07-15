@@ -358,6 +358,9 @@ class HKLview_3d:
     if has_phil_path(diff_phil, "show_hkl"):
       self.show_hkl()
 
+    if has_phil_path(diff_phil, "background_colour"):
+      self.set_background_colour()
+
     if has_phil_path(diff_phil, "show_tooltips"):
       self.set_show_tooltips()
 
@@ -1689,6 +1692,11 @@ Distance: %s
     self.AddToBrowserMsgQueue("TooltipOpacity", msg)
 
 
+  def set_background_colour(self, r,g,b):
+    msg = "rgb(%d, %d, %d)" %(r,g,b)
+    self.AddToBrowserMsgQueue("BackgroundColour", msg)
+
+
   def set_opacity(self, bin, alpha):
     if bin > self.nbinvalsboundaries-1:
       return "There are only %d bins present\n" %self.nbinvalsboundaries
@@ -2287,6 +2295,10 @@ in the space group %s\nwith unit cell %s""" \
     self.AddToBrowserMsgQueue("SetCameraType", self.params.NGL.camera_type)
 
 
+  def set_background_colour(self):
+    self.AddToBrowserMsgQueue("BackgroundColour", self.params.NGL.background_colour)
+
+
   def get_labels_of_data_for_binning(self, arrayinfos):
     self.hkl_scenes_infos = []
     sceneid = 0
@@ -2629,6 +2641,9 @@ ngl_philstr = """
   fontsize = 9
     .type = int
     .help = "Font size for window displaying reflections"
+  background_colour = 'rgb(127, 127, 127)'
+    .type = str
+    .help = "String of RGB colour values for the background of the browser"
   show_tooltips = none *click hover
     .type = choice
     .help = "Specifies whether tooltips for reflections should show by hovering or by clicking on a reflection" \

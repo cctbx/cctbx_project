@@ -1321,6 +1321,10 @@ function onMessage(e)
       isdebug = (val[0] === "true");
     }
 
+    if (msgtype === "BackgroundColour") {
+      stage.setParameters( { backgroundColor: datval[1] } )
+    }
+
     if (msgtype ==="RemoveStageObjects")
     {
       RemoveStageObjects();
