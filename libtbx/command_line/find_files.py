@@ -8,7 +8,7 @@ import re
 import sys, os
 
 def read_lines_if_possible(file_path):
-  try: f = open(file_path, "r")
+  try: f = open(file_path, "r", errors='ignore')
   except IOError: return []
   return f.read().splitlines()
 

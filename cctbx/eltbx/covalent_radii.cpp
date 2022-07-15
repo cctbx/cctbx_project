@@ -9,8 +9,8 @@ namespace {
 /*! Table of covalent radii
 
     Reference:
-      Beatriz Cordero, Verónica Gómez, Ana E. Platero-Prats, Marc Revés,
-      Jorge Echeverría, Eduard Cremades, Flavia Barragán and Santiago Alvarez.
+      Beatriz Cordero, Veronica Gomez, Ana E. Platero-Prats, Marc Reves,
+      Jorge Echeverria, Eduard Cremades, Flavia Barragan and Santiago Alvarez.
       Covalent radii revisited. Dalton Trans., 2008, 2832-2838,
       doi:10.1039/b801115j
 */
