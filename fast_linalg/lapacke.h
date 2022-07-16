@@ -14,13 +14,18 @@
  // note: this can be long
 #define lapack_int int
 #endif
-
+#ifndef _lapack_complex_float
+template <typename FloatType>
+struct _lapack_complex { FloatType real, imag; };
+typedef _lapack_complex<float> _lapack_complex_float;
+typedef _lapack_complex<double> _lapack_complex_double;
+#endif
 namespace fast_linalg {
   const int LAPACK_ROW_MAJOR = 101,
     LAPACK_COL_MAJOR = 102;
 
   const char LAPACK_EIGENVALUES = 'N',
-    LAPACK_EIGENVALUES_ANDEIGENVECTORS = 'V';
+    LAPACK_EIGENVALUES_AND_EIGENVECTORS = 'V';
 }
 
 #if defined(USE_FAST_LINALG)
@@ -66,10 +71,28 @@ extern "C" {
   fast_linalg_api lapack_int lapack_spftri(int matrix_order, char transr,
     char uplo, lapack_int n, float* a);
 
+  fast_linalg_api lapack_int lapack_dsyev(int matrix_order, char jobz,
+    char uplo, lapack_int n, double* a, lapack_int lda,
+    double* w);
+  fast_linalg_api lapack_int lapack_ssyev(int matrix_order, char jobz,
+    char uplo, lapack_int n, float* a, lapack_int lda,
+    float* w);
+
   fast_linalg_api lapack_int lapack_zheev(int matrix_order, char jobz,
-    char uplo, lapack_int n, double* a, lapack_int lda, double *w);
+    char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    double* w);
   fast_linalg_api lapack_int lapack_cheev(int matrix_order, char jobz,
-    char uplo, lapack_int n, float* a, lapack_int lda, float* w);
+    char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    float* w);
+
+  fast_linalg_api lapack_int lapack_zgeev(int matrix_order, char jobvl,
+    char jovr, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    _lapack_complex_double* w, _lapack_complex_double* vl,
+    lapack_int ldvl, _lapack_complex_double* vr, lapack_int ldvr);
+  fast_linalg_api lapack_int lapack_cgeev(int matrix_order, char jobvl,
+    char jovr,lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    _lapack_complex_float* w, _lapack_complex_float*vl, lapack_int ldvl,
+    _lapack_complex_float*vr, lapack_int ldvr);
 
   fast_linalg_api void cblas_ssyr(int Order, int Uplo, int N, float Alpha,
     const float *X, int incX, float* A, int lda);
@@ -198,21 +221,59 @@ namespace fast_linalg {
   }
   //@}
 
+  /// @name Performs eigenvalue decomposition of a real-symm matrix
+  //@{
+
+  inline lapack_int syev(int matrix_order, char jobz,
+    char uplo, lapack_int n, float* a, lapack_int lda,
+    float* w)
+  {
+    return lapack_ssyev(matrix_order, jobz, uplo, n, a, lda, w);
+  }
+
+  inline lapack_int syev(int matrix_order, char jobz,
+    char uplo, lapack_int n, double* a, lapack_int lda,
+    double* w)
+  {
+    return lapack_dsyev(matrix_order, jobz, uplo, n, a, lda, w);
+  }
+  //@}
+
   /// @name Performs eigenvalue decomposition of a Hermitian matrix
   //@{
 
   inline lapack_int heev(int matrix_order, char jobz,
-    char uplo, lapack_int n, float* a, lapack_int lda, float* w)
+    char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    float* w)
   {
-
     return lapack_cheev(matrix_order, jobz, uplo, n, a, lda, w);
   }
 
   inline lapack_int heev(int matrix_order, char jobz,
-    char uplo, lapack_int n, double* a, lapack_int lda, double* w)
+    char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    double* w)
   {
-
     return lapack_zheev(matrix_order, jobz, uplo, n, a, lda, w);
+  }
+  //@}
+
+  /// @name Performs eigenvalue decomposition of a generic complex matrix
+  //@{
+
+  inline lapack_int geev(int matrix_order, char jobvl, char jobvr,
+    lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    _lapack_complex_float* w, _lapack_complex_float* vl, lapack_int ldvl,
+    _lapack_complex_float* vr, lapack_int ldvr)
+  {
+    return lapack_cgeev(matrix_order, jobvl, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
+  }
+
+  inline lapack_int geev(int matrix_order, char jobvl, char jobvr,
+    lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    _lapack_complex_double* w, _lapack_complex_double* vl, lapack_int ldvl,
+    _lapack_complex_double* vr, lapack_int ldvr)
+  {
+    return lapack_zgeev(matrix_order, jobvl, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
   }
   //@}
 
@@ -346,13 +407,31 @@ namespace fast_linalg {
   }
 
   template <typename FloatType>
-  inline lapack_int heev(int, char, char, lapack_int, FloatType*,
+  inline lapack_int syev(int, char, char, lapack_int, FloatType*,
+    lapack_int, FloatType*)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+    return 0;
+  }
+
+  template <typename FloatType>
+  inline lapack_int heev(int, char, char, lapack_int, _lapack_complex<FloatType>*,
     lapack_int, FloatType*)
   {
     SCITBX_NOT_IMPLEMENTED();
     return 0;
   }
   
+  template <typename FloatType>
+  inline lapack_int geev(int, char, char, lapack_int,
+    _lapack_complex<FloatType>*, lapack_int,
+    _lapack_complex<FloatType>*, _lapack_complex<FloatType>*,
+    lapack_int, _lapack_complex<FloatType>*, lapack_int)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+    return 0;
+  }
+
   template <typename FloatType>
   void syr(int, int, int, FloatType, const FloatType*, int,
     FloatType*, int)
