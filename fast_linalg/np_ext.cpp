@@ -28,11 +28,22 @@ namespace fast_linalg {
   typedef lapack_int(LAPACKE_spftri_t)(int, char, char,
     lapack_int, float *);
 
-  typedef lapack_int(LAPACKE_cheev_t)(int, char, char, lapack_int, float*,
-    lapack_int, float*);
-  typedef lapack_int(LAPACKE_zheev_t)(int, char, char, lapack_int, double*,
-    lapack_int, double*);
+  typedef lapack_int(LAPACKE_ssyev_t)(int, char, char, lapack_int,
+    float*, lapack_int, float*);
+  typedef lapack_int(LAPACKE_dsyev_t)(int, char, char, lapack_int,
+    double*, lapack_int, double*);
 
+  typedef lapack_int(LAPACKE_cheev_t)(int, char, char, lapack_int,
+    _lapack_complex_float*, lapack_int, float*);
+  typedef lapack_int(LAPACKE_zheev_t)(int, char, char, lapack_int,
+    _lapack_complex_double*, lapack_int, double*);
+
+  typedef lapack_int(LAPACKE_cgeev_t)(int, char, char, lapack_int,
+    _lapack_complex_float*, lapack_int, _lapack_complex_float*,
+    _lapack_complex_float*, lapack_int, _lapack_complex_float*, lapack_int);
+  typedef lapack_int(LAPACKE_zgeev_t)(int, char, char, lapack_int,
+    _lapack_complex_double*, lapack_int, _lapack_complex_double*,
+    _lapack_complex_double*, lapack_int, _lapack_complex_double*, lapack_int);
 
   typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
     int, float *, int);
@@ -70,6 +81,7 @@ namespace fast_linalg {
     dll::shared_library lib;
     void init_(std::string lib_name) {
       lib = dll::shared_library(lib_name, dll::load_mode::search_system_folders);
+      SCITBX_ASSERT(lib);
       LAPACKE_dpftrf = &lib.get<LAPACKE_dpftrf_t>("LAPACKE_dpftrf");
       LAPACKE_spftrf = &lib.get<LAPACKE_spftrf_t>("LAPACKE_spftrf");
       LAPACKE_dsfrk = &lib.get<LAPACKE_dsfrk_t>("LAPACKE_dsfrk");
@@ -80,8 +92,12 @@ namespace fast_linalg {
       LAPACKE_stpttf = &lib.get<LAPACKE_stpttf_t>("LAPACKE_stpttf");
       LAPACKE_dpftri = &lib.get<LAPACKE_dpftri_t>("LAPACKE_dpftri");
       LAPACKE_spftri = &lib.get<LAPACKE_spftri_t>("LAPACKE_spftri");
+      LAPACKE_ssyev = &lib.get<LAPACKE_ssyev_t>("LAPACKE_ssyev");
+      LAPACKE_dsyev = &lib.get<LAPACKE_dsyev_t>("LAPACKE_dsyev");
       LAPACKE_cheev = &lib.get<LAPACKE_cheev_t>("LAPACKE_cheev");
       LAPACKE_zheev = &lib.get<LAPACKE_zheev_t>("LAPACKE_zheev");
+      LAPACKE_cgeev = &lib.get<LAPACKE_cgeev_t>("LAPACKE_cgeev");
+      LAPACKE_zgeev = &lib.get<LAPACKE_zgeev_t>("LAPACKE_zgeev");
 
       openblas_get_num_threads = &lib.get<openblas_get_num_threads_t>(
         "openblas_get_num_threads");
@@ -117,8 +133,13 @@ namespace fast_linalg {
       LAPACKE_stpttf = 0;
       LAPACKE_dpftri = 0;
       LAPACKE_spftri = 0;
+      LAPACKE_ssyev = 0;
+      LAPACKE_dsyev = 0;
       LAPACKE_cheev = 0;
       LAPACKE_zheev = 0;
+      LAPACKE_cgeev = 0;
+      LAPACKE_zgeev = 0;
+
 
       openblas_get_num_threads = 0;
       openblas_get_num_procs = 0;
@@ -149,8 +170,12 @@ namespace fast_linalg {
     LAPACKE_stpttf_t *LAPACKE_stpttf;
     LAPACKE_dpftri_t *LAPACKE_dpftri;
     LAPACKE_spftri_t *LAPACKE_spftri;
+    LAPACKE_ssyev_t* LAPACKE_ssyev;
+    LAPACKE_dsyev_t* LAPACKE_dsyev;
     LAPACKE_cheev_t *LAPACKE_cheev;
     LAPACKE_zheev_t *LAPACKE_zheev;
+    LAPACKE_cgeev_t* LAPACKE_cgeev;
+    LAPACKE_zgeev_t* LAPACKE_zgeev;
 
     openblas_get_num_threads_t *openblas_get_num_threads;
     openblas_get_num_procs_t *openblas_get_num_procs;
@@ -301,6 +326,52 @@ lapack_int lapack_spftri(int matrix_order, char transr, char uplo,
 {
   return (*Wrapper::instance().LAPACKE_spftri)(
     matrix_order, transr, uplo, n, a);
+}
+//............................................................................
+//............................................................................
+lapack_int lapack_ssyev(int matrix_order, char jobz,
+  char uplo, lapack_int n, float* a, lapack_int lda, float* w)
+{
+  return (*Wrapper::instance().LAPACKE_ssyev)(
+    matrix_order, jobz, uplo, n, a, lda, w);
+}
+lapack_int lapack_dsyev(int matrix_order, char jobz,
+  char uplo, lapack_int n, double* a, lapack_int lda, double* w)
+{
+  return (*Wrapper::instance().LAPACKE_dsyev)(
+    matrix_order, jobz, uplo, n, a, lda, w);
+}
+//............................................................................
+//............................................................................
+lapack_int lapack_cheev(int matrix_order, char jobz,
+  char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda, float* w)
+{
+  return (*Wrapper::instance().LAPACKE_cheev)(
+    matrix_order, jobz, uplo, n, a, lda, w);
+}
+lapack_int lapack_zheev(int matrix_order, char jobz,
+  char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda, double* w)
+{
+  return (*Wrapper::instance().LAPACKE_zheev)(
+    matrix_order, jobz, uplo, n, a, lda, w);
+}
+//............................................................................
+//............................................................................
+lapack_int lapack_cgeev(int matrix_order, char joblv, char jobvr,
+  lapack_int n, _lapack_complex_float* a, lapack_int lda,
+  _lapack_complex_float* w, _lapack_complex_float* vl, lapack_int ldvl,
+  _lapack_complex_float* vr, lapack_int ldvr)
+{
+  return (*Wrapper::instance().LAPACKE_cgeev)(
+    matrix_order, joblv, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
+}
+lapack_int lapack_zgeev(int matrix_order, char joblv, char jobvr,
+  lapack_int n, _lapack_complex_double* a, lapack_int lda,
+  _lapack_complex_double* w, _lapack_complex_double* vl, lapack_int ldvl,
+  _lapack_complex_double* vr, lapack_int ldvr)
+{
+  return (*Wrapper::instance().LAPACKE_zgeev)(
+    matrix_order, joblv, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
 }
 //............................................................................
 //............................................................................
