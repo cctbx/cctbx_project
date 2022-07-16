@@ -104,8 +104,8 @@ namespace simtbx { namespace Kokkos {
 
     //2) confirm that array dimensions are similar for each size
     for (int ipanel=1; ipanel < arg_detector.size(); ++ipanel){
-      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[0] == m_slow_dim_size );
-      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[1] == m_fast_dim_size );
+      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[1] == m_slow_dim_size );
+      SCITBX_ASSERT( arg_detector[ipanel].get_image_size()[0] == m_fast_dim_size );
     }
     // printf(" m_total_pixel_count: %d\n", m_total_pixel_count);
     // printf("     m_slow_dim_size: %d\n", m_slow_dim_size);
@@ -126,10 +126,11 @@ namespace simtbx { namespace Kokkos {
     h_deviceID(arg_device),
     metrology(arg_detector, arg_beam),
     m_panel_count( arg_detector.size() ),
-    m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
-    m_fast_dim_size( arg_detector[0].get_image_size()[1] ),
+    m_slow_dim_size( arg_detector[0].get_image_size()[1] ),
+    m_fast_dim_size( arg_detector[0].get_image_size()[0] ),
     m_total_pixel_count( m_panel_count * m_slow_dim_size * m_fast_dim_size ),
     m_accumulate_floatimage( construct_detail(arg_detector) ) { }
+    // Easy mistake: not realizing that the dxtbx detector model stores (fast,slow) sizes
 
   kokkos_detector::kokkos_detector(int const& arg_device,
                              const simtbx::nanoBragg::nanoBragg& nB):

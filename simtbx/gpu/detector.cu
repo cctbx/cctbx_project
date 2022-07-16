@@ -110,11 +110,11 @@ namespace gpu {
     SCITBX_ASSERT( cu_n_panels >= 1);
 
     //2) confirm that array dimensions are similar for each size
-    cu_slow_pixels = detector[0].get_image_size()[0];
-    cu_fast_pixels = detector[0].get_image_size()[1];
+    cu_slow_pixels = detector[0].get_image_size()[1];
+    cu_fast_pixels = detector[0].get_image_size()[0];
     for (int ipanel=1; ipanel < detector.size(); ++ipanel){
-      SCITBX_ASSERT(detector[ipanel].get_image_size()[0] == cu_slow_pixels);
-      SCITBX_ASSERT(detector[ipanel].get_image_size()[1] == cu_fast_pixels);
+      SCITBX_ASSERT(detector[ipanel].get_image_size()[1] == cu_slow_pixels);
+      SCITBX_ASSERT(detector[ipanel].get_image_size()[0] == cu_fast_pixels);
     }
     _image_size = cu_n_panels * cu_slow_pixels * cu_fast_pixels;
 
