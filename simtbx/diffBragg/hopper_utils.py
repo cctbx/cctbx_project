@@ -1213,8 +1213,6 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
                     d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
                 J[p.xpos, slc] += d
 
-    if SIM.use_psf:
-        model_pix, J = convolve_model_with_psf(model_pix, J, SIM, pfs)
 
     return model_pix, J
 
@@ -1415,6 +1413,9 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
     # Jac has shape of num_param x num_pix
 
     model_pix = model_bragg + background
+
+    if SIM.use_psf:
+        model_pix, J = convolve_model_with_psf(model_pix, J, SIM, pfs)
 
     resid = data - model_pix
 
