@@ -171,9 +171,15 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                  profile="gauss", cuda=True, show_params=False)
         return results, expt
     elif use_db:
+        mos_dom = 1
+        if "num_mosaicity_samples" in list(df):
+            mos_dom = df.num_mosaicity_samples.values[0]
+        eta_abc = df.eta_abc.values[0]
+        LOGGER.debug("Num mos samples=%d, eta_abc=" % mos_dom, eta_abc)
         results = diffBragg_forward(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                     fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
                                     Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
+                                    mos_dom=mos_dom, eta_abc=df.eta_abc.values[0],
                                     device_Id=device_Id, oversample=oversample,
                                     show_params=not quiet,
                                     nopolar=nopolar,
@@ -213,7 +219,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       mosaicity_random_seeds=None,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
-                      det_thicksteps=None):
+                      det_thicksteps=None, eta_abc=None):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -235,6 +241,8 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     nbCrystal.xtal_shape = profile
     nbCrystal.n_mos_domains = mos_dom
     nbCrystal.mos_spread_deg = mos_spread
+    if eta_abc is not None:
+        nbCrystal.anisotropic_mos_spread_deg = eta_abc
 
     S = SimData()
     S.detector = DETECTOR

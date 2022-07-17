@@ -47,6 +47,8 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         mtz_col = params.simulator.structure_factors.mtz_column
         defaultF = 0
     # returns the images and the experiment including any pre-modeling modifications (e.g. thinning out the detector)
+    if "num_mosaicity_samples" not in list(df):
+        df['num_mosaicity_samples'] = [params.simulator.crystal.num_mosaicity_samples]
 
     model_out = model_spots_from_pandas(
         df,
