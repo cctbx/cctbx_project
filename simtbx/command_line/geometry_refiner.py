@@ -5,7 +5,7 @@ from __future__ import print_function, division
 import numpy as np
 import sys
 import time
-from simtbx.command_line.hopper import single_expt_pandas
+from simtbx.diffBragg.hopper_io import single_expt_pandas
 from copy import deepcopy
 import os
 from libtbx.mpi4py import  MPI
@@ -39,6 +39,34 @@ PAN_OFS_IDS = PAN_O_ID, PAN_F_ID, PAN_S_ID
 PAN_XYZ_IDS = PAN_X_ID, PAN_Y_ID, PAN_Z_ID
 
 DEG_TO_PI = np.pi/180.
+
+
+def convolve_model_with_psf(model_pix, SIM, pan_fast_slow, roi_id_slices, roi_id_unique):
+
+    if not SIM.use_psf:
+        return model_pix
+    PSF = SIM.PSF
+    psf_args = SIM.psf_args
+
+    coords = pan_fast_slow.as_numpy_array()
+    fid = coords[1::3]
+    sid = coords[2::3]
+
+    for i in roi_id_unique:
+        for slc in roi_id_slices[i]:
+            fvals = fid[slc]
+            svals = sid[slc]
+            f0 = fvals.min()
+            s0 = svals.min()
+            f1 = fvals.max()
+            s1 = svals.max()
+            fdim = int(f1-f0+1)
+            sdim = int(s1-s0+1)
+            img = model_pix[slc].reshape((sdim, fdim))
+            img = psf.convolve_with_psf(img, psf=PSF, **psf_args)
+            model_pix[slc] = img.ravel()
+
+    return model_pix
 
 
 def get_dist_from_R(R):
@@ -139,6 +167,13 @@ class CrystalParameters:
                                           center=p.center, beta=p.beta)
                 self.parameters.append(ref_p)
 
+            for i_eta in range(3):
+                p = Mod.PAR.eta[i_eta]
+                ref_p = RangedParameter(name="rank%d_shot%d_eta%d" % (COMM.rank, i_shot, i_eta),
+                                        minval=p.minval, maxval=p.maxval, fix=self.phil.fix.eta_abc, init=p.init,
+                                        center=p.center, beta=p.beta)
+                self.parameters.append(ref_p)
+
             for i_rot in range(3):
                 p = Mod.PAR.RotXYZ_params[i_rot]
                 ref_p = RangedParameter(name="rank%d_shot%d_RotXYZ%d" % (COMM.rank, i_shot, i_rot),
@@ -229,7 +264,7 @@ class Target:
             print("Final Iteration %d:\n\tResid=%f, sigmaZ %f" % (self.iternum, f, self.sigmaZ))
 
 
-def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
+def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
     """
 
     :param x: rescaled parameter array (global)
@@ -239,7 +274,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
         have names which include i_shot
     :param Modeler: DataModeler for i_shot
     :param SIM: instance of sim_data.SimData
-    :param return_model: if true, bypass the latter half of the method and return the Bragg scattering model
+    :param return_bragg_model: if true, bypass the latter half of the method and return the Bragg scattering model
     :return: either the Bragg scattering model (if return_model), or else a 3-tuple of
         (float, dict of float, float)
         (negative log likelihood, gradient of negative log likelihood, average sigmaZ for the shot)
@@ -251,9 +286,22 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
     Na = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 0)]
     Nb = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 1)]
     Nc = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 2)]
+    eta_a = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 0)]
+    eta_b = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 1)]
+    eta_c = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 2)]
     G = ref_params["rank%d_shot%d_Scale" % (COMM.rank, i_shot)]
     num_uc_p = len(Modeler.ucell_man.variables)
     ucell_pars = [ref_params["rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc)] for i_uc in range(num_uc_p)]
+
+    # update the rotational mosaicity here
+    # update the mosaicity here
+    eta_params = [eta_a, eta_b, eta_c]
+    if SIM.umat_maker is not None:
+        # we are modeling mosaic spread
+        eta_abc = [p.get_val(x[p.xpos]) for p in eta_params]
+        #if not SIM.D.has_anisotropic_mosaic_spread:
+        #    eta_abc = eta_abc[0]
+        SIM.update_umats_for_refinement(eta_abc)
 
     # update the photon energy spectrum for this shot
     SIM.beam.spectrum = Modeler.spectra
@@ -305,15 +353,14 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
 
     # scale the bragg scattering
     bragg = all_bragg_scales*bragg_no_scale
+    if return_bragg_model:
+        return bragg
 
     # this is the total forward model:
     model_pix = bragg + Modeler.all_background
     if SIM.use_psf:
-        model_pix,_ = hopper_utils.convolve_model_with_psf(model_pix, None, SIM,  Modeler.pan_fast_slow, roi_id_slices=Modeler.roi_id_slices, roi_id_unique=Modeler.roi_id_unique)
+        model_pix = convolve_model_with_psf(model_pix, SIM,  Modeler.pan_fast_slow, roi_id_slices=Modeler.roi_id_slices, roi_id_unique=Modeler.roi_id_unique)
 
-
-    if return_model:
-        return model_pix
 
     # compute the negative log Likelihood
     resid = (Modeler.all_data - model_pix)
@@ -350,11 +397,11 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
             J[p.name] = (common_term_slc*d)[d_trusted].sum()
 
     # scale factor gradients
-    conv_args = {"J": None, "SIM": SIM, "pan_fast_slow": Modeler.pan_fast_slow, "roi_id_slices": Modeler.roi_id_slices, "roi_id_unique": Modeler.roi_id_unique}
+    conv_args = {"SIM": SIM, "pan_fast_slow": Modeler.pan_fast_slow, "roi_id_slices": Modeler.roi_id_slices, "roi_id_unique": Modeler.roi_id_unique}
     if not G.fix:
         bragg_no_roi_scale = bragg_no_scale*Modeler.per_roi_scales_per_pix
         scale_grad = G.get_deriv(x[G.xpos], bragg_no_roi_scale)
-        scale_grad,_ = hopper_utils.convolve_model_with_psf(scale_grad, **conv_args)
+        scale_grad = convolve_model_with_psf(scale_grad, **conv_args)
         J[G.name] = (common_grad_term*scale_grad)[Modeler.all_trusted].sum()
 
     # Umat gradients
@@ -363,7 +410,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
             rot_db_id = ROTXYZ_ID[i_rot]
             rot_grad = scale*SIM.D.get_derivative_pixels(rot_db_id).as_numpy_array()[:npix]
             rot_grad = rot.get_deriv(x[rot.xpos], rot_grad)
-            rot_grad,_ = hopper_utils.convolve_model_with_psf(rot_grad, **conv_args)
+            rot_grad = convolve_model_with_psf(rot_grad, **conv_args)
             J[rot.name] = (common_grad_term*rot_grad)[Modeler.all_trusted].sum()
 
     # mosaic block size gradients
@@ -372,15 +419,28 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
         for i_N, N in enumerate([Na, Nb, Nc]):
             N_grad = scale*(Nabc_grad[i_N][:npix].as_numpy_array())
             N_grad = N.get_deriv(x[N.xpos], N_grad)
-            N_grad,_ = hopper_utils.convolve_model_with_psf(N_grad, **conv_args)
+            N_grad = convolve_model_with_psf(N_grad, **conv_args)
             J[N.name] = (common_grad_term*N_grad)[Modeler.all_trusted].sum()
+
+    if not eta_a.fix:
+        if SIM.D.has_anisotropic_mosaic_spread:
+            eta_abc_derivs = SIM.D.get_aniso_eta_deriv_pixels()
+        else:
+            eta_abc_derivs = [SIM.D.get_derivative_pixels(hopper_utils.ETA_ID)]
+        for i_eta, eta in enumerate(eta_params):
+            eta_grad = scale*(eta_abc_derivs[i_eta][:npix].as_numpy_array())
+            eta_grad = eta.get_deriv(x[eta.xpos], eta_grad)
+            eta_grad = convolve_model_with_psf(eta_grad, **conv_args)
+            J[eta.name] = (common_grad_term*eta_grad)[Modeler.all_trusted].sum()
+            if not SIM.D.has_anisotropic_mosaic_spread:
+                break
 
     # unit cell gradients
     if not ucell_pars[0].fix:
         for i_ucell, uc_p in enumerate(ucell_pars):
             d = scale*SIM.D.get_derivative_pixels(hopper_utils.UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
             d = uc_p.get_deriv(x[uc_p.xpos], d)
-            d,_ = hopper_utils.convolve_model_with_psf(d, **conv_args)
+            d = convolve_model_with_psf(d, **conv_args)
             J[ucell_pars[i_ucell].name] = (common_grad_term*d)[Modeler.all_trusted].sum()
 
     # detector model gradients
@@ -388,7 +448,7 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_model=False):
     for diffbragg_parameter_id in PAN_OFS_IDS+PAN_XYZ_IDS:
         try:
             d = SIM.D.get_derivative_pixels(diffbragg_parameter_id).as_numpy_array()[:npix]
-            d,_ = hopper_utils.convolve_model_with_psf(d, **conv_args)
+            d = convolve_model_with_psf(d, **conv_args)
             d = common_grad_term*scale*d
         except ValueError:
             d = None
@@ -523,6 +583,8 @@ def target_and_grad(x, ref_params, data_modelers, SIM, params):
 
         if params.use_restraints:
             for name in ref_params:
+                if name.startswith("Fhkl"):
+                    continue
                 par = ref_params[name]
                 if not par.is_global and not par.fix:
                     val = par.get_restraint_val(x[par.xpos])
@@ -547,6 +609,8 @@ def target_and_grad(x, ref_params, data_modelers, SIM, params):
     ## add in the detector parameter restraints
     if params.use_restraints:
         for name in ref_params:
+            if name.startswith("Fhkl"):
+                continue
             par = ref_params[name]
             if par.is_global and not par.fix:
                 target_functional += par.get_restraint_val(x[par.xpos])
@@ -637,6 +701,8 @@ def geom_min(params):
     if not params.fix.RotXYZ:
         for i_rot in range(3):
             launcher.SIM.D.refine(ROTXYZ_ID[i_rot])
+    if not params.fix.eta_abc:
+        launcher.SIM.D.refine(hopper_utils.ETA_ID)
     if not params.fix.Nabc:
         launcher.SIM.D.refine(hopper_utils.NCELLS_ID)
     if not params.fix.ucell:
@@ -726,8 +792,8 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
         new_exp.beam.set_wavelength(ave_wave)
         new_exp.detector = opt_det
 
-        Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, SIM, return_model=True)
-        Modeler.best_model_includes_background = True
+        Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, SIM, return_bragg_model=True)
+        Modeler.best_model_includes_background = False
 
         # store the updated per-roi scale factors in the new refl table
         roi_scale_factor = flex.double(len(Modeler.refls), 1)
@@ -771,14 +837,17 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
             a,b,c,al,be,ga = ucpar
             ncells_p = [LMP["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i)] for i in range(3)]
             Na,Nb,Nc = [p.get_val(Xopt[p.xpos]) for p in ncells_p]
+
+            eta_p = [LMP["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, i)] for i in range(3)]
+            eta_abc = tuple([p.get_val(Xopt[p.xpos]) for p in eta_p])
+
             scale_p = LMP["rank%d_shot%d_Scale" %(COMM.rank, i_shot)]
             scale = scale_p.get_val(Xopt[scale_p.xpos])
 
             _,fluxes = zip(*SIM.beam.spectrum)
-            eta_a = eta_b = eta_c = np.nan
             df= single_expt_pandas(xtal_scale=scale, Amat=new_crystal.get_A(),
                 ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
-                eta_abc=(eta_a, eta_b, eta_c),
+                eta_abc=eta_abc,
                 diff_gamma=(np.nan, np.nan, np.nan),
                 diff_sigma=(np.nan, np.nan, np.nan),
                 detz_shift=0,
