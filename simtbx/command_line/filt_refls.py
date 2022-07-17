@@ -28,7 +28,7 @@ try:
     fnames = glob.glob(args.input + "/pandas/rank*/*.pkl")
     assert fnames
     df = pandas.concat([pandas.read_pickle(f) for f in fnames])
-except:
+except Exception:
     df = pandas.read_pickle(args.input)
 df.reset_index(inplace=True, drop=True)
 
@@ -53,7 +53,7 @@ for i in range(len(df)):
     bad_dists = np.zeros(len(R), bool)
     if args.reflMaxD is not None:
         bad_dists = np.array(all_dists) > args.reflMaxD
-    
+
     d = np.median(all_dists)
     K = True
     if args.mind is not None:
@@ -82,8 +82,8 @@ for i in range(len(df)):
     if keep[-1]:
         n += len(R)
         n2 += len(R2)
-    
-    
+
+
 df['filtered_refls'] = R2names
 df = df.loc[keep]
 df.reset_index(inplace=True, drop=True)
@@ -91,7 +91,7 @@ df.to_pickle(args.out)
 print("\nSummary\n<><><><><>")
 print("%d refls tot" % len(df))
 print("Wrote %s which can be passed into diffBragg.geometry_refiner  input_pickle=%s" % (args.out, args.out))
-print("Kept %d / %d refls. Removed %.2f %% " 
+print("Kept %d / %d refls. Removed %.2f %% "
     % (n2, n, (n-n2)/float(n)*100. ))
 if args.ers is not None:
     with open(args.ers, "w") as ersFile:

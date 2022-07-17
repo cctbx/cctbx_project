@@ -12,7 +12,7 @@ args = parser.parse_args()
 
 FIG,(ax0,ax1,ax2) = subplots(nrows=1,ncols=3)
 FIG.set_size_inches((5,2))
-   
+
 
 def press(event):
     if event.key == 'right':
@@ -28,7 +28,7 @@ def press(event):
 def centroid_poly(x,y):
     y1 = y[:-1]
     y2 = y[1:]
-    
+
     x1 = x[:-1]
     x2 = x[1:]
     xy = (x1*y2 - x2*y1)
@@ -69,7 +69,7 @@ d_min = 9999
 
 
 a = b = None
-while FIG.loop_counter < num_spots: 
+while FIG.loop_counter < num_spots:
     i_h = FIG.loop_counter
     h = k = l = np.nan
     d = -1 #uc.d((h,k,l))
@@ -89,13 +89,13 @@ while FIG.loop_counter < num_spots:
 
     Z = (model - data) / np.sqrt(model + sigma_rdout ** 2)
     diffs.extend(Z.ravel())
-    
+
     vals = Z[trusted]
     data_trust = data[trusted]
-    data_thresh = np.percentile(data_trust,97) 
+    data_thresh = np.percentile(data_trust,97)
     y,x = np.indices(data.shape)
 
-    ycent = (bragg.ravel()*y.ravel()).sum() /bragg.sum() 
+    ycent = (bragg.ravel()*y.ravel()).sum() /bragg.sum()
     xcent = (bragg.ravel()*x.ravel()).sum() / bragg.sum()
 
     sigZ_val = Z[trusted].std()
@@ -153,7 +153,7 @@ while FIG.loop_counter < num_spots:
     b.set_title("counts", pad=0, fontsize=8)
     draw()
     waitforbuttonpress()
-    
+
     i_h += 1
 
 plt.close()
