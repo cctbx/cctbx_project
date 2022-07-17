@@ -132,8 +132,18 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
     #    Hess[0, i_Hess] = val_off_diag
     #    Hess[i_Hess, 0] = val_off_diag
 
-    F = Mod.SIM.crystal.miller_array
-    Fmap = {h:amp for h,amp in zip(F.indices(), F.data())}
+    Fp1 = Mod.SIM.crystal.miller_array
+    Fp1_map = {h:amp for h,amp in zip(Fp1.indices(), Fp1.data())}
+
+    sg = Mod.SIM.crystal.dxtbx_crystal.get_space_group()
+    sgi = sg.info()
+    to_p1 = sgi.change_of_basis_op_to_primitive_setting()
+    to_ref = to_p1.inverse()
+    F2 = Mod.SIM.crystal.miller_array.change_basis(to_ref)
+    Fmap = {h:amp for h,amp in zip(F2.indices(), F2.data())}
+
+    nremove = 0
+
     all_I = []
     all_s = []
     all_varI = []
@@ -155,12 +165,19 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
         scale = p.get_val(1)
         var_s = variance_s[p.xpos]
         hkl = Mod.hi_asu_perpix[data_slc][0]
+        #if hkl not in Fp1_map:
         if hkl not in Fmap:
+            if verbose:
+                print("refl %d   has miller index thats not in Fmap: " % refl_idx, hkl)
+            nremove += 1
             continue
         amp = Fmap[hkl]
         I_hkl = amp**2
         var_I = I_hkl **2 * var_s
-        if var_I <= 1e-6 or var_I > 1e10:
+        if var_I <= 1e-6 or var_I > 1e16:
+            if verbose:
+                print("refl %d  has wacky variance" % refl_idx)
+            nremove += 1
             continue
         I = scale*I_hkl
         h,k,l=hkl
@@ -185,12 +202,13 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
     #all_s = np.array(all_s)
     #all_I = np.array(all_I)
     #all_varI = np.array(all_varI)
-    #from IPython import embed;embed();exit()
+    if verbose:
+        print("removed %d / %d refls" % (nremove, len(Mod.refls)))
 
     hopper_utils.free_SIM_mem(Mod.SIM)
     if outfile_prefix is not None:
-        integ_refls.as_file(outfile_prefix+".refl")
-        copyfile(expt_name, outfile_prefix+".expt")
+        integ_refls.as_file(outfile_prefix+"_integrated.refl")
+        copyfile(expt_name, outfile_prefix+"_integrated.expt")
     if verbose:
         print("Done.")
 
@@ -209,4 +227,4 @@ if __name__=="__main__":
 
     logger = logging.getLogger("diffBragg.main")
     logger.setLevel(logging.DEBUG)
-    get_errors(args.phil, args.expt, args.refl, args.pkl)
+    get_errors(args.phil, args.expt, args.refl, args.pkl, verbose=args.loud)
