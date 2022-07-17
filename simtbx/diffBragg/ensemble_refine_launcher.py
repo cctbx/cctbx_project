@@ -17,6 +17,7 @@ from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
+from cctbx import miller, crystal
 import logging
 
 LOGGER = logging.getLogger("diffBragg.main")
@@ -101,10 +102,8 @@ class RefineLauncher:
             self.panel_reference_from_id[pid] = reference_panel.get_origin()
 
     def _init_simulator(self, expt, miller_data):
-        self.SIM = utils.simulator_from_expt_and_params(expt, self.params)
+        self.SIM = utils.simulator_for_refinement(expt, self.params)
         # note self.SIM.D is a now diffBragg instance
-        # include mosaic texture ?
-
         # update the miller data ?
         if miller_data is not None:
             self.SIM.crystal.miller_array = miller_data.as_amplitude_array()
@@ -230,19 +229,32 @@ class RefineLauncher:
             if "miller_index" in list(refls.keys()):
                 is_allowed = flex.bool(len(refls), True)
                 allowed_hkls = set(self.SIM.crystal.miller_array.indices())
+                uc = self.SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
+                symb = self.SIM.crystal.space_group_info.type().lookup_symbol()
+                sym = crystal.symmetry(uc, symb)
+                mset = miller.set(sym, refls['miller_index'],True)
+                op = mset.change_of_basis_op_to_primitive_setting()
+                mset_p = mset.change_basis(op)
+                refl_hkls_p1 = mset_p.indices()
+
                 for i_ref in range(len(refls)):
-                    if refls[i_ref]['miller_index'] not in allowed_hkls:
+                    hkl_p1 = refl_hkls_p1[i_ref]
+                    if hkl_p1 not in allowed_hkls:
                         is_allowed[i_ref] = False
                 refls = refls.select(is_allowed)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
+            shot_modeler.exper_name = exper_name
+            shot_modeler.refl_name = refl_name
+            shot_modeler.rank = COMM.rank
             if self.params.refiner.load_data_from_refl:
                 gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol)
             else:
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
                 raise IOError("Failed to gather data from experiment %s", exper_name)
+                COMM.abort()
 
             if self.params.refiner.gather_dir is not None:
                 gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
