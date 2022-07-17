@@ -3,6 +3,7 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
+#include <boost/python/numpy.hpp>
 
 using namespace boost::python;
 namespace simtbx{
@@ -13,6 +14,25 @@ namespace boost_python { namespace {
   void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_B)(const nanoBragg::af::shared<size_t>&) = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
   void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_C)(const nanoBragg::af::shared<size_t>&, boost::python::list per_pix_nominal_hkl)
         = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+
+  void set_hall(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::str hall){
+    diffBragg.db_cryst.hall_symbol = boost::python::extract<std::string>(hall);
+  }
+  boost::python::str get_hall(simtbx::nanoBragg::diffBragg& diffBragg){
+    return boost::python::str(diffBragg.db_cryst.hall_symbol);
+  }
+
+  int get_Num_ASU(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.db_cryst.Num_ASU;
+  }
+
+  boost::python::dict get_ASUid_map(simtbx::nanoBragg::diffBragg& diffBragg){
+        boost::python::dict asu_info;
+        for(auto &x: diffBragg.db_cryst.ASUid_map){
+            asu_info[x.first] = x.second;
+        }
+        return asu_info;
+  }
 
   static void  set_diffuse_gamma(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
       double g0 = boost::python::extract<double>(values[0]);
@@ -400,6 +420,9 @@ namespace boost_python { namespace {
   }
 
   void diffBragg_init_module() {
+    Py_Initialize();
+    boost::python::numpy::initialize();
+
     using namespace boost::python;
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
@@ -491,6 +514,12 @@ namespace boost_python { namespace {
 
       //.def("get_derivative_pixels", get_deriv_pix,
       //      "gets the manager raw image containing first derivatives")
+
+      .def("__add_Fhkl_gradients", &simtbx::nanoBragg::diffBragg::add_Fhkl_gradients,
+            "special mode for computing the gradients of the structure factors. Takes psf, residual, variance, and trusted mask as arguments")
+
+      .def("__update_Fhkl_scale_factors", &simtbx::nanoBragg::diffBragg::update_Fhkl_scale_factors,
+            "updates the scale factors for each ASU. Should be same length as the db_cryst.ADUid_map")
 
       .def("__get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
             "gets the manager raw image containing first derivatives")
@@ -730,10 +759,17 @@ namespace boost_python { namespace {
             make_function(&get_wavelen_img_flag,rbv()),
             make_function(&set_wavelen_img_flag,dcp()),
             "if True, then record the average wavelength per pixel, weighted by Bragg intensity")
+      .def("get_ASUid_map",
+            &get_ASUid_map,
+            "an internal map that specifies the ASU miller index for each entry in FhklLinear")
+      .add_property("Num_ASU",
+                     make_function(get_Num_ASU,rbv()),
+                    "number of unique ASU miller indices")
+      .add_property("hall_symbol",
+            make_function(&get_hall,rbv()),
+            make_function(&set_hall,dcp()),
+            "an internal map that specifies the ASU miller index for each entry in FhklLinear")
 
-      //.add_property("ave_wavelength",
-      //      make_function(&simtbx::nanoBragg::diffBragg::ave_wavelength_img , rbv()),
-      //      "return flex array containing average wavelen per pixel")
       .def("ave_wavelength_image",
             &simtbx::nanoBragg::diffBragg::ave_wavelength_img,
             "return flex array containing average wavelen per pixel")

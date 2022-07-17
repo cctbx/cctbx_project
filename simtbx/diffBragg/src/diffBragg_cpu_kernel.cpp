@@ -18,32 +18,22 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
-    MAT3 anisoG_local;
-    MAT3 anisoU_local;
-    MAT3 laue_mats[24];
-    MAT3 dG_dgam[3];
-    int laue_group_num = db_cryst.laue_group_num;
-    int num_laue_mats = 1;
-    int dhh=0, dkk=0, dll=0;
-    if (db_flags.use_diffuse){
-      anisoG_local = db_cryst.anisoG;
-      anisoU_local = db_cryst.anisoU;
-      num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
-      for (int i_gam=0; i_gam<3; i_gam++){
-        dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-        dG_dgam[i_gam](i_gam, i_gam) = 1;
-      }
-      dhh = dkk = dll = db_cryst.stencil_size; // Limits of stencil for diffuse calc
-    }
-    VEC3 Hmin(db_cryst.h_min, db_cryst.k_min, db_cryst.l_min);
-    VEC3 Hmax(db_cryst.h_max, db_cryst.k_max, db_cryst.l_max);
-    VEC3 dHH(dhh,dkk,dll);
-    VEC3 Hrange(db_cryst.h_range, db_cryst.k_range, db_cryst.l_range);
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
+        if (db_flags.using_trusted_mask){
+            if (! d_image.trusted[i_pix])
+                continue;
+        }
         int pid = panels_fasts_slows[i_pix*3];
         int fpixel = panels_fasts_slows[i_pix*3+1];
         int spixel = panels_fasts_slows[i_pix*3+2];
+        double Fhkl_deriv_coef=0;
+        if (db_flags.Fhkl_gradient_mode){
+            double resid_pix = d_image.residual[i_pix];
+            double var_pix = d_image.variance[i_pix];
+            Fhkl_deriv_coef = 1 - 2*resid_pix - resid_pix*resid_pix / var_pix;
+            Fhkl_deriv_coef = 0.5 * Fhkl_deriv_coef/var_pix;
+        }
         double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
         std::unordered_map<std::string, int> Fhkl_tracker;
@@ -226,6 +216,7 @@ void diffBragg_sum_over_steps(
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
             double F_cell2 = 0;
+            int i_hklasu=0;
 
             if ( (h0<=db_cryst.h_max) && (h0>=db_cryst.h_min) && (k0<=db_cryst.k_max) && (k0>=db_cryst.k_min) && (l0<=db_cryst.l_max) && (l0>=db_cryst.l_min)  ) {
                 /* just take nearest-neighbor */
@@ -243,6 +234,8 @@ void diffBragg_sum_over_steps(
                     continue;
                 }
                 if (db_flags.complex_miller) F_cell2 = db_cryst.Fhkl2Linear[Fhkl_linear_index];
+                if (db_flags.Fhkl_gradient_mode)
+                    i_hklasu = db_cryst.FhklLinear_ASUid[Fhkl_linear_index];
             }
             //else{
             // F_cell = default_F;
@@ -365,7 +358,15 @@ void diffBragg_sum_over_steps(
             double I_cell = F_cell;
             if (! db_flags.refine_Icell)
                 I_cell *= F_cell;
-            double Iincrement = I_cell*I_noFcell;
+            double s_hkl = 1;
+            if (db_flags.Fhkl_have_scale_factors)
+                s_hkl = d_image.Fhkl_scale[i_hklasu];
+            if (db_flags.Fhkl_gradient_mode){
+                d_image.Fhkl_scale_deriv[i_hklasu] += (I_noFcell*I_cell*Fhkl_deriv_coef);
+                continue; // move on to next diffraction step (note, thos will bypass the pintout_pixel settings)
+            }
+
+            double Iincrement = s_hkl*I_cell*I_noFcell;
             I += Iincrement;
             if(db_flags.wavelength_img)
                 Ilambda += Iincrement*lambda_ang;
@@ -662,6 +663,10 @@ void diffBragg_sum_over_steps(
                     std::cout << db_cryst.UMATS_RXYZ[mos_tic] << std::endl;
                     printf("Bmat_realspace\n");
                     std::cout << Bmat_realspace << std::endl;
+                    printf("eig_U\n");
+                    std::cout << db_cryst.eig_U << std::endl;
+                    printf("eig_O\n");
+                    std::cout << db_cryst.eig_O << std::endl;
                     printf("UBO\n");
                     std::cout << UBO << std::endl;
                     printf("UBOt\n");
@@ -746,11 +751,16 @@ void diffBragg_sum_over_steps(
             // final scale term to being everything to photon number units
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
+            if (db_flags.Fhkl_gradient_mode){
+                for (int i_hkl=0; i_hkl < db_cryst.Num_ASU; i_hkl++)
+                    d_image.Fhkl_scale_deriv[i_hkl] *= scale_term;
+                continue; // move on to next pixel
+            }
+
             floatimage[i_pix] = scale_term*I;
 
             if (db_flags.wavelength_img)
                 d_image.wavelength[i_pix] = Ilambda / I;
-
         }
         if (db_flags.refine_diffuse){
             for (int i_diff=0; i_diff < 6; i_diff++){

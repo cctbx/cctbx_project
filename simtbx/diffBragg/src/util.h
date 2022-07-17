@@ -5,6 +5,8 @@
 #include <Eigen/Dense>
 #include<Eigen/StdVector>
 #include<vector>
+#include<unordered_map>
+#include <string>
 
 typedef std::vector<double> image_type;
 typedef Eigen::Matrix<double,3,1> VEC3;
@@ -27,6 +29,11 @@ struct timer_variables{
 
 // CONTAINERS
 struct images{
+    image_type Fhkl_scale;
+    image_type Fhkl_scale_deriv;
+    std::vector<bool> trusted;
+    image_type residual;
+    image_type variance;
     image_type wavelength; // image for storing mean wavelength of each pixel
     image_type Umat; // umatrix gradients
     image_type Bmat;  // Bmatrix gradients
@@ -71,6 +78,9 @@ struct cuda_flags{
 };
 
 struct flags{
+    bool Fhkl_have_scale_factors = false;
+    bool using_trusted_mask=false;
+    bool Fhkl_gradient_mode=false;
     bool wavelength_img=false;
     bool track_Fhkl; // for CPU kernel only, track the HKLS evaluated in the inner most loop
     bool printout; // whether to printout debug info for a pixel
@@ -126,6 +136,10 @@ struct crystal{
     int h_max, h_min, k_max, k_min, l_max, l_min;
     double dmin; //res
     std::vector<double> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
+    std::vector<int> FhklLinear_ASUid;
+    std::unordered_map<std::string, int> ASUid_map;
+    int Num_ASU;
+    std::string hall_symbol =" P 4nw 2abw";
     std::vector<double> fpfdp; // fprim fdblprime
     std::vector<double> fpfdp_derivs; // fprime fdblprime deriv
     std::vector<double> atom_data; // heavy atom data

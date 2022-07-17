@@ -2,6 +2,13 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <cctbx/sgtbx/space_group.h>
+#include <cctbx/miller/asu.h>
+#include<unordered_map>
+#include <cctbx/sgtbx/reciprocal_space_asu.h>
+#include <boost/python/numpy.hpp>
+
+namespace np=boost::python::numpy;
 
 #pragma omp declare reduction(vec_double_plus : std::vector<double> : \
                               std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<double>())) \
@@ -1685,6 +1692,71 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     add_diffBragg_spots(panels_fasts_slows);
 }
 
+np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
+    np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted){
+
+    Npix_to_model = panels_fasts_slows.size()/3;
+
+    double* resid_ptr = reinterpret_cast<double*>(residual.get_data());
+    double* var_ptr = reinterpret_cast<double*>(variance.get_data());
+    bool* trust_ptr = reinterpret_cast<bool*>(trusted.get_data());
+
+    bool init_vecs = first_deriv_imgs.residual.empty();
+
+    for (int i=0; i < Npix_to_model; i++){
+        double resid = *(resid_ptr+i);
+        double var = *(var_ptr+i);
+        bool trust = *(trust_ptr+i);
+        if (init_vecs){
+            first_deriv_imgs.residual.push_back(resid);
+            first_deriv_imgs.variance.push_back(var);
+            first_deriv_imgs.trusted.push_back(trust);
+        }
+        else{
+            first_deriv_imgs.residual[i] = resid;
+            first_deriv_imgs.variance[i] = var;
+            first_deriv_imgs.trusted[i] = trust;  // Note  trusted flags shouldnt change, so we can consider commenting out this line
+        }
+    }
+
+    db_flags.Fhkl_gradient_mode = true;
+    db_flags.using_trusted_mask = true;
+    bool is_empty  = first_deriv_imgs.Fhkl_scale_deriv.empty();
+    for (int i=0; i < db_cryst.Num_ASU; i ++){
+        if (is_empty)
+            first_deriv_imgs.Fhkl_scale_deriv.push_back(0);
+        else
+            first_deriv_imgs.Fhkl_scale_deriv[i] = 0;
+    }
+
+    add_diffBragg_spots(panels_fasts_slows);
+
+    db_flags.using_trusted_mask = false;
+    db_flags.Fhkl_gradient_mode = false;
+
+    boost::python::tuple shape = boost::python::make_tuple(db_cryst.Num_ASU);
+    boost::python::tuple stride = boost::python::make_tuple(sizeof(double));
+    np::dtype dt = np::dtype::get_builtin<double>();
+    np::ndarray output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
+    return output.copy();
+}
+
+void diffBragg::update_Fhkl_scale_factors(np::ndarray& scale_factors){
+    unsigned int Nscale = scale_factors.shape(0);
+    SCITBX_ASSERT(Nscale==db_cryst.Num_ASU);
+    bool init_scales=first_deriv_imgs.Fhkl_scale.empty();
+    db_flags.Fhkl_have_scale_factors = true;
+
+    double* scale_ptr = reinterpret_cast<double*>(scale_factors.get_data());
+    for (int i=0; i< Nscale;i++){
+        double scale =  *(scale_ptr+i);
+        if (init_scales)
+            first_deriv_imgs.Fhkl_scale.push_back(scale);
+        else
+            first_deriv_imgs.Fhkl_scale[i] = scale;
+    }
+}
+
 // BEGIN diffBragg_add_spots
 void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows){
 
@@ -2133,18 +2205,51 @@ void diffBragg::update_linear_Fhkl(){
         }
 }
 
+std::string get_hkl_key(int h, int k , int l){
+    std::string hkl_s ;
+    hkl_s = std::to_string(h) + ","+ std::to_string(k) + "," + std::to_string(l);
+    return hkl_s;
+}
+
 void diffBragg::linearize_Fhkl(){
+        cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
+        cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
+
+        db_cryst.ASUid_map.clear();
+        db_cryst.FhklLinear_ASUid.clear();
         db_cryst.FhklLinear.clear();
         db_cryst.Fhkl2Linear.clear();
+        int asu_count = 0;
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
+                                int h0 = h+ h_min;
+                                int k0 = k+ k_min;
+                                int l0 = l+ l_min;
+
+                                cctbx::miller::index<int> hkl0(h0,k0,l0);
+                                cctbx::miller::asym_index ai(sg, asu, hkl0);
+                                cctbx::miller::index_table_layout_adaptor ila = ai.one_column(true);
+                                cctbx::miller::index<int> hkl0_asu = ila.h();
+
+                                int h_asu = hkl0_asu[0];
+                                int k_asu = hkl0_asu[1];
+                                int l_asu = hkl0_asu[2];
+                                std::string key = get_hkl_key(h_asu, k_asu, l_asu);
+                                if (db_cryst.ASUid_map.count(key) == 0){
+                                    db_cryst.ASUid_map[key] = asu_count;
+                                    asu_count +=1;
+                                }
+                                int asu_id = db_cryst.ASUid_map[key];
+                                db_cryst.FhklLinear_ASUid.push_back(asu_id);
+
                                 db_cryst.FhklLinear.push_back(Fhkl[h][k][l]);
                                 if (complex_miller)
-                    db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
+                                    db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
                         }
                 }
         }
+        db_cryst.Num_ASU = asu_count;
 }
 
 void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::streambuf & output){

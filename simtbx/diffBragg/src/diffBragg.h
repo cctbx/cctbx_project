@@ -7,6 +7,7 @@
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
 #include <boost/python.hpp>
+#include <boost/python/numpy.hpp>
 #include<Eigen/StdVector>
 #include <boost/python/numpy.hpp>
 
@@ -15,6 +16,7 @@
 #endif
 
 //#include <boost/python/numpy.hpp>
+namespace np=boost::python::numpy;
 
 namespace simtbx {
 namespace nanoBragg {
@@ -165,6 +167,9 @@ class diffBragg: public nanoBragg{
   void rotate_fs_ss_vecs(double panel_rot_ang);
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
+  np::ndarray add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
+           np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted);
+  void update_Fhkl_scale_factors(np::ndarray& scale_factors);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl);
   void add_diffBragg_spots();
   af::shared<double> add_diffBragg_spots_full();
