@@ -100,6 +100,10 @@ while FIG.loop_counter < num_spots:
 
     sigZ_val = Z[trusted].std()
 
+
+
+
+
     for ax in ax0,ax1,ax2:
         ax.clear()
     im = ax0.imshow(data, cmap=cmap)
@@ -108,7 +112,7 @@ while FIG.loop_counter < num_spots:
 
     ax1.contour(bragg, levels=[1e-4,1e-3,1e-2,1e-1,1,10], cmap='jet')
     C = ax0.contour(bragg, levels=[1e-4,1e-3,1e-2,1e-1,1,10], cmap='jet')
-    ax1.plot( xcent+0.5, ycent+0.5, 'rx')
+    ax1.plot( xcent, ycent, 'rx')
     #C = ax0.contour(bragg, levels=[0.1*data_thresh, 0.5*data_thresh,data_thresh], cmap='jet')
     #from IPython import embed;embed()
 
