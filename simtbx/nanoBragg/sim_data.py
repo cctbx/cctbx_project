@@ -371,6 +371,7 @@ class SimData:
       self.D.mosaic_domains = 1
 
     self.D.xtal_shape = self.crystal.xtal_shape
+    self.D.hall_symbol = self.crystal.space_group_info.type().hall_symbol()
 
     self.update_Fhkl_tuple()
 
@@ -441,6 +442,8 @@ class SimData:
     otherwise, no mosaic spread will be modeled
     """
     if self.crystal.anisotropic_mos_spread_deg is not None:
+      if tuple(self.crystal.anisotropic_mos_spread_deg) == (0,0,0) and self.crystal.n_mos_domains != 1:
+        raise ValueError("If more than 1 mosaic domain are passed, must set a positive value for anisotropic_mos_spread")
       self.D.has_anisotropic_mosaic_spread = True
       mosaicity = self.crystal.anisotropic_mos_spread_deg
     else:

@@ -6,6 +6,17 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+try_strong_mask_only = False
+  .type = bool
+  .help = if strong spot masks are present in the input refls, then use them
+  .help = as the trusted-flags, i.e. only run strong spot pixels through diffBragg
+dilate_strong_mask = None
+  .type = int
+  .help = if using strong mask only for refinement, then dilate it this many iterations using
+  .help = scipy.ndimage method binary_dilation (has to be >= 1)
+hopper_save_freq = None
+  .type = int
+  .help = save the output files when the iteration number is a multiple of this argument
 terminate_after_n_converged_iter = None
   .type = int
   .help = optionally converge if all parameters seem converged for this many iterations. See
@@ -402,10 +413,10 @@ init
   B = 0
     .type = float
     .help = init for B factor
-  eta_abc = [1e-6,1e-6,1e-6]
+  eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = initial values (in degrees) for anisotropic mosaic spread about the 3 crystal axes a,b,c
-    .help = Note, these can never be exactly 0 (TODO address this)
+    .help = Note, these can never be exactly 0 if fix.eta_abc=False
 }
 mins
   .help = min value allowed for parameter
@@ -438,7 +449,7 @@ mins
   Fhkl = 0
     .type = float
     .help = min for structure factors
-  eta_abc = [1e-10,1e-10,1e-10]
+  eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = min value (in degrees) for mosaic spread angles
 }
@@ -484,6 +495,9 @@ fix
   .help = flags for fixing parameters during refinement
   .expert_level = 0
 {
+  Fhkl = True
+    .type = bool
+    .help = fix the structure factors scales during refinement
   spec = True
     .type = bool
     .help = fix the spectrum. If False, a spectrum correction is refined (wavelength shift and scale)

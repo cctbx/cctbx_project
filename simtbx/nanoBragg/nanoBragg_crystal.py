@@ -26,6 +26,7 @@ class NBcrystal(object):
     self.n_mos_domains = None  # how many mosaic domains are used to sample the mosaic rotational spread (spherical or ellipsoidal caps)
     self.umat_maker = None  # instance of nanoBragg.anisotropic_mosaicity.AnisoUmats
     self.dxtbx_crystal = None  # dxtbx crystal model for the crystal
+    self.cb_op = None
     if init_defaults:
       self.init_defaults()
 
@@ -104,12 +105,12 @@ class NBcrystal(object):
         self.miller_is_complex = False
         if str(val.observation_type) == "xray.intensity":
           val = val.as_amplitude_array()
-      cb_op = val.space_group_info().change_of_basis_op_to_primitive_setting()
+      self.cb_op = val.space_group_info().change_of_basis_op_to_primitive_setting()
       val = val.expand_to_p1()
       val = val.generate_bijvoet_mates()
-      dtrm = sqr(cb_op.c().r().as_double()).determinant()
+      dtrm = sqr(self.cb_op.c().r().as_double()).determinant()
       if not dtrm == 1:
-        val = val.change_basis(cb_op)
+        val = val.change_basis(self.cb_op)
     self._miller_array = val
 
   @property

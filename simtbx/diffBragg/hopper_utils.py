@@ -3,17 +3,21 @@ import os
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
+import h5py
+
+from simtbx.diffBragg import hopper_io
 import numpy as np
 from scipy.optimize import dual_annealing, basinhopping
 from collections import Counter
 from scitbx.matrix import sqr, col
+from scipy.ndimage import binary_dilation
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
 from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
-from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
+from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters, PositiveParameter
 from simtbx.diffBragg.attr_list import NB_BEAM_ATTRS, NB_CRYST_ATTRS, DIFFBRAGG_ATTRS
 from simtbx.diffBragg import psf
 
@@ -148,6 +152,7 @@ class DataModeler:
         self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
         self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
         self.spec_name = None  # optional name specifying spectrum file(.lam)
+        self.rank = 0  # in case DataModelers are part of an MPI program, have a rank attribute for record keeping
 
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
@@ -157,6 +162,18 @@ class DataModeler:
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                         "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
+
+    def at_minimum(self, x, f, accept):
+        self.target.iteration = 0
+        self.target.all_x = []
+        self.target.x0[self.target.vary] = x
+        self.target.hop_iter += 1
+        #self.target.minima.append((f,self.target.x0,accept))
+        self.target.lowest_x = x
+        if f < self.target.lowest_f:
+            self.target.lowest_f = f
+            MAIN_LOGGER.info("New minimum found!")
+            self.save_up(self.target.x0, self.rank)
 
     def _abs_path_params(self):
         """adds absolute path to certain params"""
@@ -438,6 +455,8 @@ class DataModeler:
         if self.params.use_perpixel_dark_rms:
             perpixel_dark_rms = get_pedestalRMS_from_jungfrau(self.E)
             perpixel_dark_rms /= self.params.refiner.adu_per_photon
+        if self.params.try_strong_mask_only:
+            strong_mask_img = utils.strong_spot_mask(self.refls, self.E.detector)
 
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
@@ -467,12 +486,13 @@ class DataModeler:
             if self.params.mask_highest_values is not None:
                 trusted[np.argsort(data)[-self.params.mask_highest_values:]] = False
 
-            # TODO implement per-shot masking here
-            #lower_cut = np.percentile(data, 20)
-            #trusted[data < lower_cut] = False
+            if self.params.try_strong_mask_only:
+                is_strong_spot = strong_mask_img[pid, y1:y2, x1:x2].ravel()
+                if self.params.dilate_strong_mask is not None:
+                    assert self.params.dilate_strong_mask >= 1
+                    is_strong_spot = binary_dilation(is_strong_spot, iterations=self.params.dilate_strong_mask)
+                trusted = np.logical_and(trusted, is_strong_spot)
 
-            #d_strong_order = np.argsort(data)
-            #trusted[d_strong_order[-1:]] = False
             all_trusted += list(trusted)
             #TODO ignore invalid value warning (handled below), or else mitigate it!
             all_sigmas += list(np.sqrt(data + sigma_rdout ** 2))
@@ -619,43 +639,14 @@ class DataModeler:
                 self.params.init.detz_shift = best.detz_shift_mm.values[0]
 
             # TODO: set best eta_abc params
+            self.params.init.eta_abc = tuple(best.eta_abc.values[0])
 
-        # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
-        MAIN_LOGGER.info("Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(self.params.init.eta_abc))
-        if self.params.simulator.crystal.has_isotropic_mosaicity:
-            self.params.simulator.crystal.anisotropic_mosaicity = None
-        else:
-            self.params.simulator.crystal.anisotropic_mosaicity = self.params.init.eta_abc
-        MAIN_LOGGER.info("Number of mosaic domains from params: %d" % self.params.simulator.crystal.num_mosaicity_samples)
-        self.SIM = utils.simulator_from_expt_and_params(self.E, self.params)
-        if self.SIM.D.mosaic_domains > 1:
-            MAIN_LOGGER.info("Will use mosaic models: %d domains" % self.SIM.D.mosaic_domains)
-        else:
-            MAIN_LOGGER.info("Will not use mosaic models, as simulator.crystal.num_mosaicity_samples=1")
-
-        if not self.params.fix.diffuse_gamma or not self.params.fix.diffuse_sigma:
-            assert self.params.use_diffuse_models
-        self.SIM.D.use_diffuse = self.params.use_diffuse_models
-        if self.params.use_diffuse_models:
-            if self.params.symmetrize_diffuse:
-                assert self.params.space_group is not None
-                self.SIM.D.laue_group_num = utils.get_laue_group_num(self.params.space_group)  # TODO this can also be retrieved from crystal model if params.space_group is None
-                MAIN_LOGGER.debug("Set laue group number: %d (for diffuse models)" % self.SIM.D.laue_group_num)
-            if self.params.diffuse_stencil_size > 0:
-                self.SIM.D.stencil_size = self.params.diffuse_stencil_size
-                MAIN_LOGGER.debug("Set diffuse stencil size: %d" % self.SIM.D.stencil_size)
-        self.SIM.D.gamma_miller_units = self.params.gamma_miller_units
-        self.SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
-        self.SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma
+        self.SIM = utils.simulator_for_refinement(self.E, self.params)
 
         if self.params.spectrum_from_imageset:
             downsamp_spec(self.SIM, self.params, self.E)
         elif self.params.gen_gauss_spec:
             set_gauss_spec(self.SIM, self.params, self.E)
-
-        self.SIM.D.no_Nabc_scale = self.params.no_Nabc_scale  # TODO check gradients for this setting
-        self.SIM.D.update_oversample_during_refinement = False
-        self.SIM.num_xtals = self.params.number_of_xtals
 
         init = self.params.init
         sigma = self.params.sigmas
@@ -698,6 +689,11 @@ class DataModeler:
         fix_difgam = [fix.diffuse_gamma]*3
         if self.params.isotropic.diffuse_gamma:
             fix_difgam = [fix_difgam[0], True, True]
+
+        if not fix.eta_abc:
+            assert all([eta> 0 for eta in init.eta_abc])
+        if tuple(init.eta_abc ) == (0,0,0):
+            mins.eta_abc=[-1e-10,-1e-10,-1e-10]
 
         fix_eta = [fix.eta_abc]*3
         if self.params.simulator.crystal.has_isotropic_mosaicity:
@@ -826,6 +822,30 @@ class DataModeler:
             self.SIM.D.use_lambda_coefficients = True
             self.SIM.D.lambda_coefficients = tuple(self.params.init.spec)
 
+        self.SIM.refining_Fhkl = False
+        self.SIM.Num_ASU = 0
+        if not self.params.fix.Fhkl:
+            asu_map = self.SIM.D.get_ASUid_map()
+            num_unique_hkl = len(asu_map)
+            self.SIM.Fhkl_scales_init = np.ones(num_unique_hkl)
+            all_Fhkl_xpos = []
+            for i_hkl in range(num_unique_hkl):
+                name = "Fhkl_%d"% i_hkl
+                p = PositiveParameter(init=self.SIM.Fhkl_scales_init[i_hkl], sigma=1,
+                                    fix=False,
+                                    name=name, center=1, beta=1e20)
+                P.add(p)
+                all_Fhkl_xpos.append(P[name].xpos)
+                assert P[name].xpos == p.xpos
+            min_xpos = np.min(all_Fhkl_xpos)
+            max_xpos = np.max(all_Fhkl_xpos)
+            assert np.allclose(all_Fhkl_xpos, np.arange(min_xpos, max_xpos+1, 1) )
+            self.SIM.Fhkl_xpos_slice = slice(min_xpos, max_xpos+1, 1)
+            self.SIM.refining_Fhkl = True
+            self.SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
+            assert max_xpos == len(P)-1
+
+
         self.SIM.P = P
         # TODO , fix this attribute hacking
         self.SIM.roi_id_unique = self.roi_id_unique
@@ -894,7 +914,13 @@ class DataModeler:
         at_min = None
         if self.params.logging.show_params_at_minimum:
             at_min = target.at_minimum
-        callback = lambda x: target.callback(x, verbose=self.params.logging.parameters)
+
+        if self.params.niter >0:
+            assert self.params.hopper_save_freq is None
+            at_min = self.at_minimum
+
+
+        callback = lambda x: self.callback(x, verbose=self.params.logging.parameters, save_freq=self.params.hopper_save_freq)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
@@ -969,6 +995,195 @@ class DataModeler:
 
         return target.x0
 
+    def callback(self, x, verbose=True, save_freq=None):
+
+        target = self.target
+        if save_freq is not None and target.iteration % save_freq==0 and target.iteration> 0:
+            xall = target.x0.copy()
+            xall[target.vary] = x
+            self.save_up(xall,rank=self.rank)
+        return
+
+        rescaled_vals = np.zeros_like(xall)
+        all_perc_change = []
+        for name in self.SIM.P:
+            if name.startswith("Fhkl_"):
+                continue
+            p = self.SIM.P[name]
+
+            if not p.refine:
+                continue
+            xpos = p.xpos
+            val = p.get_val(xall[xpos])
+            log_s = "Iter %d: %s = %1.2g ." % (target.iteration, name, val)
+            if name.startswith("scale_roi") and p.misc_data is not None:
+                reso, (h, k, l) = p.misc_data
+                log_s += "reso=%1.3f Ang. (h,k,l)=%d,%d,%d ." % (reso, h, k, l)
+            rescaled_vals[xpos] = val
+            if target.prev_iter_vals is not None:
+                prev_val = target.prev_iter_vals[xpos]
+                if val - prev_val == 0 and prev_val == 0:
+                    val_percent_diff = 0
+                elif prev_val == 0:
+                    val_percent_diff = np.abs(val - prev_val) / val * 100.
+                else:
+                    val_percent_diff = np.abs(val - prev_val) / prev_val * 100.
+                log_s += " Percent change = %1.2f%%" % val_percent_diff
+                all_perc_change.append(val_percent_diff)
+
+            if verbose:
+                MAIN_LOGGER.debug(log_s)
+
+        if all_perc_change:
+            all_perc_change = np.abs(all_perc_change)
+            ave_perc_change = np.mean(all_perc_change)
+            num_perc_change_small = np.sum(all_perc_change < target.percent_change_of_converged)
+            max_perc_change = np.max(all_perc_change)
+            if num_perc_change_small == len(all_perc_change):
+                target.all_converged_params += 1
+            else:
+                target.all_converged_params = 0
+            if verbose:
+                MAIN_LOGGER.info(
+                    "Iter %d: Mean percent change = %1.2f%%. Num param with %%-change < %1.2f: %d/%d. Max %%-change=%1.2f%%"
+                    % (target.iteration, ave_perc_change, target.percent_change_of_converged,
+                       num_perc_change_small, len(all_perc_change), max_perc_change))
+
+        target.prev_iter_vals = rescaled_vals
+        if target.terminate_after_n_converged_iterations is not None and target.all_converged_params >= target.terminate_after_n_converged_iterations:
+            # at this point prev_iter_vals are the converged parameters!
+            raise StopIteration()  # Refinement has reached convergence!
+
+
+    def save_up(self, x, rank=0):
+        assert self.exper_name is not None
+        assert self.refl_name is not None
+        i_exp=0
+        Modeler = self
+        LOGGER = logging.getLogger("refine")
+        Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+        Modeler.best_model_includes_background = False
+        LOGGER.info("Optimized values for i_exp %d:" % i_exp)
+        look_at_x(x, Modeler.SIM)
+
+        rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
+        rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
+        rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
+        rank_spectra_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "spectra", rank)
+        rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
+
+        basename = os.path.splitext(os.path.basename(self.exper_name))[0]
+        img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
+        new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+
+        trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
+
+        # TODO: pretty formatting ?
+        # hop number, gradient descent index (resets with each new hop), target functional
+        trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
+
+        trace_data = np.array([trace0, trace1, trace2]).T
+        np.savetxt(trace_path, trace_data, fmt="%s")
+
+        if Modeler.SIM.num_xtals == 1:
+            hopper_io.save_to_pandas(x, Modeler.SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
+
+        if isinstance(Modeler.all_sigma_rdout, np.ndarray):
+            data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
+        else:
+            data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
+            sigma_rdout_subimg = None
+
+        wavelen_subimg = []
+        if Modeler.SIM.D.store_ave_wavelength_image:
+            bm = Modeler.best_model.copy()
+            Modeler.best_model = Modeler.SIM.D.ave_wavelength_image().as_numpy_array()
+            Modeler.best_model_includes_background = True
+            _, wavelen_subimg, _, _ = Modeler.get_data_model_pairs()
+            Modeler.best_model = bm
+            Modeler.best_model_includes_background = False
+
+        comp = {"compression": "lzf"}
+        new_refls = deepcopy(Modeler.refls)
+        has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
+        if has_xyzcal:
+            new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+        per_refl_scales = flex.double(len(new_refls), 1)
+        new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
+        h5_roi_id = flex.int(len(Modeler.refls), -1)
+        with h5py.File(img_path, "w") as h5:
+            sigmaZs = []
+            for i_roi in range(len(data_subimg)):
+                dat = data_subimg[i_roi]
+                fit = model_subimg[i_roi]
+                trust = trusted_subimg[i_roi]
+                if sigma_rdout_subimg is not None:
+                    sig = np.sqrt(fit + sigma_rdout_subimg[i_roi] ** 2)
+                else:
+                    sig = np.sqrt(fit + Modeler.nominal_sigma_rdout ** 2)
+                Z = (dat - fit) / sig
+                sigmaZ = Z[trust].std()
+                sigmaZs.append(sigmaZ)
+                h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
+                h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
+                if wavelen_subimg:
+                    h5.create_dataset("wavelength/roi%d" % i_roi, data=wavelen_subimg[i_roi], **comp)
+                if bragg_subimg[0] is not None:
+                    h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
+                    if np.any(bragg_subimg[i_roi] > 0):
+                        ref_idx = Modeler.refls_idx[i_roi]
+                        ref = Modeler.refls[ref_idx]
+                        I = bragg_subimg[i_roi]
+                        Y, X = np.indices(bragg_subimg[i_roi].shape)
+                        x1, x2, y1, y2 = Modeler.rois[i_roi]
+                        com_x, com_y, _ = ref["xyzobs.px.value"]
+                        com_x = int(com_x - x1 - 0.5)
+                        com_y = int(com_y - y1 - 0.5)
+                        # make sure at least some signal is at the centroid! otherwise this is likely a neighboring spot
+                        try:
+                            if I[com_y, com_x] == 0:
+                                continue
+                        except IndexError:
+                            continue
+                        X += x1
+                        Y += y1
+                        Isum = I.sum()
+                        xcom = (X * I).sum() / Isum
+                        ycom = (Y * I).sum() / Isum
+                        com = xcom + .5, ycom + .5, 0
+                        h5_roi_id[ref_idx] = i_roi
+                        new_xycalcs[ref_idx] = com
+                        scale_p = Modeler.SIM.P["scale_roi%d" % i_roi]
+                        per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
+
+            h5.create_dataset("rois", data=Modeler.rois)
+            h5.create_dataset("pids", data=Modeler.pids)
+            h5.create_dataset("sigma_rdout", data=Modeler.all_sigma_rdout)
+            h5.create_dataset("sigmaZ_vals", data=sigmaZs)
+            if Modeler.Hi_asu is not None:
+                h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
+
+        new_refls["xyzcal.px"] = new_xycalcs
+        new_refls["scale_factor"] = per_refl_scales
+        new_refls["h5_roi_idx"] = h5_roi_id
+        if Modeler.params.filter_unpredicted_refls_in_output:
+            sel = [not np.isnan(x) for x, y, z in new_xycalcs]
+            new_refls = new_refls.select(flex.bool(sel))
+        new_refls.as_file(new_refls_file)
+
+        modeler_file = os.path.join(rank_imgs_outdir,
+                                    "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
+        np.save(modeler_file, Modeler)
+        spectrum_file = os.path.join(rank_imgs_outdir,
+                                     "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
+        rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
+        SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+        write_SIM_logs(Modeler.SIM, log=SIMlog_path, lam=spectrum_file)
+
+        if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
+            # TODO separate diffBragg logger
+            utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+            print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
 
 
 def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args=None,
@@ -994,7 +1209,7 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
     ref_xpos = []  # Jacobian index (J[xpos]) for the refined  parameters that arent roi scale factors
     if J is not None:
         for name in SIM.P:
-            if name.startswith("scale_roi"):
+            if name.startswith("scale_roi") or name.startswith("Fhkl_"):
                 continue
             p = SIM.P[name]
             if p.refine:
@@ -1030,7 +1245,10 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
 
 def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
-    #params_per_xtal = np.array_split(x[:num_per_xtal_params], SIM.num_xtals)
+    if SIM.refining_Fhkl:
+        current_Fhkl_xvals = x[SIM.Fhkl_xpos_slice]
+        SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(current_Fhkl_xvals-1)
+        SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales)
 
     # get the unit cell variables
     nucell = len(SIM.ucell_man.variables)
@@ -1100,7 +1318,9 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     nparam = len(x)
     J = None
     if compute_grad:
-        J = np.zeros((nparam, npix))  # gradients
+        # THis should be all params save the Fhkl params
+        J = np.zeros((nparam-SIM.Num_ASU, npix))  # gradients
+
     model_pix = None
     model_pix_noRoi = None
 
@@ -1220,8 +1440,6 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
                     d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
                 J[p.xpos, slc] += d
 
-    if SIM.use_psf:
-        model_pix, J = convolve_model_with_psf(model_pix, J, SIM, pfs)
 
     return model_pix, J
 
@@ -1229,6 +1447,8 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 def look_at_x(x, SIM):
     for name, p in SIM.P.items():
         if name.startswith("scale_roi") and not p.refine:
+            continue
+        if name.startswith("Fhkl_"):
             continue
         val = p.get_val(x[p.xpos])
         print("%s: %f" % (name, val))
@@ -1284,6 +1504,7 @@ class TargetFunc:
         self.all_hop_id = []
         self.hop_iter = 0
         self.lowest_x = None
+        self.lowest_f = np.inf
 
     def at_minimum(self, x, f, accept):
         self.iteration = 0
@@ -1317,56 +1538,6 @@ class TargetFunc:
         self.iteration += 1
         self.g = g
         return f
-
-    def callback(self, x, verbose=True):
-        xall = self.x0.copy()
-        xall[self.vary] = x
-        rescaled_vals = np.zeros_like(xall)
-        all_perc_change = []
-        for name in self.SIM.P:
-            p = self.SIM.P[name]
-
-            if not p.refine:
-                continue
-            xpos = p.xpos
-            val = p.get_val(xall[xpos])
-            log_s = "Iter %d: %s = %1.2g ."  %(self.iteration, name, val)
-            if name.startswith("scale_roi") and p.misc_data is not None:
-                reso, (h,k,l) = p.misc_data
-                log_s += "reso=%1.3f Ang. (h,k,l)=%d,%d,%d ." %(reso, h,k,l)
-            rescaled_vals[xpos] = val
-            if self.prev_iter_vals is not None:
-                prev_val = self.prev_iter_vals[xpos]
-                if val - prev_val == 0 and prev_val == 0:
-                    val_percent_diff = 0
-                elif prev_val == 0:
-                    val_percent_diff = np.abs(val - prev_val) / val *100.
-                else:
-                    val_percent_diff = np.abs(val - prev_val) / prev_val *100.
-                log_s += " Percent change = %1.2f%%" % val_percent_diff
-                all_perc_change.append(val_percent_diff)
-
-            if verbose:
-                MAIN_LOGGER.debug(log_s)
-
-        if all_perc_change:
-            all_perc_change = np.abs(all_perc_change)
-            ave_perc_change = np.mean(all_perc_change)
-            num_perc_change_small = np.sum(all_perc_change < self.percent_change_of_converged)
-            max_perc_change = np.max(all_perc_change)
-            if num_perc_change_small == len(all_perc_change):
-                self.all_converged_params += 1
-            else:
-                self.all_converged_params = 0
-            if verbose:
-                MAIN_LOGGER.info("Iter %d: Mean percent change = %1.2f%%. Num param with %%-change < %1.2f: %d/%d. Max %%-change=%1.2f%%"
-                                  % (self.iteration, ave_perc_change, self.percent_change_of_converged,
-                                     num_perc_change_small, len(all_perc_change), max_perc_change))
-
-        self.prev_iter_vals = rescaled_vals
-        if self.terminate_after_n_converged_iterations is not None and self.all_converged_params >= self.terminate_after_n_converged_iterations:
-            # at this point prev_iter_vals are the converged parameters!
-            raise StopIteration()  # Refinement has reached convergence!
 
 
 def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, verbose=True, params=None, compute_grad=True, hop_idx=None):
@@ -1423,6 +1594,9 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
 
     model_pix = model_bragg + background
 
+    if SIM.use_psf:
+        model_pix, J = convolve_model_with_psf(model_pix, Jac, SIM, pfs)
+
     resid = data - model_pix
 
     # data contributions to target function
@@ -1438,7 +1612,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
     if params.use_restraints:
         # scale factor restraint
         for name in SIM.P:
-            if name.startswith("scale_roi"):
+            if name.startswith("scale_roi") or name.startswith("Fhkl_"):
                 continue  # No restraints for the per-spot roi scale factors
             p = SIM.P[name]
             val = p.get_restraint_val(x[p.xpos])
@@ -1471,7 +1645,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
 
         g = np.zeros(Jac.shape[0])
         for name ,p in SIM.P.items():
-            if not p.refine:
+            if not p.refine or name.startswith("Fhkl_"):
                 continue
             Jac_p = Jac[p.xpos]
 
@@ -1493,6 +1667,8 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
         if params.use_restraints:
             # update gradients according to restraints
             for name, p in SIM.P.items():
+                if name.startswith("Fhkl_"):
+                    continue
                 g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if params.centers.Nvol is not None:
@@ -1503,7 +1679,13 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
                     gterm = -del_Nvol / params.betas.Nvol * dNvol_dN[i_N]
                     g[p.xpos] += p.get_deriv(x[p.xpos], gterm)
 
+        if SIM.refining_Fhkl:
+            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted)
+            fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
+            g = np.append(g, fhkl_grad)
+
         gnorm = np.linalg.norm(g)
+
 
     debug_s = "F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
               % (f, zscore_sigma, restraint_debug_s, gnorm)
@@ -1636,10 +1818,23 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
 
         ref_idx = Modeler.refls_idx[i_roi]
 
+        assert ref_idx==i_roi
         if np.any(bragg_subimg[i_roi] > 0):
             I = bragg_subimg[i_roi]
+            assert np.all(I>=0)
             Y, X = np.indices(bragg_subimg[i_roi].shape)
             x1, _, y1, _ = Modeler.rois[i_roi]
+
+            com_x, com_y, _ = new_refls[ref_idx]["xyzobs.px.value"]
+            com_x = int(com_x - x1 - 0.5)
+            com_y = int(com_y - y1 - 0.5)
+            # make sure at least some signal is at the centroid! otherwise this is likely a neighboring spot
+            try:
+                if I[com_y, com_x] == 0:
+                    continue
+            except IndexError:
+                continue
+
             X += x1
             Y += y1
             Isum = I.sum()

@@ -29,9 +29,44 @@ import mmtbx.command_line.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
 from simtbx.diffBragg import psf
+from dials.algorithms.shoebox import MaskCode
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
+
+
+def strong_spot_mask(refl_tbl, detector, as_composite=True):
+    """
+    Form an image of the strong spot masks (True indicates strong spot)
+    :param refl_tbl: dials reflection table with shoeboxes
+    :param detector: dxtbx detecto model
+    :param as_composite: return a single mask same shape as detector, else return shoebox masks as a lst
+    """
+    Nrefl = len( refl_tbl)
+    masks = [ refl_tbl[i]['shoebox'].mask.as_numpy_array()
+              for i in range(Nrefl)]
+    pids = refl_tbl['panel']
+    nfast, nslow = detector[0].get_image_size()
+    npan = len(detector)
+    code = MaskCode.Foreground.real
+
+    x1, x2, y1, y2, z1, z2 = zip(*[refl_tbl[i]['shoebox'].bbox
+                                   for i in range(Nrefl)])
+    if not as_composite:
+        spot_masks = []
+    spot_mask = np.zeros((npan, nslow, nfast), bool)
+    for i_ref, (i1, i2, j1, j2, M) in enumerate(zip(x1, x2, y1, y2, masks)):
+
+        slcX = slice(i1, i2, 1)
+        slcY = slice(j1, j2, 1)
+        spot_mask[pids[i_ref],slcY, slcX] = M & code == code
+        if not as_composite:
+            spot_masks.append(spot_mask.copy())
+            spot_mask *= False
+    if as_composite:
+        return spot_mask
+    else:
+        return spot_masks
 
 
 def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):
@@ -688,6 +723,38 @@ def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flu
     # params.simulator.oversample = oversample
     # etc
     #return simulator_from_expt_and_params(expt, params)
+
+
+def simulator_for_refinement(expt, params):
+    # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
+    MAIN_LOGGER.info(
+        "Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
+    if params.simulator.crystal.has_isotropic_mosaicity:
+        params.simulator.crystal.anisotropic_mosaicity = None
+    else:
+        params.simulator.crystal.anisotropic_mosaicity = params.init.eta_abc
+    MAIN_LOGGER.info("Number of mosaic domains from params: %d" % params.simulator.crystal.num_mosaicity_samples)
+
+    #  GET SIMULATOR #
+    SIM = simulator_from_expt_and_params(expt, params)
+
+    if SIM.D.mosaic_domains > 1:
+        MAIN_LOGGER.info("Will use mosaic models: %d domains" % SIM.D.mosaic_domains)
+    else:
+        MAIN_LOGGER.info("Will not use mosaic models, as simulator.crystal.num_mosaicity_samples=1")
+
+    if not params.fix.diffuse_gamma or not params.fix.diffuse_sigma:
+        assert params.use_diffuse_models
+    SIM.D.use_diffuse = params.use_diffuse_models
+    SIM.D.gamma_miller_units = params.gamma_miller_units
+    SIM.isotropic_diffuse_gamma = params.isotropic.diffuse_gamma
+    SIM.isotropic_diffuse_sigma = params.isotropic.diffuse_sigma
+
+    SIM.D.no_Nabc_scale = params.no_Nabc_scale  # TODO check gradients for this setting
+    SIM.D.update_oversample_during_refinement = False
+    SIM.num_xtals = params.number_of_xtals
+
+    return SIM
 
 
 def simulator_from_expt_and_params(expt, params=None):
