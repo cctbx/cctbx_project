@@ -72,6 +72,8 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
         Mod.SIM.D.refine(hopper_utils.ROTZ_ID)
     if Mod.SIM.P["Nabc0"].refine:
         Mod.SIM.D.refine(hopper_utils.NCELLS_ID)
+    if Mod.SIM.P["Ndef0"].refine:
+        Mod.SIM.D.refine(hopper_utils.NCELLS_ID_OFFDIAG)
     if Mod.SIM.P["ucell0"].refine:
         for i_ucell in range(len(Mod.SIM.ucell_man.variables)):
             Mod.SIM.D.refine(hopper_utils.UCELL_ID_OFFSET + i_ucell)
@@ -84,6 +86,9 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
 
     model_bragg, Jac = hopper_utils.model(x0, Mod.SIM, Mod.pan_fast_slow,compute_grad=True, dont_rescale_gradient=True)
     model_pix = model_bragg + Mod.all_background
+    # TODO
+    #if params.simulator.psf.use:
+    #    model_pix =
 
     u = Mod.all_data - model_pix  # residuals, named "u" in notes
 

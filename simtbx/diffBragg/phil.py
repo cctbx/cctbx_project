@@ -519,7 +519,7 @@ fix
   Nabc = False
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
-  Ndef = False
+  Ndef = True
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
   diffuse_sigma = True

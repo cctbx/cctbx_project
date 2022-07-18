@@ -1,8 +1,11 @@
 from __future__ import division
+
+# LIBTBX_SET_DISPATCHER_NAME diffBragg.errors
+
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("phil", type=str, help="the phil file used for per spot refinement")
-parser.add_argument("indir", type=str, help="hopper output folder with expers inside")
+parser.add_argument("indirs", type=str, nargs="+", help="hopper output folders with expers inside")
 parser.add_argument("outdir", type=str, help="output folder where integration tables will be saved")
 parser.add_argument("--ndev", type=int, default=1, help="number of gpu devices")
 args = parser.parse_args()
@@ -18,7 +21,11 @@ if COMM.rank==0:
     if not os.path.exists(args.outdir):
         os.makedirs(args.outdir)
 
-fnames = glob.glob(args.indir + "/expers/rank*/*expt")
+fnames = []
+for dirname in args.indirs:
+    fnames += glob.glob(dirname + "/expers/rank*/*expt")
+if COMM.rank==0:
+    print("Found %d expts total" %len(fnames))
 
 failed_assert = []
 devid = COMM.rank % args.ndev

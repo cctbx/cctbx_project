@@ -224,7 +224,7 @@ if "spec" in args.perturb:
     utils.save_spectra_file(spec, wave, wt)
 Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
 
-G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
+G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
 eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod.SIM)
 
 print("Na, Nb, Nc= %f %f %f" % (Na, Nb, Nc))

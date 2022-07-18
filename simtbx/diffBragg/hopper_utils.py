@@ -36,6 +36,7 @@ ROTY_ID = 1
 ROTZ_ID = 2
 ROTXYZ_IDS = ROTX_ID, ROTY_ID, ROTZ_ID
 NCELLS_ID = 9
+NCELLS_ID_OFFDIAG = 21
 UCELL_ID_OFFSET = 3
 DETZ_ID = 10
 FHKL_ID = 11
@@ -709,6 +710,12 @@ class DataModeler:
                               center=centers.Nabc[ii], beta=betas.Nabc[ii])
             P.add(p)
 
+            p = ParameterType(init=init.Ndef[ii], sigma=sigma.Ndef[ii],
+                              minval=mins.Ndef[ii], maxval=maxs.Ndef[ii],
+                              fix=fix.Ndef, name="Ndef%d" % (ii,),
+                              center=centers.Ndef[ii], beta=betas.Ndef[ii])
+            P.add(p)
+
             # diffuse gamma and sigma
             p = ParameterType(init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
                               minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
@@ -933,6 +940,8 @@ class DataModeler:
                 self.SIM.D.refine(ROTZ_ID)
             if self.SIM.P["Nabc0"].refine:
                 self.SIM.D.refine(NCELLS_ID)
+            if self.SIM.P["Ndef0"].refine:
+                self.SIM.D.refine(NCELLS_ID_OFFDIAG)
             if self.SIM.P["ucell0"].refine:
                 for i_ucell in range(len(self.SIM.ucell_man.variables)):
                     self.SIM.D.refine(UCELL_ID_OFFSET + i_ucell)
@@ -1064,7 +1073,7 @@ class DataModeler:
         Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
         Modeler.best_model_includes_background = False
         LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-        look_at_x(x, Modeler.SIM)
+        #look_at_x(x, Modeler.SIM)
 
         rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
         rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
@@ -1093,6 +1102,27 @@ class DataModeler:
         else:
             data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
             sigma_rdout_subimg = None
+
+        #sub_sh = tuple( np.max([im.shape for im in model_subimg], axis=0))
+        #size_edg = int(np.sqrt(len(data_subimg))) + 1
+        #full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+        #full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+        #for j in range(size_edg):
+        #    for i in range(size_edg):
+        #        mod_idx = j * size_edg + i
+        #        if mod_idx >= len(model_subimg):
+        #            continue
+        #        im = model_subimg[mod_idx].copy()
+        #        dat_im = data_subimg[mod_idx].copy()
+        #        ydim, xdim = im.shape
+        #        if im.shape != sub_sh:
+        #            im = np.pad(im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
+        #            dat_im = np.pad(dat_im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
+        #        Ysl = slice(j * sub_sh[0], (j + 1) * sub_sh[0], 1)
+        #        Xsl = slice(i * sub_sh[1], (i + 1) * sub_sh[1], 1)
+        #        full_im[Ysl, Xsl] = im
+        #        full_dat_im[Ysl, Xsl] = dat_im
+        #np.savez("%s/ref_img%d.npz" % (self.params.outdir, self.target.iteration), mod=full_im, dat=full_dat_im)
 
         wavelen_subimg = []
         if Modeler.SIM.D.store_ave_wavelength_image:
@@ -1294,6 +1324,60 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         Nc = Na
     SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
 
+    Ndef_params = [SIM.P["Ndef%d" % (i_n,)] for i_n in range(3)]
+    Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
+    SIM.D.Ncells_def = Nd, Ne, Nf
+
+    # diffuse signals
+    if SIM.D.use_diffuse:
+        diffuse_params_lookup = {}
+        iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
+        for diff_type in ['gamma', 'sigma']:
+            diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
+            diffuse_params_lookup[diff_type] = diff_params
+            diff_vals = []
+            for i_diff, param in enumerate(diff_params):
+                val = param.get_val(x[param.xpos])
+                if iso_flags[diff_type]:
+                    diff_vals = [val]*3
+                    break
+                else:
+                    diff_vals.append(val)
+            if diff_type == "gamma":
+                SIM.D.diffuse_gamma = tuple(diff_vals)
+            else:
+                SIM.D.diffuse_sigma = tuple(diff_vals)
+
+    npix = int(len(pfs) / 3)
+    nparam = len(x)
+    J = None
+    if compute_grad:
+        # THis should be all params save the Fhkl params
+        J = np.zeros((nparam-SIM.Num_ASU, npix))  # gradients
+
+    model_pix = None
+    model_pix_noRoi = None
+
+    # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
+    roiScalesPerPix = 1
+    if SIM.P["scale_roi0"].refine:
+        perRoiParams = [SIM.P["scale_roi%d" % roi_id] for roi_id in SIM.roi_id_unique]
+        perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
+        roiScalesPerPix = np.zeros(npix)
+        for i_roi, roi_id in enumerate(SIM.roi_id_unique):
+            slc = SIM.roi_id_slices[roi_id][0]
+            roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
+
+    for i_xtal in range(SIM.num_xtals):
+        SIM.D.raw_pixels_roi *= 0
+
+        RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
+        rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
+
+        ## update parameters:
+        # TODO: if not refining Umat, assert these are 0 , and dont set them here
+        SIM.D.set_value(ROTX_ID, rotX)
+
     # diffuse signals
     if SIM.D.use_diffuse:
         diffuse_params_lookup = {}
@@ -1386,10 +1470,17 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
                     if SIM.D.isotropic_ncells:
                         break
 
+            if Ndef_params[0].refine:
+                Ndef_grads = SIM.D.get_ncells_def_derivative_pixels()
+                for i_n in range(3):
+                    N_grad = scale * (Ndef_grads[i_n][:npix].as_numpy_array())
+                    p = Ndef_params[i_n]
+                    N_grad = p.get_deriv(x[p.xpos], N_grad)
+                    J[p.xpos] += N_grad
+
             if SIM.D.use_diffuse:
                 for t in ['gamma','sigma']:
                     if diffuse_params_lookup[t][0].refine:
-                        diffuse_grads = getattr(SIM.D,"get_diffuse_%s_derivative_pixels"%t)()
                         for i_diff in range(3):
                             diff_grad = scale*(diffuse_grads[i_diff][:npix].as_numpy_array())
                             p = diffuse_params_lookup[t][i_diff]
@@ -1464,6 +1555,9 @@ def get_param_from_x(x, SIM, i_xtal=0):
     Nabc = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
     Na, Nb, Nc = [p.get_val(x[p.xpos]) for p in Nabc]
 
+    Ndef = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
+    Nd, Ne, Nf = [p.get_val(x[p.xpos]) for p in Ndef]
+
     diff_gam_abc = [SIM.P["diffuse_gamma%d" % i] for i in range(3)]
     diff_gam_a, diff_gam_b, diff_gam_c = [p.get_val(x[p.xpos]) for p in diff_gam_abc]
 
@@ -1479,7 +1573,7 @@ def get_param_from_x(x, SIM, i_xtal=0):
     DetZ = SIM.P["detz_shift"]
     detz = DetZ.get_val(x[DetZ.xpos])
 
-    return scale, rotX, rotY, rotZ, Na, Nb, Nc, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
+    return scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
 
 
 class TargetFunc:
@@ -1743,7 +1837,7 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
 
 
 def update_detector_from_x(SIM, x):
-    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
     detz_shift_mm = detz_shift*1e3
     det = SIM.detector
     det = utils.shift_panelZ(det, detz_shift_mm)
@@ -1784,7 +1878,7 @@ def update_crystal_from_x(SIM, x):
     :param x: parameters returned by hopper_utils (instance of simtbx.diffBragg.refiners.parameters.Parameters()
     :return: a new dxtbx.model.Crystal object with updated unit cell and orientation matrix
     """
-    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
     ucparam = a, b, c, al, be, ga
     return new_cryst_from_rotXYZ_and_ucell((rotX,rotY,rotZ), ucparam, SIM.crystal.dxtbx_crystal)
 

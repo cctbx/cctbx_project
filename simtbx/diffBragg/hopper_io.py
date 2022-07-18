@@ -22,7 +22,11 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
     rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas",rank)
 
-    scale, rotX, rotY, rotZ, Na, Nb, Nc,diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf,\
+        diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, \
+        diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = \
+        hopper_utils.get_param_from_x(x, SIM)
+
     scale_p = SIM.P["G_xtal0"]
     scale_init = scale_p.init
     Nabc_init = []
@@ -85,7 +89,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     _,flux_vals = zip(*SIM.beam.spectrum)
 
     df = single_expt_pandas(xtal_scale=scale, Amat=Amat,
-        ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
+        ncells_abc=(Na, Nb, Nc), ncells_def=(Nd,Ne,Nf),
         eta_abc=(eta_a, eta_b, eta_c),
         diff_gamma=(diff_gam_a, diff_gam_b, diff_gam_c),
         diff_sigma=(diff_sig_a, diff_sig_b, diff_sig_c),
