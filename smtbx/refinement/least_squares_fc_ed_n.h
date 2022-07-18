@@ -106,7 +106,6 @@ namespace least_squares {
     struct process_frame {
       process_frame(ed_n_shared_data const & parent,
         const beam_at& beams,
-        FloatType wavelength,
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<complex_t>& Fcs,
@@ -183,7 +182,7 @@ namespace least_squares {
               }
             }
             cart_t g_i_m_j = frame.RM * parent.UB * cart_t(h_j[0], h_j[1], h_j[2]);
-            FloatType Aij_den = std::sqrt(1 + g_i_m_j * frame.normal / Kn);
+            //FloatType Aij_den = std::sqrt(1 + g_i_m_j * frame.normal / Kn);
             FloatType Fc_i_m_j = i_m_j < 0 ? 0 : Fcs_k[i_m_j].real();
             A(i+1, j+1) = Fc_i_m_j * den;
             A(j+1, i+1) = A(i+1, j+1);
@@ -191,10 +190,9 @@ namespace least_squares {
         }
         scitbx::matrix::eigensystem::real_symmetric<FloatType> es(A.const_ref());
         FloatType exp_k = scitbx::constants::two_pi * thickness / Kn;
-        af::shared<FloatType> exp_L(excited.size()+1);
-        exp_L.push_back(1);
+        af::shared<FloatType> exp_L(excited.size());
         for (size_t i = 0; i < excited.size(); i++) {
-          exp_L[i+1] = std::exp(es.values()[i] * exp_k);
+          exp_L[i] = std::exp(es.values()[i] * exp_k);
         }
         af::versa<FloatType, af::mat_grid> exp_M = es.vectors();
         exp_M.ref().transpose_square_in_place();
@@ -246,7 +244,6 @@ namespace least_squares {
           frame_processor_t pf(
             new process_frame(*this,
               f_itr->second,
-              thickness.value,
               Fcs_k,
               Fcs_,
               Fc_offset)
@@ -263,36 +260,38 @@ namespace least_squares {
     void build() {
       af::shared<parameter*> params = reparamn.independent();
       size_t param_n = 0;
-      for (size_t i = 0; i < params.size(); i++) {
-        param_n += params[i]->components().size();
-      }
-      Fc_plus_eps.resize(param_n);
-      Fc_minus_eps.resize(param_n);
-      FloatType t_eps = 2 * eps;
-      for (size_t i = 0, n=0; i < params.size(); i++) {
-        af::ref<double> x = params[i]->components();
-        asu_parameter* cp = dynamic_cast<asu_parameter*>(params[i]);
-        for (size_t j = 0; j < x.size(); j++, n++) {
-          Fc_plus_eps[n].resize(indices.size());
-          x[j] += eps;
-          if (cp != 0) {
-            cp->store(reparamn.unit_cell());
-          }
-          for (size_t i_h = 0; i_h < indices.size(); i_h++) {
-            Fc_plus_eps[n][i_h] = calc_one_h(indices[i_h]);
-          }
-          Fc_minus_eps[n].resize(indices.size());
-          x[j] -= t_eps;
-          if (cp != 0) {
-            cp->store(reparamn.unit_cell());
-          }
-          for (size_t i_h = 0; i_h < indices.size(); i_h++) {
-            Fc_minus_eps[n][i_h] = calc_one_h(indices[i_h]);
-          }
-          // reset to original value
-          x[j] += eps;
-          if (cp != 0) {
-            cp->store(reparamn.unit_cell());
+      if (compute_grad) {
+        for (size_t i = 0; i < params.size(); i++) {
+          param_n += params[i]->components().size();
+        }
+        Fc_plus_eps.resize(param_n);
+        Fc_minus_eps.resize(param_n);
+        FloatType t_eps = 2 * eps;
+        for (size_t i = 0, n = 0; i < params.size(); i++) {
+          af::ref<double> x = params[i]->components();
+          asu_parameter* cp = dynamic_cast<asu_parameter*>(params[i]);
+          for (size_t j = 0; j < x.size(); j++, n++) {
+            Fc_plus_eps[n].resize(indices.size());
+            x[j] += eps;
+            if (cp != 0) {
+              cp->store(reparamn.unit_cell());
+            }
+            for (size_t i_h = 0; i_h < indices.size(); i_h++) {
+              Fc_plus_eps[n][i_h] = calc_one_h(indices[i_h]);
+            }
+            Fc_minus_eps[n].resize(indices.size());
+            x[j] -= t_eps;
+            if (cp != 0) {
+              cp->store(reparamn.unit_cell());
+            }
+            for (size_t i_h = 0; i_h < indices.size(); i_h++) {
+              Fc_minus_eps[n][i_h] = calc_one_h(indices[i_h]);
+            }
+            // reset to original value
+            x[j] += eps;
+            if (cp != 0) {
+              cp->store(reparamn.unit_cell());
+            }
           }
         }
       }
