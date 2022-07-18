@@ -25,7 +25,9 @@ namespace fast_linalg {
     LAPACK_COL_MAJOR = 102;
 
   const char LAPACK_EIGENVALUES = 'N',
-    LAPACK_EIGENVALUES_AND_EIGENVECTORS = 'V';
+    LAPACK_EIGENVALUES_AND_EIGENVECTORS = 'V',
+    LAPACK_UPPER = 'U',
+    LAPACK_LOWER = 'L';
 }
 
 #if defined(USE_FAST_LINALG)
