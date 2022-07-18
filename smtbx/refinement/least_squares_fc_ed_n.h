@@ -9,6 +9,7 @@
 #include <smtbx/ED/ed_data.h>
 #include <smtbx/refinement/constraints/reparametrisation.h>
 #include <scitbx/array_family/versa_matrix.h>
+#include <fast_linalg/lapacke.h>
 
 namespace smtbx {  namespace refinement {
 namespace least_squares {
@@ -26,29 +27,29 @@ namespace least_squares {
 
     ed_n_shared_data(data_t const& k_data,
       reparametrisation const &reparamn,
-      FloatType eps,
       bool anomalous_flag,
       f_calc_function_base_t & f_calc_function,
       cctbx::xray::fc_correction<FloatType> const& fc_cr,
       sgtbx::space_group const& space_group,
-      FloatType wavelength,
       scitbx::mat3<FloatType> const& UB,
       af::shared<BeamInfo<FloatType> > const& beams,
       cctbx::xray::thickness<FloatType> const& thickness,
-      double maxSg,
+      // wavelength, epsilon, maxSg, F000
+      af::shared<FloatType> const& params,
       bool compute_grad,
       bool do_build=true)
       : k_data(k_data),
       reparamn(reparamn),
-      eps(eps),
+      eps(params[1]),
       f_calc_function(f_calc_function),
       space_group(space_group),
       fc_cr(fc_cr),
       indices(k_data.reflections().indices()),
-      wavelength(wavelength),
+      wavelength(params[0]),
+      F000(params[3]),
       UB(UB),
       thickness(thickness),
-      maxSg(maxSg),
+      maxSg(params[2]),
       compute_grad(compute_grad)
     {
       mi_lookup = lookup_t(
@@ -125,30 +126,37 @@ namespace least_squares {
         FloatType Kn = -frame.normal[2] * Kl;
         // find "excited" beams
         af::shared<const BeamInfo<FloatType>*> excited;
-        std::vector<size_t> exited_indices;
+        std::vector<size_t> excited_indices;
+        // Fcs.real() of the excited beams
+        af::shared<FloatType> u;
+        //U000
+        u.push_back(parent.F000);
         for (size_t i = 0; i < beams.size(); i++) {
           miller::index<> h = beams[i]->index;
           cart_t g = frame.RM * parent.UB * cart_t(h[0], h[1], h[2]);
           FloatType Aii_num = (Kl * Kl - scitbx::fn::pow2((K + g).length()));
           FloatType Sg = Aii_num / (2 * Kl);
-          if (std::abs(Sg) < parent.maxSg) {
+          bool is_excited = std::abs(Sg) < parent.maxSg;
+          if (is_excited) {
             excited.push_back(beams[i]);
-            exited_indices.push_back(i);
+            excited_indices.push_back(i);
+          }
+          int ii = parent.mi_lookup.find_hkl(h);
+          if (ii == -1) {
+            if (!parent.space_group.is_sys_absent(h)) {
+              SMTBX_ASSERT(ii >= 0)(h.as_string());
+            }
+          }
+          if (is_excited) {
+            u.push_back(ii < 0 ? 0 : Fcs_k[ii].real());
           }
           else {
-            int ii = parent.mi_lookup.find_hkl(h);
-            if (ii == -1) {
-              if (!parent.space_group.is_sys_absent(h)) {
-                SMTBX_ASSERT(ii >= 0)(h.as_string());
-              }
-            }
-            Fcs[Fc_offset+i] = ii < 0 ? 0 : Fcs_k[ii];
+            Fcs[Fc_offset + i] = ii < 0 ? 0 : Fcs_k[ii];
           }
         }
 
-        af::versa<complex_t, af::mat_grid> A(
-          af::mat_grid(excited.size(), excited.size()));
-        af::shared<complex_t> M(excited.size());
+        af::versa<FloatType, af::mat_grid> A(
+          af::mat_grid(excited.size()+1, excited.size()+1));
 
         for (size_t i = 0; i < excited.size(); i++) {
           miller::index<> h_i = excited[i]->index;
@@ -158,50 +166,56 @@ namespace least_squares {
               SMTBX_ASSERT(ii >= 0)(h_i.as_string());
             }
           }
+          FloatType Fc_i = ii < 0 ? 0 : Fcs_k[ii].real();
           cart_t g_i = frame.RM * parent.UB * cart_t(h_i[0], h_i[1], h_i[2]);
-          FloatType Aii_num = (Kl * Kl - scitbx::fn::pow2((K + g_i).length()));
-          FloatType Aii_den_2 = 1 + g_i * frame.normal / Kn;
-          FloatType Aii_den = std::sqrt(Aii_den_2);
-          FloatType Aii_rden = 1 / Aii_den_2;
-          A(i, i) = Aii_num / Aii_den_2;
-          M[i] = Aii_rden;
+          FloatType s = (Kl * Kl - scitbx::fn::pow2((K + g_i).length()))/(2*Kl);
+          FloatType den = 1./(2 * Kl * g_i * frame.normal);
+          A(0, i + 1) = Fc_i*den;
+          A(i + 1, 0) = A(0, i + 1);
+          A(i, i) = s;
           for (size_t j = i + 1; j < excited.size(); j++) {
-            miller::index<> h_i_m_j = h_i - excited[j]->index;
+            miller::index<> h_j = excited[j]->index;
+            miller::index<> h_i_m_j = h_i - h_j;
             int i_m_j = parent.mi_lookup.find_hkl(h_i_m_j);
             if (i_m_j == -1) {
               if (!parent.space_group.is_sys_absent(h_i_m_j)) {
                 SMTBX_ASSERT(i_m_j >= 0)(h_i_m_j.as_string());
               }
             }
-            cart_t g_i_m_j = frame.RM * parent.UB * cart_t(h_i_m_j[0], h_i_m_j[1], h_i_m_j[2]);
+            cart_t g_i_m_j = frame.RM * parent.UB * cart_t(h_j[0], h_j[1], h_j[2]);
             FloatType Aij_den = std::sqrt(1 + g_i_m_j * frame.normal / Kn);
-            complex_t Fc_i_m_j = i_m_j < 0 ? 0 : Fcs_k[i_m_j];
-            A(i, j) = Fc_i_m_j * Aii_den / Aij_den;
-            A(j, i) = A(i, j);
+            FloatType Fc_i_m_j = i_m_j < 0 ? 0 : Fcs_k[i_m_j].real();
+            A(i+1, j+1) = Fc_i_m_j * den;
+            A(j+1, i+1) = A(i+1, j+1);
           }
         }
-        scitbx::matrix::eigensystem::real_symmetric<complex_t> es(A.const_ref());
+        scitbx::matrix::eigensystem::real_symmetric<FloatType> es(A.const_ref());
         FloatType exp_k = scitbx::constants::two_pi * thickness / Kn;
-        af::shared<complex_t> exp_L(excited.size());
+        af::shared<FloatType> exp_L(excited.size()+1);
+        exp_L.push_back(1);
         for (size_t i = 0; i < excited.size(); i++) {
-          exp_L[i] = std::exp(es.values()[i] * exp_k);
+          exp_L[i+1] = std::exp(es.values()[i] * exp_k);
         }
-        af::versa<complex_t, af::mat_grid> exp_M = es.vectors();
+        af::versa<FloatType, af::mat_grid> exp_M = es.vectors();
         exp_M.ref().transpose_square_in_place();
         
-        af::versa<complex_t, af::packed_u_accessor> exp_M1(
-          af::packed_u_accessor(excited.size()),
+        af::versa<FloatType, af::c_grid<2> > P(
+          af::c_grid<2>(excited.size()+1, excited.size()+1),
           *af::matrix_transpose_multiply_diagonal_multiply_as_packed_u(
-            exp_M.const_ref(), exp_L.const_ref()).begin());
+            exp_M.const_ref(), exp_L.const_ref()).begin()); 
           
 
-        for (size_t i = 0; i < excited.size(); i++) {
-          for (size_t j = 0; j < excited.size(); j++) {
-            exp_M1(i, j) *= M[i]; // M is on the left - apply to rows
-            exp_M1(j, i) /= M[i]; // M^-1 is on the right - > apply to cols
-          }
-        }
+        //for (size_t i = 0; i < excited.size(); i++) {
+        //  for (size_t j = 0; j < excited.size(); j++) {
+        //    exp_M1(i, j) *= M[i]; // M is on the left - apply to rows
+        //    exp_M1(j, i) /= M[i]; // M^-1 is on the right - > apply to cols
+        //  }
+        //}
         /* compute Fcs now and assign to Fcs using at Fc_offset+exited_indices[i] */
+        af::shared<FloatType> up = af::matrix_multiply(P.const_ref(), u.const_ref());
+        for (size_t i = 1; i < up.size(); i++) {
+          Fcs[Fc_offset + excited_indices[i - 1]] = up[i];
+        }
       }
       ed_n_shared_data const& parent;
       const beam_at& beams;
@@ -211,7 +225,8 @@ namespace least_squares {
       af::shared<complex_t>& Fcs;
     };
 
-    void process_frames_mt(af::shared<complex_t> Fcs_,
+    void process_frames_mt(af::shared<complex_t> &Fcs_,
+      af::shared<complex_t> const& Fcs_k,
       int thread_count=-1)
     {
       if (thread_count < 0) {
@@ -232,7 +247,7 @@ namespace least_squares {
             new process_frame(*this,
               f_itr->second,
               thickness.value,
-              k_data.f_calc(),
+              Fcs_k,
               Fcs_,
               Fc_offset)
           );
@@ -282,9 +297,17 @@ namespace least_squares {
         }
       }
       Fcs.resize(beam_n);
-      process_frames_mt(Fcs);
+      process_frames_mt(Fcs, k_data.f_calc());
       if (compute_grad) {
+        af::shared<complex_t> Fcs_n(beam_n), Fcs_p(beam_n);
         design_matrix.resize(af::c_grid<2>(param_n, beam_n));
+        for (size_t i = 0; i < param_n; i++) {
+          process_frames_mt(Fcs_n, Fc_minus_eps[i]);
+          process_frames_mt(Fcs_p, Fc_plus_eps[i]);
+          for (size_t j = 0; j < beam_n; j++) {
+            design_matrix(j, i) = (Fcs_p[j].real() - Fcs_n[j].real()) / eps;
+          }
+        }
       }
     }
 
@@ -307,7 +330,7 @@ namespace least_squares {
     cctbx::xray::fc_correction<FloatType> const& fc_cr;
     sgtbx::space_group const& space_group;
     af::shared<miller::index<> > indices;
-    FloatType wavelength;
+    FloatType wavelength, F000;
     scitbx::mat3<FloatType> UB;
     size_t beam_n;
     // a map of beams by frame id
