@@ -229,22 +229,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
         class_<wt, std::auto_ptr<wt> >("ed_n_shared_data", no_init)
           .def(init<data_t const&,
             reparametrisation const&,
-            FloatType,
             bool,
             f_calc_f_t&,
             cctbx::xray::fc_correction<FloatType> const&,
             sgtbx::space_group const&,
-            FloatType,
             scitbx::mat3<FloatType> const&,
             af::shared<BeamInfo<FloatType> > const&,
             cctbx::xray::thickness<FloatType> const&,
-            double,
+            // wavelength, epsilon, maxSg, F000
+            af::shared<FloatType> const&,
             bool, bool>(
-              (arg("data"), arg("reparametrisation"), arg("epsilon"),
+              (arg("data"), arg("reparametrisation"),
                 arg("anomalous_flag"), arg("f_calc_function"), arg("fc_correction"),
-                arg("space_group"), arg("wavelength"),
+                arg("space_group"),
                 arg("UB"), arg("beams"), arg("thickness"),
-                arg("maxSg"), arg("compute_grad"), arg("build") = true)))
+                arg("params"), arg("compute_grad"), arg("build") = true)))
           //.add_property("ratio", &wt::get_ratio)
           ;
       }
