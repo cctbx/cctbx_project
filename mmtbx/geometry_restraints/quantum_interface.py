@@ -80,7 +80,7 @@ qm_restraints
     .type = bool
   write_final_pdb_buffer = False
     .type = bool
-  write_restraints = False
+  write_restraints = True
     .type = bool
   restraints_filename = Auto
     .type = path
@@ -91,7 +91,7 @@ qm_restraints
     .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
-  capping_groups = False
+  capping_groups = True
     .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
@@ -134,6 +134,8 @@ def electrons(model, log=None):
   return atom_valences.get_total_charge()
 
 def get_safe_filename(s):
+  while s.find('  ')>-1:
+    s=s.replace('  ',' ')
   s=s.replace(' ','_')
   s=s.replace("'",'_prime_')
   s=s.replace('*','_star_')
