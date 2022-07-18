@@ -169,7 +169,6 @@ int main(int argc, char** argv) {
     std::cout << "Rectangular full packed -> packed # ";
     all_correct = all_correct && check_packed_full(N, cp1, c_ref);
   }
-  //https://www.intel.com/content/www/us/en/develop/documentation/onemkl-lapack-examples/top/least-squares-and-eigenvalue-problems/nonsymmetric-eigenproblems/geev-function/zgeev-example/lapacke-zgeev-example-c-column.html
   {
     const lapack_int N = 4,
       LDA = N,
@@ -179,17 +178,17 @@ int main(int argc, char** argv) {
     /* Local arrays */
     _lapack_complex_double w[N], vl[LDVL * N], vr[LDVR * N];
     _lapack_complex_double a[LDA * N] = {
-           {-3.84,  2.25}, {-8.94, -4.75}, { 8.95, -6.53}, {-9.87,  4.82},
-           {-0.66,  0.83}, {-4.40, -3.82}, {-3.50, -4.26}, {-3.15,  7.36},
-           {-3.99, -4.73}, {-5.88, -6.60}, {-3.36, -0.40}, {-0.75,  5.23},
-           { 7.74,  4.18}, { 3.66, -7.53}, { 2.58,  3.60}, { 4.59,  5.41}
+      {6.0161 , 1.5243}, {-3.5696 ,-6.9555}, {8.4695 ,-5.7720}, {7.8672 ,-6.2221},
+      {3.5749 , 4.0301}, {-8.9314 , 7.1091}, {-1.6872 ,-6.7515}, {3.6823 , 7.5440},
+      {1.6773 ,-3.7865}, {8.6006 , 5.4106}, {-1.6935 ,-9.8013}, {-6.2401 ,-6.4186},
+      {6.7681 ,-4.5137}, {-5.6985 , 8.0920}, {2.1531 ,-4.8516}, {-8.7264 ,-0.1071}
     };
-    printf("\nLAPACKE_zgeev. Example Program Results\n");
+    printf("\nTest geev - general matrix eigen problem.\n");
     lapack_int info = fast_linalg::geev(LAPACK_ROW_MAJOR, LAPACK_EIGENVALUES_AND_EIGENVECTORS,
       LAPACK_EIGENVALUES_AND_EIGENVECTORS, n, a, lda, w, vl,
       ldvl, vr, ldvr);
     if (info > 0) {
-      printf("The algorithm failed to compute eigenvalues.\n");
+      printf("Failed to compute eigenvalues.\n");
       all_correct = false;
     }
     else {
@@ -197,17 +196,17 @@ int main(int argc, char** argv) {
       print_matrix("Left eigenvectors", n, n, vl, ldvl);
       print_matrix("Right eigenvectors", n, n, vr, ldvr);
       _lapack_complex_double w_tst[] = {
-        {-9.4299,-12.9833}, {-3.4418,12.6897}, {0.1055,-3.3950}, {5.7562,7.1286} };
+        {2.3797,-14.9575}, {8.3883,-2.7927}, {-11.9239,1.2782}, {-12.1793,15.1970} };
       _lapack_complex_double vl_tst[] = {
-        {0.2414,-0.1847}, {0.6135,0.0000}, {-0.1828,-0.3347}, {0.2765,0.0884},
-        {0.7861,0.0000}, {-0.0499,-0.2721}, {0.8218,0.0000}, {-0.5477,0.1572},
-        {0.2195,-0.2689}, {-0.2088,0.5347}, {-0.3714,0.1525}, {0.4451,0.0912},
-        {-0.0170,0.4109}, {0.4027,-0.2353}, {0.0575,0.1208}, {0.6202,0.0000} };
+         {0.3059,0.0463}, {0.6846,0.0000}, {-0.1280,-0.3516}, {-0.1127,0.1348},
+         {-0.0363,-0.3859}, {0.1345,0.3407}, {-0.4961,0.0883}, {0.8112,0.0000},
+        {0.7488,0.0000}, {-0.0083,0.5602}, {0.0598,0.3013}, {-0.2160,-0.2566},
+        {0.0752,0.4332}, {0.2884,0.0103}, {0.7154,0.0000}, {0.2851,0.3425} };
       _lapack_complex_double vr_tst[] = {
-        {0.4309,0.3268}, {0.8257,0.0000}, {0.5984,0.0000}, {-0.3054,0.0333},
-        {0.5087,-0.0288}, {0.0750,-0.2487}, {-0.4005,-0.2014}, {0.0398,0.3445},
-        {0.6198,0.0000}, {-0.2458,0.2789}, {-0.0901,-0.4753}, {0.3583,0.0606},
-        {-0.2269,0.1104}, {-0.1034,-0.3192}, {-0.4348,0.1337}, {0.8082,0.0000} };
+        {0.0300,0.5231}, {0.8717,0.0000}, {0.6162,0.0000}, {-0.2737,0.1951},
+        {-0.0563,-0.1815}, {0.1617,0.3467}, {0.1741,-0.1522}, {0.6838,0.0000},
+        {0.7645,0.0000}, {-0.0686,0.1140}, {-0.1895,-0.3938}, {-0.0635,-0.1354},
+        {0.1819,0.2680}, {0.1830,-0.2064}, {-0.6003,-0.1244}, {0.5834,0.2383} };
       if (all_correct) {
         all_correct = cmp_arraysc(&w_tst[0], &w[0], N);
       }
@@ -219,35 +218,34 @@ int main(int argc, char** argv) {
       }
     }
   }
-  //https://www.intel.com/content/www/us/en/develop/documentation/onemkl-lapack-examples/top/least-squares-and-eigenvalue-problems/symmetric-eigenproblems/heev-function/zheev-example/lapacke-zheev-example-c-row.html
   {
     const lapack_int N = 4,
       LDA = N;
     lapack_int n = N, lda = LDA;
     double w[N];
     _lapack_complex_double a[LDA * N] = {
-       { 9.14,  0.00}, { 0.00,  0.00}, { 0.00,  0.00}, { 0.00,  0.00},
-       {-4.37,  9.22}, {-3.35,  0.00}, { 0.00,  0.00}, { 0.00,  0.00},
-       {-1.98,  1.72}, { 2.25,  9.51}, {-4.82,  0.00}, { 0.00,  0.00},
-       {-8.96,  9.50}, { 2.57, -2.40}, {-3.24, -2.04}, { 8.44,  0.00}
+      {-8.1415, 0} ,      {0,0} ,            {0,0},             {0,0},
+      {-1.5971,1.3513} ,  {0.6667,0} ,       {0,0} ,            {0,0},
+      {-0.8081, 0.5664},  {0.5465, -1.8765}, {8.6014,0},        {0,0},
+      {5.6678,-2.4521} ,  {-6.7320, 9.8121}, {1.7920, -5.4521}, {7.6382,0}
     };
-    printf("\nLAPACKE_zheev (row-major, high-level) Example Program Results\n");
+    printf("\nTest heev - Hermitian matrix eigen problem\n");
     lapack_int info = fast_linalg::heev(LAPACK_ROW_MAJOR,
-      LAPACK_EIGENVALUES_AND_EIGENVECTORS, 'L', n, a, lda, w);
+      LAPACK_EIGENVALUES_AND_EIGENVECTORS, LAPACK_LOWER, n, a, lda, w);
     if (info > 0) {
-      printf("The algorithm failed to compute eigenvalues.\n");
+      printf("Failed to compute eigenvalues.\n");
       all_correct = false;
     }
     else {
       print_matrix("Eigenvalues", 1, n, w, 1);
       print_matrix("Eigenvectors (stored columnwise)", n, n, a, lda);
 
-      double w_tst[] = { -16.0047, -6.7650, 6.6657, 25.5140 };
+      double w_tst[] = { -12.8458, -5.5622, 7.3574, 19.8155 };
       _lapack_complex_double v_tst[] = {
-        {0.3448,-0.0000}, {-0.5457,0.0000}, {0.3112,0.0000}, {-0.6975,0.0000},
-        {0.4418,-0.5389}, {0.2620,0.1810}, {0.4536,0.2868}, {0.2158,-0.2800},
-        {-0.4795,-0.3744}, {-0.5195,-0.0157}, {-0.0524,0.5734}, {0.1461,0.0830},
-        {0.1005,-0.1236}, {-0.5030,0.2787}, {-0.2285,-0.4810}, {0.3413,-0.4938} };
+        {-0.7032,0.0000}, {-0.6776,0.0000}, {0.1122,0.0000}, {-0.1840,0.0000},
+        {0.2135,0.4198}, {-0.4081,-0.4845}, {-0.3705,-0.0302}, {0.4611,0.1616},
+        {-0.1296,-0.0949}, {0.0602,0.1302}, {-0.8117,-0.3629}, {-0.2210,-0.3380},
+        {0.5024,-0.0747}, {-0.3393,-0.0625}, {0.0258,-0.2409}, {-0.6547,0.3684} };
       if (all_correct) {
         all_correct = cmp_arrays(&w_tst[0], &w[0], N);
       }
@@ -257,34 +255,31 @@ int main(int argc, char** argv) {
     }
   }
   {
-    const lapack_int N = 5,
+    const lapack_int N = 4,
       LDA = N;
     lapack_int n = N, lda = LDA;
     double w[N];
     double a[LDA * N] = {
-        1.96, -6.49, -0.47, -7.20, -0.65,
-        0.00,  3.80, -6.39,  1.50, -6.34,
-        0.00,  0.00, 4.17, -1.51, 2.67,
-        0.00,  0.00, 0.00,  5.70, 1.80,
-        0.00,  0.00, 0.00,  0.00, -7.10
-    };
-    printf("\nLAPACKE_dsyev (row-major, high-level) Example Program Results\n");
+      -8.7375, -6.2604, -0.8461,  9.1861,
+      0,       7.6420,  -8.9406, -5.9790,
+      0,       0,       2.5771,  3.8387,
+      0,       0,       0,     - 2.7090};
+    printf("\nTest syev - real symmetric eigen problem\n");
     lapack_int info = fast_linalg::syev(LAPACK_ROW_MAJOR,
-      LAPACK_EIGENVALUES_AND_EIGENVECTORS, 'U', n, a, lda, w);
+      LAPACK_EIGENVALUES_AND_EIGENVECTORS, LAPACK_UPPER, n, a, lda, w);
     if (info > 0) {
-      printf("The algorithm failed to compute eigenvalues.\n");
+      printf("Failed to compute eigenvalues.\n");
       all_correct = false;
     }
     else {
       print_matrix("Eigenvalues", 1, n, w, 1);
-      print_matrix("Eigenvectors (stored columnwise)", n, n, a, lda);
-      double w_tst[] = { -11.0656, -6.2287, 0.8640, 8.8655, 16.0948 };
+      print_matrix("Eigenvectors (columnwise)", n, n, a, lda);
+      double w_tst[] = { -16.3168, -4.9809, 0.9332, 19.1371 };
       double v_tst[] = {
-        -0.2981, -0.6075, 0.4026, -0.3745, 0.4896,
-        -0.5078, -0.2880, -0.4066, -0.3572, -0.6053,
-        -0.0816, -0.3843, -0.6600, 0.5008, 0.3991,
-        -0.0036, -0.4467, 0.4553, 0.6204, -0.4564,
-        -0.8041, 0.4480, 0.1725, 0.3108, 0.1622 };
+        0.8015, -0.0811, -0.5208, 0.2823,
+        0.1581, -0.6618, -0.0499, -0.7311,
+        0.2191, -0.5216, 0.6751, 0.4735,
+        -0.5334, -0.5323, -0.5201, 0.4020 };
       if (all_correct) {
         all_correct = cmp_arrays(&w_tst[0], &w[0], N);
       }
