@@ -9,7 +9,7 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <smtbx/ED/ed_data.h>
 
-// wha tis going on here???
+// what is going on here???
 //#ifdef __WIN32__
 #include <scitbx/boost_python/slice.cpp>
 //#endif
