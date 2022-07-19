@@ -46,7 +46,7 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
     mprint("The " + proc_array.info().label_string() + \
          " array is not symmetry unique. Expansion may lead to multiple reflections rendered on top of each other.", verbose=1)
   hkls.expand_anomalous = False # don't expand reflections in display2.py as this now is done in HKLJavaScripts.js
-  hkls.expand_to_p1 = False    #  TODO: remove this functinoality from display2.py
+  hkls.expand_to_p1 = False    #  TODO: remove this functionality altogether from display2.py
 
   hklscene = display.scene(miller_array=proc_array, merge=None, renderscale=renderscale,
     settings=hkls, foms_array=foms_array, fullprocessarray=True, mprint=mprint)
@@ -1106,9 +1106,8 @@ class HKLview_3d:
     else:
       self.mprint("Rendering reflections.", end="")
 
-    if self.scene is not None and self.miller_array is not None \
-     and len(self.scene.indices) > self.miller_array.indices().size():
-      raise Sorry("Error! Displayed reflections not matching number of reflections in miller array.")
+    if self.scene is not None and self.miller_array is not None: # expansion always done in the browser now
+     assert (self.scene.settings.expand_to_p1==False and self.scene.settings.expand_anomalous==False)
 
     h_axis = flex.vec3_double([self.scene.axes[0]])
     k_axis = flex.vec3_double([self.scene.axes[1]])
