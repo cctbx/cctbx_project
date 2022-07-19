@@ -766,7 +766,7 @@ class ArrayInfo:
 
   """
   def __init__(self, millarr, wrap_labels=0):
-    from cctbx.miller import display2
+    from crys3d.hklviewer import display2
     from cctbx.array_family import flex
     from scitbx import graphics_utils
     from libtbx.math_utils import roundoff

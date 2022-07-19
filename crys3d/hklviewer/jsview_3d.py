@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx.math_utils import roundoff
 import traceback
-from cctbx.miller import display2 as display
+from crys3d.hklviewer import display2 as display
 from cctbx.array_family import flex
 from cctbx import miller, sgtbx
 from scitbx import graphics_utils

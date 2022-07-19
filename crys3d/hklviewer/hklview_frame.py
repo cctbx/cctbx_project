@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.reflection_file_reader import any_reflection_file
 from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
-from cctbx.miller import display2 as display
+from crys3d.hklviewer import display2 as display
 from crys3d.hklviewer import jsview_3d
 from cctbx import miller
 from cctbx import crystal
