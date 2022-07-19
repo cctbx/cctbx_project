@@ -633,6 +633,7 @@ class DataModeler:
 
             # mosaic block
             self.params.init.Nabc = tuple(best.ncells.values[0])
+            self.params.init.Ndef = tuple(best.ncells_def.values[0])
             # scale factor
             self.params.init.G = best.spot_scales.values[0]
 
@@ -641,6 +642,14 @@ class DataModeler:
 
             # TODO: set best eta_abc params
             self.params.init.eta_abc = tuple(best.eta_abc.values[0])
+
+            lam0 = best.lam0.values[0]
+            lam1 = best.lam1.values[0]
+            assert not np.isnan(lam0)
+            assert not np.isnan(lam1)
+            assert lam0 != -1
+            assert lam1 != -1
+            self.params.init.spec = lam0, lam1
 
         self.SIM = utils.simulator_for_refinement(self.E, self.params)
 
@@ -1152,7 +1161,10 @@ class DataModeler:
                 else:
                     sig = np.sqrt(fit + Modeler.nominal_sigma_rdout ** 2)
                 Z = (dat - fit) / sig
-                sigmaZ = Z[trust].std()
+                sigmaZ = np.nan
+                if np.any(trust):
+                    sigmaZ = Z[trust].std()
+
                 sigmaZs.append(sigmaZ)
                 h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
                 h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
@@ -1555,7 +1567,7 @@ def get_param_from_x(x, SIM, i_xtal=0):
     Nabc = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
     Na, Nb, Nc = [p.get_val(x[p.xpos]) for p in Nabc]
 
-    Ndef = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
+    Ndef = [SIM.P["Ndef%d" % (i, )] for i in range(3)]
     Nd, Ne, Nf = [p.get_val(x[p.xpos]) for p in Ndef]
 
     diff_gam_abc = [SIM.P["diffuse_gamma%d" % i] for i in range(3)]
@@ -1713,7 +1725,13 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
             restraint_terms[name] = val
 
         if params.centers.Nvol is not None:
-            Nvol = np.product(SIM.D.Ncells_abc_aniso)
+            na,nb,nc = SIM.D.Ncells_abc_aniso
+            nd,ne,nf = SIM.D.Ncells_def
+            Nmat = [na, nd, nf,
+                    nd, nb, ne,
+                    nf, ne, nc]
+            Nmat = np.reshape(Nmat, (3,3))
+            Nvol = np.linalg.det(Nmat)
             del_Nvol = params.centers.Nvol - Nvol
             fN_vol = .5*del_Nvol**2/params.betas.Nvol
             restraint_terms["Nvol"] = fN_vol
@@ -1766,11 +1784,41 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
                 g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if params.centers.Nvol is not None:
-                Na,Nb,Nc = SIM.D.Ncells_abc_aniso
-                dNvol_dN = Nb*Nc, Na*Nc, Na*Nb
-                for i_N in range(3):
-                    p = SIM.P["Nabc%d" % i_N]
-                    gterm = -del_Nvol / params.betas.Nvol * dNvol_dN[i_N]
+                Nmat_inv = np.linalg.inv(Nmat)
+                dVol_dN_vals = []
+                for i_N in range(6):
+                    if i_N ==0 :
+                        dN = [1,0,0,
+                              0,0,0,
+                              0,0,0]
+                    elif i_N == 1:
+                        dN = [0,0,0,
+                              0,1,0,
+                              0,0,0]
+                    elif i_N == 2:
+                        dN = [0,0,0,
+                              0,0,0,
+                              0,0,1]
+                    elif i_N == 3:
+                        dN = [0,1,0,
+                              1,0,0,
+                              0,0,0]
+                    elif i_N == 4:
+                        dN = [0,0,0,
+                              0,0,1,
+                              0,1,0]
+                    else:
+                        dN = [0,0,1,
+                              0,0,0,
+                              1,0,0]
+                    if i_N < 3:
+                        p = SIM.P["Nabc%d" % i_N]
+                    else:
+                        p = SIM.P["Ndef%d" % (i_N-3)]
+                    dN = np.reshape(dN, (3,3))
+                    dVol_dN = Nvol * np.trace(np.dot(Nmat_inv, dN))
+                    dVol_dN_vals.append( dVol_dN)
+                    gterm = -del_Nvol / params.betas.Nvol * dVol_dN
                     g[p.xpos] += p.get_deriv(x[p.xpos], gterm)
 
         if SIM.refining_Fhkl:
