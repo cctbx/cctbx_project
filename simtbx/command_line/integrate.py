@@ -53,11 +53,6 @@ from dials.model.data import PixelListLabeller, PixelList
 from dials.algorithms.spot_finding.finder import pixel_list_to_reflection_table
 from libtbx.phil import parse
 from dials.command_line.stills_process import phil_scope
-
-
-
-
-
 from dials.algorithms.integration.integrator import create_integrator
 from dials.algorithms.profile_model.factory import ProfileModelFactory
 from dxtbx.model import ExperimentList
@@ -65,6 +60,8 @@ from dials.array_family import flex
 
 from copy import deepcopy
 from collections import Counter
+
+
 def filter_refls(R):
     vec3_dbl_keys = 'xyzcal.px', 'xyzcal.mm', 'xyzobs.px.value', 'xyzobs.px.value', 'rlp', 's1'
 
@@ -98,6 +95,7 @@ def filter_refls(R):
             Rnew.extend(refl)
     print("filtered %d / %d refls" % (len(Rnew), len(R)))
     return Rnew
+
 
 for i,arg in enumerate(sys.argv):
     if os.path.isfile(arg) or os.path.isdir(arg):
@@ -351,7 +349,11 @@ if __name__=="__main__":
                 yield i_f, df_i
         Nf = len(df_all)
     else:
-        fnames = glob.glob(args.inputGlob)
+        if os.path.isdir(args.inputGlob):
+            glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
+            fnames = glob.glob(glob_s)
+        else:
+            fnames = glob.glob(args.inputGlob)
         #df_iter = ((i_f, pandas.read_pickle(f) for i_f, f in enumerate(fnames))
         def df_iter():
             for i_f,f in enumerate(fnames):
@@ -390,7 +392,6 @@ if __name__=="__main__":
         new_expt_name = "%s/%s_%d_predicted.expt" % (args.outdir,tag,  i_f)
         new_expt_name = os.path.abspath(new_expt_name)
         df["opt_exp_name"] = new_expt_name
-
 
         shutil.copyfile(expt_name,  new_expt_name)
         try:
