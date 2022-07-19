@@ -74,6 +74,9 @@ class Script:
                 o.write("workding directory: \n%s\n" %os.getcwd())
                 o.write("diff phil:\n")
                 o.write(self.parser.diff_phil.as_str())
+            just_diff_phil_outname = os.path.join(self.params.outdir, "diff.phil")
+            with open(just_diff_phil_outname, "w") as o:
+                o.write(self.parser.diff_phil.as_str())
         self.params = COMM.bcast(self.params)
 
         if self.params.logging.logname is None:
@@ -205,7 +208,7 @@ class Script:
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
                 logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
-            print("RANK%d, DEV=%d" % (COMM.rank, dev))
+            #print("RANK%d, DEV=%d" % (COMM.rank, dev))
 
             Modeler.SIM.D.device_Id = dev
 
