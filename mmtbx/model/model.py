@@ -752,10 +752,11 @@ class manager(object):
     self._unit_cell_crystal_symmetry=unit_cell_crystal_symmetry
 
   def shift_model_and_set_crystal_symmetry(self,
-       shift_cart,     # shift to apply
+       shift_cart = None,     # shift to apply
        crystal_symmetry = None, # optional new crystal symmetry
        unit_cell_crystal_symmetry = None, # optional new
              #unit_cell_crystal_symmetry
+       undo_shift_cart = None,
        ):
 
     '''
@@ -770,10 +771,12 @@ class manager(object):
 
       Takes into account any previous shifts by looking at existing
       shift_cart and unit_cell_crystal_symmetry
+
+      If undo_shift_cart, the shift applied cancels existing shift_cart
     '''
     # checks
-    assert shift_cart is not None
-    assert len(list(shift_cart)) == 3
+    assert (undo_shift_cart, shift_cart).count(None) == 1
+    assert (shift_cart is None) or len(list(shift_cart)) == 3
     assert (crystal_symmetry is None) or isinstance(
       crystal_symmetry,  crystal.symmetry)
 
@@ -782,6 +785,10 @@ class manager(object):
 
     # Get shift info  that knows about unit_cell_crystal_symmetry
     #   and any prevous shift_cart
+
+    if undo_shift_cart:
+      assert self.shift_cart() is not None
+      shift_cart = tuple([-x for x in self.shift_cart()])
 
     if unit_cell_crystal_symmetry is None:
       unit_cell_crystal_symmetry = self.unit_cell_crystal_symmetry()
