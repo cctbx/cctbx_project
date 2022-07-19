@@ -4,7 +4,7 @@
 
 #include<vector>
 #include "kokkostbx/kokkos_matrix3.h"
-#include "kokkostbx/kokkos_types.h"
+// #include "kokkostbx/kokkos_types.h"
 #include "kokkostbx/kokkos_vector3.h"
 
 #ifndef CUDAREAL
@@ -14,8 +14,8 @@
 using image_type = std::vector<CUDAREAL>;
 using VEC3 = kokkostbx::vector3<CUDAREAL>;
 using MAT3 = kokkostbx::matrix3<CUDAREAL>;
-using vector_vec3_t = view_1d_t<VEC3>;
-using vector_mat3_t = view_1d_t<MAT3>;
+// using vector_vec3_t = view_1d_t<VEC3>;
+// using vector_mat3_t = view_1d_t<MAT3>;
 
 struct timer_variables{
     CUDAREAL add_spots_pre=0; // times the initializations for add spots kernel

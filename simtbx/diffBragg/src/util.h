@@ -113,7 +113,7 @@ struct crystal{
     double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
     double phi0; // gonio
     double phistep;
-    double phisteps;
+    int phisteps;
     double fudge; // factor for Bragg peak exponential falloff adjustment
     double spot_scale; // factor applied to intensity
     int h_range, k_range, l_range;

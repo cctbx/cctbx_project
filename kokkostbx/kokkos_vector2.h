@@ -1,9 +1,11 @@
 #ifndef KOKKOSTBX_VECTOR2_H
 #define KOKKOSTBX_VECTOR2_H
 
-#include <Kokkos_Core.hpp>
-
 #include "kokkos_vector.h"
+
+// #ifndef KOKKOS_FUNCTION
+// #define KOKKOS_FUNCTION
+// #endif
 
 namespace kokkostbx {
 

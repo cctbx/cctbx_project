@@ -5,6 +5,23 @@
 #include <Kokkos_Core.hpp>
 #include <type_traits>
 
+// Bandaid since parts of diffBragg don't support Kokkos yet
+// #ifndef KOKKOS_FUNCTION
+// #define KOKKOS_FUNCTION
+// #endif
+
+// #ifdef KOKKOS_CORE_HPP
+//     template <typename T> T KOKKOS_FUNCTION sqrt_func(T x) { return ::Kokkos::Experimental::sqrt(x); }
+// #else
+//     #include <cmath>
+//     template <typename T> T KOKKOS_FUNCTION sqrt_func(T x) { return sqrt(x); }
+// #endif
+
+
+
+
+
+
 namespace {
     template <typename T> KOKKOS_FUNCTION
     typename std::enable_if<std::is_integral<T>::value, void>::type print_num(const T &x) {
@@ -25,7 +42,7 @@ namespace kokkostbx {
         NumType data[size] = {};
 
         // CONSTRUCTOR
-        KOKKOS_FUNCTION vector_base() = default;
+        vector_base() = default;
 
         KOKKOS_FUNCTION vector_base(NumType val) {
             for (NumType& d : data) { d = val; }
@@ -209,6 +226,7 @@ namespace kokkostbx {
         }
 
         KOKKOS_FUNCTION NumType length() const {
+            // return sqrt_func(length_sqr());
             return ::Kokkos::Experimental::sqrt(length_sqr());
         }
 

@@ -1939,10 +1939,24 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_cryst,
             db_flags,
             db_cu_flags,
-            device_pointers,
+            // cuda_pointers,
             TIMERS);
         last_kernel_on_GPU=true;
 
+        diffBragg_runner.diffBragg_sum_over_steps_kokkos(
+            Npix_to_model, panels_fasts_slows_vec,
+            image,
+            first_deriv_imgs,
+            second_deriv_imgs,
+            db_steps,
+            db_det,
+            db_beam,
+            db_cryst,
+            db_flags,
+            db_cu_flags,
+            // kokkos_pointers,
+            TIMERS);
+        last_kernel_on_GPU=true;
 #else
        // no statement
 #endif

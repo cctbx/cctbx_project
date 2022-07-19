@@ -392,9 +392,9 @@ void gpu_sum_over_steps(
                             CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
                                     pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
 
-                            /*                            if (exparg >= 0.5)
-                                exparg = 1;
-                            */
+                            // if (exparg >= 0.5)
+                            //     exparg = 1;
+                            
                             CUDAREAL this_I_latt_diffuse = exparg*gamma_portion;
 
                             I0 += this_I_latt_diffuse;
@@ -417,9 +417,9 @@ void gpu_sum_over_steps(
                                    dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU(i_sig,i_sig));
                                    CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
                                    dU_dsigma(i_sig, i_sig) = 0.;
-                                   /*                              if (exparg  >= .5) // only valid up to a point
-                                     dexparg = 0;
-                                   */
+                                //    if (exparg  >= .5) // only valid up to a point
+                                //      dexparg = 0;
+                                   
                                    step_diffuse_param[i_sig+3] += gamma_portion*dexparg;
                                 }
 

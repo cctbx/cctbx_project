@@ -1,9 +1,11 @@
 #ifndef KOKKOSTBX_MATRIX3_H
 #define KOKKOSTBX_MATRIX3_H
 
-#include <Kokkos_Core.hpp>
-
 #include "kokkos_matrix.h"
+
+// #ifndef KOKKOS_FUNCTION
+// #define KOKKOS_FUNCTION
+// #endif
 
 namespace kokkostbx {
 

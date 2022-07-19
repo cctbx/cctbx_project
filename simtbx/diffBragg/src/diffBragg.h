@@ -13,6 +13,7 @@ typedef std::vector<double> image_type;
 
 #ifdef NANOBRAGG_HAVE_CUDA
 #include "diffBraggCUDA.h"
+#include "diffBraggKOKKOS.h"
 #endif
 
 //#include <boost/python/numpy.hpp>
@@ -151,11 +152,12 @@ class diffBragg: public nanoBragg{
 
 
 #ifdef NANOBRAGG_HAVE_CUDA
-    diffBragg_cudaPointers device_pointers;
+    // diffBragg_cudaPointers cuda_pointers;
     inline void gpu_free(){
-        freedom(device_pointers);
+        // freedom(cuda_pointers);
     }
-
+    diffBraggKOKKOS diffBragg_runner;
+  // diffBragg_kokkosPointers kokkos_pointers;
 #endif
 
   // methods
