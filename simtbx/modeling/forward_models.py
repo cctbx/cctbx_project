@@ -94,6 +94,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     Ncells_abc = df.ncells.values[0]
     if Ncells_abc_override is not None:
         Ncells_abc = Ncells_abc_override
+    Ncells_def = df.ncells_def.values[0]
     spot_scale = df.spot_scales.values[0]
     beamsize_mm = df.beamsize_mm.values[0]
     total_flux = df.total_flux.values[0]
@@ -187,7 +188,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     diffuse_params=diffuse_params, cuda=cuda,
                                     show_timings=show_timings,
                                     perpixel_wavelen=perpixel_wavelen,
-                                    det_thicksteps=det_thicksteps)
+                                    det_thicksteps=det_thicksteps, Ncells_def=Ncells_def)
         return results, expt
 
     else:
@@ -219,7 +220,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       mosaicity_random_seeds=None,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
-                      det_thicksteps=None, eta_abc=None):
+                      det_thicksteps=None, eta_abc=None, Ncells_def=None):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -236,6 +237,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     nbCrystal.dxtbx_crystal = CRYSTAL
     nbCrystal.miller_array = Famp
     nbCrystal.Ncells_abc = Ncells_abc
+    nbCrystal.Ncells_def = Ncells_def
     nbCrystal.symbol = CRYSTAL.get_space_group().info().type().lookup_symbol()
     nbCrystal.thick_mm = crystal_size_mm
     nbCrystal.xtal_shape = profile
