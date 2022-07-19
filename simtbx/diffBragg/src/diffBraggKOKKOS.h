@@ -2,115 +2,123 @@
 #include <math.h>
 #include <vector>
 
+#include "kokkostbx/kokkos_utils.h"
+#include "kokkostbx/kokkos_types.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
 
-// typedef std::vector<CUDAREAL> image_type;
-// typedef Eigen::Matrix<CUDAREAL,3,1> VEC3;
-// typedef Eigen::Matrix<CUDAREAL,3,3> MAT3;
-// typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
-// typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
+using vector_vec3_t = view_1d_t<VEC3>;
+using vector_mat3_t = view_1d_t<MAT3>;
 
+#define INTEGER_VIEW(varname) vector_int_t varname = vector_int_t(#varname, 0)
+#define CUDAREAL_VIEW(varname) vector_cudareal_t varname = vector_cudareal_t(#varname, 0)
+#define MATRIX3_VIEW(varname) vector_mat3_t varname = vector_mat3_t(#varname, 0)
 
-struct diffBragg_cudaPointers {
+class diffBraggKOKKOS {
 
-  bool device_is_allocated = false;
-  int npix_allocated=0;
-  int previous_nsource = 0;
+private:
+    bool m_device_is_allocated = false;
+    int m_npix_allocated = 0;
+    int m_previous_nsource = 0;
 
-  unsigned int* cu_panels_fasts_slows;
+    vector_uint_t m_panels_fasts_slows = vector_uint_t("m_panels_fasts_slows", 0);
 
-  CUDAREAL* cu_floatimage;
-  CUDAREAL* cu_wavelenimage=NULL;
-  CUDAREAL* cu_d_diffuse_sigma_images=NULL;
-  CUDAREAL* cu_d_diffuse_gamma_images=NULL;
-  CUDAREAL* cu_d_Umat_images=NULL;
-  CUDAREAL* cu_d_Bmat_images=NULL;
-  CUDAREAL* cu_d_Ncells_images=NULL;
-  CUDAREAL* cu_d_fcell_images=NULL;
-  CUDAREAL* cu_d_eta_images=NULL;
-  CUDAREAL* cu_d2_eta_images=NULL;
-  CUDAREAL* cu_d_lambda_images=NULL;
-  CUDAREAL* cu_d_panel_rot_images=NULL;
-  CUDAREAL* cu_d_panel_orig_images=NULL;
+    CUDAREAL_VIEW(m_floatimage);
+    CUDAREAL_VIEW(m_wavelenimage);
+    CUDAREAL_VIEW(m_d_diffuse_sigma_images);
+    CUDAREAL_VIEW(m_d_diffuse_gamma_images);
+    CUDAREAL_VIEW(m_d_Umat_images);
+    CUDAREAL_VIEW(m_d_Bmat_images);
+    CUDAREAL_VIEW(m_d_Ncells_images);
+    CUDAREAL_VIEW(m_d_fcell_images);
+    CUDAREAL_VIEW(m_d_eta_images);
+    CUDAREAL_VIEW(m_d2_eta_images);
+    CUDAREAL_VIEW(m_d_lambda_images);
+    CUDAREAL_VIEW(m_d_panel_rot_images);
+    CUDAREAL_VIEW(m_d_panel_orig_images);
 
-  CUDAREAL* cu_d2_Umat_images=NULL;
-  CUDAREAL* cu_d2_Bmat_images=NULL;
-  CUDAREAL* cu_d2_Ncells_images=NULL;
-  CUDAREAL* cu_d2_fcell_images=NULL;
-  CUDAREAL* cu_d2_lambda_images=NULL;
-  CUDAREAL* cu_d2_panel_rot_images=NULL;
-  CUDAREAL* cu_d2_panel_orig_images=NULL;
+    CUDAREAL_VIEW(m_d2_Umat_images);
+    CUDAREAL_VIEW(m_d2_Bmat_images);
+    CUDAREAL_VIEW(m_d2_Ncells_images);
+    CUDAREAL_VIEW(m_d2_fcell_images);
+    CUDAREAL_VIEW(m_d2_lambda_images);
+    CUDAREAL_VIEW(m_d2_panel_rot_images);
+    CUDAREAL_VIEW(m_d2_panel_orig_images);
 
-  CUDAREAL* cu_d_sausage_XYZ_scale_images=NULL;
-  CUDAREAL* cu_d_fp_fdp_images=NULL;
+    CUDAREAL_VIEW(m_d_sausage_XYZ_scale_images);
+    CUDAREAL_VIEW(m_d_fp_fdp_images);
 
-  int* cu_subS_pos;
-  int* cu_subF_pos;
-  int* cu_thick_pos;
-  int* cu_source_pos;
-  int* cu_mos_pos;
-  int* cu_phi_pos;
-  int* cu_sausage_pos;
+    INTEGER_VIEW(m_subS_pos);
+    INTEGER_VIEW(m_subF_pos);
+    INTEGER_VIEW(m_thick_pos);
+    INTEGER_VIEW(m_source_pos);
+    INTEGER_VIEW(m_mos_pos);
+    INTEGER_VIEW(m_phi_pos);
+    INTEGER_VIEW(m_sausage_pos);
 
-  CUDAREAL * cu_Fhkl;
-  CUDAREAL * cu_Fhkl2=NULL;
+    CUDAREAL_VIEW(m_Fhkl);
+    CUDAREAL_VIEW(m_Fhkl2);
 
-  CUDAREAL * cu_fdet_vectors;
-  CUDAREAL * cu_sdet_vectors;
-  CUDAREAL * cu_odet_vectors;
-  CUDAREAL * cu_pix0_vectors;
-  CUDAREAL * cu_close_distances;
+    CUDAREAL_VIEW(m_fdet_vectors);
+    CUDAREAL_VIEW(m_sdet_vectors);
+    CUDAREAL_VIEW(m_odet_vectors);
+    CUDAREAL_VIEW(m_pix0_vectors);
+    CUDAREAL_VIEW(m_close_distances);
 
-  int * cu_nominal_hkl=NULL;
-  CUDAREAL * cu_fpfdp=NULL;
-  CUDAREAL * cu_fpfdp_derivs=NULL;
-  CUDAREAL * cu_atom_data=NULL;
+    INTEGER_VIEW(m_nominal_hkl);
+    CUDAREAL_VIEW(m_fpfdp);
+    CUDAREAL_VIEW(m_fpfdp_derivs);
+    CUDAREAL_VIEW(m_atom_data);
 
-  CUDAREAL * cu_source_X, * cu_source_Y, * cu_source_Z, * cu_source_I, * cu_source_lambda;
-  int cu_sources;
-  bool sources_are_allocated = false;
-  bool sources_recopy = false;
+    CUDAREAL_VIEW(m_source_X);
+    CUDAREAL_VIEW(m_source_Y);
+    CUDAREAL_VIEW(m_source_Z);
+    CUDAREAL_VIEW(m_source_I);
+    CUDAREAL_VIEW(m_source_lambda);
+    int m_sources;
+    bool m_sources_are_allocated = false;
+    bool m_sources_recopy = false;
 
-  Eigen::Matrix3d* cu_UMATS;
-  Eigen::Matrix3d* cu_dB_Mats;
-  Eigen::Matrix3d* cu_dB2_Mats;
-  Eigen::Matrix3d* cu_UMATS_RXYZ;
-  Eigen::Matrix3d* cu_UMATS_RXYZ_prime=NULL;
-  Eigen::Matrix3d* cu_UMATS_RXYZ_dbl_prime=NULL;
-  Eigen::Matrix3d* cu_RotMats;
-  Eigen::Matrix3d* cu_dRotMats;
-  Eigen::Matrix3d* cu_d2RotMats;
+    MATRIX3_VIEW(m_UMATS);
+    MATRIX3_VIEW(m_dB_Mats);
+    MATRIX3_VIEW(m_dB2_Mats);
+    MATRIX3_VIEW(m_UMATS_RXYZ);
+    MATRIX3_VIEW(m_UMATS_RXYZ_prime);
+    MATRIX3_VIEW(m_UMATS_RXYZ_dbl_prime);
+    MATRIX3_VIEW(m_RotMats);
+    MATRIX3_VIEW(m_dRotMats);
+    MATRIX3_VIEW(m_d2RotMats);
 
-  Eigen::Matrix3d* cu_AMATS;
+    MATRIX3_VIEW(m_AMATS);
 
-  Eigen::Vector3d* cu_dF_vecs;
-  Eigen::Vector3d* cu_dS_vecs;
+    vector_vec3_t m_dF_vecs = vector_vec3_t("m_dF_vecs", 0);
+    vector_vec3_t m_dS_vecs = vector_vec3_t("m_dS_vecs", 0);
 
-  Eigen::Matrix3d* cu_sausages_RXYZ;
-  Eigen::Matrix3d* cu_d_sausages_RXYZ;
-  Eigen::Matrix3d* cu_sausages_U;
-  CUDAREAL* cu_sausages_scale;
+    MATRIX3_VIEW(m_sausages_RXYZ);
+    MATRIX3_VIEW(m_d_sausages_RXYZ);
+    MATRIX3_VIEW(m_sausages_U);
+    CUDAREAL_VIEW(m_sausages_scale);
 
-  bool* cu_refine_Bmat;
-  bool* cu_refine_Umat;
-  bool* cu_refine_Ncells;
-  bool* cu_refine_lambda;
-  bool* cu_refine_panel_origin;
-  bool* cu_refine_panel_rot;
+    vector_bool_t m_refine_Bmat = vector_bool_t("m_refine_Bmat", 6);
+    vector_bool_t m_refine_Umat = vector_bool_t("m_refine_Umat", 3);
+    vector_bool_t m_refine_Ncells = vector_bool_t("m_refine_Ncells", 3);
+    vector_bool_t m_refine_panel_origin = vector_bool_t("m_refine_panel_origin", 3);
+    vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
+    vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
+
+public:
+    void diffBragg_sum_over_steps_kokkos(
+            int Npix_to_model,
+            std::vector<unsigned int>& panels_fasts_slows,
+            image_type& floatimage,
+            images& d_image,
+            images& d2_image,
+            step_arrays& db_steps,
+            detector& db_det,
+            beam& db_beam,
+            crystal& db_cryst,
+            flags& db_flags,
+            cuda_flags& db_cu_flags,
+            // diffBragg_kokkosPointers& kp,
+            timer_variables& TIMERS);
 
 };
-
-void diffBragg_sum_over_steps_kokkos(
-        int Npix_to_model,
-        std::vector<unsigned int>& panels_fasts_slows,
-        image_type& floatimage,
-        images& d_image,
-        images& d2_image,
-        step_arrays& db_steps,
-        detector& db_det,
-        beam& db_beam,
-        crystal& db_cryst,
-        flags& db_flags,
-        cuda_flags& db_cu_flags,
-        diffBragg_cudaPointers& cp,
-        timer_variables& TIMERS);

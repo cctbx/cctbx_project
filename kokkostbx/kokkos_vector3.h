@@ -1,9 +1,23 @@
 #ifndef KOKKOSTBX_VECTOR3_H
 #define KOKKOSTBX_VECTOR3_H
 
-#include <Kokkos_Core.hpp>
-
 #include "kokkos_vector.h"
+
+// Bandaid since parts of diffBragg don't support Kokkos yet
+// #ifndef KOKKOS_FUNCTION
+// #define KOKKOS_FUNCTION
+// #endif
+
+// #ifdef KOKKOS_CORE_HPP
+//     template <typename T> KOKKOS_FUNCTION T sin_func(T x) { return ::Kokkos::Experimental::sin(x); }
+//     template <typename T> KOKKOS_FUNCTION T cos_func(T x) { return ::Kokkos::Experimental::cos(x); }
+// #else
+//     #include <cmath>
+//     template <typename T> KOKKOS_FUNCTION T sin_func(T x) { return sin(x); }
+//     template <typename T> KOKKOS_FUNCTION T cos_func(T x) { return cos(x); }
+// #endif
+
+
 
 namespace kokkostbx {
 
@@ -42,8 +56,11 @@ namespace kokkostbx {
 
         // rotate a point around a unit vector3 axis
         KOKKOS_FUNCTION vector3<NumType> rotate_around_axis(const vector3<NumType>& axis, NumType angle) const {
+            // NumType sinphi = sin_func(angle);
+            // NumType cosphi = cos_func(angle);
             NumType sinphi = ::Kokkos::Experimental::sin(angle);
             NumType cosphi = ::Kokkos::Experimental::cos(angle);
+            
             NumType dot_factor = axis.dot(*this) * (1.0-cosphi);
 
             vector3<NumType> vector_rot = axis.cross(*this) * sinphi;

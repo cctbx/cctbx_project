@@ -1,22 +1,24 @@
 #ifndef KOKKOSTBX_MATRIX_H
 #define KOKKOSTBX_MATRIX_H
 
-#include <Kokkos_Core.hpp>
-
 #include "kokkos_vector.h"
+
+// #ifndef KOKKOS_FUNCTION
+// #define KOKKOS_FUNCTION
+// #endif
 
 namespace kokkostbx {
 
     template <typename Derived, typename NumType, size_t rank>
     struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, NumType, rank*rank> {
 
-        const size_t size = rank*rank;
+        constexpr size_t size = rank*rank;
 
         // data stored in row-major format!
         using vector_base = kokkostbx::vector_base<matrix_base<Derived, NumType, rank>, NumType, rank*rank>;
         using vector = kokkostbx::vector<NumType, rank>;
 
-        KOKKOS_FUNCTION matrix_base() = default;
+        matrix_base() = default;
         KOKKOS_FUNCTION matrix_base(NumType val) : vector_base(val) { };
         KOKKOS_FUNCTION matrix_base(NumType arr[]) : vector_base(arr) { };
 

@@ -124,8 +124,8 @@ void diffBragg_sum_over_steps_cuda(
         crystal& db_cryst,
         flags& db_flags,
         cuda_flags& db_cu_flags,
-        diffBragg_cudaPointers& cp,
+        // diffBragg_cudaPointers& cp,
         timer_variables& TIMERS);
 
 
-void freedom(diffBragg_cudaPointers& cp);
+// void freedom(diffBragg_cudaPointers& cp);
