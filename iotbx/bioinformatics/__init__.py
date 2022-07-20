@@ -1915,9 +1915,11 @@ def clear_empty_lines(text, apply_duplicate_multiple_chains = False):
   return "\n".join(new_lines)+"\n"
 
 def get_sequences(file_name=None,text=None,remove_duplicates=None,
-     apply_duplicate_multiple_chains = False):
+     apply_duplicate_multiple_chains = False,
+     remove_unknowns = False):
   # return simple list of sequences in this file. duplicates included
   #  unless remove_duplicates=True
+  #  remove unknowns (X) if requested
   if not text:
     if not file_name:
       raise Sorry("Missing file for get_sequences: %s" %(
@@ -1932,6 +1934,8 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None,
   for sequence in sequences:
     if remove_duplicates and sequence.sequence in simple_sequence_list:
       continue # it is a duplicate
+    elif remove_unknowns: # remove any X and take it
+      simple_sequence_list.append(sequence.sequence.replace("X",""))
     else: # take it
       simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
