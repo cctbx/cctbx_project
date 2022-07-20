@@ -832,8 +832,8 @@ Restraints written by QMR process in phenix.refine
     r=gs.result()
     if r.planarity.mean>0.02 or r.planarity.max>0.05:
       print('  %s\n   rmsd values for planarity restraints are high. Check QM minimisation. \n  %s' % (
-            '–'*71,
-            '–'*71,
+            '-'*71,
+            '-'*71,
             ),
             file=log)
   print('  Total time for QM restaints: %0.1fs' % (time.time()-t0), file=log)
