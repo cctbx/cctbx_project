@@ -1021,7 +1021,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.shifter_constraint.Hide()
       self.log_staging.Hide()
       self.staging_help.Hide()
-    elif self.mp_option.ctr.GetStringSelection() == 'slurm':
+    elif self.mp_option.ctr.GetStringSelection() in ['slurm','pbs']:
       self.queue_choice.Hide()
       self.queue_text.Show()
       self.nproc.Hide()
@@ -1127,7 +1127,7 @@ class AdvancedSettingsDialog(BaseDialog):
       else:
         self.params.mp.nproc_per_node = int(self.nproc_per_node.ctr.GetValue())
       self.params.mp.queue = self.queue_text.ctr.GetValue()
-      if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm']:
+      if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm', 'pbs']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
         self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
         self.params.mp.nnodes_merge = int(self.nnodes_merge.ctr.GetValue())

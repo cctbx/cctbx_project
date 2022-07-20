@@ -297,13 +297,13 @@ class db_application(object):
 
   def execute_query(self, query, commit = False):
     from MySQLdb import OperationalError
+    from time import time
 
     if self.mode == 'cache_commits' and commit:
       self.last_query = query
       return
 
     if self.params.db.verbose:
-      from time import time
       st = time()
       self.query_count += 1
 
