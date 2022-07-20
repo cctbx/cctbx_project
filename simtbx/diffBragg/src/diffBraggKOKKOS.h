@@ -1,9 +1,9 @@
-#include <iostream>
 #include <math.h>
+#include <iostream>
 #include <vector>
 
-#include "kokkostbx/kokkos_utils.h"
 #include "kokkostbx/kokkos_types.h"
+#include "kokkostbx/kokkos_utils.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
 
 using vector_vec3_t = view_1d_t<VEC3>;
@@ -14,8 +14,7 @@ using vector_mat3_t = view_1d_t<MAT3>;
 #define MATRIX3_VIEW(varname) vector_mat3_t varname = vector_mat3_t(#varname, 0)
 
 class diffBraggKOKKOS {
-
-private:
+   private:
     bool m_device_is_allocated = false;
     int m_npix_allocated = 0;
     int m_previous_nsource = 0;
@@ -105,20 +104,19 @@ private:
     vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
     vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
 
-public:
+   public:
     void diffBragg_sum_over_steps_kokkos(
-            int Npix_to_model,
-            std::vector<unsigned int>& panels_fasts_slows,
-            image_type& floatimage,
-            images& d_image,
-            images& d2_image,
-            step_arrays& db_steps,
-            detector& db_det,
-            beam& db_beam,
-            crystal& db_cryst,
-            flags& db_flags,
-            cuda_flags& db_cu_flags,
-            // diffBragg_kokkosPointers& kp,
-            timer_variables& TIMERS);
-
+        int Npix_to_model,
+        std::vector<unsigned int>& panels_fasts_slows,
+        image_type& floatimage,
+        images& d_image,
+        images& d2_image,
+        step_arrays& db_steps,
+        detector& db_det,
+        beam& db_beam,
+        crystal& db_cryst,
+        flags& db_flags,
+        cuda_flags& db_cu_flags,
+        // diffBragg_kokkosPointers& kp,
+        timer_variables& TIMERS);
 };
