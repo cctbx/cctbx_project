@@ -643,12 +643,7 @@ class DataModeler:
             # TODO: set best eta_abc params
             self.params.init.eta_abc = tuple(best.eta_abc.values[0])
 
-            lam0 = best.lam0.values[0]
-            lam1 = best.lam1.values[0]
-            assert not np.isnan(lam0)
-            assert not np.isnan(lam1)
-            assert lam0 != -1
-            assert lam1 != -1
+            lam0, lam1 = get_lam0_lam1_from_pandas(best)
             self.params.init.spec = lam0, lam1
 
         self.SIM = utils.simulator_for_refinement(self.E, self.params)
@@ -828,15 +823,18 @@ class DataModeler:
 
 
         # two parameters for optimizing the spectrum
-        p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0], minval=-0.01, maxval=0.01, fix=fix.spec,
-                            name="lambda_offset", center=0, beta=1e12)
+        p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0],
+                            minval=mins.spec[0], maxval=maxs.spec[0], fix=fix.spec,
+                            name="lambda_offset", center=centers.spec[0], beta=betas.spec[0])
         P.add(p)
-        p = RangedParameter(init=self.params.init.spec[1], sigma=self.params.sigmas.spec[1], minval=0.95, maxval=1.05, fix=fix.spec,
-                            name="lambda_scale", center=1, beta=1e12)
+        p = RangedParameter(init=self.params.init.spec[1], sigma=self.params.sigmas.spec[1],
+                            minval=mins.spec[1], maxval=maxs.spec[1], fix=fix.spec,
+                            name="lambda_scale", center=centers.spec[1], beta=betas.spec[1])
         P.add(p)
-        if not fix.spec:
-            self.SIM.D.use_lambda_coefficients = True
-            self.SIM.D.lambda_coefficients = tuple(self.params.init.spec)
+        # TODO: verify how slow always using lambda coefs is
+        # TODO: ensure lam0/lam1 are not -1 and not np.nan
+        self.SIM.D.use_lambda_coefficients = True
+        self.SIM.D.lambda_coefficients = tuple(self.params.init.spec)
 
         self.SIM.refining_Fhkl = False
         self.SIM.Num_ASU = 0
@@ -1960,7 +1958,7 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
 
         ref_idx = Modeler.refls_idx[i_roi]
 
-        assert ref_idx==i_roi
+        #assert ref_idx==i_roi
         if np.any(bragg_subimg[i_roi] > 0):
             I = bragg_subimg[i_roi]
             assert np.all(I>=0)
@@ -2209,3 +2207,12 @@ def print_profile(stats, timed_methods):
             frac_t = timespent[i_l] / total_time * 100.
             line = fp[l-1][:-1]
             PROFILE_LOGGER.warning("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))
+
+def get_lam0_lam1_from_pandas(df):
+    lam0 = df.lam0.values[0]
+    lam1 = df.lam1.values[0]
+    assert not np.isnan(lam0)
+    assert not np.isnan(lam1)
+    assert lam0 != -1
+    assert lam1 != -1
+    return lam0, lam1

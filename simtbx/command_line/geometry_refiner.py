@@ -77,9 +77,43 @@ def get_dist_from_R(R):
     return dist
 
 
+class BeamParameters:
+    def __init__(self, phil_params, data_modelers):
+        self.parameters = []
+        # initialize as the median of all lam0, lam1 values
+        all_lam0 = []
+        all_lam1 = []
+        for i_m in data_modelers:
+            m = data_modelers[i_m]
+            spec0, spec1 = m.PAR.spec_coef
+            lam0, lam1 = spec0.init, spec1.init
+            all_lam0.append(lam0)
+            all_lam1.append(lam1)
+        all_lam0 = COMM.reduce(all_lam0)
+        all_lam1 = COMM.reduce(all_lam1)
+        global_lam0 = global_lam1 = None
+        if COMM.rank==0:
+            global_lam0 = np.median(all_lam0)
+            global_lam1 = np.median(all_lam1)
+        global_lam0 = COMM.bcast(global_lam0)
+        global_lam1 = COMM.bcast(global_lam1)
+
+        for i_p, init_val in enumerate((global_lam0, global_lam1)):
+            p = RangedParameter(name="lambda%d" % i_p,
+                init=init_val,
+                sigma=phil_params.sigmas.spec[i_p],
+                minval=phil_params.mins.spec[i_p],
+                maxval=phil_params.maxs.spec[i_p],
+                fix=phil_params.fix.spec,
+                center=phil_params.centers.spec[i_p],
+                beta=phil_params.betas.spec[i_p],
+                is_global=True)
+            self.parameters.append(p)
+
+
 class DetectorParameters:
 
-    def __init__(self, phil_params, panel_groups_refined, num_panel_groups ):
+    def __init__(self, phil_params, panel_groups_refined, num_panel_groups):
 
         self.parameters = []
         GEO = phil_params.geometry
@@ -92,14 +126,14 @@ class DetectorParameters:
 
             o = RangedParameter(name="group%d_RotOrth" % i_group,
                                 init=0,
-                                sigma=1,  # TODO
+                                sigma=100,  # TODO
                                 minval=GEO.min.panel_rotations[0]*DEG_TO_PI,
                                 maxval=GEO.max.panel_rotations[0]*DEG_TO_PI,
                                 fix=not vary_rots[0], center=0, beta=GEO.betas.panel_rot[0], is_global=True)
 
             f = RangedParameter(name="group%d_RotFast" % i_group,
                                 init=0,
-                                sigma=1,  # TODO
+                                sigma=100,  # TODO
                                 minval=GEO.min.panel_rotations[1]*DEG_TO_PI,
                                 maxval=GEO.max.panel_rotations[1]*DEG_TO_PI,
                                 fix=not vary_rots[1], center=0, beta=GEO.betas.panel_rot[1],
@@ -107,7 +141,7 @@ class DetectorParameters:
 
             s = RangedParameter(name="group%d_RotSlow" % i_group,
                                 init=0,
-                                sigma=1,  # TODO
+                                sigma=100,  # TODO
                                 minval=GEO.min.panel_rotations[2]*DEG_TO_PI,
                                 maxval=GEO.max.panel_rotations[2]*DEG_TO_PI,
                                 fix=not vary_rots[2], center=0, beta=GEO.betas.panel_rot[2],
@@ -116,22 +150,23 @@ class DetectorParameters:
             vary_shifts = [not fixed_flag and group_has_data for fixed_flag in GEO.fix.panel_translations]
             #vary_shifts = [True]*3
             x = RangedParameter(name="group%d_ShiftX" % i_group, init=0,
-                                sigma=1,
+                                sigma=100,
                                 minval=GEO.min.panel_translations[0]*1e-3, maxval=GEO.max.panel_translations[0]*1e-3,
                                 fix=not vary_shifts[0], center=0, beta=GEO.betas.panel_xyz[0],
                                 is_global=True)
             y = RangedParameter(name="group%d_ShiftY" % i_group, init=0,
-                                sigma=1,
+                                sigma=100,
                                 minval=GEO.min.panel_translations[1]*1e-3, maxval=GEO.max.panel_translations[1]*1e-3,
                                 fix=not vary_shifts[1], center=0, beta=GEO.betas.panel_xyz[1],
                                 is_global=True)
             z = RangedParameter(name="group%d_ShiftZ" % i_group, init=0,
-                                sigma=1,
+                                sigma=100,
                                 minval=GEO.min.panel_translations[2]*1e-3, maxval=GEO.max.panel_translations[2]*1e-3,
                                 fix=not vary_shifts[2], center=0, beta=GEO.betas.panel_xyz[2],
                                 is_global=True)
 
             self.parameters += [o, f, s, x, y, z]
+
 
 
 class CrystalParameters:
@@ -165,6 +200,13 @@ class CrystalParameters:
                 ref_p = RangedParameter(name="rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i_N),
                                           minval=p.minval, maxval=p.maxval, fix=self.phil.fix.Nabc, init=p.init,
                                           center=p.center, beta=p.beta)
+                self.parameters.append(ref_p)
+
+            for i_N in range(3):
+                p = Mod.PAR.Ndef[i_N]
+                ref_p = RangedParameter(name="rank%d_shot%d_Ndef%d" % (COMM.rank, i_shot, i_N),
+                                        minval=p.minval, maxval=p.maxval, fix=self.phil.fix.Ndef, init=p.init,
+                                        center=p.center, beta=p.beta)
                 self.parameters.append(ref_p)
 
             for i_eta in range(3):
@@ -286,6 +328,43 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
     Na = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 0)]
     Nb = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 1)]
     Nc = ref_params["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, 2)]
+    Nd = ref_params["rank%d_shot%d_Ndef%d" % (COMM.rank, i_shot, 0)]
+    Ne = ref_params["rank%d_shot%d_Ndef%d" % (COMM.rank, i_shot, 1)]
+    Nf = ref_params["rank%d_shot%d_Ndef%d" % (COMM.rank, i_shot, 2)]
+    eta_a = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 0)]
+    eta_b = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 1)]
+    eta_c = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 2)]
+    G = ref_params["rank%d_shot%d_Scale" % (COMM.rank, i_shot)]
+    num_uc_p = len(Modeler.ucell_man.variables)
+    ucell_pars = [ref_params["rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc)] for i_uc in range(num_uc_p)]
+    lam0 = ref_params["lambda0"]
+    lam1 = ref_params["lambda1"]
+
+    # update the rotational mosaicity here
+    # update the mosaicity here
+    eta_params = [eta_a, eta_b, eta_c]
+    if SIM.umat_maker is not None:
+        # we are modeling mosaic spread
+        eta_abc = [p.get_val(x[p.xpos]) for p in eta_params]
+        #if not SIM.D.has_anisotropic_mosaic_spread:
+        #    eta_abc = eta_abc[0]
+        SIM.update_umats_for_refinement(eta_abc)
+
+    # update the photon energy spectrum for this shot
+    SIM.beam.spectrum = Modeler.spectra
+    SIM.D.xray_beams = SIM.beam.xray_beams
+    # update the lambda coeff
+    lambda_coef = lam0.get_val(x[lam0.xpos]), lam1.get_val(x[lam1.xpos])
+    SIM.D.lambda_coefficients = lambda_coef
+
+    # update the Bmatrix
+    Modeler.ucell_man.variables = [p.get_val(x[p.xpos]) for p in ucell_pars]
+    Bmatrix = Modeler.ucell_man.B_recipspace
+    SIM.D.Bmatrix = Bmatrix
+    for i_ucell in range(len(ucell_pars)):
+        SIM.D.set_ucell_derivative_matrix(
+            i_ucell + hopper_utils.UCELL_ID_OFFSET,
+            Modeler.ucell_man.derivative_matrices[i_ucell])
     eta_a = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 0)]
     eta_b = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 1)]
     eta_c = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 2)]
@@ -326,6 +405,9 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
     SIM.D.set_ncells_values((Na.get_val(x[Na.xpos]),
                              Nb.get_val(x[Nb.xpos]),
                              Nc.get_val(x[Nc.xpos])))
+    SIM.D.Ncells_def = (Nd.get_val(x[Nd.xpos]),
+                       Ne.get_val(x[Ne.xpos]),
+                       Nf.get_val(x[Nf.xpos]))
 
     npix = int(len(Modeler.pan_fast_slow)/3.)
 
@@ -422,6 +504,14 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
             N_grad = convolve_model_with_psf(N_grad, **conv_args)
             J[N.name] = (common_grad_term*N_grad)[Modeler.all_trusted].sum()
 
+    if not Nd.fix:
+        Ndef_grad = SIM.D.get_ncells_def_derivative_pixels()
+        for i_N, N in enumerate([Nf, Ne, Nf]):
+            N_grad = scale*(Ndef_grad[i_N][:npix].as_numpy_array())
+            N_grad = N.get_deriv(x[N.xpos], N_grad)
+            N_grad = convolve_model_with_psf(N_grad, **conv_args)
+            J[N.name] = (common_grad_term*N_grad)[Modeler.all_trusted].sum()
+
     if not eta_a.fix:
         if SIM.D.has_anisotropic_mosaic_spread:
             eta_abc_derivs = SIM.D.get_aniso_eta_deriv_pixels()
@@ -442,6 +532,15 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
             d = uc_p.get_deriv(x[uc_p.xpos], d)
             d = convolve_model_with_psf(d, **conv_args)
             J[ucell_pars[i_ucell].name] = (common_grad_term*d)[Modeler.all_trusted].sum()
+
+    if not lam0.fix:
+        lambda_derivs = SIM.D.get_lambda_derivative_pixels()
+        lam_params = lam0, lam1
+        for d, pr in zip(lambda_derivs, lam_params):
+            d = d.as_numpy_array()[:npix]
+            d = pr.get_deriv(x[pr.xpos], d)
+            d = convolve_model_with_psf(d, **conv_args)
+            J[pr.name] = (common_grad_term*d)[Modeler.all_trusted].sum()
 
     # detector model gradients
     detector_derivs = []
@@ -551,7 +650,7 @@ def update_detector(x, ref_params, SIM, save=None):
         El.append(E)
         El.as_file(save)
         t = time.time()-t
-        print("Saved detector model to %s (took %.4f sec)" % (save, t), flush=True )
+        #print("Saved detector model to %s (took %.4f sec)" % (save, t), flush=True )
 
 
 
@@ -675,13 +774,19 @@ def geom_min(params):
     # same on every rank:
     det_params = DetectorParameters(params, launcher.panel_groups_refined, launcher.n_panel_groups)
 
+    beam_params = BeamParameters(params, launcher.Modelers)
+
     # different on each rank
     crystal_params = CrystalParameters(params,launcher.Modelers)
     crystal_params.parameters = COMM.bcast(COMM.reduce(crystal_params.parameters))
 
     LMP = Parameters()
-    for p in crystal_params.parameters + det_params.parameters:
+    for p in crystal_params.parameters + det_params.parameters + beam_params.parameters:
         LMP.add(p)
+
+    # use spectrum coefficients
+    launcher.SIM.D.use_lambda_coefficients = True
+    launcher.SIM.D.lambda_coefficients = LMP["lambda0"].init, LMP["lambda1"].init
 
     # attached some objects to SIM for convenience
     launcher.SIM.panel_reference_from_id = launcher.panel_reference_from_id
@@ -701,10 +806,15 @@ def geom_min(params):
     if not params.fix.RotXYZ:
         for i_rot in range(3):
             launcher.SIM.D.refine(ROTXYZ_ID[i_rot])
+    if not params.fix.spec:
+        launcher.SIM.D.refine(hopper_utils.LAMBDA_IDS[0])
+        launcher.SIM.D.refine(hopper_utils.LAMBDA_IDS[1])
     if not params.fix.eta_abc:
         launcher.SIM.D.refine(hopper_utils.ETA_ID)
     if not params.fix.Nabc:
         launcher.SIM.D.refine(hopper_utils.NCELLS_ID)
+    if not params.fix.Ndef:
+        launcher.SIM.D.refine(hopper_utils.NCELLS_ID_OFFDIAG)
     if not params.fix.ucell:
         for i_ucell in range(launcher.SIM.num_ucell_param):
             launcher.SIM.D.refine(hopper_utils.UCELL_ID_OFFSET + i_ucell)
@@ -763,6 +873,12 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
+    lam0_lam1 = []
+    for i_lam in [0,1]:
+        lam_p = LMP["lambda%d"% i_lam]
+        val = lam_p.get_val(Xopt[lam_p.xpos])
+        lam0_lam1.append(val)
+
     all_shot_pred_offsets = []
     for i_shot in Modelers:
         Modeler = Modelers[i_shot]
@@ -804,7 +920,7 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
             slc = Modeler.roi_id_slices[roi_id][0]
             roi_refl_ids = Modeler.all_refls_idx[slc]
             # NOTE, just a sanity check:
-            assert len(np.unique(roi_refl_ids))==1
+            assert len(np.unique(roi_refl_ids))==1, "unique refl ids"
             refl_idx = roi_refl_ids[0]
             assert test_refl_idx==refl_idx
             roi_scale_factor[refl_idx] = scale_fac
@@ -836,7 +952,9 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
         if params.geometry.pandas_dir is not None:
             a,b,c,al,be,ga = ucpar
             ncells_p = [LMP["rank%d_shot%d_Nabc%d" % (COMM.rank, i_shot, i)] for i in range(3)]
+            ncells_def_p = [LMP["rank%d_shot%d_Ndef%d" % (COMM.rank, i_shot, i)] for i in range(3)]
             Na,Nb,Nc = [p.get_val(Xopt[p.xpos]) for p in ncells_p]
+            Nd,Ne,Nf = [p.get_val(Xopt[p.xpos]) for p in ncells_def_p]
 
             eta_p = [LMP["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, i)] for i in range(3)]
             eta_abc = tuple([p.get_val(Xopt[p.xpos]) for p in eta_p])
@@ -845,8 +963,9 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
             scale = scale_p.get_val(Xopt[scale_p.xpos])
 
             _,fluxes = zip(*SIM.beam.spectrum)
+            # TODO OUTPUTDEF and LAM0, LAM1
             df= single_expt_pandas(xtal_scale=scale, Amat=new_crystal.get_A(),
-                ncells_abc=(Na, Nb, Nc), ncells_def=(0,0,0),
+                ncells_abc=(Na, Nb, Nc), ncells_def=(Nd, Ne, Nf),
                 eta_abc=eta_abc,
                 diff_gamma=(np.nan, np.nan, np.nan),
                 diff_sigma=(np.nan, np.nan, np.nan),
@@ -857,7 +976,7 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
                 rotXYZ=tuple(rotXYZ),
                 ucell_p = (a,b,c,al,be,ga),
                 ucell_p_init=(np.nan, np.nan, np.nan, np.nan, np.nan, np.nan),
-                lam0_lam1 = (np.nan, np.nan),
+                lam0_lam1 = lam0_lam1,
                 spec_file=Modeler.spec_name,
                 spec_stride=params.simulator.spectrum.stride,
                 flux=sum(fluxes), beamsize_mm=SIM.beam.size_mm,

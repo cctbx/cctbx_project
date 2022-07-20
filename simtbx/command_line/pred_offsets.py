@@ -7,6 +7,8 @@ parser = ArgumentParser()
 parser.add_argument("globs", nargs="+", help="input globs  (in quotes) for groups of reflection tables.",
                     type=str)
 parser.add_argument("--noPlot", action="store_true", help = "dont display graphic")
+parser.add_argument("--linear", action="store_true", help="use linear histogram")
+parser.add_argument("--nbins", type=int, nargs=2, default=[200,40])
 args = parser.parse_args()
 
 from pylab import *
@@ -39,13 +41,16 @@ for glob_s in args.globs:
     print("median over %d shots=%f pixels (%d refls)" % (len(nref_per_shot), median(all_d), len(all_d)))
     print("Min refls per shot=%d, max refls per shot = %d, ave refls per shot=%.1f" % (min(nref_per_shot), max(nref_per_shot), mean(nref_per_shot)))
     subplot(121)
-    hist( all_d, bins=200, histtype='step', lw=2, label=glob_s)
+    hist( all_d, bins=args.nbins[0], histtype='step', lw=2, label=glob_s)
+    if not args.linear:
+        gca().set_yscale("log")
     xlabel("|calc-obs| (pixels)")
     ylabel("num refls")
     legend(prop={'size':7})
     subplot(122)
-    hist( all_shotd, bins=40, histtype='step', lw=2, label=glob_s)
-    gca().set_yscale("log")
+    hist( all_shotd, bins=args.nbins[1], histtype='step', lw=2, label=glob_s)
+    if not args.linear:
+        gca().set_yscale("log")
     xlabel("median |calc-obs| (pixels)")
     ylabel("num shots", labelpad=0)
     legend(prop={'size':7})

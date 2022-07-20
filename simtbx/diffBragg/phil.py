@@ -204,6 +204,9 @@ betas
   eta_abc = [1e8,1e8,1e8]
     .type = floats(size=3)
     .help = restrain factor for mosaic spread angles
+  spec = [1e8,1e8]
+    .type = floats(size=2)
+    .help = restraint factor for spectrum coefs
 }
 dual
   .help = configuration parameters for dual annealing
@@ -279,6 +282,9 @@ centers
   eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = restraint target for mosaic spread angles in degrees
+  spec = [0,1]
+    .type = floats(size=2)
+    .help = restraint target for specturm correction (0 + 1*Lambda )
 }
 skip = None
   .type = int
@@ -452,6 +458,9 @@ mins
   eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = min value (in degrees) for mosaic spread angles
+  spec = [-0.01, 0.95]
+    .type = floats(size=2)
+    .help = min value for spectrum correction (-0.01 + Lambda *1.05)
 }
 maxs
   .help = max value allowed for parameter
@@ -490,6 +499,9 @@ maxs
   Fhkl = 1e6
     .type = float
     .help = max for structure factors
+  spec = [0.01, 1.05]
+    .type = floats(size=2)
+    .help = max value for spectrum correction (0.01 + Lambda *1.05)
 }
 fix
   .help = flags for fixing parameters during refinement
