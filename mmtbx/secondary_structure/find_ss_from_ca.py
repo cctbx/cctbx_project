@@ -584,7 +584,22 @@ def merge_and_renumber_everything(hierarchy, current_resno = 1):
   return new_hierarchy
 
 
-def renumber_residues(hierarchy, first_resno = 1):
+def renumber_residues(hierarchy, first_resno = 1,
+    fixed_offset = False):
+
+  if fixed_offset:
+    offset = None
+    assert first_resno is not None
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          if offset is None:
+            offset = first_resno - rg.resseq_as_int()
+          current_resno = rg.resseq_as_int() + offset
+          rg.resseq = resseq_encode(current_resno)
+    return
+
+  # Usual
   for model in hierarchy.models():
     for chain in model.chains():
       current_resno = first_resno
