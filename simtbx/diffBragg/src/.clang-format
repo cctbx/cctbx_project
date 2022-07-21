@@ -1,6 +1,7 @@
 ---
-AlignAfterOpenBracket: AlwaysBreak
 BasedOnStyle: Chromium
+---
+AlignAfterOpenBracket: AlwaysBreak
 BreakStringLiterals: false
 ColumnLimit: 100
 CompactNamespaces: true
