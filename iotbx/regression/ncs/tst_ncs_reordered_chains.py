@@ -1,9 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import time
-import iotbx.phil
-import iotbx.ncs
-import iotbx.pdb
-from libtbx.test_utils import approx_equal
 from tst_ncs_user_selections import get_ncs_groups
 
 #
@@ -216,6 +212,7 @@ def exercise_1():
   }
 """
   ncs_groups = get_ncs_groups(phil_str, pdb_str)
+  # import iotbx.pdb
   # h = iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
   # ncs_groups._show(hierarchy=h, brief=False)
   assert len(ncs_groups) == 1
