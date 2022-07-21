@@ -207,8 +207,8 @@ class experiment_scaler(worker):
     exp_subset = np.array(exp_subset)
     single_slopes = model_subset/exp_subset
     cutoff = np.percentile(single_slopes, 50)
-    #model_subset = model_subset[single_slopes<cutoff]
-    #exp_subset = exp_subset[single_slopes<cutoff]
+#    model_subset = model_subset[single_slopes<cutoff]
+#    exp_subset = exp_subset[single_slopes<cutoff]
 
     def linfunc(x, m): return x*m
     correlation = pearsonr(exp_subset, model_subset)[0]
@@ -216,9 +216,9 @@ class experiment_scaler(worker):
       result.error = scaling_result.err_low_correlation
       return result
     result.correlation = correlation
-    #slope_temp = curve_fit(linfunc, exp_subset, model_subset)[0][0]
-    #slope = curve_fit(linfunc, exp_subset, model_subset, sigma=exp_sigmas+np.array(model_subset)/slope_temp)[0][0]
-    slope = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    slope_temp = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    slope = curve_fit(linfunc, exp_subset, model_subset, sigma=exp_sigmas+np.array(model_subset)/slope_temp)[0][0]
+    #slope = curve_fit(linfunc, exp_subset, model_subset)[0][0]
     result.slope = slope
     return result
 

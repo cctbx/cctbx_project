@@ -209,7 +209,7 @@ class intensity_resolution_statistics(worker):
       self.Total_CC_Iso_Table = None
       return
 
-    reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity)
+    reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity, fit=False)
 
     # Create target symmetry
     if self.params.merging.set_average_unit_cell:
@@ -228,8 +228,8 @@ class intensity_resolution_statistics(worker):
     self.Total_CC_Iso_Table = self.calculate_cross_correlation(self.params.scaling.i_model, exp_intensities)
 
   def calculate_cc_int(self, odd_reflections, even_reflections):
-    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity)
+    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity, fit=False)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity, fit=False)
 
     # Create target symmetry
     if self.params.merging.set_average_unit_cell:

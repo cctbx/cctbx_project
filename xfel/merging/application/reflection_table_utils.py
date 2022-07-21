@@ -4,9 +4,40 @@ from dials.array_family import flex
 import math
 import pickle
 import numpy as np
-from scipy.stats import exponnorm
+from scipy.stats import exponnorm, rv_continuous
+import scipy.stats
 from libtbx.mpi4py import MPI
 
+
+xref = np.linspace(-10, 10, 1000)
+xref = np.insert(xref, 0, -9999)
+xref = np.append(xref, 9999)
+yref = scipy.stats.norm.pdf(xref)
+class hgauss_gen(scipy.stats.rv_continuous):
+    def _pdf(self, x, xscale, xlim):
+        try:
+            xscale = xscale[0]
+            xlim = xlim[0]
+        except:
+            pass
+        x1_min = scipy.stats.norm.pdf(xlim)
+        x1_max = 1/np.sqrt(2*np.pi)
+        x1 = np.linspace(x1_min, x1_max, 100, endpoint=False)
+        y1 = 1/(x1*np.sqrt(-1*np.log(2*np.pi)-2*np.log(x1)))
+        x1 *= xscale
+
+        pdfs = []
+        for xval,yval in zip(x1, y1):
+            #stdev = 2.5 + np.sqrt(xval)
+            stdev = 2.5 + max(0, xval)
+            zscores = (x-xval)/stdev
+            dist_interp = np.interp(zscores, xref, yref)*yval/stdev
+            pdfs.append(dist_interp)
+        y2 = np.vstack(pdfs).sum(axis=0)
+        area = scipy.integrate.trapz(y2, x)
+        y2 /= area
+        return y2
+hgauss = hgauss_gen(name="hgauss")
 
 class reflection_table_utils(object):
 
@@ -56,8 +87,11 @@ class reflection_table_utils(object):
     table['multiplicity'] = flex.int()
     return table
 
+
+
+
   @staticmethod
-  def merge_reflections(reflections, min_multiplicity, debug=True):
+  def merge_reflections(reflections, min_multiplicity, debug=True, fit=True):
     '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections):
@@ -69,27 +103,64 @@ class reflection_table_utils(object):
       #assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
       refls = refls.select(refls['intensity.sum.variance'] > 0.0)
-      sel_low = refls['intensity.sum.value'] >= np.percentile(refls['intensity.sum.value'], 35)
-      sel_high = refls['intensity.sum.value'] <= np.percentile(refls['intensity.sum.value'], 85)
-      sel = sel_low & sel_high
-      #refls = refls.select(sel)
 
       if refls.size() >= min_multiplicity:
+
         weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
         weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
+        print('merged ', hkl, ' with fit=', fit)
 
-        weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
-        log_i = math.log(max(weighted_mean_intensity, 1), 10)
-        log_i = max(log_i, 1)
-        pct = 17 + 15*log_i
-        pct = min(pct, 72)
-        iarray = refls['intensity.sum.value']
-        fitpars = exponnorm.fit(iarray)
-        try:
-          weighted_mean_intensity = exponnorm.ppf(0.95, *fitpars)
-        except:
-          print(fitpars)
-        #weighted_mean_intensity = np.percentile(refls['intensity.sum.value'], pct)
+        if fit:
+          y_scaled = refls['intensity.sum.value'].as_numpy_array()
+          y_unscaled = refls['intensity.sum.value.unmodified'].as_numpy_array()
+          mean_scale = np.mean(y_scaled/y_unscaled)
+          y = y_scaled / mean_scale
+          xrange = np.max(y) - np.min(y)
+          center = np.percentile(y, 75)
+          xmin = np.min(y)-xrange/4
+          xmax = np.max(y)+xrange*2
+          bins = np.linspace(xmin, xmax, 100)
+          data_entries_1, bins_1 = np.histogram(y, bins=bins, density=True)
+          binscenters = np.array([0.5 * (bins[i] + bins[i+1]) for i in range(len(bins)-1)])
+          kernel = scipy.stats.gaussian_kde(y, bw_method=.2)
+          data_entries_kde = kernel(binscenters)
+
+          def sqerr_factory(par1_max):
+            def sqerr(fpars, x, y):
+                par1, par2 = fpars
+                if not 0<par1<par1_max: return 999999
+                if not 1<par2<6: return 999999
+                return 10*center*((hgauss(*fpars).pdf(x) - y)**2).sum()
+            return sqerr
+
+          from scipy.optimize import brute
+          F_range = slice(.1, center*10, center/10)
+          xmin_range = slice(2, 5, 1)
+          bfresult = brute(
+              sqerr_factory(3*max(y)),
+              (F_range, xmin_range),
+              args=(binscenters, data_entries_kde),
+          )
+          sqrt2pi = 2.5066
+          weighted_mean_intensity = bfresult[0]/sqrt2pi*mean_scale
+        else:
+          weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+
+
+
+
+        #weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+#        log_i = math.log(max(weighted_mean_intensity, 1), 10)
+#        log_i = max(log_i, 1)
+#        pct = 17 + 15*log_i
+#        pct = min(pct, 72)
+#        iarray = refls['intensity.sum.value']
+#        fitpars = exponnorm.fit(iarray)
+#        try:
+#          weighted_mean_intensity = exponnorm.ppf(0.95, *fitpars)
+#        except:
+#          print(fitpars)
+#        #weighted_mean_intensity = np.percentile(refls['intensity.sum.value'], pct)
         standard_error_of_weighted_mean_intensity = 1.0/math.sqrt(flex.sum(weights_array))
         if debug:
           #pass
