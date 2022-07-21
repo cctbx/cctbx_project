@@ -145,7 +145,8 @@ tst_list_windows_fail = [
   "$D/detectors/tst_debug_write.py",
 ]
 
-tst_list_fail = list()
+tst_list_fail = ["$D/regression/ncs/tst_ncs_reordered_chains.py",
+  ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail
 else:
