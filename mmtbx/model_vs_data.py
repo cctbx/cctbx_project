@@ -222,3 +222,5 @@ def run(args,
     print(file=log)
     n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
     print("  Number of F-obs outliers:", n_outl, file=log)
+  return fmodel
+
