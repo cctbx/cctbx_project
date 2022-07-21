@@ -246,9 +246,9 @@ class mtz_as_cif_blocks(object):
         plural_s(len(unknown_mtz_labels))[1], ", ".join(unknown_mtz_labels)), file=log)
       print("  Use mtz_labels and cif_labels keywords to provide translation for custom labels.", file=log)
 
-    data_types = set(["xray"])
+    data_types = ["xray"]
     if self.cif_blocks['neutron'] is not None:
-      data_types.add("neutron")
+      data_types.append("neutron")
 
     if input_observations_xray is None and f_obs_filtered_xray is not None:
       self.cif_blocks["xray"].add_miller_array(

@@ -138,6 +138,7 @@ tst_list_base = [
   "$D/regression/tst_all_chain_ids.py",
   "$D/regression/tst_extract_xtal_data.py",
   "$D/regression/tst_cli_parser.py",
+  "$D/regression/tst_mtz_as_cif.py",
   ]
 
 # failing tests on Windows, Python 2.7
@@ -152,10 +153,7 @@ if sys.platform == 'win32':
 else:
   tst_list_base += tst_list_windows_fail
 
-# unstable test on Python 3.6 (seems to be only on Azure Pipelines)
-tst_list_py3_unstable = [
-    "$D/regression/tst_mtz_as_cif.py",
-  ]
+tst_list_py3_unstable = []
 tst_list_unstable = list()
 if sys.version_info > (3, 0):
   tst_list_unstable += tst_list_py3_unstable
