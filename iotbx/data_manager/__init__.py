@@ -12,6 +12,7 @@ import sys
 from collections import OrderedDict
 from six.moves import range
 
+import iotbx.phil
 import libtbx.phil
 
 from iotbx.file_reader import any_file
@@ -237,7 +238,7 @@ options are {options}.\
       self.master_phil_str += '.type = path\n'
     self.master_phil_str += '}'
 
-    self.master_phil = libtbx.phil.parse(self.master_phil_str)
+    self.master_phil = iotbx.phil.parse(self.master_phil_str, process_includes=True)
 
     self._storage = '_%ss'
     self._default = '_default_%s'
@@ -274,13 +275,24 @@ options are {options}.\
       self.load_phil_scope(phil)
 
   # ---------------------------------------------------------------------------
-  def export_phil_scope(self):
+  def export_phil_scope(self, as_extract=False):
     '''
     Function for exporting DataManager information into a PHIL scope
     The returned PHIL scope can be used to recreate the DataManager object with
     the load_phil_scope function
 
     This assumes that the key names in the data structures are valid filenames.
+
+    Parameters
+    ----------
+      as_extract: bool
+        If True, a libtbx.phil.extract object is returned instead of a
+        libtbx.phil.scope object
+
+    Returns
+    -------
+      phil: libtbx.phil.scope or libtbx.phil.extract depending on as_extract parameter
+        The working scope or extract
     '''
     phil_extract = self.master_phil.extract()
     for datatype in self.datatypes:
@@ -293,6 +305,9 @@ options are {options}.\
 
       default = self._get_default_name(datatype)
       setattr(phil_extract.data_manager, 'default_%s' % datatype, default)
+
+    if as_extract:
+      return phil_extract
 
     working_phil = self.master_phil.format(python_object=phil_extract)
 

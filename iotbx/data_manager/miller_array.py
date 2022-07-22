@@ -283,11 +283,14 @@ class MillerArrayDataManager(DataManagerBase):
       .type = choice(multi=False)
   }
 }
+fmodel {
+  include scope mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params_str
+}
 ''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
 
     # custom PHIL scope
     setattr(self, '_custom_%s_phil' % datatype,
-            iotbx.phil.parse(custom_phil_str))
+            iotbx.phil.parse(custom_phil_str, process_includes=True))
 
     # add to child datatypes
     MillerArrayDataManager.miller_array_child_datatypes.append(datatype)
@@ -470,6 +473,12 @@ class MillerArrayDataManager(DataManagerBase):
       getattr(self, '_%s_labels' % datatype)[filename] = labels
       getattr(self, '_%s_types' % datatype)[filename] = types
       self._add(datatype, filename, data)
+
+  def get_fmodel_params(self):
+    '''
+    Return the fmodel parameters as a libtbx.phil.extract object
+    '''
+    return self.export_phil_scope(as_extract=True).data_manager.fmodel
 
 # =============================================================================
 # end

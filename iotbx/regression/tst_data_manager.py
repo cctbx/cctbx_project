@@ -5,7 +5,6 @@ import os
 import iotbx.phil
 import libtbx.load_env
 import libtbx.phil
-import mmtbx.model
 
 from cctbx import crystal
 from libtbx.program_template import ProgramTemplate
@@ -78,7 +77,7 @@ data_manager {
   # loading file with get function
   assert len(a.get_phil_names()) == 0
   p = a.get_phil('data_manager_test.eff')
-  assert type(p) == libtbx.phil.scope
+  assert isinstance(p, libtbx.phil.scope)
   assert 'data_manager_test.eff' in a.get_phil_names()
 
   # loading file with phil
@@ -774,6 +773,12 @@ ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
 
   os.remove('good.pdb')
   os.remove('bad.pdb')
+
+# -----------------------------------------------------------------------------
+def test_fmodel_params():
+  dm = DataManager()
+  params = dm.get_fmodel_params()
+  assert isinstance(params, libtbx.phil.scope_extract)
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
