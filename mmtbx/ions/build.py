@@ -11,7 +11,7 @@ import sys
 svm_params = ""
 try :
   from mmtbx.ions import svm     # import dependency
-  import svmutil # import dependency
+  from libsvm import svmutil # import dependency
 except ImportError :
   pass
 else :

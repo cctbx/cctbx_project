@@ -41,8 +41,8 @@ from six.moves import range
 
 try : # XXX required third-party dependencies
   import numpy as np
-  import svm
-  import svmutil
+  from libsvm import svm
+  from libsvm import svmutil
 except ImportError :
   svm = None
   svmutil = None

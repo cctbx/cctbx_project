@@ -5,8 +5,8 @@ from libtbx import easy_run
 
 def exercise():
   try :
-    import svm      # import dependency
-    import svmutil  # import dependency
+    from libsvm import svm      # import dependency
+    from libsvm import svmutil  # import dependency
   except ImportError :
     print("libsvm not available, skipping this test")
     return
