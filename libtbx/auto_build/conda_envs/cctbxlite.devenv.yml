@@ -10,8 +10,7 @@ dependencies:
   # cctbx-base
   # host
   - future
-  - numpy =1.18  # [x86_64 or win]
-  - numpy =1.19  # [osx and not x86_64]
+  - numpy
   - python ={{ get_env("PY_VER", default="3.8") }}
   - python.app  # [osx]
   - scons
@@ -31,7 +30,7 @@ dependencies:
 
   # cctbx
   - ipython
-  - pyside2  # [x86_64 or win]
+  - pyside2
   - pyzmq
   - websockets
   - wxpython
