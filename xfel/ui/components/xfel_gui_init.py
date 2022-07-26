@@ -2067,6 +2067,8 @@ class SpotfinderTab(BaseTab):
       if t not in self.all_trials:
         self.trial_number.ctr.Append(t)
         self.all_trials.append(t)
+        item_idx = self.trial_number.ctr.FindString(t)
+        self.trial_number.ctr.SetClientData(item_idx, t)
 
   def refresh_runs(self):
     if self.all_runs == []:
