@@ -103,6 +103,8 @@ void gpu_sum_over_steps(
     __shared__ bool s_refine_Bmat[6];
     __shared__ bool s_refine_lambda[2];
     __shared__ double s_NABC_det, s_NABC_det_sq;
+    __shared__ MAT3 anisoG_local;
+    __shared__ MAT3 dG_dgam[3];
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
@@ -185,6 +187,18 @@ void gpu_sum_over_steps(
         s_Nsteps = Nsteps;
         s_overall_scale = _r_e_sqr *_spot_scale * _fluence / Nsteps ;
 
+	anisoG_local = anisoG;
+	for (int i_gam=0; i_gam<3; i_gam++){
+	  dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+	  dG_dgam[i_gam](i_gam, i_gam) = 1;
+	}
+	if (s_use_diffuse && s_gamma_miller_units){
+	  anisoG_local = anisoG_local * Bmat_realspace;
+	  for (int i_gam=0; i_gam<3; i_gam++){
+	    dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+	  }
+	}
+    
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -371,21 +385,18 @@ void gpu_sum_over_steps(
             if (s_use_diffuse){
                 MAT3 Amat = UBO;
                 MAT3 Ainv = UBO.inverse();
-                if (s_gamma_miller_units){
-                  anisoG = anisoG * Amat;
-                }
-                MAT3 Ginv = anisoG.inverse();
-                CUDAREAL anisoG_determ = anisoG.determinant();
+                MAT3 Ginv = anisoG_local.inverse();
+                CUDAREAL anisoG_determ = anisoG_local.determinant();
                 for (int hh=0; hh <1; hh++){
                     for (int kk=0; kk <1; kk++){
                         for (int ll=0; ll <1; ll++){
                             VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                            VEC3 Q0 = Ainv*H0_offset;
+                            VEC3 Q0 = UMATS_RXYZ[_mos_tic].transpose()*Ainv*H0_offset;
                             CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU*Q0);
                             //double dwf = exp(-exparg);
                             VEC3 delta_H_offset = H_vec - H0_offset;
-                            VEC3 delta_Q = Ainv*delta_H_offset;
-                            VEC3 anisoG_q = anisoG*delta_Q;
+                            VEC3 delta_Q = UMATS_RXYZ[_mos_tic].transpose()*Ainv*delta_H_offset;
+                            VEC3 anisoG_q = anisoG_local*delta_Q;
 
                             CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
                             CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
@@ -399,15 +410,9 @@ void gpu_sum_over_steps(
                             I0 += this_I_latt_diffuse;
                             if (s_refine_diffuse){
                                 for (int i_gam=0; i_gam<3; i_gam++){
-                                    MAT3 dG_dgam;
-                                    dG_dgam << 0,0,0,0,0,0,0,0,0;
-                                    dG_dgam(i_gam, i_gam) = 1;
-                                    if (s_gamma_miller_units){
-                                       dG_dgam = dG_dgam * Amat;
-                                    }
-                                    VEC3 dV = dG_dgam*delta_Q;
+                                    VEC3 dV = dG_dgam[i_gam]*delta_Q;
                                     CUDAREAL V_dot_dV = anisoG_q.dot(dV);
-                                    CUDAREAL deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
+                                    CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
                                     step_diffuse_param[i_gam] += gamma_portion*deriv*exparg;
                                 }
                                 MAT3 dU_dsigma;
