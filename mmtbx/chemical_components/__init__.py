@@ -283,6 +283,9 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
       else:
         return 'amino_acid'
     return 'amino_acid'
+  elif t in non_alpha_peptide:
+    assert not split_l_d
+    return 'non-alpha peptide'
   elif t in terminii:
     assert not split_l_d
     return 'amino_acid_terminal'
