@@ -30,6 +30,18 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         return diagonal;
     };
 
+    KOKKOS_FUNCTION NumType& operator()(size_t row, size_t col) {
+        assert(row < rank);
+        assert(col < rank);
+        return vector_base::data[row * rank + col];
+    }
+
+    KOKKOS_FUNCTION NumType operator()(size_t row, size_t col) const {
+        assert(row < rank);
+        assert(col < rank);
+        return vector_base::data[row * rank + col];
+    }
+
     template <typename VectorType>
     KOKKOS_FUNCTION VectorType dot(const VectorType v) const {
         static_assert(v.get_size() == get_rank(), "Vector length must be equal to matrix rank!");
@@ -54,7 +66,15 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         return result;
     }
 
-    static constexpr KOKKOS_FUNCTION size_t get_rank() const { return rank; }
+    static constexpr KOKKOS_FUNCTION size_t get_rank() { return rank; }
+
+    KOKKOS_FUNCTION NumType trace() const {
+        NumType result = 0;
+        for (size_t i = 0; i < rank; ++i) {
+            result += vector_base::data[i * rank + i];
+        }
+        return result;
+    }
 
     KOKKOS_FUNCTION void print(const char name[]) const {
         printf("%s: ", name);

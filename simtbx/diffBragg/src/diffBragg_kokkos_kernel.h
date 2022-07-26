@@ -1,6 +1,6 @@
 #include "util_kokkos.h"
 
-/*
+
 __global__ void gpu_sum_over_steps(
         int Npix_to_model, unsigned int* panels_fasts_slows,
         CUDAREAL* floatimage,
@@ -14,9 +14,9 @@ __global__ void gpu_sum_over_steps(
         CUDAREAL* d_panel_rot_images, CUDAREAL* d2_panel_rot_images,
         CUDAREAL* d_panel_orig_images, CUDAREAL* d2_panel_orig_images,
         CUDAREAL* d_fp_fdp_images,
-        const int Nsteps, int _printout_fpixel, int _printout_spixel, bool _printout, CUDAREAL _default_F,
-        int oversample, bool _oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
-        CUDAREAL detector_thickstep, CUDAREAL _detector_thick, const CUDAREAL* __restrict__ close_distances, CUDAREAL detector_attnlen,
+        const int Nsteps, int printout_fpixel, int printout_spixel, bool printout, CUDAREAL default_F,
+        int oversample, bool oversample_omega, CUDAREAL subpixel_size, CUDAREAL pixel_size,
+        CUDAREAL detector_thickstep, CUDAREAL detector_thick, const CUDAREAL* __restrict__ close_distances, CUDAREAL detector_attnlen,
         int detector_thicksteps, int sources, int phisteps, int mosaic_domains,
         bool use_lambda_coefficients, CUDAREAL lambda0, CUDAREAL lambda1,
         MAT3 eig_U, MAT3 eig_O, MAT3 eig_B, MAT3 RXYZ,
@@ -39,17 +39,17 @@ __global__ void gpu_sum_over_steps(
         CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc,
         CUDAREAL Nd, CUDAREAL Ne, CUDAREAL Nf,
         CUDAREAL phi0, CUDAREAL phistep,
-        VEC3 spindle_vec, VEC3 _polarization_axis,
+        VEC3 spindle_vec, VEC3 polarization_axis,
         int h_range, int k_range, int l_range,
         int h_max, int h_min, int k_max, int k_min, int l_max, int l_min, CUDAREAL dmin,
         CUDAREAL fudge, bool complex_miller, int verbose, bool only_save_omega_kahn,
         bool isotropic_ncells, bool compute_curvatures,
-        const CUDAREAL* __restrict__ _FhklLinear, const CUDAREAL* __restrict__ _Fhkl2Linear,
+        const CUDAREAL* __restrict__ FhklLinear, const CUDAREAL* __restrict__ Fhkl2Linear,
         bool* refine_Bmat, bool* refine_Ncells, bool refine_Ncells_def,  bool* refine_panel_origin, bool* refine_panel_rot,
         bool refine_fcell, bool* refine_lambda, bool refine_eta, bool* refine_Umat,
         const CUDAREAL* __restrict__ fdet_vectors, const CUDAREAL* __restrict__ sdet_vectors,
         const CUDAREAL* __restrict__ odet_vectors, const CUDAREAL* __restrict__ pix0_vectors,
-        bool _nopolar, bool _point_pixel, CUDAREAL _fluence, CUDAREAL _r_e_sqr, CUDAREAL _spot_scale, int Npanels,
+        bool nopolar, bool point_pixel, CUDAREAL fluence, CUDAREAL r_e_sqr, CUDAREAL spot_scale, int Npanels,
         bool aniso_eta, bool no_Nabc_scale,
         const CUDAREAL* __restrict__ fpfdp,
         const CUDAREAL* __restrict__ fpfdp_derivs,
