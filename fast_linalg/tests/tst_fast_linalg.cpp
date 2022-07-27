@@ -2,6 +2,7 @@
 #include <fast_linalg/lapacke.h>
 #include <fast_linalg/environment.h>
 #include <iostream>
+#include <stdio.h>
 
 bool check_full_full(int N, const double* x, const double* y) {
   bool correct = true;

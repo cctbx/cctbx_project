@@ -23,21 +23,21 @@ namespace least_squares {
 
     f_calc_function_ed_two_beam(data_t const& data,
       sgtbx::space_group const& space_group,
-      FloatType wavelength,
       bool anomalous_flag,
       scitbx::mat3<FloatType> const& UB,
       af::shared<FrameInfo<FloatType> > const& frames,
       af::shared<BeamInfo<FloatType> > const& beams,
       cctbx::xray::thickness<FloatType> const& thickness,
-      double maxSg)
+      af::shared<FloatType> const& params)
       : data(data),
       space_group(space_group),
-      wavelength(wavelength),
+      wavelength(params[0]),
       UB(UB),
       frames(frames),
       beams(beams),
       thickness(thickness),
-      maxSg(maxSg),
+      maxSg(params[1]),
+      F000(params[2]),
       index(-1),
       observable_updated(false),
       computed(false)
@@ -59,6 +59,7 @@ namespace least_squares {
       beams(other.beams),
       thickness(other.thickness),
       maxSg(other.maxSg),
+      F000(other.F000),
       mi_lookup(other.mi_lookup),
       observable_updated(false),
       computed(false)
@@ -220,7 +221,7 @@ namespace least_squares {
     af::shared<FrameInfo<FloatType> > frames;
     af::shared<BeamInfo<FloatType> > beams;
     cctbx::xray::thickness<FloatType> const& thickness;
-    FloatType maxSg;
+    FloatType maxSg, F000;
     af::shared<std::complex<FloatType> > f_calc;
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
