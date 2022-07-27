@@ -205,17 +205,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed_two_beam", no_init)
           .def(init<builder_base<FloatType> const&,
-            sgtbx::space_group const&, FloatType,
+            sgtbx::space_group const&,
             bool,
             scitbx::mat3<FloatType> const&,
             af::shared<FrameInfo<FloatType> >,
             af::shared<BeamInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            FloatType>(
+            // wavelength, maxSg, F000
+            af::shared<FloatType> const&>(
               (arg("data"),
-                arg("space_group"), arg("wavelength"), arg("anomalous_flag"),
+                arg("space_group"), arg("anomalous_flag"),
                 arg("UB"), arg("frames"), arg("beams"), arg("thickness"),
-                arg("maxSg"))))
+                arg("params"))))
           .add_property("ratio", &wt::get_ratio)
           ;
       }
