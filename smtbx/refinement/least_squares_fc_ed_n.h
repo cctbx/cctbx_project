@@ -57,7 +57,7 @@ namespace least_squares {
         space_group,
         anomalous_flag);
       for (size_t i = 0; i < beams.size(); i++) {
-        std::map<int, beam_at>::iterator itr = frame_beams.find(beams[i].parent->id);
+        typename std::map<int, beam_at>::iterator itr = frame_beams.find(beams[i].parent->id);
         beam_at *fb;
         if (itr == frame_beams.end()) {
           fb = &frame_beams.insert(beam_me(beams[i].parent->id, beam_at())).first->second;
@@ -68,7 +68,7 @@ namespace least_squares {
         fb->push_back(&beams[i]);
       }
       size_t offset = 0;
-      for (std::map<int, beam_at>::iterator i = frame_beams.begin();
+      for (typename std::map<int, beam_at>::iterator i = frame_beams.begin();
         i != frame_beams.end(); i++)
       {
         frame_offsets.insert(std::make_pair(i->first, offset));
@@ -257,7 +257,7 @@ namespace least_squares {
       }
       boost::thread_group pool;
       typedef boost::shared_ptr<process_frame> frame_processor_t;
-      std::map<int, beam_at>::iterator f_itr = frame_beams.begin();
+      typename std::map<int, beam_at>::iterator f_itr = frame_beams.begin();
       size_t Fc_offset = 0;
       for (size_t fi = 0; fi < frame_beams.size(); fi += thread_count) {
         size_t t_end = std::min(thread_count, (int)(frame_beams.size() - fi));
@@ -344,7 +344,7 @@ namespace least_squares {
     frame in the uniform arrays
     */
     size_t find_hkl(int frame_id, miller::index<> const& h) const {
-      std::map<int, lookup_t>::const_iterator i = frame_lookups.find(frame_id);
+      typename std::map<int, lookup_t>::const_iterator i = frame_lookups.find(frame_id);
       SMTBX_ASSERT(i == frame_lookups.end());
       std::map<int, size_t>::const_iterator off = frame_offsets.find(frame_id);
       long hi = i->second.find_hkl(h);
@@ -368,7 +368,7 @@ namespace least_squares {
     indices (not have to be a map!)
     */
     std::map<int, af::shared<miller::index<> > > frame_indices;
-    std::map<int, lookup_t> frame_lookups;
+    typename std::map<int, lookup_t> frame_lookups;
     std::map<int, size_t> frame_offsets;
 
     cctbx::xray::thickness<FloatType> const& thickness;
