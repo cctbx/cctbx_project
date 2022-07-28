@@ -16,6 +16,7 @@ struct matrix3 : public matrix_base<matrix3<NumType>, NumType, 3> {
     matrix3() = default;
     KOKKOS_FUNCTION matrix3(NumType val) : matrix_base(val){};
     KOKKOS_FUNCTION matrix3(NumType arr[]) : matrix_base(arr){};
+    KOKKOS_FUNCTION matrix3(const matrix_base& mat) : matrix_base(mat){};
 
     KOKKOS_FUNCTION matrix3(NumType x, NumType y, NumType z) : matrix_base() {
         matrix_base::data[0 * 3 + 0] = x;

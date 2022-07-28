@@ -16,6 +16,7 @@ struct vector2 : public vector_base<vector2<NumType>, NumType, 2> {
     vector2() = default;
     KOKKOS_FUNCTION vector2(NumType val) : vector_base(val){};
     KOKKOS_FUNCTION vector2(NumType arr[]) : vector_base(arr){};
+    KOKKOS_FUNCTION vector2(const vector_base& vec) : vector_base(vec){};
 
     KOKKOS_FUNCTION vector2(NumType x, NumType y) : vector_base() {
         vector_base::data[0] = x;
