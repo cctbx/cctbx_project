@@ -1,5 +1,5 @@
 #include "diffBraggCUDA.h"
-#include <stdio.h>
+#include <cstdio>
 
 __global__
 void gpu_sum_over_steps(

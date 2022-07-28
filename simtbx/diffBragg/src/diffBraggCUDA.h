@@ -1,6 +1,9 @@
+#ifndef SIMTBX_DIFFBRAGG_CUDA
+#define SIMTBX_DIFFBRAGG_CUDA
+
 #include <Eigen/Dense>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include <simtbx/diffBragg/src/util.h>
 #ifndef CUDAREAL
@@ -123,3 +126,4 @@ void diffBragg_sum_over_steps_cuda(
 
 
 // void freedom(diffBragg_cudaPointers& cp);
+#endif

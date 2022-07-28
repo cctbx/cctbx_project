@@ -1,6 +1,9 @@
+#ifndef SIMTBX_DIFFBRAGG_GPUKERNEL
+#define SIMTBX_DIFFBRAGG_GPUKERNEL
+
 #include <Eigen/Dense>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <vector>
 #ifndef CUDAREAL
 #define CUDAREAL double
@@ -69,3 +72,5 @@ __global__ void gpu_sum_over_steps(
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
         bool refine_Icell, bool save_wavelenimage);
+
+#endif

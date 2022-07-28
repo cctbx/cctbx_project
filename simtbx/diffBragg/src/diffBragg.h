@@ -2,7 +2,7 @@
 #ifndef SIMTBX_DIFFBRAGG_H
 #define SIMTBX_DIFFBRAGG_H
 #include <simtbx/nanoBragg/nanoBragg.h>
-#include <simtbx/diffBragg/src/util.h>
+#include <simtbx/diffBragg/src/util_kokkos.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
@@ -12,7 +12,7 @@
 typedef std::vector<double> image_type;
 
 #ifdef NANOBRAGG_HAVE_CUDA
-#include "diffBraggCUDA.h"
+// #include "diffBraggCUDA.h"
 #include "diffBraggKOKKOS.h"
 #endif
 

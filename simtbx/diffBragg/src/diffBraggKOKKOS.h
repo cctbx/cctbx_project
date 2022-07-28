@@ -1,4 +1,7 @@
-#include <math.h>
+#ifndef SIMTBX_DIFFBRAGG_KOKKOS
+#define SIMTBX_DIFFBRAGG_KOKKOS
+
+// #include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -120,3 +123,5 @@ class diffBraggKOKKOS {
         // diffBragg_kokkosPointers& kp,
         timer_variables& TIMERS);
 };
+
+#endif
