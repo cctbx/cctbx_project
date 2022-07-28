@@ -1,7 +1,7 @@
 #include <sys/time.h>
 #include "diffBraggCUDA.h"
 #include "diffBragg_gpu_kernel.h"
-#include <stdio.h>
+#include <cstdio>
 //lkalskdlaksdlkalsd
 
 //#define BLOCKSIZE 128

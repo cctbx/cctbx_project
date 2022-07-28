@@ -1,6 +1,9 @@
+#ifndef SIMTBX_DIFFBRAGG_GPUKERNEL
+#define SIMTBX_DIFFBRAGG_GPUKERNEL
+
 #include <Eigen/Dense>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <vector>
 #ifndef CUDAREAL
 #define CUDAREAL double

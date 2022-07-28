@@ -1,4 +1,7 @@
-#include "diffBragg_kokkos_kernel.h"
+#ifndef SIMTBX_DIFFBRAGG_KOKKOSKERNEL
+#define SIMTBX_DIFFBRAGG_KOKKOSKERNEL
+
+#include "diffBraggKOKKOS.h"
 #include "util_kokkos.h"
 
 __global__ void gpu_sum_over_steps(
@@ -130,3 +133,6 @@ __global__ void gpu_sum_over_steps(
     bool gamma_miller_units,
     bool refine_Icell,
     bool save_wavelenimage);
+
+
+#endif

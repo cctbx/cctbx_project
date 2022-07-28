@@ -1,10 +1,10 @@
-#include <stdio.h>
+#include <cstdio>
 #include "diffBraggKOKKOS.h"
 
-using ::Kokkos::Experimental::exp;
-using ::Kokkos::Experimental::sin;
-using ::Kokkos::Experimental::cos;
-using ::Kokkos::Experimental::sqrt;
+// using ::Kokkos::Experimental::exp;
+// using ::Kokkos::Experimental::sin;
+// using ::Kokkos::Experimental::cos;
+// using ::Kokkos::Experimental::sqrt;
 
 void kokkos_sum_over_steps(
     int Npix_to_model,
@@ -136,8 +136,8 @@ void kokkos_sum_over_steps(
     bool refine_Icell,
     bool save_wavelenimage) {  // BEGIN GPU kernel
 
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int thread_stride = blockDim.x * gridDim.x;
+    // int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    // int thread_stride = blockDim.x * gridDim.x;
     // __shared__ bool s_refine_Icell;
     // __shared__ bool s_use_diffuse;
     // __shared__ bool s_use_nominal_hkl;
@@ -181,80 +181,79 @@ void kokkos_sum_over_steps(
 
     // TODO can we get speed gains by dividing up the following definitions over more threads ?
     // if (threadIdx.x == 0) {
-        // for (int i = 0; i < 3; i++) {
-            // s_refine_Ncells[i] = refine_Ncells[i];
-            // s_refine_Umat[i] = refine_Umat[i];
-            // s_refine_panel_origin[i] = refine_panel_origin[i];
-            // s_refine_panel_rot[i] = refine_panel_rot[i];
-        // }
-        // s_refine_Icell = refine_Icell;
-        // s_use_nominal_hkl = use_nominal_hkl;
-        // s_aniso_eta = aniso_eta;
-        // s_no_Nabc_scale = no_Nabc_scale;
-        // s_complex_miller = complex_miller;
-        // s_refine_lambda[0] = refine_lambda[0];
-        // s_refine_lambda[1] = refine_lambda[1];
-        // for (int i = 0; i < 6; i++) {
-        //     s_refine_Bmat[i] = refine_Bmat[i];
-        // }
-        // s_use_diffuse = use_diffuse;
-        // s_num_atoms = num_atoms;
-        // s_refine_fcell = refine_fcell;
-        // s_refine_eta = refine_eta;
-        // s_refine_Ncells_def = refine_Ncells_def;
-        // s_compute_curvatures = compute_curvatures;
-        // s_refine_fp_fdp = refine_fp_fdp;
-        // s_refine_diffuse = refine_diffuse;
-        // s_gamma_miller_units = gamma_miller_units;
+    // for (int i = 0; i < 3; i++) {
+    // s_refine_Ncells[i] = refine_Ncells[i];
+    // s_refine_Umat[i] = refine_Umat[i];
+    // s_refine_panel_origin[i] = refine_panel_origin[i];
+    // s_refine_panel_rot[i] = refine_panel_rot[i];
+    // }
+    // s_refine_Icell = refine_Icell;
+    // s_use_nominal_hkl = use_nominal_hkl;
+    // s_aniso_eta = aniso_eta;
+    // s_no_Nabc_scale = no_Nabc_scale;
+    // s_complex_miller = complex_miller;
+    // s_refine_lambda[0] = refine_lambda[0];
+    // s_refine_lambda[1] = refine_lambda[1];
+    // for (int i = 0; i < 6; i++) {
+    //     s_refine_Bmat[i] = refine_Bmat[i];
+    // }
+    // s_use_diffuse = use_diffuse;
+    // s_num_atoms = num_atoms;
+    // s_refine_fcell = refine_fcell;
+    // s_refine_eta = refine_eta;
+    // s_refine_Ncells_def = refine_Ncells_def;
+    // s_compute_curvatures = compute_curvatures;
+    // s_refine_fp_fdp = refine_fp_fdp;
+    // s_refine_diffuse = refine_diffuse;
+    // s_gamma_miller_units = gamma_miller_units;
 
-        const MAT3 Bmat_realspace = eig_B * 1e10;
-        const MAT3 eig_Otranspose = eig_O.transpose();
-        const MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
-        const MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
-        const double NABC_det = _NABC.determinant();  // TODO is this slow ?
-        const double NABC_det_sq = NABC_det * NABC_det;
-        const CUDAREAL C = 2 / 0.63 * fudge;
-        const CUDAREAL two_C = 2 * C;
-        // s_Na = Na;
-        // s_Nb = Nb;
-        // s_Nc = Nc;
-        // s_NaNbNc_squared = (Na * Nb * Nc);
-        // s_NaNbNc_squared *= s_NaNbNc_squared;
-        // s_h_max = h_max;
-        // s_k_max = k_max;
-        // s_l_max = l_max;
-        // s_h_min = h_min;
-        // s_k_min = k_min;
-        // s_l_min = l_min;
-        // s_h_range = h_range;
-        // s_k_range = k_range;
-        // s_l_range = l_range;
+    const MAT3 Bmat_realspace = eig_B * 1e10;
+    const MAT3 eig_Otranspose = eig_O.transpose();
+    const MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
+    const MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
+    const double NABC_det = _NABC.determinant();  // TODO is this slow ?
+    const double NABC_det_sq = NABC_det * NABC_det;
+    const CUDAREAL C = 2 / 0.63 * fudge;
+    const CUDAREAL two_C = 2 * C;
+    // s_Na = Na;
+    // s_Nb = Nb;
+    // s_Nc = Nc;
+    // s_NaNbNc_squared = (Na * Nb * Nc);
+    // s_NaNbNc_squared *= s_NaNbNc_squared;
+    // s_h_max = h_max;
+    // s_k_max = k_max;
+    // s_l_max = l_max;
+    // s_h_min = h_min;
+    // s_k_min = k_min;
+    // s_l_min = l_min;
+    // s_h_range = h_range;
+    // s_k_range = k_range;
+    // s_l_range = l_range;
 
-        // s_oversample = oversample;
-        // s_detector_thicksteps = detector_thicksteps;
-        // s_sources = sources;
-        // s_mosaic_domains = mosaic_domains;
-        // s_detector_thickstep = detector_thickstep;
-        // s_detector_attnlen = detector_attnlen;
-        // s_subpixel_size = subpixel_size;
-        // s_pixel_size = pixel_size;
-        // s_detector_thick = _detector_thick;
-        // s_lambda0 = lambda0;
-        // s_lambda1 = lambda1;
-        // s_oversample_omega = _oversample_omega;
-        // s_printout = printout;
-        // s_printout_fpixel = printout_fpixel;
-        // s_printout_spixel = printout_spixel;
-        // s_default_F = default_F;
-        // s_verbose = verbose;
-        // s_polarization_axis = polarization_axis;
-        // s_kahn_factor = kahn_factor;
-        // s_nopolar = nopolar;
-        // sX0 = source_X[0];
-        // sY0 = source_Y[0];
-        // sZ0 = source_Z[0];
-        // s_Nsteps = Nsteps;
-        
+    // s_oversample = oversample;
+    // s_detector_thicksteps = detector_thicksteps;
+    // s_sources = sources;
+    // s_mosaic_domains = mosaic_domains;
+    // s_detector_thickstep = detector_thickstep;
+    // s_detector_attnlen = detector_attnlen;
+    // s_subpixel_size = subpixel_size;
+    // s_pixel_size = pixel_size;
+    // s_detector_thick = _detector_thick;
+    // s_lambda0 = lambda0;
+    // s_lambda1 = lambda1;
+    // s_oversample_omega = _oversample_omega;
+    // s_printout = printout;
+    // s_printout_fpixel = printout_fpixel;
+    // s_printout_spixel = printout_spixel;
+    // s_default_F = default_F;
+    // s_verbose = verbose;
+    // s_polarization_axis = polarization_axis;
+    // s_kahn_factor = kahn_factor;
+    // s_nopolar = nopolar;
+    // sX0 = source_X[0];
+    // sY0 = source_Y[0];
+    // sZ0 = source_Z[0];
+    // s_Nsteps = Nsteps;
 
     // }
 
@@ -264,17 +263,17 @@ void kokkos_sum_over_steps(
         "sum_over_steps", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
             // __syncthreads();
 
-            // for (int i_pix=tid; i_pix < Npix_to_model; i_pix+= thread_stride){
-            int _pid = panels_fasts_slows(i_pix * 3);
-            int _fpixel = panels_fasts_slows(i_pix * 3 + 1);
-            int _spixel = panels_fasts_slows(i_pix * 3 + 2);
+            // for (int pixIdx=tid; pixIdx < Npix_to_model; pixIdx+= thread_stride){
+            int _pid = panels_fasts_slows(pixIdx * 3);
+            int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
+            int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
             // int fcell_idx=1;
             int nom_h, nom_k, nom_l;
             if (use_nominal_hkl) {
-                nom_h = nominal_hkl(i_pix * 3);
-                nom_k = nominal_hkl(i_pix * 3 + 1);
-                nom_l = nominal_hkl(i_pix * 3 + 2);
+                nom_h = nominal_hkl(pixIdx * 3);
+                nom_k = nominal_hkl(pixIdx * 3 + 1);
+                nom_l = nominal_hkl(pixIdx * 3 + 2);
             }
             CUDAREAL close_distance = close_distances(_pid);
 
@@ -355,9 +354,11 @@ void kokkos_sum_over_steps(
                         if (detector_thick > 0.0 && detector_attnlen > 0.0) {
                             // inverse of effective thickness increase
                             CUDAREAL _parallax = _diffracted.dot(_o_vec);
-                            _capture_fraction = exp(-_thick_tic * detector_thickstep /
+                            _capture_fraction = ::Kokkos::Experimental::exp(
+                                                    -_thick_tic * detector_thickstep /
                                                     detector_attnlen / _parallax) -
-                                                exp(-(_thick_tic + 1) * detector_thickstep /
+                                                ::Kokkos::Experimental::exp(
+                                                    -(_thick_tic + 1) * detector_thickstep /
                                                     detector_attnlen / _parallax);
                         }
                         CUDAREAL cap_frac_times_omega = _capture_fraction * _omega_pixel;
@@ -406,9 +407,10 @@ void kokkos_sum_over_steps(
 
                                 if (exparg < 35)
                                     if (no_Nabc_scale)
-                                        I0 = exp(-2 * exparg);
+                                        I0 = ::Kokkos::Experimental::exp(-2 * exparg);
                                     else
-                                        I0 = (NABC_det_sq)*exp(-2 * exparg);
+                                        I0 = (NABC_det_sq) *
+                                             ::Kokkos::Experimental::exp(-2 * exparg);
 
                                 // are we doing diffuse scattering
                                 // CUDAREAL I_latt_diffuse = 0;
@@ -416,11 +418,12 @@ void kokkos_sum_over_steps(
                                 if (use_diffuse) {
                                     MAT3 Amat = UBO;
                                     MAT3 Ainv = UBO.inverse();
+                                    MAT3 local_anisoG = anisoG;
                                     if (gamma_miller_units) {
-                                        anisoG = anisoG.dot(Amat);
+                                        local_anisoG = local_anisoG.dot(Amat);
                                     }
-                                    MAT3 Ginv = anisoG.inverse();
-                                    CUDAREAL anisoG_determ = anisoG.determinant();
+                                    MAT3 Ginv = local_anisoG.inverse();
+                                    CUDAREAL anisoG_determ = local_anisoG.determinant();
                                     for (int hh = 0; hh < 1; hh++) {
                                         for (int kk = 0; kk < 1; kk++) {
                                             for (int ll = 0; ll < 1; ll++) {
@@ -430,7 +433,7 @@ void kokkos_sum_over_steps(
                                                     4 * M_PI * M_PI * Q0.dot(anisoU.dot(Q0));
                                                 VEC3 delta_H_offset = H_vec - H0_offset;
                                                 VEC3 delta_Q = Ainv.dot(delta_H_offset);
-                                                VEC3 anisoG_q = anisoG.dot(delta_Q);
+                                                VEC3 anisoG_q = local_anisoG.dot(delta_Q);
 
                                                 CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
                                                 CUDAREAL gamma_portion =
@@ -463,9 +466,11 @@ void kokkos_sum_over_steps(
                                                     MAT3 dU_dsigma;
                                                     for (int i_sig = 0; i_sig < 3; i_sig++) {
                                                         dU_dsigma(i_sig, i_sig) =
-                                                            2. * sqrt(anisoU(i_sig, i_sig));
-                                                        CUDAREAL dexparg = 4 * M_PI * M_PI *
-                                                                           Q0.dot(dU_dsigma.dot(Q0));
+                                                            2. * ::Kokkos::Experimental::sqrt(
+                                                                     anisoU(i_sig, i_sig));
+                                                        CUDAREAL dexparg =
+                                                            4 * M_PI * M_PI *
+                                                            Q0.dot(dU_dsigma.dot(Q0));
                                                         dU_dsigma(i_sig, i_sig) = 0.;
                                                         //    if (exparg  >= .5) // only valid up to
                                                         //    a point
@@ -500,9 +505,8 @@ void kokkos_sum_over_steps(
 
                                 if ((_h0 <= h_max) && (_h0 >= h_min) && (_k0 <= k_max) &&
                                     (_k0 >= k_min) && (_l0 <= l_max) && (_l0 >= l_min)) {
-                                    int Fhkl_linear_index =
-                                        (_h0 - h_min) * k_range * l_range +
-                                        (_k0 - k_min) * l_range + (_l0 - l_min);
+                                    int Fhkl_linear_index = (_h0 - h_min) * k_range * l_range +
+                                                            (_k0 - k_min) * l_range + (_l0 - l_min);
                                     //_F_cell = __ldg(&FhklLinear[Fhkl_linear_index]);
                                     _F_cell = FhklLinear(Fhkl_linear_index);
                                     // if (complex_miller) _F_cell2 =
@@ -547,13 +551,14 @@ void kokkos_sum_over_steps(
                                             CUDAREAL atom_y = atom_data(i_atom * 5 + 1);
                                             CUDAREAL atom_z = atom_data(i_atom * 5 + 2);
                                             CUDAREAL B = atom_data(i_atom * 5 + 3);  // B factor
-                                            B = exp(-B * S_2 / 4.0);  // TODO: speed me up?
+                                            B = ::Kokkos::Experimental::exp(
+                                                -B * S_2 / 4.0);  // TODO: speed me up?
                                             CUDAREAL occ = atom_data(i_atom * 5 + 4);  // occupancy
                                             CUDAREAL r_dot_h =
                                                 _h0 * atom_x + _k0 * atom_y + _l0 * atom_z;
                                             CUDAREAL phase = 2 * M_PI * r_dot_h;
-                                            CUDAREAL s_rdoth = sin(phase);
-                                            CUDAREAL c_rdoth = cos(phase);
+                                            CUDAREAL s_rdoth = ::Kokkos::Experimental::sin(phase);
+                                            CUDAREAL c_rdoth = ::Kokkos::Experimental::cos(phase);
                                             CUDAREAL Bocc = B * occ;
                                             CUDAREAL BC = B * c_rdoth;
                                             CUDAREAL BS = B * s_rdoth;
@@ -576,7 +581,8 @@ void kokkos_sum_over_steps(
                                     }
                                     CUDAREAL Freal = _F_cell;
                                     CUDAREAL Fimag = _F_cell2;
-                                    _F_cell = sqrt(Freal * Freal + Fimag * Fimag);
+                                    _F_cell =
+                                        ::Kokkos::Experimental::sqrt(Freal * Freal + Fimag * Fimag);
                                     if (refine_fp_fdp) {
                                         c_deriv_Fcell =
                                             Freal * c_deriv_Fcell_real + Fimag * c_deriv_Fcell_imag;
@@ -623,18 +629,19 @@ void kokkos_sum_over_steps(
                                 if (refine_Umat(0)) {
                                     MAT3 RyRzUBOt = RotMats(1) * RotMats(2) * UBOt;
                                     VEC3 delta_H_prime =
-                                        (UMATS(_mos_tic) * dRotMats(0) * RyRzUBOt).transpose() *
-                                        q_vec;
+                                        (UMATS(_mos_tic).dot(dRotMats(0).dot(RyRzUBOt)))
+                                            .transpose()
+                                            .dot(q_vec);
                                     CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
                                     CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                                     CUDAREAL value2 = 0;
                                     if (compute_curvatures) {
                                         VEC3 delta_H_dbl_prime =
-                                            (UMATS(_mos_tic) * d2RotMats(0) * RyRzUBOt)
-                                                .transpose() *
-                                            q_vec;
-                                        CUDAREAL dV_dot_dV =
-                                            (_NABC.dot(delta_H_prime)).dot(_NABC.dot(delta_H_prime));
+                                            (UMATS(_mos_tic).dot(d2RotMats(0).dot(RyRzUBOt)))
+                                                .transpose()
+                                                .dot(q_vec);
+                                        CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
+                                                                 .dot(_NABC.dot(delta_H_prime));
                                         CUDAREAL dV2_dot_V =
                                             (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
                                         value2 =
@@ -648,17 +655,20 @@ void kokkos_sum_over_steps(
                                 if (refine_Umat(1)) {
                                     MAT3 UmosRx = UMATS(_mos_tic).dot(RotMats(0));
                                     MAT3 RzUBOt = RotMats(2).dot(UBOt);
-                                    VEC3 delta_H_prime =
-                                        (UmosRx.dot(dRotMats(1).dot(RzUBOt))).transpose().dot(q_vec);
+                                    VEC3 delta_H_prime = (UmosRx.dot(dRotMats(1).dot(RzUBOt)))
+                                                             .transpose()
+                                                             .dot(q_vec);
                                     CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
                                     CUDAREAL value = -two_C * V_dot_dV * Iincrement;
 
                                     CUDAREAL value2 = 0;
                                     if (compute_curvatures) {
                                         VEC3 delta_H_dbl_prime =
-                                            (UmosRx.dot(d2RotMats(1).dot(RzUBOt))).transpose().dot(q_vec);
-                                        CUDAREAL dV_dot_dV =
-                                            (_NABC.dot(delta_H_prime)).dot(_NABC.dot(delta_H_prime));
+                                            (UmosRx.dot(d2RotMats(1).dot(RzUBOt)))
+                                                .transpose()
+                                                .dot(q_vec);
+                                        CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
+                                                                 .dot(_NABC.dot(delta_H_prime));
                                         CUDAREAL dV2_dot_V =
                                             (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
                                         value2 =
@@ -671,17 +681,20 @@ void kokkos_sum_over_steps(
                                 }
                                 if (refine_Umat(2)) {
                                     MAT3 UmosRxRy = UMATS(_mos_tic).dot(RotMats(0).dot(RotMats(1)));
-                                    VEC3 delta_H_prime =
-                                        (UmosRxRy.dot(dRotMats(2).dot(UBOt))).transpose().dot(q_vec);
+                                    VEC3 delta_H_prime = (UmosRxRy.dot(dRotMats(2).dot(UBOt)))
+                                                             .transpose()
+                                                             .dot(q_vec);
                                     CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
                                     CUDAREAL value = -two_C * V_dot_dV * Iincrement;
 
                                     CUDAREAL value2 = 0;
                                     if (compute_curvatures) {
                                         VEC3 delta_H_dbl_prime =
-                                            (UmosRxRy.dot(d2RotMats(2).dot(UBOt))).transpose().dot(q_vec);
-                                        CUDAREAL dV_dot_dV =
-                                            (_NABC.dot(delta_H_prime)).dot(_NABC.dot(delta_H_prime));
+                                            (UmosRxRy.dot(d2RotMats(2).dot(UBOt)))
+                                                .transpose()
+                                                .dot(q_vec);
+                                        CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
+                                                                 .dot(_NABC.dot(delta_H_prime));
                                         CUDAREAL dV2_dot_V =
                                             (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
                                         value2 =
@@ -700,17 +713,23 @@ void kokkos_sum_over_steps(
                                     if (refine_Bmat(i_uc)) {
                                         UmosRxRyRzU = UMATS_RXYZ(_mos_tic).dot(eig_U);
                                         delta_H_prime =
-                                            (UmosRxRyRzU.dot(dB_mats(i_uc).dot(eig_Otranspose))).transpose().dot(q_vec);
+                                            (UmosRxRyRzU.dot(dB_mats(i_uc).dot(eig_Otranspose)))
+                                                .transpose()
+                                                .dot(q_vec);
                                         CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
                                         CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                                         CUDAREAL value2 = 0;
                                         if (compute_curvatures) {
                                             VEC3 delta_H_dbl_prime =
-                                                (UmosRxRyRzU.dot(dB2_mats(i_uc).dot(eig_Otranspose))).transpose().dot(q_vec);
-                                            CUDAREAL dV_dot_dV =
-                                                (_NABC.dot(delta_H_prime)).dot(_NABC.dot(delta_H_prime));
+                                                (UmosRxRyRzU.dot(
+                                                     dB2_mats(i_uc).dot(eig_Otranspose)))
+                                                    .transpose()
+                                                    .dot(q_vec);
+                                            CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
+                                                                     .dot(_NABC.dot(delta_H_prime));
                                             CUDAREAL dV2_dot_V =
-                                                (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
+                                                (_NABC.dot(delta_H))
+                                                    .dot(_NABC.dot(delta_H_dbl_prime));
                                             value2 = two_C *
                                                      (two_C * V_dot_dV * V_dot_dV - dV2_dot_V -
                                                       dV_dot_dV) *
@@ -734,10 +753,11 @@ void kokkos_sum_over_steps(
                                             dN(1, 1) = 1;
                                             dN(2, 2) = 1;
                                         }
-                                        CUDAREAL N_i = NABC(i_nc, i_nc);
-                                        VEC3 dV_dN = dN * delta_H;
-                                        // TODO speedops: precompute these, store shared var _NABC.inverse
-                                        CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();  
+                                        CUDAREAL N_i = _NABC(i_nc, i_nc);
+                                        VEC3 dV_dN = dN.dot(delta_H);
+                                        // TODO speedops: precompute these, store shared var
+                                        // _NABC.inverse
+                                        CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                         CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                         CUDAREAL value = 2 * Iincrement * deriv_coef;
                                         CUDAREAL value2 = 0;
@@ -762,7 +782,7 @@ void kokkos_sum_over_steps(
                                         else
                                             dN = MAT3{0, 0, 1, 0, 0, 0, 1, 0, 0};
                                         VEC3 dV_dN = dN.dot(delta_H);
-                                          // TODO speedops: precompute these
+                                        // TODO speedops: precompute these
                                         CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                         CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                         CUDAREAL value = 2 * Iincrement * deriv_coef;
@@ -787,11 +807,11 @@ void kokkos_sum_over_steps(
                                         MAT3 M = -two_C * (_NABC.dot(UBO)) / lambda_ang;
                                         VEC3 dk;
                                         if (i_pan_orig == 0)
-                                            dk = VEC3 {0, 0, 1};
+                                            dk = VEC3{0, 0, 1};
                                         else if (i_pan_orig == 1)
-                                            dk = VEC3 {1, 0, 0};
+                                            dk = VEC3{1, 0, 0};
                                         else
-                                            dk = VEC3 {0, 1, 0};
+                                            dk = VEC3{0, 1, 0};
 
                                         CUDAREAL G = dk.dot(_pixel_pos);
                                         CUDAREAL pix2 = subpixel_size * subpixel_size;
@@ -864,8 +884,9 @@ void kokkos_sum_over_steps(
                                         if (i_eta > 0 && !aniso_eta)
                                             continue;
                                         int mtic2 = _mos_tic + i_eta * mosaic_domains;
-                                        VEC3 DeltaH_deriv =
-                                            (UMATS_RXYZ_prime(mtic2).dot(UBOt)).transpose().dot(q_vec);
+                                        VEC3 DeltaH_deriv = (UMATS_RXYZ_prime(mtic2).dot(UBOt))
+                                                                .transpose()
+                                                                .dot(q_vec);
                                         // vector V is _Nabc*Delta_H
                                         VEC3 dV = _NABC.dot(DeltaH_deriv);
                                         CUDAREAL V_dot_dV = V.dot(dV);
@@ -874,7 +895,9 @@ void kokkos_sum_over_steps(
                                         CUDAREAL Idbl_prime = 0;
                                         if (compute_curvatures) {
                                             VEC3 DeltaH_second_deriv =
-                                                (UMATS_RXYZ_dbl_prime(mtic2).dot(UBOt)).transpose().dot(q_vec);
+                                                (UMATS_RXYZ_dbl_prime(mtic2).dot(UBOt))
+                                                    .transpose()
+                                                    .dot(q_vec);
                                             VEC3 dV2 = _NABC.dot(DeltaH_second_deriv);
                                             Idbl_prime =
                                                 -two_C * (dV.dot(dV) + V.dot(dV2)) * Iincrement;
@@ -998,7 +1021,7 @@ void kokkos_sum_over_steps(
 
             CUDAREAL _Fdet_ave = pixel_size * _fpixel + pixel_size / 2.0;
             CUDAREAL _Sdet_ave = pixel_size * _spixel + pixel_size / 2.0;
-            CUDAREAL _Odet_ave =0;  // Odet; 
+            CUDAREAL _Odet_ave = 0;  // Odet;
             // TODO maybe make this more general for thick detectors?
 
             VEC3 _pixel_pos_ave(0, 0, 0);
@@ -1050,12 +1073,13 @@ void kokkos_sum_over_steps(
                     // get components of diffracted ray projected onto the E-B plane
                     CUDAREAL _kEi = _diffracted_ave.dot(E_in);
                     CUDAREAL _kBi = _diffracted_ave.dot(B_in);
-                    // compute the angle of the diffracted ray projected onto the _incident E-B plane
+                    // compute the angle of the diffracted ray projected onto the incident E-B plane
                     _psi = -atan2(_kBi, _kEi);
                 }
                 // correction for polarized _incident beam
                 _polar =
-                    0.5 * (1.0 + cos2theta_sqr - kahn_factor * cos(2 * _psi) * sin2theta_sqr);
+                    0.5 * (1.0 + cos2theta_sqr -
+                           kahn_factor * ::Kokkos::Experimental::cos(2 * _psi) * sin2theta_sqr);
             }
 
             CUDAREAL _om = 1;
@@ -1063,16 +1087,16 @@ void kokkos_sum_over_steps(
                 _om = _omega_pixel_ave;
             // final scale term to being everything to photon number units
             CUDAREAL _scale_term = _polar * _om * overall_scale;
-            floatimage(i_pix) = _scale_term * _I;
+            floatimage(pixIdx) = _scale_term * _I;
             if (save_wavelenimage)
-                wavelenimage(i_pix) = Ilambda / _I;
+                wavelenimage(pixIdx) = Ilambda / _I;
 
             // udpate the rotation derivative images*
             for (int i_rot = 0; i_rot < 3; i_rot++) {
                 if (refine_Umat(i_rot)) {
                     CUDAREAL value = _scale_term * rot_manager_dI[i_rot];
                     CUDAREAL value2 = _scale_term * rot_manager_dI2[i_rot];
-                    int idx = i_rot * Npix_to_model + i_pix;
+                    int idx = i_rot * Npix_to_model + pixIdx;
                     d_Umat_images(idx) = value;
                     d2_Umat_images(idx) = value2;
                 }
@@ -1083,7 +1107,7 @@ void kokkos_sum_over_steps(
                 if (refine_Bmat(i_uc)) {
                     CUDAREAL value = _scale_term * ucell_manager_dI[i_uc];
                     CUDAREAL value2 = _scale_term * ucell_manager_dI2[i_uc];
-                    int idx = i_uc * Npix_to_model + i_pix;
+                    int idx = i_uc * Npix_to_model + pixIdx;
                     d_Bmat_images(idx) = value;
                     d2_Bmat_images(idx) = value2;
                 }
@@ -1093,20 +1117,20 @@ void kokkos_sum_over_steps(
             if (refine_Ncells(1)) {
                 CUDAREAL value = _scale_term * Ncells_manager_dI[0];
                 CUDAREAL value2 = _scale_term * Ncells_manager_dI2[0];
-                int idx = i_pix;
+                int idx = pixIdx;
                 d_Ncells_images(idx) = value;
                 d2_Ncells_images(idx) = value2;
 
                 if (!isotropic_ncells) {
                     value = _scale_term * Ncells_manager_dI[1];
                     value2 = _scale_term * Ncells_manager_dI2[1];
-                    idx = Npix_to_model + i_pix;
+                    idx = Npix_to_model + pixIdx;
                     d_Ncells_images(idx) = value;
                     d2_Ncells_images(idx) = value2;
 
                     value = _scale_term * Ncells_manager_dI[2];
                     value2 = _scale_term * Ncells_manager_dI2[2];
-                    idx = Npix_to_model * 2 + i_pix;
+                    idx = Npix_to_model * 2 + pixIdx;
                     d_Ncells_images(idx) = value;
                     d2_Ncells_images(idx) = value2;
                 }
@@ -1115,7 +1139,7 @@ void kokkos_sum_over_steps(
                 for (int i_nc = 3; i_nc < 6; i_nc++) {
                     CUDAREAL value = _scale_term * Ncells_manager_dI[i_nc];
                     CUDAREAL value2 = _scale_term * Ncells_manager_dI2[i_nc];
-                    int idx = i_nc * Npix_to_model + i_pix;
+                    int idx = i_nc * Npix_to_model + pixIdx;
                     d_Ncells_images(idx) = value;
                     d2_Ncells_images(idx) = value2;
                 }
@@ -1125,27 +1149,27 @@ void kokkos_sum_over_steps(
             if (refine_fcell) {
                 CUDAREAL value = _scale_term * fcell_manager_dI;
                 CUDAREAL value2 = _scale_term * fcell_manager_dI2;
-                d_fcell_images(i_pix) = value;
-                d2_fcell_images(i_pix) = value2;
+                d_fcell_images(pixIdx) = value;
+                d2_fcell_images(pixIdx) = value2;
             }  // end Fcell deriv image increment
 
             if (refine_fp_fdp) {
                 // c derivative
                 CUDAREAL value = _scale_term * fp_fdp_manager_dI[0];
-                d_fp_fdp_images(i_pix) = value;
+                d_fp_fdp_images(pixIdx) = value;
                 // d derivative
                 value = _scale_term * fp_fdp_manager_dI[1];
-                d_fp_fdp_images(Npix_to_model + i_pix) = value;
+                d_fp_fdp_images(Npix_to_model + pixIdx) = value;
             }
             if (refine_diffuse) {
                 for (int i_gam = 0; i_gam < 3; i_gam++) {
                     CUDAREAL val = dI_diffuse[i_gam] * _scale_term;
-                    int img_idx = Npix_to_model * i_gam + i_pix;
+                    int img_idx = Npix_to_model * i_gam + pixIdx;
                     d_diffuse_gamma_images(img_idx) = val;
                 }
                 for (int i_sig = 0; i_sig < 3; i_sig++) {
                     CUDAREAL val = dI_diffuse[i_sig + 3] * _scale_term;
-                    int img_idx = Npix_to_model * i_sig + i_pix;
+                    int img_idx = Npix_to_model * i_sig + pixIdx;
                     d_diffuse_sigma_images(img_idx) = val;
                 }
             }
@@ -1155,7 +1179,7 @@ void kokkos_sum_over_steps(
                 for (int i_eta = 0; i_eta < 3; i_eta++) {
                     if (i_eta > 0 && !aniso_eta)
                         continue;
-                    int idx = i_pix + Npix_to_model * i_eta;
+                    int idx = pixIdx + Npix_to_model * i_eta;
                     CUDAREAL value = _scale_term * eta_manager_dI[i_eta];
                     CUDAREAL value2 = _scale_term * eta_manager_dI2[i_eta];
                     d_eta_images(idx) = value;
@@ -1168,7 +1192,7 @@ void kokkos_sum_over_steps(
                 if (refine_lambda(i_lam)) {
                     CUDAREAL value = _scale_term * lambda_manager_dI[i_lam];
                     CUDAREAL value2 = _scale_term * lambda_manager_dI2[i_lam];
-                    int idx = i_lam * Npix_to_model + i_pix;
+                    int idx = i_lam * Npix_to_model + pixIdx;
                     d_lambda_images(idx) = value;
                     // d2_lambda_images(idx) = value2;
                 }
@@ -1178,7 +1202,7 @@ void kokkos_sum_over_steps(
                 if (refine_panel_rot(i_pan_rot)) {
                     CUDAREAL value = _scale_term * pan_rot_manager_dI[i_pan_rot];
                     CUDAREAL value2 = _scale_term * pan_rot_manager_dI2[i_pan_rot];
-                    int idx = i_pan_rot * Npix_to_model + i_pix;
+                    int idx = i_pan_rot * Npix_to_model + pixIdx;
                     d_panel_rot_images(idx) = value;
                     // d2_panel_rot_images(idx) = value2;
                 }
@@ -1188,11 +1212,11 @@ void kokkos_sum_over_steps(
                 if (refine_panel_origin(i_pan_orig)) {
                     CUDAREAL value = _scale_term * pan_orig_manager_dI[i_pan_orig];
                     CUDAREAL value2 = _scale_term * pan_orig_manager_dI2[i_pan_orig];
-                    int idx = i_pan_orig * Npix_to_model + i_pix;
+                    int idx = i_pan_orig * Npix_to_model + pixIdx;
                     d_panel_orig_images(idx) = value;
                     // d2_panel_orig_images(idx) = value2;
                 }
             }  // end panel orig deriv image increment
-*/        });    // end i_pix loop
+        });    // end pixIdx loop
 
 }  // END of GPU kernel

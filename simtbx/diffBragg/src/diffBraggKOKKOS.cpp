@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <cstdio>
 #include <sys/time.h>
 
 #include "diffBraggKOKKOS.h"
