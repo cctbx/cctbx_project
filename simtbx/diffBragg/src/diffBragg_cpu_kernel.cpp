@@ -17,6 +17,7 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
+
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
         int pid = panels_fasts_slows[i_pix*3];
@@ -188,8 +189,16 @@ void diffBragg_sum_over_steps(
                 Eigen::Matrix3d Amat = UBO;
                 Eigen::Matrix3d Ainv = UBO.inverse();
                 Eigen::Matrix3d anisoG = db_cryst.anisoG;
+                Eigen::Matrix3d dG_dgam[3];
+                for (int i_gam=0; i_gam<3; i_gam++){
+                  dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+                  dG_dgam[i_gam](i_gam, i_gam) = 1;
+                }
                 if (db_flags.gamma_miller_units){
-                  anisoG = anisoG * Amat;
+                  anisoG = anisoG * Bmat_realspace;
+                  for (int i_gam=0; i_gam<3; i_gam++){
+                    dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+                  }
                 }
                 Eigen::Matrix3d Ginv = anisoG.inverse();
                 double anisoG_determ = anisoG.determinant();
@@ -197,12 +206,12 @@ void diffBragg_sum_over_steps(
                     for (int kk=0; kk <1; kk++){
                         for (int ll=0; ll <1; ll++){
                             Eigen::Vector3d H0_offset(h0+hh, k0+kk, l0+ll);
-                            Eigen::Vector3d Q0 = Ainv*H0_offset;
+                            Eigen::Vector3d Q0 = db_cryst.UMATS_RXYZ[mos_tic].transpose()*Ainv*H0_offset;
                             double exparg = 4*M_PI*M_PI*Q0.dot(db_cryst.anisoU*Q0);
                             //double dwf = exp(-exparg);
                             Eigen::Vector3d delta_H_offset = H_vec - H0_offset;
-                            Eigen::Vector3d delta_Q = Ainv*delta_H_offset;
-                            Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_Q;
+                            Eigen::Vector3d delta_Q = db_cryst.UMATS_RXYZ[mos_tic].transpose()*Ainv*delta_H_offset;
+                            Eigen::Vector3d anisoG_q = anisoG*delta_Q;
                             double V_dot_V = anisoG_q.dot(anisoG_q);
                             double gamma_portion = 8.*M_PI*anisoG_determ /
                                     pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
@@ -218,17 +227,9 @@ void diffBragg_sum_over_steps(
 
                             if (db_flags.refine_diffuse){
                                  for (int i_gam=0; i_gam<3; i_gam++){
-                                    //dG_dgam  --> db_cryst.dG_dgamma[i_gam];
-                                    Eigen::Matrix3d dG_dgam;
-                                    dG_dgam << 0,0,0,0,0,0,0,0,0;
-                                    dG_dgam(i_gam, i_gam) = 1;
-                                    if (db_flags.gamma_miller_units){
-                                      dG_dgam = dG_dgam * Amat;
-                                    }
-
-                                    Eigen::Vector3d dV = dG_dgam*delta_Q;
+                                    Eigen::Vector3d dV = dG_dgam[i_gam]*delta_Q;
                                     double V_dot_dV = anisoG_q.dot(dV);
-                                    double deriv = (Ginv*dG_dgam).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
+                                    double deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
                                     step_dI_latt_diffuse[i_gam] += gamma_portion*deriv*exparg;
                                  }
                                  for (int i_sig = 0;i_sig<3; i_sig++){
