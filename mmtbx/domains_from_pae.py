@@ -43,17 +43,30 @@ def parse_pae_file(pae_json_file):
 
     try:
       with open(pae_json_file, 'rt') as f:
-        data = json.load(f)[0]
+        data = json.load(f)
     except Exception as e:
       raise Sorry("Unable to read the json file %s" %(pae_json_file))
 
-    r1, d = data['residue1'],data['distance']
+    if isinstance(data, dict) and 'pae' in data:
+        # ColabFold 1.3 produces a JSON file different from AlphaFold database.
+        matrix = numpy.array(data['pae'])
+      
+    elif not isinstance(data, list):
+      raise Sorry("Data in %s is not in a recognised format" %(pae_json_file))
 
-    size = max(r1)
-
-    matrix = numpy.empty((size,size))
-
-    matrix.ravel()[:] = d
+    data = data[0]
+    if 'residue1' in data.keys() and 'distance' in data.keys():
+      r1, d = data['residue1'],data['distance']
+      size = max(r1)
+      matrix = numpy.empty((size,size))
+      matrix.ravel()[:] = d
+    elif 'predicted_aligned_error' in data.keys():
+      matrix = numpy.array(d['predicted_aligned_error'])
+      matrix[matrix==0]=0.2 # New format has zeros, leading to divide-by-zero when weighting edges. Replace with 
+                            # previous minimum. Could also change weight function from PAE**-(pae_power) to 
+                            # exp(-PAE*pae_power), but that might need some recalibration and testing.
+    else:
+      raise Sorry("Data in %s is not in a recognised format" %(pae_json_file))
 
     return matrix
 
