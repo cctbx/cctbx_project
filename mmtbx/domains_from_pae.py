@@ -62,13 +62,16 @@ def parse_pae_file(pae_file):
         except Exception:
             raise Sorry(f"Unable to read the json file: {pae_file}")
 
-        if 'residue1' in data.keys():
+        if 'residue1' in data.keys() and 'distance' in data.keys():
             r1, d = data['residue1'], data['distance']
             size = max(r1)
             matrix = numpy.empty((size, size))
             matrix.ravel()[:] = d
+        elif 'pae' in data.keys():
+            matrix = numpy.array(data['pae'])
         elif 'predicted_aligned_error' in data.keys():
             matrix = numpy.asarray(data['predicted_aligned_error'])
+            matrix[matrix == 0] = 0.2
         else:
             raise Sorry(f"PAE data not detected in json file: {pae_file}")
     elif ext == '.pkl':
