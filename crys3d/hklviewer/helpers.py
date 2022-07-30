@@ -11,7 +11,7 @@ from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
 from .qt import QCursor, QKeySequence
 from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction, QDoubleSpinBox,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem
+      QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem, QSizePolicy
      )
 import math, csv
 from io import StringIO
@@ -24,10 +24,16 @@ class MyQDoubleSpinBox(QDoubleSpinBox):
     QDoubleSpinBox.stepBy(self, steps)
     if hasattr(self, "onStepBy"):
       self.onStepBy()
+  def mouseReleaseEvent(self, event):
+    # used by NGL_HKLViewer.fontspinBox since changing fonts and resizing windows is slow and
+    # valueChanged() will then mistakenly be fired twice when clicking once on the spin control
+    QDoubleSpinBox.mouseReleaseEvent(self, event)
+    if hasattr(self, "onMouseRelease"):
+      self.onMouseRelease()
 
 
 class MyhorizontalHeader(QHeaderView):
-# Assigned to HeaderDataTableWidget (HKLViewer.NGL_HKLViewer.millertable) but in
+# Assigned to HeaderDataTableWidget (NGL_HKLViewer.millertable) but in
 # NGL_HKLViewer.createFileInfoBox() as to avoid a very long chain of parents when
 # accessing select_millertable_column_dlg()
 # Display the labels of the columns in the millertable
@@ -295,13 +301,14 @@ class MplCanvas(FigureCanvas):
     # total size of canvas
     self.fig.set_size_inches(7,40) # total size of canvas
     super(MplCanvas, self).__init__(self.fig)
-    cid = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+    self.cid1 = self.fig.canvas.mpl_connect('button_press_event', self.on_press)
 
   def on_press(self, event):
     if event.inaxes is not None:
       self.parent.selcolmap = cmaps[event.inaxes.get_subplotspec().rowspan.start]
       self.parent.updatelabel()
       self.parent.EnactColourMapSelection()
+
 
 # TODO work out scaling of canvas to match QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 # and

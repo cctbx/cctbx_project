@@ -35,7 +35,7 @@ try: # if invoked by cctbx.python or some such
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from . import hklviewer_gui
   from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
-     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
+     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox )
 
 
 class MakeNewDataForm(QDialog):
@@ -78,14 +78,18 @@ class AboutForm(QDialog):
     self.aboutlabel.setWordWrap(True)
     self.aboutlabel.setTextInteractionFlags(Qt.TextBrowserInteraction);
     self.aboutlabel.setOpenExternalLinks(True);
+    self.aboutlabel.setMaximumSize(QSize(16777215, 16777215))
     self.writeAboutstr("")
     self.copyrightstxt = QTextEdit()
     self.copyrightstxt.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
     self.copyrightstxt.setReadOnly(True)
     self.copyrightstxt.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-    self.copyrightstxt.setMinimumSize(QSize(400, 100))
     self.copyrightstxt.setMaximumSize(QSize(16777215, 16777215))
+    sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    self.copyrightstxt.setMinimumSize(QSize(350, 150))
+    self.copyrightstxt.setSizePolicy(sp)
+    self.aboutlabel.setSizePolicy(sp)
     self.OKbtn = QPushButton()
     self.OKbtn.setText("OK")
     self.OKbtn.clicked.connect(self.onOK)
@@ -93,7 +97,8 @@ class AboutForm(QDialog):
     mainLayout.addWidget(self.copyrightstxt,  1, 0, 1, 3)
     mainLayout.addWidget(self.OKbtn,  2, 1, 1, 1)
     self.setLayout(mainLayout)
-    self.setMinimumSize(QSize(350, 200))
+    self.setMinimumSize(QSize(400, 300))
+    self.setSizePolicy(sp)
     self.setFixedSize( self.sizeHint() )
   def writeAboutstr(self, versionstr):
     aboutstr = """<html><head/><body><p>
@@ -318,13 +323,17 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.mousesensitxtbox = QLineEdit('')
     self.mousesensitxtbox.setReadOnly(True)
 
-    self.fontspinBox = QDoubleSpinBox()
+    self.fontspinBox = MyQDoubleSpinBox()
     self.fontspinBox.setSingleStep(1)
     self.fontspinBox.setRange(4, 50)
     self.font = QFont()
     self.font.setFamily(self.font.defaultFamily())
     self.fontspinBox.setValue(self.font.pointSize())
-    self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
+    self.fontspinBox.editingFinished.connect(self.onFontsizeChanged)
+    # valueChanged signal is buggy and gets triggered twice when onFontsizeChanged takes too long
+    # This may cause font step=2 rather than step=1
+    # Workaround is to use onMouseRelease invoked by MyQDoubleSpinBox.mouseReleaseEvent
+    self.fontspinBox.onMouseRelease = self.onFontsizeChanged
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
 
@@ -678,7 +687,7 @@ newarray._sigmas = sigs
   def SettingsDialog(self):
     self.settingsform.show()
     # don't know why valueChanged.connect() method only takes effect from here on
-    self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
+    #self.fontspinBox.valueChanged.connect(self.onFontsizeChanged)
     self.settingsform.activateWindow()
 
 
@@ -1297,7 +1306,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.ttip_click_invoke = "hover"
 
 
-  def onFontsizeChanged(self, val):
+  def onFontsizeChanged(self):
+    val = self.fontspinBox.value()
     font = self.app.font()
     font.setPointSize(val);
     self.fontsize = val
@@ -1310,6 +1320,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.textInfo.setFont(font)
     self.textAlerts.setFont(font)
     self.SpaceGrpUCellText.setFont(font)
+
 
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
@@ -2436,8 +2447,9 @@ clip_plane {
       self.onTextbufferSizeChanged(int(self.textinfosize))
       self.bufsizespinBox.setValue(int(self.textinfosize))
     if self.fontsize is not None:
-      self.onFontsizeChanged(int(self.fontsize))
+      #self.onFontsizeChanged(int(self.fontsize))
       self.fontspinBox.setValue(int(self.fontsize))
+      self.onFontsizeChanged()
     if self.browserfontsize is not None:
       self.onBrowserFontsizeChanged(int(self.browserfontsize))
       self.browserfontspinBox.setValue(int(self.browserfontsize))

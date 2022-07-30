@@ -55,7 +55,7 @@ def generate_systematic_absences(array,
   return absence_array
 
 
-def nth_power_scale(dataarray, nth_power):
+def nth_power_scale(dataarray, nth_power, is_sigmas=False):
   """
   set nth_power to a number for dampening or enhancing the
   difference between the smallest and the largest values.
@@ -65,14 +65,18 @@ def nth_power_scale(dataarray, nth_power):
   If nth_power=NaN then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
-  absdat = flex.abs(dataarray).as_double()
-  absdat2 = graphics_utils.NoNansArray(absdat) # much faster than flex.double([e for e in absdat if not math.isnan(e)])
-  maxdat = flex.max(absdat2)
-  mindat = max(1e-10*maxdat, flex.min(absdat2) )
+  maxdat = flex.max(dataarray)
+  mindat = flex.min(dataarray)
+  offset = mindat - 0.001 # avoid log(0)
+  offsetmin = mindat - offset
+  offsetmax = maxdat - offset
+  offsetarr = dataarray - offset
   # only autoscale for sensible values of maxdat and mindat
   if math.isnan(nth_power) and maxdat > mindat : # amounts to automatic scale
-    nth_power = math.log(0.2)/(math.log(mindat) - math.log(maxdat))
-  datascaled = flex.pow(absdat, nth_power)
+    nth_power = math.log(10)/(math.log(offsetmax) - math.log(offsetmin))
+    if is_sigmas:
+      nth_power *= -1.0 # want small sigmas to have larger radii and large sigmas to have smaller radii
+  datascaled = flex.pow(offsetarr, nth_power)
   return datascaled, nth_power
 
 
@@ -352,25 +356,26 @@ class scene(object):
        # assuming last part of the labels indicates the phase label as in ["FCALC","PHICALC"]
       self.colourlabel = "Phase of " + self.miller_array.info().label_string()
     elif (settings.sigma_color_radius) and sigmas is not None:
-      data_for_colors = sigmas.as_double()
+      data_for_colors = 1.0/sigmas.as_double()
       self.colourlabel = "Sigma of " + self.miller_array.info().label_string()
     else :
       data_for_colors = flex.abs(data.deep_copy())
+
     uc = self.work_array.unit_cell()
     self.min_dist = min(uc.reciprocal_space_vector((1,1,1))) * self.renderscale
     min_radius = 0.05 * self.min_dist
     max_radius = 0.5 * self.min_dist
     if (settings.sigma_color_radius) and sigmas is not None:
-      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(sigmas.as_double().deep_copy()),
-                                       settings.nth_power_scale_radii)
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(sigmas.as_double().deep_copy(),
+                                       settings.nth_power_scale_radii, True)
     else :
-      data_for_radii, self.nth_power_scale_radii = nth_power_scale(flex.abs(data.deep_copy()),
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale(data.deep_copy(),
                                        settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)
     # Computing rgb colours of each reflection is slow so make a small array
     # of precomputed colours to use as a lookup table for each reflection
-    if isinstance(data, flex.complex_double):
+    if isinstance(data, flex.complex_double): # map coefficients are coloured by phase values
       COL = MplColorHelper(settings.color_scheme, 0, 360)
       rgbcolarray = [ COL.get_rgb(d)[0:3] for d in range(360) ]
       if self.isUsingFOMs():
@@ -409,8 +414,7 @@ class scene(object):
       colors = colors.select(self.slice_selection)
       data_for_radii = data_for_radii.select(self.slice_selection)
     if len(data_for_radii):
-      #dat2 = flex.abs(flex.double([e for e in data_for_radii if not math.isnan(e)]))
-      dat2 = flex.abs(flex.double( graphics_utils.NoNansArray( data_for_radii, 0.1 ) ))
+      dat2 = flex.double( graphics_utils.NoNansArray( data_for_radii, 0.1 ) )
       # don't divide by 0 if dealing with selection of Rfree array where all values happen to be zero
       scale = max_radius/(flex.max(dat2) + 0.001)
       radii = data_for_radii * (self.settings.scale * scale)
@@ -424,7 +428,6 @@ class scene(object):
     self.colors = colors
     if isinstance(data, flex.complex_double):
       self.foms = foms_for_colours
-    #print(min_dist, min_radius, max_radius, flex.min(data_for_radii), flex.max(data_for_radii), scale)
 
 
   def isUsingFOMs(self):

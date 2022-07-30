@@ -342,9 +342,11 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "color_scheme"):
       self.add_colour_scheme_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "color_powscale"):
       self.add_colour_powscale_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "nth_power_scale_radii"):
       self.add_nth_power_scale_radii_to_dict()
@@ -1363,6 +1365,11 @@ class HKLview_3d:
       self.calc_rotation_axes()
       nvaluelabels = int(ln/self.params.viewer.ncolourlabels )
       colourgradstrs = []
+      if self.params.hkls.sigma_color_radius:
+        lst = list(colourscalararray)
+        lst.reverse() # flip labels on chart when showing sigmas
+        colourscalararray = flex.double(lst )
+
       # if displaying phases from map coefficients together with fom values then
       for g,colourgradarray in enumerate(colourgradarrays):
         self.colourgradientvalues = []
