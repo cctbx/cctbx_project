@@ -58,23 +58,31 @@ def parse_pae_file(pae_file):
 
         try:
             with open(pae_file, 'rt') as f:
-                data = json.load(f)[0]
+                data = json.load(f)
         except Exception:
             raise Sorry(f"Unable to read the json file: {pae_file}")
 
-        if 'residue1' in data.keys() and 'distance' in data.keys():
-            r1, d = data['residue1'], data['distance']
-            size = max(r1)
-            matrix = numpy.empty((size, size))
-            matrix.ravel()[:] = d
-        elif 'pae' in data.keys():
+        if isinstance(data, dict) and 'pae' in data:
+            # ColabFold 1.3 produces a JSON file different from AlphaFold database.
             matrix = numpy.array(data['pae'])
-        elif 'predicted_aligned_error' in data.keys():
-            matrix = numpy.asarray(data['predicted_aligned_error'])
-            matrix[matrix == 0] = 0.2
+        elif isinstance(data, list):
+            data = data[0]
+            if 'residue1' in data.keys() and 'distance' in data.keys():
+                # Support original JSON file format.
+                r1, d = data['residue1'], data['distance']
+                size = max(r1)
+                matrix = numpy.empty((size, size))
+                matrix.ravel()[:] = d
+            elif 'predicted_aligned_error' in data.keys():
+                # Support new AlphaFold database JSON file format.
+                matrix = numpy.asarray(data['predicted_aligned_error'])
+                matrix[matrix == 0] = 0.2
+            else:
+                raise Sorry(f"PAE data not detected in json file: {pae_file}")
         else:
-            raise Sorry(f"PAE data not detected in json file: {pae_file}")
+            raise Sorry(f"Data in {pae_file} is not in a recognised format")
     elif ext == '.pkl':
+        # Support PKL format when running AlphaFold locally in ptm or multimer modes.
         import pickle as pkl
         data = []
         try:
