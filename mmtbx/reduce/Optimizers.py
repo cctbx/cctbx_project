@@ -117,6 +117,16 @@ def GetAtomsForConformer(model, conf):
     ret += confs[which].atoms()
   return ret
 
+def _ResNameAndID(a):
+  """Make a string describing the residue and chain for the specfied atom.
+  """
+  chainID = a.parent().parent().parent().id
+  resName = a.parent().resname.strip().upper()
+  resID = str(a.parent().parent().resseq_as_int())
+  # Don't print the code if it is a space (blank).
+  insertionCode = a.parent().parent().icode.strip()
+  return "chain "+str(chainID)+" "+resName+" "+resID+insertionCode
+
 ##################################################################################
 # Optimizers:
 #     _SingletonOptimizer: This is a base Optimizer class that implements the placement and scoring
@@ -429,10 +439,7 @@ class _SingletonOptimizer(object):
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
                               False, phantomHydrogenRadius, placedHydrogenDistance)
               if len(newPhantoms) > 0:
-                resName = a.parent().resname.strip().upper()
-                resID = str(a.parent().parent().resseq_as_int())
-                chainID = a.parent().parent().parent().id
-                resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+                resNameAndID = _ResNameAndID(a)
                 self._infoString += _VerboseCheck(3,"Added {} phantom Hydrogens on {}\n".format(len(newPhantoms), resNameAndID))
                 for p in newPhantoms:
                   self._infoString += _VerboseCheck(5,"Added phantom Hydrogen at "+str(p.xyz)+"\n")
@@ -630,10 +637,7 @@ class _SingletonOptimizer(object):
       self._infoString += _VerboseCheck(1,"Deleting Hydrogens tagged by Histidine Movers\n")
       for a in self._deleteMes:
         aName = a.name.strip().upper()
-        resName = a.parent().resname.strip().upper()
-        resID = str(a.parent().parent().resseq_as_int())
-        chainID = a.parent().parent().parent().id
-        resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+        resNameAndID = _ResNameAndID(a)
         self._infoString += _VerboseCheck(5,"Deleting {} {}\n".format(resNameAndID, aName))
         a.parent().remove_atom(a)
       self._infoString += _ReportTiming("delete Hydrogens")
@@ -1260,10 +1264,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
     # Find the stripped upper-case atom and residue names and the residue ID,
     # and an identifier string
     aName = a.name.strip().upper()
-    resName = a.parent().resname.strip().upper()
-    resID = str(a.parent().parent().resseq_as_int())
-    chainID = a.parent().parent().parent().id
-    resNameAndID = "chain "+str(chainID)+" "+resName+" "+resID
+    resNameAndID = _ResNameAndID(a)
 
     # See if we should construct a MoverSingleHydrogenRotator here.
     # @todo This is placing on atoms C and N in CYS 352; and on HE2 and CA in SER 500 of 4z4d
