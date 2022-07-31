@@ -91,6 +91,10 @@ overlap_scale_factor = 0.5
   .type = float
   .help = Fraction of overlap assigned to each atom (-spike in probe)
 
+ignore_lack_of_explicit_hydrogens = False
+  .type = bool
+  .help = For an explicit-hydrogen model, ignore lack of hydrogens (probe behaved this way)
+
 output
   .style = menu_item auto_align
 {
@@ -1817,7 +1821,7 @@ Note:
     ################################################################################
     # Ensure that the model we've been passed has at least one Hydrogen bonded to a Carbon
     # and at least one polar Hydrogen (bonded to N, O, or S).  Otherwise, raise a Sorry.
-    if not self.params.probe.implicit_hydrogens:
+    if not (self.params.ignore_lack_of_explicit_hydrogens or self.params.probe.implicit_hydrogens):
       foundCBonded = False
       foundPolar = False
       for a in allAtoms:
@@ -1834,7 +1838,8 @@ Note:
       if not (foundCBonded and foundPolar):
         raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
                     "Probe requires explicit Hydrogens.  Run Reduce2 or another placement "+
-                    "program on the model before running Probe.")
+                    "program on the model before running Probe, or else add the Phil "+
+                    "parameter ignore_lack_of_explicit_hydrogens=True.")
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
