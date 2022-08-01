@@ -86,35 +86,23 @@ struct accumulate_reflection_chunk_omp {
           break;
         }
       }
-      matrix.resize(threads * (n_rows * (n_rows + 1) / 2));
-      yo_dot_grad_yc_.resize(threads * n_rows);
-      yc_dot_grad_yc_.resize(threads * n_rows);
+      matrix.resize(threads * (n_rows * (n_rows + 1) / 2), 0);
+      yo_dot_grad_yc_.resize(threads * n_rows, 0);
+      yc_dot_grad_yc_.resize(threads * n_rows, 0);
       if (compute_grad && !build_design_matrix && size < n) {
-        gradients.resize(size * n_rows);
+        gradients.resize(size * n_rows, 0);
       }
       for (int i_h = 0; i_h * size < n; i_h++) {
         const int start = i_h * size;
-        //check whetehr last chunk is smaller
+        //check whether last chunk is smaller
         if (start + size >= n) {
           size = n - start;
           if (compute_grad && !build_design_matrix) {
-            gradients.resize(size * n_rows);
+            gradients.resize(size * n_rows, 0);
           }
         }
 #pragma omp parallel num_threads(threads)
         {
-#pragma omp for nowait
-          for (int dummy = 0; dummy < 3; dummy++) {
-            if (dummy == 0) {
-              std::fill(matrix.begin(), matrix.end(), 0);
-            }
-            else if (dummy == 1) {
-              std::fill(yo_dot_grad_yc_.begin(), yo_dot_grad_yc_.end(), 0);
-            }
-            else if (dummy == 2) {
-              std::fill(yc_dot_grad_yc_.begin(), yc_dot_grad_yc_.end(), 0);
-            }
-          }
           /* Make a gradient vector for each thread
              Must pre-allocate or Jt.G causes a crash
           */
@@ -127,7 +115,7 @@ struct accumulate_reflection_chunk_omp {
             }
             const int refl_i = start + run;
             miller::index<> const& h = reflections.index(refl_i);
-            const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
+            const twin_fraction<FloatType>* fraction = reflections.fraction(refl_i);
             try {
               if (f_mask_data.size()) {
                 f_calc_threads[thread]->compute(h, f_mask_data.find(h), fraction, compute_grad);
@@ -162,12 +150,12 @@ struct accumulate_reflection_chunk_omp {
 
             // sort out twinning
             FloatType observable = twp.process(
-              i_h, *f_calc_threads[thread], gradient);
+              refl_i, *(f_calc_threads[thread]), gradient);
             // Fc correction
             FloatType fc_k = fc_crs[thread]->compute(h, observable, compute_grad);
             if (fc_k != 1) {
               observable *= fc_k;
-              f_calc[i_h] *= std::sqrt(fc_k);
+              f_calc[refl_i] *= std::sqrt(fc_k);
             }
             observables[refl_i] = observable;
 
