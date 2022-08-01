@@ -49,10 +49,9 @@ def parse_pae_file(pae_file):
     Returns:
         pae_matrix as numpy array
     """
-    from pathlib import Path
     import numpy
-
-    ext = Path(pae_file).suffix
+    import os
+    _, ext = os.path.splitext(pae_file)
     if ext == '.json':
         import json
 
@@ -60,7 +59,7 @@ def parse_pae_file(pae_file):
             with open(pae_file, 'rt') as f:
                 data = json.load(f)
         except Exception:
-            raise Sorry(f"Unable to read the json file: {pae_file}")
+            raise Sorry("Unable to read the json file: %s" %(pae_file))
 
         if isinstance(data, dict) and 'pae' in data:
             # ColabFold 1.3 produces a JSON file different from AlphaFold database.
@@ -75,12 +74,15 @@ def parse_pae_file(pae_file):
                 matrix.ravel()[:] = d
             elif 'predicted_aligned_error' in data.keys():
                 # Support new AlphaFold database JSON file format.
-                matrix = numpy.asarray(data['predicted_aligned_error'])
+                matrix = numpy.asarray(
+                  data['predicted_aligned_error']).astype(float)
                 matrix[matrix == 0] = 0.2
             else:
-                raise Sorry(f"PAE data not detected in json file: {pae_file}")
+                raise Sorry("PAE data not detected in json file: %s" %(
+                    pae_file))
         else:
-            raise Sorry(f"Data in {pae_file} is not in a recognised format")
+            raise Sorry("Data in %s is not in a recognised format" %(
+              pae_file))
     elif ext == '.pkl':
         # Support PKL format when running AlphaFold locally in ptm or multimer modes.
         import pickle as pkl
@@ -89,14 +91,15 @@ def parse_pae_file(pae_file):
             with open(pae_file, 'rb') as f_in:
                 data.append(pkl.load(f_in))
         except Exception:
-            raise Sorry(f"Unable to read the pkl file: {pae_file}")
+            raise Sorry("Unable to read the pkl file: %s" %(pae_file))
 
         try:
             matrix = numpy.asarray(data[0]['predicted_aligned_error'])
         except KeyError:
-            raise Sorry(f"PAE data not detected in pkl file: {pae_file}")
+            raise Sorry("PAE data not detected in pkl file: %s" %(pae_file))
     else:
-        raise Sorry(f"PAE file extension: {ext} not recognised")
+        raise Sorry("PAE file extension: '%s' not recognised" %(ext))
+
 
     return matrix
 
@@ -150,12 +153,19 @@ def domains_from_pae_matrix_networkx(pae_matrix, pae_power=1,
     from networkx.algorithms import community
 
     try:
-        clusters = community.greedy_modularity_communities(g, weight='weight',
-                                                           resolution=graph_resolution)
-    except Exception as e:  # run without resolution
-        clusters = community.greedy_modularity_communities(g, weight='weight')
-    return clusters
+      clusters = community.greedy_modularity_communities(g, weight='weight',
+                                           resolution=graph_resolution)
+      return clusters
+    except Exception as e:
+      pass # run again below without resolution
 
+    # failed... try again without resolution
+    try:
+      clusters = community.greedy_modularity_communities(g, weight='weight')
+      return clusters
+    except Exception as e: #  failed
+      pass # run again
+    return None
 
 def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
                                    graph_resolution=1, weight_by_ca_ca_distance=False,
