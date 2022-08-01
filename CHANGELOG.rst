@@ -1,3 +1,9 @@
+2022.7
+======
+
+* Clean up multiple mmtbx tests
+* Updated to RCSB API v2 for accessing data
+
 2022.6
 ======
 
