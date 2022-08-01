@@ -135,12 +135,10 @@ def tst_03(log = sys.stdout):
          distance_power = args.distance_power,
          distance_model = args.distance_model)
     if version.parse(nx.__version__) < version.parse('2.6.2'):
-        assert selections == [
-          "(resseq 0:1) or (resseq 22:113) or (resseq 184:187)",
-          "(resseq 2:21)",
-          "(resseq 114:183) or (resseq 188:291)",
-          "(resseq 292:308)"
-       ]
+        assert selections == ['(resseq 0:8)', '(resseq 9:16)',
+   '(resseq 17:85) or (resseq 95:226) or (resseq 229:253) or (resseq 258:330)',
+    '(resseq 86:93)', '(resseq 94:94)', '(resseq 227:228)',
+       '(resseq 254:257)', '(resseq 331:334)'], selections
     else:
         assert selections == ['(resseq 0:5)', '(resseq 6:14)', '(resseq 15:35) or (resseq 44:59) or (resseq 67:83) or (resseq 97:111) or (resseq 121:135) or (resseq 145:156) or (resseq 172:177)', '(resseq 36:43) or (resseq 60:66)', '(resseq 84:86)', '(resseq 87:92)', '(resseq 93:96)', '(resseq 112:120) or (resseq 136:144) or (resseq 157:171) or (resseq 179:180)', '(resseq 178:178) or (resseq 181:181) or (resseq 199:208)', '(resseq 182:192) or (resseq 209:214)', '(resseq 193:198) or (resseq 215:223) or (resseq 235:249) or (resseq 266:285) or (resseq 293:309) or (resseq 318:332)', '(resseq 224:226)', '(resseq 227:234)', '(resseq 250:254)', '(resseq 255:259)', '(resseq 260:265)', '(resseq 286:292) or (resseq 310:317)', '(resseq 333:334)'], selections
 
