@@ -501,6 +501,8 @@ def update_bond_restraints_simple(model):
   sorted_table, n_not_shown = bond_proxies_simple.get_sorted(
     'delta',
     model.get_sites_cart())
+  # for single ions there is no bond table
+  if sorted_table is None: return
   for info in sorted_table:
     (i_seq, j_seq, i_seqs, distance_ideal, distance_model, slack, delta, sigma, weight, residual, sym_op_j, rt_mx) = info
     i_atom=atoms[i_seq]
