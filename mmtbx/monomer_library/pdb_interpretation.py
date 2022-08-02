@@ -188,6 +188,9 @@ restraints_library_str = """
         .short_caption = Factor applied to the e.s.d. values from CSD (not Phenix)
         .style = hidden
     }
+    ddr = False
+      .type = bool
+      .short_caption = Density dependent restraints
     cdl_svl = False
       .type = bool
       .short_caption = Use improved SVL values for CDL classes
