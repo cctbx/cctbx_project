@@ -7,6 +7,7 @@
 
 #include "kokkostbx/kokkos_types.h"
 #include "kokkostbx/kokkos_utils.h"
+#include "simtbx/diffBragg/src/util.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
 
 using vector_vec3_t = view_1d_t<VEC3>;

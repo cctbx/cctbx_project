@@ -16,13 +16,13 @@ typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
 typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
 struct timer_variables{
-    double add_spots_pre=0; // times the initializations for add spots kernel
-    double add_spots_post=0; // times the copies that occur after add spots kernel
-    double add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
-    double cuda_alloc=0; // times the allocation of the device
-    double cuda_copy_to_dev=0; // times the copying from host to device
-    double cuda_copy_from_dev=0; // times the copying back from device to host
-    double cuda_kernel=0; // times the GPU kernel
+    CUDAREAL add_spots_pre=0; // times the initializations for add spots kernel
+    CUDAREAL add_spots_post=0; // times the copies that occur after add spots kernel
+    CUDAREAL add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
+    CUDAREAL cuda_alloc=0; // times the allocation of the device
+    CUDAREAL cuda_copy_to_dev=0; // times the copying from host to device
+    CUDAREAL cuda_copy_from_dev=0; // times the copying back from device to host
+    CUDAREAL cuda_kernel=0; // times the GPU kernel
     int timings=0; // how many times these variables were incremented
     bool recording=true;
   };
@@ -139,12 +139,12 @@ struct crystal{
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
     Eigen::Matrix3d anisoU;
     int mosaic_domains; // number of mosaic domains to model
-    double Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
-    double phi0; // gonio
-    double phistep;
+    CUDAREAL Na, Nb, Nc, Nd, Ne, Nf; // mosaic domain terms
+    CUDAREAL phi0; // gonio
+    CUDAREAL phistep;
     int phisteps;
-    double fudge; // factor for Bragg peak exponential falloff adjustment
-    double spot_scale; // factor applied to intensity
+    CUDAREAL fudge; // factor for Bragg peak exponential falloff adjustment
+    CUDAREAL spot_scale; // factor applied to intensity
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
     double dmin; //res
@@ -159,8 +159,8 @@ struct crystal{
     std::vector<double> fpfdp_derivs; // fprime fdblprime deriv
     std::vector<double> atom_data; // heavy atom data
     std::vector<int> nominal_hkl; // h,k,l of the pixel (expected)
-    double default_F; // place holder amplitude
-    double r_e_sqr; // electron rad
+    CUDAREAL default_F; // place holder amplitude
+    CUDAREAL r_e_sqr; // electron rad
 
     Eigen::Matrix3d eig_U; // Umatrix
     Eigen::Matrix3d eig_O; // O-matrix
@@ -196,11 +196,11 @@ struct beam{
 struct detector{
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs; // derivative of the panel fast direction
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs; // derivative of the panel slow direction
-    double detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
-    std::vector<double> close_distances; // offsets to the detector origins (Z direction)
+    CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
+    std::vector<CUDAREAL> close_distances; // offsets to the detector origins (Z direction)
     int oversample; // determines the pixel subsampling rate
-    double subpixel_size, pixel_size;
-    std::vector<double> fdet_vectors, sdet_vectors, odet_vectors, pix0_vectors; // these define the detector (fast, slow, orth, origin)
+    CUDAREAL subpixel_size, pixel_size;
+    std::vector<CUDAREAL> fdet_vectors, sdet_vectors, odet_vectors, pix0_vectors; // these define the detector (fast, slow, orth, origin)
 };
 
 #endif

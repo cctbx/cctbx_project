@@ -1,8 +1,8 @@
-
 #ifndef SIMTBX_DIFFBRAGG_H
 #define SIMTBX_DIFFBRAGG_H
+
 #include <simtbx/nanoBragg/nanoBragg.h>
-#include <simtbx/diffBragg/src/util_kokkos.h>
+#include <simtbx/diffBragg/src/util.h>
 #include <vector>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
