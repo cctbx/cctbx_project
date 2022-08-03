@@ -538,7 +538,9 @@ def setup_qm_jobs(model,
   prefix = params.output.prefix
   objects = []
   for i, qmr in enumerate(params.qi.qm_restraints):
-    number_of_macro_cycles = params.main.number_of_macro_cycles
+    number_of_macro_cycles = 1
+    if hasattr(params, 'main'):
+      number_of_macro_cycles = params.main.number_of_macro_cycles
     if macro_cycle is not None and not running_this_macro_cycle(
         qmr,
         macro_cycle,
@@ -613,7 +615,9 @@ def run_energies(model,
                  ):
   t0 = time.time()
   energy_only=True
-  if not model.restraints_manager_available(): model.process(make_restraints=True)
+  if not model.restraints_manager_available():
+    model.log=null_out()
+    model.process(make_restraints=True)
   if macro_cycle in [None, 0]: run_program=False
   qi_array = quantum_interface.get_qi_macro_cycle_array(params)
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
@@ -651,7 +655,9 @@ def update_restraints(model,
                       ):
   t0 = time.time()
   energy_only=False
-  if not model.restraints_manager_available(): model.process(make_restraints=True)
+  if not model.restraints_manager_available():
+    model.log=null_out()
+    model.process(make_restraints=True)
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,
                                                                     energy_only=energy_only,

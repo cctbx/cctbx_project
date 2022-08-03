@@ -256,10 +256,13 @@ def is_quantum_interface_active_this_macro_cycle(params,
   if qi:
     rc = []
     if qi[1]=='qm_restraints':
+      number_of_macro_cycles = 1
+      if hasattr(params, 'main'):
+        number_of_macro_cycles = params.main.number_of_macro_cycles
       for i, qmr in enumerate(params.qi.qm_restraints):
         rc.append(running_this_macro_cycle(qmr,
                                            macro_cycle,
-                                           params.main.number_of_macro_cycles,
+                                           number_of_macro_cycles,
                                            energy_only=energy_only))
     else:
       assert 0

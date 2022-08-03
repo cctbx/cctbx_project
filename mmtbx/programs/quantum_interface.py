@@ -1,11 +1,13 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.development.qi
 from __future__ import absolute_import, division, print_function
-
+import os
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
 
 import iotbx.pdb
 import iotbx.phil
+from libtbx.utils import Sorry
 
 get_class = iotbx.pdb.common_residue_names_get_class
 
@@ -40,7 +42,7 @@ def get_selection_from_user(hierarchy):
 class Program(ProgramTemplate):
 
   description = '''
-phenix.quantum_inteface: tool for selecting some atoms for QI
+phenix.qi: tool for selecting some atoms for QI
 
 Usage examples:
   phenix.quantum_inteface model.pdb "chain A"
@@ -49,43 +51,77 @@ Usage examples:
   datatypes = ['model', 'phil', 'restraint']
 
   master_phil_str = """
-  qi_helper {
+  qi {
+    %s
     selection = None
       .type = atom_selection
       .help = what to select
       .multiple = True
+    write_qmr_phil = False
+      .type = bool
+    run_qmr = False
+      .type = bool
   }
-"""
+""" % (get_qm_restraints_scope())
 
   # ---------------------------------------------------------------------------
   def validate(self):
     print('Validating inputs', file=self.logger)
+    model = self.data_manager.get_model()
+    if not model.has_hd():
+      raise Sorry('Model must has Hydrogen atoms')
+    if self.params.output.prefix is None:
+      prefix = os.path.splitext(self.data_manager.get_default_model_name())[0]
+      print('  Setting output prefix to %s' % prefix, file=self.logger)
+      self.params.output.prefix = prefix
+    if self.params.qi.run_qmr:
+      print(sys.argv)
+      assert 0
 
   # ---------------------------------------------------------------------------
-  def run(self):
+  def run(self, log=None):
     model = self.data_manager.get_model()
     #
     # get selection
     #
-    cif_object = None
-    if self.data_manager.has_restraints():
-      cif_object = self.data_manager.get_restraint()
-    if not self.params.qi_helper.selection:
+    # cif_object = None
+    # if self.data_manager.has_restraints():
+    #   cif_object = self.data_manager.get_restraint()
+    if not self.params.qi.selection and len(self.params.qi.qm_restraints)==0:
       rc = get_selection_from_user(model.get_hierarchy())
-      self.params.qi_helper.selection = [rc]
+      self.params.qi.selection = [rc]
     #
     # validate selection
     #
-    selection_array = model.selection(self.params.qi_helper.selection[0])
+    if len(self.params.qi.qm_restraints)!=0:
+      selection = self.params.qi.qm_restraints[0].selection
+    elif self.params.qi.selection:
+      selection=self.params.qi.selection[0]
+    selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
-    print(selected_model)
+    print('Selected model  %s' % selected_model, file=log)
 
-    # for i, line in enumerate(get_qm_restraints_scope().splitlines()):
-    #   print(i, line)
+    if self.params.qi.write_qmr_phil:
+      self.write_qmr_phil()
 
+    if self.params.qi.run_qmr:
+      self.params.qi.qm_restraints.selection=self.params.qi.selection
+      self.run_qmr()
+
+  def run_qmr(self, log=None):
+    from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
+    model = self.data_manager.get_model()
+    rc = update_restraints( model,
+                            self.params,
+                            # macro_cycle=self.macro_cycle,
+                            # nproc=self.params.main.nproc,
+                            log=log,
+                            )
+
+  def write_qmr_phil(self, log=None):
     qi_phil_string = get_qm_restraints_scope()
     qi_phil_string = qi_phil_string.replace('selection = None',
-                                            'selection = "%s"' % self.params.qi_helper.selection[0])
+                                            'selection = "%s"' % self.params.qi.selection[0])
     qi_phil_string = qi_phil_string.replace('read_output_to_skip_opt_if_available = False',
                                             'read_output_to_skip_opt_if_available = True')
     qi_phil_string = qi_phil_string.replace('capping_groups = False',
@@ -115,10 +151,12 @@ Usage examples:
       s=s.replace('  ','_')
       s=s.replace(' ','_')
       return s
+
     pf = '%s_%s.phil' % (
       self.data_manager.get_default_model_name().replace('.pdb',''),
-      safe_filename(self.params.qi_helper.selection[0]),
+      safe_filename(self.params.qi.selection[0]),
       )
+    print('  Writing QMR phil scope to %s' % pf, file=log)
     f=open(pf, 'w')
     for line in qi_phil_string.splitlines():
       if line.strip().startswith('.'): continue
