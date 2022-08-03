@@ -77,7 +77,7 @@ def write_restraints(model, filename, header=None, log=None):
 
   """
   co = get_restraints_from_model_via_grm(model, ideal=False)
-  print('    Writing restraints : %s' % filename, file=log)
+  print('\n  Writing restraints : %s' % filename, file=log)
   f=open(filename, 'w')
   if header:
     for line in header.splitlines():
@@ -815,6 +815,20 @@ def update_restraints(model,
       angle_proxy.angle_ideal=angle
 
     print('', file=log)
+    #
+    # final stats
+    #
+    gs = ligand_model.geometry_statistics()
+    print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(assert_zero=True),
+          file=log)
+    print('%s%s' % (' '*19, gs.show_planarity_details()), file=log)
+    r=gs.result()
+    if r.planarity.mean>0.02 or r.planarity.max>0.05:
+      print('  %s\n   rmsd values for planarity restraints are high. Check QM minimisation. \n  %s' % (
+            '-'*71,
+            '-'*71,
+            ),
+            file=log)
     if qmr.write_restraints:
       header='''
 Restraints written by QMR process in phenix.refine
@@ -830,22 +844,9 @@ Restraints written by QMR process in phenix.refine
                        header=header,
                        log=log,
                        )
-    #
-    # final stats
-    #
-    gs = ligand_model.geometry_statistics()
-    print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(assert_zero=True),
-          file=log)
-    print('%s%s' % (' '*19, gs.show_planarity_details()), file=log)
-    r=gs.result()
-    if r.planarity.mean>0.02 or r.planarity.max>0.05:
-      print('  %s\n   rmsd values for planarity restraints are high. Check QM minimisation. \n  %s' % (
-            '-'*71,
-            '-'*71,
-            ),
-            file=log)
-  print('  Total time for QM restaints: %0.1fs' % (time.time()-t0), file=log)
-  print('%s%s' % ('<'*40, '>'*40), file=log)
+  print('\n  Total time for QM restaints: %0.1fs\n' % (time.time()-t0), file=log)
+  print('%s%s' % ('/'*39, '\\'*40))
+  print('%s%s' % ('\\'*39, '/'*40))
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)
