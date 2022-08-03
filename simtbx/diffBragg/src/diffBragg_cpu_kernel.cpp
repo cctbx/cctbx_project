@@ -1,8 +1,8 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
 #include <stdbool.h>
-#include<unordered_map>
-#include<string>
+#include <unordered_map>
+#include <string>
 
 namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
 
@@ -423,11 +423,11 @@ void diffBragg_sum_over_steps(
             double two_C = 2*C;
             Eigen::Matrix3d UBOt = U*Bmat_realspace*(eig_O.transpose());
             if (db_flags.refine_Umat[0]){
-                Eigen::Matrix3d dRotMats0(db_cryst.dRotMats[0].data);
                 Eigen::Matrix3d RotMats1(db_cryst.RotMats[1].data);
                 Eigen::Matrix3d RotMats2(db_cryst.RotMats[2].data);
                 Eigen::Matrix3d RyRzUBOt = RotMats1*RotMats2*UBOt;
-                Eigen::Matrix3d UMATS(db_cryst.UMATS[mos_tic].data); 
+                Eigen::Matrix3d UMATS(db_cryst.UMATS[mos_tic].data);
+                Eigen::Matrix3d dRotMats0(db_cryst.dRotMats[0].data);
                 Eigen::Vector3d delta_H_prime = (UMATS*dRotMats0*RyRzUBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;

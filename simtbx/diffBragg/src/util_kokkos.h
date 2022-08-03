@@ -1,10 +1,11 @@
-#ifndef SIMTBX_DIFFBRAGG_UTIL
-#define SIMTBX_DIFFBRAGG_UTIL
+#ifndef SIMTBX_DIFFBRAGG_UTIL_KOKKOS
+#define SIMTBX_DIFFBRAGG_UTIL_KOKKOS
 
 #include <vector>
 #include "kokkostbx/kokkos_matrix3.h"
 // #include "kokkostbx/kokkos_types.h"
 #include "kokkostbx/kokkos_vector3.h"
+#include "simtbx/diffBragg/src/util.h"
 
 #ifndef CUDAREAL
     #define CUDAREAL double
@@ -16,106 +17,17 @@ using MAT3 = kokkostbx::matrix3<CUDAREAL>;
 // using vector_vec3_t = view_1d_t<VEC3>;
 // using vector_mat3_t = view_1d_t<MAT3>;
 
-struct timer_variables {
-    CUDAREAL add_spots_pre = 0;             // times the initializations for add spots kernel
-    CUDAREAL add_spots_post = 0;            // times the copies that occur after add spots kernel
-    CUDAREAL add_spots_kernel_wrapper = 0;  // times the add spots kernel overall, either CPU or GPU
-    CUDAREAL cuda_alloc = 0;                // times the allocation of the device
-    CUDAREAL cuda_copy_to_dev = 0;          // times the copying from host to device
-    CUDAREAL cuda_copy_from_dev = 0;        // times the copying back from device to host
-    CUDAREAL cuda_kernel = 0;               // times the GPU kernel
-    int timings = 0;                        // how many times these variables were incremented
-    bool recording = true;
-};
+VEC3 to_vec3(const Eigen::Vector3d& v) {
+    return VEC3(v[0], v[1], v[2]);
+}
+
+MAT3 to_mat3(const Eigen::Matrix3d& m) {
+    // Eigen matrix is column-major!
+    return MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
+}
 
 // CONTAINERS
-struct images {
-    image_type wavelength;     // image for storing mean wavelength of each pixel
-    image_type Umat;           // umatrix gradients
-    image_type Bmat;           // Bmatrix gradients
-    image_type Ncells;         // mosaic domain size gradients
-    image_type fcell;          // structure factor gradients
-    image_type eta;            // mosaic spread gradients
-    image_type lambda;         // spectrum affine transform gradients
-    image_type panel_rot;      // panel rotation gradients
-    image_type panel_orig;     // panel translation gradients
-    image_type fp_fdp;         // fprime and fdblprime gradients
-    image_type diffuse_gamma;  // diffuse gamma gradients
-    image_type diffuse_sigma;  // diffuse sigma gradients
-};
-
-struct step_arrays {
-    int* subS_pos;    // stepping through the slow-scan detector axis
-    int* subF_pos;    // ''   fast-scan ''
-    int* thick_pos;   // stepping through the detector thickness
-    int* source_pos;  // stepping through the beam wavelengths
-    int* phi_pos;     // stepping through the gonio scan
-    int* mos_pos;     // stepping through mosaic blocks (for mosaic spread)
-    int Nsteps;       // total number of steps
-};
-
-struct cuda_flags {
-    int device_Id = 0;     // gpu device id
-    int Npix_to_allocate;  // how much space to allocate for simulating forward model and gradients
-    // these following flags indicate whether to update quantities on the GPU device prior to
-    // running the kernel ( of course they are all set prior to running the kernel for the first
-    // time)
-    bool update_step_positions;      // step arrays
-    bool update_panels_fasts_slows;  // pixels to simulatoe (panel id, fast scan, slow scan)
-    bool update_sources;             // beam sources
-    bool update_umats;               // umatrices for mosaic blocks
-    bool update_dB_mats;   // derivative of the orthogonalization matrix (for unit cell derivatives)
-    bool update_rotmats;   // rotation matrices (for Umat derivatives)
-    bool update_Fhkl;      // structure factors
-    bool update_detector;  // detector vectors (origin, slow-axis, fast-axis, orth-axis)
-    bool update_refine_flags;  // refinement flags (in case one is iteratively freezing parameters)
-    bool update_panel_deriv_vecs;  // if one is refining the detector vectors)
-};
-
-struct flags {
-    bool wavelength_img = false;
-    bool track_Fhkl;   // for CPU kernel only, track the HKLS evaluated in the inner most loop
-    bool printout;     // whether to printout debug info for a pixel
-    bool nopolar;      // disable polarization effects
-    bool point_pixel;  // approximate solid angle effects
-    bool only_save_omega_kahn;  // only save the polarization and solid angle corrections
-                                // (deprecated)
-    bool compute_curvatures;    // whether to compute the curvatures in addition to gradients
-    bool isotropic_ncells;      // one mosaic domain parameter
-    bool complex_miller;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are
-                          // both defined)
-    bool no_Nabc_scale;   // no Nabc prefactor
-    bool refine_diffuse;  // flag for computing diffuse gradients
-    std::vector<bool> refine_Bmat;          //  Bmatrix
-    std::vector<bool> refine_Ncells;        // mosaic domain size
-    bool refine_Ncells_def;                 // mosaic domain size off diag
-    std::vector<bool> refine_panel_origin;  // panel shift
-    std::vector<bool> refine_panel_rot;     // detector panel rotation
-    bool refine_fcell;                      // structure factor
-    std::vector<bool> refine_lambda;        // spectrum affine correction
-    bool refine_eta;                        // mosaic spread
-    std::vector<bool> refine_Umat;          // missetting angle umatrix
-    bool refine_fp_fdp;                     // fprime and fbl prime
-    bool use_lambda_coefficients;           // affine correction lam0 , lam1
-    bool oversample_omega;                  // omega is computed separately for each sub-pixel
-    int printout_fpixel,
-        printout_spixel;        // debug printout pixel (fast scan, slow scan) // TODO add panel id
-    int verbose;                // nanoBragg verbosity flag
-    bool use_diffuse = false;   // model  diffuse
-    bool only_diffuse = false;  // model  diffuse scattering (experimental)
-    bool refine_Icell =
-        false;  // option to refine the structure factor intensity directly (F_cell^2)
-                // The miller array used by nanoBragg/diffBragg is double precision, and hence
-                // allows for negative values. If refine_Icell=True, then the value stored in the
-                // data component of the miller array is assumed to be an intensity, as opposed to
-                // an amplitude. In such cases, the gradient of the scattering w.r.t. this parameter
-                // is modified accordingly such that one could use those gradients as part of a
-                // refinement protocol to optimize I_cell
-
-    bool gamma_miller_units = false;  // use Miller index units for diffuse gamma matrix
-};
-
-struct crystal {
+struct kokkos_crystal {
     MAT3 anisoG;
     std::vector<MAT3> dG_dgamma;
     std::vector<MAT3> dU_dsigma;
@@ -157,9 +69,89 @@ struct crystal {
     std::vector<MAT3> UMATS_dbl_prime;
     std::vector<MAT3> dB_Mats;
     std::vector<MAT3> dB2_Mats;
+
+    kokkos_crystal(crystal T) :
+    anisoG(to_mat3(T.anisoG)),
+    anisoU(to_mat3(T.anisoU)),
+    mosaic_domains(T.mosaic_domains),
+    Na(T.Na),
+    Nb(T.Nb),
+    Nc(T.Nc),
+    Nd(T.Nd),
+    Ne(T.Ne),
+    Nf(T.Nf),
+    phi0(T.phi0),
+    phistep(T.phistep),
+    phisteps(T.phisteps),
+    fudge(T.fudge),
+    spot_scale(T.spot_scale),
+    h_range(T.h_range),
+    k_range(T.k_range),
+    l_range(T.l_range),
+    h_max(T.h_max),
+    h_min(T.h_min),
+    k_max(T.k_max),
+    k_min(T.k_min),
+    l_max(T.l_max),
+    l_min(T.l_min),
+    dmin(T.dmin),
+    FhklLinear(T.FhklLinear),
+    Fhkl2Linear(T.Fhkl2Linear),
+    fpfdp(T.fpfdp),
+    fpfdp_derivs(T.fpfdp_derivs),
+    atom_data(T.atom_data),
+    nominal_hkl(T.nominal_hkl),
+    default_F(T.default_F),
+    r_e_sqr(T.r_e_sqr),
+    eig_U(to_mat3(T.eig_U)),
+    eig_O(to_mat3(T.eig_O)),
+    eig_B(to_mat3(T.eig_B)),
+    RXYZ(to_mat3(T.RXYZ)),
+    spindle_vec(to_vec3(T.spindle_vec))    
+    {
+        for (auto& mat : T.dG_dgamma) {
+            dG_dgamma.push_back(to_mat3(mat));
+        }
+        for (auto& mat : T.dU_dsigma) {
+            dU_dsigma.push_back(to_mat3(mat));
+        }
+        for (auto& mat : T.UMATS_RXYZ) {
+            UMATS_RXYZ.push_back(to_mat3(mat));
+        }
+        for (auto& mat : T.UMATS_RXYZ_prime) {
+            UMATS_RXYZ_prime.push_back(to_mat3(mat));
+        }
+        for (auto& mat : T.UMATS_RXYZ_dbl_prime) {
+            UMATS_RXYZ_dbl_prime.push_back(to_mat3(mat));
+        }
+        for (auto& mat : T.RotMats) {
+            RotMats.push_back(to_mat3(mat));
+        }    
+        for (auto& mat : T.dRotMats) {
+            dRotMats.push_back(to_mat3(mat));
+        } 
+        for (auto& mat : T.d2RotMats) {
+            d2RotMats.push_back(to_mat3(mat));
+        }     
+        for (auto& mat : T.UMATS) {
+            UMATS.push_back(to_mat3(mat));
+        }  
+        for (auto& mat : T.UMATS_prime) {
+            UMATS_prime.push_back(to_mat3(mat));
+        }  
+        for (auto& mat : T.UMATS_dbl_prime) {
+            UMATS_dbl_prime.push_back(to_mat3(mat));
+        }     
+        for (auto& mat : T.dB_Mats) {
+            dB_Mats.push_back(to_mat3(mat));
+        } 
+        for (auto& mat : T.dB2_Mats) {
+            dB2_Mats.push_back(to_mat3(mat));
+        }                                                              
+    }
 };
 
-struct beam {
+struct kokkos_beam {
     VEC3 polarization_axis;
     CUDAREAL fluence;                          // total fluence
     CUDAREAL kahn_factor;                      // polarization factor
@@ -168,9 +160,22 @@ struct beam {
     CUDAREAL* source_I;                        // intensities
     CUDAREAL lambda0, lambda1;                 // affine correction to spectra
     int number_of_sources;                     // number of beams
+
+    kokkos_beam(beam T)
+        : fluence(T.fluence),
+          kahn_factor(T.kahn_factor),
+          source_X(T.source_X),
+          source_Y(T.source_Y),
+          source_Z(T.source_Z),
+          source_lambda(T.source_lambda),
+          source_I(T.source_I),
+          lambda0(T.lambda0),
+          lambda1(T.lambda1),
+          number_of_sources(T.number_of_sources),
+          polarization_axis(to_vec3(T.polarization_axis)){};
 };
 
-struct detector {
+struct kokkos_detector {
     std::vector<VEC3> dF_vecs;  // derivative of the panel fast direction
     std::vector<VEC3> dS_vecs;  // derivative of the panel slow direction
     CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
@@ -179,6 +184,27 @@ struct detector {
     CUDAREAL subpixel_size, pixel_size;
     std::vector<CUDAREAL> fdet_vectors, sdet_vectors, odet_vectors,
         pix0_vectors;  // these define the detector (fast, slow, orth, origin)
+
+    kokkos_detector(detector T)
+        : detector_thickstep(T.detector_thickstep),
+          detector_thicksteps(T.detector_thicksteps),
+          detector_thick(T.detector_thick),
+          detector_attnlen(T.detector_attnlen),
+          close_distances(T.close_distances),
+          oversample(T.oversample),
+          subpixel_size(T.subpixel_size),
+          pixel_size(T.pixel_size),
+          fdet_vectors(T.fdet_vectors),
+          sdet_vectors(T.sdet_vectors),
+          odet_vectors(T.odet_vectors),
+          pix0_vectors(T.pix0_vectors) {
+        for (auto& vec : T.dF_vecs) {
+            dF_vecs.push_back(to_vec3(vec));
+        }
+        for (auto& vec : T.dS_vecs) {
+            dS_vecs.push_back(to_vec3(vec));
+        }
+    }
 };
 
 #endif

@@ -25,95 +25,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         exit(-1);
     }
 
-    // static bool m_device_is_allocated = false;
-    // static int m_npix_allocated=0;
-    // static int m_previous_nsource=0;
-
-    // static vector_uint_t m_panels_fasts_slows =
-    // vector_uint_t("m_panels_fasts_slows", 0);
-
-    // CUDAREAL_VIEW(m_floatimage);
-    // CUDAREAL_VIEW(m_wavelenimage);
-    // CUDAREAL_VIEW(m_d_diffuse_sigma_images);
-    // CUDAREAL_VIEW(m_d_diffuse_gamma_images);
-    // CUDAREAL_VIEW(m_d_Umat_images);
-    // CUDAREAL_VIEW(m_d_Bmat_images);
-    // CUDAREAL_VIEW(m_d_Ncells_images);
-    // CUDAREAL_VIEW(m_d_fcell_images);
-    // CUDAREAL_VIEW(m_d_eta_images);
-    // CUDAREAL_VIEW(m_d2_eta_images);
-    // CUDAREAL_VIEW(m_d_lambda_images);
-    // CUDAREAL_VIEW(m_d_panel_rot_images);
-    // CUDAREAL_VIEW(m_d_panel_orig_images);
-
-    // CUDAREAL_VIEW(m_d2_Umat_images);
-    // CUDAREAL_VIEW(m_d2_Bmat_images);
-    // CUDAREAL_VIEW(m_d2_Ncells_images);
-    // CUDAREAL_VIEW(m_d2_fcell_images);
-    // CUDAREAL_VIEW(m_d2_lambda_images);
-    // CUDAREAL_VIEW(m_d2_panel_rot_images);
-    // CUDAREAL_VIEW(m_d2_panel_orig_images);
-
-    // CUDAREAL_VIEW(m_d_sausage_XYZ_scale_images);
-    // CUDAREAL_VIEW(m_d_fp_fdp_images);
-
-    // INTEGER_VIEW(m_subS_pos);
-    // INTEGER_VIEW(m_subF_pos);
-    // INTEGER_VIEW(m_thick_pos);
-    // INTEGER_VIEW(m_source_pos);
-    // INTEGER_VIEW(m_mos_pos);
-    // INTEGER_VIEW(m_phi_pos);
-    // INTEGER_VIEW(m_sausage_pos);
-
-    // CUDAREAL_VIEW(m_Fhkl);
-    // CUDAREAL_VIEW(m_Fhkl2);
-
-    // CUDAREAL_VIEW(m_fdet_vectors);
-    // CUDAREAL_VIEW(m_sdet_vectors);
-    // CUDAREAL_VIEW(m_odet_vectors);
-    // CUDAREAL_VIEW(m_pix0_vectors);
-    // CUDAREAL_VIEW(m_close_distances);
-
-    // INTEGER_VIEW(m_nominal_hkl);
-    // CUDAREAL_VIEW(m_fpfdp);
-    // CUDAREAL_VIEW(m_fpfdp_derivs);
-    // CUDAREAL_VIEW(m_atom_data);
-
-    // CUDAREAL_VIEW(m_source_X);
-    // CUDAREAL_VIEW(m_source_Y);
-    // CUDAREAL_VIEW(m_source_Z);
-    // CUDAREAL_VIEW(m_source_I);
-    // CUDAREAL_VIEW(m_source_lambda);
-    // static int m_sources;
-    // static bool m_sources_are_allocated = false;
-    // static bool m_sources_recopy = false;
-
-    // MATRIX3_VIEW(m_UMATS);
-    // MATRIX3_VIEW(m_dB_Mats);
-    // MATRIX3_VIEW(m_dB2_Mats);
-    // MATRIX3_VIEW(m_UMATS_RXYZ);
-    // MATRIX3_VIEW(m_UMATS_RXYZ_prime);
-    // MATRIX3_VIEW(m_UMATS_RXYZ_dbl_prime);
-    // MATRIX3_VIEW(m_RotMats);
-    // MATRIX3_VIEW(m_dRotMats);
-    // MATRIX3_VIEW(m_d2RotMats);
-
-    // MATRIX3_VIEW(m_AMATS);
-
-    // static vector_vec3_t m_dF_vecs = vector_vec3_t("m_dF_vecs", 0);
-    // static vector_vec3_t m_dS_vecs = vector_vec3_t("m_dS_vecs", 0);
-
-    // MATRIX3_VIEW(m_sausages_RXYZ);
-    // MATRIX3_VIEW(m_d_sausages_RXYZ);
-    // MATRIX3_VIEW(m_sausages_U);
-    // CUDAREAL_VIEW(m_sausages_scale);
-
-    // static vector_bool_t m_refine_Bmat = vector_bool_t("m_refine_Bmat", 6);
-    // static vector_bool_t m_refine_Umat = vector_bool_t("m_refine_Umat", 3);
-    // static vector_bool_t m_refine_Ncells = vector_bool_t("m_refine_Ncells", 3);
-    // static vector_bool_t m_refine_panel_origin = vector_bool_t("m_refine_panel_origin", 3);
-    // static vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
-    // static vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
+    kokkos_detector local_det(db_det);  
+    kokkos_beam local_beam(db_beam);
+    kokkos_crystal local_cryst(db_cryst);
 
     // int numblocks;
     // int blocksize;

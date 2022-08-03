@@ -1,5 +1,5 @@
 #include <sys/time.h>
-#include <simtbx/diffBragg/src/diffBragg.h>
+#include "simtbx/diffBragg/src/diffBragg.h"
 #include <assert.h>
 #include <stdbool.h>
 
@@ -125,45 +125,45 @@ rotY_manager::rotY_manager(){
 }
 
 void rotX_manager::set_R(){
-    R << 1,           0,           0,
-          0,  cos(value), sin(value),
-          0, -sin(value), cos(value);
+    R << 1,           0,          0,
+         0,  cos(value), sin(value),
+         0, -sin(value), cos(value);
 
     dR << 0,           0,           0,
-             0,  -sin(value), cos(value),
-             0, -cos(value), -sin(value);
+          0, -sin(value),  cos(value),
+          0, -cos(value), -sin(value);
 
     dR2 << 0,           0,           0,
-              0,  -cos(value), -sin(value),
-              0,   sin(value), -cos(value);
+           0, -cos(value), -sin(value),
+           0,  sin(value), -cos(value);
 
 
 }
 void rotY_manager::set_R(){
-    R << cos(value),0, -sin(value),
-             0,         1,             0,
-            sin(value), 0, cos(value);
+    R << cos(value), 0, -sin(value),
+                  0, 1,           0,
+         sin(value), 0,  cos(value);
 
-    dR << -sin(value),0, -cos(value),
-                0,          0,             0,
-                cos(value), 0, -sin(value);
+    dR << -sin(value), 0, -cos(value),
+                    0, 0,           0,
+           cos(value), 0, -sin(value);
 
-    dR2 << -cos(value),0, sin(value),
-              0,          0,          0,
-             -sin(value), 0, -cos(value);
+    dR2 << -cos(value), 0, sin(value),
+              0,        0,          0,
+           -sin(value), 0, -cos(value);
 }
 void rotZ_manager::set_R(){
-    R  << cos(value),  sin(value), 0,
-              -sin(value), cos(value), 0,
-                         0,           0, 1;
+    R  << cos(value), sin(value), 0,
+         -sin(value), cos(value), 0,
+                   0,          0, 1;
 
     dR << -sin(value),  cos(value), 0,
-               -cos(value), -sin(value), 0,
-                           0,           0, 0;
+          -cos(value), -sin(value), 0,
+                    0,           0, 0;
 
     dR2 << -cos(value), -sin(value), 0,
-               sin(value), -cos(value), 0,
-                        0,           0, 0;
+            sin(value), -cos(value), 0,
+                     0,           0, 0;
 }
 // END rot manager
 
@@ -190,8 +190,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
         db_det.odet_vectors.push_back(0);
         db_det.pix0_vectors.push_back(0);
 
-        // Eigen::Vector3d vec(0,0,0);
-        VEC3 vec;
+        Eigen::Vector3d vec(0,0,0);
         db_det.dF_vecs.push_back(vec);
         db_det.dS_vecs.push_back(vec);
     }

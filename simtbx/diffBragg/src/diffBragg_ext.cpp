@@ -18,9 +18,9 @@ namespace boost_python { namespace {
       double g0 = boost::python::extract<double>(values[0]);
       double g1 = boost::python::extract<double>(values[1]);
       double g2 = boost::python::extract<double>(values[2]);
-      diffBragg.db_cryst.anisoG = MAT3 {g0,0,0,
-                                        0,g1,0,
-                                        0,0,g2};
+      diffBragg.db_cryst.anisoG <<  g0,0,0,
+                                    0,g1,0,
+                                    0,0,g2;
   }
 
   static boost::python::tuple get_diffuse_gamma(simtbx::nanoBragg::diffBragg const& diffBragg) {
@@ -35,16 +35,16 @@ namespace boost_python { namespace {
       double sig2 = boost::python::extract<double>(values[2]);
       double sig_array[3] = {sig0,sig1,sig2};
 
-      diffBragg.db_cryst.anisoU = MAT3{sig0*sig0,0,0,
-                                       0,sig1*sig1,0,
-                                       0,0,sig2*sig2};
+      diffBragg.db_cryst.anisoU <<  sig0*sig0,0,0,
+                                    0,sig1*sig1,0,
+                                    0,0,sig2*sig2;
       diffBragg.db_cryst.dU_dsigma.clear();
       diffBragg.db_cryst.dU_dsigma.resize(3);
 
       for (int i=0; i<3; i++){
-        diffBragg.db_cryst.dU_dsigma[i] = MAT3 {0,0,0,
-                                                0,0,0,
-                                                0,0,0};
+        diffBragg.db_cryst.dU_dsigma[i] <<  0,0,0,
+                                    0,0,0,
+                                    0,0,0;
         diffBragg.db_cryst.dU_dsigma[i](i,i) = 2.*sig_array[i];
       }
   }
@@ -185,9 +185,9 @@ namespace boost_python { namespace {
 
   void set_O(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Omatrix = value;
-    diffBragg.db_cryst.eig_O = MAT3 {value[0], value[1], value[2],
-                                     value[3], value[4], value[5],
-                                     value[6], value[7], value[8]};
+    diffBragg.db_cryst.eig_O << value[0], value[1], value[2],
+            value[3], value[4], value[5],
+            value[6], value[7], value[8];
     //std::cout << "eigO: " << diffBragg.eig_O << std::endl;
   }
 
@@ -197,9 +197,9 @@ namespace boost_python { namespace {
 
   void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Umatrix = value;
-    diffBragg.db_cryst.eig_U = MAT3 {value[0], value[1], value[2],
-                                     value[3], value[4], value[5],
-                                     value[6], value[7], value[8]};
+    diffBragg.db_cryst.eig_U << value[0], value[1], value[2],
+            value[3], value[4], value[5],
+            value[6], value[7], value[8];
   }
 
   static nanoBragg::mat3 get_B(simtbx::nanoBragg::diffBragg& diffBragg){
@@ -222,9 +222,9 @@ namespace boost_python { namespace {
       diffBragg.user_matrix = 1;
       diffBragg.init_cell();
 
-       diffBragg.db_cryst.eig_B = MAT3 {diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
-                                        diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
-                                        diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3]};
+       diffBragg.db_cryst.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
+            diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
+            diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
   }
 
   //void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){
