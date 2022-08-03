@@ -74,9 +74,6 @@ Usage examples:
       prefix = os.path.splitext(self.data_manager.get_default_model_name())[0]
       print('  Setting output prefix to %s' % prefix, file=self.logger)
       self.params.output.prefix = prefix
-    if self.params.qi.run_qmr:
-      print(sys.argv)
-      assert 0
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
