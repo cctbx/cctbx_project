@@ -1954,7 +1954,11 @@ class states(object):
       self.sites_carts.append(sites_cart)
     ph = self.pdb_hierarchy.deep_copy()
     if(self.xray_structure is not None):
-      xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+      if(sites_cart is not None):
+        xrs = self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+      else:
+        xrs = self.xray_structure.replace_sites_cart(
+          new_sites = ph.atoms().extract_xyz())
       ph.adopt_xray_structure(xrs)
     elif(sites_cart is not None):
       ph.atoms().set_xyz(sites_cart)
