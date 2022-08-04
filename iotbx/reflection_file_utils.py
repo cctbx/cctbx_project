@@ -674,11 +674,20 @@ class reflection_file_server(object):
     if(labels is None):
       new_miller_arrays = []
       new_data_scores = []
-      for ma, ds in zip(miller_arrays, data_scores):
-        if(not ((ma.info().labels in [
+      # This allows still use "filtered" if no other option is available
+      for j in range(len(miller_arrays)):
+        ma = miller_arrays[j]
+        ds = data_scores[j]
+        if((ma.info().labels in [
            ['F-obs-filtered', 'SIGF-obs-filtered'],
            ['F-obs-filtered(+)', 'SIGF-obs-filtered(+)', 'F-obs-filtered(-)',
             'SIGF-obs-filtered(-)',],
+            ]) ):
+          data_scores[j] = ds-1
+      #
+      for ma, ds in zip(miller_arrays, data_scores):
+        print(ma.info().labels, ds)
+        if(not ((ma.info().labels in [
            ['F-model', 'PHIF-model'],
            ['F-model(+)', 'PHIF-model(+)', 'F-model(-)', 'PHIF-model(-)'] ]) or
            isinstance(ma.data(), flex.complex_double))):
