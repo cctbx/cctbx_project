@@ -686,7 +686,6 @@ class reflection_file_server(object):
           data_scores[j] = ds-1
       #
       for ma, ds in zip(miller_arrays, data_scores):
-        print(ma.info().labels, ds)
         if(not ((ma.info().labels in [
            ['F-model', 'PHIF-model'],
            ['F-model(+)', 'PHIF-model(+)', 'F-model(-)', 'PHIF-model(-)'] ]) or
