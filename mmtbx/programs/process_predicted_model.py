@@ -291,6 +291,10 @@ Inputs: Model file (PDB, mmCIF)
     else:
       self.pae_matrix = None
 
+    if len(self.model.chain_ids()) != 1:
+      raise Sorry("Input model should have exactly one chain id. (Found: %s)" %(
+        " ".join(self.model.chain_ids())))
+
   def validate(self):  # make sure we have files
     return True
 
