@@ -10,6 +10,7 @@ import boost_adaptbx.boost.python as bp
 from six.moves import range
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
+from mmtbx.maps import map_tools
 
 def get_selection_above_cutoff(m, n):
   return m>=m.as_1d().select(flex.sort_permutation(m.as_1d(), reverse=True))[n]
@@ -412,3 +413,48 @@ class from_map_and_xray_structure_or_fmodel(object):
         map_2 = self.map_model)
     else:
       raise RuntimeError
+
+def map_model_cc_and_vals_per_atom_xtal(
+      fmodel,
+      map_obs_type  = "2mFo-DFc",
+      map_calc_type = "Fmodel",
+      grid_step     = 0.6, # From mosaic work
+      atom_radius   = 2.0):
+  """
+  Calculate CC(map_obs_type, map_calc_type) and map values at atom center of
+  map_obs_type. Crystallography specific since it uses fmodel.
+  fmodel is expected to have all scales set and up to date.
+  """
+  def get_map(map_type):
+    map_coeffs = map_tools.electron_density_map(
+       fmodel = fmodel).map_coefficients(
+         map_type     = map_type,
+         isotropize   = True,
+         fill_missing = False)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = map_coeffs)
+    fft_map.apply_sigma_scaling()
+    return fft_map.real_map_unpadded()
+  xrs = fmodel.xray_structure
+  uc  = xrs.unit_cell()
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell        = uc,
+    space_group_info = xrs.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = grid_step)
+  map_obs  = get_map(map_type = map_obs_type)
+  map_calc = get_map(map_type = map_calc_type)
+  ccs  = flex.double()
+  vals = flex.double()
+  for site_cart, site_frac in zip(xrs.sites_cart(), xrs.sites_frac()):
+    cc = from_map_map_atom(
+      map_1     = map_obs,
+      map_2     = map_calc,
+      site_cart = site_cart,
+      unit_cell = uc,
+      radius    = atom_radius)
+    mv = map_obs.tricubic_interpolation(site_frac)
+    ccs .append(cc)
+    vals.append(mv)
+  return group_args(ccs = ccs, vals = vals)

@@ -95,6 +95,7 @@ general_tests = [
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
   "$D/maps/tst_correlation.py",
+  "$D/maps/tst_map_model_cc_and_vals_per_atom_xtal.py",
   "$D/regression/ncs/tst_ncs_utils.py",
   "$D/regression/ncs/tst_ncs_restraints_group_list.py",
   "$D/regression/ncs/tst_ncs_search.py",
