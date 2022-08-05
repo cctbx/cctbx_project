@@ -1878,6 +1878,23 @@ def duplicate_multiple_chains(text):
     text = text.replace(">\n\n>",">")
     return text
 
+def remove_inside_brackets(text):
+  # remove everything enclosed in []
+  if not text.find("[")>-1:
+    return text
+  new_text = ""
+  found_lb = False
+  for c in text:
+    if c=="[":
+      found_lb = True 
+    elif c == "]":
+      found_lb = False
+    elif found_lb:
+      pass # skip it
+    else:
+      new_text += c
+  return new_text
+
 def get_number_of_dups(line):
   # looks like >7WZE_1|Chains A, B[Auth X]| or similar
   if not line.startswith(">"):
@@ -1886,10 +1903,9 @@ def get_number_of_dups(line):
   if len(spl) < 2:
     return 1
   text = spl[1].strip()
+  text = remove_inside_brackets(text)
   if not text.startswith("Chain"):
     return 1
-  if text.find("[") > -1:
-    text = text.split("[")[0]
   text = text.replace("Chains","").replace("Chain","").replace("=",""
        ).replace(",","")
   values = text.split()
