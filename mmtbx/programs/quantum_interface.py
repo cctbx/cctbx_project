@@ -32,20 +32,12 @@ def _add_HIS_H_atom_to_atom_group(ag, name):
   ag.append_atom(atom)
   return ag
 
-def junk():
-
-  for name in ['CG', 'CD2', 'ND1', 'CD2', 'NE2']:
-    atom = ag.get_atom(name)
-    print(name,atom)
-    print(type(atom.xyz))
-
 def add_histidine_H_atoms(hierarchy):
   '''
   HIS      ND1    HD1       coval       0.860    0.020    1.020
   HIS      NE2    HE2       coval       0.860    0.020    1.020
   '''
-  for i, ag in enumerate(hierarchy.atom_groups()):
-    pass
+  for i, ag in enumerate(hierarchy.atom_groups()): pass
   assert i==0
   ag = ag.detached_copy()
   for name in [' HD1', ' HE2']:
