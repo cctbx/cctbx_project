@@ -1886,7 +1886,7 @@ def remove_inside_brackets(text):
   found_lb = False
   for c in text:
     if c=="[":
-      found_lb = True 
+      found_lb = True
     elif c == "]":
       found_lb = False
     elif found_lb:
@@ -2171,4 +2171,3 @@ def random_sequence(n_residues=None,residue_basket=None,
     id=random.randint(0,nn)
     s+=residue_basket[id]
   return s
-
