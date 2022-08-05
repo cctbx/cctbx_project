@@ -54,6 +54,7 @@ class WBmessenger(object):
       self.browserisopen = False
       self.msgqueue = []
       self.clientmsgqueue = []
+      self.replace_msg_lst = []
       self.msgdelim = ":\n"
       self.ishandling = False
       self.websockclient = None
@@ -85,15 +86,11 @@ class WBmessenger(object):
           import logging
           logging.getLogger("asyncio").setLevel(logging.WARNING)
 
-      #ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-      #localhost_pem = pathlib.Path(__file__).with_name("localhost.pem")
-      #ssl_context.load_cert_chain(localhost_pem)
       self.server = websockets.serve(self.WebSockHandler, 'localhost',
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
       self.mprint("Starting websocket server on port %s" %str(self.websockport), verbose=1)
-      #time.sleep(20)
       time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
       self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )
@@ -165,7 +162,21 @@ class WBmessenger(object):
         if self.was_disconnected != 4242:
           self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=1)
       self.clientmsgqueue_sem.acquire(blocking=True, timeout=lock_timeout)
-      self.clientmsgqueue.append(message)
+      # Avoid overwhelming ProcessBrowserMessage() with too many messages of the same kind (like tooltips)
+      # as it will uncontrolably grow clientmsgqueue which will slow down or make HKLviewer unresponsive
+      # when displaying tooltips of a big dataset.
+      # Instead we check if the substring rmsg matches the current message. If so and if it is already
+      # present in clientmsgqueue, then replace it with message rather than appending it to clientmsgqueue.
+      notfound = True
+      for rmsg in self.replace_msg_lst:
+        if rmsg in message:
+          for msg in self.clientmsgqueue:
+            if rmsg in msg:
+              msg = message
+              notfound = False
+              break
+      if notfound:
+        self.clientmsgqueue.append(message)
       self.clientmsgqueue_sem.release()
 
 
@@ -223,8 +234,6 @@ class WBmessenger(object):
       self.parent.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.parent.lastviewmtrx)
-    #else:
-    #  self.parent.SetAutoView()
 
 
   def OnLostConnectWebsocketClient(self, client, close_code, close_reason):

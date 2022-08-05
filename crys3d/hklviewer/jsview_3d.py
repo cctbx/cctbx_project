@@ -251,6 +251,11 @@ class HKLview_3d:
     self.autoview_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
+    # Don't overwhelm ProcessBrowserMessage() with the flurry of tooltips that can get emitted by javascript
+    # when tooltips are shown for a large dataset as this makes the HKLviewer unresponsive.
+    # replace_msg_lst is a list of strings that matches the
+    # particular messages we want to replace rather than append to the message queue.
+    self.WBmessenger.replace_msg_lst = ["tooltip_id:"]
     self.WBmessenger.StartWebsocket()
     self.javascriptcleaned = False
 
