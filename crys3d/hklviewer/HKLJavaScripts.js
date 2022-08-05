@@ -75,6 +75,7 @@ var PlusBtn = null;
 var MinusBtn = null;
 var pmleft = null;
 var pmbottom = null;
+var btnwidth = null;
 var StopAnimateBtn = null;
 var hklequationmsg = "";
 var animatheta = 0.0;
@@ -1310,11 +1311,11 @@ function onMessage(e)
         infobanner = null;
       }
       pmleft = 70 + wp;
-      pmbottom = 35;
       MakePlusMinusButtons();
       if (hklequationmsg == "")
         return;
-      infobanner = addBottomDivBox(hklequationmsg, 35, 65, wp + 2, 15, "rgba(255, 255, 255, 1.0)", infofsize);
+      infobanner = addBottomDivBox(hklequationmsg, pmbottom, 65, wp + 2, 3 + infofsize, 
+                                    "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
     if (msgtype === "SetBrowserDebug") {
@@ -1834,7 +1835,8 @@ function MakeXYZ_Axis() {
     XYZaxes.remove(); // delete previous colour chart if any
   XYZaxes = addDivBox(null, 0, 10, 60, 60, "rgba(255, 255, 255, 0.0)");
   XYZaxes.style.top = ""; // offset from the bottom so leave top distance void
-  XYZaxes.style.bottom = "30px";
+  //XYZaxes.style.bottom = "30px";
+  XYZaxes.style.bottom = pmbottom.toString() + "px";
 
   let velm = createElement("div", { innerText: "" },
     {
@@ -2080,6 +2082,7 @@ function MakeButtons() {
     ResetViewBtn.remove();
 
   let btnwidth = getTextWidth("Reset View", fontsize);
+  pmbottom = 5 + 3*fontsize; // used by MakePlusMinusButtons() 
   ResetViewBtn = createElement("input", {
     value: "Reset view",
     type: "button",
