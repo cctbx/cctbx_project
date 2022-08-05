@@ -239,8 +239,11 @@ def get_restraints_from_model_via_grm(ligand_model,
       for row in loop.iterrows():
         name = row['_chem_comp_atom.atom_id']
         atom = ag.get_atom(name)
-        for i in range(3):
-          values[i].append('%.5f' % atom.xyz[i])
+        if atom is None:
+          print('Failed to find atom %s' % name)
+        else:
+          for i in range(3):
+            values[i].append('%.5f' % atom.xyz[i])
       loop.update_column('_chem_comp_atom.x', values[0])
       loop.update_column('_chem_comp_atom.y', values[1])
       loop.update_column('_chem_comp_atom.z', values[2])

@@ -150,7 +150,9 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
   else:
     s+='%s_%s' % (get_safe_filename(qmr.selection), qmr.buffer)
   if qmr.capping_groups:
-    s+='_0'
+    s+='_C'
+  if qmr.include_nearest_neighbours_in_optimisation:
+    s+='_N'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)
   if qmr.package.basis_set is not Auto and qmr.package.basis_set:

@@ -5,28 +5,11 @@ from iotbx.pdb import amino_acid_codes as aac
 from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
 from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
+from mmtbx.ligands.ready_set_basics import get_hierarchy_h_atom
 from mmtbx.hydrogens.specialised_hydrogen_atoms import conditional_add_cys_hg_to_atom_group
 from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
-
-def get_hierarchy_atom(name, element, xyz, occ, b):
-  atom = iotbx.pdb.hierarchy.atom()
-  atom.name = name
-  atom.element = element #"H"
-  atom.xyz = xyz # rh3[i]
-  atom.occ = occ # n.occ
-  atom.b = b #n.b
-  atom.segid = ' '*4
-  return atom
-
-def get_hierarchy_h_atom(name, xyz, heavy_atom):
-  return get_hierarchy_atom(name,
-                            'H',
-                            xyz,
-                            heavy_atom.occ,
-                            heavy_atom.b,
-                            )
 
 def is_n_terminal_residue(residue_group):
   residues = []

@@ -1,8 +1,10 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.qi
 from __future__ import absolute_import, division, print_function
 import os
+import copy
 from libtbx.program_template import ProgramTemplate
 
+from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
 
 import iotbx.pdb
@@ -10,6 +12,86 @@ import iotbx.phil
 from libtbx.utils import Sorry
 
 get_class = iotbx.pdb.common_residue_names_get_class
+
+def _add_HIS_H_atom_to_atom_group(ag, name):
+  # from scitbx.array_family import flex
+  from mmtbx.ligands.ready_set_basics import construct_xyz
+  from mmtbx.ligands.ready_set_basics import get_hierarchy_h_atom
+ # move to basics
+  bonded = {'HD1' : ['ND1', 'CE1', 'NE2'],
+            'HE2' : ['NE2', 'CD2', 'CG'],
+           }
+  atoms = []
+  for i in range(3):
+    atoms.append(ag.get_atom(bonded[name.strip()][i]))
+  ro2 = construct_xyz(atoms[0], 0.9,
+                      atoms[1], 126.,
+                      atoms[2], 180.,
+                     )
+  atom = get_hierarchy_h_atom(name, ro2[0], atoms[0])
+  ag.append_atom(atom)
+  return ag
+
+def junk():
+
+  for name in ['CG', 'CD2', 'ND1', 'CD2', 'NE2']:
+    atom = ag.get_atom(name)
+    print(name,atom)
+    print(type(atom.xyz))
+
+def add_histidine_H_atoms(hierarchy):
+  '''
+  HIS      ND1    HD1       coval       0.860    0.020    1.020
+  HIS      NE2    HE2       coval       0.860    0.020    1.020
+  '''
+  for i, ag in enumerate(hierarchy.atom_groups()):
+    pass
+  assert i==0
+  ag = ag.detached_copy()
+  for name in [' HD1', ' HE2']:
+    atom = ag.get_atom(name.strip())
+    if atom is None:
+      ag = _add_HIS_H_atom_to_atom_group(ag, name)
+  return ag
+
+def generate_flipping_his(ag, return_hierarchy=False, chain_id=None, resseq=None):
+  # assume double protonated HIS
+  for flip in range(2):
+    for i, (hd, he) in enumerate([[1,1], [1,0], [0,1], [0,0]]):
+      if i==0 and flip:
+        for n1, n2 in [[' ND1', ' CD2'],
+                       [' CE1', ' NE2'],
+                       [' HD1', ' HD2'],
+                       [' HE1', ' HE2'],
+                      ]:
+          a1 = ag.get_atom(n1.strip())
+          a2 = ag.get_atom(n2.strip())
+          tmp = a1.xyz
+          a1.xyz = a2.xyz
+          a2.xyz = tmp
+      rc = iotbx.pdb.hierarchy.atom_group()
+      rc.resname='HIS'
+      for atom in ag.atoms():
+        if hd==0 and atom.name==' HD1': continue
+        if he==0 and atom.name==' HE2': continue
+        atom = atom.detached_copy()
+        rc.append_atom(atom)
+      if return_hierarchy:
+        ph = iotbx.pdb.hierarchy.root()
+        m = iotbx.pdb.hierarchy.model()
+        c = iotbx.pdb.hierarchy.chain()
+        if chain_id is None: c.id='A'
+        else: c.id=chain_id
+        r = iotbx.pdb.hierarchy.residue_group()
+        if resseq is None: r.resseq='1'
+        else: r.resseq=resseq
+        r.append_atom_group(rc)
+        c.append_residue_group(r)
+        m.append_chain(c)
+        ph.append_model(m)
+        yield ph
+      else:
+        yield rc
 
 def get_selection_from_user(hierarchy):
   j=0
@@ -61,6 +143,8 @@ Usage examples:
       .type = bool
     run_qmr = False
       .type = bool
+    iterate_histidine = None
+      .type = atom_selection
   }
 """ % (get_qm_restraints_scope())
 
@@ -74,6 +158,8 @@ Usage examples:
       prefix = os.path.splitext(self.data_manager.get_default_model_name())[0]
       print('  Setting output prefix to %s' % prefix, file=self.logger)
       self.params.output.prefix = prefix
+    if self.params.qi.iterate_histidine:
+      self.params.qi.selection = [self.params.qi.iterate_histidine]
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -84,7 +170,9 @@ Usage examples:
     # cif_object = None
     # if self.data_manager.has_restraints():
     #   cif_object = self.data_manager.get_restraint()
-    if not self.params.qi.selection and len(self.params.qi.qm_restraints)==0:
+    if (not self.params.qi.selection and
+        self.params.qi.iterate_histidine is None and
+        len(self.params.qi.qm_restraints)==0):
       rc = get_selection_from_user(model.get_hierarchy())
       self.params.qi.selection = [rc]
     #
@@ -97,6 +185,7 @@ Usage examples:
     selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
     print('Selected model  %s' % selected_model, file=log)
+    self.data_manager.add_model('ligand', selected_model)
 
     if self.params.qi.write_qmr_phil:
       self.write_qmr_phil()
@@ -105,17 +194,51 @@ Usage examples:
       self.params.qi.qm_restraints.selection=self.params.qi.selection
       self.run_qmr()
 
+    if self.params.qi.iterate_histidine:
+      self.iterate_histidine(self.params.qi.iterate_histidine)
+
+  def iterate_histidine(self, selection, log=None):
+    if len(self.params.qi.qm_restraints)<1:
+      self.write_qmr_phil(iterate_histidine=True)
+      print('Restart command with PHIL file')
+      return
+    model = self.data_manager.get_model()
+    selection_array = model.selection(selection)
+    selected_model = model.select(selection_array)
+    hierarchy = selected_model.get_hierarchy()
+    # add all H atoms
+    his_ag = add_histidine_H_atoms(hierarchy)
+    for atom in hierarchy.atoms(): break
+    rg_resseq = atom.parent().parent().resseq
+    chain_id = atom.parent().parent().parent().id
+    for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
+      model = self.data_manager.get_model()
+      hierarchy = model.get_hierarchy()
+      for chain in hierarchy.chains():
+        if chain.id!=chain_id: continue
+        for rg in chain.residue_groups():
+          if rg.resseq!=rg_resseq: continue
+          for j, ag in enumerate(rg.atom_groups()): pass
+          assert j==0
+          rg.remove_atom_group(ag)
+          rg.insert_atom_group(0, flipping_his)
+      # hierarchy.write_pdb_file('his_%02d.pdb' % i)
+      self.params.output.prefix='iterate_histidine_%02d' % (i+1)
+      # self.params.output.prefix='his_%02d' % (i+1)
+      update_restraints(model,
+                        self.params,
+                        never_write_restraints=True,
+                        log=log)
+      # run clashscore
+
   def run_qmr(self, log=None):
-    from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
     model = self.data_manager.get_model()
     rc = update_restraints( model,
                             self.params,
-                            # macro_cycle=self.macro_cycle,
-                            # nproc=self.params.main.nproc,
                             log=log,
                             )
 
-  def write_qmr_phil(self, log=None):
+  def write_qmr_phil(self, iterate_histidine=False, log=None):
     qi_phil_string = get_qm_restraints_scope()
     qi_phil_string = qi_phil_string.replace('selection = None',
                                             'selection = "%s"' % self.params.qi.selection[0])
@@ -139,6 +262,11 @@ Usage examples:
     qi_phil_string = qi_phil_string.replace('qm_restraints',
                                             'refinement.qi.qm_restraints',
                                             1)
+    if iterate_histidine:
+      qi_phil_string = qi_phil_string.replace('refinement.', '')
+      qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
+                                              'ignore_x_h_distance_protein = True')
+
     def safe_filename(s):
       s=s.replace('chain ','')
       s=s.replace('resname ','')

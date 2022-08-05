@@ -650,6 +650,7 @@ def update_restraints(model,
                       macro_cycle=None,
                       # run_program=True,
                       # transfer_internal_coordinates=True,
+                      never_write_restraints=False,
                       nproc=1,
                       log=StringIO(),
                       ):
@@ -829,7 +830,7 @@ def update_restraints(model,
             '-'*71,
             ),
             file=log)
-    if qmr.write_restraints:
+    if qmr.write_restraints and not never_write_restraints:
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()
