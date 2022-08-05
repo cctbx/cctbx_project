@@ -34,9 +34,16 @@ database = {'Zn2+ tetrahedral': {
         }, #    Cys1His3
     (0,4) : {
         }, #n/a n/a     Insufficient data       Insufficient data       His4
+    },
+    'Mg2+ Nucleotide' : {
+    (4,2) : {
+        ('MG', 'O') : (1.99, 0.02), # water coordination
+        ('MG', 'O*') : (2.06, 0.02), # Oxygen atom in PO4
+      },
     }
   }
 database['ZN'] = database['Zn2+ tetrahedral']
+database['MG'] = database['Mg2+ Nucleotide']
 
 for nums, restraints in database['Zn2+ tetrahedral'].items():
   for atoms, values in list(restraints.items()):
@@ -62,6 +69,7 @@ def check_other_in_database(metal, other):
   for key, item in sub.items():
     for atoms in item:
       if other.name.strip() in atoms: return True
+      if '%s*' % other.element.strip() in atoms: return True
   return False
 
 def get_metal_coordination_proxies(pdb_hierarchy,
@@ -114,11 +122,16 @@ def get_metal_coordination_proxies(pdb_hierarchy,
         mbonds.setdefault(metal.i_seq, {})
         mbonds[metal.i_seq]['metal'] = metal
         mbonds[metal.i_seq].setdefault('others', [])
-        if not is_residue_already_linked_to_metal(mbonds[metal.i_seq]['others'],
-                                                  other,
-                                                  ):
-          mbonds[metal.i_seq]['others'].append(other)
+
+        is_linked = is_residue_already_linked_to_metal(
+          mbonds[metal.i_seq]['others'],
+          other)
+        if not is_linked or metal.element.upper() in ['MG']:
+          sub = mbonds[metal.i_seq]['others']
+          if other not in sub:
+            sub.append(other)
     i += 1
+
   pairs = []
   if verbose:
     for key, item in mbonds.items():
@@ -130,63 +143,122 @@ def get_metal_coordination_proxies(pdb_hierarchy,
           print(l.quote())
   return mbonds
 
-def get_proxies(coordination, verbose=False):
+def _bond_generator(atoms):
+  for atom in atoms['others']:
+    yield atoms['metal'], atom
+def _angle_generator(atoms):
+  for i, a1 in enumerate(atoms['others']):
+   for j, a2 in enumerate(atoms['others']):
+     if i==j: break
+     yield a1, atoms['metal'], a2
+
+def _default_bonds(atoms,
+                   distance_ideal=2.3,
+                   sigma=0.03,
+                   origin_id_key='metal coordination',
+                   ):
+  tmp = []
+  for a1, a2 in _bond_generator(atoms):
+    p = geometry_restraints.bond_simple_proxy(
+      i_seqs=[a1.i_seq, a2.i_seq],
+      distance_ideal=distance_ideal,
+      weight=1.0/sigma**2,
+      slack=0,
+      top_out=False,
+      limit=1,
+      origin_id=origin_ids.get_origin_id(origin_id_key))
+    tmp.append(p)
+  return tmp
+
+def _default_bonds_zn(atoms):
+  return _default_bonds(atoms) # defaults to ZN
+
+def _default_bonds_mg_nuc(atoms):
+  return _default_bonds(atoms,
+                        distance_ideal=2.0,
+                        sigma=0.1,
+                        origin_id_key='metal coordination',
+                        )
+
+def _get_defaults_zn(atoms, verbose=False):
+  bonds = []
+  if len(atoms['others'])<4:
+    bonds += _default_bonds_zn(atoms)
+  return bonds
+
+def _get_defaults_mg_nuc(atoms, verbose=False):
+  bonds = []
+  if len(atoms['others']) not in [6]:
+    bonds += _default_bonds_mg_nuc(atoms)
+  return bonds
+
+def _get_ideals_zn(atoms, verbose=False):
+  cyss = []
+  hiss = []
+  for atom in atoms['others']:
+    if atom.parent().resname=='CYS':
+      cyss.append(atom)
+    elif atom.parent().resname=='HIS':
+      hiss.append(atom)
+  key = (len(cyss), len(hiss))
+  metal_name = atoms['metal'].name.strip()
+  if key not in database[metal_name]:
+    if verbose:
+      outl = '\n'
+      for atom in atoms['others']:
+        outl += '    %s\n' % atom.quote()
+      print('''  Metal %s has coordination not in MCL%s
+            ''' % (atoms['metal'].quote(), outl)
+            )
+    return None
+  ideals = database[metal_name][key]
+  return ideals
+
+def _get_ideals_mg_nuc(atoms, verbose=False):
+  hohs = []
+  nucs = []
+  for atom in atoms['others']:
+    if atom.parent().resname=='HOH':
+      hohs.append(atom)
+    else:
+      nucs.append(atom)
+  key = (len(hohs), len(nucs))
+  metal_name = atoms['metal'].name.strip()
+  if key not in database[metal_name]:
+    if verbose:
+      outl = '\n'
+      for atom in atoms['others']:
+        outl += '    %s\n' % atom.quote()
+      print('''  Metal %s has coordination not in MCL%s
+            ''' % (atoms['metal'].quote(), outl)
+            )
+    return None
+  ideals = database[metal_name][key]
+  return ideals
+
+def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
   #
   # TODO
   #   - check that only one link is made to each resiude
   #     e.g. 1a6y "2080 ZN    ZN B 451 .*." "1874  CB  CYS B 153 .*."
   #
-  def _bond_generator(atoms):
-    for atom in atoms['others']:
-      yield atoms['metal'], atom
-  def _angle_generator(atoms):
-    for i, a1 in enumerate(atoms['others']):
-     for j, a2 in enumerate(atoms['others']):
-       if i==j: break
-       yield a1, atoms['metal'], a2
-  def _default_bonds(atoms):
-    tmp = []
-    for a1, a2 in _bond_generator(atoms):
-      p = geometry_restraints.bond_simple_proxy(
-        i_seqs=[a1.i_seq, a2.i_seq],
-        distance_ideal=2.3,
-        weight=1.0/0.03**2,
-        slack=0,
-        top_out=False,
-        limit=1,
-        origin_id=origin_ids.get_origin_id('metal coordination'))
-      tmp.append(p)
-    return tmp
   bonds = []
   angles = []
   if coordination is None: return bonds, angles
   atoms = None
   for metal_i_seq, atoms in coordination.items():
-    if len(atoms['others'])<4:
-      bonds += _default_bonds(atoms)
-      continue
-    cyss = []
-    hiss = []
-    for atom in atoms['others']:
-      if atom.parent().resname=='CYS':
-        cyss.append(atom)
-      elif atom.parent().resname=='HIS':
-        hiss.append(atom)
-    key = (len(cyss), len(hiss))
-    metal_name = atoms['metal'].name.strip()
-    if key not in database[metal_name]:
-      if verbose:
-        outl = '\n'
-        for atom in atoms['others']:
-          outl += '    %s\n' % atom.quote()
-        print('''  Metal %s has coordination not in MCL%s
-              ''' % (atoms['metal'].quote(), outl)
-              )
-      continue
-    ideals = database[metal_name][key]
     if not atoms: continue #return None, None
+    tmp = get_defaults(atoms)
+    if tmp:
+      bonds += tmp
+      continue
+    ideals = get_ideals(atoms)
+    if ideals is None: continue
     for a1, a2 in _bond_generator(atoms):
-      key = (a1.name.strip(), a2.name.strip())
+      key1 = (a1.name.strip(), a2.name.strip())
+      key2 = (a1.name.strip(), '%s*' % a2.element.strip())
+      if key1 in ideals: key = key1
+      elif key2 in ideals: key = key2
       if key not in ideals: continue
       t = ideals[key]
       p = geometry_restraints.bond_simple_proxy(
@@ -210,9 +282,20 @@ def get_proxies(coordination, verbose=False):
       angles.append(p)
   return bonds, angles
 
+def get_proxies_zn(coordination, verbose=False):
+  return get_proxies(coordination,
+                     _get_defaults_zn,
+                     _get_ideals_zn,
+                     verbose=verbose)
+
+def get_proxies_mg_nuc(coordination, verbose=False):
+  return get_proxies(coordination,
+                     _get_defaults_mg_nuc,
+                     _get_ideals_mg_nuc,
+                     verbose=verbose)
+
 def run(model_filename=None):
   import mmtbx.monomer_library.pdb_interpretation as pdb_inter
-  #print_restraints(database)
   if model_filename is not None:
     from iotbx import pdb
     pdb_inp = pdb.input(model_filename)

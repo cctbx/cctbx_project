@@ -64,7 +64,11 @@ def update(grm,
       ],
     ['Zn2+ tetrahedral coordination',
      metal_coordination_library.get_metal_coordination_proxies,
-     metal_coordination_library.get_proxies,
+     metal_coordination_library.get_proxies_zn,
+      ],
+    ['Mg2+ Nucleotide coordination',
+     metal_coordination_library.get_metal_coordination_proxies,
+     metal_coordination_library.get_proxies_mg_nuc,
       ],
     ]
   outl = ''
@@ -87,7 +91,6 @@ def update(grm,
     bproxies, aproxies = get_all_proxies(rc)
     if bproxies is None: continue
     if len(bproxies):
-      outl += '    %s\n' % label
       outl += '    %s\n' % label
       atoms = pdb_hierarchy.atoms()
       sf4_coordination = {}
