@@ -912,51 +912,52 @@ class test_nonbonded_overlaps(unittest.TestCase):
     self.assertTrue(len(r),2)
 
   # @unittest.skip("skip test_file_with_unknown_pair_type")
-  def test_file_with_unknown_pair_type(self):
-    """ verify that ready_set can fix issues with unknown_pair_type """
-    fn = 'test_unknown_pairs_in_pdb.pdb'
-    self.file_to_delete.append(fn)
-    with open(fn,'w') as f:
-      f.write(unknown_pairs_pdb_str)
-    print('current _dir',os.getcwd())
-    pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
-        file_name=fn,
-        allow_multiple_models=False,
-        log=null_out())
-    # add hydrogen atoms
-    fn_with_h = fn.replace('.pdb','_with_h.pdb')
-    self.file_to_delete.append(fn_with_h)
-    fn_eff = fn_with_h.replace('_with_h.pdb','_with_h.eff')
-    self.file_to_delete.append(fn_eff)
-    with open(fn_with_h,'w') as f:
-      f.write(pdb_with_h)
+  # T3 is now part of GeoStd so fails. Besides this is tested elsewhere.
+  # def test_file_with_unknown_pair_type(self):
+  #   """ verify that ready_set can fix issues with unknown_pair_type """
+  #   fn = 'test_unknown_pairs_in_pdb.pdb'
+  #   self.file_to_delete.append(fn)
+  #   with open(fn,'w') as f:
+  #     f.write(unknown_pairs_pdb_str)
+  #   print('current _dir',os.getcwd())
+  #   pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
+  #       file_name=fn,
+  #       allow_multiple_models=False,
+  #       log=null_out())
+  #   # add hydrogen atoms
+  #   fn_with_h = fn.replace('.pdb','_with_h.pdb')
+  #   self.file_to_delete.append(fn_with_h)
+  #   fn_eff = fn_with_h.replace('_with_h.pdb','_with_h.eff')
+  #   self.file_to_delete.append(fn_eff)
+  #   with open(fn_with_h,'w') as f:
+  #     f.write(pdb_with_h)
 
-    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
-    model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      stop_for_unknowns = False,
-      log         = null_out())
-    model.process(pdb_interpretation_params=params,
-      make_restraints=True)
-    grm = model.get_restraints_manager().geometry
-    xrs = model.get_xray_structure()
-    sites = model.get_sites_cart()
+  #   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  #   pdb_inp = iotbx.pdb.input(file_name=fn_with_h, source_info=None)
+  #   model = mmtbx.model.manager(
+  #     model_input = pdb_inp,
+  #     stop_for_unknowns = False,
+  #     log         = null_out())
+  #   model.process(pdb_interpretation_params=params,
+  #     make_restraints=True)
+  #   grm = model.get_restraints_manager().geometry
+  #   xrs = model.get_xray_structure()
+  #   sites = model.get_sites_cart()
 
-    labels = xrs.scatterers().extract_labels()
-    test = nbo.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
-    # make sure we have unknown pairs
-    self.assertTrue(test)
-    pdb_ready_set_file_names = nbo.create_cif_file_using_ready_set(
-      file_name=fn_with_h,
-      log=null_out())
-    [fn_cif,fn_pdb] = pdb_ready_set_file_names
-    # check that we can run overlaps
-    if fn_cif:
-      self.file_to_delete.extend(pdb_ready_set_file_names)
-      overlaps_count_info = process_overlaps_count(
-        file_name=fn_pdb,
-        cif_file_name=fn_cif)
+  #   labels = xrs.scatterers().extract_labels()
+  #   test = nbo.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
+  #   # make sure we have unknown pairs
+  #   self.assertTrue(test)
+  #   pdb_ready_set_file_names = nbo.create_cif_file_using_ready_set(
+  #     file_name=fn_with_h,
+  #     log=null_out())
+  #   [fn_cif,fn_pdb] = pdb_ready_set_file_names
+  #   # check that we can run overlaps
+  #   if fn_cif:
+  #     self.file_to_delete.extend(pdb_ready_set_file_names)
+  #     overlaps_count_info = process_overlaps_count(
+  #       file_name=fn_pdb,
+  #       cif_file_name=fn_cif)
 
   # not necessary
   def test_cryst1_records_maintained(self):
