@@ -64,6 +64,7 @@ var expstate = "";
 var current_ttip_ids;
 var isdebug = false;
 var tdelay = 200;
+var ttipid = "";
 var displaytooltips = true;
 var colourchart = null;
 var millerlabel = null;
@@ -716,14 +717,17 @@ function onMessage(e)
 
     if (msgtype === "ShowThisTooltip")
     {
-      current_ttip = eval(datval[1]).split("\n\n")[0];
-      current_ttip_ids = eval(datval[1]).split("\n\n")[1];
+      if (ttipid != "")
+      {
+        current_ttip = eval(datval[1]).split("\n\n")[0];
+        current_ttip_ids = eval(datval[1]).split("\n\n")[1];
 
-	  tooltip.innerText = current_ttip;
-      tooltip.style.bottom = canvaspos.y + 7 + "px";
-      tooltip.style.left = canvaspos.x + 8 + "px";
-      tooltip.style.fontSize = fontsize.toString() + "pt";
-      tooltip.style.display = "block";
+	      tooltip.innerText = current_ttip;
+        tooltip.style.bottom = canvaspos.y + 7 + "px";
+        tooltip.style.left = canvaspos.x + 8 + "px";
+        tooltip.style.fontSize = fontsize.toString() + "pt";
+        tooltip.style.display = "block";
+      }
     }
 
     if (msgtype === "TooltipOpacity")
@@ -1658,7 +1662,6 @@ function PickingProxyfunc(pickingProxy, eventstr) {
     let sym_id = -1;
     let hkl_id = -1;
     let ids = [];
-    let ttipid = "";
     let is_friedel_mate = 0;
     if (pickingProxy.picker["ids"].length > 0) { // get stored id number of rotation applied to this hkl
       sym_id = pickingProxy.picker["ids"][0]; // id of rotation stored when expanding to P1
@@ -1689,6 +1692,7 @@ function PickingProxyfunc(pickingProxy, eventstr) {
   else {
     tooltip.style.display = "none";
     current_ttip = "";
+    ttipid = "";
   }
 };
 
