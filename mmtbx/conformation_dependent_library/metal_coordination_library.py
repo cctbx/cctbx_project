@@ -35,15 +35,15 @@ database = {'Zn2+ tetrahedral': {
     (0,4) : {
         }, #n/a n/a     Insufficient data       Insufficient data       His4
     },
-    'Mg2+ Nucleotide' : {
-    (4,2) : {
-        ('MG', 'O') : (1.99, 0.02), # water coordination
-        ('MG', 'O*') : (2.06, 0.02), # Oxygen atom in PO4
-      },
-    }
+    # 'Mg2+ Nucleotide' : {
+    # (4,2) : {
+    #     ('MG', 'O') : (1.99, 0.02), # water coordination
+    #     ('MG', 'O*') : (2.06, 0.02), # Oxygen atom in PO4
+    #   },
+    # }
   }
 database['ZN'] = database['Zn2+ tetrahedral']
-database['MG'] = database['Mg2+ Nucleotide']
+# database['MG'] = database['Mg2+ Nucleotide']
 
 for nums, restraints in database['Zn2+ tetrahedral'].items():
   for atoms, values in list(restraints.items()):
