@@ -66,10 +66,10 @@ def update(grm,
      metal_coordination_library.get_metal_coordination_proxies,
      metal_coordination_library.get_proxies_zn,
       ],
-    ['Mg2+ Nucleotide coordination',
-     metal_coordination_library.get_metal_coordination_proxies,
-     metal_coordination_library.get_proxies_mg_nuc,
-      ],
+    # ['Mg2+ Nucleotide coordination',
+    #  metal_coordination_library.get_metal_coordination_proxies,
+    #  metal_coordination_library.get_proxies_mg_nuc,
+    #   ],
     ]
   outl = ''
   outl_debug = ''
