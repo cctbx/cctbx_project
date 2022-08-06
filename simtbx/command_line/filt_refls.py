@@ -44,6 +44,7 @@ def get_dist_from_R(R):
 keep = []
 n = 0
 n2 = 0
+all_pred_off = []
 for i in range(len(df)):
     row = df.iloc[i]
     h = h5py.File(row.stage1_output_img, 'r')
@@ -79,17 +80,20 @@ for i in range(len(df)):
     else:
         R2name = Rname.replace(".refl", "_KEEP=False.refl")
     R2names.append(R2name)
+    all_pred_off.append(d2)
     if keep[-1]:
         n += len(R)
         n2 += len(R2)
 
 
 df['filtered_refls'] = R2names
+df['pred_offsets'] = all_pred_off
 df = df.loc[keep]
 df.reset_index(inplace=True, drop=True)
 df.to_pickle(args.out)
 print("\nSummary\n<><><><><>")
 print("%d refls tot" % len(df))
+print("Filtered refls have median pred offset=%.3f pix" % df.pred_offsets.median())
 print("Wrote %s which can be passed into diffBragg.geometry_refiner  input_pickle=%s" % (args.out, args.out))
 print("Kept %d / %d refls. Removed %.2f %% "
     % (n2, n, (n-n2)/float(n)*100. ))

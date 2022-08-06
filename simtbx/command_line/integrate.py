@@ -15,6 +15,7 @@ parser.add_argument("--weakFrac", type=float, default=0, help="Fraction of weak 
 parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for pandas pickles (default .pkl)", default=".pkl")
 parser.add_argument("--loud", action="store_true", help="show lots of screen output")
 parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
+parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
 
 args = parser.parse_args()
 
@@ -397,7 +398,8 @@ if __name__=="__main__":
         try:
             pred = predictions.get_predicted_from_pandas(
                 df, params, strong=None, device_Id=dev, spectrum_override=None)
-            #pred = filter_refls(pred)
+            if args.filterDupes:
+                pred = filter_refls(pred)
         except ValueError:
             os.remove(new_expt_name)
             continue
