@@ -107,67 +107,67 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         resize(m_source_lambda, db_beam.number_of_sources);
         m_previous_nsource = db_beam.number_of_sources;
 
-        resize(m_UMATS, db_cryst.UMATS.size());
-        resize(m_UMATS_RXYZ, db_cryst.UMATS_RXYZ.size());
-        resize(m_AMATS, db_cryst.UMATS_RXYZ.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS, db_cryst.UMATS.size()*sizeof(MAT3)));
+        resize(m_UMATS, local_cryst.UMATS.size());
+        resize(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ.size());
+        resize(m_AMATS, local_cryst.UMATS_RXYZ.size());
+        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS, local_cryst.UMATS.size()*sizeof(MAT3)));
         // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ,
-        // db_cryst.UMATS_RXYZ.size()*sizeof(MAT3))); 
-        // gpuErr(cudaMallocManaged((void **)&m_cu_AMATS, db_cryst.UMATS_RXYZ.size()*sizeof(MAT3)));
-        if (db_cryst.UMATS_RXYZ_prime.size() > 0)
-            resize(m_UMATS_RXYZ_prime, db_cryst.UMATS_RXYZ_prime.size());
+        // local_cryst.UMATS_RXYZ.size()*sizeof(MAT3))); 
+        // gpuErr(cudaMallocManaged((void **)&m_cu_AMATS, local_cryst.UMATS_RXYZ.size()*sizeof(MAT3)));
+        if (local_cryst.UMATS_RXYZ_prime.size() > 0)
+            resize(m_UMATS_RXYZ_prime, local_cryst.UMATS_RXYZ_prime.size());
         // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ_prime,
-        // db_cryst.UMATS_RXYZ_prime.size()*sizeof(MAT3)));
-        if (db_cryst.UMATS_RXYZ_dbl_prime.size() > 0)
-            resize(m_UMATS_RXYZ_dbl_prime, db_cryst.UMATS_RXYZ_dbl_prime.size());
+        // local_cryst.UMATS_RXYZ_prime.size()*sizeof(MAT3)));
+        if (local_cryst.UMATS_RXYZ_dbl_prime.size() > 0)
+            resize(m_UMATS_RXYZ_dbl_prime, local_cryst.UMATS_RXYZ_dbl_prime.size());
         // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ_dbl_prime,
-        // db_cryst.UMATS_RXYZ_dbl_prime.size()*sizeof(MAT3)));
+        // local_cryst.UMATS_RXYZ_dbl_prime.size()*sizeof(MAT3)));
 
-        resize(m_dB_Mats, db_cryst.dB_Mats.size());
-        resize(m_dB2_Mats, db_cryst.dB2_Mats.size());
+        resize(m_dB_Mats, local_cryst.dB_Mats.size());
+        resize(m_dB2_Mats, local_cryst.dB2_Mats.size());
         // gpuErr(cudaMallocManaged((void **)&m_cu_dB_Mats,
-        // db_cryst.dB_Mats.size()*sizeof(MAT3)));
+        // local_cryst.dB_Mats.size()*sizeof(MAT3)));
         // gpuErr(cudaMallocManaged((void **)&m_cu_dB2_Mats,
-        // db_cryst.dB2_Mats.size()*sizeof(MAT3)));
+        // local_cryst.dB2_Mats.size()*sizeof(MAT3)));
 
-        resize(m_RotMats, db_cryst.RotMats.size());
-        resize(m_dRotMats, db_cryst.dRotMats.size());
-        resize(m_d2RotMats, db_cryst.d2RotMats.size());
+        resize(m_RotMats, local_cryst.RotMats.size());
+        resize(m_dRotMats, local_cryst.dRotMats.size());
+        resize(m_d2RotMats, local_cryst.d2RotMats.size());
         // gpuErr(cudaMallocManaged((void **)&m_cu_RotMats,
-        // db_cryst.RotMats.size()*sizeof(MAT3)));
+        // local_cryst.RotMats.size()*sizeof(MAT3)));
         // gpuErr(cudaMallocManaged((void **)&m_cu_dRotMats,
-        // db_cryst.dRotMats.size()*sizeof(MAT3)));
+        // local_cryst.dRotMats.size()*sizeof(MAT3)));
         // gpuErr(cudaMallocManaged((void **)&m_cu_d2RotMats,
-        // db_cryst.d2RotMats.size()*sizeof(MAT3)));
+        // local_cryst.d2RotMats.size()*sizeof(MAT3)));
 
-        resize(m_fdet_vectors, db_det.fdet_vectors.size());
-        resize(m_sdet_vectors, db_det.sdet_vectors.size());
-        resize(m_odet_vectors, db_det.odet_vectors.size());
-        resize(m_pix0_vectors, db_det.pix0_vectors.size());
-        resize(m_close_distances, db_det.close_distances.size());
+        resize(m_fdet_vectors, local_det.fdet_vectors.size());
+        resize(m_sdet_vectors, local_det.sdet_vectors.size());
+        resize(m_odet_vectors, local_det.odet_vectors.size());
+        resize(m_pix0_vectors, local_det.pix0_vectors.size());
+        resize(m_close_distances, local_det.close_distances.size());
         // gpuErr(cudaMallocManaged(&m_cu_fdet_vectors,
-        // db_det.fdet_vectors.size()*sizeof(CUDAREAL)));
+        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
         // gpuErr(cudaMallocManaged(&m_cu_sdet_vectors,
-        // db_det.fdet_vectors.size()*sizeof(CUDAREAL)));
+        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
         // gpuErr(cudaMallocManaged(&m_cu_odet_vectors,
-        // db_det.fdet_vectors.size()*sizeof(CUDAREAL)));
+        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
         // gpuErr(cudaMallocManaged(&m_cu_pix0_vectors,
-        // db_det.fdet_vectors.size()*sizeof(CUDAREAL)));
+        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
         // gpuErr(cudaMallocManaged(&m_cu_close_distances,
-        // db_det.close_distances.size()*sizeof(CUDAREAL)));
+        // local_det.close_distances.size()*sizeof(CUDAREAL)));
 
-        if (db_cryst.fpfdp.size() > 0) {
-            resize(m_fpfdp, db_cryst.fpfdp.size());
-            resize(m_atom_data, db_cryst.atom_data.size());
+        if (local_cryst.fpfdp.size() > 0) {
+            resize(m_fpfdp, local_cryst.fpfdp.size());
+            resize(m_atom_data, local_cryst.atom_data.size());
             // gpuErr(cudaMallocManaged(&m_cu_fpfdp,
-            // db_cryst.fpfdp.size()*sizeof(CUDAREAL)));
+            // local_cryst.fpfdp.size()*sizeof(CUDAREAL)));
             // gpuErr(cudaMallocManaged(&m_cu_atom_data,
-            // db_cryst.atom_data.size()*sizeof(CUDAREAL)));
+            // local_cryst.atom_data.size()*sizeof(CUDAREAL)));
         }
-        if (db_cryst.fpfdp_derivs.size() > 0)
-            resize(m_fpfdp_derivs, db_cryst.fpfdp_derivs.size());
+        if (local_cryst.fpfdp_derivs.size() > 0)
+            resize(m_fpfdp_derivs, local_cryst.fpfdp_derivs.size());
         // gpuErr(cudaMallocManaged(&m_cu_fpfdp_derivs,
-        // db_cryst.fpfdp_derivs.size()*sizeof(CUDAREAL)));
+        // local_cryst.fpfdp_derivs.size()*sizeof(CUDAREAL)));
 
         // already done this in diffBRaggKOKKOS.h
         // gpuErr(cudaMallocManaged(&m_cu_refine_Bmat, 6*sizeof(bool)));
@@ -177,19 +177,19 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         // gpuErr(cudaMallocManaged(&m_cu_refine_panel_rot, 3*sizeof(bool)));
         // gpuErr(cudaMallocManaged(&m_cu_refine_lambda, 2*sizeof(bool)));
 
-        resize(m_Fhkl, db_cryst.FhklLinear.size());
+        resize(m_Fhkl, local_cryst.FhklLinear.size());
         // gpuErr(cudaMallocManaged(&m_cu_Fhkl,
-        // db_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
+        // local_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
         if (db_flags.complex_miller)
-            resize(m_Fhkl2, db_cryst.FhklLinear.size());
+            resize(m_Fhkl2, local_cryst.FhklLinear.size());
         // gpuErr(cudaMallocManaged(&m_cu_Fhkl2,
-        // db_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
+        // local_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
 
-        resize(m_dF_vecs, db_det.dF_vecs.size());
-        resize(m_dS_vecs, db_det.dF_vecs.size());
+        resize(m_dF_vecs, local_det.dF_vecs.size());
+        resize(m_dS_vecs, local_det.dF_vecs.size());
         // gpuErr(cudaMallocManaged((void **)&m_cu_dF_vecs,
-        // db_det.dF_vecs.size()*sizeof(VEC3))); gpuErr(cudaMallocManaged((void
-        // **)&m_cu_dS_vecs, db_det.dF_vecs.size()*sizeof(VEC3)));
+        // local_det.dF_vecs.size()*sizeof(VEC3))); gpuErr(cudaMallocManaged((void
+        // **)&m_cu_dS_vecs, local_det.dF_vecs.size()*sizeof(VEC3)));
 
         // gettimeofday(&t3, 0));
         resize(m_floatimage, db_cu_flags.Npix_to_allocate);
@@ -267,7 +267,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             resize(m_d_fp_fdp_images, db_cu_flags.Npix_to_allocate * 2);
         // gpuErr(cudaMallocManaged(&m_cu_d_fp_fdp_images,
         // db_cu_flags.Npix_to_allocate*2*sizeof(CUDAREAL)));
-        if (db_cryst.nominal_hkl.size() > 0)
+        if (local_cryst.nominal_hkl.size() > 0)
             resize(m_nominal_hkl, db_cu_flags.Npix_to_allocate * 3);
         // gpuErr(cudaMallocManaged(&m_cu_nominal_hkl,
         // db_cu_flags.Npix_to_allocate*3*sizeof(int)));
@@ -323,21 +323,26 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  UMATS
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_UMATS, db_cryst.UMATS);
-        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ, db_cryst.UMATS_RXYZ);
-        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_prime, db_cryst.UMATS_RXYZ_prime);
-        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_dbl_prime, db_cryst.UMATS_RXYZ_dbl_prime);
+
+        kokkostbx::transfer_vector2kokkos(m_UMATS, local_cryst.UMATS);
+
+        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ);
+
+        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_prime, local_cryst.UMATS_RXYZ_prime);
+        
+        kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_dbl_prime, local_cryst.UMATS_RXYZ_dbl_prime);
+        
         if (db_flags.verbose > 1)
             printf("H2D Done copying Umats\n");
     }
     //  END UMATS
 
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
-        MAT3 Amat_init = db_cryst.eig_U.dot(db_cryst.eig_B);
+        MAT3 Amat_init = local_cryst.eig_U.dot(local_cryst.eig_B);
         Amat_init *= 1e10;
-        Amat_init = Amat_init.dot(db_cryst.eig_O.transpose());
+        Amat_init = Amat_init.dot(local_cryst.eig_O.transpose());
 
-        std::vector<MAT3> AMATS(db_cryst.UMATS_RXYZ);
+        std::vector<MAT3> AMATS(local_cryst.UMATS_RXYZ);
         for (int i = 0; i < AMATS.size(); ++i) {
             AMATS[i] = AMATS[i].dot(Amat_init).transpose();
         }
@@ -348,8 +353,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  BMATS
     if (db_cu_flags.update_dB_mats || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_dB_Mats, db_cryst.dB_Mats);
-        kokkostbx::transfer_vector2kokkos(m_dB2_Mats, db_cryst.dB2_Mats);
+        kokkostbx::transfer_vector2kokkos(m_dB_Mats, local_cryst.dB_Mats);
+        kokkostbx::transfer_vector2kokkos(m_dB2_Mats, local_cryst.dB2_Mats);
         if (db_flags.verbose > 1)
             printf("H2D Done copying dB_Mats\n");
     }
@@ -357,9 +362,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  ROT MATS
     if (db_cu_flags.update_rotmats || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_RotMats, db_cryst.RotMats);
-        kokkostbx::transfer_vector2kokkos(m_dRotMats, db_cryst.dRotMats);
-        kokkostbx::transfer_vector2kokkos(m_d2RotMats, db_cryst.d2RotMats);
+        kokkostbx::transfer_vector2kokkos(m_RotMats, local_cryst.RotMats);
+        kokkostbx::transfer_vector2kokkos(m_dRotMats, local_cryst.dRotMats);
+        kokkostbx::transfer_vector2kokkos(m_d2RotMats, local_cryst.d2RotMats);
         if (db_flags.verbose > 1)
             printf("H2D Done copying rotmats\n");
     }
@@ -367,24 +372,24 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  DETECTOR VECTORS
     if (db_cu_flags.update_detector || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_fdet_vectors, db_det.fdet_vectors);
-        kokkostbx::transfer_vector2kokkos(m_sdet_vectors, db_det.sdet_vectors);
-        kokkostbx::transfer_vector2kokkos(m_odet_vectors, db_det.odet_vectors);
-        kokkostbx::transfer_vector2kokkos(m_pix0_vectors, db_det.pix0_vectors);
-        kokkostbx::transfer_vector2kokkos(m_close_distances, db_det.close_distances);
+        kokkostbx::transfer_vector2kokkos(m_fdet_vectors, local_det.fdet_vectors);
+        kokkostbx::transfer_vector2kokkos(m_sdet_vectors, local_det.sdet_vectors);
+        kokkostbx::transfer_vector2kokkos(m_odet_vectors, local_det.odet_vectors);
+        kokkostbx::transfer_vector2kokkos(m_pix0_vectors, local_det.pix0_vectors);
+        kokkostbx::transfer_vector2kokkos(m_close_distances, local_det.close_distances);
         if (db_flags.verbose > 1)
             printf("H2D Done copying detector vectors\n");
     }
     //  END  DETECTOR VECTORS
 
     if (ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_nominal_hkl, db_cryst.nominal_hkl);
-        kokkostbx::transfer_vector2kokkos(m_atom_data, db_cryst.atom_data);
+        kokkostbx::transfer_vector2kokkos(m_nominal_hkl, local_cryst.nominal_hkl);
+        kokkostbx::transfer_vector2kokkos(m_atom_data, local_cryst.atom_data);
         if (db_flags.verbose > 1)
             printf("H2D Done copying atom data\n");
 
-        kokkostbx::transfer_vector2kokkos(m_fpfdp, db_cryst.fpfdp);
-        kokkostbx::transfer_vector2kokkos(m_fpfdp_derivs, db_cryst.fpfdp_derivs);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp, local_cryst.fpfdp);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp_derivs, local_cryst.fpfdp_derivs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying fprime and fdblprime\n");
     }
@@ -404,9 +409,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  BEGIN Fhkl
     if (db_cu_flags.update_Fhkl || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_Fhkl, db_cryst.FhklLinear);
+        kokkostbx::transfer_vector2kokkos(m_Fhkl, local_cryst.FhklLinear);
         if (db_flags.complex_miller) {
-            kokkostbx::transfer_vector2kokkos(m_Fhkl2, db_cryst.Fhkl2Linear);
+            kokkostbx::transfer_vector2kokkos(m_Fhkl2, local_cryst.Fhkl2Linear);
         }
         if (db_flags.verbose > 1)
             printf("H2D Done copying step Fhkl\n");
@@ -415,8 +420,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  BEGIN panel derivative vecs
     if (db_cu_flags.update_panel_deriv_vecs || ALLOC || FORCE_COPY) {
-        kokkostbx::transfer_vector2kokkos(m_dF_vecs, db_det.dF_vecs);
-        kokkostbx::transfer_vector2kokkos(m_dS_vecs, db_det.dS_vecs);
+        kokkostbx::transfer_vector2kokkos(m_dF_vecs, local_det.dF_vecs);
+        kokkostbx::transfer_vector2kokkos(m_dS_vecs, local_det.dS_vecs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying step panel derivative vectors\n");
     }
@@ -442,43 +447,43 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     gettimeofday(&t1, 0);
 
-    int Npanels = db_det.fdet_vectors.size() / 3;
-    int num_atoms = db_cryst.atom_data.size() / 5;
+    int Npanels = local_det.fdet_vectors.size() / 3;
+    int num_atoms = local_cryst.atom_data.size() / 5;
     // note cannot use atom data if fpfdp is 0, make this cleaner
-    if (db_cryst.fpfdp.size() == 0) {
+    if (local_cryst.fpfdp.size() == 0) {
         num_atoms = 0;
     }
     // int sm_size = number_of_sources*5*sizeof(CUDAREAL);
     // gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
-    bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
-    bool use_nominal_hkl = !db_cryst.nominal_hkl.empty();
+    bool aniso_eta = local_cryst.UMATS_RXYZ.size() != local_cryst.UMATS_RXYZ_prime.size();
+    bool use_nominal_hkl = !local_cryst.nominal_hkl.empty();
 /*    kokkos_sum_over_steps<<<numblocks, blocksize>>>(
         Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
         m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
         m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
         m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
         m_d2_panel_orig_images, m_d_fp_fdp_images, db_steps.Nsteps, db_flags.printout_fpixel,
-        db_flags.printout_spixel, db_flags.printout, db_cryst.default_F, db_det.oversample,
-        db_flags.oversample_omega, db_det.subpixel_size, db_det.pixel_size,
-        db_det.detector_thickstep, db_det.detector_thick, m_close_distances,
-        db_det.detector_attnlen, db_det.detector_thicksteps, db_beam.number_of_sources,
-        db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients, db_beam.lambda0,
-        db_beam.lambda1, db_cryst.eig_U, db_cryst.eig_O, db_cryst.eig_B, db_cryst.RXYZ, m_dF_vecs,
+        db_flags.printout_spixel, db_flags.printout, local_cryst.default_F, local_det.oversample,
+        db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
+        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+        local_det.detector_attnlen, local_det.detector_thicksteps, db_beam.number_of_sources,
+        local_cryst.phisteps, local_cryst.UMATS.size(), db_flags.use_lambda_coefficients, db_beam.lambda0,
+        db_beam.lambda1, local_cryst.eig_U, local_cryst.eig_O, local_cryst.eig_B, local_cryst.RXYZ, m_dF_vecs,
         m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime, m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats,
         m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats, m_AMATS, m_source_X, m_source_Y, m_source_Z,
-        m_source_lambda, m_source_I, db_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc,
-        db_cryst.Nd, db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
-        db_cryst.spindle_vec, db_beam.polarization_axis, db_cryst.h_range, db_cryst.k_range,
-        db_cryst.l_range, db_cryst.h_max, db_cryst.h_min, db_cryst.k_max, db_cryst.k_min,
-        db_cryst.l_max, db_cryst.l_min, db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller,
+        m_source_lambda, m_source_I, db_beam.kahn_factor, local_cryst.Na, local_cryst.Nb, local_cryst.Nc,
+        local_cryst.Nd, local_cryst.Ne, local_cryst.Nf, local_cryst.phi0, local_cryst.phistep,
+        local_cryst.spindle_vec, db_beam.polarization_axis, local_cryst.h_range, local_cryst.k_range,
+        local_cryst.l_range, local_cryst.h_max, local_cryst.h_min, local_cryst.k_max, local_cryst.k_min,
+        local_cryst.l_max, local_cryst.l_min, local_cryst.dmin, local_cryst.fudge, db_flags.complex_miller,
         db_flags.verbose, db_flags.only_save_omega_kahn, db_flags.isotropic_ncells,
         db_flags.compute_curvatures, m_Fhkl, m_Fhkl2, m_refine_Bmat, m_refine_Ncells,
         db_flags.refine_Ncells_def, m_refine_panel_origin, m_refine_panel_rot,
         db_flags.refine_fcell, m_refine_lambda, db_flags.refine_eta, m_refine_Umat, m_fdet_vectors,
         m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
-        db_beam.fluence, db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta,
+        db_beam.fluence, local_cryst.r_e_sqr, local_cryst.spot_scale, Npanels, aniso_eta,
         db_flags.no_Nabc_scale, m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms,
-        db_flags.refine_fp_fdp, m_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG,
+        db_flags.refine_fp_fdp, m_nominal_hkl, use_nominal_hkl, local_cryst.anisoU, local_cryst.anisoG,
         db_flags.use_diffuse, m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
         db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
         db_flags.wavelength_img);

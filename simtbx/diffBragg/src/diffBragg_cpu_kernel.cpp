@@ -467,7 +467,7 @@ void diffBragg_sum_over_steps(
             }
 
             double phi = db_cryst.phi0 + db_cryst.phistep*phi_tic;
-            Eigen::Matrix3d Bmat_realspace(db_cryst.eig_B.data);
+            Eigen::Matrix3d Bmat_realspace = db_cryst.eig_B;
             if( phi != 0.0 )
             {
                 double cosphi = cos(phi);
@@ -475,11 +475,10 @@ void diffBragg_sum_over_steps(
                 Eigen::Vector3d ap_vec(db_cryst.eig_B(0,0), db_cryst.eig_B(1,0), db_cryst.eig_B(2,0));
                 Eigen::Vector3d bp_vec(db_cryst.eig_B(0,1), db_cryst.eig_B(1,1), db_cryst.eig_B(2,1));
                 Eigen::Vector3d cp_vec(db_cryst.eig_B(0,2), db_cryst.eig_B(1,2), db_cryst.eig_B(2,2));
-                Eigen::Vector3d spindle_vec(db_cryst.spindle_vec.data);
 
-                ap_vec = ap_vec*cosphi + spindle_vec.cross(ap_vec)*sinphi + spindle_vec*(spindle_vec.dot(ap_vec))*(1-cosphi);
-                bp_vec = bp_vec*cosphi + spindle_vec.cross(bp_vec)*sinphi + spindle_vec*(spindle_vec.dot(bp_vec))*(1-cosphi);
-                cp_vec = cp_vec*cosphi + spindle_vec.cross(cp_vec)*sinphi + spindle_vec*(spindle_vec.dot(cp_vec))*(1-cosphi);
+                ap_vec = ap_vec*cosphi + db_cryst.spindle_vec.cross(ap_vec)*sinphi + db_cryst.spindle_vec*(db_cryst.spindle_vec.dot(ap_vec))*(1-cosphi);
+                bp_vec = bp_vec*cosphi + db_cryst.spindle_vec.cross(bp_vec)*sinphi + db_cryst.spindle_vec*(db_cryst.spindle_vec.dot(bp_vec))*(1-cosphi);
+                cp_vec = cp_vec*cosphi + db_cryst.spindle_vec.cross(cp_vec)*sinphi + db_cryst.spindle_vec*(db_cryst.spindle_vec.dot(cp_vec))*(1-cosphi);
 
                 Bmat_realspace << ap_vec[0], bp_vec[0], cp_vec[0],
                                     ap_vec[1], bp_vec[1], cp_vec[1],
@@ -493,11 +492,8 @@ void diffBragg_sum_over_steps(
               }
             }
 
-            const Eigen::Matrix3d U(db_cryst.eig_U.data);
-            const Eigen::Matrix3d UMATS_RXYZ(db_cryst.UMATS_RXYZ[mos_tic].data);
-            const Eigen::Matrix3d eig_O(db_cryst.eig_O.data);
-
-            Eigen::Matrix3d UBO = (UMATS_RXYZ * U*Bmat_realspace*(eig_O.transpose())).transpose();
+            Eigen::Matrix3d U = db_cryst.eig_U;
+            Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
                 Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
@@ -742,20 +738,15 @@ void diffBragg_sum_over_steps(
             //    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
 
             double two_C = 2*C;
-            Eigen::Matrix3d UBOt = U*Bmat_realspace*(eig_O.transpose());
+            Eigen::Matrix3d UBOt = U*Bmat_realspace*(db_cryst.eig_O.transpose());
             if (db_flags.refine_Umat[0]){
-                Eigen::Matrix3d RotMats1(db_cryst.RotMats[1].data);
-                Eigen::Matrix3d RotMats2(db_cryst.RotMats[2].data);
-                Eigen::Matrix3d RyRzUBOt = RotMats1*RotMats2*UBOt;
-                Eigen::Matrix3d UMATS(db_cryst.UMATS[mos_tic].data);
-                Eigen::Matrix3d dRotMats0(db_cryst.dRotMats[0].data);
-                Eigen::Vector3d delta_H_prime = (UMATS*dRotMats0*RyRzUBOt).transpose()*q_vec;
+                Eigen::Matrix3d RyRzUBOt = db_cryst.RotMats[1]*db_cryst.RotMats[2]*UBOt;
+                Eigen::Vector3d delta_H_prime = (db_cryst.UMATS[mos_tic]*db_cryst.dRotMats[0]*RyRzUBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
                 double value2 =0;
                 if (db_flags.compute_curvatures) {
-                    Eigen::Matrix3d d2RotMats(db_cryst.d2RotMats[0].data);
-                    Eigen::Vector3d delta_H_dbl_prime = (UMATS*d2RotMats*RyRzUBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (db_cryst.UMATS[mos_tic]*db_cryst.d2RotMats[0]*RyRzUBOt).transpose()*q_vec;
                     double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
                     double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -764,18 +755,15 @@ void diffBragg_sum_over_steps(
                 rot_manager_dI2[0] += value2;
             }
             if (db_flags.refine_Umat[1]){
-
-                Eigen::Matrix3d UmosRx((db_cryst.UMATS[mos_tic].dot(db_cryst.RotMats[0])).data);
-                Eigen::Matrix3d RzUBOt = Eigen::Matrix3d(db_cryst.RotMats[2].data)*UBOt;
-                Eigen::Matrix3d dRotMats1(db_cryst.dRotMats[1].data);
-                Eigen::Vector3d delta_H_prime =(UmosRx*dRotMats1*RzUBOt).transpose()*q_vec;
+                Eigen::Matrix3d UmosRx = db_cryst.UMATS[mos_tic]*db_cryst.RotMats[0];
+                Eigen::Matrix3d RzUBOt = db_cryst.RotMats[2]*UBOt;
+                Eigen::Vector3d delta_H_prime =(UmosRx*db_cryst.dRotMats[1]*RzUBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (db_flags.compute_curvatures){
-                    Eigen::Matrix3d d2RotMats1(db_cryst.d2RotMats[1].data);
-                    Eigen::Vector3d delta_H_dbl_prime = (UmosRx*d2RotMats1*RzUBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (UmosRx*db_cryst.d2RotMats[1]*RzUBOt).transpose()*q_vec;
                     double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
                     double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -784,17 +772,14 @@ void diffBragg_sum_over_steps(
                 rot_manager_dI2[1] += value2;
             }
             if (db_flags.refine_Umat[2]){
-                Eigen::Matrix3d UmosRx((db_cryst.UMATS[mos_tic].dot(db_cryst.RotMats[0])).data);
-                Eigen::Matrix3d UmosRxRy = UmosRx*Eigen::Matrix3d(db_cryst.RotMats[1].data);
-                Eigen::Matrix3d dRotMats2(db_cryst.dRotMats[2].data);
-                Eigen::Vector3d delta_H_prime = (UmosRxRy*dRotMats2*UBOt).transpose()*q_vec;
+                Eigen::Matrix3d UmosRxRy = db_cryst.UMATS[mos_tic]*db_cryst.RotMats[0]*db_cryst.RotMats[1];
+                Eigen::Vector3d delta_H_prime = (UmosRxRy*db_cryst.dRotMats[2]*UBOt).transpose()*q_vec;
                 double V_dot_dV = V.dot(NABC*delta_H_prime);
                 double value = -two_C * V_dot_dV * Iincrement;
 
                 double value2=0;
                 if (db_flags.compute_curvatures){
-                    Eigen::Matrix3d d2RotMats2(db_cryst.d2RotMats[2].data);
-                    Eigen::Vector3d delta_H_dbl_prime = (UmosRxRy*d2RotMats2*UBOt).transpose()*q_vec;
+                    Eigen::Vector3d delta_H_dbl_prime = (UmosRxRy*db_cryst.d2RotMats[2]*UBOt).transpose()*q_vec;
                     double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
                     double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                     value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -803,18 +788,18 @@ void diffBragg_sum_over_steps(
                 rot_manager_dI2[2] += value2;
             }
             /*Checkpoint for unit cell derivatives*/
-            Eigen::Matrix3d Ot((db_cryst.eig_O.transpose()).data);
+            Eigen::Matrix3d Ot = db_cryst.eig_O.transpose();
             Eigen::Matrix3d UmosRxRyRzU ;
             Eigen::Vector3d delta_H_prime;
             for(int i_uc=0; i_uc < 6; i_uc++ ){
                 if (db_flags.refine_Bmat[i_uc]){
-                    UmosRxRyRzU = Eigen::Matrix3d(db_cryst.UMATS_RXYZ[mos_tic].data)*U;
-                    delta_H_prime = ((UmosRxRyRzU*Eigen::Matrix3d(db_cryst.dB_Mats[i_uc].data)*Ot).transpose()*q_vec);
+                    UmosRxRyRzU = db_cryst.UMATS_RXYZ[mos_tic]*U;
+                    delta_H_prime = ((UmosRxRyRzU*db_cryst.dB_Mats[i_uc]*Ot).transpose()*q_vec);
                     double V_dot_dV = V.dot(NABC*delta_H_prime);
                     double value = -two_C * V_dot_dV * Iincrement;
                     double value2 =0;
                     if (db_flags.compute_curvatures){
-                        Eigen::Vector3d delta_H_dbl_prime = ((UmosRxRyRzU*Eigen::Matrix3d(db_cryst.dB2_Mats[i_uc].data)*Ot).transpose()*q_vec);
+                        Eigen::Vector3d delta_H_dbl_prime = ((UmosRxRyRzU*db_cryst.dB2_Mats[i_uc]*Ot).transpose()*q_vec);
                         double dV_dot_dV = (NABC*delta_H_prime).dot(NABC*delta_H_prime);
                         double dV2_dot_V = (NABC*delta_H).dot(NABC*delta_H_dbl_prime);
                         value2 = two_C*(two_C*V_dot_dV*V_dot_dV - dV2_dot_V - dV_dot_dV)*Iincrement;
@@ -911,9 +896,7 @@ void diffBragg_sum_over_steps(
                     double lambda_ang = lambda*1e10;
                     Eigen::Matrix3d M = -two_C*(NABC*UBO)/lambda_ang;
 
-                    Eigen::Vector3d dF_vecs(db_det.dF_vecs[pid*3 + i_pan_rot].data);
-                    Eigen::Vector3d dS_vecs(db_det.dS_vecs[pid*3 + i_pan_rot].data);
-                    Eigen::Vector3d dk = Fdet*(dF_vecs) + Sdet*(dS_vecs);
+                    Eigen::Vector3d dk = Fdet*(db_det.dF_vecs[pid*3 + i_pan_rot]) + Sdet*(db_det.dS_vecs[pid*3 + i_pan_rot]);
                     af::flex_double dI_and_dI2 = get_panel_increment(Iincrement, omega_pixel, M, db_det.subpixel_size*db_det.subpixel_size,
                         o_vec, pixel_pos, per_k,  per_k3, per_k5, V, dk);
                     pan_rot_manager_dI[i_pan_rot] += dI_and_dI2[0];
@@ -965,8 +948,7 @@ void diffBragg_sum_over_steps(
                         continue;
                     }
                     int mtic2 = mos_tic  + i_eta*db_cryst.mosaic_domains;
-                    Eigen::Matrix3d UMATS_RXYZ_prime(db_cryst.UMATS_RXYZ_prime[mtic2].data);
-                    Eigen::Vector3d DeltaH_deriv = (UMATS_RXYZ_prime*UBOt).transpose()*q_vec;
+                    Eigen::Vector3d DeltaH_deriv = (db_cryst.UMATS_RXYZ_prime[mtic2]*UBOt).transpose()*q_vec;
                     // vector V is Nabc*Delta_H
                     Eigen::Vector3d dV = NABC*DeltaH_deriv;
                     double V_dot_dV = V.dot(dV);
@@ -975,8 +957,7 @@ void diffBragg_sum_over_steps(
 
                     double Idbl_prime = 0;
                     if (db_flags.compute_curvatures){
-                        Eigen::Matrix3d UMATS_RXYZ_dbl_prime(db_cryst.UMATS_RXYZ_dbl_prime[mtic2].data);
-                        Eigen::Vector3d DeltaH_second_deriv = (UMATS_RXYZ_dbl_prime*UBOt).transpose()*q_vec;
+                        Eigen::Vector3d DeltaH_second_deriv = (db_cryst.UMATS_RXYZ_dbl_prime[mtic2]*UBOt).transpose()*q_vec;
                         Eigen::Vector3d dV2 = NABC*DeltaH_second_deriv;
                         Idbl_prime = -two_C*(dV.dot(dV) + V.dot(dV2))*Iincrement;
                         Idbl_prime += -two_C*(V_dot_dV)*Iprime;
