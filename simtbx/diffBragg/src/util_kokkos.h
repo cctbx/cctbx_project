@@ -17,11 +17,11 @@ using MAT3 = kokkostbx::matrix3<CUDAREAL>;
 // using vector_vec3_t = view_1d_t<VEC3>;
 // using vector_mat3_t = view_1d_t<MAT3>;
 
-VEC3 to_vec3(const Eigen::Vector3d& v) {
+inline VEC3 to_vec3(const Eigen::Vector3d& v) {
     return VEC3(v[0], v[1], v[2]);
 }
 
-MAT3 to_mat3(const Eigen::Matrix3d& m) {
+inline MAT3 to_mat3(const Eigen::Matrix3d& m) {
     // Eigen matrix is column-major!
     return MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
 }
@@ -70,45 +70,44 @@ struct kokkos_crystal {
     std::vector<MAT3> dB_Mats;
     std::vector<MAT3> dB2_Mats;
 
-    kokkos_crystal(crystal T) :
-    anisoG(to_mat3(T.anisoG)),
-    anisoU(to_mat3(T.anisoU)),
-    mosaic_domains(T.mosaic_domains),
-    Na(T.Na),
-    Nb(T.Nb),
-    Nc(T.Nc),
-    Nd(T.Nd),
-    Ne(T.Ne),
-    Nf(T.Nf),
-    phi0(T.phi0),
-    phistep(T.phistep),
-    phisteps(T.phisteps),
-    fudge(T.fudge),
-    spot_scale(T.spot_scale),
-    h_range(T.h_range),
-    k_range(T.k_range),
-    l_range(T.l_range),
-    h_max(T.h_max),
-    h_min(T.h_min),
-    k_max(T.k_max),
-    k_min(T.k_min),
-    l_max(T.l_max),
-    l_min(T.l_min),
-    dmin(T.dmin),
-    FhklLinear(T.FhklLinear),
-    Fhkl2Linear(T.Fhkl2Linear),
-    fpfdp(T.fpfdp),
-    fpfdp_derivs(T.fpfdp_derivs),
-    atom_data(T.atom_data),
-    nominal_hkl(T.nominal_hkl),
-    default_F(T.default_F),
-    r_e_sqr(T.r_e_sqr),
-    eig_U(to_mat3(T.eig_U)),
-    eig_O(to_mat3(T.eig_O)),
-    eig_B(to_mat3(T.eig_B)),
-    RXYZ(to_mat3(T.RXYZ)),
-    spindle_vec(to_vec3(T.spindle_vec))    
-    {
+    kokkos_crystal(crystal T)
+        : anisoG(to_mat3(T.anisoG)),
+          anisoU(to_mat3(T.anisoU)),
+          mosaic_domains(T.mosaic_domains),
+          Na(T.Na),
+          Nb(T.Nb),
+          Nc(T.Nc),
+          Nd(T.Nd),
+          Ne(T.Ne),
+          Nf(T.Nf),
+          phi0(T.phi0),
+          phistep(T.phistep),
+          phisteps(T.phisteps),
+          fudge(T.fudge),
+          spot_scale(T.spot_scale),
+          h_range(T.h_range),
+          k_range(T.k_range),
+          l_range(T.l_range),
+          h_max(T.h_max),
+          h_min(T.h_min),
+          k_max(T.k_max),
+          k_min(T.k_min),
+          l_max(T.l_max),
+          l_min(T.l_min),
+          dmin(T.dmin),
+          FhklLinear(T.FhklLinear),
+          Fhkl2Linear(T.Fhkl2Linear),
+          fpfdp(T.fpfdp),
+          fpfdp_derivs(T.fpfdp_derivs),
+          atom_data(T.atom_data),
+          nominal_hkl(T.nominal_hkl),
+          default_F(T.default_F),
+          r_e_sqr(T.r_e_sqr),
+          eig_U(to_mat3(T.eig_U)),
+          eig_O(to_mat3(T.eig_O)),
+          eig_B(to_mat3(T.eig_B)),
+          RXYZ(to_mat3(T.RXYZ)),
+          spindle_vec(to_vec3(T.spindle_vec)) {
         for (auto& mat : T.dG_dgamma) {
             dG_dgamma.push_back(to_mat3(mat));
         }
@@ -126,28 +125,28 @@ struct kokkos_crystal {
         }
         for (auto& mat : T.RotMats) {
             RotMats.push_back(to_mat3(mat));
-        }    
+        }
         for (auto& mat : T.dRotMats) {
             dRotMats.push_back(to_mat3(mat));
-        } 
+        }
         for (auto& mat : T.d2RotMats) {
             d2RotMats.push_back(to_mat3(mat));
-        }     
+        }
         for (auto& mat : T.UMATS) {
             UMATS.push_back(to_mat3(mat));
-        }  
+        }
         for (auto& mat : T.UMATS_prime) {
             UMATS_prime.push_back(to_mat3(mat));
-        }  
+        }
         for (auto& mat : T.UMATS_dbl_prime) {
             UMATS_dbl_prime.push_back(to_mat3(mat));
-        }     
+        }
         for (auto& mat : T.dB_Mats) {
             dB_Mats.push_back(to_mat3(mat));
-        } 
+        }
         for (auto& mat : T.dB2_Mats) {
             dB2_Mats.push_back(to_mat3(mat));
-        }                                                              
+        }
     }
 };
 

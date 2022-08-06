@@ -1,5 +1,5 @@
 #include <sys/time.h>
-#include "simtbx/diffBragg/src/diffBragg.h"
+#include <simtbx/diffBragg/src/diffBragg.h>
 #include <assert.h>
 #include <stdbool.h>
 
@@ -125,45 +125,45 @@ rotY_manager::rotY_manager(){
 }
 
 void rotX_manager::set_R(){
-    R << 1,           0,          0,
-         0,  cos(value), sin(value),
-         0, -sin(value), cos(value);
+    R << 1,           0,           0,
+          0,  cos(value), sin(value),
+          0, -sin(value), cos(value);
 
     dR << 0,           0,           0,
-          0, -sin(value),  cos(value),
-          0, -cos(value), -sin(value);
+             0,  -sin(value), cos(value),
+             0, -cos(value), -sin(value);
 
     dR2 << 0,           0,           0,
-           0, -cos(value), -sin(value),
-           0,  sin(value), -cos(value);
+              0,  -cos(value), -sin(value),
+              0,   sin(value), -cos(value);
 
 
 }
 void rotY_manager::set_R(){
-    R << cos(value), 0, -sin(value),
-                  0, 1,           0,
-         sin(value), 0,  cos(value);
+    R << cos(value),0, -sin(value),
+             0,         1,             0,
+            sin(value), 0, cos(value);
 
-    dR << -sin(value), 0, -cos(value),
-                    0, 0,           0,
-           cos(value), 0, -sin(value);
+    dR << -sin(value),0, -cos(value),
+                0,          0,             0,
+                cos(value), 0, -sin(value);
 
-    dR2 << -cos(value), 0, sin(value),
-              0,        0,          0,
-           -sin(value), 0, -cos(value);
+    dR2 << -cos(value),0, sin(value),
+              0,          0,          0,
+             -sin(value), 0, -cos(value);
 }
 void rotZ_manager::set_R(){
-    R  << cos(value), sin(value), 0,
-         -sin(value), cos(value), 0,
-                   0,          0, 1;
+    R  << cos(value),  sin(value), 0,
+              -sin(value), cos(value), 0,
+                         0,           0, 1;
 
     dR << -sin(value),  cos(value), 0,
-          -cos(value), -sin(value), 0,
-                    0,           0, 0;
+               -cos(value), -sin(value), 0,
+                           0,           0, 0;
 
     dR2 << -cos(value), -sin(value), 0,
-            sin(value), -cos(value), 0,
-                     0,           0, 0;
+               sin(value), -cos(value), 0,
+                        0,           0, 0;
 }
 // END rot manager
 
@@ -198,23 +198,22 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     EYE <<  1,0,0,
             0,1,0,
             0,0,1;
-    db_cryst.eig_O = MAT3 {1,0,0,
-                           0,1,0,
-                           0,0,1};
+    db_cryst.eig_O << 1,0,0,
+               0,1,0,
+               0,0,1;
     psi = 0;
 
-    MAT3 unit_matrix{1, 1, 1};
-    db_cryst.RotMats.push_back(unit_matrix);
-    db_cryst.RotMats.push_back(unit_matrix);
-    db_cryst.RotMats.push_back(unit_matrix);
+    db_cryst.RotMats.push_back(EYE);
+    db_cryst.RotMats.push_back(EYE);
+    db_cryst.RotMats.push_back(EYE);
 
-    db_cryst.dRotMats.push_back(unit_matrix);
-    db_cryst.dRotMats.push_back(unit_matrix);
-    db_cryst.dRotMats.push_back(unit_matrix);
+    db_cryst.dRotMats.push_back(EYE);
+    db_cryst.dRotMats.push_back(EYE);
+    db_cryst.dRotMats.push_back(EYE);
 
-    db_cryst.d2RotMats.push_back(unit_matrix);
-    db_cryst.d2RotMats.push_back(unit_matrix);
-    db_cryst.d2RotMats.push_back(unit_matrix);
+    db_cryst.d2RotMats.push_back(EYE);
+    db_cryst.d2RotMats.push_back(EYE);
+    db_cryst.d2RotMats.push_back(EYE);
 
 
     boost::shared_ptr<rot_manager> rotX = boost::shared_ptr<rot_manager>(new rotX_manager());
@@ -369,12 +368,12 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
     Ne = 0;
     Nf = 0;
 
-    db_cryst.anisoG = MAT3 {50,0,0,
-                            0,50,0,
-                            0,0,50};
-    db_cryst.anisoU = MAT3{.16,0,0,
-                           0,.16,0,
-                           0,0,.16};
+    db_cryst.anisoG << 50,0,0,
+                       0,50,0,
+                       0,0,50;
+    db_cryst.anisoU << .16,0,0,
+                       0,.16,0,
+                       0,0,.16;
 
     lambda_managers[0]->value = 0;
     lambda_managers[1]->value = 1;
@@ -415,10 +414,8 @@ void diffBragg::set_close_distances(){
     db_det.close_distances.clear();
     int Npanels = db_det.pix0_vectors.size() / 3;
     for (int ii=0; ii<Npanels; ii++){
-        VEC3 pix0(db_det.pix0_vectors[ii*3], db_det.pix0_vectors[ii*3+1], db_det.pix0_vectors[ii*3+2]) ;
-        VEC3 OO(db_det.odet_vectors[ii*3], db_det.odet_vectors[ii*3+1], db_det.odet_vectors[ii*3+2]) ;
-        // Eigen::Vector3d pix0(db_det.pix0_vectors[ii*3], db_det.pix0_vectors[ii*3+1], db_det.pix0_vectors[ii*3+2]) ;
-        // Eigen::Vector3d OO(db_det.odet_vectors[ii*3], db_det.odet_vectors[ii*3+1], db_det.odet_vectors[ii*3+2]) ;
+        Eigen::Vector3d pix0(db_det.pix0_vectors[ii*3], db_det.pix0_vectors[ii*3+1], db_det.pix0_vectors[ii*3+2]) ;
+        Eigen::Vector3d OO(db_det.odet_vectors[ii*3], db_det.odet_vectors[ii*3+1], db_det.odet_vectors[ii*3+2]) ;
         double close_dist = pix0.dot(OO);
         db_det.close_distances.push_back(close_dist);
         if (verbose) printf("Panel %d: close distance %f\n", ii, close_dist);
@@ -699,8 +696,8 @@ void diffBragg::update_dxtbx_geoms(
 
         int i_rot = pan_rot_ids[ii];
         pan = boost::dynamic_pointer_cast<panel_manager>(panels[i_rot]);
-        db_det.dF_vecs[panel_id*3 + ii] = VEC3(pan->dF.data());
-        db_det.dS_vecs[panel_id*3 + ii] = VEC3(pan->dS.data());
+        db_det.dF_vecs[panel_id*3 + ii] = pan->dF;
+        db_det.dS_vecs[panel_id*3 + ii] = pan->dS;
     }
 
     SCITBX_ASSERT(close_distance > 0);
@@ -814,9 +811,10 @@ void diffBragg::vectorize_umats(){
         uzx = mosaic_umats[mos_tic*9+6];
         uzy = mosaic_umats[mos_tic*9+7];
         uzz = mosaic_umats[mos_tic*9+8];
-        MAT3 U {uxx, uxy, uxz,
-                uyx, uyy, uyz,
-                uzx, uzy, uzz};
+        Eigen::Matrix3d U;
+        U << uxx, uxy, uxz,
+             uyx, uyy, uyz,
+             uzx, uzy, uzz;
         db_cryst.UMATS.push_back(U);
         db_cryst.UMATS_RXYZ.push_back(U);
     }
@@ -835,9 +833,10 @@ void diffBragg::vectorize_umats(){
                 double uzx = mosaic_umats_prime[mos_tic2*9+6];
                 double uzy = mosaic_umats_prime[mos_tic2*9+7];
                 double uzz = mosaic_umats_prime[mos_tic2*9+8];
-                MAT3 Up {uxx, uxy, uxz,
-                         uyx, uyy, uyz,
-                         uzx, uzy, uzz};
+                Eigen::Matrix3d Up;
+                Up << uxx, uxy, uxz,
+                     uyx, uyy, uyz,
+                     uzx, uzy, uzz;
                 db_cryst.UMATS_RXYZ_prime.push_back(Up);
                 db_cryst.UMATS_prime.push_back(Up);
 
@@ -853,9 +852,10 @@ void diffBragg::vectorize_umats(){
                     uzx = mosaic_umats_dbl_prime[mos_tic2*9+6];
                     uzy = mosaic_umats_dbl_prime[mos_tic2*9+7];
                     uzz = mosaic_umats_dbl_prime[mos_tic2*9+8];
-                    MAT3 Udp {uxx, uxy, uxz,
-                              uyx, uyy, uyz,
-                              uzx, uzy, uzz};
+                    Eigen::Matrix3d Udp;
+                    Udp << uxx, uxy, uxz,
+                         uyx, uyy, uyz,
+                         uzx, uzy, uzz;
                     db_cryst.UMATS_RXYZ_dbl_prime.push_back(Udp);
                     db_cryst.UMATS_dbl_prime.push_back(Udp);
                 }
@@ -1828,8 +1828,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_cryst.dB_Mats.clear();
     db_cryst.dB2_Mats.clear();
     for(int i_uc=0; i_uc< 6; i_uc++){
-        db_cryst.dB_Mats.push_back(MAT3(ucell_managers[i_uc]->dB.data()));
-        db_cryst.dB2_Mats.push_back(MAT3(ucell_managers[i_uc]->dB2.data()));
+        db_cryst.dB_Mats.push_back(ucell_managers[i_uc]->dB);
+        db_cryst.dB2_Mats.push_back(ucell_managers[i_uc]->dB2);
     }
 
     std::vector<unsigned int> panels_fasts_slows_vec(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
@@ -1884,8 +1884,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     gettimeofday(&t4,0 );
     double time_make_images = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
-    db_cryst.spindle_vec = VEC3(eig_spindle_vec.data());
-    db_beam.polarization_axis = VEC3(_polarization_axis.data());
+    db_cryst.spindle_vec = eig_spindle_vec;
+    db_beam.polarization_axis = _polarization_axis;
 
     gettimeofday(&t2, 0);
     double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
@@ -2077,9 +2077,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){
         //if (rot_managers[i_rot]->refine_me){
-            db_cryst.RotMats[i_rot] = MAT3(rot_managers[i_rot]->R.data());
-            db_cryst.dRotMats[i_rot] = MAT3(rot_managers[i_rot]->dR.data());
-            db_cryst.d2RotMats[i_rot] = MAT3(rot_managers[i_rot]->dR2.data());
+            db_cryst.RotMats[i_rot] = rot_managers[i_rot]->R;
+            db_cryst.dRotMats[i_rot] = rot_managers[i_rot]->dR;
+            db_cryst.d2RotMats[i_rot] = rot_managers[i_rot]->dR2;
         //}
     }
     db_cryst.RXYZ = db_cryst.RotMats[0]*db_cryst.RotMats[1]*db_cryst.RotMats[2];

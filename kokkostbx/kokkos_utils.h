@@ -10,7 +10,6 @@
 //*******************************************************************
 // Transfer data
 //*******************************************************************
-
 namespace {
 template <typename T, typename U>
 void transfer_X2kokkos(view_1d_t<T>& dst, const U& src) {
@@ -61,8 +60,8 @@ void transfer_double2kokkos(vector_cudareal_t& dst, const double* src, const siz
 template <typename T>
 void transfer_shared2kokkos(view_1d_t<T>& dst, const af::shared<T>& src) {
     if (true) {
-        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*)
-        // dst.data()); printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
+        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data()); 
+        // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
     }
     if (dst.span() < src.size()) {
         resize(dst, src.size());
@@ -86,16 +85,28 @@ void transfer_kokkos2shared(af::shared<T>& dst, const view_1d_t<T>& src) {
 
 template <typename T>
 void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
+    if (true) {
+        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data()); 
+        // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
+    }    
     if (dst.span() < src.size()) {
         resize(dst, src.size());
+        // printf(" - size changed, new size: %d\n", dst.span() );
     }
-
-    transfer_X2kokkos(dst, src);
+    auto host_view = Kokkos::create_mirror_view(dst);
+    for (int i = 0; i < src.size(); ++i) {
+        host_view(i) = src[i];
+    }
+    Kokkos::deep_copy(dst, host_view);
 }
 
 template <typename T>
 void transfer_kokkos2vector(std::vector<T>& dst, const view_1d_t<T>& src) {
-    transfer_kokkos2X(dst, src);
+    auto host_view = Kokkos::create_mirror_view(src);
+    Kokkos::deep_copy(host_view, src);
+    for (int i = 0; i < host_view.span(); ++i) {
+        dst[i] = host_view(i);
+    }
 }
 
 template <typename T>
