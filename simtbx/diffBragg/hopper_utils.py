@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import time
 import os
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
@@ -865,16 +866,23 @@ class DataModeler:
         self.SIM.roi_id_unique = self.roi_id_unique
         self.SIM.roi_id_slices = self.roi_id_slices
 
-    def get_data_model_pairs(self):
+    def get_data_model_pairs(self, reorder=False):
         if self.best_model is None:
             raise ValueError("cannot get the best model, there is no best_model attribute")
         all_dat_img, all_mod_img = [], []
         all_trusted = []
         all_bragg = []
         all_sigma_rdout = []
+        all_d_perpix = 1/self.all_q_perpix
+        all_d = []
         for i_roi in range(len(self.rois)):
             x1, x2, y1, y2 = self.rois[i_roi]
             mod = self.best_model[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+            try:
+                res = all_d_perpix[self.roi_id==i_roi] .mean()
+                all_d.append(res)
+            except IndexError:
+                pass
             if self.all_trusted is not None:
                 trusted = self.all_trusted[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
                 all_trusted.append(trusted)
@@ -897,9 +905,16 @@ class DataModeler:
             else:  # assume mod contains background
                 all_mod_img.append(mod)
                 all_bragg.append(None)
-        ret_subimgs = all_dat_img, all_mod_img, all_trusted, all_bragg
+        ret_subimgs = [all_dat_img, all_mod_img, all_trusted, all_bragg]
         if all_sigma_rdout:
-            ret_subimgs += (all_sigma_rdout, )
+            ret_subimgs += [all_sigma_rdout]
+        if reorder:
+            order = np.argsort(all_d)[::-1]
+            for i in range(len(ret_subimgs)):
+                imgs = ret_subimgs[i]
+                imgs = [imgs[i] for i in order]
+                ret_subimgs[i] = imgs
+
         return ret_subimgs
 
     def Minimize(self, x0):
@@ -1282,7 +1297,6 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
 
     return model_pix, J
 
-
 def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
     if SIM.refining_Fhkl:
@@ -1588,6 +1602,7 @@ def get_param_from_x(x, SIM, i_xtal=0):
 
 class TargetFunc:
     def __init__(self, SIM, niter_per_J=1, profile=False):
+        self.t_per_iter = []
         self.niter_per_J = niter_per_J
         self.prev_iter_vals = None
         self.global_x = []
@@ -1624,6 +1639,7 @@ class TargetFunc:
             return self.g[self.vary]
 
     def __call__(self, x, *args, **kwargs):
+        t = time.time()
         self.x0[self.vary] = x
         if self.all_x:
             self.delta_x = self.x0 - self.all_x[-1]
@@ -1632,7 +1648,13 @@ class TargetFunc:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
         f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, *args, **kwargs)
-        debug_s = "Hop=%d |it=%d | " % (self.hop_iter, self.iteration) + debug_s
+        self.t_per_iter.append(time.time())
+        if len(self.t_per_iter) > 2:
+            ave_t_per_it = np.mean([t2-t1 for t2,t1 in zip(self.t_per_iter[1:], self.t_per_iter[:-1])])
+        else:
+            ave_t_per_it = 0
+
+        debug_s = "Hop=%d |it=%d | t/it=%.4fs" % (self.hop_iter, self.iteration, ave_t_per_it) + debug_s
         MAIN_LOGGER.debug(debug_s)
         self.all_f.append(f)
         self.all_sigZ.append(sigZ)
