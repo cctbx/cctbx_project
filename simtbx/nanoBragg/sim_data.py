@@ -382,7 +382,7 @@ class SimData:
       if self.crystal.isotropic_ncells:
         self.D.Ncells_abc = self.crystal.Ncells_abc[0]
       else:
-        self.D.Ncells_abc_aniso = self.crystal.Ncells_abc
+        self.D.Ncells_abc_aniso = tuple(self.crystal.Ncells_abc)
       if self.crystal.Ncells_def is not None:
         self.D.Ncells_def = self.crystal.Ncells_def
 
