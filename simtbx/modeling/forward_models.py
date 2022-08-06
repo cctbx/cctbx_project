@@ -54,6 +54,7 @@ def model_from_expt(exp_name,  model_spots_from_pandas_kwargs=None, panda_frame_
 
 
 # TODO name change
+# TODO move all these arguments into the pandas dataFrame (mtz_col, from_pdb etc)
 def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           mtz_file=None, mtz_col=None,
                           oversample_override=None,
@@ -67,7 +68,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
                           force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False,
                           use_exascale_api=False, use_db=False, show_timings=False, perpixel_wavelen=False,
-                          det_thicksteps=None):
+                          det_thicksteps=None, from_pdb=None):
     if perpixel_wavelen and not use_db:
         raise NotImplementedError("to get perpixel wavelengths set use_db=True to use the diffBragg backend")
     if use_exascale_api:
@@ -136,8 +137,22 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     if mtz_file is not None:
         assert mtz_col is not None
         Famp = utils.open_mtz(mtz_file, mtz_col)
+    elif from_pdb is not None:
+        if from_pdb.name is not None:
+            wavelength=None
+            if from_pdb.add_anom:
+                wavelength = expt.beam.get_wavelength()
+            miller_data = utils.get_complex_fcalc_from_pdb(from_pdb.name,
+                                                     dmin=d_min,
+                                                     dmax=d_max,
+                                                     wavelength=wavelength,
+                                                     k_sol=from_pdb.k_sol,
+                                                     b_sol=from_pdb.b_sol)
+            Famp = miller_data.as_amplitude_array()
     else:
         Famp = utils.make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
+
+
 
     diffuse_params = None
     if "use_diffuse_models" in columns and df.use_diffuse_models.values[0]:
