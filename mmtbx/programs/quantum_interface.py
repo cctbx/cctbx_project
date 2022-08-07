@@ -1,7 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.qi
 from __future__ import absolute_import, division, print_function
 import os
-import copy
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
