@@ -793,6 +793,15 @@ def sphere_enclosing_model(model):
   model_radius = math.sqrt(dsqrmax)
   return model_midpoint, model_radius
 
+def sphere_sampling_model(model):
+  sites_cart = model.get_sites_cart()
+  cart_min = flex.double(sites_cart.min())
+  cart_max = flex.double(sites_cart.max())
+  model_midpoint = (cart_max + cart_min) / 2
+  meansqr = flex.mean((sites_cart - tuple(model_midpoint)).norms() ** 2)
+  rms_model_radius = math.sqrt(meansqr)
+  return model_midpoint, rms_model_radius
+
 def flatten_model_region(mmm, d_min):
   # Flatten the region covered by the model
   # For map_manager, replace it by the mask-weighted mean within this region
@@ -1084,7 +1093,9 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   mask_distances = d_from_c.select(selected_grid_indices)
   mask_distances = mask_distances.select(flex.sort_permutation(data=mask_distances))
   masked_points = mask_distances.size()
-  mask_radius = mask_distances[math.floor(frac_coverage*masked_points)-1]
+  print("frac_coverage, masked_points, index: ", frac_coverage, masked_points, int(math.floor(frac_coverage*masked_points))-1)
+  print("mask_distances[150000]",mask_distances[150000])
+  mask_radius = mask_distances[int(math.floor(frac_coverage*masked_points))-1]
   return mask_radius
 
 def get_ordered_volume_exact(mm_ordered_mask,sphere_center,sphere_radius):
@@ -1315,6 +1326,7 @@ def local_mean_density(mm, radius):
 def assess_cryoem_errors(
     mmm, d_min,
     map_1_id="map_manager_1", map_2_id="map_manager_2",
+    determine_ordered_volume=True,
     ordered_mask_id='ordered_volume_mask', sphere_points=500,
     sphere_cent=None, radius=None,
     verbosity=1, shift_map_origin=True, keep_full_map=False):
@@ -1330,6 +1342,7 @@ def assess_cryoem_errors(
   map_1_id: identifier of first half-map, if different from default of
     map_manager_1
   map_2_id: same for second half-map
+  determine_ordered_volume: flag for whether ordered volume should be assessed
   ordered_mask_id: identifier for mask defining ordered volume
   sphere_cent: center of sphere defining target region for analysis
     default is center of map
@@ -1352,12 +1365,10 @@ def assess_cryoem_errors(
 
   # Start from two half-maps and ordered volume mask in map_model_manager
   # Determine ordered volume in whole reconstruction and fraction that will be in sphere
-  ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
-  unit_cell = ordered_mm.unit_cell()
-  unit_cell_grid = ordered_mm.map_data().accessor().all()
+  unit_cell = mmm.map_manager().unit_cell()
+  unit_cell_grid = mmm.map_data().accessor().all()
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
-  total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
-  ucpars = mmm.map_manager().unit_cell().parameters()
+  ucpars = unit_cell.parameters()
   if sphere_cent is None:
     # Default to sphere in center of cell extending 2/3 distance to nearest edge
     sphere_cent = flex.double((ucpars[0], ucpars[1], ucpars[2]))/2.
@@ -1367,8 +1378,13 @@ def assess_cryoem_errors(
     assert radius is not None
     sphere_cent = flex.double(sphere_cent)
 
-  ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent, radius)
-  fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
+  if determine_ordered_volume:
+    ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
+    total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
+    ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent, radius)
+    fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
+  else:
+    fraction_scattering = None
 
   # Get map coefficients for maps after spherical masking
   # Define box big enough to hold sphere plus soft masking
@@ -1421,8 +1437,11 @@ def assess_cryoem_errors(
     # close to the factor of two between typical protein volume and unit cell
     # volume in a crystal), this should yield likelihood scores on a similar
     # scale to crystallographic ones.
-    assert(ordered_volume_in_sphere > 0.)
-    over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
+    if determine_ordered_volume:
+      assert(ordered_volume_in_sphere > 0.)
+      over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
+    else:
+      over_sampling_factor = 4. # Guess!
 
   # Compute local averages needed for initial covariance terms
   # Do these calculations at extended resolution to avoid edge effects up to
@@ -1647,7 +1666,8 @@ def assess_cryoem_errors(
   weighted_map_noise = math.sqrt(weighted_map_noise) / weighted_masked_volume
 
   if verbosity > 0:
-    print("Fraction of full map scattering: ",fraction_scattering)
+    if determine_ordered_volume:
+      print("Fraction of full map scattering: ",fraction_scattering)
     print("Over-sampling factor: ",over_sampling_factor)
     print("Weighted map noise: ",weighted_map_noise)
     sys.stdout.flush()
