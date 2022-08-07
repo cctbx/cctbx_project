@@ -192,7 +192,33 @@ class Script:
             if self.params.refiner.reference_geom is not None:
                 detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
                 Modeler.E.detector = detector
+
+            # here we support inputting an experiment list with multiple crystals
+            # the first crystal in the exp list is used to instantiate a diffBragg instance,
+            # the remaining crystals are added to the sim_data instance for use during hopper_utils modeling
+            # best pickle is not supported yet for multiple crystals
+            # also, if number of crystals is >1 , then the params.number_of_xtals flag will be overridden
+            exp_list = ExperimentListFactory.from_json_file(exp, False)
+            xtals = exp_list.crystals()
+            if len(xtals) > 1:
+                assert best is None, "cannot pass best pickle if expt list has more than one crystal"
+                assert self.params.number_of_xtals==1, "if expt list has more than one xtal, leave number_of_xtals as the default"
+                self.params.number_of_xtals = len(xtals)
+                MAIN_LOGGER.debug("Found %d xtals with unit cells:" %len(xtals))
+                for xtal in xtals:
+                    MAIN_LOGGER.debug("%.4f %.4f %.4f %.4f %.4f %.4f" % xtal.get_unit_cell().parameters())
             Modeler.SimulatorFromExperiment(best)
+            Modeler.SIM.Umatrices = [xtal.get_U() for xtal in xtals]
+            # TODO, move this to SimulatorFromExperiment
+            if best is not None and "other_spotscales" in list(best) and "other_Umats" in list(best):
+                Modeler.SIM.Umatrices[0] = self.E.get_U()
+                assert len(xtals) == len(best.other_spotscales.values[0])+1
+                for i_xtal in range(1, len(xtals),1):
+                    scale_xt = best.other_spotscales.values[0][i_xtal]
+                    Umat_xt = best.other_Umats.values[0][i_xtal]
+                    Modeler.SIM.Umatrices[i_xtal] = Umat_xt
+                    Modeler.SIM.P["G_xtal%d" %i_xtal] = scale_xt
+
             Modeler.SIM.D.store_ave_wavelength_image = self.params.store_wavelength_images
             if self.params.refiner.verbose is not None and COMM.rank==0:
                 Modeler.SIM.D.verbose = self.params.refiner.verbose

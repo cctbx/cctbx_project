@@ -605,8 +605,6 @@ class DataModeler:
         ParameterType = RangedParameter
 
         if best is not None:
-            if self.params.number_of_xtals > 1:
-                raise NotImplementedError("Not configured to load multiple crystals from pandas file")
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
             # Umatrix
             # NOTE: just set the best Amatrix here
@@ -1114,8 +1112,8 @@ class DataModeler:
         trace_data = np.array([trace0, trace1, trace2]).T
         np.savetxt(trace_path, trace_data, fmt="%s")
 
-        if Modeler.SIM.num_xtals == 1:
-            hopper_io.save_to_pandas(x, Modeler.SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
+        #if Modeler.SIM.num_xtals == 1:
+        hopper_io.save_to_pandas(x, Modeler.SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1394,6 +1392,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     for i_xtal in range(SIM.num_xtals):
         SIM.D.raw_pixels_roi *= 0
 
+        SIM.D.Umatrix = SIM.Umatrices[i_xtal]
         RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
         rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
 
@@ -1519,7 +1518,7 @@ def look_at_x(x, SIM):
         print("%s: %f" % (name, val))
 
 
-def get_param_from_x(x, SIM, i_xtal=0):
+def get_param_from_x(x, SIM, i_xtal=0, as_dict=False):
     G = SIM.P['G_xtal%d' %i_xtal]
     scale = G.get_val(x[G.xpos])
 
@@ -1547,7 +1546,13 @@ def get_param_from_x(x, SIM, i_xtal=0):
     DetZ = SIM.P["detz_shift"]
     detz = DetZ.get_val(x[DetZ.xpos])
 
-    return scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
+    if as_dict:
+        vals = scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
+        keys = 'scale', 'rotX', 'rotY', 'rotZ', 'Na', 'Nb', 'Nc', 'Nd', 'Ne', 'Nf', 'diff_gam_a', 'diff_gam_b', 'diff_gam_c', 'diff_sig_a', 'diff_sig_bvals = f_sig_c', 'a','b','c','al','be','ga', 'detz'
+        param_dict = dict(zip(keys, vals))
+        return param_dict
+    else:
+        return scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf, diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, diff_sig_b, diff_sig_c, a,b,c,al,be,ga, detz
 
 
 class TargetFunc:

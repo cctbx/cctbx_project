@@ -16,6 +16,18 @@ def make_rank_outdir(root, subfolder, rank=0):
     return rank_imgs_outdir
 
 
+def diffBragg_Umat(rotX, rotY, rotZ, U):
+    xax = col((-1, 0, 0))
+    yax = col((0, -1, 0))
+    zax = col((0, 0, -1))
+    ## update parameters:
+    RX = xax.axis_and_angle_as_r3_rotation_matrix(rotX, deg=False)
+    RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
+    RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
+    M = RX * RY * RZ
+    U = M * sqr(U)
+    return U
+
 def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
                    rank=0):
     LOGGER = logging.getLogger("refine")
@@ -29,6 +41,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     scale_p = SIM.P["G_xtal0"]
     scale_init = scale_p.init
+
     Nabc_init = []
     for i in [0,1,2]:
         p = SIM.P["Nabc%d" % i]
@@ -42,15 +55,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
-    xax = col((-1, 0, 0))
-    yax = col((0, -1, 0))
-    zax = col((0, 0, -1))
-    ## update parameters:
-    RX = xax.axis_and_angle_as_r3_rotation_matrix(rotX, deg=False)
-    RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
-    RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
-    M = RX * RY * RZ
-    U = M * sqr(SIM.crystal.dxtbx_crystal.get_U())
+    U = diffBragg_Umat(rotX, rotY, rotZ, SIM.crystal.dxtbx_crystal.get_U())
     new_cryst = deepcopy(SIM.crystal.dxtbx_crystal)
     new_cryst.set_U(U)
 
@@ -59,6 +64,21 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     new_cryst.set_B(ucman.B_recipspace)
 
     Amat = new_cryst.get_A()
+    other_Umats = []
+    other_spotscales = []
+    if SIM.num_xtals > 1:
+        for i_xtal in range(1,SIM.num_xtals,1):
+            par = hopper_utils.get_param_from_x(x, SIM, i_xtal=i_xtal, as_dict=True)
+            scale_xt = par['scale']
+            rotX_xt = par['rotX']
+            rotY_xt = par['rotY']
+            rotZ_xt = par['rotZ']
+            U_xt = diffBragg_Umat(rotX_xt, rotY_xt, rotZ_xt, SIM.Umatrices[i_xtal])
+            #cryst_temp = deepcopy(new_cryst)
+            #cryst_temp.set_U(U_xt)
+            #Amat_xt = cryst_temp.get_A()
+            other_Umats.append(U_xt)
+            other_spotscales.append(scale_xt)
 
     eta = [0]
     lam_coefs = [0], [1]
@@ -109,7 +129,8 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         oversample=params.simulator.oversample,
         opt_det=params.opt_det, stg1_refls=stg1_refls,
         stg1_img_path=stg1_img_path,
-        ncells_init=Nabc_init, spot_scales_init=scale_init)
+        ncells_init=Nabc_init, spot_scales_init=scale_init,
+        other_Umats = other_Umats, other_spotscales = other_spotscales)
     df.to_pickle(pandas_path)
     return df
 
@@ -119,7 +140,8 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
                        rotXYZ, ucell_p, ucell_p_init, lam0_lam1,
                        spec_file, spec_stride,flux, beamsize_mm,
                        orig_exp_name, opt_exp_name, spec_from_imageset, oversample,
-                       opt_det, stg1_refls, stg1_img_path, ncells_init=None, spot_scales_init = None):
+                       opt_det, stg1_refls, stg1_img_path, ncells_init=None, spot_scales_init = None,
+                       other_Umats=None, other_spotscales=None):
     """
 
     :param xtal_scale:
@@ -150,6 +172,10 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
     :param stg1_img_path:
     :return:
     """
+    if other_Umats is None:
+        other_Umats = []
+    if other_spotscales is None:
+        other_spotscales = []
     if ncells_init is None:
         ncells_init = np.nan, np.nan, np.nan
     if spot_scales_init is None:
@@ -181,6 +207,10 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
         spec_file = os.path.abspath(spec_file)
     df["spectrum_filename"] = spec_file
     df["spectrum_stride"] = spec_stride
+    if other_spotscales:
+        df["other_spotscales"] = [tuple(other_spotscales)]
+    if other_Umats:
+        df["other_Umats"] = [tuple(map(tuple, other_Umats))]
 
     df["total_flux"] = flux
     df["beamsize_mm"] = beamsize_mm
