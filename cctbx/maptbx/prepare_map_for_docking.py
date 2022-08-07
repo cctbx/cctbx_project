@@ -1093,8 +1093,6 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   mask_distances = d_from_c.select(selected_grid_indices)
   mask_distances = mask_distances.select(flex.sort_permutation(data=mask_distances))
   masked_points = mask_distances.size()
-  print("frac_coverage, masked_points, index: ", frac_coverage, masked_points, int(math.floor(frac_coverage*masked_points))-1)
-  print("mask_distances[150000]",mask_distances[150000])
   mask_radius = mask_distances[int(math.floor(frac_coverage*masked_points))-1]
   return mask_radius
 
