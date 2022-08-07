@@ -974,16 +974,14 @@ class DataModeler:
             if self.SIM.D.use_diffuse:
                 self.SIM.D.refine(DIFFUSE_ID)
 
-            args = (self.SIM, self.pan_fast_slow, self.all_data,
-                    self.all_sigma_rdout, self.all_trusted, self.all_background, True, self.params, True)
-            min_kwargs = {'args': args, "method": method, "jac": target.jac,
+            min_kwargs = {'args': (self,True), "method": method, "jac": target.jac,
                           'hess': self.params.hess, 'callback':callback}
             if method=="L-BFGS-B":
-                min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-10, "maxfun":1e5, "maxiter":self.params.lbfgs_maxiter}
+                min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-12, "maxfun":1e5,
+                                         "maxiter":self.params.lbfgs_maxiter, "eps":1e-20}
+
         else:
-            args = (self.SIM, self.pan_fast_slow, self.all_data,
-                    self.all_sigma_rdout, self.all_trusted, self.all_background, True, self.params, False)
-            min_kwargs = {'args': args, "method": method,
+            min_kwargs = {'args': (self,False), "method": method,
                           'callback': callback,
                           'options': {'maxfev': maxfev,
                                       'fatol': self.params.nelder_mead_fatol}}
@@ -1297,6 +1295,7 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
 
     return model_pix, J
 
+
 def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
     if SIM.refining_Fhkl:
@@ -1401,56 +1400,6 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         ## update parameters:
         # TODO: if not refining Umat, assert these are 0 , and dont set them here
         SIM.D.set_value(ROTX_ID, rotX)
-
-    # diffuse signals
-    if SIM.D.use_diffuse:
-        diffuse_params_lookup = {}
-        iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
-        for diff_type in ['gamma', 'sigma']:
-            diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
-            diffuse_params_lookup[diff_type] = diff_params
-            diff_vals = []
-            for i_diff, param in enumerate(diff_params):
-                val = param.get_val(x[param.xpos])
-                if iso_flags[diff_type]:
-                    diff_vals = [val]*3
-                    break
-                else:
-                    diff_vals.append(val)
-            if diff_type == "gamma":
-                SIM.D.diffuse_gamma = tuple(diff_vals)
-            else:
-                SIM.D.diffuse_sigma = tuple(diff_vals)
-
-    npix = int(len(pfs) / 3)
-    nparam = len(x)
-    J = None
-    if compute_grad:
-        # THis should be all params save the Fhkl params
-        J = np.zeros((nparam-SIM.Num_ASU, npix))  # gradients
-
-    model_pix = None
-    model_pix_noRoi = None
-
-    # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
-    roiScalesPerPix = 1
-    if SIM.P["scale_roi0"].refine:
-        perRoiParams = [SIM.P["scale_roi%d" % roi_id] for roi_id in SIM.roi_id_unique]
-        perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
-        roiScalesPerPix = np.zeros(npix)
-        for i_roi, roi_id in enumerate(SIM.roi_id_unique):
-            slc = SIM.roi_id_slices[roi_id][0]
-            roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
-
-    for i_xtal in range(SIM.num_xtals):
-        SIM.D.raw_pixels_roi *= 0
-
-        RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
-        rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
-
-        ## update parameters:
-        # TODO: if not refining Umat, assert these are 0 , and dont set them here
-        SIM.D.set_value(ROTX_ID, rotX)
         SIM.D.set_value(ROTY_ID, rotY)
         SIM.D.set_value(ROTZ_ID, rotZ)
 
@@ -1504,6 +1453,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
             if SIM.D.use_diffuse:
                 for t in ['gamma','sigma']:
+                    diffuse_grads = getattr(SIM.D, "get_diffuse_%s_derivative_pixels" % t)()
                     if diffuse_params_lookup[t][0].refine:
                         for i_diff in range(3):
                             diff_grad = scale*(diffuse_grads[i_diff][:npix].as_numpy_array())
@@ -1639,7 +1589,6 @@ class TargetFunc:
             return self.g[self.vary]
 
     def __call__(self, x, *args, **kwargs):
-        t = time.time()
         self.x0[self.vary] = x
         if self.all_x:
             self.delta_x = self.x0 - self.all_x[-1]
@@ -1647,7 +1596,11 @@ class TargetFunc:
         if not self.iteration % (self.niter_per_J) == 0:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
-        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, *args, **kwargs)
+
+        mod, compute_grad = args
+        args = (mod.SIM, mod.pan_fast_slow, mod.all_data,
+                mod.all_sigma_rdout, mod.all_trusted, mod.all_background, mod.params, compute_grad)
+        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, *args)
         self.t_per_iter.append(time.time())
         if len(self.t_per_iter) > 2:
             ave_t_per_it = np.mean([t2-t1 for t2,t1 in zip(self.t_per_iter[1:], self.t_per_iter[:-1])])
@@ -1666,7 +1619,7 @@ class TargetFunc:
         return f
 
 
-def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, verbose=True, params=None, compute_grad=True, hop_idx=None):
+def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, params=None, compute_grad=True):
 
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg

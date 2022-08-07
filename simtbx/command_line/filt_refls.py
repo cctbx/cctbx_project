@@ -100,5 +100,7 @@ print("Kept %d / %d refls. Removed %.2f %% "
 if args.ers is not None:
     with open(args.ers, "w") as ersFile:
         for e, r, s in df[["exp_name", "filtered_refls", "spectrum_filename"]].values:
+            if s is None:
+                s = ""
             ersFile.write("%s %s %s\n" % (e,r,s))
     print("Wrote %s which can be passed into simtbx.diffBragg.hopper exp_ref_spec_file=%s" % (args.ers, args.ers))
