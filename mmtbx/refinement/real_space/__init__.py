@@ -267,6 +267,8 @@ class side_chain_fit_evaluator(object):
       for proxy in bond_proxies_simple:
         i,j = proxy.i_seqs
         # is i the same as atoms[i].i_seq ? Shall I assert this?
+        assert i == atoms[i].i_seq
+        assert j == atoms[j].i_seq
         resseq_i  = atoms[i].parent().parent().resseq
         resseq_j  = atoms[j].parent().parent().resseq
         resname_i = atoms[i].parent().resname
