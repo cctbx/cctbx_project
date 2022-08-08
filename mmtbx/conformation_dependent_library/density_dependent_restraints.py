@@ -1,4 +1,5 @@
-import os, sys
+from __future__ import division
+import sys
 
 def setup_restraints():
   assert 0
