@@ -190,6 +190,7 @@ restraints_library_str = """
     }
     ddr = False
       .type = bool
+      .style = hidden
       .short_caption = Density dependent restraints
     cdl_svl = False
       .type = bool
