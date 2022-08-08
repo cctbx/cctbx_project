@@ -3,7 +3,6 @@ name: cctbx
 
 channels:
   - conda-forge
-  - defaults
 
 includes:
   - {{ root }}/cctbxlite.devenv.yml

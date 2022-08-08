@@ -3,7 +3,6 @@ name: cctbxlite
 
 channels:
   - conda-forge
-  - defaults
   - cctbx
 
 dependencies:
