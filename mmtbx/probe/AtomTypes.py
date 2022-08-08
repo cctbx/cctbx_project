@@ -45,6 +45,10 @@ def Unpad(n):
   return n
 
 # Is a carbon atom a Carbonyl from a standard amino acid?
+# @todo This function is used once within Helpers.py to change the radius
+# to match what is expectd based on experiments run by the Richardsons in
+# September 2021.  If the CCTBX is changed to use the new values, then we
+# will no longer need this function.
 def IsSpecialAminoAcidCarbonyl(resName, atomName):
   """Given a residue and atom name, determine whether that atom is a C=O.
   This does not mark the ' C  ' atom that is always a Carbonyl; that is checked separately.
@@ -71,7 +75,11 @@ _AromaticTable = [
   # ring as acceptors just because they are in the ring.  5-sided rings were getting too
   # many bonds from the sides.  Once we have a better aromatic ring hydrogen bond test,
   # we may put these back in.
-  #[ ['HIS'], ['ND1','NE2'] ],
+  # @todo Remove the Hydrogens & Deuteriums below that are bonded to these atoms.
+  # [ ['HIS'], ['ND1','NE2'] ],
+  # [ ['HIS'], ['CD2','CE1','CG'] ],
+  # [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','NE1','CD2','CD1','CG'] ],
+  [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','CD2'] ],
 
   [ ['ADE','A'], ['N1','N3','N7','C2','C4','C5','C6','C8','N9'] ],
   [ ['CYT','C'], ['N3','N1','C2','C4','C5','C6'] ],
@@ -97,13 +105,6 @@ _AromaticTable = [
               'C1D','C2D','C3D','C4D'] ],
   [ ['PHE'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
   [ ['TYR'], ['CZ','CE2','CE1','CD2','CD1','CG'] ],
-  # Do not mark the atoms in the Histidine ring or the atoms in the TRP 5-sided
-  # ring as acceptors just because they are in the ring.  5-sided rings were getting too
-  # many bonds from the sides.  Once we have a better aromatic ring hydrogen bond test,
-  # we may put these back in.
-  # [ ['HIS'], ['CD2','CE1','CG'] ],
-  # [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','NE1','CD2','CD1','CG'] ],
-  [ ['TRP'], ['CH2','CZ3','CZ2','CE3','CE2','CD2'] ],
 
   # Here we add the hydrogens and deuteriums that can be part of a ring from probe:select.c
   [ ['PHE'], ['HD1','HD2','HE1','HE2','HZ','DD1','DD2','DE1','DE2','DZ'] ],
