@@ -175,6 +175,7 @@ NOTES:
       startAdd = work_clock()
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model = self.model,
+        use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
         stop_for_unknowns=True
       )
