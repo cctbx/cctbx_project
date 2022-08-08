@@ -516,6 +516,11 @@ newarray._sigmas = sigs
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
     self.chimeraxsession = None
+
+    self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
+
+
+
     self.tabText.setCurrentIndex(0)
     if not isembedded:
       self.window.statusBar().showMessage("")
@@ -705,6 +710,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.BrowserBox.setPalette(pal)
     self.send_message("NGL.background_colour = 'rgb(%d, %d, %d)'" %(color.red(), color.green(), color.blue()) )
 
+
   def onSelect_millertable_column_dlg(self):
     """
     Dialog for choosing what columns of the miller table should be displayed
@@ -712,6 +718,42 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     self.select_millertable_column_dlg.show()
     self.select_millertable_column_dlg.activateWindow()
+
+
+  def onXtricorderRun(self):
+    options = QFileDialog.Options()
+    fileName, filtr = QFileDialog.getOpenFileName(self.window,
+            "Process an MTZ reflection file with Xtricorder", "",
+            "MTZ Files (*.mtz);;All Files (*)", "", options)
+    if fileName:
+      self.setWindowFilenameTitles( fileName)
+      self.textInfo.setPlainText("")
+      self.textAlerts.setPlainText("")
+      self.fileisvalid = False
+      firstpart = os.path.splitext(os.path.basename(fileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+      xtricorder_cmd = """from phasertng.scripts import xtricorder
+(retobj) = xtricorder.xtricorder(
+'''phasertng {
+            hklin.filename = "%s"
+            reflections.wavelength = 1.0
+            suite.level = logfile
+            suite.database = "C:XtricorderTemp"
+          }
+'''
+)
+import glob
+self.hklin = glob.glob("XtricorderTemp/**/*%s/*%s*.mtz", recursive=True)[0]
+self.LoadReflectionsFile(self.hklin)
+""" %(fileName, firstpart, firstpart)
+      self.send_message("%s" %xtricorder_cmd, "external_cmd" )
+      self.MillerComboBox.clear()
+      self.BinDataComboBox.clear()
+      self.millertable.clearContents()
+      self.expandP1checkbox.setChecked(False)
+      self.expandAnomalouscheckbox.setChecked(False)
+      self.sysabsentcheckbox.setChecked(False)
+      self.missingcheckbox.setChecked(False)
+      self.onlymissingcheckbox.setChecked(False)
 
 
   def ProcessMessages(self):

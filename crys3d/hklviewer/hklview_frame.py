@@ -175,6 +175,11 @@ class HKLViewFrame() :
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
           self.update_settings(new_phil, msgtype, lastmsgtype)
+        if msgtype=="external_cmd":
+          self.external_cmd = mstr
+          self.mprint("Received python command string:\n" + mstr, verbose=1)
+          self.run_external_cmd()
+
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -763,6 +768,16 @@ class HKLViewFrame() :
                 }
       self.SendInfoToGUI(mydict)
     return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
+
+
+  def run_external_cmd(self):
+    # run some python scripts like xtricorder directly
+    try:
+      ldic= {'retobj': None, 'self': self }
+      exec(self.external_cmd, globals(), ldic)
+      retobj = ldic.get("retobj", None)
+    except Exception as e:
+      raise Sorry(str(e))
 
 
   def prepare_dataloading(self):
