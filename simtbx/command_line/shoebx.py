@@ -7,6 +7,9 @@ from pylab import *
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("modeler_file", type=str, help="path to a diffBragg modeler file (output from hopper, see the imgs folder in the outdir)")
+parser.add_argument("--stacked", action="store_true")
+parser.add_argument("--model_clim", nargs=2, default=[0,10], type=float)
+parser.add_argument("--data_clim", nargs=2, default=[0,10], type=float)
 args = parser.parse_args()
 
 
@@ -66,6 +69,64 @@ d_min = 9999
 #AX2.add_patch(Rectangle(xy=(0,0), width=4000, height=4000, fc='none', ec='b'))
 #AX2.set_xlim(-10,4010)
 #AX2.set_ylim(-10,4010)
+
+
+if args.stacked:
+
+    if isinstance(M.all_sigma_rdout, np.ndarray):
+        data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = M.get_data_model_pairs()
+    else:
+        data_subimg, model_subimg, trusted_subimg, bragg_subimg = M.get_data_model_pairs()
+        sigma_rdout_subimg = None
+
+    sub_sh = tuple(np.max([im.shape for im in model_subimg], axis=0))
+    size_edg = int(np.sqrt(len(data_subimg))) + 1
+    full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+    full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+    for j in range(size_edg):
+        for i in range(size_edg):
+            mod_idx = j * size_edg + i
+            if mod_idx >= len(model_subimg):
+                continue
+            im = model_subimg[mod_idx].copy()
+            dat_im = data_subimg[mod_idx].copy()
+            ydim, xdim = im.shape
+            if im.shape != sub_sh:
+                im = np.pad(im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
+                dat_im = np.pad(dat_im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant',
+                                constant_values=np.nan)
+            Ysl = slice(j * sub_sh[0], (j + 1) * sub_sh[0], 1)
+            Xsl = slice(i * sub_sh[1], (i + 1) * sub_sh[1], 1)
+            full_im[Ysl, Xsl] = im
+            full_dat_im[Ysl, Xsl] = dat_im
+    subplot(121)
+    gca().set_title("DATA", fontsize=18)
+    imshow(full_dat_im, vmin=args.data_clim[0], vmax=args.data_clim[1], cmap='gray_r')
+    gca().set_xticks(np.arange(sub_sh[1], size_edg*sub_sh[1], sub_sh[1]))
+    gca().set_yticks(np.arange(sub_sh[0], size_edg*sub_sh[0], sub_sh[0]))
+    gca().grid(1, color='k', ls='--')
+    gca().set_xticklabels([])
+    gca().set_yticklabels([])
+    gca().tick_params(length=0)
+    #gca().set_xlim(0, size_edg*sub_sh[1])
+    #gca().set_ylim(0, size_edg*sub_sh[0])
+    #gca().set_yticks([])
+    subplot(122)
+    gca().set_title("MODEL", fontsize=18)
+    imshow(full_im, vmin=args.model_clim[0], vmax=args.model_clim[1], cmap='gnuplot')
+    gca().set_xticks(np.arange(sub_sh[1], size_edg*sub_sh[1], sub_sh[1]))
+    gca().set_yticks(np.arange(sub_sh[0], size_edg*sub_sh[0], sub_sh[0]))
+    gca().grid(1, color='w', ls='--')
+    gca().set_xticklabels([])
+    gca().set_yticklabels([])
+    gca().tick_params(length=0)
+    #gca().set_xlim(0, size_edg*sub_sh[1])
+    #gca().set_ylim(0, size_edg*sub_sh[0])
+    #gca().set_xticks([])
+    #gca().set_yticks([])
+    subplots_adjust(wspace=0, hspace=0, bottom=0.02, top=0.95, left=0.01, right=0.99)
+    show()
+    exit()
 
 
 a = b = None

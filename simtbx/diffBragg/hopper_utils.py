@@ -163,7 +163,8 @@ class DataModeler:
         # which attributes to save when pickling a data modeler
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
-                        "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow"]
+                      "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow", "best_model_includes_background",
+                      "all_q_perpix", "all_sigma_rdout"]
 
     def at_minimum(self, x, f, accept):
         self.target.iteration = 0
@@ -1138,29 +1139,6 @@ class DataModeler:
         else:
             data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
             sigma_rdout_subimg = None
-
-        if self.params.save_stacked_image:
-            stacked_img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d_stacked.npz" % (Modeler.params.tag, basename, i_exp))
-            sub_sh = tuple( np.max([im.shape for im in model_subimg], axis=0))
-            size_edg = int(np.sqrt(len(data_subimg))) + 1
-            full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
-            full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
-            for j in range(size_edg):
-                for i in range(size_edg):
-                    mod_idx = j * size_edg + i
-                    if mod_idx >= len(model_subimg):
-                        continue
-                    im = model_subimg[mod_idx].copy()
-                    dat_im = data_subimg[mod_idx].copy()
-                    ydim, xdim = im.shape
-                    if im.shape != sub_sh:
-                        im = np.pad(im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
-                        dat_im = np.pad(dat_im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
-                    Ysl = slice(j * sub_sh[0], (j + 1) * sub_sh[0], 1)
-                    Xsl = slice(i * sub_sh[1], (i + 1) * sub_sh[1], 1)
-                    full_im[Ysl, Xsl] = im
-                    full_dat_im[Ysl, Xsl] = dat_im
-            np.savez(stacked_img_path, mod=full_im, dat=full_dat_im)
 
         wavelen_subimg = []
         if Modeler.SIM.D.store_ave_wavelength_image:
