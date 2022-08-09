@@ -792,7 +792,7 @@ void gpu_sum_over_steps(
                               VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
                               VEC3 Q0 = UMATS_RXYZ[_mos_tic].transpose()*Ainv*H0_offset;
                               CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU_local[iL]*Q0); // changed this from anisoU to anisoU_local -- DW -- 7.4.22
-                              //double dwf = exp(-exparg);
+                              CUDAREAL dwf = exp(-exparg);
                               VEC3 delta_H_offset = H_vec - H0_offset;
                               VEC3 delta_Q = UMATS_RXYZ[_mos_tic].transpose()*Ainv*delta_H_offset;
                               VEC3 anisoG_q = anisoG_local[iL]*delta_Q;
@@ -804,7 +804,7 @@ void gpu_sum_over_steps(
                               /*                            if (exparg >= 0.5)
                                   exparg = 1;
                               */
-                              CUDAREAL this_I_latt_diffuse = exparg*gamma_portion;
+                              CUDAREAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
 
                               I0 += this_I_latt_diffuse / (CUDAREAL)num_laue_mats;
                               if (s_refine_diffuse){
@@ -823,7 +823,7 @@ void gpu_sum_over_steps(
                                      /*                              if (exparg  >= .5) // only valid up to a point
                                        dexparg = 0;
                                      */
-                                     step_diffuse_param[i_sig+3] += gamma_portion*dexparg/(CUDAREAL)num_laue_mats;
+                                     step_diffuse_param[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg)/(CUDAREAL)num_laue_mats;
                                   }
                               }
                           }
