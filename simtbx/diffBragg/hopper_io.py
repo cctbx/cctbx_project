@@ -131,6 +131,10 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         stg1_img_path=stg1_img_path,
         ncells_init=Nabc_init, spot_scales_init=scale_init,
         other_Umats = other_Umats, other_spotscales = other_spotscales)
+    if hasattr(SIM, "sigz"):
+        df['sigz'] = [SIM.sigz]
+    if hasattr(SIM, "niter"):
+        df['niter'] = [SIM.niter]
     df.to_pickle(pandas_path)
     return df
 
