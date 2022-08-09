@@ -100,7 +100,7 @@ void diffBragg_sum_over_steps_cuda(
         gpuErr(cudaFree(cp.cu_source_Z));
         gpuErr(cudaFree(cp.cu_source_I));
         gpuErr(cudaFree(cp.cu_source_lambda));
-        printf("Reallocating for  %d sources!:\n", db_beam.number_of_sources);
+        //printf("Reallocating for  %d sources!:\n", db_beam.number_of_sources);
         gpuErr(cudaMallocManaged(&cp.cu_source_X, db_beam.number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Y, db_beam.number_of_sources*sizeof(CUDAREAL)));
         gpuErr(cudaMallocManaged(&cp.cu_source_Z, db_beam.number_of_sources*sizeof(CUDAREAL)));
