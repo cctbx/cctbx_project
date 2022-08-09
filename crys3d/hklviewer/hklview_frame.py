@@ -771,11 +771,15 @@ class HKLViewFrame() :
 
 
   def run_external_cmd(self):
-    # run some python scripts like xtricorder directly
+    # run some python script like xtricorder with the exec function. Get logfile name and tabname assigned
+    # by the script and send these to the HKLviewer GUI
     try:
       ldic= {'retobj': None, 'self': self }
       exec(self.external_cmd, globals(), ldic)
       retobj = ldic.get("retobj", None)
+      tabname = ldic.get("tabname", None)
+      logfname = ldic.get("logfname", None)
+      self.SendInfoToGUI( {"show_log_file": [tabname, logfname ]  } )
     except Exception as e:
       raise Sorry(str(e))
 

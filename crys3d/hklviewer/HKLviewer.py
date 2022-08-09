@@ -19,7 +19,7 @@ if sys.version_info[0] < 3:
 os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
-from .qt import (  QAction, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
+from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QMessageBox, QPalette, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
@@ -519,8 +519,6 @@ newarray._sigmas = sigs
 
     self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
 
-
-
     self.tabText.setCurrentIndex(0)
     if not isembedded:
       self.window.statusBar().showMessage("")
@@ -731,20 +729,40 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.textAlerts.setPlainText("")
       self.fileisvalid = False
       firstpart = os.path.splitext(os.path.basename(fileName))[0]# i.e. '4e8u' of '4e8u.mtz'
-      xtricorder_cmd = """from phasertng.scripts import xtricorder
+      xtricorder_cmd = """
+from phasertng.scripts import xtricorder
 (retobj) = xtricorder.xtricorder(
 '''phasertng {
             hklin.filename = "%s"
             reflections.wavelength = 1.0
+            suite.mute = True
+            suite.store = logfile
             suite.level = logfile
             suite.database = "C:XtricorderTemp"
           }
 '''
 )
-import glob
-self.hklin = glob.glob("XtricorderTemp/**/*%s/*%s*.mtz", recursive=True)[0]
+import glob, shutil
+xtricordermtz = glob.glob("XtricorderTemp/**/*%s/*%s*.mtz", recursive=True)[0]
+self.hklin =  "%s" + "_xtricorder.mtz"
+shutil.copyfile( xtricordermtz, self.hklin )
+logs = glob.glob("XtricorderTemp/**/*.logfile.log", recursive=True)
+timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
+mstr = ''
+for fname, t in timesortedlogs:
+  with open(fname, 'r') as f:
+    mstr += f.read() + '\\n'
+
+# The name of logfile and tab should be present in ldic after running exec().
+# cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
+logfname = "%s_xtricorder.log"
+tabname = "Xtricorder"
+with open(logfname, 'w') as f:
+  f.write(mstr)
+
+shutil.rmtree("XtricorderTemp")
 self.LoadReflectionsFile(self.hklin)
-""" %(fileName, firstpart, firstpart)
+""" %(fileName, firstpart, firstpart, firstpart, firstpart)
       self.send_message("%s" %xtricorder_cmd, "external_cmd" )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
@@ -846,6 +864,12 @@ self.LoadReflectionsFile(self.hklin)
               self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
+          if self.infodict.get("show_log_file"):
+            tabname, fname = self.infodict.get("show_log_file")
+            mstr = ""
+            with open(fname, 'r') as f:
+              mstr += f.read() + '\\n'
+            self.add_another_text_tab(tabname, mstr)
 
           if self.infodict.get("ano_spg_tpls"):
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
@@ -1162,6 +1186,30 @@ self.LoadReflectionsFile(self.hklin)
       self.alertstr = self.alertstr[-1000*self.textinfosize:]
       self.textAlerts.setPlainText(self.alertstr)
       self.tabTextScrollDownShow(self.textAlerts)
+
+
+  def add_another_text_tab(self, tabname, mstr):
+    if self.__dict__.get(tabname, None) is not None:
+      self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
+      self.__dict__[tabname].setParent(None)
+
+    self.__dict__[tabname] = QWidget()
+    gridLayout = QGridLayout(self.__dict__[tabname])
+    gridLayout.setSpacing(4)
+    gridLayout.setContentsMargins(3, 3, 3, 3)
+    gridLayout.setContentsMargins(0, 0, 0, 0)
+    newtabedit = QPlainTextEdit(self.__dict__[tabname])
+    sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    sp.setHeightForWidth(newtabedit.sizePolicy().hasHeightForWidth())
+    newtabedit.setSizePolicy(sp)
+    newtabedit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    newtabedit.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    newtabedit.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+    newtabedit.setLineWrapMode(QPlainTextEdit.NoWrap)
+    newtabedit.setReadOnly(True)
+    newtabedit.setPlainText(mstr)
+    gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
+    self.tabText.addTab(self.__dict__[tabname], tabname)
 
 
   def make_new_millertable(self):
