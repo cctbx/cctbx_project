@@ -32,6 +32,7 @@ struct images{
     image_type Fhkl_scale;
     image_type Fhkl_scale_deriv;
     std::vector<bool> trusted;
+    std::vector<unsigned int> freq;
     image_type residual;
     image_type variance;
     image_type wavelength; // image for storing mean wavelength of each pixel
@@ -119,8 +120,7 @@ struct flags{
 };
 
 struct crystal{
-    int laue_group_num=1;
-    int stencil_size=0;
+    int num_Fhkl_channels=1;
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
@@ -170,6 +170,7 @@ struct crystal{
 
 struct beam{
     Eigen::Vector3d polarization_axis;
+    std::vector<int> Fhkl_channels; // if refining scale factors for wavelength dependent structure factor intensities
     double fluence; // total fluence
     double kahn_factor; // polarization factor
     double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;   // beam vectors, wavelenths, intensities

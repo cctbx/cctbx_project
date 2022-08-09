@@ -1117,6 +1117,15 @@ void diffBragg::print_if_refining(){
       printf("refining fdp slope\n");
 }
 
+void diffBragg::update_Fhkl_channels(np::ndarray& channels){
+    SCITBX_ASSERT (channels.shape(0)==sources);
+    db_beam.Fhkl_channels.clear();
+    int* channels_ptr = reinterpret_cast<int*>(channels.get_data());
+    for (int i=0; i < sources; i++){
+        int channel_id = *(channels_ptr+i);
+        db_beam.Fhkl_channels.push_back(channel_id);
+    }
+}
 
 void diffBragg::update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
     pythony_beams = value;
@@ -1693,13 +1702,15 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 }
 
 np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
-    np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted){
+    np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
+    int num_Fhkl_channels, double Gscale){
 
     Npix_to_model = panels_fasts_slows.size()/3;
 
     double* resid_ptr = reinterpret_cast<double*>(residual.get_data());
     double* var_ptr = reinterpret_cast<double*>(variance.get_data());
     bool* trust_ptr = reinterpret_cast<bool*>(trusted.get_data());
+    unsigned int* freq_ptr = reinterpret_cast<unsigned int*>(freq.get_data());
 
     bool init_vecs = first_deriv_imgs.residual.empty();
 
@@ -1707,53 +1718,65 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
         double resid = *(resid_ptr+i);
         double var = *(var_ptr+i);
         bool trust = *(trust_ptr+i);
+        unsigned int fr = *(freq_ptr+i);
         if (init_vecs){
             first_deriv_imgs.residual.push_back(resid);
             first_deriv_imgs.variance.push_back(var);
             first_deriv_imgs.trusted.push_back(trust);
+            first_deriv_imgs.freq.push_back(fr);
         }
         else{
             first_deriv_imgs.residual[i] = resid;
             first_deriv_imgs.variance[i] = var;
             first_deriv_imgs.trusted[i] = trust;  // Note  trusted flags shouldnt change, so we can consider commenting out this line
+            first_deriv_imgs.freq[i] = fr;  // Note  trusted flags shouldnt change, so we can consider commenting out this line
         }
     }
 
     db_flags.Fhkl_gradient_mode = true;
     db_flags.using_trusted_mask = true;
     bool is_empty  = first_deriv_imgs.Fhkl_scale_deriv.empty();
-    for (int i=0; i < db_cryst.Num_ASU; i ++){
+    for (int i=0; i < db_cryst.Num_ASU*num_Fhkl_channels; i ++){
         if (is_empty)
             first_deriv_imgs.Fhkl_scale_deriv.push_back(0);
         else
             first_deriv_imgs.Fhkl_scale_deriv[i] = 0;
     }
 
+    // we need to supply the spot scale parameter
+    SCITBX_ASSERT(spot_scale==1);
+    spot_scale=Gscale;
     add_diffBragg_spots(panels_fasts_slows);
+    spot_scale=1;
 
     db_flags.using_trusted_mask = false;
     db_flags.Fhkl_gradient_mode = false;
 
-    boost::python::tuple shape = boost::python::make_tuple(db_cryst.Num_ASU);
+    //printf("3rd sanity check: Fhkl_scale_deriv[16128]=%10.7g\n", first_deriv_imgs.Fhkl_scale_deriv[16128]);
+    boost::python::tuple shape = boost::python::make_tuple(db_cryst.Num_ASU*num_Fhkl_channels);
     boost::python::tuple stride = boost::python::make_tuple(sizeof(double));
     np::dtype dt = np::dtype::get_builtin<double>();
     np::ndarray output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
     return output.copy();
 }
 
-void diffBragg::update_Fhkl_scale_factors(np::ndarray& scale_factors){
+void diffBragg::update_Fhkl_scale_factors(np::ndarray& scale_factors, int num_Fhkl_channels){
     unsigned int Nscale = scale_factors.shape(0);
-    SCITBX_ASSERT(Nscale==db_cryst.Num_ASU);
+    SCITBX_ASSERT(Nscale==db_cryst.Num_ASU * num_Fhkl_channels);
     bool init_scales=first_deriv_imgs.Fhkl_scale.empty();
     db_flags.Fhkl_have_scale_factors = true;
+    db_cryst.num_Fhkl_channels=num_Fhkl_channels;
 
     double* scale_ptr = reinterpret_cast<double*>(scale_factors.get_data());
-    for (int i=0; i< Nscale;i++){
-        double scale =  *(scale_ptr+i);
-        if (init_scales)
-            first_deriv_imgs.Fhkl_scale.push_back(scale);
-        else
-            first_deriv_imgs.Fhkl_scale[i] = scale;
+    for(int i_chan=0; i_chan< num_Fhkl_channels; i_chan++){
+        for (int i_hkl=0; i_hkl< db_cryst.Num_ASU;i_hkl++){
+            int i = i_hkl + db_cryst.Num_ASU*i_chan;
+            double scale =  *(scale_ptr+i);
+            if (init_scales)
+                first_deriv_imgs.Fhkl_scale.push_back(scale);
+            else
+                first_deriv_imgs.Fhkl_scale[i] = scale;
+        }
     }
 }
 
@@ -2227,6 +2250,7 @@ void diffBragg::linearize_Fhkl(){
                                 int k0 = k+ k_min;
                                 int l0 = l+ l_min;
 
+                                // TODO: add change of basis operation
                                 cctbx::miller::index<int> hkl0(h0,k0,l0);
                                 cctbx::miller::asym_index ai(sg, asu, hkl0);
                                 cctbx::miller::index_table_layout_adaptor ila = ai.one_column(true);

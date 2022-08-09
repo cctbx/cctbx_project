@@ -429,8 +429,6 @@ class DataModeler:
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
-        refls = refls.select(flex.bool(self.selection_flags))
-
 
         self.data_to_one_dim(img_data, is_trusted, self.background)
         return True
@@ -476,7 +474,11 @@ class DataModeler:
                 sigma_rdout = np.ones_like(data)*self.nominal_sigma_rdout
 
             if self.params.roi.mask_outside_trusted_range:
-                minDat, maxDat = self.E.detector[pid].get_trusted_range()
+                if self.params.roi.trusted_range is not None:
+                    minDat, maxDat = self.params.roi.trusted_range
+                    assert minDat < maxDat
+                else:
+                    minDat, maxDat = self.E.detector[pid].get_trusted_range()
                 data_out_of_range = np.logical_or(data <= minDat, data >= maxDat)
                 if self.params.roi.mask_all_if_any_outside_trusted_range:
                     if np.any(data_out_of_range):
@@ -511,8 +513,8 @@ class DataModeler:
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
             if self.Hi is not None:
-                self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
-                self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
+                self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
+                self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix
 
         if self.params.roi.mask_outside_trusted_range:
             MAIN_LOGGER.debug("Found %d pixels outside of trusted range" % numOutOfRange)
@@ -522,7 +524,7 @@ class DataModeler:
             x1, x2, y1, y2 = self.rois[i_roi]
             freq = pixel_counter[pid, y1:y2, x1:x2].ravel()
             all_freq += list(freq)
-        self.all_freq = np.array(all_freq)  # if no overlapping pixels, this should be an array of 1's
+        self.all_freq = np.array(all_freq, np.uintc)  # if no overlapping pixels, this should be an array of 1's
         if not self.params.roi.allow_overlapping_spots:
             if not np.all(self.all_freq==1):
                 print(set(self.all_freq))
@@ -837,19 +839,32 @@ class DataModeler:
 
         self.SIM.refining_Fhkl = False
         self.SIM.Num_ASU = 0
+        self.SIM.num_Fhkl_channels=1
+        self.SIM.Fhkl_channel_bounds = [0, np.inf]
         if not self.params.fix.Fhkl:
+            if self.params.Fhkl_channel_bounds is not None:
+                assert self.params.Fhkl_channel_bounds == sorted(self.params.Fhkl_channel_bounds)
+                self.SIM.Fhkl_channel_bounds = [0] + self.params.Fhkl_channel_bounds + [np.inf]
+
+            self.SIM.num_Fhkl_channels = len(self.SIM.Fhkl_channel_bounds)-1
             asu_map = self.SIM.D.get_ASUid_map()
+            self.SIM.asu_map_int = {tuple(map(int, k.split(','))): v for k, v in asu_map.items()}
+            self.SIM.fhkl_xpos = [self.SIM.asu_map_int[h] for h in self.Hi_asu]
+
             num_unique_hkl = len(asu_map)
-            self.SIM.Fhkl_scales_init = np.ones(num_unique_hkl)
+            self.SIM.Fhkl_scales_init = np.ones(num_unique_hkl*self.SIM.num_Fhkl_channels)
             all_Fhkl_xpos = []
-            for i_hkl in range(num_unique_hkl):
-                name = "Fhkl_%d"% i_hkl
-                p = PositiveParameter(init=self.SIM.Fhkl_scales_init[i_hkl], sigma=1,
-                                    fix=False,
-                                    name=name, center=1, beta=1e20)
-                P.add(p)
-                all_Fhkl_xpos.append(P[name].xpos)
-                assert P[name].xpos == p.xpos
+            # NOTE: when setting the scales in C++ we should loop in the same order
+            for i_chan in range(self.SIM.num_Fhkl_channels):
+                for i_hkl in range(num_unique_hkl):
+                    name = "Fhkl_%d_channel%d"% (i_hkl, i_chan)
+                    p = PositiveParameter(init=self.SIM.Fhkl_scales_init[i_hkl + num_unique_hkl*i_chan],
+                                          sigma=1,
+                                          fix=False,
+                                          name=name, center=1, beta=1e20)
+                    P.add(p)
+                    all_Fhkl_xpos.append(P[name].xpos)
+                    assert P[name].xpos == p.xpos
             min_xpos = np.min(all_Fhkl_xpos)
             max_xpos = np.max(all_Fhkl_xpos)
             assert np.allclose(all_Fhkl_xpos, np.arange(min_xpos, max_xpos+1, 1) )
@@ -858,6 +873,12 @@ class DataModeler:
             self.SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
             assert max_xpos == len(P)-1
 
+            energies = np.array([utils.ENERGY_CONV/wave for wave, _ in self.SIM.beam.spectrum])
+            Fhkl_channel_ids = np.zeros(len(energies), int)
+            for i_channel, (en1, en2) in enumerate(zip(self.SIM.Fhkl_channel_bounds, self.SIM.Fhkl_channel_bounds[1:])):
+                sel = (energies >= en1) * (energies < en2)
+                Fhkl_channel_ids[sel] = i_channel
+            self.SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
 
         self.SIM.P = P
         # TODO , fix this attribute hacking
@@ -945,7 +966,6 @@ class DataModeler:
         if self.params.niter >0:
             assert self.params.hopper_save_freq is None
             at_min = self.at_minimum
-
 
         callback = lambda x: self.callback(x, verbose=self.params.logging.parameters, save_freq=self.params.hopper_save_freq)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
@@ -1081,7 +1101,6 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-
     def save_up(self, x, rank=0):
         assert self.exper_name is not None
         assert self.refl_name is not None
@@ -1091,12 +1110,9 @@ class DataModeler:
         Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
         Modeler.best_model_includes_background = False
         LOGGER.info("Optimized values for i_exp %d:" % i_exp)
-        #look_at_x(x, Modeler.SIM)
 
         rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
-        rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
         rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
-        rank_spectra_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "spectra", rank)
         rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
 
         basename = os.path.splitext(os.path.basename(self.exper_name))[0]
@@ -1112,6 +1128,8 @@ class DataModeler:
         trace_data = np.array([trace0, trace1, trace2]).T
         np.savetxt(trace_path, trace_data, fmt="%s")
 
+        Modeler.SIM.niter = len(trace0)
+        Modeler.SIM.sigz = trace2[-1]
         #if Modeler.SIM.num_xtals == 1:
         hopper_io.save_to_pandas(x, Modeler.SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
 
@@ -1121,26 +1139,28 @@ class DataModeler:
             data_subimg, model_subimg, trusted_subimg, bragg_subimg = Modeler.get_data_model_pairs()
             sigma_rdout_subimg = None
 
-        #sub_sh = tuple( np.max([im.shape for im in model_subimg], axis=0))
-        #size_edg = int(np.sqrt(len(data_subimg))) + 1
-        #full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
-        #full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
-        #for j in range(size_edg):
-        #    for i in range(size_edg):
-        #        mod_idx = j * size_edg + i
-        #        if mod_idx >= len(model_subimg):
-        #            continue
-        #        im = model_subimg[mod_idx].copy()
-        #        dat_im = data_subimg[mod_idx].copy()
-        #        ydim, xdim = im.shape
-        #        if im.shape != sub_sh:
-        #            im = np.pad(im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
-        #            dat_im = np.pad(dat_im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
-        #        Ysl = slice(j * sub_sh[0], (j + 1) * sub_sh[0], 1)
-        #        Xsl = slice(i * sub_sh[1], (i + 1) * sub_sh[1], 1)
-        #        full_im[Ysl, Xsl] = im
-        #        full_dat_im[Ysl, Xsl] = dat_im
-        #np.savez("%s/ref_img%d.npz" % (self.params.outdir, self.target.iteration), mod=full_im, dat=full_dat_im)
+        if self.params.save_stacked_image:
+            stacked_img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d_stacked.npz" % (Modeler.params.tag, basename, i_exp))
+            sub_sh = tuple( np.max([im.shape for im in model_subimg], axis=0))
+            size_edg = int(np.sqrt(len(data_subimg))) + 1
+            full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+            full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
+            for j in range(size_edg):
+                for i in range(size_edg):
+                    mod_idx = j * size_edg + i
+                    if mod_idx >= len(model_subimg):
+                        continue
+                    im = model_subimg[mod_idx].copy()
+                    dat_im = data_subimg[mod_idx].copy()
+                    ydim, xdim = im.shape
+                    if im.shape != sub_sh:
+                        im = np.pad(im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
+                        dat_im = np.pad(dat_im, ((0, sub_sh[0] - ydim), (0, sub_sh[1] - xdim)), mode='constant', constant_values=np.nan)
+                    Ysl = slice(j * sub_sh[0], (j + 1) * sub_sh[0], 1)
+                    Xsl = slice(i * sub_sh[1], (i + 1) * sub_sh[1], 1)
+                    full_im[Ysl, Xsl] = im
+                    full_dat_im[Ysl, Xsl] = dat_im
+            np.savez(stacked_img_path, mod=full_im, dat=full_dat_im)
 
         wavelen_subimg = []
         if Modeler.SIM.D.store_ave_wavelength_image:
@@ -1299,7 +1319,8 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     if SIM.refining_Fhkl:
         current_Fhkl_xvals = x[SIM.Fhkl_xpos_slice]
         SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(current_Fhkl_xvals-1)
-        SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales)
+        SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales, SIM.num_Fhkl_channels)
+        #print("mean scales=%f, std scales=%f" % (np.mean(SIM.Fhkl_scales), np.std(SIM.Fhkl_scales)))
 
     # get the unit cell variables
     nucell = len(SIM.ucell_man.variables)
@@ -1374,7 +1395,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     J = None
     if compute_grad:
         # THis should be all params save the Fhkl params
-        J = np.zeros((nparam-SIM.Num_ASU, npix))  # gradients
+        J = np.zeros((nparam-SIM.Num_ASU*SIM.num_Fhkl_channels, npix))  # gradients
 
     model_pix = None
     model_pix_noRoi = None
@@ -1603,9 +1624,8 @@ class TargetFunc:
         self.all_x.append(self.x0)
 
         mod, compute_grad = args
-        args = (mod.SIM, mod.pan_fast_slow, mod.all_data,
-                mod.all_sigma_rdout, mod.all_trusted, mod.all_background, mod.params, compute_grad)
-        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, *args)
+        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, mod, compute_grad)
+
         self.t_per_iter.append(time.time())
         if len(self.t_per_iter) > 2:
             ave_t_per_it = np.mean([t2-t1 for t2,t1 in zip(self.t_per_iter[1:], self.t_per_iter[:-1])])
@@ -1624,8 +1644,14 @@ class TargetFunc:
         return f
 
 
-def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, background, params=None, compute_grad=True):
-
+def target_func(x, udpate_terms, mod, compute_grad=True):
+    SIM = mod.SIM
+    pfs = mod.pan_fast_slow
+    data = mod.all_data
+    sigma_rdout = mod.all_sigma_rdout
+    trusted = mod.all_trusted
+    background = mod.all_background
+    params = mod.params
     if udpate_terms is not None:
         # if approximating the gradients, then fix the parameter refinment managers in diffBragg
         # so we dont waste time computing them
@@ -1687,7 +1713,10 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
     V = model_pix + sigma_rdout**2
     # TODO:what if V is allowed to be negative? The logarithm/sqrt will explore below
     resid_square = resid**2
-    fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))[trusted].sum()   # negative log Likelihood target
+    fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))
+    if params.roi.allow_overlapping_spots:
+        fLogLike /= mod.all_freq
+    fLogLike = fLogLike[trusted].sum()   # negative log Likelihood target
 
     # width of z-score should decrease as refinement proceeds
     zscore_sigma = np.std( (resid / np.sqrt(V))[trusted])
@@ -1731,6 +1760,8 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
     gnorm = -1  # norm of gradient vector
     if compute_grad:
         common_grad_term_all = (0.5 /V * (1-2*resid - resid_square / V))
+        if params.roi.allow_overlapping_spots:
+            common_grad_term_all /= mod.all_freq
         common_grad_term = common_grad_term_all[trusted]
 
         g = np.zeros(Jac.shape[0])
@@ -1750,6 +1781,7 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
                 g[p.xpos] += (Jac_p[trusted]*common_grad_term).sum()
 
         # trusted pixels portion of Jacobian
+        #  TODO: determine if this following method of summing over g is optimal in certain scenarios
         #Jac_t = Jac[:,trusted]
         # gradient vector
         #g = np.array([np.sum(common_grad_term*Jac_t[param_idx]) for param_idx in range(Jac_t.shape[0])])
@@ -1800,9 +1832,14 @@ def target_func(x, udpate_terms, SIM, pfs, data, sigma_rdout, trusted, backgroun
                     g[p.xpos] += p.get_deriv(x[p.xpos], gterm)
 
         if SIM.refining_Fhkl:
-            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted)
+            spot_scale_p = SIM.P["G_xtal0"]
+            G = spot_scale_p.get_val(x[spot_scale_p.xpos])
+            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted, mod.all_freq, SIM.num_Fhkl_channels, G)
             fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
+            #from IPython import embed;embed()
+
             g = np.append(g, fhkl_grad)
+
 
         gnorm = np.linalg.norm(g)
 

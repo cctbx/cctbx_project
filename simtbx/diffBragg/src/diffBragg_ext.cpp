@@ -521,6 +521,9 @@ namespace boost_python { namespace {
       .def("__update_Fhkl_scale_factors", &simtbx::nanoBragg::diffBragg::update_Fhkl_scale_factors,
             "updates the scale factors for each ASU. Should be same length as the db_cryst.ADUid_map")
 
+      .def("__update_Fhkl_channels", &simtbx::nanoBragg::diffBragg::update_Fhkl_channels,
+            "pass this a numpy int array the same length as the number of energy sources, this specifies the mapping of structure factor to energy channel, allowing one to refine multiple energy-dependent structure factors for example in a two-color experiment")
+
       .def("__get_derivative_pixels", &simtbx::nanoBragg::diffBragg::get_derivative_pixels,
             "gets the manager raw image containing first derivatives")
 

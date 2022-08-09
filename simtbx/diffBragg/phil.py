@@ -6,6 +6,12 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+Fhkl_channel_bounds = None
+  .type = floats
+  .help = Energy bounds for energy-dependent structure factors. Units are eV.
+  .help = If provided refine a unique structure factor correction for each bin defined by Fhkl_channel_bins
+  .help = 0 and infinity are implicit. Providing a single number, e.g. 8950, will refine two sets of structure
+  .help = factors: one for energies [0-8950), and another for energies [8950-infinity]
 try_strong_mask_only = False
   .type = bool
   .help = if strong spot masks are present in the input refls, then use them
@@ -331,6 +337,9 @@ sanity_test_input = True
   .type = bool
   .help = sanity test input
   .expert_level=10
+save_stacked_image = False
+  .type = bool
+  .help = optionally save 2-D mosaic of model/data pairs to the images outdir (.npz file)
 outdir = None
   .type = str
   .help = output folder
@@ -1016,6 +1025,9 @@ roi {
     .help = Shoeboxes are drawn around the centroids, and refinement uses pixels
     .help = within those shoeboxes.
     .help = obs: xyz.px.value  cal: xyzcal.px
+  trusted_range = None
+    .type = floats(size=2)
+    .help = optional override for detector trusted range, should be (min,max)
   mask_all_if_any_outside_trusted_range = True
     .type = bool
     .help = If a reflection has any pixels which are outside the detectors
@@ -1085,7 +1097,7 @@ roi {
 }
 
 geometry {
-  save_state_freq = 500
+  save_state_freq = 50
     .type = int
     .help = how often to save all model parameters
   save_state_overwrite = True

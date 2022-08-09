@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include<unordered_map>
+#include<unordered_set>
 #include<string>
 
 namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
@@ -32,11 +33,12 @@ void diffBragg_sum_over_steps(
             double resid_pix = d_image.residual[i_pix];
             double var_pix = d_image.variance[i_pix];
             Fhkl_deriv_coef = 1 - 2*resid_pix - resid_pix*resid_pix / var_pix;
-            Fhkl_deriv_coef = 0.5 * Fhkl_deriv_coef/var_pix;
+            Fhkl_deriv_coef = 0.5 * Fhkl_deriv_coef/var_pix/d_image.freq[i_pix];
         }
         double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
         std::unordered_map<std::string, int> Fhkl_tracker;
+        std::unordered_set<int> Fhkl_grad_idx_tracker;
         bool use_nominal_hkl = false;
         if (!db_cryst.nominal_hkl.empty())
             use_nominal_hkl = true;
@@ -126,6 +128,30 @@ void diffBragg_sum_over_steps(
             /* sin(theta)/lambda is half the scattering vector length */
             double stol = 0.5*(scattering.norm()); //magnitude(scattering);
 
+            // polarization
+            double polar_for_Fhkl_grad=1;
+            if (!db_flags.nopolar && db_flags.Fhkl_gradient_mode){
+                // component of diffracted unit vector along incident beam unit vector
+                double cos2theta = incident.dot(diffracted);
+                double cos2theta_sqr = cos2theta*cos2theta;
+                double sin2theta_sqr = 1-cos2theta_sqr;
+
+                double psi=0;
+                if(db_beam.kahn_factor != 0.0){
+                    // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(incident);
+                    // cross product with incident beam to get E-vector direction
+                    Eigen::Vector3d E_in = incident.cross(B_in);
+                    // get components of diffracted ray projected onto the E-B plane
+                    double kEi = diffracted.dot(E_in);
+                    double kBi = diffracted.dot(B_in);
+                    // compute the angle of the diffracted ray projected onto the incident E-B plane
+                    psi = -atan2(kBi,kEi);
+                }
+                // correction for polarized incident beam
+                polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*psi)*sin2theta_sqr);
+            }
+
             /* rough cut to speed things up when we aren't using whole detector */
             if(db_cryst.dmin > 0.0 && stol > 0.0)
             {
@@ -197,12 +223,13 @@ void diffBragg_sum_over_steps(
                 F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
             /* convert amplitudes into intensity (photons per steradian) */
-            if (!db_flags.oversample_omega)
+            if (!db_flags.oversample_omega && !db_flags.Fhkl_gradient_mode)
                 omega_pixel = 1;
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
-            double I0 = 0;
-            double step_diffuse_param[6] = {0,0,0,0,0,0};
+
+            double I_latt_diffuse = 0;
+            double step_dI_latt_diffuse[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
               calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }
@@ -234,7 +261,7 @@ void diffBragg_sum_over_steps(
                     continue;
                 }
                 if (db_flags.complex_miller) F_cell2 = db_cryst.Fhkl2Linear[Fhkl_linear_index];
-                if (db_flags.Fhkl_gradient_mode)
+                if (db_flags.Fhkl_have_scale_factors)
                     i_hklasu = db_cryst.FhklLinear_ASUid[Fhkl_linear_index];
             }
             //else{
@@ -359,10 +386,28 @@ void diffBragg_sum_over_steps(
             if (! db_flags.refine_Icell)
                 I_cell *= F_cell;
             double s_hkl = 1;
-            if (db_flags.Fhkl_have_scale_factors)
-                s_hkl = d_image.Fhkl_scale[i_hklasu];
+            int Fhkl_channel = 0;
+            if (! db_beam.Fhkl_channels.empty()){
+                Fhkl_channel = db_beam.Fhkl_channels[source];
+            }
+            if (db_flags.Fhkl_have_scale_factors){
+                s_hkl = d_image.Fhkl_scale[i_hklasu + Fhkl_channel*db_cryst.Num_ASU];
+            }
+            //if (db_flags.Fhkl_gradient_mode){
+            //    if (i_pix==51 || i_pix==551)
+            //        printf("s_hkl=%f, i_hkl_asu=%d, freq=%d\n", s_hkl, i_hklasu, d_image.freq[i_pix]);
+            //}
             if (db_flags.Fhkl_gradient_mode){
-                d_image.Fhkl_scale_deriv[i_hklasu] += (I_noFcell*I_cell*Fhkl_deriv_coef);
+                double grad_incr = I_noFcell*I_cell*Fhkl_deriv_coef;
+                int fhkl_grad_idx=i_hklasu + Fhkl_channel*db_cryst.Num_ASU;
+                Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);
+                // omega pixel is correctly in count_scale, and spot_scale should have been set to its refined value
+                double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
+                d_image.Fhkl_scale_deriv[fhkl_grad_idx] += grad_incr*Fhkl_deriv_scale;
+                //if (i_pix==22066)// && source==0)
+                //    printf("\nh,k,l=(%d %d %d ) s_hkl=%f, i_hkl_asu=%d, freq=%d, \ngrad_incr=%f, Fhkl_deriv_coef=%f\n Fhkl_chan=%d, num_asu=%d, fhkl_grad_idx=%d, Fhkl_scale_deriv=%f\n",
+                //    h0,k0,l0,s_hkl, i_hklasu, d_image.freq[i_pix], grad_incr, Fhkl_deriv_coef,
+                //    Fhkl_channel, db_cryst.Num_ASU, fhkl_grad_idx, d_image.Fhkl_scale_deriv[fhkl_grad_idx]);
                 continue; // move on to next diffraction step (note, thos will bypass the pintout_pixel settings)
             }
 
@@ -752,9 +797,16 @@ void diffBragg_sum_over_steps(
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
             if (db_flags.Fhkl_gradient_mode){
-                for (int i_hkl=0; i_hkl < db_cryst.Num_ASU; i_hkl++)
-                    d_image.Fhkl_scale_deriv[i_hkl] *= scale_term;
-                continue; // move on to next pixel
+                //if (i_pix==22066){
+                //    printf("r_e_sq=%10.7g, fluence=%f , spot_scale=%f, polar=%f, om=%f, Nsteps=%d\n",
+                //        db_cryst.r_e_sqr,db_beam.fluence,db_cryst.spot_scale,polar,om,db_steps.Nsteps);
+                //    printf("1st sanity check: Fhkl_scale_deriv[16128]=%10.7g\n", d_image.Fhkl_scale_deriv[16128]);
+                //    }
+                //for (const int& grad_idx: Fhkl_grad_idx_tracker)
+                //    d_image.Fhkl_scale_deriv[grad_idx] *= scale_term;
+                //if (i_pix==22066)
+                //    printf("2nd sanity check: Fhkl_scale_deriv[16128]=%10.7g, scale_term=%10.7g\n", d_image.Fhkl_scale_deriv[16128], scale_term);
+                continue; // move on to next pixel (i_pix)
             }
 
             floatimage[i_pix] = scale_term*I;

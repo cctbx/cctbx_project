@@ -168,8 +168,10 @@ class diffBragg: public nanoBragg{
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
   np::ndarray add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
-           np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted);
-  void update_Fhkl_scale_factors(np::ndarray& scale_factors);
+           np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
+           int num_Fhkl_channels, double Gscale);
+  void update_Fhkl_channels(np::ndarray& channels);
+  void update_Fhkl_scale_factors(np::ndarray& scale_factors, int num_Fhkl_channels);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl);
   void add_diffBragg_spots();
   af::shared<double> add_diffBragg_spots_full();
