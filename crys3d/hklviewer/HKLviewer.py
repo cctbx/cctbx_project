@@ -728,7 +728,11 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.textInfo.setPlainText("")
       self.textAlerts.setPlainText("")
       self.fileisvalid = False
+      from pathlib import PurePath
       firstpart = os.path.splitext(os.path.basename(fileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+      # Put xtricorders temp directory into current working directory and
+      # replace any backslashes on Windows with forwardslashes for the sake of phasertng
+      tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
       xtricorder_cmd = """
 from phasertng.scripts import xtricorder
 (retobj) = xtricorder.xtricorder(
@@ -738,15 +742,15 @@ from phasertng.scripts import xtricorder
             suite.mute = True
             suite.store = logfile
             suite.level = logfile
-            suite.database = "C:XtricorderTemp"
+            suite.database = "%s"
           }
 '''
 )
 import glob, shutil
-xtricordermtz = glob.glob("XtricorderTemp/**/*%s/*%s*.mtz", recursive=True)[0]
+xtricordermtz = glob.glob("%s/**/*%s/*%s*.mtz", recursive=True)[0]
 self.hklin =  "%s" + "_xtricorder.mtz"
 shutil.copyfile( xtricordermtz, self.hklin )
-logs = glob.glob("XtricorderTemp/**/*.logfile.log", recursive=True)
+logs = glob.glob("%s/**/*.logfile.log", recursive=True)
 timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
 mstr = ''
 for fname, t in timesortedlogs:
@@ -760,9 +764,9 @@ tabname = "Xtricorder"
 with open(logfname, 'w') as f:
   f.write(mstr)
 
-shutil.rmtree("XtricorderTemp")
+shutil.rmtree("%s")
 self.LoadReflectionsFile(self.hklin)
-""" %(fileName, firstpart, firstpart, firstpart, firstpart)
+""" %(fileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
       self.send_message("%s" %xtricorder_cmd, "external_cmd" )
       self.MillerComboBox.clear()
       self.BinDataComboBox.clear()
