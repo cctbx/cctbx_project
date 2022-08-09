@@ -156,8 +156,9 @@ class diffBragg: public nanoBragg{
     inline void gpu_free(){
         // freedom(cuda_pointers);
     }
+    // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
+    // std::unique_ptr<diffBraggKOKKOS> diffBragg_runner{};
     diffBraggKOKKOS diffBragg_runner;
-  // diffBragg_kokkosPointers kokkos_pointers;
 #endif
 
   // methods

@@ -306,16 +306,18 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_double2kokkos(m_source_Z, db_beam.source_Z, source_count);
         kokkostbx::transfer_double2kokkos(m_source_I, db_beam.source_I, source_count);
         kokkostbx::transfer_double2kokkos(m_source_lambda, db_beam.source_lambda, source_count);
-
+        auto tmp_src_X = m_source_X;
+        auto tmp_src_Y = m_source_Y;
+        auto tmp_src_Z = m_source_Z;
         Kokkos::parallel_for(
             "normalize incident vector", source_count, KOKKOS_LAMBDA(const int& i) {
-                VEC3 incident{m_source_X(i), m_source_Y(i), m_source_Z(i)};
+                VEC3 incident{tmp_src_X(i), tmp_src_Y(i), tmp_src_Z(i)};
                 incident.normalize();
-                m_source_X(i) = incident.x_val();
-                m_source_Y(i) = incident.y_val();
-                m_source_Z(i) = incident.z_val();
+                tmp_src_X(i) = incident.x_val();
+                tmp_src_Y(i) = incident.y_val();
+                tmp_src_Z(i) = incident.z_val();
             });
-
+        Kokkos::fence();
         if (db_flags.verbose > 1)
             printf("H2D sources\n");
     }
@@ -323,7 +325,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  UMATS
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
-
+        
         kokkostbx::transfer_vector2kokkos(m_UMATS, local_cryst.UMATS);
 
         kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ);
@@ -532,7 +534,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
     if (db_flags.refine_diffuse) {
         kokkostbx::transfer_kokkos2vector(d_image.diffuse_gamma, m_d_diffuse_gamma_images);
-        kokkostbx::transfer_kokkos2vector(d2_image.diffuse_sigma, m_d_diffuse_sigma_images);
+        kokkostbx::transfer_kokkos2vector(d_image.diffuse_sigma, m_d_diffuse_sigma_images);
     }
     if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0) {
         kokkostbx::transfer_kokkos2vector(d_image.Bmat, m_d_Bmat_images);

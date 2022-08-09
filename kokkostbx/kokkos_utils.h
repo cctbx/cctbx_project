@@ -88,7 +88,7 @@ void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
     if (true) {
         // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data()); 
         // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
-    }    
+    }
     if (dst.span() < src.size()) {
         resize(dst, src.size());
         // printf(" - size changed, new size: %d\n", dst.span() );
@@ -103,6 +103,7 @@ void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
 template <typename T>
 void transfer_kokkos2vector(std::vector<T>& dst, const view_1d_t<T>& src) {
     auto host_view = Kokkos::create_mirror_view(src);
+    // printf(" - size src|dst: %d|%d\n", src.span(), dst.size() );
     Kokkos::deep_copy(host_view, src);
     for (int i = 0; i < host_view.span(); ++i) {
         dst[i] = host_view(i);
