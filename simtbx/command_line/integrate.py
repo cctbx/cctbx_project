@@ -11,7 +11,6 @@ parser.add_argument("outdir", type=str, help="path to output refls")
 
 parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
 parser.add_argument("--numdev", type=int, default=1, help="number of GPUs (default=1)")
-parser.add_argument("--weakFrac", type=float, default=0, help="Fraction of weak reflections to keep (default=0; allowed range: 0-1 )")
 parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for pandas pickles (default .pkl)", default=".pkl")
 parser.add_argument("--loud", action="store_true", help="show lots of screen output")
 parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
@@ -29,9 +28,9 @@ def print0(*args, **kwargs):
         print(*args, **kwargs)
 
 import numpy as np
-from dials.array_family import flex
 from simtbx.diffBragg import utils
 from simtbx.modeling import predictions
+from simtbx.diffBragg.hopper_utils import downsamp_spec_from_params
 import glob
 import pandas
 import os
@@ -328,8 +327,6 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     return refls
 
 
-
-
 if __name__=="__main__":
 
     if COMM.rank==0:
@@ -341,7 +338,6 @@ if __name__=="__main__":
     if os.path.isfile(args.inputGlob):
         df_all = pandas.read_pickle(args.inputGlob)
         df_all.reset_index(inplace=True, drop=True)
-        #df_iter = ( (i_f, df.iloc[i_f:i_f+1]) for i_f in range(len(df)))
         def df_iter():
             for i_f in range(len(df_all)):
                 if i_f % COMM.size != COMM.rank:
@@ -355,7 +351,6 @@ if __name__=="__main__":
             fnames = glob.glob(glob_s)
         else:
             fnames = glob.glob(args.inputGlob)
-        #df_iter = ((i_f, pandas.read_pickle(f) for i_f, f in enumerate(fnames))
         def df_iter():
             for i_f,f in enumerate(fnames):
                 if i_f % COMM.size != COMM.rank:
@@ -363,12 +358,6 @@ if __name__=="__main__":
                 df = pandas.read_pickle(f)
                 yield i_f, df
         Nf = len(fnames)
-        #for i_f, f in enumerate(fnames):
-        #    if i_f % COMM.size != COMM.rank:
-        #        continue
-        #    df = pandas.read_pickle(f)
-        #    dfs.append(df)
-        #df = pandas.concat(dfs)
 
     if params.predictions.verbose:
         params.predictions.verbose = COMM.rank==0
@@ -380,14 +369,11 @@ if __name__=="__main__":
     all_wave = []
     npred_per_shot = []
     all_dfs = []
+    all_pred_names = []
     exp_ref_spec_lines = []
-    #for i_f, f in enumerate(fnames):
     for i_f, df in df_iter():
-        #if i_f % COMM.size != COMM.rank:
-        #    continue
         printR("Shot %d / %d" % (i_f+1, Nf), flush=True)
 
-        #df = pandas.read_pickle(f)
         expt_name = df.opt_exp_name.values[0]
         tag = os.path.splitext(os.path.basename(expt_name))[0]
         new_expt_name = "%s/%s_%d_predicted.expt" % (args.outdir,tag,  i_f)
@@ -395,17 +381,22 @@ if __name__=="__main__":
         df["opt_exp_name"] = new_expt_name
 
         shutil.copyfile(expt_name,  new_expt_name)
+
+        data_exptList = ExperimentList.from_file(expt_name)
+        data_expt = data_exptList[0]
+
         try:
+            spectrum_override = None
+            if params.spectrum_from_imageset:
+                spectrum_override = downsamp_spec_from_params(params, data_expt)
             pred = predictions.get_predicted_from_pandas(
-                df, params, strong=None, device_Id=dev, spectrum_override=None)
+                df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
             if args.filterDupes:
                 pred = filter_refls(pred)
         except ValueError:
             os.remove(new_expt_name)
             continue
 
-        data_exptList = ExperimentList.from_file(expt_name)
-        data_expt = data_exptList[0]
         data = utils.image_data_from_expt(data_expt)
         Rstrong = refls_from_sims(data, data_expt.detector, data_expt.beam, phil_file=args.procPhil )
         predictions.label_weak_predictions(pred, Rstrong, q_cutoff=8, col="xyzobs.px.value" )
@@ -417,7 +408,7 @@ if __name__=="__main__":
         weaks = pred.select(pred['is_weak'])
         weaks_sorted = np.argsort(weaks["scatter"])[::-1]
         nweak = len(weaks)
-        num_keep = int(nweak*args.weakFrac)
+        num_keep = int(nweak*params.predictions.weak_fraction)
         weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
 
         weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
@@ -444,14 +435,19 @@ if __name__=="__main__":
             continue
         int_expt_name = "%s/%s_%d_integrated.expt" % ( args.outdir,tag, i_f)
         int_expt.as_file(int_expt_name)
-        #from IPython import embed;embed()
         int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
         int_refl_name = int_expt_name.replace(".expt", ".refl")
         int_refl.as_file(int_refl_name)
         all_dfs.append(df)
-        exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, int_refl_name, df.spectrum_filename.values[0]))
+        all_pred_names.append(pred_file)
+        spec_name = df.spectrum_filename.values[0]
+        if spec_name is None:
+            spec_name = ""
+        exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, int_refl_name, spec_name))
 
-    all_dfs = COMM.reduce(all_dfs)
+    all_dfs = pandas.concat(all_dfs)
+    all_dfs["predicted_refls"] = all_pred_names
+    all_dfs = COMM.gather(all_dfs)
     exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
     print0("\nReflections written to folder %s.\n" % args.outdir)
     if COMM.rank==0:
@@ -465,5 +461,11 @@ if __name__=="__main__":
         best_pkl_name = os.path.abspath(os.path.join(args.outdir , "%s.pkl" % args.hopInputName))
         all_dfs.to_pickle(best_pkl_name)
         print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper. Use the centroid=cal option to specify the predictions" % (best_pkl_name, hopper_input_name))
+
+        with open(args.outdir +".exectution.txt", "w") as o:
+            o.write("integrate was run from folder: %s\n" % os.getcwd())
+            o.write("The command line input was:\n")
+            o.write(" ".join(sys.argv))
+            #TODO: write the diff phils here:
     npred_per_shot = COMM.reduce(npred_per_shot)
     all_wave = COMM.reduce(all_wave)

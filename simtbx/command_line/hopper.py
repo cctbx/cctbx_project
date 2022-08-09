@@ -159,7 +159,7 @@ class Script:
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref)
             else:
-                gathered = Modeler.GatherFromExperiment(exp, ref)
+                gathered = Modeler.GatherFromExperiment(exp, ref, sg_symbol=self.params.space_group)
             if not gathered:
                 logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue

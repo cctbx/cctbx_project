@@ -27,10 +27,10 @@ from simtbx.diffBragg import utils
 try:
     fnames = glob.glob(args.input + "/pandas/rank*/*.pkl")
     assert fnames
-    df = pandas.concat([pandas.read_pickle(f) for f in fnames])
+    comb_df = pandas.concat([pandas.read_pickle(f) for f in fnames])
 except Exception:
-    df = pandas.read_pickle(args.input)
-df.reset_index(inplace=True, drop=True)
+    comb_df = pandas.read_pickle(args.input)
+comb_df.reset_index(inplace=True, drop=True)
 
 R2names = []
 
@@ -41,11 +41,19 @@ def get_dist_from_R(R):
     dist = np.sqrt((x-x2)**2 + (y-y2)**2)
     return dist
 
+from libtbx.mpi4py import MPI
+COMM = MPI.COMM_WORLD
+
+# one ranks dataframe
+df = np.array_split(comb_df, COMM.size)[COMM.rank]
+
 keep = []
 n = 0
 n2 = 0
 all_pred_off = []
 for i in range(len(df)):
+    #if i % COMM.size != COMM.rank:
+    #    continue
     row = df.iloc[i]
     h = h5py.File(row.stage1_output_img, 'r')
     Rname = row.opt_exp_name.replace("/expers/", "/refls/").replace(".expt", ".refl")
@@ -55,7 +63,9 @@ for i in range(len(df)):
     if args.reflMaxD is not None:
         bad_dists = np.array(all_dists) > args.reflMaxD
 
-    d = np.median(all_dists)
+    d = -1
+    if len(all_dists) > 0:
+        d = np.median(all_dists)
     K = True
     if args.mind is not None:
         K =  d < args.mind
@@ -69,14 +79,20 @@ for i in range(len(df)):
 
     sel = np.logical_and(sel, ~bad_dists)
     R2 = R.select(flex.bool(sel))
-    d2 = np.median(get_dist_from_R(R2))
+    d2 = -1
+    if len(R2)> 0:
+        d2 = np.median(get_dist_from_R(R2))
     if args.minN is not None and  len(R2) < args.minN:
+        keep[-1] = False
+
+    if d < -1 or d2 < -1:
         keep[-1] = False
 
     if args.tag is not None and K:
         R2name = Rname.replace(".refl", "_%s.refl" % args.tag)
         R2.as_file(R2name)
-        print(i, len(df), "New refl table written=%s" % R2name)
+        if COMM.rank==0:
+            print(i, len(df), "New refl table written=%s" % R2name)
     else:
         R2name = Rname.replace(".refl", "_KEEP=False.refl")
     R2names.append(R2name)
@@ -89,18 +105,28 @@ for i in range(len(df)):
 df['filtered_refls'] = R2names
 df['pred_offsets'] = all_pred_off
 df = df.loc[keep]
-df.reset_index(inplace=True, drop=True)
-df.to_pickle(args.out)
-print("\nSummary\n<><><><><>")
-print("%d refls tot" % len(df))
-print("Filtered refls have median pred offset=%.3f pix" % df.pred_offsets.median())
-print("Wrote %s which can be passed into diffBragg.geometry_refiner  input_pickle=%s" % (args.out, args.out))
-print("Kept %d / %d refls. Removed %.2f %% "
-    % (n2, n, (n-n2)/float(n)*100. ))
-if args.ers is not None:
-    with open(args.ers, "w") as ersFile:
-        for e, r, s in df[["exp_name", "filtered_refls", "spectrum_filename"]].values:
-            if s is None:
-                s = ""
-            ersFile.write("%s %s %s\n" % (e,r,s))
-    print("Wrote %s which can be passed into simtbx.diffBragg.hopper exp_ref_spec_file=%s" % (args.ers, args.ers))
+rank_dfs = COMM.gather(df)
+n = COMM.reduce(n)
+n2 = COMM.reduce(n2)
+if COMM.rank==0:
+    df = pandas.concat(rank_dfs)
+    df.reset_index(inplace=True, drop=True)
+    df.to_pickle(args.out)
+    print("\nSummary\n<><><><><>")
+    print("%d expts tot" % len(df))
+    print("Filtered refls have median pred offset=%.3f pix" % df.pred_offsets.median())
+    print("Wrote %s which can be passed into diffBragg.geometry_refiner  input_pickle=%s" % (args.out, args.out))
+    print("Kept %d / %d refls. Removed %.2f %% "
+        % (n2, n, (n-n2)/float(n)*100. ))
+    if args.ers is not None:
+        with open(args.ers, "w") as ersFile:
+            for e, r, s in df[["exp_name", "filtered_refls", "spectrum_filename"]].values:
+                if s is None:
+                    s = ""
+                ersFile.write("%s %s %s\n" % (e,r,s))
+        print("Wrote %s which can be passed into simtbx.diffBragg.hopper exp_ref_spec_file=%s" % (args.ers, args.ers))
+    with open(args.out +".exectution.txt", "w") as o:
+        import sys,os
+        o.write("filt_refls was run from folder: %s\n" % os.getcwd())
+        o.write("The command line input was:\n")
+        o.write(" ".join(sys.argv))
