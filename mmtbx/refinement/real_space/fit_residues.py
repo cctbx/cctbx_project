@@ -54,6 +54,7 @@ class run(object):
                mon_lib_srv,
                map_data_scale = 2.5,
                diff_map_data_threshold = -2.5,
+               exclude_selection=None,
                rotatable_hd=None,
                bselection=None,
                map_data=None,
@@ -81,6 +82,7 @@ class run(object):
         map_data                = self.map_data,
         diff_map_data           = self.diff_map_data,
         map_data_scale          = self.map_data_scale,
+        exclude_selection       = self.exclude_selection,
         diff_map_data_threshold = self.diff_map_data_threshold)
       self.mes.extend(o.mes)
       self.bselection = o.sel_all() # or all_possible() ?

@@ -243,7 +243,7 @@ class side_chain_fit_evaluator(object):
   def __init__(self,
                pdb_hierarchy,
                crystal_symmetry,
-               restraints_manager = None,
+               exclude_selection = None,
                rotamer_evaluator = None,
                map_data = None,
                diff_map_data = None,
@@ -258,30 +258,6 @@ class side_chain_fit_evaluator(object):
         map_data      = map_data)
     get_class = iotbx.pdb.common_residue_names_get_class
     mainchain=["C","N","O","CA","CB"]
-    # Exclude side-chains involved into covalent bonds
-    if(restraints_manager is not None):
-      exclude_selection = flex.size_t()
-      atoms = pdb_hierarchy.atoms()
-      bond_proxies_simple, asu = restraints_manager.get_all_bond_proxies(
-        sites_cart = atoms.extract_xyz())
-      for proxy in bond_proxies_simple:
-        i,j = proxy.i_seqs
-        # is i the same as atoms[i].i_seq ? Shall I assert this?
-        assert i == atoms[i].i_seq
-        assert j == atoms[j].i_seq
-        resseq_i  = atoms[i].parent().parent().resseq
-        resseq_j  = atoms[j].parent().parent().resseq
-        resname_i = atoms[i].parent().resname
-        resname_j = atoms[j].parent().resname
-        i_aa = get_class(resname_i)=="common_amino_acid"
-        j_aa = get_class(resname_j)=="common_amino_acid"
-        if(resseq_i != resseq_j and
-           (i_aa or j_aa) and
-           not atoms[i].name.strip() in mainchain and
-           not atoms[j].name.strip() in mainchain):
-          if(i_aa): exclude_selection.append(atoms[i].i_seq)
-          if(j_aa): exclude_selection.append(atoms[j].i_seq)
-    #
     self.crystal_symmetry = crystal_symmetry
     unit_cell = crystal_symmetry.unit_cell()
     self.pdb_hierarchy = pdb_hierarchy
@@ -297,7 +273,7 @@ class side_chain_fit_evaluator(object):
       if(get_class(residue.resname) != "common_amino_acid"): return True
       if(residue.resname.strip().upper() in ["ALA","GLY"]): return True
       if(self._on_spacial_position(residue)): return True
-      if(restraints_manager is not None):
+      if(exclude_selection is not None):
         for atom in residue.atoms():
           if(atom.i_seq in exclude_selection):
             return True

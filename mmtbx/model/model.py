@@ -1045,6 +1045,40 @@ class manager(object):
       result = True
     return result
 
+  def aa_residues_with_bound_sidechains(self):
+    """
+    Return array of i_seqs of residue side chain atoms that are involved into
+    cross-residue covalent linking. This can be use to mark side-chains involved
+    into covalent bonds.
+    XXX Using origin_id of proxies may be a more efficient way of doing this!
+    """
+    if(not self.restraints_manager_available()): return None
+    rm = self.get_restraints_manager().geometry
+    if(rm is None): return None
+    get_class = iotbx.pdb.common_residue_names_get_class
+    mainchain = ["C","N","O","CA","CB"]
+    result = flex.size_t()
+    atoms = self.get_hierarchy().atoms()
+    bond_proxies_simple, asu = rm.get_all_bond_proxies(
+      sites_cart = atoms.extract_xyz())
+    for proxy in bond_proxies_simple:
+      i,j = proxy.i_seqs
+      assert i == atoms[i].i_seq
+      assert j == atoms[j].i_seq
+      resseq_i  = atoms[i].parent().parent().resseq
+      resseq_j  = atoms[j].parent().parent().resseq
+      resname_i = atoms[i].parent().resname
+      resname_j = atoms[j].parent().resname
+      i_aa = get_class(resname_i)=="common_amino_acid"
+      j_aa = get_class(resname_j)=="common_amino_acid"
+      if(resseq_i != resseq_j and
+         (i_aa or j_aa) and
+         not atoms[i].name.strip() in mainchain and
+         not atoms[j].name.strip() in mainchain):
+        if(i_aa): result.append(atoms[i].i_seq)
+        if(j_aa): result.append(atoms[j].i_seq)
+    return result
+
   def macromolecule_plus_hetatms_by_chain_selections(self, radius=3,
        max_radius=5):
     """
