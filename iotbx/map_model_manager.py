@@ -2751,7 +2751,6 @@ class map_model_manager(object):
 
     if reverse and not ca_only:
       return None # cannot do reverse for full chain
-
     if allow_reverse:
       diffs = self.get_diffs_for_matching_target_and_model(
          matching_info = matching_info,
@@ -2815,8 +2814,12 @@ class map_model_manager(object):
          "use ca_only=False in rmsd_of_matching_residues", file = self.log)
       return None
 
-    target_sites = target_model.get_sites_cart()
-    matching_sites = matching_model.get_sites_cart()
+    if ca_only:
+      target_sites = target_model_ca.get_sites_cart()
+      matching_sites = matching_model_ca.get_sites_cart()
+    else:
+      target_sites = target_model.get_sites_cart()
+      matching_sites = matching_model.get_sites_cart()
     if target_sites.size() != matching_sites.size():
       return None
     elif reverse:
