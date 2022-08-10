@@ -21,10 +21,6 @@ import sys, zmq, threading,  time, cmath, zlib, os.path, math, re
 from pathlib import Path
 import importlib.util
 
-try:
-  from .preset_buttons import buttonsdeflist
-except Exception as e: # if the user provides their own customised radio buttons for the GUI
-  buttonsdeflist = []
 
 
 NOREFLDATA = "No reflection data has been selected"
@@ -79,6 +75,20 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
+      try:
+        from .preset_buttons import cctbx_buttonsdeflist
+        buttonsdeflist = cctbx_buttonsdeflist
+        try:
+          from phasertng.scripts import xtricorder # then we are in phenix and can load phasertng
+          from .preset_buttons import phenix_buttonsdeflist
+          buttonsdeflist.extend(phenix_buttonsdeflist) # add phenix buttons to Quick View list
+        except Exception as e: # otherwise we only have cctbx
+          from .preset_buttons import cctbx_buttonsdeflist
+          buttonsdeflist = cctbx_buttonsdeflist
+      except Exception as e: # don't even have cctbx! Should never get here!
+        buttonsdeflist = []
+      if "phenix_buttonsdeflist" in dir():
+        self.SendInfoToGUI({"AddPhenixButtons": True})
     self.mprint("kwds= " +str(kwds), verbose=1)
     self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()

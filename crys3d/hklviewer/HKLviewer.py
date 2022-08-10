@@ -304,8 +304,6 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
         self.devmode = True
       if  "debug" in e or "devmode" in e:
         self.actiondebug.setVisible(True)
-        self.XtricorderBtn.setVisible(True)
-        self.XtriageBtn.setVisible(True)
       if "new_factory_defaults" in e:
         self.make_new_factory_default_settings= True
 
@@ -822,6 +820,11 @@ self.LoadReflectionsFile(self.hklin)
           return
         self.infodict = eval(msgstr)
         if self.infodict:
+
+          if self.infodict.get("AddPhenixButtons", False):
+            self.XtricorderBtn.setVisible(True)
+            self.XtriageBtn.setVisible(True)
+
           if self.infodict.get("WebGL_error"):
             self.BrowserBox.close()
             sys.argv.append("--enable-webgl-software-rendering")

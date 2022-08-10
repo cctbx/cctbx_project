@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-buttonsdeflist = [
+cctbx_buttonsdeflist = [
   ("Intensities", "Show Intensities", """
                                             viewer {
                                               data_array {
@@ -178,5 +178,152 @@ buttonsdeflist = [
                       }
                     }
  """),
+
+]
+
+
+
+
+
+phenix_buttonsdeflist = [
+  ("EINFO", "eInfo < 0.35", """
+                    binning {
+                      scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
+                      binlabel = 'EINFO'
+                      bin_opacity = 1 0
+                      bin_opacity = 0 1
+                      bin_opacity = 0 2
+                      bin_opacity = 0 3
+                      bin_opacity = 0 4
+                      bin_opacity = 0 5
+                      bin_opacity = 0 6
+                      bin_opacity = 0 7
+                      nbins = 8
+                    }
+                    viewer {
+                      data_array {
+                        label = "EINFO"
+                      }
+                    }
+ """),
+("INFO", "Info < 0.35", """
+                    binning {
+                      scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
+                      binlabel = 'INFO'
+                      bin_opacity = 1 0
+                      bin_opacity = 0 1
+                      bin_opacity = 0 2
+                      bin_opacity = 0 3
+                      bin_opacity = 0 4
+                      bin_opacity = 0 5
+                      bin_opacity = 0 6
+                      bin_opacity = 0 7
+                      nbins = 8
+                    }
+                    viewer {
+                      data_array {
+                        label = "INFO"
+                      }
+                    }
+ """),
+
+  ("aniso3", "Rotate around anisotropy principal axis3", """
+                                      binning {
+                                        binlabel = "ANISO"
+                                        bin_opacity = 1 0
+                                        bin_opacity = 1 1
+                                        bin_opacity = 0 2
+                                        bin_opacity = 0 3
+                                        bin_opacity = 0 4
+                                        bin_opacity = 0 5
+                                        bin_opacity = 1 6
+                                        bin_opacity = 1 7
+                                        nbins = 8
+                                      }
+                                      viewer {
+                                        animate_rotation_around_vector = "['ANISO2', 5.0]"
+                                        data_array {
+                                          label = "ANISO"
+                                          datatype = "Floating-point"
+                                        }
+                                        show_vector = "['ANISO2', True]"
+                                        is_parallel = True
+                                        fixorientation = *vector None
+                                      }
+                                      hkls {
+                                        expand_to_p1 = True
+                                        expand_anomalous = True
+                                      }
+  """),
+  ("aniso", "Show Anisotropy", """
+                                      real_space_unit_cell_scale_fraction = 0
+                                      binning {
+                                        binlabel = 'ANISO'
+                                        bin_opacity = 1 0
+                                        bin_opacity = 1 1
+                                        bin_opacity = 0 2
+                                        bin_opacity = 0 3
+                                        bin_opacity = 0 4
+                                        bin_opacity = 0 5
+                                        bin_opacity = 1 6
+                                        bin_opacity = 1 7
+                                        nbins = 8
+                                      }
+                                      viewer {
+                                        data_array {
+                                          label = "ANISO"
+                                          datatype = "Floating-point"
+                                        }
+                                        show_vector = "['ANISO1', True]"
+                                        show_vector = "['ANISO2', True]"
+                                        show_vector = "['ANISO3', True]"
+                                        is_parallel = True
+                                        angle_around_vector = "['ANISO2', 0]"
+                                        animate_rotation_around_vector = "['H (1,0,0)', -1.0]"
+                                      }
+                                      hkls {
+                                        expand_to_p1 = True
+                                        expand_anomalous = True
+                                      }
+  """),
+  ("TNCSlayer", "Slice perpendicular to TNCS vector", """
+                                      clip_plane {
+                                        normal_vector = "TNCS"
+                                        clip_width = 0.380397231
+                                      }
+                                      viewer {
+                                        data_array {
+                                          label = "TEPS"
+                                          datatype = "Floating-point"
+                                        }
+                                        show_vector = "['TNCS', True]"
+                                        fixorientation = *vector None
+                                      }
+                                      hkls {
+                                        expand_to_p1 = True
+                                        expand_anomalous = True
+                                      }
+
+"""),
+  ("TNCSvecrotate", "Rotate around TNCS vector", """
+                                      clip_plane {
+                                        clip_width = 6
+                                        auto_clip_width = False
+                                      }
+                                      viewer {
+                                        data_array {
+                                          label = "TEPS"
+                                          datatype = "Floating-point"
+                                        }
+                                        show_vector = "['TNCS', True]"
+                                        is_parallel = True
+                                        fixorientation = *vector None
+                                        animate_rotation_around_vector = "['TNCS', 5.0]"
+                                      }
+                                      hkls {
+                                        expand_to_p1 = True
+                                        expand_anomalous = True
+                                      }
+"""),
 
 ]

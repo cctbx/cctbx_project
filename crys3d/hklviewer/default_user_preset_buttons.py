@@ -29,15 +29,8 @@ buttonsdeflist = [
                                           show_vector = "['twin', True]"
                                           user_label = "twin"
                                           fixorientation = *vector None
-                                          nth_power_scale_radii = nan
                                           expand_to_p1 = True
                                           expand_anomalous = True
-                                          color_scheme = *jet
-                                          color_powscale = 0.5131581182
-                                        }
-                                        NGL {
-                                          show_tooltips = *click
-                                          fontsize = 10
                                         }
   """),
 
