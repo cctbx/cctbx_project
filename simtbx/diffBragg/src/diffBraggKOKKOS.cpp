@@ -78,14 +78,14 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
 
     //  support dynamic allocation for different numbers of sources
-    if (m_previous_nsource != 0 && m_previous_nsource != db_beam.number_of_sources) {
-        printf("Resizing for %d sources!:\n", db_beam.number_of_sources);
-        resize(m_source_X, db_beam.number_of_sources);
-        resize(m_source_Y, db_beam.number_of_sources);
-        resize(m_source_Z, db_beam.number_of_sources);
-        resize(m_source_I, db_beam.number_of_sources);
-        resize(m_source_lambda, db_beam.number_of_sources);
-        m_previous_nsource = db_beam.number_of_sources;
+    if (m_previous_nsource != 0 && m_previous_nsource != local_beam.number_of_sources) {
+        printf("Resizing for %d sources!:\n", local_beam.number_of_sources);
+        resize(m_source_X, local_beam.number_of_sources);
+        resize(m_source_Y, local_beam.number_of_sources);
+        resize(m_source_Z, local_beam.number_of_sources);
+        resize(m_source_I, local_beam.number_of_sources);
+        resize(m_source_lambda, local_beam.number_of_sources);
+        m_previous_nsource = local_beam.number_of_sources;
     }
 
     if (m_device_is_allocated) {
@@ -100,12 +100,12 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
                 "Will model %d pixels and allocate %d pix\n", Npix_to_model,
                 db_cu_flags.Npix_to_allocate);
         }
-        resize(m_source_X, db_beam.number_of_sources);
-        resize(m_source_Y, db_beam.number_of_sources);
-        resize(m_source_Z, db_beam.number_of_sources);
-        resize(m_source_I, db_beam.number_of_sources);
-        resize(m_source_lambda, db_beam.number_of_sources);
-        m_previous_nsource = db_beam.number_of_sources;
+        resize(m_source_X, local_beam.number_of_sources);
+        resize(m_source_Y, local_beam.number_of_sources);
+        resize(m_source_Z, local_beam.number_of_sources);
+        resize(m_source_I, local_beam.number_of_sources);
+        resize(m_source_lambda, local_beam.number_of_sources);
+        m_previous_nsource = local_beam.number_of_sources;
 
         resize(m_UMATS, local_cryst.UMATS.size());
         resize(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ.size());
@@ -300,12 +300,12 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  BEGIN sources
     if (db_cu_flags.update_sources || ALLOC || FORCE_COPY) {
-        int source_count = db_beam.number_of_sources;
-        kokkostbx::transfer_double2kokkos(m_source_X, db_beam.source_X, source_count);
-        kokkostbx::transfer_double2kokkos(m_source_Y, db_beam.source_Y, source_count);
-        kokkostbx::transfer_double2kokkos(m_source_Z, db_beam.source_Z, source_count);
-        kokkostbx::transfer_double2kokkos(m_source_I, db_beam.source_I, source_count);
-        kokkostbx::transfer_double2kokkos(m_source_lambda, db_beam.source_lambda, source_count);
+        int source_count = local_beam.number_of_sources;
+        kokkostbx::transfer_double2kokkos(m_source_X, local_beam.source_X, source_count);
+        kokkostbx::transfer_double2kokkos(m_source_Y, local_beam.source_Y, source_count);
+        kokkostbx::transfer_double2kokkos(m_source_Z, local_beam.source_Z, source_count);
+        kokkostbx::transfer_double2kokkos(m_source_I, local_beam.source_I, source_count);
+        kokkostbx::transfer_double2kokkos(m_source_lambda, local_beam.source_lambda, source_count);
         auto tmp_src_X = m_source_X;
         auto tmp_src_Y = m_source_Y;
         auto tmp_src_Z = m_source_Z;
@@ -459,7 +459,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     // gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
     bool aniso_eta = local_cryst.UMATS_RXYZ.size() != local_cryst.UMATS_RXYZ_prime.size();
     bool use_nominal_hkl = !local_cryst.nominal_hkl.empty();
-/*    kokkos_sum_over_steps<<<numblocks, blocksize>>>(
+    kokkos_sum_over_steps(
         Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
         m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
         m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
@@ -468,14 +468,17 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_flags.printout_spixel, db_flags.printout, local_cryst.default_F, local_det.oversample,
         db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
         local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, db_beam.number_of_sources,
-        local_cryst.phisteps, local_cryst.UMATS.size(), db_flags.use_lambda_coefficients, db_beam.lambda0,
-        db_beam.lambda1, local_cryst.eig_U, local_cryst.eig_O, local_cryst.eig_B, local_cryst.RXYZ, m_dF_vecs,
+        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+        local_cryst.phisteps, local_cryst.UMATS.size(), db_flags.use_lambda_coefficients, local_beam.lambda0,
+        local_beam.lambda1, local_cryst.eig_U, local_cryst.eig_O, local_cryst.eig_B, local_cryst.RXYZ, m_dF_vecs,
         m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime, m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats,
         m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats, m_AMATS, m_source_X, m_source_Y, m_source_Z,
-        m_source_lambda, m_source_I, db_beam.kahn_factor, local_cryst.Na, local_cryst.Nb, local_cryst.Nc,
+        m_source_lambda, m_source_I, local_beam.kahn_factor, local_cryst.Na, local_cryst.Nb, local_cryst.Nc,
         local_cryst.Nd, local_cryst.Ne, local_cryst.Nf, local_cryst.phi0, local_cryst.phistep,
-        local_cryst.spindle_vec, db_beam.polarization_axis, local_cryst.h_range, local_cryst.k_range,
+        local_cryst.spindle_vec,
+         local_beam.polarization_axis,
+         local_cryst.h_range,
+         local_cryst.k_range,
         local_cryst.l_range, local_cryst.h_max, local_cryst.h_min, local_cryst.k_max, local_cryst.k_min,
         local_cryst.l_max, local_cryst.l_min, local_cryst.dmin, local_cryst.fudge, db_flags.complex_miller,
         db_flags.verbose, db_flags.only_save_omega_kahn, db_flags.isotropic_ncells,
@@ -483,13 +486,17 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_flags.refine_Ncells_def, m_refine_panel_origin, m_refine_panel_rot,
         db_flags.refine_fcell, m_refine_lambda, db_flags.refine_eta, m_refine_Umat, m_fdet_vectors,
         m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
-        db_beam.fluence, local_cryst.r_e_sqr, local_cryst.spot_scale, Npanels, aniso_eta,
+        local_beam.fluence, local_cryst.r_e_sqr, local_cryst.spot_scale, Npanels, aniso_eta,
         db_flags.no_Nabc_scale, m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms,
-        db_flags.refine_fp_fdp, m_nominal_hkl, use_nominal_hkl, local_cryst.anisoU, local_cryst.anisoG,
+        db_flags.refine_fp_fdp,
+         m_nominal_hkl,
+         use_nominal_hkl,
+         local_cryst.anisoU, 
+        local_cryst.anisoG,
         db_flags.use_diffuse, m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
         db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
         db_flags.wavelength_img);
-*/
+
     ::Kokkos::fence("after kernel call");
 
     if (db_flags.verbose > 1)
