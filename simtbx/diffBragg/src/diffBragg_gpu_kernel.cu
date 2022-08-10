@@ -580,6 +580,7 @@ void gpu_sum_over_steps(
         anisoU_local = anisoU;
         int laue_group_num = 5;
         num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+	for (int iL = 0; iL < num_laue_mats; iL++) laue_mats[iL] = laue_mats[iL].transpose();
         // anisoG_local = anisoG;
         for (int i_gam=0; i_gam<3; i_gam++){
           dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
@@ -786,11 +787,11 @@ void gpu_sum_over_steps(
                   for (int ll=0; ll <1; ll++){
                     for ( int iL = 0; iL < num_laue_mats; iL++ ){
                       VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                      VEC3 Q0 = laue_mats[iL]*UMATS_RXYZ[_mos_tic].transpose()*Ainv*H0_offset;
+                      VEC3 Q0 = UMATS_RXYZ[_mos_tic].transpose()*Ainv*laue_mats[iL]*H0_offset;
                       CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU_local*Q0);
                       CUDAREAL dwf = exp(-exparg);
                       VEC3 delta_H_offset = H_vec - H0_offset;
-                      VEC3 delta_Q = laue_mats[iL]*UMATS_RXYZ[_mos_tic].transpose()*Ainv*delta_H_offset;
+                      VEC3 delta_Q = UMATS_RXYZ[_mos_tic].transpose()*Ainv*laue_mats[iL]*delta_H_offset;
                       VEC3 anisoG_q = anisoG_local*delta_Q;
 
                       CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
@@ -804,7 +805,7 @@ void gpu_sum_over_steps(
                           VEC3 dV = dG_dgam[i_gam]*delta_Q;
                           CUDAREAL V_dot_dV = anisoG_q.dot(dV);
                           CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                          step_diffuse_param[i_gam] += gamma_portion*deriv*exparg/(CUDAREAL)num_laue_mats;
+                          step_diffuse_param[i_gam] += gamma_portion*deriv*dwf*exparg/(CUDAREAL)num_laue_mats;
                         }
                         MAT3 dU_dsigma;
                         dU_dsigma << 0,0,0,0,0,0,0,0,0;
