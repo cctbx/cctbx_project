@@ -41,7 +41,7 @@ class _():
             arr = np.ascontiguousarray(arr)
         return arr
 
-    def add_Fhkl_gradients(self, psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale):
+    def add_Fhkl_gradients(self, psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale, track=False):
         """
 
         :param psf:
@@ -72,4 +72,4 @@ class _():
         assert freq.dtype==np.uintc
         assert residuals.dtype==np.float64
         assert variance.dtype==np.float64
-        return self.__add_Fhkl_gradients(psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale)
+        return self.__add_Fhkl_gradients(psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale, track)

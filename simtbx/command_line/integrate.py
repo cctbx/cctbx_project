@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.integrate
 

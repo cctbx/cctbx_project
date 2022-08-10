@@ -15,6 +15,14 @@ namespace boost_python { namespace {
   void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_C)(const nanoBragg::af::shared<size_t>&, boost::python::list per_pix_nominal_hkl)
         = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
 
+  boost::python::list get_Fhkl_grad_inds(simtbx::nanoBragg::diffBragg& diffBragg){
+      boost::python::list indices;
+      for(auto& fhkl_idx: diffBragg.db_cryst.Fhkl_grad_idx_tracker){
+        indices.append(fhkl_idx);
+      }
+      return indices;
+  }
+
   void set_hall(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::str hall){
     diffBragg.db_cryst.hall_symbol = boost::python::extract<std::string>(hall);
   }
@@ -768,6 +776,9 @@ namespace boost_python { namespace {
       .add_property("Num_ASU",
                      make_function(get_Num_ASU,rbv()),
                     "number of unique ASU miller indices")
+      .add_property("Fhkl_gradient_indices",
+                     make_function(get_Fhkl_grad_inds,rbv()),
+                    "return a list of indices")
       .add_property("hall_symbol",
             make_function(&get_hall,rbv()),
             make_function(&set_hall,dcp()),

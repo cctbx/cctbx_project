@@ -6,6 +6,10 @@
 #include<unordered_set>
 #include<string>
 
+#if defined(_OPENMP)
+    #include<omp.h>
+#endif
+
 namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
 
 void diffBragg_sum_over_steps(
@@ -19,8 +23,26 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
+    if (db_flags.track_Fhkl_indices)
+        db_cryst.Fhkl_grad_idx_tracker.clear();
+
+#if defined(_OPENMP)
+    int dyn_state = omp_get_dynamic();
+    int nthread_state = omp_get_max_threads();
+    if (db_flags.track_Fhkl_indices){
+        omp_set_dynamic(0);
+        omp_set_num_threads(1);
+    }
+#endif
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
+
+
+#if defined(_OPENMP)
+        if (db_flags.track_Fhkl_indices)
+            SCITBX_ASSERT(omp_get_num_threads()==1);
+#endif
+
         if (db_flags.using_trusted_mask){
             if (! d_image.trusted[i_pix])
                 continue;
@@ -38,7 +60,6 @@ void diffBragg_sum_over_steps(
         double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
         std::unordered_map<std::string, int> Fhkl_tracker;
-        std::unordered_set<int> Fhkl_grad_idx_tracker;
         bool use_nominal_hkl = false;
         if (!db_cryst.nominal_hkl.empty())
             use_nominal_hkl = true;
@@ -387,27 +408,20 @@ void diffBragg_sum_over_steps(
                 I_cell *= F_cell;
             double s_hkl = 1;
             int Fhkl_channel = 0;
-            if (! db_beam.Fhkl_channels.empty()){
+            if (! db_beam.Fhkl_channels.empty())
                 Fhkl_channel = db_beam.Fhkl_channels[source];
-            }
-            if (db_flags.Fhkl_have_scale_factors){
+            if (db_flags.Fhkl_have_scale_factors)
                 s_hkl = d_image.Fhkl_scale[i_hklasu + Fhkl_channel*db_cryst.Num_ASU];
-            }
-            //if (db_flags.Fhkl_gradient_mode){
-            //    if (i_pix==51 || i_pix==551)
-            //        printf("s_hkl=%f, i_hkl_asu=%d, freq=%d\n", s_hkl, i_hklasu, d_image.freq[i_pix]);
-            //}
+
             if (db_flags.Fhkl_gradient_mode){
                 double grad_incr = I_noFcell*I_cell*Fhkl_deriv_coef;
                 int fhkl_grad_idx=i_hklasu + Fhkl_channel*db_cryst.Num_ASU;
-                Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);
+                if (db_flags.track_Fhkl_indices)
+                    db_cryst.Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);
                 // omega pixel is correctly in count_scale, and spot_scale should have been set to its refined value
                 double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
+                #pragma omp atomic
                 d_image.Fhkl_scale_deriv[fhkl_grad_idx] += grad_incr*Fhkl_deriv_scale;
-                //if (i_pix==22066)// && source==0)
-                //    printf("\nh,k,l=(%d %d %d ) s_hkl=%f, i_hkl_asu=%d, freq=%d, \ngrad_incr=%f, Fhkl_deriv_coef=%f\n Fhkl_chan=%d, num_asu=%d, fhkl_grad_idx=%d, Fhkl_scale_deriv=%f\n",
-                //    h0,k0,l0,s_hkl, i_hklasu, d_image.freq[i_pix], grad_incr, Fhkl_deriv_coef,
-                //    Fhkl_channel, db_cryst.Num_ASU, fhkl_grad_idx, d_image.Fhkl_scale_deriv[fhkl_grad_idx]);
                 continue; // move on to next diffraction step (note, thos will bypass the pintout_pixel settings)
             }
 
@@ -796,18 +810,8 @@ void diffBragg_sum_over_steps(
             // final scale term to being everything to photon number units
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
-            if (db_flags.Fhkl_gradient_mode){
-                //if (i_pix==22066){
-                //    printf("r_e_sq=%10.7g, fluence=%f , spot_scale=%f, polar=%f, om=%f, Nsteps=%d\n",
-                //        db_cryst.r_e_sqr,db_beam.fluence,db_cryst.spot_scale,polar,om,db_steps.Nsteps);
-                //    printf("1st sanity check: Fhkl_scale_deriv[16128]=%10.7g\n", d_image.Fhkl_scale_deriv[16128]);
-                //    }
-                //for (const int& grad_idx: Fhkl_grad_idx_tracker)
-                //    d_image.Fhkl_scale_deriv[grad_idx] *= scale_term;
-                //if (i_pix==22066)
-                //    printf("2nd sanity check: Fhkl_scale_deriv[16128]=%10.7g, scale_term=%10.7g\n", d_image.Fhkl_scale_deriv[16128], scale_term);
+            if (db_flags.Fhkl_gradient_mode)
                 continue; // move on to next pixel (i_pix)
-            }
 
             floatimage[i_pix] = scale_term*I;
 
@@ -959,6 +963,13 @@ void diffBragg_sum_over_steps(
                 printf("Pixel %d: Fhkl linear index %s came up %d times\n", i_pix, x.first.c_str(), x.second);
         }
     } // end i_pix loop
+
+#if defined(_OPENMP)
+    if (db_flags.track_Fhkl_indices){
+        omp_set_dynamic(dyn_state);
+        omp_set_num_threads(nthread_state);
+    }
+#endif
 } // END of CPU kernel
 
 }} // END namespace simtbx::nanoBragg

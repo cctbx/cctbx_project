@@ -1703,7 +1703,9 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
 np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
     np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
-    int num_Fhkl_channels, double Gscale){
+    int num_Fhkl_channels, double Gscale, bool track){
+
+    db_flags.track_Fhkl_indices = track;
 
     Npix_to_model = panels_fasts_slows.size()/3;
 
@@ -1751,6 +1753,7 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
 
     db_flags.using_trusted_mask = false;
     db_flags.Fhkl_gradient_mode = false;
+    db_flags.track_Fhkl_indices = false;
 
     //printf("3rd sanity check: Fhkl_scale_deriv[16128]=%10.7g\n", first_deriv_imgs.Fhkl_scale_deriv[16128]);
     boost::python::tuple shape = boost::python::make_tuple(db_cryst.Num_ASU*num_Fhkl_channels);

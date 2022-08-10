@@ -6,6 +6,7 @@
 #include<Eigen/StdVector>
 #include<vector>
 #include<unordered_map>
+#include<unordered_set>
 #include <string>
 
 typedef std::vector<double> image_type;
@@ -79,6 +80,7 @@ struct cuda_flags{
 };
 
 struct flags{
+    bool track_Fhkl_indices = false;
     bool Fhkl_have_scale_factors = false;
     bool using_trusted_mask=false;
     bool Fhkl_gradient_mode=false;
@@ -120,6 +122,7 @@ struct flags{
 };
 
 struct crystal{
+    std::unordered_set<int> Fhkl_grad_idx_tracker;
     int num_Fhkl_channels=1;
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;

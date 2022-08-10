@@ -850,7 +850,6 @@ class DataModeler:
             self.SIM.num_Fhkl_channels = len(self.SIM.Fhkl_channel_bounds)-1
             asu_map = self.SIM.D.get_ASUid_map()
             self.SIM.asu_map_int = {tuple(map(int, k.split(','))): v for k, v in asu_map.items()}
-            self.SIM.fhkl_xpos = [self.SIM.asu_map_int[h] for h in self.Hi_asu]
 
             num_unique_hkl = len(asu_map)
             self.SIM.Fhkl_scales_init = np.ones(num_unique_hkl*self.SIM.num_Fhkl_channels)
@@ -1119,6 +1118,43 @@ class DataModeler:
         basename = os.path.splitext(os.path.basename(self.exper_name))[0]
         img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
         new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+
+        if self.SIM.refining_Fhkl:
+            fhkl_scale_dir = hopper_io.make_rank_outdir(Modeler.params.outdir, "Fhkl_scale", rank)
+
+            # ------------
+            # here we run the command add_Fhkl_gradients one more time
+            # , only this time we track all the asu indices that influence the model
+            # This is a special call that requires openMP to have num_threads=1 because
+            # I do not not how to interact with an unordered_set in openMP
+            resid = self.all_data - self.best_model
+            V = self.best_model + self.all_sigma_rdout ** 2
+            Gparam = self.SIM.P["G_xtal0"]
+            G = Gparam.get_val(x[Gparam.xpos])
+            self.SIM.D.add_Fhkl_gradients(self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
+                                     self.SIM.num_Fhkl_channels, G, True)
+            inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))
+            # ------------
+
+            num_asu = len(self.SIM.asu_map_int)
+            idx_to_asu = {idx:asu for asu,idx in self.SIM.asu_map_int.items() }
+            for i_chan in range(self.SIM.num_Fhkl_channels):
+                sel = (inds >= i_chan*num_asu) * (inds < (i_chan+1)*num_asu)
+                if not np.any(sel):
+                    continue
+                inds_chan= inds[sel] - i_chan*num_asu
+                assert np.max(inds_chan) < num_asu
+                asu_hkls = []
+                scale_facs = []
+                for i_hkl in inds_chan:
+                    asu = idx_to_asu[i_hkl]
+                    p = self.SIM.P["Fhkl_%d_channel%d" % (i_hkl, i_chan)]
+                    scale_fac = p.get_val(x[p.xpos])
+                    asu_hkls.append(asu)
+                    scale_facs.append(scale_fac)
+                scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_channel%d_scale.npz"\
+                                     % (Modeler.params.tag, basename, i_exp, i_chan))
+                np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs)
 
         trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
 
@@ -1812,7 +1848,8 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
         if SIM.refining_Fhkl:
             spot_scale_p = SIM.P["G_xtal0"]
             G = spot_scale_p.get_val(x[spot_scale_p.xpos])
-            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted, mod.all_freq, SIM.num_Fhkl_channels, G)
+            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted,
+                                                 mod.all_freq, SIM.num_Fhkl_channels, G)
             fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
             #from IPython import embed;embed()
 
