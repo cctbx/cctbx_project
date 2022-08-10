@@ -1124,7 +1124,18 @@ void diffBragg::update_Fhkl_channels(np::ndarray& channels){
     for (int i=0; i < sources; i++){
         int channel_id = *(channels_ptr+i);
         db_beam.Fhkl_channels.push_back(channel_id);
+        if (verbose)
+            printf("source=%d channel_id=%d\n", i, channel_id);
     }
+}
+
+boost::python::list diffBragg::get_Fhkl_channels(){
+    boost::python::list channels;
+    for (int i=0; i < db_beam.Fhkl_channels.size(); i++){
+        int channel_id = db_beam.Fhkl_channels [i];
+        channels.append(channel_id);
+    }
+    return channels;
 }
 
 void diffBragg::update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
@@ -1712,7 +1723,7 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     double* resid_ptr = reinterpret_cast<double*>(residual.get_data());
     double* var_ptr = reinterpret_cast<double*>(variance.get_data());
     bool* trust_ptr = reinterpret_cast<bool*>(trusted.get_data());
-    unsigned int* freq_ptr = reinterpret_cast<unsigned int*>(freq.get_data());
+    int* freq_ptr = reinterpret_cast<int*>(freq.get_data());
 
     bool init_vecs = first_deriv_imgs.residual.empty();
 
@@ -1720,7 +1731,7 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
         double resid = *(resid_ptr+i);
         double var = *(var_ptr+i);
         bool trust = *(trust_ptr+i);
-        unsigned int fr = *(freq_ptr+i);
+        int fr = *(freq_ptr+i);
         if (init_vecs){
             first_deriv_imgs.residual.push_back(resid);
             first_deriv_imgs.variance.push_back(var);

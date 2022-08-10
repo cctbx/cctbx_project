@@ -33,7 +33,7 @@ struct images{
     image_type Fhkl_scale;
     image_type Fhkl_scale_deriv;
     std::vector<bool> trusted;
-    std::vector<unsigned int> freq;
+    std::vector<int> freq;
     image_type residual;
     image_type variance;
     image_type wavelength; // image for storing mean wavelength of each pixel

@@ -64,6 +64,10 @@ def write_SIM_logs(SIM, log=None, lam=None):
             for attr in DIFFBRAGG_ATTRS:
                 val = getattr(SIM.D, attr)
                 print(attr+": ", val, file=o)
+            if SIM.refining_Fhkl is not None and SIM.refining_Fhkl:
+                channels = SIM.D.get_Fhkl_channels()
+                channels = ",".join(map(str, channels))
+                print("Fhkl channels: ", channels, file=o)
             print("\n<><><>", file=o)
             print("BEAM", file=o)
             print("<><><>", file=o)
@@ -525,7 +529,7 @@ class DataModeler:
             x1, x2, y1, y2 = self.rois[i_roi]
             freq = pixel_counter[pid, y1:y2, x1:x2].ravel()
             all_freq += list(freq)
-        self.all_freq = np.array(all_freq, np.uintc)  # if no overlapping pixels, this should be an array of 1's
+        self.all_freq = np.array(all_freq, np.int32)  # if no overlapping pixels, this should be an array of 1's
         if not self.params.roi.allow_overlapping_spots:
             if not np.all(self.all_freq==1):
                 print(set(self.all_freq))
@@ -1133,11 +1137,12 @@ class DataModeler:
             G = Gparam.get_val(x[Gparam.xpos])
             self.SIM.D.add_Fhkl_gradients(self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
                                      self.SIM.num_Fhkl_channels, G, True)
-            inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))
             # ------------
 
+            inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))
+
             num_asu = len(self.SIM.asu_map_int)
-            idx_to_asu = {idx:asu for asu,idx in self.SIM.asu_map_int.items() }
+            idx_to_asu = {idx:asu for asu,idx in self.SIM.asu_map_int.items()}
             for i_chan in range(self.SIM.num_Fhkl_channels):
                 sel = (inds >= i_chan*num_asu) * (inds < (i_chan+1)*num_asu)
                 if not np.any(sel):

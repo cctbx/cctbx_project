@@ -20,8 +20,8 @@ class _():
         """
         assert isinstance(channel_ids, np.ndarray)
         channel_ids = self._check_contig(channel_ids)
-        if channel_ids.dtype != int:
-            channel_ids = channel_ids.astype(int)
+        if channel_ids.dtype != np.int32:
+            channel_ids = channel_ids.astype(np.int32)
         # assert len(channel_ids)== number_of_sources
         self.__update_Fhkl_channels(channel_ids)
 
@@ -69,7 +69,7 @@ class _():
         # TODO check or contiguous arrays..
 
         assert trusted.dtype==bool
-        assert freq.dtype==np.uintc
+        assert freq.dtype==np.int32
         assert residuals.dtype==np.float64
         assert variance.dtype==np.float64
         return self.__add_Fhkl_gradients(psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale, track)
