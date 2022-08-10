@@ -70,7 +70,7 @@ def nth_power_scale(dataarray, nth_power, is_sigmas=False):
   offset = mindat - 0.001 # avoid log(0)
   offsetmin = mindat - offset
   offsetmax = maxdat - offset
-  offsetarr = dataarray - offset
+  offsetarr = dataarray.as_double() - offset # double in case dataarray are ints
   # only autoscale for sensible values of maxdat and mindat
   if math.isnan(nth_power) and maxdat > mindat : # amounts to automatic scale
     nth_power = math.log(10)/(math.log(offsetmax) - math.log(offsetmin))

@@ -1987,6 +1987,7 @@ in the space group %s\nwith unit cell %s""" \
       return str([val, isvisible])
     if isinstance(val, str):
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
+        #if val in label: # so that user_vector.label="twin" declared for a preset button will match "2-fold_mytwin"
         if val == label:
           self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
           if not isvisible:

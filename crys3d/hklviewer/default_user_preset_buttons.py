@@ -14,24 +14,28 @@ buttonsdeflist = [
   # Pressing this button will expand amplitude data to P1 and slice it with twin axis perpendicular
   # to the screen. One can then step through layers of reflections with the +/- buttons in the GUI
   ("TwinAxis", "Slice perpendicular to twin axis", """
-
                                         clip_plane {
-                                          angle_around_vector = "['twin', 0.0]"
-                                          animate_rotation_around_vector = "['twin', -1.0]"
                                           hkldist = 0
                                           normal_vector = "twin"
-                                          clip_width = 1
-                                          auto_clip_width = False
+                                          clip_width = 0.5
                                         }
                                         viewer {
-                                          data_array.label = "F,SIGF"
-                                          data_array.datatype = "Amplitude"
+                                          data_array {
+                                            label = "F-obs,SIGF-obs"
+                                            datatype = "Amplitude"
+                                          }
                                           show_vector = "['twin', True]"
-                                          user_label = "twin"
+                                          user_vector {
+                                            label = "twin"
+                                          }
                                           fixorientation = *vector None
+                                          angle_around_vector = "['twin', 0.0]"
+                                        }
+                                        hkls {
                                           expand_to_p1 = True
                                           expand_anomalous = True
                                         }
+
   """),
 
 ]
