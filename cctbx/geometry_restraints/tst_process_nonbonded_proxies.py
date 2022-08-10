@@ -236,25 +236,28 @@ def test_running_from_command_line():
   assert(not bool(r.stderr_lines))
 
 
-def test_file_with_unknown_pair_type():
-  '''
-  Verify that ready_set can fix issues with unknown_pair_type
-  '''
-  model = obtain_model(raw_records = unknown_pairs_pdb_str,
-                       stop_for_unknowns = False)
-  ph = model.get_hierarchy()
-  pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
-    pdb_hierarchy         = ph,
-    allow_multiple_models = False,
-    crystal_symmetry      = model.crystal_symmetry(),
-    log                   = null_out())
-  sorry = None
-  try:
-    model = obtain_model(raw_records=pdb_with_h)
-  except Sorry as e:
-    sorry = e
-  assert(sorry is not None)
-
+#def test_file_with_unknown_pair_type():
+#  '''
+#  Verify that file with unknown_pair_type fails
+#  --> retire this test as functionality is already tested above
+#      also, this test becomes a failure whenever the unknown entity is
+#      added to geostd.
+#  '''
+#  model = obtain_model(raw_records = unknown_pairs_pdb_str,
+#                       stop_for_unknowns = False)
+#  ph = model.get_hierarchy()
+#  pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
+#    pdb_hierarchy         = ph,
+#    allow_multiple_models = False,
+#    crystal_symmetry      = model.crystal_symmetry(),
+#    log                   = null_out())
+#  sorry = None
+#  try:
+#    model = obtain_model(raw_records=pdb_with_h)
+#  except Sorry as e:
+#    sorry = e
+#  assert(sorry is not None)
+#
 #  test = nbo.unknown_pairs_present(grm=grm,sites_cart=sites,site_labels=labels)
 #  # make sure we have unknown pairs
 #  self.assertTrue(test)
@@ -792,7 +795,7 @@ if (__name__ == "__main__"):
   test_show()
   test_unknown_pair_type()
   test_running_from_command_line()
-  test_file_with_unknown_pair_type()
+  #test_file_with_unknown_pair_type()
   test_small_cell()
   test_manager_and_clashes_functions()
   test_no_unit_cell()

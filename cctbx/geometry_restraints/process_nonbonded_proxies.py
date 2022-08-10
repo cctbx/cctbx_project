@@ -169,12 +169,13 @@ class clashes(object):
         i_seq, j_seq = iseq_tuple
         overlap = record[2]
         if record[4] is not None:
-          symop = record[4]
+          symop = record[4].as_xyz()
         else: symop = ''
         i_id_str = atoms[i_seq].id_str().replace('pdb=','').replace('"','')
         j_id_str = atoms[j_seq].id_str().replace('pdb=','').replace('"','')
         line = [i_id_str, j_id_str,round(record[0], 2),round(overlap, 2), symop]
-        print(table_str % line, file=log)
+        #print(table_str % line, file=log)
+        print(table_str.format(*line), file=log)
       print('-'*78, file=log)
     else:
       print('No clashes found', file=log)
@@ -396,7 +397,7 @@ class hbonds(object):
       for iseq_tuple, record in self._hbonds_dict.items():
         iseq_x, iseq_h, iseq_a = iseq_tuple
         if record[4] is not None:
-          symop = record[4]
+          symop = record[4].as_xyz()
         else: symop = ''
         x_id_str = atoms[iseq_x].id_str().replace('pdb=','').replace('"','')
         h_id_str = atoms[iseq_h].id_str().replace('pdb=','').replace('"','')
