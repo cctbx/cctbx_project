@@ -1039,7 +1039,7 @@ class StageTwoRefiner(BaseRefiner):
     def _derivative_convenience_factors(self):
         Mod = self.Modelers[self._i_shot]
         self.u = Mod.all_data - self.model_Lambda
-        self.one_over_v = 1. / (self.model_Lambda + Mod.sigma_rdout ** 2)
+        self.one_over_v = 1. / (self.model_Lambda + Mod.nominal_sigma_rdout ** 2)
         self.one_minus_2u_minus_u_squared_over_v = 1 - 2 * self.u - self.u * self.u * self.one_over_v
         if self.calc_curvatures:
             self.u_times_one_over_v = self.u*self.one_over_v
@@ -1063,7 +1063,7 @@ class StageTwoRefiner(BaseRefiner):
 
     def _evaluate_log_averageI_plus_sigma_readout(self):
         Mod = self.Modelers[self._i_shot]
-        v = self.model_Lambda + Mod.sigma_rdout ** 2
+        v = self.model_Lambda + Mod.nominal_sigma_rdout ** 2
         v_is_neg = (v <= 0).ravel()
         if any(v_is_neg[Mod.all_trusted]):
             LOGGER.warning(Bcolors.WARNING+"NEGATIVE INTENSITY IN MODEL!"+Bcolors.ENDC)
