@@ -4,9 +4,9 @@
 #include "diffBraggKOKKOS.h"
 #include "util_kokkos.h"
 
-__global__ void gpu_sum_over_steps(
+void kokkos_sum_over_steps(
     int Npix_to_model,
-    unsigned int* panels_fasts_slows,
+    vector_uint_t panels_fasts_slows,
     vector_cudareal_t floatimage,
     vector_cudareal_t wavelenimage,
     vector_cudareal_t d_Umat_images,
@@ -121,8 +121,8 @@ __global__ void gpu_sum_over_steps(
     const vector_cudareal_t fpfdp_derivs,
     const vector_cudareal_t atom_data,
     int num_atoms,
-    bool doing_fp_fdp_derivs,
-    const int* nominal_hkl,
+    bool refine_fp_fdp,
+    const vector_int_t nominal_hkl,
     bool use_nominal_hkl,
     MAT3 anisoU,
     MAT3 anisoG,
