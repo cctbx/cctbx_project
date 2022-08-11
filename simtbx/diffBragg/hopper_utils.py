@@ -1438,7 +1438,9 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     for i_xtal in range(SIM.num_xtals):
         SIM.D.raw_pixels_roi *= 0
 
-        SIM.D.Umatrix = SIM.Umatrices[i_xtal]
+        if hasattr(SIM, "Umatrices"):  # reflects new change for modeling multi-crystal experiments
+            SIM.D.Umatrix = SIM.Umatrices[i_xtal]
+
         RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
         rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
 
