@@ -2102,7 +2102,7 @@ class PhaserTNGBuilder(PhaserBuilder):
   LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def add_tests(self):
-    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
+    #self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
     self.add_test_parallel(module='voyager_regression') # run voyager_regression/run_tests.py file
 
   def get_libtbx_configure(self):
