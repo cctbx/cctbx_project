@@ -1135,8 +1135,9 @@ class DataModeler:
             V = self.best_model + self.all_sigma_rdout ** 2
             Gparam = self.SIM.P["G_xtal0"]
             G = Gparam.get_val(x[Gparam.xpos])
-            self.SIM.D.add_Fhkl_gradients(self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
-                                     self.SIM.num_Fhkl_channels, G, True)
+            Fhkl_scale_errors = self.SIM.D.add_Fhkl_gradients(
+                self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
+                self.SIM.num_Fhkl_channels, G, track=True, errors=True)
             # ------------
 
             inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))
@@ -1151,15 +1152,20 @@ class DataModeler:
                 assert np.max(inds_chan) < num_asu
                 asu_hkls = []
                 scale_facs = []
+                scale_vars = []
                 for i_hkl in inds_chan:
+
                     asu = idx_to_asu[i_hkl]
                     p = self.SIM.P["Fhkl_%d_channel%d" % (i_hkl, i_chan)]
                     scale_fac = p.get_val(x[p.xpos])
+                    hessian_term = Fhkl_scale_errors[i_hkl + num_asu*i_chan]
+                    scale_var = 1/hessian_term
                     asu_hkls.append(asu)
                     scale_facs.append(scale_fac)
+                    scale_vars.append(scale_var)
                 scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_channel%d_scale.npz"\
                                      % (Modeler.params.tag, basename, i_exp, i_chan))
-                np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs)
+                np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars)
 
         trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
 

@@ -169,7 +169,7 @@ class diffBragg: public nanoBragg{
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
   np::ndarray add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
            np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
-           int num_Fhkl_channels, double Gscale, bool track);
+           int num_Fhkl_channels, double Gscale, bool track, bool errors);
   void update_Fhkl_channels(np::ndarray& channels);
   boost::python::list get_Fhkl_channels();
   void update_Fhkl_scale_factors(np::ndarray& scale_factors, int num_Fhkl_channels);
@@ -314,6 +314,13 @@ class diffBragg: public nanoBragg{
   void show_timing_stats(int MPI_RANK);
   bool last_kernel_on_GPU; // reveals whether the GPU kernel was run
 }; // end of diffBragg
+
+
+double diffBragg_cpu_kernel_polarization(
+    Eigen::Vector3d incident,
+    Eigen::Vector3d diffracted,
+    Eigen::Vector3d polarization_axis,
+    double kahn_factor);
 
 void diffBragg_sum_over_steps(
       int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,

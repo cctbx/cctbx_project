@@ -12,6 +12,31 @@
 
 namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
 
+
+double diffBragg_cpu_kernel_polarization (Eigen::Vector3d incident, Eigen::Vector3d diffracted,
+                                        Eigen::Vector3d polarization_axis, double kahn_factor){
+    // component of diffracted unit vector along incident beam unit vector
+    double cos2theta = incident.dot(diffracted);
+    double cos2theta_sqr = cos2theta*cos2theta;
+    double sin2theta_sqr = 1-cos2theta_sqr;
+
+    double psi=0;
+    if(kahn_factor != 0.0){
+        // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+        Eigen::Vector3d B_in = polarization_axis.cross(incident);
+        // cross product with incident beam to get E-vector direction
+        Eigen::Vector3d E_in = incident.cross(B_in);
+        // get components of diffracted ray projected onto the E-B plane
+        double kEi = diffracted.dot(E_in);
+        double kBi = diffracted.dot(B_in);
+        // compute the angle of the diffracted ray projected onto the incident E-B plane
+        psi = -atan2(kBi,kEi);
+    }
+    // correction for polarized incident beam
+    double polar = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*psi)*sin2theta_sqr);
+    return polar;
+}
+
 void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
@@ -51,11 +76,15 @@ void diffBragg_sum_over_steps(
         int fpixel = panels_fasts_slows[i_pix*3+1];
         int spixel = panels_fasts_slows[i_pix*3+2];
         double Fhkl_deriv_coef=0;
+        double Fhkl_hessian_coef=0;
         if (db_flags.Fhkl_gradient_mode){
-            double resid_pix = d_image.residual[i_pix];
-            double var_pix = d_image.variance[i_pix];
-            Fhkl_deriv_coef = 1 - 2*resid_pix - resid_pix*resid_pix / var_pix;
-            Fhkl_deriv_coef = 0.5 * Fhkl_deriv_coef/var_pix/d_image.freq[i_pix];
+            double u = d_image.residual[i_pix];
+            double one_by_v = 1/d_image.variance[i_pix];
+            double Gterm = 1 - 2*u - u*u*one_by_v;
+            Fhkl_deriv_coef = 0.5 * Gterm*one_by_v / d_image.freq[i_pix];
+            if (db_flags.Fhkl_errors_mode){
+                Fhkl_hessian_coef = -0.5*one_by_v*(one_by_v*Gterm - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)/d_image.freq[i_pix];
+            }
         }
         double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
@@ -151,27 +180,9 @@ void diffBragg_sum_over_steps(
 
             // polarization
             double polar_for_Fhkl_grad=1;
-            if (!db_flags.nopolar && db_flags.Fhkl_gradient_mode){
-                // component of diffracted unit vector along incident beam unit vector
-                double cos2theta = incident.dot(diffracted);
-                double cos2theta_sqr = cos2theta*cos2theta;
-                double sin2theta_sqr = 1-cos2theta_sqr;
-
-                double psi=0;
-                if(db_beam.kahn_factor != 0.0){
-                    // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(incident);
-                    // cross product with incident beam to get E-vector direction
-                    Eigen::Vector3d E_in = incident.cross(B_in);
-                    // get components of diffracted ray projected onto the E-B plane
-                    double kEi = diffracted.dot(E_in);
-                    double kBi = diffracted.dot(B_in);
-                    // compute the angle of the diffracted ray projected onto the incident E-B plane
-                    psi = -atan2(kBi,kEi);
-                }
-                // correction for polarized incident beam
-                polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*psi)*sin2theta_sqr);
-            }
+            if (!db_flags.nopolar && db_flags.Fhkl_gradient_mode)
+                polar_for_Fhkl_grad = diffBragg_cpu_kernel_polarization(incident, diffracted,
+                                    db_beam.polarization_axis, db_beam.kahn_factor);
 
             /* rough cut to speed things up when we aren't using whole detector */
             if(db_cryst.dmin > 0.0 && stol > 0.0)
@@ -414,14 +425,21 @@ void diffBragg_sum_over_steps(
                 s_hkl = d_image.Fhkl_scale[i_hklasu + Fhkl_channel*db_cryst.Num_ASU];
 
             if (db_flags.Fhkl_gradient_mode){
-                double grad_incr = I_noFcell*I_cell*Fhkl_deriv_coef;
+                double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
+                double dfhkl = I_noFcell*I_cell * Fhkl_deriv_scale;
+                double grad_incr = dfhkl*Fhkl_deriv_coef;
                 int fhkl_grad_idx=i_hklasu + Fhkl_channel*db_cryst.Num_ASU;
                 if (db_flags.track_Fhkl_indices)
                     db_cryst.Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);
                 // omega pixel is correctly in count_scale, and spot_scale should have been set to its refined value
-                double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
                 #pragma omp atomic
-                d_image.Fhkl_scale_deriv[fhkl_grad_idx] += grad_incr*Fhkl_deriv_scale;
+                d_image.Fhkl_scale_deriv[fhkl_grad_idx] += grad_incr;
+
+                if (db_flags.Fhkl_errors_mode){
+                    double hessian_incr = Fhkl_hessian_coef*dfhkl*dfhkl;
+                    #pragma omp atomic
+                    d_image.Fhkl_hessian[fhkl_grad_idx] += hessian_incr;
+                }
                 continue; // move on to next diffraction step (note, thos will bypass the pintout_pixel settings)
             }
 
@@ -782,25 +800,8 @@ void diffBragg_sum_over_steps(
             if (!db_flags.nopolar){
                 Eigen::Vector3d incident(-db_beam.source_X[0], -db_beam.source_Y[0], -db_beam.source_Z[0]);
                 incident = incident / incident.norm();
-                // component of diffracted unit vector along incident beam unit vector
-                double cos2theta = incident.dot(diffracted_ave);
-                double cos2theta_sqr = cos2theta*cos2theta;
-                double sin2theta_sqr = 1-cos2theta_sqr;
-
-                double psi=0;
-                if(db_beam.kahn_factor != 0.0){
-                    // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(incident);
-                    // cross product with incident beam to get E-vector direction
-                    Eigen::Vector3d E_in = incident.cross(B_in);
-                    // get components of diffracted ray projected onto the E-B plane
-                    double kEi = diffracted_ave.dot(E_in);
-                    double kBi = diffracted_ave.dot(B_in);
-                    // compute the angle of the diffracted ray projected onto the incident E-B plane
-                    psi = -atan2(kBi,kEi);
-                }
-                // correction for polarized incident beam
-                polar = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*psi)*sin2theta_sqr);
+                polar = diffBragg_cpu_kernel_polarization(incident, diffracted_ave,
+                                    db_beam.polarization_axis, db_beam.kahn_factor);
             }
 
             double om = 1;

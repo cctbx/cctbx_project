@@ -1714,9 +1714,10 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
 np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
     np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
-    int num_Fhkl_channels, double Gscale, bool track){
+    int num_Fhkl_channels, double Gscale, bool track, bool errors){
 
     db_flags.track_Fhkl_indices = track;
+    db_flags.Fhkl_errors_mode = errors;
 
     Npix_to_model = panels_fasts_slows.size()/3;
 
@@ -1755,6 +1756,11 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
         else
             first_deriv_imgs.Fhkl_scale_deriv[i] = 0;
     }
+    if (db_flags.Fhkl_errors_mode){
+        first_deriv_imgs.Fhkl_hessian.clear();
+        for (int i=0; i < db_cryst.Num_ASU*num_Fhkl_channels; i++)
+            first_deriv_imgs.Fhkl_hessian.push_back(0);
+    }
 
     // we need to supply the spot scale parameter
     SCITBX_ASSERT(spot_scale==1);
@@ -1765,12 +1771,18 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     db_flags.using_trusted_mask = false;
     db_flags.Fhkl_gradient_mode = false;
     db_flags.track_Fhkl_indices = false;
+    db_flags.Fhkl_errors_mode = false;
 
     //printf("3rd sanity check: Fhkl_scale_deriv[16128]=%10.7g\n", first_deriv_imgs.Fhkl_scale_deriv[16128]);
     boost::python::tuple shape = boost::python::make_tuple(db_cryst.Num_ASU*num_Fhkl_channels);
     boost::python::tuple stride = boost::python::make_tuple(sizeof(double));
     np::dtype dt = np::dtype::get_builtin<double>();
-    np::ndarray output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
+    np::ndarray output = np::empty(shape,dt);
+
+    if (errors)
+        output = np::from_data(&first_deriv_imgs.Fhkl_hessian[0], dt, shape, stride, boost::python::object());
+    else
+        output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
     return output.copy();
 }
 

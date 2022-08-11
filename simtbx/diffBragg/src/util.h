@@ -30,6 +30,7 @@ struct timer_variables{
 
 // CONTAINERS
 struct images{
+    image_type Fhkl_hessian;
     image_type Fhkl_scale;
     image_type Fhkl_scale_deriv;
     std::vector<bool> trusted;
@@ -80,6 +81,7 @@ struct cuda_flags{
 };
 
 struct flags{
+    bool Fhkl_errors_mode=false;
     bool track_Fhkl_indices = false;
     bool Fhkl_have_scale_factors = false;
     bool using_trusted_mask=false;
