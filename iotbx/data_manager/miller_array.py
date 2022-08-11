@@ -284,7 +284,8 @@ class MillerArrayDataManager(DataManagerBase):
   }
 }
 fmodel {
-  include scope mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params_str
+  include scope iotbx.extract_xtal_data.xray_data_str
+  include scope iotbx.extract_xtal_data.neutron_data_str
 }
 ''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
 
