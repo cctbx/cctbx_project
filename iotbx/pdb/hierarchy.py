@@ -722,6 +722,16 @@ class _():
           shift_cart = shift_cart)
     return mm
 
+
+  def as_dict_of_resseq_as_int_residue_names(self):
+    max_models = 1
+    dd =  {}
+    for m in self.models()[:max_models]:
+      for c in m.chains():
+        new_dd = c.as_dict_of_resseq_as_int_residue_names()
+        dd[c.id] = new_dd
+    return dd 
+
   def as_sequence(self,
       substitute_unknown='X',
       substitute_unknown_na = 'N',
@@ -2180,6 +2190,14 @@ class _():
         sequence.append(atom_group.resname)
         break
     return sequence
+
+  def as_dict_of_resseq_as_int_residue_names(self):
+    dd = {}
+    for rg in self.residue_groups():
+      for atom_group in rg.atom_groups():
+        dd[rg.resseq_as_int()] = atom_group.resname
+        break
+    return dd
 
   def as_sequence(self, substitute_unknown='X',
      substitute_unknown_na = 'N',

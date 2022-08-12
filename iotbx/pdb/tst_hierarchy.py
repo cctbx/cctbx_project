@@ -5887,6 +5887,11 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert chain.get_residue_names_and_classes() == (
     ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR'], {'common_amino_acid': 7})
   assert chain.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
+  dd = chain.as_dict_of_resseq_as_int_residue_names()
+  keys = list(dd.keys())
+  keys.sort()
+  values = [dd[key] for key in keys]
+  assert [keys, values] == [[3, 4, 5, 6, 7, 8, 9], ['GLY', 'ASN', 'ASN', 'GLN', 'GLN', 'ASN', 'TYR']], [keys, values]
   assert chain.as_new_hierarchy().as_pdb_string().splitlines()[0].strip() == \
  "ATOM      1  CA  GLY A   3      -9.052   4.207   4.651  1.00 16.57           C"
   assert chain.as_new_hierarchy().as_pdb_string() == \
@@ -5905,6 +5910,11 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert not pdb_hierarchy.contains_dna()
   assert pdb_hierarchy.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert pdb_hierarchy.as_sequence(as_string = True) == 'GNNQQNY'
+  dd = pdb_hierarchy.as_dict_of_resseq_as_int_residue_names()
+  keys = list(dd.keys())
+  keys.sort()
+  values = [dd[key] for key in keys]
+  assert [keys, values] == [['A'], [{3: 'GLY', 4: 'ASN', 5: 'ASN', 6: 'GLN', 7: 'GLN', 8: 'ASN', 9: 'TYR'}]], [keys, values]
   assert pdb_hierarchy.format_fasta() == ['> chain " A"', 'GNNQQNY']
   assert pdb_hierarchy.format_fasta(as_string = True) == \
     """> chain " A"
