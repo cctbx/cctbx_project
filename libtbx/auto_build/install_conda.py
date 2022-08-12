@@ -74,6 +74,10 @@ conda_platform = {
   'Windows': 'win-64',
 }
 
+# check for Apple Silicon
+if platform.system() == 'Darwin' and 'arm64' in platform.platform():
+  conda_platform['Darwin'] = 'osx-arm64'
+
 version = 'PYTHON_VERSION'
 default_format = '{builder}_py{version}_{platform}.txt'
 default_filename = default_format.format(builder='cctbx',
@@ -508,6 +512,9 @@ common compilers provided by conda. Please update your version with
     }
     filename = 'Miniconda3-latest-{platform}-x86_64'.format(
       platform=os_names[self.system])
+    if conda_platform[self.system] == 'osx-arm64':
+      filename = 'Miniconda3-latest-{platform}-arm64'.format(
+        platform=os_names[self.system])
     if self.system == 'Windows':
       filename += '.exe'
     else:
