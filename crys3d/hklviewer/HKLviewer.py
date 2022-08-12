@@ -496,6 +496,7 @@ newarray._sigmas = sigs
     self.infostr = ""
     self.alertstr = ""
     self.fileisvalid = False
+    self.currentfileName = None
     self.NewFileLoaded = False
     self.NewMillerArray = False
     self.NewHKLscenes = False
@@ -514,9 +515,8 @@ newarray._sigmas = sigs
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
     self.chimeraxsession = None
-
     self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
-
+    self.XtriageBtn.clicked.connect(self.onXtriageRun)
     self.tabText.setCurrentIndex(0)
     if not isembedded:
       self.window.statusBar().showMessage("")
@@ -653,27 +653,28 @@ newarray._sigmas = sigs
   def setWindowFilenameTitles(self, fname):
     self.window.setWindowTitle("HKLviewer: " + fname)
     self.dockWidget.setWindowTitle("HKLviewer Controls: " + fname)
+    self.textInfo.setPlainText("")
+    self.textAlerts.setPlainText("")
+    self.fileisvalid = False
+    self.MillerComboBox.clear()
+    self.BinDataComboBox.clear()
+    self.millertable.clearContents()
+    self.expandP1checkbox.setChecked(False)
+    self.expandAnomalouscheckbox.setChecked(False)
+    self.sysabsentcheckbox.setChecked(False)
+    self.missingcheckbox.setChecked(False)
+    self.onlymissingcheckbox.setChecked(False)
+
 
 
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
-    fileName, filtr = QFileDialog.getOpenFileName(self.window,
+    self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
-    if fileName:
-      self.setWindowFilenameTitles( fileName)
-      self.textInfo.setPlainText("")
-      self.textAlerts.setPlainText("")
-      self.fileisvalid = False
-      self.send_message('openfilename = "%s"' %fileName )
-      self.MillerComboBox.clear()
-      self.BinDataComboBox.clear()
-      self.millertable.clearContents()
-      self.expandP1checkbox.setChecked(False)
-      self.expandAnomalouscheckbox.setChecked(False)
-      self.sysabsentcheckbox.setChecked(False)
-      self.missingcheckbox.setChecked(False)
-      self.onlymissingcheckbox.setChecked(False)
+    if self.currentfileName:
+      self.setWindowFilenameTitles( self.currentfileName)
+      self.send_message('openfilename = "%s"' %self.currentfileName )
 
 
   def onSaveReflectionFile(self):
@@ -717,17 +718,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onXtricorderRun(self):
-    options = QFileDialog.Options()
-    fileName, filtr = QFileDialog.getOpenFileName(self.window,
-            "Process an MTZ reflection file with Xtricorder", "",
-            "MTZ Files (*.mtz);;All Files (*)", "", options)
-    if fileName:
-      self.setWindowFilenameTitles( fileName)
-      self.textInfo.setPlainText("")
-      self.textAlerts.setPlainText("")
-      self.fileisvalid = False
+    if self.currentfileName:
+      if "_xtricorder.mtz" in self.currentfileName:
+        self.AddAlertsText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
+        return
       from pathlib import PurePath
-      firstpart = os.path.splitext(os.path.basename(fileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+      firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
       # Put xtricorders temp directory into current working directory and
       # replace any backslashes on Windows with forwardslashes for the sake of phasertng
       tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
@@ -744,10 +740,15 @@ from phasertng.scripts import xtricorder
           }
 '''
 )
+retval = retobj.exit_code()
+errormsg = retobj.error_type() + " error, " + retobj.error_message()
 import glob, shutil
-xtricordermtz = glob.glob("%s/**/*%s/*%s*.mtz", recursive=True)[0]
-self.hklin =  "%s" + "_xtricorder.mtz"
-shutil.copyfile( xtricordermtz, self.hklin )
+xtricordermtzfiles = glob.glob("%s/**/*%s/*%s*.mtz", recursive=True) # just one file if succeeded
+if len(xtricordermtzfiles) == 1:  # just one file if xtricorder succeeded
+  self.hklin =  "%s" + "_xtricorder.mtz"
+  shutil.copyfile( xtricordermtzfiles[0], self.hklin )
+  self.LoadReflectionsFile(self.hklin)
+
 logs = glob.glob("%s/**/*.logfile.log", recursive=True)
 timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
 mstr = ''
@@ -763,17 +764,45 @@ with open(logfname, 'w') as f:
   f.write(mstr)
 
 shutil.rmtree("%s")
-self.LoadReflectionsFile(self.hklin)
-""" %(fileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
+""" %(self.currentfileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
+      self.XtricorderBtn.setEnabled(False)
+      self.XtriageBtn.setEnabled(False)
       self.send_message("%s" %xtricorder_cmd, "external_cmd" )
-      self.MillerComboBox.clear()
-      self.BinDataComboBox.clear()
-      self.millertable.clearContents()
-      self.expandP1checkbox.setChecked(False)
-      self.expandAnomalouscheckbox.setChecked(False)
-      self.sysabsentcheckbox.setChecked(False)
-      self.missingcheckbox.setChecked(False)
-      self.onlymissingcheckbox.setChecked(False)
+
+
+  def onXtriageRun(self):
+    if self.currentfileName:
+      firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+      obslabels = ""
+      xtriage_cmd = """
+from mmtbx.scaling import xtriage
+from io import StringIO
+
+logstrbuf = StringIO()
+xtriageobj = xtriage.run([ "%s", "obs_labels=" + "%s" ], out=logstrbuf)
+logfname = "%s_xtriage.log"
+with open(logfname, "w") as f:
+  f.write( logstrbuf.getvalue() )
+
+retval = 0
+errormsg = ""
+
+for i,twinop in enumerate(xtriageobj.twin_results.twin_law_names):
+
+
+
+  self.params.viewer.user_vector.label = "twin_" + str(i)
+  self.params.viewer.user_vector.hkl_op = twinop
+  self.add_user_vector(self.params.viewer.user_vector)
+
+# The name of logfile and tab should be present in ldic after running exec().
+# cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
+tabname = "Xtriage"
+
+""" %(self.currentfileName, obslabels, firstpart)
+      self.XtricorderBtn.setEnabled(False)
+      self.XtriageBtn.setEnabled(False)
+      self.send_message("%s" %xtriage_cmd, "external_cmd" )
 
 
   def ProcessMessages(self):
@@ -877,6 +906,9 @@ self.LoadReflectionsFile(self.hklin)
             with open(fname, 'r') as f:
               mstr += f.read() + '\\n'
             self.add_another_text_tab(tabname, mstr)
+            #self.setWindowFilenameTitles( self.currentfileName)
+            self.XtricorderBtn.setEnabled(True)
+            self.XtriageBtn.setEnabled(True)
 
           if self.infodict.get("ano_spg_tpls"):
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
@@ -1032,7 +1064,8 @@ self.LoadReflectionsFile(self.hklin)
             self.vectortable2.resizeColumnsToContents()
           self.unfeedback = False
           if self.infodict.get("file_name"):
-            self.setWindowFilenameTitles( self.infodict.get("file_name", ""))
+            self.currentfileName = self.infodict.get("file_name", "")
+            self.setWindowFilenameTitles( self.currentfileName)
 
           if self.infodict.get("NewFileLoaded"):
             self.NewFileLoaded = self.infodict.get("NewFileLoaded",False)
@@ -1196,7 +1229,7 @@ self.LoadReflectionsFile(self.hklin)
 
 
   def add_another_text_tab(self, tabname, mstr):
-    if self.__dict__.get(tabname, None) is not None:
+    if self.__dict__.get(tabname, None) is not None: # remove any existing one with the same name
       self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
       self.__dict__[tabname].setParent(None)
 
@@ -1217,6 +1250,7 @@ self.LoadReflectionsFile(self.hklin)
     newtabedit.setPlainText(mstr)
     gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
     self.tabText.addTab(self.__dict__[tabname], tabname)
+    self.tabText.setCurrentIndex( self.tabText.indexOf(self.__dict__[tabname]) )
 
 
   def make_new_millertable(self):

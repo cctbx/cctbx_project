@@ -781,12 +781,18 @@ class HKLViewFrame() :
 
 
   def run_external_cmd(self):
-    # run some python script like xtricorder with the exec function. Get logfile name and tabname assigned
-    # by the script and send these to the HKLviewer GUI
+    # Run some python script like xtricorder with the exec function. Script can manipulate HKLViewFrame
+    # by accessing functions and attributes on 'self' that is exported as a local variable.
+    # Get logfile name and tabname assigned
+    # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
+    # in the script
     try:
-      ldic= {'retobj': None, 'self': self }
+      ldic= {'retval': None, 'errormsg': None, 'self': self }
       exec(self.external_cmd, globals(), ldic)
-      retobj = ldic.get("retobj", None)
+      retval = ldic.get("retval", None)
+      errormsg = ldic.get("errormsg", None)
+      if retval != 0:
+        raise Sorry(errormsg)
       tabname = ldic.get("tabname", None)
       logfname = ldic.get("logfname", None)
       self.SendInfoToGUI( {"show_log_file": [tabname, logfname ]  } )
@@ -896,7 +902,7 @@ class HKLViewFrame() :
                   "file_name": self.params.openfilename
                 }
       self.SendInfoToGUI(mydict)
-    self.params.openfilename = None
+    #self.params.openfilename = None
 
 
   def load_reflections_file(self, file_name):
