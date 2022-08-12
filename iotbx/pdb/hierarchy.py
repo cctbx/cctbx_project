@@ -730,7 +730,7 @@ class _():
       for c in m.chains():
         new_dd = c.as_dict_of_resseq_as_int_residue_names()
         dd[c.id] = new_dd
-    return dd 
+    return dd
 
   def as_sequence(self,
       substitute_unknown='X',
