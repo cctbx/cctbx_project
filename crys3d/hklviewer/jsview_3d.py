@@ -1420,7 +1420,8 @@ class HKLview_3d:
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
-    self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype() } )
+    self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
+                           "current_scene_id": self.params.viewer.scene_id } )
     self.mprint("\nDone rendering reflections ")
 
 

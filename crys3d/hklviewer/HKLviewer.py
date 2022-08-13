@@ -332,6 +332,10 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     # This may cause font step=2 rather than step=1
     # Workaround is to use onMouseRelease invoked by MyQDoubleSpinBox.mouseReleaseEvent
     self.fontspinBox.onMouseRelease = self.onFontsizeChanged
+    self.texttabfont = QFont("Courier New")
+    self.texttabfont.setPointSize(self.font.pointSize())
+    self.texttabfont.setBold(True)
+
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
 
@@ -493,6 +497,7 @@ newarray._sigmas = sigs
     self.html_url = None
     self.spacegroups = {}
     self.info = []
+    self.current_labels = None
     self.infostr = ""
     self.alertstr = ""
     self.fileisvalid = False
@@ -653,6 +658,7 @@ newarray._sigmas = sigs
   def setWindowFilenameTitles(self, fname):
     self.window.setWindowTitle("HKLviewer: " + fname)
     self.dockWidget.setWindowTitle("HKLviewer Controls: " + fname)
+    self.current_labels = None
     self.textInfo.setPlainText("")
     self.textAlerts.setPlainText("")
     self.fileisvalid = False
@@ -718,16 +724,19 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
 
   def onXtricorderRun(self):
-    if self.currentfileName:
-      if "_xtricorder.mtz" in self.currentfileName:
-        self.AddAlertsText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
-        return
-      from pathlib import PurePath
-      firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
-      # Put xtricorders temp directory into current working directory and
-      # replace any backslashes on Windows with forwardslashes for the sake of phasertng
-      tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
-      xtricorder_cmd = """
+    if not self.currentfileName:
+      QMessageBox.warning(self.window, "HKLviewer",
+        "To run Xtricorder you must first open a datafile in the HKLviewer", buttons=QMessageBox.Ok)
+      return
+    if "_xtricorder.mtz" in self.currentfileName:
+      self.AddAlertsText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
+      return
+    from pathlib import PurePath
+    firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+    # Put xtricorders temp directory into current working directory and
+    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
+    tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
+    xtricorder_cmd = """
 from phasertng.scripts import xtricorder
 (retobj) = xtricorder.xtricorder(
 '''phasertng {
@@ -743,8 +752,8 @@ from phasertng.scripts import xtricorder
 retval = retobj.exit_code()
 errormsg = retobj.error_type() + " error, " + retobj.error_message()
 import glob, shutil
-xtricordermtzfiles = glob.glob("%s/**/*%s/*%s*.mtz", recursive=True) # just one file if succeeded
-if len(xtricordermtzfiles) == 1:  # just one file if xtricorder succeeded
+xtricordermtzfiles = glob.glob("%s/**/*%s/*%s*.data.mtz", recursive=True) # just one file if succeeded
+if len(xtricordermtzfiles) > 0 :  # xtricorder succeeded
   self.hklin =  "%s" + "_xtricorder.mtz"
   shutil.copyfile( xtricordermtzfiles[0], self.hklin )
   self.LoadReflectionsFile(self.hklin)
@@ -765,41 +774,49 @@ with open(logfname, 'w') as f:
 
 shutil.rmtree("%s")
 """ %(self.currentfileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
-      self.XtricorderBtn.setEnabled(False)
-      self.XtriageBtn.setEnabled(False)
-      self.send_message("%s" %xtricorder_cmd, "external_cmd" )
+    self.XtricorderBtn.setEnabled(False)
+    self.XtriageBtn.setEnabled(False)
+    self.send_message("%s" %xtricorder_cmd, "external_cmd" )
 
 
   def onXtriageRun(self):
+    if not self.current_labels:
+      QMessageBox.warning(self.window, "HKLviewer",
+        "To run Xtriage you must first display an observation dataset", buttons=QMessageBox.Ok)
+      return
     if self.currentfileName:
       firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
-      obslabels = ""
       xtriage_cmd = """
 from mmtbx.scaling import xtriage
 from io import StringIO
 
 logstrbuf = StringIO()
-xtriageobj = xtriage.run([ "%s", "obs_labels=" + "%s" ], out=logstrbuf)
+xtriageobj = xtriage.run([ "%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
 logfname = "%s_xtriage.log"
 with open(logfname, "w") as f:
   f.write( logstrbuf.getvalue() )
 
 retval = 0
 errormsg = ""
-
+# Add any twin operators as user vectors.
+# user_vector is multiple scope so we can't assign viewer.user_vector directly
+philstr = ""
 for i,twinop in enumerate(xtriageobj.twin_results.twin_law_names):
-
-
-
-  self.params.viewer.user_vector.label = "twin_" + str(i)
-  self.params.viewer.user_vector.hkl_op = twinop
-  self.add_user_vector(self.params.viewer.user_vector)
+  philstr += '''
+  viewer.user_vector {
+              label = "twin_"''' + str(i) + '''
+              hkl_op = "''' + twinop + '''"
+         }
+  '''
+vectorphil = libtbx.phil.parse(philstr)
+working_params = master_phil.fetch(source= vectorphil).extract()
+self.add_user_vector(working_params.viewer.user_vector)
 
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
 tabname = "Xtriage"
 
-""" %(self.currentfileName, obslabels, firstpart)
+""" %(self.currentfileName, self.current_labels, firstpart)
       self.XtricorderBtn.setEnabled(False)
       self.XtriageBtn.setEnabled(False)
       self.send_message("%s" %xtriage_cmd, "external_cmd" )
@@ -913,6 +930,10 @@ tabname = "Xtriage"
           if self.infodict.get("ano_spg_tpls"):
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
+
+          if self.infodict.get("current_scene_id", None) is not None:
+            # needed in case we run xtriage on this miller array
+            self.current_labels = self.array_infotpls[self.infodict.get("current_scene_id")][1][0]
 
           if self.infodict.get("colnames_select_lst"):
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
@@ -1248,6 +1269,7 @@ tabname = "Xtriage"
     newtabedit.setLineWrapMode(QPlainTextEdit.NoWrap)
     newtabedit.setReadOnly(True)
     newtabedit.setPlainText(mstr)
+    newtabedit.setFont(self.texttabfont)
     gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
     self.tabText.addTab(self.__dict__[tabname], tabname)
     self.tabText.setCurrentIndex( self.tabText.indexOf(self.__dict__[tabname]) )
@@ -1440,17 +1462,20 @@ tabname = "Xtriage"
   def onFontsizeChanged(self):
     val = self.fontspinBox.value()
     font = self.app.font()
-    font.setPointSize(val);
+    font.setPointSize(val)
     self.fontsize = val
-    self.app.setFont(font);
+    self.app.setFont(font)
     self.settingsform.setFixedSize( self.settingsform.sizeHint() )
     self.aboutform.setFixedSize( self.aboutform.sizeHint() )
     self.BgrndColourDlg.setFixedSize( self.BgrndColourDlg.sizeHint() )
     self.ColourMapSelectDlg.setFixedSize( self.ColourMapSelectDlg.sizeHint() )
     self.select_millertable_column_dlg.resize()
-    self.textInfo.setFont(font)
-    self.textAlerts.setFont(font)
     self.SpaceGrpUCellText.setFont(font)
+    self.texttabfont = QFont("Courier New")
+    self.texttabfont.setBold(True)
+    self.texttabfont.setPointSize(val)
+    for i in range(self.tabText.count()):
+      self.tabText.widget(i).children()[1].setFont(self.texttabfont)
 
 
   def onBrowserFontsizeChanged(self, val):
@@ -2164,7 +2189,7 @@ clip_plane {
 
 
   def DisplayData(self, idx, row):
-    # want to show the sigmas rather than the data if idx we add 1000
+    # want to show the sigmas rather than the data if we have added 1000 to idx
     self.currentmillarray_idx = row
     arrayinfo = self.array_infotpls[self.currentmillarray_idx]
     if (idx - 1000) >= 0:

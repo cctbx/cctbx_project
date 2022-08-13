@@ -130,7 +130,7 @@ class HKLViewFrame() :
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
-      self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=1) + "-"*80)
+      self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -787,7 +787,7 @@ class HKLViewFrame() :
     # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
     # in the script
     try:
-      ldic= {'retval': None, 'errormsg': None, 'self': self }
+      ldic= {'retval': None, 'errormsg': None, 'self': self, 'master_phil': master_phil }
       exec(self.external_cmd, globals(), ldic)
       retval = ldic.get("retval", None)
       errormsg = ldic.get("errormsg", None)

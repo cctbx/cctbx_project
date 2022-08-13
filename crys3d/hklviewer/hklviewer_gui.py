@@ -22,7 +22,6 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -1013,6 +1012,12 @@ class Ui_MainWindow(object):
         self.textAlerts.setObjectName(u"textAlerts")
         sizePolicy19.setHeightForWidth(self.textAlerts.sizePolicy().hasHeightForWidth())
         self.textAlerts.setSizePolicy(sizePolicy19)
+        font2 = QFont()
+        font2.setFamily(u"Courier New")
+        font2.setPointSize(9)
+        font2.setBold(True)
+        font2.setWeight(75)
+        self.textAlerts.setFont(font2)
         self.textAlerts.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textAlerts.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textAlerts.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
