@@ -545,9 +545,18 @@ def Test():
 class Program(ProgramTemplate):
   description = '''
 Probe2 version {}
-Compute the MolProbity Probe score for a file, or a subset of the file.
-Produce summaries or lists of all contacts, in Kinemage or raw format, depending
-on PHIL parameters.
+
+This program replaces the original "probe" program from the Richarson lab
+at Duke University and was developed by them as part of a supplemental award.
+
+It computes the MolProbity Probe score for a file, or a subset of the file,
+producing summaries or lists of all contacts, in Kinemage or raw format, depending
+on the Phil parameters.
+
+By default, it compares all atoms in the A alternate that meet an occupancy
+criterion against themselves and produces a Kinemage-format file showing all of
+the dot interactions.  See below for the Phil parameter equivalents to some
+original probe command-line arguments.
 
 Inputs:
   PDB or mmCIF file containing atomic model
