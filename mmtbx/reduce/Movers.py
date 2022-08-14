@@ -211,10 +211,10 @@ class _MoverRotator(object):
        range of 180 will rotate all the way around, from -180 (inclusive) to just
        slightly less than +180.
        :param coarseStepDegrees: The coarse step to take.
-       To test only two fixed orientations, doFineRotations should be set
+       To test only two orientations, doFineRotations should be set
        to False, coarseRange to 180, and coarseStepDegrees to 180.
        :param doFineRotations: Specifies whether fine rotations are allowed for
-       this instance.  To test only two fixed orientations, this should be set
+       this instance.  To test only two orientations, this should be set
        to False, coarseRange to 180, and coarseStepDegrees to 180.
        :param fineStepDegrees: The fine step to take.
        :param preferenceFunction: A function that takes a floating-point
@@ -995,9 +995,9 @@ class MoverHisFlip(object):
 
     #########################
     # There are eight possible states for the flipped Histidine.  The first four
-    # use the original orientation and the second four use the swapped or fixed
+    # use the original orientation and the second four use the swapped or fixed-up
     # orientation.  The swapped orientation is used for the coarse tests and if
-    # one is accepted, then the fixed orienations are used in place of the swapped.
+    # one is accepted, then the fixed-up orienations are used in place of the swapped.
     #   For each location, we have four cases of Hydrogen
     # placement; both (as found), first N Hydrogen removed, second N Hydrogen
     # removed, and both Hydrogens removed.  When a Hydrogen is removed, the associated
@@ -2038,13 +2038,13 @@ def Test():
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixed = mover.FixUp(1).positions
-    newODir = (fixed[3] - lvec3(f.xyz)).normalize()
+    fixedUp = mover.FixUp(1).positions
+    newODir = (fixedUp[3] - lvec3(f.xyz)).normalize()
     oldNDir = (rvec3(n.xyz) - rvec3(f.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
       return "Movers.Test() MoverAmideFlip basic: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
-    newNDir = (fixed[2] - lvec3(f.xyz)).normalize()
+    newNDir = (fixedUp[2] - lvec3(f.xyz)).normalize()
     oldODir = (rvec3(o.xyz) - rvec3(f.xyz)).normalize()
     newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNDir)) * rvec3(newODir)).normalize()
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
@@ -2052,19 +2052,19 @@ def Test():
     if dot > -0.99999:
       return "Movers.Test() MoverAmideFlip basic: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[4] - lvec3(p.xyz)).length()
+    dCarbon = (fixedUp[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
       return "Movers.Test() MoverAmideFlip basic: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[5] - lvec3(f.xyz)).length()
+    dCarbon = (fixedUp[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverAmideFlip basic: Bad pivot motion: "+str(dCarbon)
 
-    dHydrogen = (fixed[6] - lvec3(fh1.xyz)).length()
+    dHydrogen = (fixedUp[6] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[7] - lvec3(fh2.xyz)).length()
+    dHydrogen = (fixedUp[7] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
@@ -2173,19 +2173,19 @@ def Test():
     bondedNeighborLists[ca] = [ ln ]
 
     mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
-    fixed = mover.FixUp(1).positions
+    fixedUp = mover.FixUp(1).positions
 
     # Ensure that the results meet the specifications:
     # 1) New Oxygen on the line from the alpha carbon to the old Nitrogen
     # 2) New plane of Oxygen, Nitrogen, Alpha Carbon matches old plane, but flipped
     # 3) Pivot and linker Carbons and Hydrogens move slightly due to rigid-body motion
 
-    newODir = (fixed[3] - lvec3(ca.xyz)).normalize()
+    newODir = (fixedUp[3] - lvec3(ca.xyz)).normalize()
     oldNDir = (rvec3(n.xyz) - rvec3(ca.xyz)).normalize()
     if (newODir * oldNDir)[0] < 0.9999:
       return "Movers.Test() MoverAmideFlip linked: Bad oxygen alignment: "+str((newODir * oldNDir)[0])
 
-    newNDir = (fixed[2] - lvec3(ca.xyz)).normalize()
+    newNDir = (fixedUp[2] - lvec3(ca.xyz)).normalize()
     oldODir = (rvec3(o.xyz) - rvec3(ca.xyz)).normalize()
     newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNDir)) * rvec3(newODir)).normalize()
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNDir)) * rvec3(oldODir)).normalize()
@@ -2193,42 +2193,42 @@ def Test():
     if dot > -0.99999:
       return "Movers.Test() MoverAmideFlip linked: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[4] - lvec3(p.xyz)).length()
+    dCarbon = (fixedUp[4] - lvec3(p.xyz)).length()
     if dCarbon < 0.0006 or dCarbon > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[5] - lvec3(f.xyz)).length()
+    dCarbon = (fixedUp[5] - lvec3(f.xyz)).length()
     if dCarbon < 0.0004 or dCarbon > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad pivot motion: "+str(dCarbon)
 
-    dCarbon = (fixed[6] - lvec3(ln.xyz)).length()
+    dCarbon = (fixedUp[6] - lvec3(ln.xyz)).length()
     if dCarbon < 0.0002 or dCarbon > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad linker motion: "+str(dCarbon)
 
     # Hydrogens come after all linkers
-    dHydrogen = (fixed[7] - lvec3(fh1.xyz)).length()
+    dHydrogen = (fixedUp[7] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[8] - lvec3(fh2.xyz)).length()
+    dHydrogen = (fixedUp[8] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0004 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[9] - lvec3(lnh1.xyz)).length()
+    dHydrogen = (fixedUp[9] - lvec3(lnh1.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[10] - lvec3(lnh2.xyz)).length()
+    dHydrogen = (fixedUp[10] - lvec3(lnh2.xyz)).length()
     if dHydrogen < 0.0002 or dHydrogen > 0.1:
       return "Movers.Test() MoverAmideFlip linked: Bad linker hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
-    dHydrogen = (fixed[0] - fixed[2]).length()
+    dHydrogen = (fixedUp[0] - fixedUp[2]).length()
     oldDHydrogen = (lvec3(h1.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (fixed[1] - fixed[2]).length()
+    dHydrogen = (fixedUp[1] - fixedUp[2]).length()
     oldDHydrogen = (lvec3(h2.xyz)-lvec3(n.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
@@ -2401,13 +2401,13 @@ def Test():
     # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
     # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
-    fixed = mover.FixUp(4).positions
-    newCE1Dir = (fixed[2] - lvec3(ca.xyz)).normalize()
+    fixedUp = mover.FixUp(4).positions
+    newCE1Dir = (fixedUp[2] - lvec3(ca.xyz)).normalize()
     oldNE2Dir = (rvec3(ne2.xyz) - rvec3(ca.xyz)).normalize()
     if (newCE1Dir * oldNE2Dir)[0] < 0.9999:
       return "Movers.Test() MoverHisFlip: Bad CE1 alignment: "+str((newCE1Dir * oldNE2Dir)[0])
 
-    newNE2Dir = (fixed[0] - lvec3(ca.xyz)).normalize()
+    newNE2Dir = (fixedUp[0] - lvec3(ca.xyz)).normalize()
     oldCE1Dir = (rvec3(ce1.xyz) - rvec3(ca.xyz)).normalize()
     newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNE2Dir)) * rvec3(newCE1Dir)).normalize()
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNE2Dir)) * rvec3(oldCE1Dir)).normalize()
@@ -2415,39 +2415,39 @@ def Test():
     if dot > -0.99999:
       return "Movers.Test() MoverHisFlip: Bad plane alignment: "+str(dot)
 
-    dCarbon = (fixed[8] - lvec3(p.xyz)).length()
+    dCarbon = (fixedUp[8] - lvec3(p.xyz)).length()
     if dCarbon < 0.001 or dCarbon > 0.1:
       return "Movers.Test() MoverHisFlip: Bad hinge motion: "+str(dCarbon)
 
-    dCarbon = (fixed[9] - lvec3(f.xyz)).length()
+    dCarbon = (fixedUp[9] - lvec3(f.xyz)).length()
     if dCarbon < 0.0005 or dCarbon > 0.1:
       return "Movers.Test() MoverHisFlip: Bad pivot motion: "+str(dCarbon)
 
-    dHydrogen = (fixed[10] - lvec3(fh1.xyz)).length()
+    dHydrogen = (fixedUp[10] - lvec3(fh1.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverHisFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
-    dHydrogen = (fixed[11] - lvec3(fh2.xyz)).length()
+    dHydrogen = (fixedUp[11] - lvec3(fh2.xyz)).length()
     if dHydrogen < 0.0005 or dHydrogen > 0.1:
       return "Movers.Test() MoverHisFlip: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Ensure that the Hydrogens moved along with their parent in the flip.
-    dHydrogen = (fixed[0] - fixed[1]).length()
+    dHydrogen = (fixedUp[0] - fixedUp[1]).length()
     oldDHydrogen = (lvec3(ne2h.xyz)-lvec3(ne2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHisFlip: Bad NE2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (fixed[2] - fixed[3]).length()
+    dHydrogen = (fixedUp[2] - fixedUp[3]).length()
     oldDHydrogen = (lvec3(ce1h.xyz)-lvec3(ce1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHisFlip: Bad CE1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (fixed[4] - fixed[5]).length()
+    dHydrogen = (fixedUp[4] - fixedUp[5]).length()
     oldDHydrogen = (lvec3(nd1h.xyz)-lvec3(nd1.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHisFlip: Bad ND1-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
-    dHydrogen = (fixed[6] - fixed[7]).length()
+    dHydrogen = (fixedUp[6] - fixedUp[7]).length()
     oldDHydrogen = (lvec3(cd2h.xyz)-lvec3(cd2.xyz)).length()
     if abs(dHydrogen-oldDHydrogen) > 0.0001:
       return "Movers.Test() MoverHisFlip: Bad CD2-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
@@ -2458,32 +2458,48 @@ def Test():
     for i in range(6):
       coarseNE2Accept = coarse.extraInfos[i][0].isAcceptor
       coarseNE2HDelete = coarse.deleteMes[i][1]
-      fixedNE2Accept = mover.FixUp(i).extraInfos[0].isAcceptor
-      fixedNE2HDelete = mover.FixUp(i).deleteMes[1]
+      fixedUpNE2Accept = mover.FixUp(i).extraInfos[0].isAcceptor
+      fixedUpNE2HDelete = mover.FixUp(i).deleteMes[1]
       coarseND1Accept = coarse.extraInfos[i][4].isAcceptor
       coarseND1HDelete = coarse.deleteMes[i][5]
-      fixedND1Accept = mover.FixUp(i).extraInfos[4].isAcceptor
-      fixedND1HDelete = mover.FixUp(i).deleteMes[5]
+      fixedUpND1Accept = mover.FixUp(i).extraInfos[4].isAcceptor
+      fixedUpND1HDelete = mover.FixUp(i).deleteMes[5]
       if i % 4 == 1 or i % 4 == 3:
         if not coarseNE2Accept:
           return "Movers.Test() MoverHisFlip: No NE2 acceptor, pos "+str(i)
         if not coarseNE2HDelete:
           return "Movers.Test() MoverHisFlip: Missing NE2 hydrygen deletion, pos "+str(i)
+        if not fixedUpNE2Accept:
+          return "Movers.Test() MoverHisFlip: No fixup NE2 acceptor, pos "+str(i)
+        if not fixedUpNE2HDelete:
+          return "Movers.Test() MoverHisFlip: Missing fixup NE2 hydrygen deletion, pos "+str(i)
       else:
         if coarseNE2Accept:
           return "Movers.Test() MoverHisFlip: Unexpected NE2 acceptor, pos "+str(i)
         if coarseNE2HDelete:
           return "Movers.Test() MoverHisFlip: Unexpected NE2 hydrygen deletion, pos "+str(i)
+        if fixedUpNE2Accept:
+          return "Movers.Test() MoverHisFlip: Unexpected fixup NE2 acceptor, pos "+str(i)
+        if fixedUpNE2HDelete:
+          return "Movers.Test() MoverHisFlip: Unexpected fixup NE2 hydrygen deletion, pos "+str(i)
       if i % 4 == 2 or i % 4 == 3:
         if not coarseND1Accept:
           return "Movers.Test() MoverHisFlip: No ND1 acceptor, pos "+str(i)
         if not coarseND1HDelete:
           return "Movers.Test() MoverHisFlip: Missing ND1 hydrygen deletion, pos "+str(i)
+        if not fixedUpND1Accept:
+          return "Movers.Test() MoverHisFlip: No fixup ND1 acceptor, pos "+str(i)
+        if not fixedUpND1HDelete:
+          return "Movers.Test() MoverHisFlip: Missing fixup ND1 hydrygen deletion, pos "+str(i)
       else:
         if coarseND1Accept:
           return "Movers.Test() MoverHisFlip: Unexpected ND1 acceptor, pos "+str(i)
         if coarseND1HDelete:
           return "Movers.Test() MoverHisFlip: Unexpected ND1 hydrygen deletion, pos "+str(i)
+        if fixedUpND1Accept:
+          return "Movers.Test() MoverHisFlip: fixup Unexpected ND1 acceptor, pos "+str(i)
+        if fixedUpND1HDelete:
+          return "Movers.Test() MoverHisFlip: fixup Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
     if mover.PoseDescription(1,0) != "Unflipped HD1Placed HE2NotPlaced":
