@@ -1264,6 +1264,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
     # Find the stripped upper-case atom and residue names and the residue ID,
     # and an identifier string
     aName = a.name.strip().upper()
+    resName = a.parent().resname.strip().upper()
     resNameAndID = _ResNameAndID(a)
 
     # See if we should construct a MoverSingleHydrogenRotator here.
