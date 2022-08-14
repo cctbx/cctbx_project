@@ -47,7 +47,7 @@ probe_phil_parameters = """
 probe
   .style = menu_item auto_align
 {
-  radius = 0.25
+  probe_radius = 0.25
     .type = float
     .help = Probe radius (half distance between touched atoms) (-radius in probe)
 

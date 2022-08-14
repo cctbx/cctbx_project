@@ -28,7 +28,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "1.2.0"
+version = "2.0.0"
 
 master_phil_str = '''
 profile = False
@@ -108,7 +108,7 @@ output
     .short_caption = Dump file name
     .help = Dump file name for regression testing atom characteristics (-DUMPATOMS in probe)
 
-  format = *standard raw oneline
+  format = *kinemage raw oneline
     .type = choice
     .help = Type of output to write (-oneline -unformated -kinemage in probe)
 
@@ -552,7 +552,7 @@ Note:
     -kinemage:
       output.add_kinemage_keyword=True
       output.count_dots=False
-      output.format=standard
+      output.format=kinemage
       output.condensed=False
     -scsurface:
       approach=surface
@@ -694,12 +694,12 @@ Note:
     '''
 
     # Store constants used frequently
-    probeRadius = self.params.probe.radius
+    probeRadius = self.params.probe.probe_radius
     include_mainchain_mainchain = self.params.include_mainchain_mainchain
     minimum_occupancy = self.params.minimum_occupancy
     include_water_water = self.params.include_water_water
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
-    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
+    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.probe_radius
 
     for src in sourceAtoms:
       # Find out what class of dot we should place for this atom.
@@ -912,7 +912,7 @@ Note:
     # added to the list.
     srcInWater = self._inWater[src]
     r = self._extraAtomInfo.getMappingFor(src).vdwRadius
-    pr = self.params.probe.radius
+    pr = self.params.probe.probe_radius
     srcDots = self._dots[src]
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
@@ -1128,7 +1128,7 @@ Note:
     ptmast = ''
     gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
     # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
-    gaplimit = int(math.floor(((2*(max(self.params.probe.radius,0.25))+0.5)/0.05)+2))
+    gaplimit = int(math.floor(((2*(max(self.params.probe.probe_radius,0.25))+0.5)/0.05)+2))
     gapcounts = [0] * gaplimit
     maxgapcounts = 0
     strcName = ''
@@ -1369,7 +1369,7 @@ Note:
               gs += 1
 
             if approach == 'surface':
-              p_radius = self.params.probe.radius
+              p_radius = self.params.probe.probe_radius
               a_radius = self._extraAtomInfo.getMappingFor(node.src).vdwRadius
               psas += (a_radius + p_radius)*(a_radius + p_radius)/(a_radius * a_radius)
 
@@ -1584,7 +1584,7 @@ Note:
     ret = ''
     ret += "selection: {}\nname: {}\n".format(selectionName, groupLabel)
     ret += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-      self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+      self.params.probe.density, self.params.probe.probe_radius, self.params.atom_radius_scale,
       self.params.atom_radius_offset)
     ret += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
       self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
@@ -1630,7 +1630,7 @@ Note:
       elif self.params.output.format == 'oneline':
         ret += self._count_summary(intersectionName)
 
-      elif self.params.output.format == 'standard': # Standard/Kinemage format
+      elif self.params.output.format == 'kinemage': # Kinemage format
         ret += self._describe_run("@caption"," command:")
         if self.params.output.contact_summary:
           ret += self._count_summary(intersectionName)
@@ -1700,8 +1700,8 @@ Note:
       raise Sorry("Invalid atom_radius_offset value: {:0g}".format(ao))
 
     # Ensure consistency among parameters
-    if self.params.probe.contact_cutoff < self.params.probe.radius:
-      self.params.probe.contact_cutoff = self.params.probe.radius
+    if self.params.probe.contact_cutoff < self.params.probe.probe_radius:
+      self.params.probe.contact_cutoff = self.params.probe.probe_radius
 
     # Turn on profiling if we've been asked to in the Phil parameters
     if self.params.profile:
@@ -1716,7 +1716,7 @@ Note:
     outString = ''
 
     if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots
-        and self.params.output.format == 'standard'):
+        and self.params.output.format == 'kinemage'):
       outString += '@kinemage 1\n'
 
     make_sub_header('Interpret Model', out=self.logger)
@@ -2130,7 +2130,7 @@ Note:
         include_water_water = self.params.include_water_water
 
         # Produce dots on the surfaces of the selected atoms.
-        maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
+        maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.probe_radius
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
           srcModel = src.parent().parent().parent().parent().id
@@ -2138,7 +2138,7 @@ Note:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + self._maximumVDWRadius +
-            2 * self.params.probe.radius)
+            2 * self.params.probe.probe_radius)
           nearby = self._spatialQuery.neighbors(src.xyz, 0.00001, maxRadius)
 
           # Select those that are actually within the contact distance based on their
@@ -2162,7 +2162,7 @@ Note:
               continue
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
             if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius):
               atomList.append(n)
 
           # Find out what class of dot we should place for this atom.
@@ -2195,7 +2195,7 @@ Note:
             # Do nothing for this mode when computing the surface
             pass
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._describe_run("@caption"," command:")
             masterName = "dots"
             if len(self.params.output.group_name) > 0:
@@ -2246,7 +2246,7 @@ Note:
         else: # Not counting the dots
           if self.params.output.format == 'raw':
             pass
-          elif self.params.output.format == 'standard':
+          elif self.params.output.format == 'kinemage':
             outString += self._describe_run("@caption"," command:")
             if self.params.output.add_group_line:
               outString += "@group {{{}}}\n".format(groupLabel)
@@ -2277,7 +2277,7 @@ Note:
             # Acculumlate but do not report results
             outString += self._count_summary("IntersectBothWays 1->2", False)
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._writeOutput("1->2", groupLabel)
             if self.params.output.contact_summary:
               # Acculumlate but do not report results
@@ -2312,7 +2312,7 @@ Note:
             # Accumulate and report results
             outString += self._count_summary("IntersectBothWays 2->1", True)
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._writeOutput("2->1", groupLabel)
             if self.params.output.contact_summary:
               # Accumulate and report results
