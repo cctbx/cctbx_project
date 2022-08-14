@@ -33,66 +33,82 @@ version = "2.0.0"
 master_phil_str = '''
 profile = False
   .type = bool
+  .short_caption = Profile the run
   .help = Profile the performance of the entire run
 
 source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
   .type = atom_selection
+  .short_caption = Source selection
   .help = Source selection description
 
 target_selection = None
   .type = atom_selection
+  .short_caption = Target selection
   .help = Target selection description ('=' means same as source)
 
 use_neutron_distances = False
   .type = bool
+  .short_caption = Use neutron distances
   .help = Use neutron distances (-nuclear in probe)
 
 approach = *self both once surface count_atoms
   .type = choice
+  .short_caption = What to count
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
 excluded_bond_chain_length = 4
   .type = int
+  .short_caption = Excluded bond chain length
   .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
 minimum_water_hydrogen_occupancy = 0.25
   .type = float
+  .short_caption = Minimum water hydrogen occupancy
   .help = Minimum occupancy for polar hydrogens (0.66 in original Reduce)
 
 maximum_water_hydrogen_b = 80.0
   .type = float
+  .short_caption = Maximum water hydrogen B factor
   .help = Minimum b-factor for polar hydrogens (40.0 in original Reduce)
 
 include_mainchain_mainchain = True
   .type = bool
+  .short_caption = Include mainchain-mainchain interactions
   .help = Include mainchain -> mainchain interactions (-mc in probe)
 
 include_water_water = False
   .type = bool
+  .short_caption = Include water-water interactions
   .help = Include water-to-water interactions (-wat2wat in probe)
 
 keep_unselected_atoms = True
   .type = bool
+  .short_caption = Unselected atoms block dots
   .help = Include atoms that are not selected in the collision neighbor lists (-keep, -drop, -scsurface, -exposed, -asurface, -access in probe)
 
 atom_radius_scale = 1.0
   .type = float
+  .short_caption = Scale applied to atom radii
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-scalevds, -vswscale in probe)
 
 atom_radius_offset = 0.0
   .type = float
+  .short_caption = Offset applied to atom radii
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-addvdw in probe)
 
 minimum_occupancy = 0.02
   .type = float
+  .short_caption = Minimum occupancy
   .help = Minimum occupancy for a source atom (-minoccupancy in probe)
 
 overlap_scale_factor = 0.5
   .type = float
+  .short_caption = Overlap scale factor
   .help = Fraction of overlap assigned to each atom (-spike in probe)
 
 ignore_lack_of_explicit_hydrogens = False
   .type = bool
+  .short_caption = Ignore lack of explicit hydrogens
   .help = For an explicit-hydrogen model, ignore lack of hydrogens (probe behaved this way)
 
 output
@@ -110,91 +126,103 @@ output
 
   format = *kinemage raw oneline
     .type = choice
+    .short_caption = Output format
     .help = Type of output to write (-oneline -unformated -kinemage in probe)
 
   contact_summary = False
     .type = bool
+    .short_caption = Summarize contacts
     .help = Report summary of contacts (-oneline, -summary in probe)
 
   condensed = False
     .type = bool
+    .short_caption = Condensed output
     .help = Condensed output format (-condense, -kinemage in probe)
 
   count_dots = False
     .type = bool
+    .short_caption = Count dots, don't list
     .help = Count dots rather than listing all contacts (-countdots in probe)
 
   hydrogen_bond_output = True
     .type = bool
+    .short_caption = Output hydrogen-bond contacts
     .help = Output hydrogen-bond contacts (-nohbout in probe)
 
   record_added_hydrogens = False
     .type = bool
+    .short_caption = Record Phantom Hydrogens
     .help = Output hydrogen-bond contacts (-dumph2o in probe)
-
-  clash_output = True
-    .type = bool
-    .help = Output clash contacts (-noclashout in probe)
-
-  vdw_output = True
-    .type = bool
-    .help = Output van der Waals contacts (-novdwout in probe)
-
-  separate_worse_clashes = False
-    .type = bool
-    .help = Separately report worse clashes (-sepworse in probe)
-
-  group_name = ""
-    .type = str
-    .help = Specify the group name (-name in probe)
-
-  add_group_name_master_line = False
-    .type = bool
-    .help = Add a master=name line on lists (-dotmaster in probe)
-
-  add_group_line = True
-    .type = bool
-    .help = Add a group line on kinemage output (-nogroup in probe)
-
-  add_kinemage_keyword = False
-    .type = bool
-    .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
-
-  add_lens_keyword = False
-    .type = bool
-    .help = Add lens keywoard to kin file (-lens, -nolens in probe)
-
-  add_group_statement = True
-    .type = bool
-    .help = Add lens keywoard to kin file (-nogroup in probe)
-
-  color_by_na_base = False
-    .type = bool
-    .help = Color by nucleic acid base (-basecolor, -colorbase in probe)
-
-  group_label = ""
-    .type = str
-    .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
-
-  bin_gaps = False
-    .type = bool
-    .help = Bin the gaps (-gapbins in probe)
-
-  merge_contacts = True
-    .type = bool
-    .help = Combine wide and close contacts (True in probe)
 
   report_hydrogen_bonds = True
     .type = bool
+    .short_caption = Report hydrogen bonds
     .help = Report hydrogen bonds (-nohbout in probe)
 
   report_clashes = True
     .type = bool
+    .short_caption = Report clashes
     .help = Report clashes (-noclashout in probe)
 
   report_vdws = True
     .type = bool
+    .short_caption = report VdW contacts
     .help = Report van der Waals contects (-novdwout in probe)
+
+  separate_worse_clashes = False
+    .type = bool
+    .short_caption = Separately report worse clashes
+    .help = Separately report worse clashes (-sepworse in probe)
+
+  group_name = ""
+    .type = str
+    .short_caption = Group name to use
+    .help = Specify the group name (-name in probe)
+
+  add_group_name_master_line = False
+    .type = bool
+    .short_caption = Add group master line
+    .help = Add a master=name line on lists (-dotmaster in probe)
+
+  add_group_line = True
+    .type = bool
+    .short_caption = Add group line
+    .help = Add a group line on kinemage output (-nogroup in probe)
+
+  add_kinemage_keyword = False
+    .type = bool
+    .short_caption = Add kinemage keyword
+    .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
+
+  add_lens_keyword = False
+    .type = bool
+    .short_caption = Add lens keyword
+    .help = Add lens keywoard to kin file (-lens, -nolens in probe)
+
+  color_by_na_base = False
+    .type = bool
+    .short_caption = Color by nucleic acid base
+    .help = Color by nucleic acid base (-basecolor, -colorbase in probe)
+
+  color_by_gap = True
+    .type = bool
+    .short_caption = Color by gap
+    .help = Assign a color to reported gaps (-atomcolor, -gapcolor, -basecolor in probe)
+
+  group_label = ""
+    .type = str
+    .short_caption = Surface-dots group label
+    .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
+
+  bin_gaps = False
+    .type = bool
+    .short_caption = Bin the gaps
+    .help = Bin the gaps (-gapbins in probe)
+
+  merge_contacts = True
+    .type = bool
+    .short_caption = Combine wide and close contacts
+    .help = Combine wide and close contacts (True in probe)
 
   only_report_bad_clashes = False
     .type = bool
@@ -202,18 +230,17 @@ output
 
   atoms_are_masters = False
     .type = bool
+    .short_caption = Atoms are masters
     .help = Atoms are listed as masters (-element in probe)
-
-  color_by_gap = True
-    .type = bool
-    .help = Assign a color to reported gaps (-atomcolor, -gapcolor, -basecolor in probe)
 
   default_point_color = "gray"
     .type = str
+    .short_caption = Default color for points
     .help = Default color for output points (-outcolor in probe)
 
   compute_scores = True
     .type = bool
+    .short_caption = Compute scores rather than counting
     .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
 }
 ''' + Helpers.probe_phil_parameters
