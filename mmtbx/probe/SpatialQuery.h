@@ -89,7 +89,15 @@ namespace molprobity {
       /// @brief the meat of the constructor, so it can be called by all constructors.
       void initialize(Point lowerBounds, Point upperBounds, Point binSize);
 
-      static const Coord DEFAULT_BIN_SIZE;  ///< Default size of a grid bin in X, Y, and Z.
+      /// @brief Default size of a grid bin in X, Y, and Z.
+      ///
+      /// The default size is set in the .cpp file to be of a size that would be expected
+      /// to contain only a few atoms.  If the molecule is so large that this would produce
+      /// too many bins along any axis, the size is made larger to avoid using too much
+      /// memory.  This is the bin size chosen when it is not specified in the constructor.
+      /// There is a constructor that lets the caller specify the bin size, in which case
+      /// this is ignored.
+      static const Coord DEFAULT_BIN_SIZE;
 
       Point   m_lowerBounds;            ///< Location of the lower corner of the grid in all dimensions
       boost::array<size_t, 3> m_gridSize; ///< Number of grid points in each axis
