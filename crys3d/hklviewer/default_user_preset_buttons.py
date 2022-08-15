@@ -9,33 +9,17 @@ from __future__ import absolute_import, division, print_function
 
 
 buttonsdeflist = [
-  # If user defines a twin operator where the name of the operator contains the string "twin" this
-  # button will become enabled.
-  # Pressing this button will expand amplitude data to P1 and slice it with twin axis perpendicular
-  # to the screen. One can then step through layers of reflections with the +/- buttons in the GUI
-  ("TwinAxis", "Slice perpendicular to twin axis", """
-                                        clip_plane {
-                                          hkldist = 0
-                                          normal_vector = "twin"
-                                          clip_width = 0.5
-                                        }
-                                        viewer {
-                                          data_array {
-                                            label = "F-obs,SIGF-obs"
-                                            datatype = "Amplitude"
-                                          }
-                                          show_vector = "['twin', True]"
-                                          user_vector {
-                                            label = "twin"
-                                          }
-                                          fixorientation = *vector None
-                                          angle_around_vector = "['twin', 0.0]"
-                                        }
-                                        hkls {
-                                          expand_to_p1 = True
-                                          expand_anomalous = True
-                                        }
-
-  """),
-
+ # simple button displaying sigmas of an intensity dataset
+ ("ShowSigmaI", "Show SigI", """
+                            viewer {
+                              data_array {
+                                label = "IOBS,SIGIOBS"
+                                datatype = "Intensity"
+                              }
+                            }
+                            hkls {
+                              sigma_color_radius = True
+                            }
+  """
+  ),
 ]
