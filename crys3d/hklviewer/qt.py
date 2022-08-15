@@ -12,8 +12,9 @@ if 'PyQt5' in sys.modules:
         QPlainTextEdit, QAbstractScrollArea,
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
-        QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
-  from PyQt5.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon, QKeySequence, QPalette )   # implicit import
+        QTableWidgetItem, QTabWidget, QTextDocument, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
+  from PyQt5.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
+                           QKeySequence, QPalette, QTextDocument )
   from PyQt5.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )   # special import
 
 else:
@@ -28,5 +29,6 @@ else:
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
-  from PySide2.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon, QKeySequence, QPalette )  # implicit import
+  from PySide2.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
+                             QKeySequence, QPalette, QTextDocument )
   from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )   # special import

@@ -30,12 +30,12 @@ from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
 try: # if invoked by cctbx.python or some such
   from crys3d.hklview import hklviewer_gui
-  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
+  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
                                      MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
   from . import hklviewer_gui
-  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader,
-     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox )
+  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
+     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox, FindDialog )
 
 
 class MakeNewDataForm(QDialog):
@@ -335,6 +335,9 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.texttabfont = QFont("Courier New")
     self.texttabfont.setPointSize(self.font.pointSize())
     self.texttabfont.setBold(True)
+    self.finddlg = FindDialog(self)
+    self.textAlerts.finddlg = self.finddlg
+    self.textInfo.finddlg = self.finddlg
 
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
@@ -523,6 +526,7 @@ newarray._sigmas = sigs
     self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
     self.XtriageBtn.clicked.connect(self.onXtriageRun)
     self.tabText.setCurrentIndex(0)
+    self.tabText.currentChanged.connect( self.onTabtextChanged )
     if not isembedded:
       self.window.statusBar().showMessage("")
       self.hklLabel = QLabel()
@@ -549,6 +553,7 @@ newarray._sigmas = sigs
     else:
       self.tabText.setVisible(False) # stdout sent to chimeraX's console instead
     self.functionTabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
+    self.tabWidget.setCurrentIndex(0) # if accidentally set to a different tab in the Qtdesigner
     self.window.show()
 
 
@@ -575,6 +580,7 @@ newarray._sigmas = sigs
   def closeEvent(self, event):
     self.send_message('action = is_terminating')
     self.closing = True
+    self.finddlg.setVisible(False)
     self.settingsform.setVisible(False)
     self.aboutform.setVisible(False)
     self.millerarraytableform.setVisible(False)
@@ -1227,6 +1233,10 @@ tabname = "Xtriage"
     ctextbox.verticalScrollBar().setValue( ctextbox.verticalScrollBar().maximum()  )
 
 
+  def onTabtextChanged(self, i):
+    self.finddlg.hide() # if it is present from a recent string search
+
+
   def AddInfoText(self, currentinfostr):
     if self.isembedded:
       print(currentinfostr)
@@ -1259,7 +1269,7 @@ tabname = "Xtriage"
     gridLayout.setSpacing(4)
     gridLayout.setContentsMargins(3, 3, 3, 3)
     gridLayout.setContentsMargins(0, 0, 0, 0)
-    newtabedit = QPlainTextEdit(self.__dict__[tabname])
+    newtabedit = MyQPlainTextEdit(self.__dict__[tabname])
     sp = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     sp.setHeightForWidth(newtabedit.sizePolicy().hasHeightForWidth())
     newtabedit.setSizePolicy(sp)
@@ -1270,9 +1280,11 @@ tabname = "Xtriage"
     newtabedit.setReadOnly(True)
     newtabedit.setPlainText(mstr)
     newtabedit.setFont(self.texttabfont)
+    newtabedit.finddlg = self.finddlg
     gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
     self.tabText.addTab(self.__dict__[tabname], tabname)
     self.tabText.setCurrentIndex( self.tabText.indexOf(self.__dict__[tabname]) )
+
 
 
   def make_new_millertable(self):

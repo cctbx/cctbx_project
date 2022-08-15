@@ -8,13 +8,74 @@ from matplotlib.figure import Figure
 
 from .qt import QtWidgets
 from .qt import Qt, QEvent, QAbstractTableModel, QModelIndex
-from .qt import QCursor, QKeySequence
+from .qt import QCursor, QKeySequence, QLineEdit, QTextDocument
 from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction, QDoubleSpinBox,
       QMenu, QTableView, QDialog, QSpinBox, QLabel, QComboBox, QGridLayout, QGroupBox,
-      QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem, QSizePolicy
+      QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem, QSizePolicy, QPlainTextEdit,
+      QPushButton
      )
 import math, csv
 from io import StringIO
+
+
+class FindDialog(QDialog):
+  def __init__(self, parent=None):
+    super(FindDialog, self).__init__(parent.window)
+    self.setWindowTitle("Find a string")
+    self.setWindowFlags(Qt.Tool)
+    mainLayout = QGridLayout()
+    self.label = QLabel()
+    self.label.setText("Enter search string")
+    self.label.setWordWrap(True)
+    self.findtextbox = QLineEdit()
+    self.texteditclient = None
+    sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    self.findtextbox.setSizePolicy(sp)
+    self.label.setSizePolicy(sp)
+    self.cancelbtn = QPushButton()
+    self.cancelbtn.setText("Cancel")
+    self.cancelbtn.clicked.connect(self.onCancel)
+    self.findbtn = QPushButton()
+    self.findbtn.setText("Find next")
+    self.findbtn.clicked.connect(self.onFind)
+    mainLayout.addWidget(self.label,  0, 0, 1, 3)
+    mainLayout.addWidget(self.findtextbox,  1, 0, 1, 3)
+    mainLayout.addWidget(self.findbtn,  2, 0, 1, 1)
+    mainLayout.addWidget(self.cancelbtn,  2, 2, 1, 1)
+    self.setLayout(mainLayout)
+    self.setSizePolicy(sp)
+    #self.setFixedSize( self.sizeHint() )
+  def onFind(self):
+    if self.texteditclient:
+      cursor = self.texteditclient.textCursor()
+      if not self.texteditclient.find(self.findtextbox.text(), QTextDocument.FindCaseSensitively):
+        cursor.setPosition(0)
+        self.texteditclient.setTextCursor(cursor) # wrap around if reached end of text
+      self.texteditclient.activateWindow()
+  def onCancel(self):
+    self.hide()
+
+
+
+class MyQPlainTextEdit(QPlainTextEdit):
+  def __init__(self, parent=None):
+    super(MyQPlainTextEdit,self).__init__(parent)
+  def keyPressEvent(self, event):
+    cursor = self.textCursor()
+    if event.key() == Qt.Key_F and event.modifiers() == Qt.ControlModifier:
+      cursor.setPosition(0)
+      self.setTextCursor(cursor)
+      # In order to use the same FindDialog for all MyQPlainTextEdit instances
+      # self.finddlg is assigned to a FindDialog instance by NGL_HKLViewer.
+      self.finddlg.texteditclient = self
+      self.finddlg.show()
+      self.finddlg.activateWindow()
+    elif event.key() == Qt.Key_F3 and self.finddlg.findtextbox.text() != "":
+      if not self.find(self.finddlg.findtextbox.text(), QTextDocument.FindCaseSensitively):
+        cursor.setPosition(0)
+        self.setTextCursor(cursor) # wrap around if reached end of text
+    else:
+      QPlainTextEdit.keyPressEvent(self, event)
 
 
 class MyQDoubleSpinBox(QDoubleSpinBox):

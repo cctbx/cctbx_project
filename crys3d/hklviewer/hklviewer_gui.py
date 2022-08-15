@@ -7,20 +7,20 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
-
 from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
-  from crys3d.hklviewer.helpers import HeaderDataTableWidget, MyQDoubleSpinBox # implicit import
+  from crys3d.hklviewer.helpers import HeaderDataTableWidget, MyQDoubleSpinBox, MyQPlainTextEdit # implicit import
 except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from .helpers import HeaderDataTableWidget, MyQDoubleSpinBox # implicit import
+  from .helpers import HeaderDataTableWidget, MyQDoubleSpinBox, MyQPlainTextEdit # implicit import
 
 from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit import
  QFont, QAbstractItemView, QAction, QCheckBox, QComboBox, QLineEdit, QDockWidget,
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit,
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -984,7 +984,7 @@ class Ui_MainWindow(object):
         self.gridLayout_30.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_30.setObjectName(u"gridLayout_30")
         self.gridLayout_30.setContentsMargins(0, 0, 0, 0)
-        self.textInfo = QPlainTextEdit(self.tabInfo)
+        self.textInfo = MyQPlainTextEdit(self.tabInfo)
         self.textInfo.setObjectName(u"textInfo")
         sizePolicy19.setHeightForWidth(self.textInfo.sizePolicy().hasHeightForWidth())
         self.textInfo.setSizePolicy(sizePolicy19)
@@ -1008,7 +1008,7 @@ class Ui_MainWindow(object):
         self.gridLayout.setContentsMargins(3, 3, 3, 3)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
-        self.textAlerts = QPlainTextEdit(self.tabWarnings)
+        self.textAlerts = MyQPlainTextEdit(self.tabWarnings)
         self.textAlerts.setObjectName(u"textAlerts")
         sizePolicy19.setHeightForWidth(self.textAlerts.sizePolicy().hasHeightForWidth())
         self.textAlerts.setSizePolicy(sizePolicy19)
@@ -1023,6 +1023,7 @@ class Ui_MainWindow(object):
         self.textAlerts.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.textAlerts.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.textAlerts.setReadOnly(True)
+        self.textAlerts.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         self.gridLayout.addWidget(self.textAlerts, 0, 0, 1, 1)
 
@@ -1039,7 +1040,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)

@@ -128,7 +128,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="usesScrollButtons">
             <bool>true</bool>
@@ -1702,7 +1702,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPlainTextEdit" name="textInfo">
+              <widget class="MyQPlainTextEdit" name="textInfo">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -1752,7 +1752,7 @@
               <number>0</number>
              </property>
              <item row="0" column="0">
-              <widget class="QPlainTextEdit" name="textAlerts">
+              <widget class="MyQPlainTextEdit" name="textAlerts">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -1781,6 +1781,9 @@
                </property>
                <property name="readOnly">
                 <bool>true</bool>
+               </property>
+               <property name="textInteractionFlags">
+                <set>Qt::TextSelectableByMouse</set>
                </property>
               </widget>
              </item>
@@ -1884,6 +1887,11 @@
    <class>MyQDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>myqdoublespinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>MyQPlainTextEdit</class>
+   <extends>QPlainTextEdit</extends>
+   <header>myqplaintextedit.h</header>
   </customwidget>
  </customwidgets>
  <includes>
