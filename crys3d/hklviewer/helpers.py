@@ -20,7 +20,7 @@ from io import StringIO
 
 class FindDialog(QDialog):
   def __init__(self, parent=None):
-    super(FindDialog, self).__init__(parent.window)
+    super(FindDialog, self).__init__(parent)
     self.setWindowTitle("Find a string")
     self.setWindowFlags(Qt.Tool)
     mainLayout = QGridLayout()

@@ -2,132 +2,64 @@ from __future__ import absolute_import, division, print_function
 
 cctbx_buttonsdeflist = [
   ("Intensities", "Show Intensities", """
-                                            viewer {
-                                              data_array {
-                                                label = "I,SIGI"
-                                                datatype = "Intensity"
-                                              }
-                                            }
+                              viewer {
+                                data_array {
+                                  label = "I,SIGI"
+                                  datatype = "Intensity"
+                                }
+                              }
 """),
+
   ("amplitudes", "Show Amplitudes", """
-                                            viewer {
-                                              data_array {
-                                                label = "FOBS,SIGFOBS"
-                                                datatype = "Amplitude"
-                                              }
-                                            }
+                              viewer {
+                                data_array {
+                                  label = "FOBS,SIGFOBS"
+                                  datatype = "Amplitude"
+                                }
+                              }
 """),
-  ("H_I", "Show plane of intensities with constant H", """
-                                                          clip_plane {
-                                                            normal_vector = "H (1,0,0)"
-                                                            is_assoc_real_space_vector = True
-                                                            clip_width = 1.184439576
-                                                          }
-                                                          viewer {
-                                                            data_array {
-                                                              label = 'I<<FSQ,SIGI<<FSQ'
-                                                              datatype = 'Intensity'
-                                                            }
-                                                            fixorientation = *vector None
-                                                          }
-                                                          hkls {
-                                                            expand_to_p1 = True
-                                                            expand_anomalous = True
-                                                          }
-"""),
-  ("K_I", "Show plane of intensities with constant K", """
+# ConstanAxesSliceIntens and ConstanAxesSliceAmpl rely on hard coded names "H-axis (1,0,0)", "K-axis (0,1,0)"
+# and "L-axis (0,0,1)" being present in the list of vectors. The button PHIL parameter show_vector="['-axis', True]"
+# will then entail comboboxes being created from where H, K or L axes can be selected. This is more compact
+# than having threee separate buttons for each axes
+  ("ConstanAxesSliceIntens", "Show plane of intensities with constant: ", """
+                                  clip_plane {
+                                    normal_vector = "-axis"
+                                    is_assoc_real_space_vector = True
+                                    clip_width = 1.184
+                                  }
+                                  viewer {
+                                    data_array {
+                                      label = 'I,SIGI'
+                                      datatype = 'Intensity'
+                                    }
+                                    show_vector = "['-axis', True]"
+                                    fixorientation = *vector None
+                                  }
+                                  hkls {
+                                    expand_to_p1 = True
+                                    expand_anomalous = True
+                                  }
+ """),
 
-                                                            clip_plane {
-                                                              normal_vector = "K (0,1,0)"
-                                                              is_assoc_real_space_vector = True
-                                                              clip_width = 1.184
-                                                            }
-                                                            viewer {
-                                                              data_array {
-                                                                label = 'I<<FSQ,SIGI<<FSQ'
-                                                                datatype = 'Intensity'
-                                                              }
-                                                              fixorientation = *vector None
-                                                            }
-                                                            hkls {
-                                                              expand_to_p1 = True
-                                                              expand_anomalous = True
-                                                            }
-"""),
-  ("L_I", "Show plane of intensities with constant L", """
-                                                            clip_plane {
-                                                              normal_vector = "L (0,0,1)"
-                                                              is_assoc_real_space_vector = True
-                                                              clip_width = 1.184
-                                                            }
-                                                            viewer {
-                                                              data_array {
-                                                                label = 'I<<FSQ,SIGI<<FSQ'
-                                                                datatype = 'Intensity'
-                                                              }
-                                                              fixorientation = *vector None
-                                                            }
-                                                            hkls {
-                                                              expand_to_p1 = True
-                                                              expand_anomalous = True
-                                                            }
-"""),
-  ("H_F", "Show plane of amplitudes with constant H", """
-                                                            clip_plane {
-                                                              normal_vector = "H (1,0,0)"
-                                                              is_assoc_real_space_vector = True
-                                                              clip_width = 1.184
-                                                            }
-                                                            viewer {
-                                                              data_array {
-                                                                label = 'FP,SIGFP'
-                                                                datatype = 'Amplitude'
-                                                              }
-                                                              fixorientation = *vector None
-                                                            }
-                                                            hkls {
-                                                              expand_to_p1 = True
-                                                              expand_anomalous = True
-                                                            }
-  """),
-
-  ("K_F", "Show plane of amplitudes with constant K", """
-                                                            clip_plane {
-                                                              normal_vector = "K (0,1,0)"
-                                                              is_assoc_real_space_vector = True
-                                                              clip_width = 1.184
-                                                            }
-                                                            viewer {
-                                                              data_array {
-                                                                label = 'FP,SIGFP'
-                                                                datatype = 'Amplitude'
-                                                              }
-                                                              fixorientation = *vector None
-                                                            }
-                                                            hkls {
-                                                              expand_to_p1 = True
-                                                              expand_anomalous = True
-                                                            }
-
-  """),
-
-  ("L_F", "Show plane of amplitudes with constant L", """
-                                                            clip_plane {
-                                                              normal_vector = "L (0,0,1)"
-                                                              is_assoc_real_space_vector = True
-                                                              clip_width = 1.184
-                                                            }
-                                                            viewer {
-                                                              data_array {
-                                                                label = 'FP,SIGFP'
-                                                                datatype = 'Amplitude'
-                                                              }
-                                                              fixorientation = *vector None
-                                                            }
-                                                            hkls {
-                                                              expand_to_p1 = True
-                                                              expand_anomalous = True
-                                                            }
+   ("ConstanAxesSliceAmpl", "Show plane of amplitudes with constant: ", """
+                                  clip_plane {
+                                    normal_vector = "-axis"
+                                    is_assoc_real_space_vector = True
+                                    clip_width = 1.184
+                                  }
+                                  viewer {
+                                    data_array {
+                                      label = 'FP,SIGFP'
+                                      datatype = 'Amplitude'
+                                    }
+                                    show_vector = "['-axis', True]"
+                                    fixorientation = *vector None
+                                  }
+                                  hkls {
+                                    expand_to_p1 = True
+                                    expand_anomalous = True
+                                  }
  """),
 
 ("FoversigF", "F/SigF ( from miller_array.data()/miller_array.sigmas() )",
@@ -142,6 +74,7 @@ cctbx_buttonsdeflist = [
 
 
  """),
+
 ("IoverSigI", "I/SigI >= 2 ( from miller_array.data()/miller_array.sigmas() )",
  """
               miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
@@ -168,6 +101,7 @@ cctbx_buttonsdeflist = [
                 }
               }
  """),
+
 ("Evalues", "E-values ( miller_array.normalize() )",
  """
                     miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
@@ -186,27 +120,7 @@ cctbx_buttonsdeflist = [
 
 
 phenix_buttonsdeflist = [
-  ("EINFO", "eInfo < 0.35", """
-                    binning {
-                      scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
-                      binlabel = 'EINFO'
-                      bin_opacity = 1 0
-                      bin_opacity = 0 1
-                      bin_opacity = 0 2
-                      bin_opacity = 0 3
-                      bin_opacity = 0 4
-                      bin_opacity = 0 5
-                      bin_opacity = 0 6
-                      bin_opacity = 0 7
-                      nbins = 8
-                    }
-                    viewer {
-                      data_array {
-                        label = "EINFO"
-                      }
-                    }
- """),
-("INFO", "Info < 0.35", """
+("INFO", "Reflections with information bits less than 0.35", """
                     binning {
                       scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
                       binlabel = 'INFO'
@@ -325,5 +239,34 @@ phenix_buttonsdeflist = [
                                         expand_anomalous = True
                                       }
 """),
+
+  # If user defines a twin operator where the name of the operator contains the string "twin" this
+  # button will become enabled.
+  # Pressing this button will expand amplitude data to P1 and slice it with twin axis perpendicular
+  # to the screen. One can then step through layers of reflections with the +/- buttons in the GUI
+  ("TwinAxis", "Slice perpendicular to twin axis", """
+
+                                        clip_plane {
+                                          hkldist = 0.0
+                                          normal_vector = "twin"
+                                          clip_width = 0.5
+                                        }
+                                        viewer {
+                                          data_array {
+                                            label = "F-obs,SIGF-obs"
+                                            datatype = "Amplitude"
+                                          }
+                                          show_vector = "['twin', True]"
+                                          user_vector {
+                                            label = "twin"
+                                          }
+                                          fixorientation = *vector None
+                                        }
+                                        hkls {
+                                          expand_to_p1 = True
+                                          expand_anomalous = True
+                                        }
+
+  """),
 
 ]

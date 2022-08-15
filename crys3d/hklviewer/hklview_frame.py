@@ -528,7 +528,8 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
-      if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
+      #if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
+      if jsview_3d.has_phil_path(diff_phil, "openfilename"):
         self.list_vectors()
         self.validated_preset_buttons = False
 
@@ -777,6 +778,7 @@ class HKLViewFrame() :
                 "NewMillerArray" : True
                 }
       self.SendInfoToGUI(mydict)
+      self.validated_preset_buttons = False
     return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
 
 
@@ -796,6 +798,8 @@ class HKLViewFrame() :
       tabname = ldic.get("tabname", None)
       logfname = ldic.get("logfname", None)
       self.SendInfoToGUI( {"show_log_file": [tabname, logfname ]  } )
+      self.validated_preset_buttons = False
+      self.validate_preset_buttons()
     except Exception as e:
       raise Sorry(str(e))
 
@@ -1166,7 +1170,7 @@ class HKLViewFrame() :
                 if rotlabel =="" or order==0:
                   self.mprint("\"%s\" is disabled because HKL operation, \"%s\", is not a rotation in space group %s" \
                    %(btnlabel, uvec.hkl_op, ma.space_group().info().symbol_and_number()), verbose=1)
-                  activebtns.append((self.allbuttonslist[ibtn],False, ""))
+                  activebtns.append((self.allbuttonslist[ibtn],False, "", None))
                   button_fate_decided = True
                   break
               else:
@@ -1181,28 +1185,30 @@ class HKLViewFrame() :
             millaroperationstr, millarrlabel, (arr1label, arr1type), (arr2label, arr2type) = \
                                                      eval( btnphilextract.miller_array_operation)
         nvectorsfound = len(philstr_showvectors)
-        veclabels = ""
+        veclabels = []
         if philstr_showvectors:
           nvectorsfound = 0
           for iphilvec,philstrvec in enumerate(philstr_showvectors):
             philveclabel, philshowvec = eval(philstrvec)
             # see if any of the user_vectors_labels is a substring of the label for the vectors to display
-            if True in [ lbl in philveclabel for lbl in philstr_user_vectors_labels ] :
-              nvectorsfound = len(philstr_showvectors)
-              continue # button phil defines a user vector matching the show vector
+            #if True in [ lbl in philveclabel for lbl in philstr_user_vectors_labels ] :
+            #  nvectorsfound = len(philstr_showvectors)
+            #  continue # button phil defines a user vector matching the show vector
             for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
               # allow label to be just a substring of veclabel
               philstr_userlbl = ""
               for lbl in philstr_user_vectors_labels:
-                if lbl in veclabel: # button phil defines a user vector matching the show vector
+                if lbl == veclabel: # button phil defines a user vector matching the show vector
                   philstr_userlbl = lbl
                   break
-              if philshowvec and philveclabel == veclabel:
+              if philshowvec and philveclabel in veclabel:
                 nvectorsfound +=1
                 if philstr_userlbl:
-                  veclabels += "," + philstr_userlbl
+                  #veclabels += "," + philstr_userlbl
+                  veclabels.append(philstr_userlbl)
                 else:
-                  veclabels += "," + philveclabel
+                  #veclabels += "," + veclabel
+                  veclabels.append(veclabel)
             if (iphilvec+1) > nvectorsfound:
               self.mprint("\"%s\" is disabled until a vector, \"%s\", has been " \
                    "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
@@ -1215,11 +1221,11 @@ class HKLViewFrame() :
           if miller_array_operation_can_be_done:
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],True, datalabel))
+            activebtns.append((self.allbuttonslist[ibtn],True, datalabel, None))
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],False, ""))
+            activebtns.append((self.allbuttonslist[ibtn], False, "", None))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
           for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1231,14 +1237,14 @@ class HKLViewFrame() :
               if philstr_type is not None and philstr_type == datatype:
                 labeltypefound = True
                 break
-          if labeltypefound and nvectorsfound == len(philstr_showvectors):
+          if labeltypefound and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" assigned to dataset %s of type %s." \
-                          %(btnlabel + veclabels, datalabel, datatype), verbose=1)
-            activebtns.append(((btn_id, btnlabel + veclabels, philstr),True, datalabel))
+                          %(btnlabel + str(veclabels), datalabel, datatype), verbose=1)
+            activebtns.append((self.allbuttonslist[ibtn], True, datalabel, veclabels))
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],False, ""))
+            activebtns.append((self.allbuttonslist[ibtn], False, "", None))
 
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
@@ -1555,9 +1561,9 @@ class HKLViewFrame() :
     Hlength = math.sqrt( Hcartvec[0]*Hcartvec[0] + Hcartvec[1]*Hcartvec[1] + Hcartvec[2]*Hcartvec[2] )
     Klength = math.sqrt( Kcartvec[0]*Kcartvec[0] + Kcartvec[1]*Kcartvec[1] + Kcartvec[2]*Kcartvec[2] )
     Llength = math.sqrt( Lcartvec[0]*Lcartvec[0] + Lcartvec[1]*Lcartvec[1] + Lcartvec[2]*Lcartvec[2] )
-    hklunit_vectors = [ ("H (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
-                        ("K (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
-                        ("L (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
+    hklunit_vectors = [ ("H-axis (1,0,0)", 0, Hcartvec, "", "(1,0,0)", "", Hlength ),
+                        ("K-axis (0,1,0)", 0, Kcartvec, "", "(0,1,0)", "", Klength ),
+                        ("L-axis (0,0,1)", 0, Lcartvec, "", "(0,0,1)", "", Llength )]
 
     all_vecs = hklunit_vectors + tncsvec + anisovectors + self.viewer.rotation_operators[:] + self.uservectors
     self.viewer.all_vectors = []

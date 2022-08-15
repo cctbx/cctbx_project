@@ -335,7 +335,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.texttabfont = QFont("Courier New")
     self.texttabfont.setPointSize(self.font.pointSize())
     self.texttabfont.setBold(True)
-    self.finddlg = FindDialog(self)
+    self.finddlg = FindDialog(self.tabText) # show near tabText when making finddlg visible
     self.textAlerts.finddlg = self.finddlg
     self.textInfo.finddlg = self.finddlg
 
@@ -570,11 +570,29 @@ newarray._sigmas = sigs
 
 
   def onPresetbtn_click(self):
-    for i,((btnname, label, philstr), isenabled, datalabel) in enumerate(self.buttonsdeflist):
+    for i,((btnname, label, philstr), isenabled, datalabel, dropdownlabels) in enumerate(self.buttonsdeflist):
+      vectorscombobox = None
+      if dropdownlabels is not None:
+        vectorscombobox = self.__getattribute__(btnname + "_vectors")
+        vectorscombobox.setEnabled(False)
       if self.__getattribute__(btnname).isChecked():
-        self.send_message(philstr, msgtype = "preset_philstr")
+        showvectorphil = ""
+        if vectorscombobox is not None:
+          vectorscombobox.setEnabled(True)
+          if vectorscombobox.currentIndex() > -1:
+            showvectorphil = '''
+viewer.show_vector = "['%s', True]"
+clip_plane.normal_vector = '%s'
+''' %(vectorscombobox.currentText(), vectorscombobox.currentText())
+        self.send_message(philstr + showvectorphil, msgtype = "preset_philstr")
         self.ipresetbtn = i
-        break
+      else:
+        if vectorscombobox is not None:
+          vectorscombobox.setEnabled(False)
+
+
+  def onVectorsComboSelchange(self, i):
+    self.onPresetbtn_click()
 
 
   def closeEvent(self, event):
@@ -1172,24 +1190,37 @@ tabname = "Xtriage"
             self.datatypedict = self.infodict.get("datatype_dict", {} )
 
           if self.infodict.get("enable_disable_preset_buttons"):
-            self.buttonsdeflist = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
-            for i in reversed(range(self.gridLayout_24.count())):
-              # first delete any previous widgets from last time a file was loaded
-              widgetToRemove = self.gridLayout_24.itemAt(i).widget()
-              self.gridLayout_24.removeWidget(widgetToRemove)
-              widgetToRemove.setParent(None)
-            # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
-            for i,((btnname, label, _), isenabled, datalabel) in enumerate(self.buttonsdeflist):
-              self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
-              self.__getattribute__(btnname).setObjectName(btnname)
-              self.__getattribute__(btnname).setText(label)
-              if datalabel != "":
-                self.__getattribute__(btnname).setToolTip("using the " + datalabel + " dataset")
-              self.__getattribute__(btnname).setEnabled(isenabled)
-              self.__getattribute__(btnname).clicked.connect(self.onPresetbtn_click)
-              self.gridLayout_24.addWidget(self.__getattribute__(btnname), i, 0, 1, 1)
-              if self.ipresetbtn == i:
-                self.__getattribute__(btnname).setChecked(True)
+            newlist = eval(self.infodict.get("enable_disable_preset_buttons", "[]" ))
+            if newlist != self.buttonsdeflist:
+              self.buttonsdeflist = newlist
+
+              for i in reversed(range(self.gridLayout_24.count())):
+                # first delete any previous widgets from last time a file was loaded
+                widgetToRemove = self.gridLayout_24.itemAt(i).widget()
+                self.gridLayout_24.removeWidget(widgetToRemove)
+                widgetToRemove.setParent(None)
+              # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
+              for i,((btnname, label, _), isenabled, datalabel, dropdownlabels) in enumerate(self.buttonsdeflist):
+                self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
+                pbutton = self.__getattribute__(btnname)
+                pbutton.setObjectName(btnname)
+                pbutton.setText(label)
+                if datalabel != "":
+                  pbutton.setToolTip("using the " + datalabel + " dataset")
+                pbutton.setEnabled(isenabled)
+                pbutton.clicked.connect(self.onPresetbtn_click)
+                self.gridLayout_24.addWidget(pbutton, i, 0, 1, 1)
+
+                if dropdownlabels is not None:
+                  comboboxname = btnname + "_vectors"
+                  self.__dict__[comboboxname] = QComboBox(self.PresetButtonsFrame)
+                  vectorscombobox = self.__getattribute__(comboboxname)
+                  vectorscombobox.addItems( dropdownlabels )
+                  vectorscombobox.activated.connect(self.onVectorsComboSelchange)
+                  self.gridLayout_24.addWidget(vectorscombobox, i, 1, 1, 1)
+
+                if self.ipresetbtn == i:
+                  pbutton.setChecked(True)
 
           if self.infodict.get("spacegroup_info"):
             spacegroup_info = self.infodict.get("spacegroup_info",False)
