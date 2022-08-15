@@ -702,6 +702,21 @@ builder.""".format(filename=filename, builder=builder))
     else:
       prefix = os.path.abspath(self.conda_env)
 
+    # compare time stamps of the filename and environment directory
+    # only install/update if the time stamp of the filename is more recent
+    file_stats = None
+    env_stats = None
+    if os.path.exists(filename):
+      file_stats = os.stat(filename)
+    if os.path.exists(prefix):
+      env_stats = os.stat(prefix)
+
+    if env_stats is not None and file_stats is not None:
+      if env_stats.st_mtime > file_stats.st_mtime:
+        print('The environment is newer than the environment file. Skipping update.',
+              file=self.log)
+        return
+
     # install a new environment or update and existing one
     if prefix in self.environments:
       command = 'install'
