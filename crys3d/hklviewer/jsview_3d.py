@@ -1904,7 +1904,9 @@ Distance: %s
     return rotmx
 
 
-  def GetVectorAndAngleFromRotationMx(self, rot, ma=None):
+  def GetVectorAndAngleFromRotationMx(self, rot, ma=None, rectify_improper_rotation=True):
+    # rectify_improper_rotation should be False when used for Xtriage rotations as
+    # they may mistakenly be seen as being improper rotations
     RotMx = matrix.sqr(rot.as_double())
     if ma==None:
       ma = self.miller_array
@@ -1917,7 +1919,7 @@ Distance: %s
     ortrot = ortrotmx.as_mat3()
     label=""
     order = 0
-    if not ortrotmx.is_r3_rotation_matrix():
+    if not ortrotmx.is_r3_rotation_matrix() and rectify_improper_rotation:
       isProperRotation = False
       self.mprint("""Warning! The operation '%s' is not a proper rotation
 in the space group %s\nwith unit cell %s""" \

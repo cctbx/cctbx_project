@@ -11,7 +11,7 @@
 #-------------------------------------------------------------------------------
 from __future__ import absolute_import, division, print_function
 
-import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path
+import sys, zmq, subprocess, time, traceback, zlib, io, os, math, os.path, re
 if sys.version_info[0] < 3:
   print("HKLviewer GUI must be run from Python 3")
   sys.exit(-42)
@@ -238,6 +238,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
+    self.lastwaittime = time.monotonic()
     self.backgroundcolour = QColor(127,127,127)
 
     if isembedded:
@@ -338,9 +339,9 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.finddlg = FindDialog(self.tabText) # show near tabText when making finddlg visible
     self.textAlerts.finddlg = self.finddlg
     self.textInfo.finddlg = self.finddlg
-
     self.Fontsize_labeltxt = QLabel()
     self.Fontsize_labeltxt.setText("Font size:")
+    self.waiting = False
 
     self.browserfontspinBox = QDoubleSpinBox()
     self.browserfontspinBox.setSingleStep(1)
@@ -570,21 +571,19 @@ newarray._sigmas = sigs
 
 
   def onPresetbtn_click(self):
-    for i,((btnname, label, philstr), isenabled, datalabel, dropdownlabels) in enumerate(self.buttonsdeflist):
+    for i,((btnname, label, philstr), isenabled, datalabel, moniker_veclabels) in enumerate(self.buttonsdeflist):
       vectorscombobox = None
-      if dropdownlabels is not None:
+      #if moniker_veclabels:
+      if moniker_veclabels is not None and moniker_veclabels[0] != "" and len(moniker_veclabels[1]):
         vectorscombobox = self.__getattribute__(btnname + "_vectors")
         vectorscombobox.setEnabled(False)
       if self.__getattribute__(btnname).isChecked():
-        showvectorphil = ""
         if vectorscombobox is not None:
           vectorscombobox.setEnabled(True)
           if vectorscombobox.currentIndex() > -1:
-            showvectorphil = '''
-viewer.show_vector = "['%s', True]"
-clip_plane.normal_vector = '%s'
-''' %(vectorscombobox.currentText(), vectorscombobox.currentText())
-        self.send_message(philstr + showvectorphil, msgtype = "preset_philstr")
+            currentvecname = vectorscombobox.currentText()
+            philstr = re.sub(moniker_veclabels[0], currentvecname, philstr)
+        self.send_message(philstr, msgtype = "preset_philstr")
         self.ipresetbtn = i
       else:
         if vectorscombobox is not None:
@@ -801,6 +800,7 @@ shutil.rmtree("%s")
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
     self.send_message("%s" %xtricorder_cmd, "external_cmd" )
+    self.waiting = True
 
 
   def onXtriageRun(self):
@@ -834,7 +834,7 @@ for i,twinop in enumerate(xtriageobj.twin_results.twin_law_names):
   '''
 vectorphil = libtbx.phil.parse(philstr)
 working_params = master_phil.fetch(source= vectorphil).extract()
-self.add_user_vector(working_params.viewer.user_vector)
+self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotation=False)
 
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
@@ -844,6 +844,7 @@ tabname = "Xtriage"
       self.XtricorderBtn.setEnabled(False)
       self.XtriageBtn.setEnabled(False)
       self.send_message("%s" %xtriage_cmd, "external_cmd" )
+      self.waiting = True
 
 
   def ProcessMessages(self):
@@ -867,6 +868,11 @@ tabname = "Xtriage"
           self.chimeraxsession.HKLviewer.isolde_clipper_data_to_dict()
           self.send_message(str(self.chimeraxsession.HKLviewer.clipper_crystdict),
                             msgtype="clipper_crystdict")
+
+      if self.waiting and (time.monotonic() - 1) > self.lastwaittime:
+        self.lastwaittime = time.monotonic() # reassure the user we have not crashed
+        self.AddInfoText(".")
+        self.AddAlertsText(".")
 
       try:
         binmsg = self.socket.recv(flags=zmq.NOBLOCK) #To empty the socket from previous messages
@@ -947,9 +953,11 @@ tabname = "Xtriage"
             with open(fname, 'r') as f:
               mstr += f.read() + '\\n'
             self.add_another_text_tab(tabname, mstr)
-            #self.setWindowFilenameTitles( self.currentfileName)
             self.XtricorderBtn.setEnabled(True)
             self.XtriageBtn.setEnabled(True)
+            self.waiting = False
+            self.AddInfoText("\n")
+            self.AddAlertsText("\n")
 
           if self.infodict.get("ano_spg_tpls"):
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
@@ -1200,7 +1208,11 @@ tabname = "Xtriage"
                 self.gridLayout_24.removeWidget(widgetToRemove)
                 widgetToRemove.setParent(None)
               # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
-              for i,((btnname, label, _), isenabled, datalabel, dropdownlabels) in enumerate(self.buttonsdeflist):
+              for i,((btnname, label, _), isenabled, datalabel, moniker_veclabels) in enumerate(self.buttonsdeflist):
+                moniker = ""
+                veclabels = []
+                if moniker_veclabels:
+                  (moniker, veclabels) = moniker_veclabels
                 self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
                 pbutton = self.__getattribute__(btnname)
                 pbutton.setObjectName(btnname)
@@ -1211,11 +1223,11 @@ tabname = "Xtriage"
                 pbutton.clicked.connect(self.onPresetbtn_click)
                 self.gridLayout_24.addWidget(pbutton, i, 0, 1, 1)
 
-                if dropdownlabels is not None:
+                if moniker != "" and len(veclabels):
                   comboboxname = btnname + "_vectors"
                   self.__dict__[comboboxname] = QComboBox(self.PresetButtonsFrame)
                   vectorscombobox = self.__getattribute__(comboboxname)
-                  vectorscombobox.addItems( dropdownlabels )
+                  vectorscombobox.addItems( veclabels )
                   vectorscombobox.activated.connect(self.onVectorsComboSelchange)
                   self.gridLayout_24.addWidget(vectorscombobox, i, 1, 1, 1)
 

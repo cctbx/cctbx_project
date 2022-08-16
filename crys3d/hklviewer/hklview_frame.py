@@ -1186,6 +1186,7 @@ class HKLViewFrame() :
                                                      eval( btnphilextract.miller_array_operation)
         nvectorsfound = len(philstr_showvectors)
         veclabels = []
+        philveclabel = ""
         if philstr_showvectors:
           nvectorsfound = 0
           for iphilvec,philstrvec in enumerate(philstr_showvectors):
@@ -1203,12 +1204,13 @@ class HKLViewFrame() :
                   break
               if philshowvec and philveclabel in veclabel:
                 nvectorsfound +=1
-                if philstr_userlbl:
-                  #veclabels += "," + philstr_userlbl
-                  veclabels.append(philstr_userlbl)
-                else:
-                  #veclabels += "," + veclabel
-                  veclabels.append(veclabel)
+                if len(philveclabel) < len(veclabel):
+                  if philstr_userlbl:
+                    #veclabels += "," + philstr_userlbl
+                    veclabels.append(philstr_userlbl)
+                  else:
+                    #veclabels += "," + veclabel
+                    veclabels.append(veclabel)
             if (iphilvec+1) > nvectorsfound:
               self.mprint("\"%s\" is disabled until a vector, \"%s\", has been " \
                    "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
@@ -1240,7 +1242,7 @@ class HKLViewFrame() :
           if labeltypefound and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" assigned to dataset %s of type %s." \
                           %(btnlabel + str(veclabels), datalabel, datatype), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn], True, datalabel, veclabels))
+            activebtns.append((self.allbuttonslist[ibtn], True, datalabel, (philveclabel, veclabels) ))
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
@@ -1540,19 +1542,19 @@ class HKLViewFrame() :
       # convert vector to fractional coordinates for the table in the GUI
       aniso1frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors = [("ANISO1", 0, cartvec, "", "", str(roundoff(aniso1frac, 5)), veclength )]
+      anisovectors = [("Anisotropy1", 0, cartvec, "", "", str(roundoff(aniso1frac, 5)), veclength )]
 
       cartvec = [self.aniso2[0]*self.viewer.renderscale, self.aniso2[1]*self.viewer.renderscale, self.aniso2[2]*self.viewer.renderscale]
       # convert vector to fractional coordinates for the table in the GUI
       aniso2frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append(("ANISO2", 0, cartvec, "", "", str(roundoff(aniso2frac, 5)), veclength ) )
+      anisovectors.append(("Anisotropy2", 0, cartvec, "", "", str(roundoff(aniso2frac, 5)), veclength ) )
 
       cartvec = [self.aniso3[0]*self.viewer.renderscale, self.aniso3[1]*self.viewer.renderscale, self.aniso3[2]*self.viewer.renderscale]
       # convert vector to fractional coordinates for the table in the GUI
       aniso3frac = list(cartvec * matrix.sqr(uc.fractionalization_matrix()))
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      anisovectors.append( ("ANISO3", 0, cartvec, "", "", str(roundoff(aniso3frac, 5)), veclength ) )
+      anisovectors.append( ("Anisotropy3", 0, cartvec, "", "", str(roundoff(aniso3frac, 5)), veclength ) )
 
     ln = len(self.viewer.all_vectors)
     Hcartvec = list( self.viewer.renderscale*( (1,0,0)*matrix.sqr(uc.fractionalization_matrix()).transpose()) )
@@ -1578,7 +1580,7 @@ class HKLViewFrame() :
     return self.viewer.all_vectors
 
 
-  def add_user_vector(self, philuser_vectors):
+  def add_user_vector(self, philuser_vectors, rectify_improper_rotation=False):
     uc = self.viewer.miller_array.unit_cell()
     try:
       for phil_uvec in philuser_vectors:
@@ -1607,7 +1609,8 @@ class HKLViewFrame() :
           hklop = re.sub(unwantedchars, "", phil_uvec.hkl_op)
           rt = sgtbx.rt_mx(symbol=hklop, r_den=12, t_den=144)
           self.viewer.symops.append( rt ) #
-          (cartvec, a, rotlabel, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r() )
+          (cartvec, a, rotlabel, order) = self.viewer.GetVectorAndAngleFromRotationMx( rt.r(),
+                                                    rectify_improper_rotation=rectify_improper_rotation )
           veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
           if rotlabel:
             label = "%s-fold_%s" %(str(int(roundoff(2*math.pi/a, 0))), label)
