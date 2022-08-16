@@ -284,6 +284,10 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
         panel_ids = np.arange(len(detector))
     pxlst_labs = []
     badpix_all =None
+    min_spot_size=1
+    if phil_file is not None:
+        params = stills_process_params_from_file(phil_file)
+        min_spot_size = params.spotfinder.filter.min_spot_size
     for i, pid in enumerate(panel_ids):
         plab = PixelListLabeller()
         img = panel_imgs[i]
@@ -314,7 +318,7 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
     iset = El.imagesets()[0]
     refls = pixel_list_to_reflection_table(
         iset, pxlst_labs,
-        min_spot_size=1,
+        min_spot_size=min_spot_size,
         max_spot_size=max_spot_size,  # TODO: change this ?
         filter_spots=FilterRunner(),  # must use a dummie filter runner!
         write_hot_pixel_mask=False)[0]
@@ -399,7 +403,14 @@ if __name__=="__main__":
 
         data = utils.image_data_from_expt(data_expt)
         Rstrong = refls_from_sims(data, data_expt.detector, data_expt.beam, phil_file=args.procPhil )
-        predictions.label_weak_predictions(pred, Rstrong, q_cutoff=8, col="xyzobs.px.value" )
+        Rstrong['id'] = flex.int(len(Rstrong), 0)
+        num_panels = len(data_expt.detector)
+        if num_panels > 1:
+            assert params.predictions.label_weak_col == "rlp"
+
+        Rstrong.centroid_px_to_mm(data_exptList)
+        Rstrong.map_centroids_to_reciprocal_space(data_exptList)
+        predictions.label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut, col=params.predictions.label_weak_col )
 
         pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
         strong_sel = np.logical_not(pred['is_weak'])

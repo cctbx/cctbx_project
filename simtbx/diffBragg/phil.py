@@ -213,6 +213,9 @@ betas
   spec = [1e8,1e8]
     .type = floats(size=2)
     .help = restraint factor for spectrum coefs
+  Fhkl = None
+    .type = float
+    .help = restraint factor for structure factor intensity scales
 }
 dual
   .help = configuration parameters for dual annealing
@@ -1194,6 +1197,8 @@ predictions {
     .type = float
     .help = Label predicted reflection as a strong reflection if its within this
     .help = many inverse Angstromg (q=2/Lambda sin(theta)) of an observed strong spot
+  label_weak_col = "xyzobs.px.value"
+    .type = str
   weak_fraction = 0.5
     .type = float
     .help = fraction of weak predictions to integrate
