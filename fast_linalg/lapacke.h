@@ -10,6 +10,7 @@
  */
 #include <string>
 #include <scitbx/error.h>
+#include <ccomplex>
 #ifndef lapack_int
  // note: this can be long
 #define lapack_int int
@@ -17,8 +18,19 @@
 #ifndef _lapack_complex_float
 template <typename FloatType>
 struct _lapack_complex { FloatType real, imag; };
+
 typedef _lapack_complex<float> _lapack_complex_float;
 typedef _lapack_complex<double> _lapack_complex_double;
+
+template <typename FloatType>
+_lapack_complex<FloatType> _lapack_ct(FloatType v) {
+  return { v, 0 };
+}
+template <typename FloatType>
+_lapack_complex<FloatType> _lapack_ct(std::complex<FloatType> v) {
+  return { v.real(), v.imag() };
+}
+
 #endif
 namespace fast_linalg {
   const int LAPACK_ROW_MAJOR = 101,
