@@ -16,6 +16,9 @@ dispatch {
 
 input_phil = """
 input {
+  override_identifiers = False
+    .type = bool
+    .help = override whatever identifiers may be present in experiments, replacing with auto-generated hash
   alist {
     file = None
       .type = str
