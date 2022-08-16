@@ -1145,9 +1145,14 @@ class DataModeler:
             V = self.best_model + self.all_sigma_rdout ** 2
             Gparam = self.SIM.P["G_xtal0"]
             G = Gparam.get_val(x[Gparam.xpos])
+            # here we must use the CPU method
+            force_cpu = self.SIM.D.force_cpu
+            self.SIM.D.force_cpu = True
+            MAIN_LOGGER.info("Getting Fhkl errors (forcing CPUkernel usage)... might take some time")
             Fhkl_scale_errors = self.SIM.D.add_Fhkl_gradients(
                 self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
                 self.SIM.num_Fhkl_channels, G, track=True, errors=True)
+            self.SIM.D.force_gpu = force_cpu
             # ------------
 
             inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))

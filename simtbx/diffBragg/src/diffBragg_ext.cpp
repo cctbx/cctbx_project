@@ -605,6 +605,11 @@ namespace boost_python { namespace {
                      make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
                     "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
 
+      .add_property("force_cpu",
+                     make_getter(&simtbx::nanoBragg::diffBragg::force_cpu,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::force_cpu,dcp()),
+                    "force use of the CPU kernel, for example, if the environ var DIFFBRAGG_USE_CUDA is set")
+
       .add_property("track_Fhkl",
                      make_getter(&simtbx::nanoBragg::diffBragg::track_Fhkl,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::track_Fhkl,dcp()),

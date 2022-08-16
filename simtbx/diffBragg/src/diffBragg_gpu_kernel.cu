@@ -59,11 +59,22 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell, bool save_wavelenimage, int laue_group_num, int stencil_size)
+        bool refine_Icell, bool save_wavelenimage,
+        bool Fhkl_gradient_mode, bool using_trusted_mask, bool Fhkl_channels_empty, bool Fhkl_have_scale_factors,
+        int Num_ASU,
+        const CUDAREAL* __restrict__ data_residual, const CUDAREAL* __restrict__ data_variance,
+        const int* __restrict__ data_freq, const bool* __restrict__ data_trusted,
+        const int* __restrict__ FhklLinear_ASUid,
+        const CUDAREAL* __restrict__ Fhkl_channels,
+        const CUDAREAL* __restrict__ Fhkl_scale, CUDAREAL* Fhkl_scale_deriv)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int thread_stride = blockDim.x * gridDim.x;
+    __shared__ bool s_Fhkl_channels_empty;
+    __shared__ bool s_Fhkl_have_scale_factors;
+    __shared__ bool s_Fhkl_gradient_mode;
+    __shared__ int s_Num_ASU;
     __shared__ bool s_refine_Icell;
     __shared__ bool s_use_diffuse;
     __shared__ bool s_use_nominal_hkl;
@@ -122,6 +133,10 @@ void gpu_sum_over_steps(
             s_refine_panel_origin[i] = refine_panel_origin[i];
             s_refine_panel_rot[i] = refine_panel_rot[i];
         }
+        s_Fhkl_channels_empty = Fhkl_channels_empty;
+        s_Fhkl_have_scale_factors = Fhkl_have_scale_factors;
+        s_Fhkl_gradient_mode = Fhkl_gradient_mode;
+        s_Num_ASU = Num_ASU;
         s_refine_Icell = refine_Icell;
         s_use_nominal_hkl = use_nominal_hkl;
         s_aniso_eta = aniso_eta;
@@ -195,26 +210,18 @@ void gpu_sum_over_steps(
         s_Nsteps = Nsteps;
         s_overall_scale = _r_e_sqr *_spot_scale * _fluence / Nsteps ;
 
-        if (s_use_diffuse){
-            anisoG_local = anisoG;
-            anisoU_local = anisoU;
-            num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
-            for (int i_gam=0; i_gam<3; i_gam++){
-              dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-              dG_dgam[i_gam](i_gam, i_gam) = 1;
-            }
-            if (s_gamma_miller_units){
-              anisoG_local = anisoG_local * Bmat_realspace;
-              for (int i_gam=0; i_gam<3; i_gam++){
-                dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
-              }
-            }
-            dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
+        anisoG_local = anisoG;
+        for (int i_gam=0; i_gam<3; i_gam++){
+          dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+          dG_dgam[i_gam](i_gam, i_gam) = 1;
         }
-        Hmin << s_h_min,s_k_min,s_l_min;
-        Hmax << s_h_max,s_k_max,s_l_max;
-        dHH << dhh,dkk,dll;
-        Hrange << s_h_range,s_k_range,s_l_range;
+        if (s_use_diffuse && s_gamma_miller_units){
+          anisoG_local = anisoG_local * Bmat_realspace;
+          for (int i_gam=0; i_gam<3; i_gam++){
+            dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+          }
+        }
+
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -242,9 +249,23 @@ void gpu_sum_over_steps(
     __syncthreads();
 
     for (int i_pix=tid; i_pix < Npix_to_model; i_pix+= thread_stride){
+
+        if (using_trusted_mask){
+            if (!data_trusted[i_pix])
+                continue;
+        }
+
         int _pid = panels_fasts_slows[i_pix*3];
         int _fpixel = panels_fasts_slows[i_pix*3+1];
         int _spixel = panels_fasts_slows[i_pix*3+2];
+
+        CUDAREAL Fhkl_deriv_coef=0;
+        if (s_Fhkl_gradient_mode){
+            CUDAREAL u = data_residual[i_pix];
+            CUDAREAL one_by_v = 1/data_variance[i_pix];
+            CUDAREAL Gterm = 1 - 2*u - u*u*one_by_v;
+            Fhkl_deriv_coef = 0.5 * Gterm*one_by_v / data_freq[i_pix];
+        }
 
         //int fcell_idx=1;
         int nom_h, nom_k, nom_l;
@@ -357,6 +378,32 @@ void gpu_sum_over_steps(
                 _lambda = lambda_ang*1e-10;
             }
 
+            // polarization
+            CUDAREAL polar_for_Fhkl_grad=1;
+            if (!s_nopolar && s_Fhkl_gradient_mode){
+                //polar_for_Fhkl_grad = diffBragg_gpu_kernel_polarization(_incident, _diffracted,
+                //                    s_polarization_axis, s_kahn_factor);
+                // component of diffracted unit vector along incident beam unit vector
+                CUDAREAL cos2theta = _incident.dot(_diffracted);
+                CUDAREAL cos2theta_sqr = cos2theta*cos2theta;
+                CUDAREAL sin2theta_sqr = 1-cos2theta_sqr;
+
+                CUDAREAL _psi=0;
+                if(s_kahn_factor != 0.0){
+                    // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+                    VEC3 B_in = s_polarization_axis.cross(_incident);
+                    // cross product with incident beam to get E-vector direction
+                    VEC3 E_in = _incident.cross(B_in);
+                    // get components of diffracted ray projected onto the E-B plane
+                    CUDAREAL _kEi = _diffracted.dot(E_in);
+                    CUDAREAL _kBi = _diffracted.dot(B_in);
+                    // compute the angle of the diffracted ray projected onto the incident E-B plane
+                    _psi = -atan2(_kBi,_kEi);
+                }
+                // correction for polarized incident beam
+                polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - s_kahn_factor*cos(2*_psi)*sin2theta_sqr);
+            }
+
             VEC3 _scattering = (_diffracted - _incident) / _lambda;
 
             VEC3 q_vec(_scattering[0], _scattering[1], _scattering[2]);
@@ -403,6 +450,7 @@ void gpu_sum_over_steps(
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
+           int i_hklasu=0;
 
             if ( (_h0<=s_h_max) && (_h0>=s_h_min) && (_k0<=s_k_max) && (_k0>=s_k_min) && (_l0<=s_l_max) && (_l0>=s_l_min)  ) {
                 int Fhkl_linear_index = (_h0-s_h_min) * s_k_range * s_l_range + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);
@@ -410,6 +458,7 @@ void gpu_sum_over_steps(
                 _F_cell = _FhklLinear[Fhkl_linear_index];
                 //if (complex_miller) _F_cell2 = __ldg(&_Fhkl2Linear[Fhkl_linear_index]);
                 if (s_complex_miller) _F_cell2 = _Fhkl2Linear[Fhkl_linear_index];
+                if (s_Fhkl_have_scale_factors) i_hklasu = FhklLinear_ASUid[Fhkl_linear_index];
             }
 
 
@@ -470,6 +519,7 @@ void gpu_sum_over_steps(
                }
                CUDAREAL Freal = _F_cell;
                CUDAREAL Fimag = _F_cell2;
+
                _F_cell = sqrt(Freal*Freal + Fimag*Fimag);
                if (s_refine_fp_fdp){
                    c_deriv_Fcell = Freal*c_deriv_Fcell_real + Fimag*c_deriv_Fcell_imag;
@@ -477,13 +527,29 @@ void gpu_sum_over_steps(
                }
 
             }
-            if (!s_oversample_omega)
+            if (!s_oversample_omega && ! s_Fhkl_gradient_mode)
                 _omega_pixel = 1;
 
             CUDAREAL _I_cell = _F_cell;
             if (! s_refine_Icell)
                 _I_cell *= _F_cell;
-            CUDAREAL _I_total = _I_cell *I0;
+            CUDAREAL s_hkl=1;
+            int Fhkl_channel=0;
+            if (! s_Fhkl_channels_empty)
+                Fhkl_channel = Fhkl_channels[_source];
+            if (s_Fhkl_have_scale_factors)
+                s_hkl = Fhkl_scale[i_hklasu + Fhkl_channel*s_Num_ASU];
+            if (s_Fhkl_gradient_mode){
+                CUDAREAL Fhkl_deriv_scale = s_overall_scale*polar_for_Fhkl_grad;
+                CUDAREAL I_noFcell=texture_scale*I0;
+                CUDAREAL dfhkl = I_noFcell*_I_cell * Fhkl_deriv_scale;
+                CUDAREAL grad_incr = dfhkl*Fhkl_deriv_coef;
+                int fhkl_grad_idx=i_hklasu + Fhkl_channel*s_Num_ASU;
+                atomicAdd(&Fhkl_scale_deriv[fhkl_grad_idx], grad_incr);
+                continue;
+            }
+
+            CUDAREAL _I_total = s_hkl*_I_cell *I0;
             CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
             if (save_wavelenimage)
@@ -814,6 +880,8 @@ void gpu_sum_over_steps(
           } // end of thick step loop
          } // end of fpos loop
         } // end of spos loop
+        if (s_Fhkl_gradient_mode)
+            continue;
 
         CUDAREAL _Fdet_ave = s_pixel_size*_fpixel + s_pixel_size/2.0;
         CUDAREAL _Sdet_ave = s_pixel_size*_spixel + s_pixel_size/2.0;

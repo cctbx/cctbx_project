@@ -2021,7 +2021,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
-    if (! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL){
+    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL) || force_cpu){
         diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,

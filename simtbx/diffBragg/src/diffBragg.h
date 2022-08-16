@@ -306,6 +306,7 @@ class diffBragg: public nanoBragg{
   bool update_step_positions_on_device=false;
   bool update_panel_deriv_vecs_on_device=false;
   bool use_cuda=false;
+  bool force_cpu=false;
   int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
 
   timer_variables TIMERS;
