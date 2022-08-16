@@ -76,18 +76,23 @@ namespace least_squares {
       bool compute_grad = true)
     {
       SMTBX_ASSERT(fraction != 0 &&
-        fraction->tag >= 0 && fraction->tag < frames.size());
+        fraction->tag > 0 && fraction->tag <= frames.size());
       index = mi_lookup.find_hkl(h);
       if (index == -1) {
         if (!space_group.is_sys_absent(h)) {
           SMTBX_ASSERT(index >= 0)(h.as_string());
         }
+        Fc = 0;
+        Fsq = 0;
+        observable_updated = true;
       }
-      observable_updated = false;
+      else {
+        observable_updated = false;
+        Fc = f_calc[index];
+        Fsq = observables[index];
+      }
       frame_index = fraction->tag;
       this->h = h;
-      Fc = index < 0 ? 0 : f_calc[index];
-      Fsq = index < 0 ? 0 : observables[index];
       ratio = 1;
       if (compute_grad) {
         grads.resize(design_matrix.accessor().n_columns()+
@@ -116,6 +121,16 @@ namespace least_squares {
       return Fsq * sin_part / X;
     }
 
+    FloatType calc_test(FloatType U, cart_t const& K, FloatType t,
+      FloatType Sg, cart_t const& n) const
+    {
+      FloatType delta_k = U*U / scitbx::fn::pow2(K * n);
+      FloatType s_eff = std::sqrt(Sg * Sg + delta_k * delta_k);
+      FloatType x1 = scitbx::fn::pow2(sin(scitbx::constants::pi * t * s_eff));
+      x1 /= scitbx::fn::pow2(s_eff);
+      return U*U * x1;
+    }
+
     virtual FloatType get_observable() const {
       if (observable_updated || !computed) {
         return Fsq;
@@ -124,8 +139,8 @@ namespace least_squares {
       int coln = design_matrix.accessor().n_columns();
       const FrameInfo<FloatType>& frame = frames[frame_index];
       cart_t g = frame.RM * UB * cart_t(h[0], h[1], h[2]);
-      FloatType Kl = 1.0 / wavelength;
-      cart_t K = cart_t(0, 0, -Kl);
+      FloatType Kl = std::sqrt(1.0 / (wavelength* wavelength) + F000);
+      cart_t K = cart_t(0, 0, Kl);
       FloatType Sg = (Kl * Kl - scitbx::fn::pow2((K + g).length())) / (2 * Kl);
       if (std::abs(Sg) > maxSg) {
         observable_updated = true;
@@ -182,9 +197,36 @@ namespace least_squares {
         }
       }
       observable_updated = true;
-      ratio = sin_part / X;
-      Fc *= std::sqrt(std::abs(ratio));
-      return (Fsq = I);
+      
+      // TESTING 
+      {
+        double I = calc_test(Fsq, K, Sg, t, frame.normal);
+        if (grads.size() > 0 && index >= 0) {
+          FloatType eps = 1e-6;
+          FloatType U = std::sqrt(Fsq);
+          FloatType v1 = calc_test(U - eps, K, t, Sg, frame.normal);
+          FloatType v2 = calc_test(U + eps, K, t, Sg, frame.normal);
+          FloatType diff = (v2 - v1) / (2 * eps);
+          for (int i = 0; i < coln; i++) {
+              grads[i] = design_matrix(index, i) * diff;
+            }
+            if (thickness.grad) {
+              int grad_index = thickness.grad_index;
+              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
+              v1 = calc_test(U, K, t - eps, Sg, frame.normal);
+              v2 = calc_test(U, K, t + eps, Sg, frame.normal);
+              diff = (v2 - v1) / (2 * eps);
+              grads[grad_index] = diff;
+            }
+          }
+
+        ratio = Fsq / I;
+        Fc *= std::sqrt(std::abs(ratio));
+        return (Fsq = I);
+      }
+      //ratio = sin_part / X;
+      //Fc *= std::sqrt(std::abs(ratio));
+      //return (Fsq = I);
     }
     virtual std::complex<FloatType> get_f_calc() const {
       if (!observable_updated) {
