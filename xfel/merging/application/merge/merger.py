@@ -25,7 +25,7 @@ class merger(worker):
 
     # select, merge and output even reflections
     even_reflections = reflection_table_utils.select_even_experiment_reflections(reflections)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outllier.mad_thresh)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outlier.mad_thresh)
     self.gather_and_output_reflections(even_reflections_merged, 'even')
 
     # merge and output all reflections
