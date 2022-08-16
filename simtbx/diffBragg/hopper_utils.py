@@ -875,6 +875,16 @@ class DataModeler:
             self.SIM.Fhkl_xpos_slice = slice(min_xpos, max_xpos+1, 1)
             self.SIM.refining_Fhkl = True
             self.SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
+            if self.params.betas.Fhkl is not None:
+                self.SIM.Io = np.zeros_like(self.SIM.Fhkl_scales_init)
+                indices, amps = self.SIM.D.Fhkl_tuple
+                miller_array_map = {h: val ** 2 for h, val in
+                                    zip(indices, amps)}
+
+                for h, i in self.SIM.asu_map_int.items():
+                    for i_chan in range(self.SIM.num_Fhkl_channels):
+                        self.SIM.Io[i + i_chan*num_unique_hkl] = miller_array_map[h]
+
             assert max_xpos == len(P)-1
 
             energies = np.array([utils.ENERGY_CONV/wave for wave, _ in self.SIM.beam.spectrum])
@@ -1144,6 +1154,7 @@ class DataModeler:
 
             num_asu = len(self.SIM.asu_map_int)
             idx_to_asu = {idx:asu for asu,idx in self.SIM.asu_map_int.items()}
+            all_nominal_hkl = set(self.hi_asu_perpix)
             for i_chan in range(self.SIM.num_Fhkl_channels):
                 sel = (inds >= i_chan*num_asu) * (inds < (i_chan+1)*num_asu)
                 if not np.any(sel):
@@ -1151,6 +1162,7 @@ class DataModeler:
                 inds_chan= inds[sel] - i_chan*num_asu
                 assert np.max(inds_chan) < num_asu
                 asu_hkls = []
+                is_nominal_hkl = []
                 scale_facs = []
                 scale_vars = []
                 for i_hkl in inds_chan:
@@ -1163,9 +1175,11 @@ class DataModeler:
                     asu_hkls.append(asu)
                     scale_facs.append(scale_fac)
                     scale_vars.append(scale_var)
+                    is_nominal_hkl.append(asu in all_nominal_hkl)
                 scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_channel%d_scale.npz"\
                                      % (Modeler.params.tag, basename, i_exp, i_chan))
-                np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars)
+                np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars,
+                         is_nominal_hkl=is_nominal_hkl)
 
         trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
 
@@ -1769,6 +1783,10 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
             del_Nvol = params.centers.Nvol - Nvol
             fN_vol = .5*del_Nvol**2/params.betas.Nvol
             restraint_terms["Nvol"] = fN_vol
+        if params.betas.Fhkl is not None:
+            terms = SIM.Io**2 * (SIM.Fhkl_scales-1)**2 / params.betas.Fhkl
+            f_Fhkl = 0.5*np.sum(terms)
+            restraint_terms["Fhkl"] = f_Fhkl
 
 #   accumulate target function
     f_restraints = 0
@@ -1864,7 +1882,11 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
             fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted,
                                                  mod.all_freq, SIM.num_Fhkl_channels, G)
             fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
-            #from IPython import embed;embed()
+
+            if params.use_restraints and params.betas.Fhkl is not None:
+                g_terms = SIM.Io**2 * (SIM.Fhkl_scales-1)
+                g_terms *= SIM.Fhkl_scales
+                fhkl_grad += g_terms
 
             g = np.append(g, fhkl_grad)
 
