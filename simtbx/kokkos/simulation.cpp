@@ -486,25 +486,16 @@ namespace Kokkos {
 
     // cudaSafeCall(cudaMalloc((void ** )&cu_mosaic_umats, sizeof(*cu_mosaic_umats) * mosaic_domains_count * 9));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_mosaic_umats, SIM.mosaic_umats, mosaic_domains_count * 9));
-  };
-
-/*  exascale_api::~exascale_api(){
-    cudaSafeCall(cudaSetDevice(SIM.device_Id));
-
-        cudaSafeCall(cudaFree(cu_beam_vector));
-        cudaSafeCall(cudaFree(cu_spindle_vector));
-        cudaSafeCall(cudaFree(cu_source_X));
-        cudaSafeCall(cudaFree(cu_source_Y));
-        cudaSafeCall(cudaFree(cu_source_Z));
-        cudaSafeCall(cudaFree(cu_source_I));
-        cudaSafeCall(cudaFree(cu_source_lambda));
-        cudaSafeCall(cudaFree(cu_a0));
-        cudaSafeCall(cudaFree(cu_b0));
-        cudaSafeCall(cudaFree(cu_c0));
-        cudaSafeCall(cudaFree(cu_mosaic_umats));
-        cudaSafeCall(cudaFree(cu_polar_vector));
   }
-*/
+
+  void
+  exascale_api::init_crystal_orientation() {
+    ::Kokkos::resize(m_crystal_orientation, SIM.phisteps, SIM.mosaic_domains, 9);
+
+    crystal_orientation_kernel(SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
+    m_a0, m_b0, m_c0, SIM.mosaic_spread, SIM.mosaic_domains, m_mosaic_umats, m_crystal_orientation);
+  }
+
 
 } // Kokkos
 } // simtbx

@@ -771,3 +771,68 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
         floatimage(pixIdx) += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;
     }); // end of pixIdx loop
 }
+
+void crystal_orientation_kernel(CUDAREAL phi0, CUDAREAL phistep,
+    int phisteps, const vector_cudareal_t spindle_vector,
+    const vector_cudareal_t a0, const vector_cudareal_t b0,
+    const vector_cudareal_t c0, CUDAREAL mosaic_spread,
+    int mosaic_domains, const vector_cudareal_t mosaic_umats,
+    ::Kokkos::View<CUDAREAL***> orientations){
+
+        // sweep over phi angles
+        Kokkos::parallel_for("crystal_orientation", phisteps, KOKKOS_LAMBDA(const int& phi_tic) {
+                const CUDAREAL phi = phistep * phi_tic + phi0;
+
+                CUDAREAL ap[4];
+                CUDAREAL bp[4];
+                CUDAREAL cp[4];
+
+                // rotate about spindle if necessary
+                rotate_axis(a0, ap, spindle_vector, phi);
+                rotate_axis(b0, bp, spindle_vector, phi);
+                rotate_axis(c0, cp, spindle_vector, phi);
+
+                // enumerate mosaic domains
+                for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
+                        // apply mosaic rotation after phi rotation
+                        CUDAREAL a[4];
+                        CUDAREAL b[4];
+                        CUDAREAL c[4];
+
+                        if (mosaic_spread > 0.0) {
+                                CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
+                                                        mosaic_umats(mos_tic * 9 + 1),
+                                                        mosaic_umats(mos_tic * 9 + 2),
+                                                        mosaic_umats(mos_tic * 9 + 3),
+                                                        mosaic_umats(mos_tic * 9 + 4),
+                                                        mosaic_umats(mos_tic * 9 + 5),
+                                                        mosaic_umats(mos_tic * 9 + 6),
+                                                        mosaic_umats(mos_tic * 9 + 7),
+                                                        mosaic_umats(mos_tic * 9 + 8)};
+
+                                rotate_umat(ap, a, umat);
+                                rotate_umat(bp, b, umat);
+                                rotate_umat(cp, c, umat);
+                        } else {
+                                a[1] = ap[1];
+                                a[2] = ap[2];
+                                a[3] = ap[3];
+                                b[1] = bp[1];
+                                b[2] = bp[2];
+                                b[3] = bp[3];
+                                c[1] = cp[1];
+                                c[2] = cp[2];
+                                c[3] = cp[3];
+                        }
+                        orientations(phi_tic, mos_tic, 0) = a[1];
+                        orientations(phi_tic, mos_tic, 1) = a[2];
+                        orientations(phi_tic, mos_tic, 2) = a[3];
+                        orientations(phi_tic, mos_tic, 3) = b[1];
+                        orientations(phi_tic, mos_tic, 4) = b[2];
+                        orientations(phi_tic, mos_tic, 5) = b[3];
+                        orientations(phi_tic, mos_tic, 6) = c[1];
+                        orientations(phi_tic, mos_tic, 7) = c[2];
+                        orientations(phi_tic, mos_tic, 8) = c[3];
+                }
+        });
+}

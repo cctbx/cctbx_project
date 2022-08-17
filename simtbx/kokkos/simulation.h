@@ -38,6 +38,7 @@ struct exascale_api {
 
   void add_background(simtbx::Kokkos::kokkos_detector &);
   void allocate();
+  void init_crystal_orientation();
   //~exascale_api();
 
   const simtbx::nanoBragg::nanoBragg& SIM;
@@ -58,6 +59,7 @@ struct exascale_api {
   vector_cudareal_t m_source_I = vector_cudareal_t("m_source_I", 0);
   vector_cudareal_t m_source_lambda = vector_cudareal_t("m_source_lambda", 0);
   vector_cudareal_t m_mosaic_umats = vector_cudareal_t("m_mosaic_umats", 0);
+  ::Kokkos::View<CUDAREAL***> m_crystal_orientation = ::Kokkos::View<CUDAREAL***>("m_crystal_orientation", 0, 0, 9);
   CUDAREAL m_water_size = 0;
   CUDAREAL m_water_F = 0;
   CUDAREAL m_water_MW = 0;
