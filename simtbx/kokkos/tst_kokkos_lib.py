@@ -245,7 +245,7 @@ if __name__=="__main__":
   from simtbx.kokkos import gpu_instance
   kokkos_run = gpu_instance(deviceId = 0)
   print("\n# Use case: modularized api argchk=False, cuda_background=True")
-  SIM5 = SWC.modularized_exafel_api_for_KOKKOS(argchk=False, cuda_background=True)
+  SIM5 = SWC.modularized_exafel_api_for_KOKKOS(argchk=False, cuda_background=False)
   SIM5.to_smv_format(fileout="test_full_e_005.img")
   SIM5.to_cbf("test_full_e_005.cbf")
   diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM5.raw_pixels)

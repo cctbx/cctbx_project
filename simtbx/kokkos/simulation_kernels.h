@@ -17,14 +17,13 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
     int curved_detector, CUDAREAL distance, CUDAREAL close_distance,
      const vector_cudareal_t beam_vector,
-    CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep,
-    int phisteps, const vector_cudareal_t spindle_vector, int sources,
+    CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin,
+    int phisteps, int sources,
     const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
     const vector_cudareal_t source_Z,
     const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
-    const vector_cudareal_t a0, const vector_cudareal_t b0,
-    const vector_cudareal_t c0, shapetype xtal_shape, CUDAREAL mosaic_spread,
-    int mosaic_domains, const vector_cudareal_t mosaic_umats,
+    shapetype xtal_shape,
+    int mosaic_domains, const ::Kokkos::View<CUDAREAL***> crystal_orientation,
     CUDAREAL Na, CUDAREAL Nb,
     CUDAREAL Nc, CUDAREAL V_cell,
     CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr,
@@ -204,16 +203,6 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
                                                 // sweep over phi angles
                                                 for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
-                                                        CUDAREAL phi = phistep * phi_tic + phi0;
-
-                                                        CUDAREAL ap[4];
-                                                        CUDAREAL bp[4];
-                                                        CUDAREAL cp[4];
-
-                                                        // rotate about spindle if necessary
-                                                        rotate_axis(a0, ap, spindle_vector, phi);
-                                                        rotate_axis(b0, bp, spindle_vector, phi);
-                                                        rotate_axis(c0, cp, spindle_vector, phi);
 
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
@@ -222,35 +211,17 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                                 CUDAREAL b[4];
                                                                 CUDAREAL c[4];
 
-                                                                if (mosaic_spread > 0.0) {
-                                                                        CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
-                                                                                           mosaic_umats(mos_tic * 9 + 1),
-                                                                                           mosaic_umats(mos_tic * 9 + 2),
-                                                                                           mosaic_umats(mos_tic * 9 + 3),
-                                                                                           mosaic_umats(mos_tic * 9 + 4),
-                                                                                           mosaic_umats(mos_tic * 9 + 5),
-                                                                                           mosaic_umats(mos_tic * 9 + 6),
-                                                                                           mosaic_umats(mos_tic * 9 + 7),
-                                                                                           mosaic_umats(mos_tic * 9 + 8)};
-
-                                                                        rotate_umat(ap, a, umat);
-                                                                        rotate_umat(bp, b, umat);
-                                                                        rotate_umat(cp, c, umat);
-                                                                } else {
-                                                                        a[1] = ap[1];
-                                                                        a[2] = ap[2];
-                                                                        a[3] = ap[3];
-                                                                        b[1] = bp[1];
-                                                                        b[2] = bp[2];
-                                                                        b[3] = bp[3];
-                                                                        c[1] = cp[1];
-                                                                        c[2] = cp[2];
-                                                                        c[3] = cp[3];
-                                                                }
-
+                                                                a[1] = crystal_orientation(phi_tic, mos_tic, 0);
+                                                                a[2] = crystal_orientation(phi_tic, mos_tic, 1);
+                                                                a[3] = crystal_orientation(phi_tic, mos_tic, 2);
+                                                                b[1] = crystal_orientation(phi_tic, mos_tic, 3);
+                                                                b[2] = crystal_orientation(phi_tic, mos_tic, 4);
+                                                                b[3] = crystal_orientation(phi_tic, mos_tic, 5);
+                                                                c[1] = crystal_orientation(phi_tic, mos_tic, 6);
+                                                                c[2] = crystal_orientation(phi_tic, mos_tic, 7);
+                                                                c[3] = crystal_orientation(phi_tic, mos_tic, 8); 
 
                                                                 // construct fractional Miller indicies
-
                                                                 CUDAREAL h = dot_product(a, scattering);
                                                                 CUDAREAL k = dot_product(b, scattering);
                                                                 CUDAREAL l = dot_product(c, scattering);
@@ -359,14 +330,11 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     const vector_cudareal_t distance, const vector_cudareal_t close_distance,
     const vector_cudareal_t beam_vector,
     const vector_cudareal_t Xbeam, const vector_cudareal_t Ybeam, // not even used, after all the work
-    CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep, int phisteps,
-    const vector_cudareal_t spindle_vector, int sources,
+    CUDAREAL dmin, int phisteps, int sources,
     const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
     const vector_cudareal_t source_Z,
-    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
-    const vector_cudareal_t a0, const vector_cudareal_t b0,
-    const vector_cudareal_t c0, shapetype xtal_shape,
-    int mosaic_domains, const vector_cudareal_t mosaic_umats,
+    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda, shapetype xtal_shape,
+    int mosaic_domains, const ::Kokkos::View<CUDAREAL***> crystal_orientation,
     CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell, CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW,
     CUDAREAL r_e_sqr, CUDAREAL fluence,
     CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form, CUDAREAL default_F,
@@ -378,15 +346,15 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     vector_float_t max_I_x_reduction/*out*/, vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap) {
 
 
-                const int s_h_min = FhklParams.h_min;
-                const int s_k_min = FhklParams.k_min;
-                const int s_l_min = FhklParams.l_min;
-                const int s_h_range = FhklParams.h_range;
-                const int s_k_range = FhklParams.k_range;
-                const int s_l_range = FhklParams.l_range;
-                const int s_h_max = s_h_min + s_h_range - 1;
-                const int s_k_max = s_k_min + s_k_range - 1;
-                const int s_l_max = s_l_min + s_l_range - 1;
+        const int s_h_min = FhklParams.h_min;
+        const int s_k_min = FhklParams.k_min;
+        const int s_l_min = FhklParams.l_min;
+        const int s_h_range = FhklParams.h_range;
+        const int s_k_range = FhklParams.k_range;
+        const int s_l_range = FhklParams.l_range;
+        const int s_h_max = s_h_min + s_h_range - 1;
+        const int s_k_max = s_k_min + s_k_range - 1;
+        const int s_l_max = s_l_min + s_l_range - 1;
 
 // Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
 // 1) mosaicity non-zero positive
@@ -527,16 +495,6 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 
                                                 // sweep over phi angles
                                                 for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
-                                                        CUDAREAL phi = phistep * phi_tic + phi0;
-
-                                                        CUDAREAL ap[4];
-                                                        CUDAREAL bp[4];
-                                                        CUDAREAL cp[4];
-
-                                                        // rotate about spindle if necessary
-                                                        rotate_axis(a0, ap, spindle_vector, phi);
-                                                        rotate_axis(b0, bp, spindle_vector, phi);
-                                                        rotate_axis(c0, cp, spindle_vector, phi);
 
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
@@ -545,22 +503,17 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                                 CUDAREAL b[4];
                                                                 CUDAREAL c[4];
 
-                                                                CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
-                                                                                   mosaic_umats(mos_tic * 9 + 1),
-                                                                                   mosaic_umats(mos_tic * 9 + 2),
-                                                                                   mosaic_umats(mos_tic * 9 + 3),
-                                                                                   mosaic_umats(mos_tic * 9 + 4),
-                                                                                   mosaic_umats(mos_tic * 9 + 5),
-                                                                                   mosaic_umats(mos_tic * 9 + 6),
-                                                                                   mosaic_umats(mos_tic * 9 + 7),
-                                                                                   mosaic_umats(mos_tic * 9 + 8)};
-
-                                                                rotate_umat(ap, a, umat);
-                                                                rotate_umat(bp, b, umat);
-                                                                rotate_umat(cp, c, umat);
+                                                                a[1] = crystal_orientation(phi_tic, mos_tic, 0);
+                                                                a[2] = crystal_orientation(phi_tic, mos_tic, 1);
+                                                                a[3] = crystal_orientation(phi_tic, mos_tic, 2);
+                                                                b[1] = crystal_orientation(phi_tic, mos_tic, 3);
+                                                                b[2] = crystal_orientation(phi_tic, mos_tic, 4);
+                                                                b[3] = crystal_orientation(phi_tic, mos_tic, 5);
+                                                                c[1] = crystal_orientation(phi_tic, mos_tic, 6);
+                                                                c[2] = crystal_orientation(phi_tic, mos_tic, 7);
+                                                                c[3] = crystal_orientation(phi_tic, mos_tic, 8);                                                 
 
                                                                 // construct fractional Miller indicies
-
                                                                 CUDAREAL h = dot_product(a, scattering);
                                                                 CUDAREAL k = dot_product(b, scattering);
                                                                 CUDAREAL l = dot_product(c, scattering);
@@ -801,14 +754,14 @@ void crystal_orientation_kernel(CUDAREAL phi0, CUDAREAL phistep,
 
                         if (mosaic_spread > 0.0) {
                                 CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
-                                                        mosaic_umats(mos_tic * 9 + 1),
-                                                        mosaic_umats(mos_tic * 9 + 2),
-                                                        mosaic_umats(mos_tic * 9 + 3),
-                                                        mosaic_umats(mos_tic * 9 + 4),
-                                                        mosaic_umats(mos_tic * 9 + 5),
-                                                        mosaic_umats(mos_tic * 9 + 6),
-                                                        mosaic_umats(mos_tic * 9 + 7),
-                                                        mosaic_umats(mos_tic * 9 + 8)};
+                                                   mosaic_umats(mos_tic * 9 + 1),
+                                                   mosaic_umats(mos_tic * 9 + 2),
+                                                   mosaic_umats(mos_tic * 9 + 3),
+                                                   mosaic_umats(mos_tic * 9 + 4),
+                                                   mosaic_umats(mos_tic * 9 + 5),
+                                                   mosaic_umats(mos_tic * 9 + 6),
+                                                   mosaic_umats(mos_tic * 9 + 7),
+                                                   mosaic_umats(mos_tic * 9 + 8)};
 
                                 rotate_umat(ap, a, umat);
                                 rotate_umat(bp, b, umat);
