@@ -65,6 +65,8 @@ def nth_power_scale(dataarray, nth_power, is_sigmas=False):
   If nth_power=NaN then an automatic value is computed that maps the smallest
   values to 0.1 of the largest values
   """
+  if type(dataarray) == flex.complex_double:
+    dataarray = flex.abs( dataarray)
   maxdat = flex.max(dataarray)
   mindat = flex.min(dataarray)
   offset = mindat - 0.001 # avoid log(0)

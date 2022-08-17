@@ -686,7 +686,6 @@ newarray._sigmas = sigs
     self.textAlerts.setPlainText("")
     self.fileisvalid = False
     self.MillerComboBox.clear()
-    self.BinDataComboBox.clear()
     self.millertable.clearContents()
     self.expandP1checkbox.setChecked(False)
     self.expandAnomalouscheckbox.setChecked(False)
