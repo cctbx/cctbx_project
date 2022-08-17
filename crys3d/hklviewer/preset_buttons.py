@@ -241,7 +241,7 @@ phenix_buttonsdeflist = [
   # button will become enabled.
   # Pressing this button will expand amplitude data to P1 and slice it with twin axis perpendicular
   # to the screen. One can then step through layers of reflections with the +/- buttons in the GUI
-  ("TwinAxis", "Slice perpendicular to twin axis", """
+  ("TwinAxisampl", "Slice amplitudes perpendicular to twin axis", """
 
           clip_plane {
             hkldist = 0.0
@@ -250,7 +250,7 @@ phenix_buttonsdeflist = [
           }
           viewer {
             data_array {
-              label = "F-obs,SIGF-obs"
+              label = "F,SIGF"
               datatype = "Amplitude"
             }
             show_vector = "['twin', True]"
@@ -266,7 +266,7 @@ phenix_buttonsdeflist = [
 
   """),
 
-  ("TwinAxisparallel", "Slice parallel to twin axis", """
+  ("TwinAxisrotampl", "Rotate amplitudes around twin axis", """
 
           clip_plane {
             clip_width = 10
@@ -274,8 +274,59 @@ phenix_buttonsdeflist = [
           }
           viewer {
             data_array {
-              label = "F-obs,SIGF-obs"
+              label = "F,SIGF"
               datatype = "Amplitude"
+            }
+            show_vector = "['twin', True]"
+            is_parallel = True
+            user_vector {
+              label = "twin"
+            }
+            fixorientation = *vector None
+            animate_rotation_around_vector = "['twin', 2.0]"
+          }
+          hkls {
+            expand_to_p1 = True
+            expand_anomalous = True
+          }
+
+  """),
+
+  ("TwinAxisintens", "Slice intensities perpendicular to twin axis", """
+
+          clip_plane {
+            hkldist = 0.0
+            normal_vector = "twin"
+            clip_width = 0.5
+          }
+          viewer {
+            data_array {
+              label = "I,SIGI"
+              datatype = "Intensity"
+            }
+            show_vector = "['twin', True]"
+            user_vector {
+              label = "twin"
+            }
+            fixorientation = *vector None
+          }
+          hkls {
+            expand_to_p1 = True
+            expand_anomalous = True
+          }
+
+  """),
+
+  ("TwinAxisintensrot", "Rotate intensities around twin axis", """
+
+          clip_plane {
+            clip_width = 10
+            auto_clip_width = False
+          }
+          viewer {
+            data_array {
+              label = "I,SIGI"
+              datatype = "Intensity"
             }
             show_vector = "['twin', True]"
             is_parallel = True

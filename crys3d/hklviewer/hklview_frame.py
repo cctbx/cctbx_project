@@ -1227,7 +1227,7 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn], False, "", None))
+            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
           for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1246,7 +1246,7 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn], False, "", None))
+            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
 
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True

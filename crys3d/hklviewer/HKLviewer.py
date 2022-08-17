@@ -800,7 +800,10 @@ shutil.rmtree("%s")
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
     self.send_message("%s" %xtricorder_cmd, "external_cmd" )
+    self.AddInfoText("Running Xtricorder")
+    self.AddAlertsText("Running Xtricorder")
     self.waiting = True
+
 
 
   def onXtriageRun(self):
@@ -844,6 +847,8 @@ tabname = "Xtriage"
       self.XtricorderBtn.setEnabled(False)
       self.XtriageBtn.setEnabled(False)
       self.send_message("%s" %xtriage_cmd, "external_cmd" )
+      self.AddInfoText("Running Xtriage")
+      self.AddAlertsText("Running Xtriage")
       self.waiting = True
 
 
