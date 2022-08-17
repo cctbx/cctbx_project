@@ -9,12 +9,10 @@ default_steps = [
 ]
 
 from xfel.merging.application.input.file_loader import simple_file_loader
-#class noprune_file_loader(simple_file_loader):
 def prune_reflection_table_keys(self, reflections):
   return reflections # noop
-#import xfel.merging.application.input.file_loader
-#xfel.merging.application.input.file_loader.simple_file_loader = noprune_file_loader
 simple_file_loader.prune_reflection_table_keys = prune_reflection_table_keys
+import sys
 
 integrate_phil_str = '''
   include scope dials.algorithms.integration.integrator.phil_scope
@@ -91,8 +89,10 @@ phil_scope = parse(integrate_phil_str + dispatch_phil + input_phil + output_phil
 import xfel.merging.application.phil.phil
 xfel.merging.application.phil.phil.phil_scope = phil_scope
 
-if __name__ == '__main__':
+def run(args=None):
   from xfel.merging.command_line.merge import Script
   script = Script()
+  result = script.run(args=args)
 
-  result = script.run()
+if __name__ == '__main__':
+  run(sys.argv[1:])

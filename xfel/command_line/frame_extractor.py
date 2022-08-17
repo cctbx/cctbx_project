@@ -257,9 +257,9 @@ def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None)
     name = outname % i
     easy_pickle.dump(os.path.join(outdir, name), frame)
 
-if __name__ == "__main__":
+def run(args=None):
   parser = ArgumentParser(phil=phil_scope)
-  params, options = parser.parse_args(show_diff_phil=True)
+  params, options = parser.parse_args(args=args, show_diff_phil=True)
   if params.output.dirname is not None:
     assert os.path.isdir(params.output.dirname)
   for refl_name, json_name in zip(sorted(glob.glob(params.input.reflections)), sorted(glob.glob(params.input.experiments))):
@@ -269,3 +269,6 @@ if __name__ == "__main__":
     else:
       name = params.output.filename
     construct_frames_from_files(refl_name, json_name, outname=name, outdir=params.output.dirname)
+
+if __name__ == "__main__":
+  run(sys.argv[1:])

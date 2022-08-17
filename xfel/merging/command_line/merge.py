@@ -48,7 +48,7 @@ class Script(object):
   def __del__(self):
     self.mpi_helper.finalize()
 
-  def parse_input(self):
+  def parse_input(self, args=None):
     '''Parse input at rank 0 and broadcast the input parameters and options to all ranks'''
 
     if self.mpi_helper.rank == 0:
@@ -69,7 +69,7 @@ class Script(object):
         epilog=help_message)
 
       # Parse the command line. quick_parse is required for MPI compatibility
-      params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
+      params, options = self.parser.parse_args(args=args,show_diff_phil=True,quick_parse=True)
 
       # Log the modified phil parameters
       diff_phil_str = self.parser.diff_phil.as_str()
@@ -102,7 +102,7 @@ class Script(object):
     self.mpi_logger.log("Received input parameters and options")
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS", True)
 
-  def run(self):
+  def run(self, args=None):
     import datetime
     time_now = datetime.datetime.now()
 
@@ -113,7 +113,7 @@ class Script(object):
     self.mpi_logger.log_step_time("TOTAL")
 
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS")
-    self.parse_input()
+    self.parse_input(args=args)
     self.mpi_logger.log_step_time("PARSE_INPUT_PARAMS", True)
 
     if self.params.mp.debug.cProfile:
@@ -229,8 +229,9 @@ class Script(object):
         if key not in self.params.input.persistent_refl_cols:
           self.params.input.persistent_refl_cols.append(key)
 
+def run(args=None):
+  script = Script()
+  result = script.run(args=args)
 
 if __name__ == '__main__':
-  script = Script()
-
-  result = script.run()
+  run(sys.argv[1:])

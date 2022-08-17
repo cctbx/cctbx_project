@@ -447,12 +447,12 @@ class Script(object):
       script = script_to_expand_over_clusters(
         self.params.refinement.input.experiments[0].replace("FILENAME", self.filename),
         phil_filename,
-        dispatcher_name,
+        dispatcher_name, #XXX
         self.intermediates)
       command = ". %s" % os.path.join(self.params.striping.output_folder, self.intermediates, script)
     else:
-      command = "%s %s" % (dispatcher_name, phil_filename)
-    self.command_sequence.append(command)
+      command = "%s_phil=%s" % (section_tag, phil_filename)
+    self.args_sequence.append(command)
 
   def run(self):
     '''Execute the script.'''
@@ -485,7 +485,7 @@ class Script(object):
 
         # reset for this chunk/stripe
         self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, batch, tag, idx)
-        self.command_sequence = []
+        self.args_sequence = []
 
         # set up the file containing input expts and refls (logging)
         chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
@@ -515,11 +515,7 @@ class Script(object):
 
         # reintegration
         if self.params.reintegration.enable:
-          if self.params.mp.method == 'shifter' or not self.params.mp.mpi_command:
-            self.set_up_section("reintegration", "cctbx.xfel.mpi_integrate", clustering=self.clustering)
-          else:
-            self.set_up_section("reintegration", "%s cctbx.xfel.mpi_integrate"%self.params.mp.mpi_command,
-                clustering=self.clustering)
+          self.set_up_section("reintegration", "cctbx.xfel.mpi_integrate", clustering=self.clustering)
 
         # extract results to integration pickles for merging
         if self.params.postprocessing.enable:
@@ -530,7 +526,10 @@ class Script(object):
 
         # submit queued job from appropriate directory
         os.chdir(self.intermediates)
-        command = " && ".join(self.command_sequence)
+        command = "cctbx.xfel.stripe_experiment_wrapper "
+        if self.params.mp.method != 'shifter' or self.params.mp.mpi_command:
+          command = "%s %s"%(self.params.mp.mpi_command, command)
+        command += " ".join(self.args_sequence)
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:

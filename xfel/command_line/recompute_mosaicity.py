@@ -64,11 +64,11 @@ class Script(object):
       check_format=False,
       epilog=help_message)
 
-  def run(self):
+  def run(self, args=None):
     ''' Parse the options. '''
     from dials.util.options import flatten_experiments, flatten_reflections
     # Parse the command line arguments
-    params, options = self.parser.parse_args(show_diff_phil=True)
+    params, options = self.parser.parse_args(args=args, show_diff_phil=True)
     experiments = flatten_experiments(params.input.experiments)
     reflections = flatten_reflections(params.input.reflections)
     assert len(reflections) == 1
@@ -115,7 +115,10 @@ class Script(object):
         plt.hist(d, bins=30)
       plt.show()
 
+def run(args=None):
+  script = Script()
+  script.run(args=args)
+
 if __name__ == '__main__':
   with show_mail_on_error():
-    script = Script()
-    script.run()
+    run(sys.argv[1:])
