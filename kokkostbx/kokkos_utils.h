@@ -61,7 +61,7 @@ void transfer_double2kokkos(vector_cudareal_t& dst, const double* src, const siz
 template <typename T>
 void transfer_shared2kokkos(view_1d_t<T>& dst, const af::shared<T>& src) {
     if (true) {
-        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data()); 
+        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
         // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
     }
     if (dst.span() < src.size()) {
@@ -87,7 +87,7 @@ void transfer_kokkos2shared(af::shared<T>& dst, const view_1d_t<T>& src) {
 template <typename T>
 void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
     if (true) {
-        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data()); 
+        // printf("== Transfer %s from %p\n", dst.label().c_str(), (void*) dst.data());
         // printf(" - size src|dst: %d|%d\n", src.size(), dst.span() );
     }
     if (dst.span() < src.size()) {
