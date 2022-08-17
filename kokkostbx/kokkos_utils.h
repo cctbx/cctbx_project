@@ -2,6 +2,7 @@
 #define KOKKOS_UTILS_H
 
 #include <vector>
+#include <algorithm>
 
 #include "kokkostbx/kokkos_types.h"
 #include "scitbx/array_family/flex_types.h"
@@ -104,8 +105,9 @@ template <typename T>
 void transfer_kokkos2vector(std::vector<T>& dst, const view_1d_t<T>& src) {
     auto host_view = Kokkos::create_mirror_view(src);
     // printf(" - size src|dst: %d|%d\n", src.span(), dst.size() );
+    const int length = std::min(dst.size(), src.span());
     Kokkos::deep_copy(host_view, src);
-    for (int i = 0; i < host_view.span(); ++i) {
+    for (int i = 0; i < length; ++i) {
         dst[i] = host_view(i);
     }
 }
