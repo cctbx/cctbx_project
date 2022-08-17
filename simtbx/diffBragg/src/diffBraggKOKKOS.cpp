@@ -1,5 +1,5 @@
-#include <cstdio>
 #include <sys/time.h>
+#include <cstdio>
 
 #include "diffBraggKOKKOS.h"
 #include "diffBragg_kokkos_kernel.h"
@@ -25,33 +25,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         exit(-1);
     }
 
-    kokkos_detector local_det(db_det);  
+    kokkos_detector local_det(db_det);
     kokkos_beam local_beam(db_beam);
     kokkos_crystal local_cryst(db_cryst);
-
-    // int numblocks;
-    // int blocksize;
-    // char* diffBragg_blocks = getenv("DIFFBRAGG_NUM_BLOCKS");
-    // char* diffBragg_threads = getenv("DIFFBRAGG_THREADS_PER_BLOCK");
-    // if (diffBragg_threads==NULL)
-    //     blocksize=128;
-    // else
-    //     blocksize=atoi(diffBragg_threads);
-
-    // if (diffBragg_blocks==NULL)
-    //     numblocks = (Npix_to_model+blocksize-1)/blocksize;
-    // else
-    //     numblocks = atoi(diffBragg_blocks);
-
-    // int cuda_devices;
-    // cudaGetDeviceCount(&cuda_devices);
-
-    // error_msg(cudaGetLastError(), "after device count");
-    // if (db_flags.verbose > 1)
-    //     printf("Found %d CUDA-capable devices\n", cuda_devices);
-
-    // //if (device_Id <= cuda_devices)
-    // gpuErr(cudaSetDevice(db_cu_flags.device_Id));
 
     double time;
     struct timeval t1, t2;  //, t3 ,t4;
@@ -110,175 +86,99 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         resize(m_UMATS, local_cryst.UMATS.size());
         resize(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ.size());
         resize(m_AMATS, local_cryst.UMATS_RXYZ.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS, local_cryst.UMATS.size()*sizeof(MAT3)));
-        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ,
-        // local_cryst.UMATS_RXYZ.size()*sizeof(MAT3))); 
-        // gpuErr(cudaMallocManaged((void **)&m_cu_AMATS, local_cryst.UMATS_RXYZ.size()*sizeof(MAT3)));
-        if (local_cryst.UMATS_RXYZ_prime.size() > 0)
+
+        if (local_cryst.UMATS_RXYZ_prime.size() > 0) {
             resize(m_UMATS_RXYZ_prime, local_cryst.UMATS_RXYZ_prime.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ_prime,
-        // local_cryst.UMATS_RXYZ_prime.size()*sizeof(MAT3)));
-        if (local_cryst.UMATS_RXYZ_dbl_prime.size() > 0)
+        }
+
+        if (local_cryst.UMATS_RXYZ_dbl_prime.size() > 0) {
             resize(m_UMATS_RXYZ_dbl_prime, local_cryst.UMATS_RXYZ_dbl_prime.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_UMATS_RXYZ_dbl_prime,
-        // local_cryst.UMATS_RXYZ_dbl_prime.size()*sizeof(MAT3)));
+        }
 
         resize(m_dB_Mats, local_cryst.dB_Mats.size());
         resize(m_dB2_Mats, local_cryst.dB2_Mats.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_dB_Mats,
-        // local_cryst.dB_Mats.size()*sizeof(MAT3)));
-        // gpuErr(cudaMallocManaged((void **)&m_cu_dB2_Mats,
-        // local_cryst.dB2_Mats.size()*sizeof(MAT3)));
 
         resize(m_RotMats, local_cryst.RotMats.size());
         resize(m_dRotMats, local_cryst.dRotMats.size());
         resize(m_d2RotMats, local_cryst.d2RotMats.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_RotMats,
-        // local_cryst.RotMats.size()*sizeof(MAT3)));
-        // gpuErr(cudaMallocManaged((void **)&m_cu_dRotMats,
-        // local_cryst.dRotMats.size()*sizeof(MAT3)));
-        // gpuErr(cudaMallocManaged((void **)&m_cu_d2RotMats,
-        // local_cryst.d2RotMats.size()*sizeof(MAT3)));
 
         resize(m_fdet_vectors, local_det.fdet_vectors.size());
         resize(m_sdet_vectors, local_det.sdet_vectors.size());
         resize(m_odet_vectors, local_det.odet_vectors.size());
         resize(m_pix0_vectors, local_det.pix0_vectors.size());
         resize(m_close_distances, local_det.close_distances.size());
-        // gpuErr(cudaMallocManaged(&m_cu_fdet_vectors,
-        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
-        // gpuErr(cudaMallocManaged(&m_cu_sdet_vectors,
-        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
-        // gpuErr(cudaMallocManaged(&m_cu_odet_vectors,
-        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
-        // gpuErr(cudaMallocManaged(&m_cu_pix0_vectors,
-        // local_det.fdet_vectors.size()*sizeof(CUDAREAL)));
-        // gpuErr(cudaMallocManaged(&m_cu_close_distances,
-        // local_det.close_distances.size()*sizeof(CUDAREAL)));
 
         if (local_cryst.fpfdp.size() > 0) {
             resize(m_fpfdp, local_cryst.fpfdp.size());
             resize(m_atom_data, local_cryst.atom_data.size());
-            // gpuErr(cudaMallocManaged(&m_cu_fpfdp,
-            // local_cryst.fpfdp.size()*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_atom_data,
-            // local_cryst.atom_data.size()*sizeof(CUDAREAL)));
         }
-        if (local_cryst.fpfdp_derivs.size() > 0)
+        if (local_cryst.fpfdp_derivs.size() > 0) {
             resize(m_fpfdp_derivs, local_cryst.fpfdp_derivs.size());
-        // gpuErr(cudaMallocManaged(&m_cu_fpfdp_derivs,
-        // local_cryst.fpfdp_derivs.size()*sizeof(CUDAREAL)));
-
-        // already done this in diffBRaggKOKKOS.h
-        // gpuErr(cudaMallocManaged(&m_cu_refine_Bmat, 6*sizeof(bool)));
-        // gpuErr(cudaMallocManaged(&m_cu_refine_Umat, 3*sizeof(bool)));
-        // gpuErr(cudaMallocManaged(&m_cu_refine_Ncells, 3*sizeof(bool)));
-        // gpuErr(cudaMallocManaged(&m_cu_refine_panel_origin, 3*sizeof(bool)));
-        // gpuErr(cudaMallocManaged(&m_cu_refine_panel_rot, 3*sizeof(bool)));
-        // gpuErr(cudaMallocManaged(&m_cu_refine_lambda, 2*sizeof(bool)));
+        }
 
         resize(m_Fhkl, local_cryst.FhklLinear.size());
-        // gpuErr(cudaMallocManaged(&m_cu_Fhkl,
-        // local_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
-        if (db_flags.complex_miller)
+
+        if (db_flags.complex_miller) {
             resize(m_Fhkl2, local_cryst.FhklLinear.size());
-        // gpuErr(cudaMallocManaged(&m_cu_Fhkl2,
-        // local_cryst.FhklLinear.size()*sizeof(CUDAREAL)));
+        }
 
         resize(m_dF_vecs, local_det.dF_vecs.size());
         resize(m_dS_vecs, local_det.dF_vecs.size());
-        // gpuErr(cudaMallocManaged((void **)&m_cu_dF_vecs,
-        // local_det.dF_vecs.size()*sizeof(VEC3))); gpuErr(cudaMallocManaged((void
-        // **)&m_cu_dS_vecs, local_det.dF_vecs.size()*sizeof(VEC3)));
 
-        // gettimeofday(&t3, 0));
         resize(m_floatimage, db_cu_flags.Npix_to_allocate);
-        // gpuErr(cudaMallocManaged(&m_cu_floatimage,
-        // db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
+
         if (db_flags.wavelength_img) {
             resize(m_wavelenimage, db_cu_flags.Npix_to_allocate);
-            // gpuErr(cudaMallocManaged(&m_cu_wavelenimage,
-            // db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
         }
         if (db_flags.refine_diffuse) {
             resize(m_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate * 3);
             resize(m_d_diffuse_sigma_images, db_cu_flags.Npix_to_allocate * 3);
-            // gpuErr(cudaMallocManaged(&m_cu_d_diffuse_gamma_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_d_diffuse_sigma_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
         }
         if (db_flags.refine_fcell) {
             resize(m_d_fcell_images, db_cu_flags.Npix_to_allocate);
             resize(m_d2_fcell_images, db_cu_flags.Npix_to_allocate);
-            // gpuErr(cudaMallocManaged(&m_cu_d_fcell_images,
-            // db_cu_flags.Npix_to_allocate*1*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_d2_fcell_images,
-            // db_cu_flags.Npix_to_allocate*1*sizeof(CUDAREAL)));
         }
         if (db_flags.refine_eta) {
             resize(m_d_eta_images, db_cu_flags.Npix_to_allocate * 3);
             resize(m_d2_eta_images, db_cu_flags.Npix_to_allocate * 3);
-            // gpuErr(cudaMallocManaged(&m_cu_d_eta_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_d2_eta_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
         }
         if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0) {
             resize(m_d_Umat_images, db_cu_flags.Npix_to_allocate * 3);
             resize(m_d2_Umat_images, db_cu_flags.Npix_to_allocate * 3);
-            // gpuErr(cudaMallocManaged(&m_cu_d_Umat_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
-            // gpuErr(cudaMallocManaged(&m_cu_d2_Umat_images,
-            // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL) ));
         }
         if (std::count(db_flags.refine_Ncells.begin(), db_flags.refine_Ncells.end(), true) > 0 ||
             db_flags.refine_Ncells_def) {
             resize(m_d_Ncells_images, db_cu_flags.Npix_to_allocate * 6);
             resize(m_d2_Ncells_images, db_cu_flags.Npix_to_allocate * 6);
-            // gpuErr(cudaMallocManaged(&m_cu_d_Ncells_images,
-            // db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_d2_Ncells_images,
-            // db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
         if (std::count(db_flags.refine_panel_rot.begin(), db_flags.refine_panel_rot.end(), true) >
-            0)
+            0) {
             resize(m_d_panel_rot_images, db_cu_flags.Npix_to_allocate * 3);
-        // gpuErr(cudaMallocManaged(&m_cu_d_panel_rot_images,
-        // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
+        }
+
         if (std::count(
-                db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) > 0)
+                db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) >
+            0) {
             resize(m_d_panel_orig_images, db_cu_flags.Npix_to_allocate * 3);
-        // gpuErr(cudaMallocManaged(&m_cu_d_panel_orig_images,
-        // db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
-        if (std::count(db_flags.refine_lambda.begin(), db_flags.refine_lambda.end(), true) > 0)
+        }
+
+        if (std::count(db_flags.refine_lambda.begin(), db_flags.refine_lambda.end(), true) > 0) {
             resize(m_d_lambda_images, db_cu_flags.Npix_to_allocate * 2);
-        // gpuErr(cudaMallocManaged(&m_cu_d_lambda_images,
-        // db_cu_flags.Npix_to_allocate*2*sizeof(CUDAREAL)));
+        }
         if (std::count(db_flags.refine_Bmat.begin(), db_flags.refine_Bmat.end(), true) > 0) {
             resize(m_d_Bmat_images, db_cu_flags.Npix_to_allocate * 6);
             resize(m_d2_Bmat_images, db_cu_flags.Npix_to_allocate * 6);
-            // gpuErr(cudaMallocManaged(&m_cu_d_Bmat_images,
-            // db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
-            // gpuErr(cudaMallocManaged(&m_cu_d2_Bmat_images,
-            // db_cu_flags.Npix_to_allocate*6*sizeof(CUDAREAL)));
         }
-        if (db_flags.refine_fp_fdp)
+        if (db_flags.refine_fp_fdp) {
             resize(m_d_fp_fdp_images, db_cu_flags.Npix_to_allocate * 2);
-        // gpuErr(cudaMallocManaged(&m_cu_d_fp_fdp_images,
-        // db_cu_flags.Npix_to_allocate*2*sizeof(CUDAREAL)));
-        if (local_cryst.nominal_hkl.size() > 0)
-            resize(m_nominal_hkl, db_cu_flags.Npix_to_allocate * 3);
-        // gpuErr(cudaMallocManaged(&m_cu_nominal_hkl,
-        // db_cu_flags.Npix_to_allocate*3*sizeof(int)));
+        }
 
-        // gettimeofday(&t4, 0);
-        // time = (1000000.0*(t4.tv_sec-t3.tv_sec) +
-        // t4.tv_usec-t3.tv_usec)/1000.0; printf("TIME SPENT ALLOCATING (IMAGES
-        // ONLY):  %3.10f ms \n", time);
+        if (local_cryst.nominal_hkl.size() > 0) {
+            resize(m_nominal_hkl, db_cu_flags.Npix_to_allocate * 3);
+        }
+
         resize(m_panels_fasts_slows, db_cu_flags.Npix_to_allocate * 3);
-        // gpuErr(cudaMallocManaged(&m_cu_panels_fasts_slows,
-        // db_cu_flags.Npix_to_allocate*3*sizeof(panels_fasts_slows[0])));
+
         m_npix_allocated = db_cu_flags.Npix_to_allocate;
     }  // END of allocation
 
@@ -325,15 +225,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  UMATS
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
-        
         kokkostbx::transfer_vector2kokkos(m_UMATS, local_cryst.UMATS);
-
         kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ, local_cryst.UMATS_RXYZ);
-
         kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_prime, local_cryst.UMATS_RXYZ_prime);
-        
         kokkostbx::transfer_vector2kokkos(m_UMATS_RXYZ_dbl_prime, local_cryst.UMATS_RXYZ_dbl_prime);
-        
+
         if (db_flags.verbose > 1)
             printf("H2D Done copying Umats\n");
     }
@@ -469,33 +365,27 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
         local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
         local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
-        local_cryst.phisteps, local_cryst.UMATS.size(), db_flags.use_lambda_coefficients, local_beam.lambda0,
-        local_beam.lambda1, local_cryst.eig_U, local_cryst.eig_O, local_cryst.eig_B, local_cryst.RXYZ, m_dF_vecs,
-        m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime, m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats,
-        m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats, m_AMATS, m_source_X, m_source_Y, m_source_Z,
-        m_source_lambda, m_source_I, local_beam.kahn_factor, local_cryst.Na, local_cryst.Nb, local_cryst.Nc,
-        local_cryst.Nd, local_cryst.Ne, local_cryst.Nf, local_cryst.phi0, local_cryst.phistep,
-        local_cryst.spindle_vec,
-         local_beam.polarization_axis,
-         local_cryst.h_range,
-         local_cryst.k_range,
-        local_cryst.l_range, local_cryst.h_max, local_cryst.h_min, local_cryst.k_max, local_cryst.k_min,
-        local_cryst.l_max, local_cryst.l_min, local_cryst.dmin, local_cryst.fudge, db_flags.complex_miller,
-        db_flags.verbose, db_flags.only_save_omega_kahn, db_flags.isotropic_ncells,
-        db_flags.compute_curvatures, m_Fhkl, m_Fhkl2, m_refine_Bmat, m_refine_Ncells,
-        db_flags.refine_Ncells_def, m_refine_panel_origin, m_refine_panel_rot,
-        db_flags.refine_fcell, m_refine_lambda, db_flags.refine_eta, m_refine_Umat, m_fdet_vectors,
-        m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
-        local_beam.fluence, local_cryst.r_e_sqr, local_cryst.spot_scale, Npanels, aniso_eta,
-        db_flags.no_Nabc_scale, m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms,
-        db_flags.refine_fp_fdp,
-         m_nominal_hkl,
-         use_nominal_hkl,
-         local_cryst.anisoU, 
-        local_cryst.anisoG,
-        db_flags.use_diffuse, m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
-        db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
-        db_flags.wavelength_img);
+        local_cryst.phisteps, local_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
+        local_beam.lambda0, local_beam.lambda1, local_cryst.eig_U, local_cryst.eig_O,
+        local_cryst.eig_B, local_cryst.RXYZ, m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
+        m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
+        m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+        local_beam.kahn_factor, local_cryst.Na, local_cryst.Nb, local_cryst.Nc, local_cryst.Nd,
+        local_cryst.Ne, local_cryst.Nf, local_cryst.phi0, local_cryst.phistep,
+        local_cryst.spindle_vec, local_beam.polarization_axis, local_cryst.h_range,
+        local_cryst.k_range, local_cryst.l_range, local_cryst.h_max, local_cryst.h_min,
+        local_cryst.k_max, local_cryst.k_min, local_cryst.l_max, local_cryst.l_min,
+        local_cryst.dmin, local_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
+        db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
+        m_Fhkl, m_Fhkl2, m_refine_Bmat, m_refine_Ncells, db_flags.refine_Ncells_def,
+        m_refine_panel_origin, m_refine_panel_rot, db_flags.refine_fcell, m_refine_lambda,
+        db_flags.refine_eta, m_refine_Umat, m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+        m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
+        local_cryst.r_e_sqr, local_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
+        m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, db_flags.refine_fp_fdp, m_nominal_hkl,
+        use_nominal_hkl, local_cryst.anisoU, local_cryst.anisoG, db_flags.use_diffuse,
+        m_d_diffuse_gamma_images, m_d_diffuse_sigma_images, db_flags.refine_diffuse,
+        db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img);
 
     ::Kokkos::fence("after kernel call");
 
