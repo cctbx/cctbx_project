@@ -26,11 +26,11 @@ struct format_e
     if(std::fabs(val)<1e-99) val=0.;
 #if !defined(BOOST_MSVC) || BOOST_MSVC > 1500 // VC++ 9.0
     s = buf;
-    std::sprintf(buf, fmt, val);
+    std::snprintf(buf, sizeof(buf), fmt, val);
     if (*(s + Width)) throw_error();
 #else
     s = buf + 1;
-    std::sprintf(s, fmt, val);
+    std::snprintf(s, sizeof(s), fmt, val);
     char* p = s + Width;
     if (*p) {
       p++;

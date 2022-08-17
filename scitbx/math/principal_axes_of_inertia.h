@@ -18,7 +18,7 @@ namespace scitbx { namespace math {
       long where_line_number)
     {
       char buf[256];
-      std::sprintf(buf,
+      std::snprintf(buf, sizeof(buf),
         "weight=%.6g is negative (must be >=0) (%s, line %ld)",
         weight, where_file_name, where_line_number);
       return std::string(buf);

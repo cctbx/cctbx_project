@@ -21,7 +21,7 @@ namespace cctbx { namespace sgtbx {
     to_str(int value)
     {
       char buf[256];
-      sprintf(buf, "%d", value);
+      snprintf(buf, sizeof(buf), "%d", value);
       return string(buf);
     }
 

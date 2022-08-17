@@ -726,8 +726,10 @@ namespace {
     else {
       copy_left_justified(result+27, 3U, 0, 0U, blank);
       char *r = result + 30;
+      // the buffer size in std::snprintf is limited to 640 bytes for
+      // the 80 column PDB format
       for(unsigned i=0;i<3;i++) {
-        std::sprintf(r, "%8.3f", std::min(std::max(-1.e7, data->xyz[i]), 1.e8));
+        std::snprintf(r, 640U, "%8.3f", std::min(std::max(-1.e7, data->xyz[i]), 1.e8));
         if (r[8] != '\0' && r[5] != '.' && r[6] != '.' && r[7] != '.') {
           throw std::runtime_error(
             std::string("atom ") + "XYZ"[i] + " coordinate value"
@@ -737,7 +739,7 @@ namespace {
         }
         r += 8;
       }
-      std::sprintf(r, "%6.2f", std::min(std::max(-1.e5, data->occ), 1.e6));
+      std::snprintf(r, 640U, "%6.2f", std::min(std::max(-1.e5, data->occ), 1.e6));
       if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
           std::string("atom occupancy factor does not fit into F6.2 format:\n")
@@ -745,7 +747,7 @@ namespace {
           + "  occupancy factor: " + (boost::format("%.2f") % data->occ).str());
       }
       r += 6;
-      std::sprintf(r, "%6.2f", std::min(std::max(-1.e5, data->b), 1.e6));
+      std::snprintf(r, 640U, "%6.2f", std::min(std::max(-1.e5, data->b), 1.e6));
       if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
           std::string("atom B-factor does not fit into F6.2 format:\n")
@@ -770,7 +772,7 @@ namespace {
     copy_left_justified(result+27, 3U, 0, 0U, blank);
     char *r = result + 30;
     for(unsigned i=0;i<3;i++) {
-      std::sprintf(r, "%8.3f", std::min(std::max(-1.e7, data->sigxyz[i]),1.e8));
+      std::snprintf(r, 640U, "%8.3f", std::min(std::max(-1.e7, data->sigxyz[i]),1.e8));
       if (r[8] != '\0' && r[5] != '.' && r[6] != '.' && r[7] != '.') {
         throw std::runtime_error(
           std::string("atom sigma ") + "XYZ"[i] + " coordinate value"
@@ -780,7 +782,7 @@ namespace {
       }
       r += 8;
     }
-    std::sprintf(r, "%6.2f", std::min(std::max(-1.e5, data->sigocc), 1.e6));
+    std::snprintf(r, 640U, "%6.2f", std::min(std::max(-1.e5, data->sigocc), 1.e6));
     if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
       throw std::runtime_error(std::string(
           "atom sigma occupancy factor does not fit into F6.2 format:\n")
@@ -789,7 +791,7 @@ namespace {
         + (boost::format("%.2f") % data->sigocc).str());
     }
     r += 6;
-    std::sprintf(r, "%6.2f", std::min(std::max(-1.e5, data->sigb), 1.e6));
+    std::snprintf(r, 640U, "%6.2f", std::min(std::max(-1.e5, data->sigb), 1.e6));
     if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
       throw std::runtime_error(std::string(
           "atom sigma B-factor does not fit into F6.2 format:\n")
@@ -832,7 +834,7 @@ namespace {
     char *r = result + 28;
     for(unsigned i=0;i<6;i++) {
       double value = data->uij[i]*10000.;
-      std::sprintf(r, "%7.0f", std::min(std::max(-1.e7, value), 1.e8));
+      std::snprintf(r, 640U, "%7.0f", std::min(std::max(-1.e7, value), 1.e8));
       r += 7;
       if (*r != '\0') throw_f70_error(i, value, result, "");
     }
@@ -857,7 +859,7 @@ namespace {
         -1
 #endif
         *10000.;
-      std::sprintf(r, "%7.0f", std::min(std::max(-1.e7, value), 1.e8));
+      std::snprintf(r, 640U, "%7.0f", std::min(std::max(-1.e7, value), 1.e8));
       r += 7;
       if (*r != '\0') throw_f70_error(i, value, result, "sigma ");
     }

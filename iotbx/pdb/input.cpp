@@ -19,7 +19,7 @@ namespace iotbx { namespace pdb {
     }
     if (error_line_number_ != 0) {
       char buf[64];
-      std::sprintf(buf, "line %u", error_line_number_);
+      std::snprintf(buf, sizeof(buf), "line %u", error_line_number_);
       result += buf;
     }
     if (result.size() == 0) {

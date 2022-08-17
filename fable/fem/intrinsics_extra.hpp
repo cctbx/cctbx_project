@@ -30,7 +30,7 @@ namespace fem {
     std::time_t now = std::time(0);
     std::tm const* tm(std::localtime(&now));
     str<10> buf;
-    std::sprintf(buf.elems, "%02d-%s-%02d",
+    std::snprintf(buf.elems, sizeof(buf.elems), "%02d-%s-%02d",
       tm->tm_mday,
       months[tm->tm_mon],
       tm->tm_year % 100);
@@ -45,7 +45,7 @@ namespace fem {
     std::time_t now = std::time(0);
     std::tm const* tm(std::localtime(&now));
     str<10> buf;
-    std::sprintf(buf.elems, "%02d:%02d:%02d",
+    std::snprintf(buf.elems, sizeof(buf.elems), "%02d:%02d:%02d",
       tm->tm_hour,
       tm->tm_min,
       tm->tm_sec);

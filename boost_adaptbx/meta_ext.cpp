@@ -606,7 +606,7 @@ namespace {
           /* For performance, we don't want to call
              PyOS_snprintf here (extra layers of
              function call). */
-          sprintf(p, "\\x%02x", c & 0xff);
+          snprintf(p, sizeof(p), "\\x%02x", c & 0xff);
           p += 4;
         }
         else

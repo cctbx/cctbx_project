@@ -250,7 +250,7 @@ namespace iotbx { namespace pdb {
     if (!truncate_to_fit && *s != '\0') {
       for(i=1U; s[i] != '\0'; i++);
       char buf[128];
-      std::sprintf(buf,
+      std::snprintf(buf, sizeof(buf),
         "string is too long for target variable"
         " (maximum length is %u character%s, %u given).",
           capacity(), (capacity() == 1U ? "" : "s"), N+i);

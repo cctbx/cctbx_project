@@ -184,7 +184,7 @@ namespace cctbx { namespace xray {
       FloatType d = b_all * b_all * b_all;
       if (d <= 0) {
         char buf[80];
-        std::sprintf(buf,
+        std::snprintf(buf, sizeof(buf),
           "isotropic_3d_gaussian_fourier_transform: b_all=%.6g", b_all);
         throw CCTBX_ERROR(buf);
       }

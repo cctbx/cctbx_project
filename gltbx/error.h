@@ -49,7 +49,7 @@ namespace gltbx {
       std::string const& msg)
     {
       char buf[64];
-      std::sprintf(buf, "%ld", line);
+      std::snprintf(buf, sizeof(buf), "%ld", line);
       std::string result = std::string(file) + "(" + buf + ")";
       if (msg.size()) result += std::string(": ") + msg;
       return result;

@@ -33,7 +33,7 @@ public:
 };
 inline const char* SpotError::what() const throw() {
   char m[120];
-  sprintf (m,"%s\n",s.c_str());
+  snprintf (m,sizeof(m),"%s\n",s.c_str());
   std::string mess(m);
   return mess.c_str();
 }

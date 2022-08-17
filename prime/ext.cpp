@@ -256,7 +256,7 @@ namespace prime {
 
         // log
         char buf[512];
-        sprintf(buf, "Reflection: %d,%d,%d\nmeanI    medI  sigI_est sigI_true delta_sigI   n_refl\n",current_index[0],current_index[1],current_index[2]);
+        snprintf(buf, sizeof(buf), "Reflection: %d,%d,%d\nmeanI    medI  sigI_est sigI_true delta_sigI   n_refl\n",current_index[0],current_index[1],current_index[2]);
         txt_obs_out << buf;
         scitbx::af::shared<double> I_full_group_copy;
         for (int i = 0; i < I_full_group.size(); i++)
@@ -270,7 +270,7 @@ namespace prime {
         //if (I_full_group.size() > 1)
         std_I = basic_stat.biased_standard_deviation; // based on what I think numpy is doing compared to basic_statistics
 
-        sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
+        snprintf(buf, sizeof(buf), "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
         txt_obs_out << buf;
 
         //reject outliers
@@ -300,7 +300,7 @@ namespace prime {
               double I_full_as_sigma = (I_full_group[i] - median_I) / std_I;
               if (std::abs(I_full_as_sigma) > sigma_max_) {
                 char buf[512];
-                sprintf(buf, "%s %3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
+                snprintf(buf, sizeof(buf), "%s %3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
                   double(current_index_ori[i][0]), double(current_index_ori[i][1]), double(current_index_ori[i][2]), I_group[i], sigI_group[i]);
                 txt_reject_out_group << buf;
               }
@@ -325,7 +325,7 @@ namespace prime {
             valid_ptrs = valid_ptrs_filtered;
 
             char buf[512];
-            sprintf(buf, "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
+            snprintf(buf, sizeof(buf), "%6.2f %6.2f %8.2f %8.0f\n", mean_I, median_I, std_I, double(I_full_group.size()));
             txt_obs_out << buf;
 
             if (I_full_group.size() <= 3)
@@ -450,18 +450,18 @@ namespace prime {
           txt_obs_out << "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     I_full     sigI_full\n";
           for (int i = 0; i < I_full_group.size(); i++) {
             char buf[512];
-            sprintf(buf, "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n",
+            snprintf(buf, sizeof(buf), "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n",
               I_group[i],sigI_group[i],1/G_[valid_ptrs[i]],B_[valid_ptrs[i]],p_set_[valid_ptrs[i]],rs_set_[valid_ptrs[i]],
               wavelength_set_[valid_ptrs[i]],mosaic_radian_set[valid_ptrs[i]]*180/scitbx::constants::pi,SE_norm[i],
               I_full_group[i],sigI_full[i]);
             txt_obs_out << buf;
           }
           char buf[512];
-          sprintf(buf, "Merged I, sigI: %6.2f, %6.2f\n",I_avg,sigI_avg);
+          snprintf(buf, sizeof(buf), "Merged I, sigI: %6.2f, %6.2f\n",I_avg,sigI_avg);
           txt_obs_out << buf;
-          sprintf(buf, "Rmeas: %6.2f Qw: %6.2f\n",r_meas,r_meas_w);
+          snprintf(buf, sizeof(buf), "Rmeas: %6.2f Qw: %6.2f\n",r_meas,r_meas_w);
           txt_obs_out << buf;
-          sprintf(buf, "No. total observed: %4.0f No. after rejection: %4.0f\n", double(obs_ptr-obs_ptr_start), double(I_full_group.size()));
+          snprintf(buf, sizeof(buf), "No. total observed: %4.0f No. after rejection: %4.0f\n", double(obs_ptr-obs_ptr_start), double(I_full_group.size()));
           txt_obs_out << buf;
           txt_obs_out << "List of rejected observations:\n";
           txt_obs_out << txt_reject_out_group.str();
@@ -602,4 +602,3 @@ BOOST_PYTHON_MODULE(prime_ext)
   prime::boost_python::export_average_mode();
 
 }
-

@@ -299,7 +299,7 @@ namespace cctbx { namespace xray {
       for(unsigned i_coor=0;i_coor<coordinates.size();i_coor++) {
         if (fmt) {
           char buf[40];
-          std::sprintf(buf, fmt, i_coor);
+          std::snprintf(buf, sizeof(buf), fmt, i_coor);
           new_scatterer.label = scatterer.label + buf;
         }
         new_scatterer.site = coordinates[i_coor];

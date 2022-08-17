@@ -22,7 +22,7 @@ namespace gamma {
   {
     if (x>=141.691) {
       char buf[128];
-      std::sprintf(buf, "gamma::complete_lanczos(%.6g): domain error", x);
+      std::snprintf(buf, sizeof(buf), "gamma::complete_lanczos(%.6g): domain error", x);
       throw error(buf);
     }
     typedef FloatType f_t;
@@ -71,7 +71,7 @@ namespace gamma {
   {
     if (x>=171.624) {
       char buf[128];
-      std::sprintf(buf, "gamma::complete_minimax(%.6g): domain error", x);
+      std::snprintf(buf, sizeof(buf), "gamma::complete_minimax(%.6g): domain error", x);
       throw error(buf);
     }
     return std::exp( log_complete_minimax(x) );
@@ -118,7 +118,7 @@ namespace gamma {
       }
     }
     char buf[256];
-    std::sprintf(buf,
+    std::snprintf(buf, sizeof(buf),
       "gamma::incomplete_series(a=%.6g, x=%.6g, max_iterations=%u)"
       " failed to converge", a, x, max_iterations);
     throw error(buf);
@@ -155,7 +155,7 @@ namespace gamma {
       }
     }
     char buf[256];
-    std::sprintf(buf,
+    std::snprintf(buf, sizeof(buf),
       "gamma::incomplete_continued_fraction(a=%.6g, x=%.6g, max_iterations=%u)"
       " failed to converge", a, x, max_iterations);
     throw error(buf);

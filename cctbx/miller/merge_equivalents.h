@@ -189,7 +189,7 @@ namespace cctbx { namespace miller {
             return *incompatible_flags_replacement;
           }
           char buf[128];
-          std::sprintf(buf,
+          std::snprintf(buf, sizeof(buf),
             "merge_equivalents_exact:"
             " incompatible flags for hkl = (%d, %d, %d)",
             current_index[0], current_index[1], current_index[2]);
