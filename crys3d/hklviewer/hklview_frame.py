@@ -392,7 +392,6 @@ class HKLViewFrame() :
       if lastmsgtype=="preset_philstr" and jsview_3d.has_phil_path(new_phil, "scene_id"):
         currentNGLscope = self.currentphil.extract().NGL
         currentSelectInfoscope = self.currentphil.extract().selected_info
-        self.ResetPhil()
 
       if not new_phil:
         new_phil = master_phil.format(python_object = self.params)

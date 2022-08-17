@@ -873,7 +873,7 @@ tabname = "Xtriage"
           self.send_message(str(self.chimeraxsession.HKLviewer.clipper_crystdict),
                             msgtype="clipper_crystdict")
 
-      if self.waiting and (time.monotonic() - 1) > self.lastwaittime:
+      if self.waiting and (time.monotonic() - 0.5) > self.lastwaittime:
         self.lastwaittime = time.monotonic() # reassure the user we have not crashed
         self.AddInfoText(".")
         self.AddAlertsText(".")
