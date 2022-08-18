@@ -894,6 +894,9 @@ class DataModeler:
                 Fhkl_channel_ids[sel] = i_channel
             self.SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
 
+        # iterating over this dict is time-consuming when refinine Fhkl, so we split up the names here:
+        self.SIM.non_fhkl_params = [name for name in P if not name.startswith("scale_roi") and not name.startswith("Fhkl_")]
+        self.SIM.scale_roi_names = [name for name in P if name.startswith("scale_roi")]
         self.SIM.P = P
         # TODO , fix this attribute hacking
         self.SIM.roi_id_unique = self.roi_id_unique
@@ -1171,7 +1174,6 @@ class DataModeler:
                 scale_facs = []
                 scale_vars = []
                 for i_hkl in inds_chan:
-
                     asu = idx_to_asu[i_hkl]
                     p = self.SIM.P["Fhkl_%d_channel%d" % (i_hkl, i_chan)]
                     scale_fac = p.get_val(x[p.xpos])
@@ -1364,7 +1366,6 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         current_Fhkl_xvals = x[SIM.Fhkl_xpos_slice]
         SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(current_Fhkl_xvals-1)
         SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales, SIM.num_Fhkl_channels)
-        #print("mean scales=%f, std scales=%f" % (np.mean(SIM.Fhkl_scales), np.std(SIM.Fhkl_scales)))
 
     # get the unit cell variables
     nucell = len(SIM.ucell_man.variables)
@@ -1455,7 +1456,6 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
             roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
 
     for i_xtal in range(SIM.num_xtals):
-        SIM.D.raw_pixels_roi *= 0
 
         if hasattr(SIM, "Umatrices"):  # reflects new change for modeling multi-crystal experiments
             SIM.D.Umatrix = SIM.Umatrices[i_xtal]
@@ -1770,9 +1770,7 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
     restraint_terms = {}
     if params.use_restraints:
         # scale factor restraint
-        for name in SIM.P:
-            if name.startswith("scale_roi") or name.startswith("Fhkl_"):
-                continue  # No restraints for the per-spot roi scale factors
+        for name in SIM.non_fhkl_params:
             p = SIM.P[name]
             val = p.get_restraint_val(x[p.xpos])
             restraint_terms[name] = val
@@ -1788,7 +1786,7 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
             del_Nvol = params.centers.Nvol - Nvol
             fN_vol = .5*del_Nvol**2/params.betas.Nvol
             restraint_terms["Nvol"] = fN_vol
-        if params.betas.Fhkl is not None:
+        if params.betas.Fhkl is not None:  # (experimental)
             terms = SIM.Io**2 * (SIM.Fhkl_scales-1)**2 / params.betas.Fhkl
             f_Fhkl = 0.5*np.sum(terms)
             restraint_terms["Fhkl"] = f_Fhkl
@@ -1815,20 +1813,21 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
         common_grad_term = common_grad_term_all[trusted]
 
         g = np.zeros(Jac.shape[0])
-        for name ,p in SIM.P.items():
-            if not p.refine or name.startswith("Fhkl_"):
-                continue
+        for name in SIM.non_fhkl_params:
+            p = SIM.P[name]
             Jac_p = Jac[p.xpos]
+            g[p.xpos] += (Jac_p[trusted] * common_grad_term).sum()
 
-            if name.startswith("scale_roi"):
+        if not params.fix.perRoiScale:
+            for name in SIM.scale_roi_names:
+                p = SIM.P[name]
+                Jac_p = Jac[p.xpos]
                 roi_id = int(p.name.split("scale_roi")[1])
                 slc = SIM.roi_id_slices[roi_id][0]
                 common_grad_slc = common_grad_term_all[slc]
                 Jac_slc = Jac_p[slc]
                 trusted_slc = trusted[slc]
-                g[p.xpos] += (Jac_slc*common_grad_slc)[trusted_slc].sum()
-            else:
-                g[p.xpos] += (Jac_p[trusted]*common_grad_term).sum()
+                g[p.xpos] += (Jac_slc * common_grad_slc)[trusted_slc].sum()
 
         # trusted pixels portion of Jacobian
         #  TODO: determine if this following method of summing over g is optimal in certain scenarios
@@ -1838,10 +1837,14 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
 
         if params.use_restraints:
             # update gradients according to restraints
-            for name, p in SIM.P.items():
-                if name.startswith("Fhkl_"):
-                    continue
+            for name in SIM.non_fhkl_params:
+                p = SIM.P[name]
                 g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
+
+            if not params.fix.perRoiScale:
+                for name in SIM.scale_roi_names:
+                    p = SIM.P[name]
+                    g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if params.centers.Nvol is not None:
                 Nmat_inv = np.linalg.inv(Nmat)
