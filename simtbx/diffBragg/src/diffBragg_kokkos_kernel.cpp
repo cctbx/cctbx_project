@@ -209,7 +209,7 @@ void kokkos_sum_over_steps(
 
     const MAT3 Bmat_realspace = eig_B * 1e10;
     const MAT3 eig_Otranspose = eig_O.transpose();
-    const MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
+    const MAT3 Amat_init = eig_U.dot(Bmat_realspace.dot(eig_Otranspose));
     const MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
     const double NABC_det = _NABC.determinant();  // TODO is this slow ?
     const double NABC_det_sq = NABC_det * NABC_det;
