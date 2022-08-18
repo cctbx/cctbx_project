@@ -459,6 +459,7 @@ void gpu_sum_over_steps(
     __shared__ bool s_no_Nabc_scale;
     __shared__ bool s_compute_curvatures;
     __shared__ MAT3 s_Ot;
+    __shared__ MAT3 Ainv;
     __shared__ bool s_refine_diffuse;
     __shared__ bool s_gamma_miller_units;
     __shared__ MAT3 _NABC;
@@ -527,6 +528,7 @@ void gpu_sum_over_steps(
         Bmat_realspace = eig_B*1e10;
         s_Ot = eig_O.transpose();
         Amat_init = eig_U*Bmat_realspace*s_Ot;
+        Ainv = eig_U*(Bmat_realspace.transpose().inverse())* (eig_O.inverse());
         _NABC << Na,Nd,Nf,
                 Nd,Nb,Ne,
                 Nf,Ne,Nc;
@@ -776,8 +778,8 @@ void gpu_sum_over_steps(
             //CUDAREAL I_latt_diffuse = 0;
             double step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
-              MAT3 Amat = UBO;
-              MAT3 Ainv = UBO.inverse();
+              //MAT3 Amat = UBO;
+              //MAT3 Ainv = UBO.inverse();
               // loop over laue matrices
               MAT3 Ginv = anisoG_local.inverse();
               CUDAREAL anisoG_determ = anisoG_local.determinant();
@@ -786,11 +788,11 @@ void gpu_sum_over_steps(
                   for (int ll=0; ll <1; ll++){
                     for ( int iL = 0; iL < num_laue_mats; iL++ ){
                       VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                      VEC3 Q0 = UMATS_RXYZ[_mos_tic].transpose()*Ainv*laue_mats[iL]*H0_offset;
+                      VEC3 Q0 = Ainv*laue_mats[iL]*H0_offset;
                       CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU_local*Q0);
                       CUDAREAL dwf = exp(-exparg);
                       VEC3 delta_H_offset = H_vec - H0_offset;
-                      VEC3 delta_Q = UMATS_RXYZ[_mos_tic].transpose()*Ainv*laue_mats[iL]*delta_H_offset;
+                      VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
                       VEC3 anisoG_q = anisoG_local*delta_Q;
 
                       CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
