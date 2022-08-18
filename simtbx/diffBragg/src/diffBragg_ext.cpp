@@ -195,6 +195,14 @@ namespace boost_python { namespace {
     return diffBragg.Umatrix;
   }
 
+  void set_laue_group_num(simtbx::nanoBragg::diffBragg& diffBragg, int value){
+    diffBragg.db_cryst.laue_group_num = value;
+  }
+
+  int get_laue_group_num(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.db_cryst.laue_group_num;
+  }
+
   void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Umatrix = value;
     diffBragg.db_cryst.eig_U << value[0], value[1], value[2],
@@ -595,6 +603,11 @@ namespace boost_python { namespace {
              make_function(&get_U,rbv()),
              make_function(&set_U,dcp()),
              "rotation portion of Amatrix (dxtbx format, C.get_U())")
+
+      .add_property("laue_group_num",
+             make_function(&get_laue_group_num,rbv()),
+             make_function(&set_laue_group_num,dcp()),
+             "relevant for diffuse model only. an integer (1-11) specifying the laue group number to assign transformation operators")
 
       .add_property("Bmatrix",
              make_function(&get_B,rbv()),

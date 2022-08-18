@@ -444,7 +444,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell, bool save_wavelenimage)
+        bool refine_Icell, bool save_wavelenimage, int laue_group_num)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -578,9 +578,8 @@ void gpu_sum_over_steps(
 
         anisoG_local = anisoG;
         anisoU_local = anisoU;
-        int laue_group_num = 5;
         num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
-	for (int iL = 0; iL < num_laue_mats; iL++) laue_mats[iL] = laue_mats[iL].transpose();
+        for (int iL = 0; iL < num_laue_mats; iL++) laue_mats[iL] = laue_mats[iL].transpose();
         // anisoG_local = anisoG;
         for (int i_gam=0; i_gam<3; i_gam++){
           dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
@@ -821,21 +820,6 @@ void gpu_sum_over_steps(
                 }
               }
             }
-            //CUDAREAL I_latt_diffuse = 0;
-            //if (use_diffuse){
-            //    MAT3 Ainv = UBO.inverse();
-            //    VEC3 Q0 = Ainv*H0;
-            //    CUDAREAL exparg_diffuse = 4*M_PI*M_PI*Q0.dot(anisoU*Q0);
-            //    //CUDAREAL dwf = exp(-exparg_diffuse);
-
-            //    VEC3 delta_Q = Ainv*delta_H;
-            //    VEC3 anisoG_q = anisoG*delta_Q;
-            //    I_latt_diffuse = 4.*M_PI*anisoG.determinant() /
-            //            (1.+ anisoG_q.dot(anisoG_q)* 4*M_PI*M_PI);
-            //    if (exparg_diffuse  < .5) // only valid up to a point
-            //        I_latt_diffuse *= (exparg_diffuse);
-            //    I0 += I_latt_diffuse;
-            //}
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;

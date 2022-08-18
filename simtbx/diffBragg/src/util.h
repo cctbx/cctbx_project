@@ -105,6 +105,7 @@ struct flags{
 };
 
 struct crystal{
+    int laue_group_num=5;
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
