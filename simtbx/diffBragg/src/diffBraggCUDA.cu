@@ -498,7 +498,7 @@ void diffBragg_sum_over_steps_cuda(
         db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse,
         cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images,
         db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
-        db_flags.wavelength_img,
+        db_flags.wavelength_img, db_cryst.laue_group_num,
         db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(), db_flags.Fhkl_have_scale_factors,
         db_cryst.Num_ASU,
         cp.data_residual, cp.data_variance,
