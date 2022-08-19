@@ -585,18 +585,25 @@ def merge_and_renumber_everything(hierarchy, current_resno = 1):
 
 
 def renumber_residues(hierarchy, first_resno = 1,
-    fixed_offset = False):
+    fixed_offset = False, increment_if_insertion_code = True):
 
   if fixed_offset:
     offset = None
-    assert first_resno is not None
+    last_resno = None
     for model in hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
+          if first_resno is None:
+            first_resno = rg.resseq_as_int()
           if offset is None:
             offset = first_resno - rg.resseq_as_int()
           current_resno = rg.resseq_as_int() + offset
+          if current_resno == last_resno  and increment_if_insertion_code:
+            offset += 1
+            current_resno += 1
+          prev = rg.resseq
           rg.resseq = resseq_encode(current_resno)
+          last_resno = current_resno
     return
 
   # Usual
@@ -608,7 +615,6 @@ def renumber_residues(hierarchy, first_resno = 1,
           current_resno = rg.resseq_as_int()
         rg.resseq = resseq_encode(current_resno)
         current_resno += 1
-
 
 def create_new_hierarchy():
   import iotbx.pdb
