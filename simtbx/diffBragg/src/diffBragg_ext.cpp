@@ -203,6 +203,14 @@ namespace boost_python { namespace {
     return diffBragg.db_cryst.laue_group_num;
   }
 
+  void set_stencil_size(simtbx::nanoBragg::diffBragg& diffBragg, int value){
+    diffBragg.db_cryst.stencil_size = value;
+  }
+
+  int get_stencil_size(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.db_cryst.stencil_size;
+  }
+
   void set_U(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
     diffBragg.Umatrix = value;
     diffBragg.db_cryst.eig_U << value[0], value[1], value[2],
@@ -607,7 +615,12 @@ namespace boost_python { namespace {
       .add_property("laue_group_num",
              make_function(&get_laue_group_num,rbv()),
              make_function(&set_laue_group_num,dcp()),
-             "relevant for diffuse model only. an integer (1-11) specifying the laue group number to assign transformation operators")
+             "relevant for diffuse model only. an integer (1-13) specifying the laue group number to assign transformation operators")
+
+      .add_property("stencil_size",
+             make_function(&get_stencil_size,rbv()),
+             make_function(&set_stencil_size,dcp()),
+             "relevant for diffuse model only. an integer specifying the number of additional reflections to include along each direction")
 
       .add_property("Bmatrix",
              make_function(&get_B,rbv()),

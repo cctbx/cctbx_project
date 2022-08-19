@@ -444,7 +444,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell, bool save_wavelenimage, int laue_group_num)
+        bool refine_Icell, bool save_wavelenimage, int laue_group_num, int stencil_size)
 { // BEGIN GPU kernel
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -496,7 +496,7 @@ void gpu_sum_over_steps(
     __shared__ MAT3 dG_dgam[3];
     __shared__ int num_laue_mats;
     __shared__ int dhh, dkk, dll;
-
+    __shared__ CUDAREAL four_mpi_sq;
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
@@ -594,7 +594,8 @@ void gpu_sum_over_steps(
             dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
           }
         }
-	dhh = dkk = dll = 0; // Limits of stencil for diffuse calc
+	four_mpi_sq = 4.*M_PI*M_PI;
+	dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -768,7 +769,7 @@ void gpu_sum_over_steps(
             CUDAREAL _hrad_sqr = V.dot(V);
             CUDAREAL exparg = _hrad_sqr*C/2;
             CUDAREAL I0 =0;
-
+	    
             if (exparg< 35)
                 if (s_no_Nabc_scale)
                     I0 = exp(-2*exparg);
@@ -777,7 +778,7 @@ void gpu_sum_over_steps(
 
             // are we doing diffuse scattering
             //CUDAREAL I_latt_diffuse = 0;
-            double step_diffuse_param[6]  = {0,0,0,0,0,0};
+            CUDAREAL step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
               //MAT3 Amat = UBO;
               //MAT3 Ainv = UBO.inverse();
@@ -791,6 +792,8 @@ void gpu_sum_over_steps(
               for (int hh=-dhh; hh <= dhh; hh++){
                 for (int kk=-dkk; kk <= dkk; kk++){
                   for (int ll=-dll; ll <= dll; ll++){
+		    CUDAREAL ID_this = 0;
+		    CUDAREAL step_diffuse_param_this[6]  = {0,0,0,0,0,0};
 		    int Fhkl_linear_index_this = (_h0+hh-s_h_min) * s_k_range * s_l_range + (_k0+kk-s_k_min) * s_l_range + (_l0+ll-s_l_min);
                 //_F_cell = __ldg(&_FhklLinear[Fhkl_linear_index]);
 		    CUDAREAL _F_cell_this = _FhklLinear[Fhkl_linear_index_this];
@@ -802,41 +805,48 @@ void gpu_sum_over_steps(
 		    }
 		    _this_diffuse_scale *= _this_diffuse_scale;
                     for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                      VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                      VEC3 Q0 = Ainv*laue_mats[iL]*H0_offset;
-                      CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU_local*Q0);
+                      VEC3 Q0 = Ainv*laue_mats[iL]*H0;
+                      CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
                       CUDAREAL dwf = exp(-exparg);
+                      VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
                       VEC3 delta_H_offset = H_vec - H0_offset;
                       VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
                       VEC3 anisoG_q = anisoG_local*delta_Q;
 
                       CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
+		      CUDAREAL gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
+		      gamma_portion_denom *= gamma_portion_denom;
                       CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
-                        pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
+                        gamma_portion_denom;
                       CUDAREAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
 
-                      I0 += this_I_latt_diffuse * _this_diffuse_scale / (CUDAREAL)num_laue_mats;
+                      ID_this += this_I_latt_diffuse;
                       if (s_refine_diffuse){
                         for (int i_gam=0; i_gam<3; i_gam++){
                           VEC3 dV = dG_dgam[i_gam]*delta_Q;
                           CUDAREAL V_dot_dV = anisoG_q.dot(dV);
-                          CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                          step_diffuse_param[i_gam] += gamma_portion*deriv*dwf*exparg * _this_diffuse_scale/(CUDAREAL)num_laue_mats;
+                          CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
+                          step_diffuse_param[i_gam] += gamma_portion*deriv*dwf*exparg;
                         }
                         MAT3 dU_dsigma;
                         dU_dsigma << 0,0,0,0,0,0,0,0,0;
                         for (int i_sig = 0;i_sig<3; i_sig++){
                           dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
-                          CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
+                          CUDAREAL dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
                           dU_dsigma(i_sig, i_sig) = 0.;
-                          step_diffuse_param[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg) * _this_diffuse_scale/(CUDAREAL)num_laue_mats;
+                          step_diffuse_param[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
                         }
                       }
                     }
+		    I0 += ID_this * _this_diffuse_scale;
+		    for (int idp=0; idp < 6; idp++) step_diffuse_param[idp] += step_diffuse_param_this[idp]*_this_diffuse_scale;
                   }
                 }
               }
+	      
 	    }
+	    I0 /= (CUDAREAL)num_laue_mats;
+	    for (int idp=0; idp < 6; idp++) step_diffuse_param[idp] /= (CUDAREAL)num_laue_mats;
             }
 
             CUDAREAL _F_cell = s_default_F;
