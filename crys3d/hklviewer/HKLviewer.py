@@ -1144,12 +1144,14 @@ tabname = "Xtriage"
             self.send_message(current_philstr)
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
+            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
 
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
+            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
 
           if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
