@@ -909,7 +909,7 @@ def auto_sharpen_isotropic(mc1, mc2):
 
   assert (nref == sumw) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
-  b_sharpen = 2 * slope
+  b_sharpen = 2 * slope # Divided by 2 to apply to amplitudes
   all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   mc1s = mc1.customized_copy(data = mc1.data()*b_terms_miller.data())
@@ -1166,6 +1166,36 @@ def next_allowed_grid_size(i, largest_prime=5):
     j += 2
   return j
 
+def get_sharpening_b(miller_intensities):
+
+  # Initialise data for Wilson plot
+  sumw = 0.
+  sumwx = 0.
+  sumwy = 0.
+  sumwxy = 0.
+  sumwx2 = 0.
+
+  # Assume that binning has been defined and get data in bins
+  for i_bin in miller_intensities.binner().range_used():
+    sel = miller_intensities.binner().selection(i_bin)
+    int_sel = miller_intensities.select(sel)
+    ssqr = int_sel.d_star_sq().data()
+    x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
+    mean_int_sel_data = flex.mean_default(int_sel.data(),0)
+    if mean_int_sel_data > 0.:
+      y = math.log(mean_int_sel_data)
+      w = int_sel.size()
+      sumw += w
+      sumwx += w * x
+      sumwy += w * y
+      sumwxy += w * x * y
+      sumwx2 += w * x * x
+
+  slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
+  b_sharpen = 4 * slope
+
+  return b_sharpen
+
 def intensities_as_expanded_map(mm,marray):
   '''
   Take miller array (assumed here to be real-valued and in P1, but could be
@@ -1248,8 +1278,17 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   r_star: radius in reciprocal space for averaging
   """
 
+  # Sharpen intensities to reduce dynamic range for numerical stability
+  # Save the overall B to put back at end
+  d_star_sq_step = get_d_star_sq_step(intensities)
+  intensities.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
+  b_sharpen = get_sharpening_b(intensities)
+  all_ones = intensities.customized_copy(data = flex.double(intensities.size(), 1))
+  b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
+  int_sharp = intensities.customized_copy(data = intensities.data()*b_terms_miller.data())
+
   # Turn intensity values into a spherical map inside a cube
-  results = intensities_as_expanded_map(mm,intensities)
+  results = intensities_as_expanded_map(mm,int_sharp)
   coeffs_as_map = results.mm_data # map_manager with intensities
   h_map_indices = results.h_map_indices # grid positions for original hkl in order
   k_map_indices = results.k_map_indices
@@ -1281,15 +1320,20 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   local_mean_as_map = rmmm.get_map_manager_by_id(map_id='local_mean_map')
 
   # Associate map values with hkl using saved indices, then restrict to dmin
-  extended_mean = expanded_map_as_intensities(local_mean_as_map,intensities,
+  extended_mean = expanded_map_as_intensities(local_mean_as_map,int_sharp,
       h_map_indices,k_map_indices,l_map_indices)
 
-  min_in = flex.min(intensities.data())
+  min_in = flex.min(int_sharp.data())
   if min_in >= 0: # Make sure strictly non-negative remains non-negative
     extended_mean = extended_mean.customized_copy( data =
       (extended_mean.data()+min_in + flex.abs(extended_mean.data()-min_in))/2 )
 
+  # Select data to desired resolution, remove sharpening from above
   local_mean = extended_mean.select(extended_mean.d_spacings().data() >= d_min)
+  all_ones = local_mean.customized_copy(data = flex.double(local_mean.size(), 1))
+  b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = -b_sharpen)
+  local_mean = local_mean.customized_copy(data = local_mean.data()*b_terms_miller.data())
+
   return local_mean
 
 def local_mean_density(mm, radius):
@@ -1510,7 +1554,7 @@ def assess_cryoem_errors(
     sfsqlm_sel = sumfsqr_local_mean.select(sel)
     min_sfsqlm_bin = mean_sumfsqr_bin / 10000
     sfsqlm_sel = sfsqlm_sel.customized_copy(data =
-      (sfsqlm_sel.data()+min_sfsqlm_bin + flex.abs(sfsqlm_sel.data()-min_sfsqlm_bin)))
+      (sfsqlm_sel.data()+min_sfsqlm_bin + flex.abs(sfsqlm_sel.data()-min_sfsqlm_bin))/2.)
     sumfsqr_local_mean.data().set_selected(sel, sfsqlm_sel.data())
 
     ssqr = sumfsqsel.d_star_sq().data()
@@ -1615,10 +1659,8 @@ def assess_cryoem_errors(
     # Make Miller array as basis for computing aniso corrections in this bin
     ones_array = flex.double(eEsel.size(), 1)
     all_ones = eEsel.customized_copy(data=ones_array)
-    beta_miller_A = all_ones.apply_debye_waller_factors(
-      u_star=adptbx.beta_as_u_star(a_beta))
-    abeta_terms = beta_miller_A.data()
-    beta_miller_Asqr = beta_miller_A.customized_copy(data = flex.pow2(abeta_terms))
+    beta_miller_Asqr = all_ones.apply_debye_waller_factors(
+      u_star=adptbx.beta_as_u_star(asqr_beta))
     u_terms = (asqr_scale * sigmaT_bins[i_bin_used]
       * target_spectrum[i_bin_used]) * beta_miller_Asqr.data()
 
@@ -1761,7 +1803,8 @@ def run():
   parser.add_argument('--nucleic_mw',
                       help='Molecular weight of nucleic acid component of map',
                       type=float)
-  parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere', type=float)
+  parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
+                      type=float, default=500.)
   parser.add_argument('--model',help='Placed model')
   parser.add_argument('--flatten_model',help='Flatten map around model',
                       action='store_true')
@@ -1792,7 +1835,6 @@ def run():
   sphere_cent = None
   radius = None
   model = None
-  sphere_points = None
 
   protein_mw = None
   nucleic_mw = None
@@ -1805,8 +1847,7 @@ def run():
   if args.nucleic_mw is not None:
     nucleic_mw = args.nucleic_mw
 
-  if args.sphere_points is not None:
-    sphere_points = args.sphere_points
+  sphere_points = args.sphere_points
 
   if args.model is not None:
     if not (args.cutout_model or args.flatten_model):
