@@ -19,9 +19,6 @@ def flatten(l):
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t))
     else flatten(x) for x in l), [])
 
-###
-# TODO: do not fit residues whose side chains are involced into bonds!
-###
 class monitor(object):
   def __init__(self, id_str, selection, map_data, unit_cell, weights, pairs,
                cmv, rotamer_evaluator, log):
@@ -63,7 +60,10 @@ class monitor(object):
     state = "start"
     S     = self.states["start"]
     F     = self.states["fitting"]
-    T     = self.states["tuneup"]
+    try:
+      T     = self.states["tuneup"]
+    except KeyError:
+      T = None
     #
     if((S.rot=="OUTLIER" and F.rot!="OUTLIER" and not F.exceed_map_max_value) or
        (F.target>S.target and F.target_neg>=S.target_neg and not F.exceed_map_max_value) or
@@ -71,15 +71,16 @@ class monitor(object):
        (S.exceed_map_max_value and not F.exceed_map_max_value)):
       state = "fitting"
     N = self.states[state]
-    if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
-       (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
-       (T.target_neg>N.target_neg) or
-       (N.exceed_map_max_value and not T.exceed_map_max_value)):
-      state = "tuneup"
+    if(T is not None):
+      if((N.rot=="OUTLIER" and T.rot!="OUTLIER" and not T.exceed_map_max_value) or
+         (T.target>N.target and T.target_neg>=S.target_neg and not T.exceed_map_max_value) or
+         (T.target_neg>N.target_neg) or
+         (N.exceed_map_max_value and not T.exceed_map_max_value)):
+        state = "tuneup"
     #
     residue.atoms().set_xyz(self.states[state].sites_cart)
     #
-    if(state != "tuneup"):
+    if(T is not None and state != "tuneup"):
       self.add(residue = residue, state = "revert")
     #
 
@@ -167,12 +168,15 @@ class run(object):
     if(self.target_map is None):
       assert not backbone_sample
     # Actual calculations
-    self.chi_angles = self.rotamer_manager.get_chi_angles(
-      resname = self.residue.resname)
-    if(len(self.co.clusters)>0):
-      if(backbone_sample):
-        self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
-      self.fit_side_chain(clusters = self.co.clusters[1:])
+    if(self.residue.resname == "PRO"): # Special case
+      self.fit_proline()
+    else:
+      self.chi_angles = self.rotamer_manager.get_chi_angles(
+        resname = self.residue.resname)
+      if(len(self.co.clusters)>0):
+        if(backbone_sample):
+          self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
+        self.fit_side_chain(clusters = self.co.clusters[1:])
     if(self.m is not None):
       self.m.finalize(residue = self.residue)
       # Too bulky, but very useful. Use for debugging only.
@@ -192,11 +196,29 @@ class run(object):
         sites_cart  = sites_cart,
         selection   = selection)
 
+  def get_rotamer_iterator(self):
+    return mmtbx.refinement.real_space.fit_residue.get_rotamer_iterator(
+      mon_lib_srv = self.mon_lib_srv,
+      residue     = self.residue)
+
+  def fit_proline(self):
+    """
+    PRO is a special case. Just sample two possible rotamers.
+    """
+    rotamer_iterator = self.get_rotamer_iterator()
+    scorer = mmtbx.refinement.real_space.score3(
+      unit_cell    = self.unit_cell,
+      target_map   = self.target_map,
+      residue      = self.residue,
+      rotamer_eval = self.rotamer_manager.rotamer_evaluator)
+    scorer.reset(sites_cart = self.residue.atoms().extract_xyz())
+    for rotamer, sites_cart in rotamer_iterator:
+      scorer.update(sites_cart = sites_cart)
+    self.residue.atoms().set_xyz(new_xyz=scorer.sites_cart)
+    self.m.add(residue = self.residue, state = "fitting")
+
   def fit_side_chain(self, clusters):
-    rotamer_iterator = \
-      mmtbx.refinement.real_space.fit_residue.get_rotamer_iterator(
-        mon_lib_srv = self.mon_lib_srv,
-        residue     = self.residue)
+    rotamer_iterator = self.get_rotamer_iterator()
     if(rotamer_iterator is None): return
     selection_clash = self.co.clash_eval_selection
     selection_rsr   = self.co.rsr_eval_selection

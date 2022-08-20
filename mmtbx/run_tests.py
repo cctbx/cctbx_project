@@ -221,6 +221,7 @@ general_tests = [
   "$D/refinement/real_space/tst_fit_residue_4.py",
   "$D/refinement/real_space/tst_fit_residue_5.py",
   "$D/refinement/real_space/tst_fit_residue_6.py",
+  "$D/refinement/real_space/tst_fit_residue_7.py",
   "$D/refinement/real_space/tst_fit_residues_1.py",
   "$D/refinement/real_space/tst_fit_residues_1H.py",
   "$D/refinement/real_space/tst_fit_residues_2.py",
