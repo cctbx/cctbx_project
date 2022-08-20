@@ -1597,7 +1597,10 @@ def assess_cryoem_errors(
   protocol = [macro1, macro2] # overall minimization protocol
   ncyc = 100                  # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"     # minimizer, bfgs or newton
-  study_params = False        # flag for calling studyparams procedure
+  if verbosity < 4:
+    study_params = False      # flag for calling studyparams procedure
+  else:
+    study_params = True
   output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
