@@ -38,10 +38,14 @@ def exercise():
   # Start by working out how large the padding will have to be so that
   # starting automatically-generated map will be large enough to contain
   # sphere with room to spare around model.
-  n_residues = 25
-  d_min = 2.5
+  # Use reasonably spherical model by choosing residues 69-218 of 3jd6 standard
+  n_residues = 150
+  start_res = 69
+  b_iso = 50
+  d_min = 3.0
   from cctbx.development.create_models_or_maps import generate_model
-  test_model = generate_model(n_residues=n_residues)
+  test_model = generate_model(n_residues=n_residues, start_res=start_res,
+      b_iso=b_iso)
   sites_cart = test_model.get_sites_cart()
   cart_min = flex.double(sites_cart.min())
   cart_max = flex.double(sites_cart.max())
@@ -79,16 +83,16 @@ def exercise():
   b_target = (100.,200.,300.,-50.,50.,100.)
   u_star_s = adptbx.u_cart_as_u_star(
       start_map_coeffs.unit_cell(), adptbx.b_as_u(b_target))
-  # b_model = (30.,30.,30.,0.,0.,0.)  # All atoms in model have B=30
-  # b_expected = list((flex.double(b_target) + flex.double(b_model)))
+  b_model = (b_iso,b_iso,b_iso,0.,0.,0.)  # All atoms in model have B=b_iso
+  b_expected = list((flex.double(b_target) + flex.double(b_model)))
   scaled_map_coeffs = start_map_coeffs.apply_debye_waller_factors(u_star=u_star_s)
 
   # Generate map coefficient errors for first half-map from complex normal
   # distribution
-  b_target_e = (0.,0.,0.,-50.,-50.,100.) # Anisotropy for error terms
+  b_target_e = (0.,0.,0.,-50.,-75.,125.) # Anisotropy for error terms
   u_star_e = adptbx.u_cart_as_u_star(
       start_map_coeffs.unit_cell(), adptbx.b_as_u(b_target_e))
-  se_target = 10. # Target for SigmaE variance term
+  se_target = 100. # Target for SigmaE variance term
   rsigma = math.sqrt(se_target / 2.)
   jj = 0.+1.j  # Define I for generating complex numbers
   random_complexes1 = flex.complex_double()
@@ -167,12 +171,12 @@ def exercise():
 
   mapCC_ideal_achieved = mc_ideal.map_correlation(other=mc_achieved)
   # print("CC between ideal and achieved maps:",mapCC_ideal_achieved)
-  assert(mapCC_ideal_achieved > 0.92)
   new_mmm.add_map_from_fourier_coefficients(
       mc_ideal, map_id = 'ideal_map')
   ideal_mapCC = new_mmm.map_model_cc(map_id = 'ideal_map')
   # print("Perfect, starting, ideal and achieved mapCC: ", perfect_mapCC, start_mapCC, ideal_mapCC, mapCC)
-  assert(mapCC > 0.98*ideal_mapCC)
+  assert(mapCC_ideal_achieved > 0.95)
+  assert(mapCC > 0.95*ideal_mapCC)
 
 if(__name__ == "__main__"):
   exercise()
