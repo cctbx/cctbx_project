@@ -1053,6 +1053,7 @@ class HKLview_3d:
     matcharr1 = millarr1.select( matchindices.pairs().column(0) ).deep_copy()
     matcharr2 = millarr2.select( matchindices.pairs().column(1) ).deep_copy()
     dres = matcharr1.unit_cell().d( matcharr1.indices() )
+    matcharr2._observation_type = millarr1._observation_type
     newarray = matcharr2.deep_copy()
     try:
       ldic= { 'dres': dres, 'array1': matcharr1, 'array2': matcharr2, 'newarray': newarray }
