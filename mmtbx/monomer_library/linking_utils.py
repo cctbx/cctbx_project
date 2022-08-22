@@ -331,6 +331,16 @@ def is_atom_metal_coordinated(lookup,
   if other.element.strip()=='C': return False
   return True
 
+def is_atom_pair_linked_tuple(atom1,
+                              atom2):
+  print(atom1.quote(), atom2.quote())
+  class1 = get_classes(atom1, important_only=True)
+  class2 = get_classes(atom2, important_only=True)
+  print(class1,class2)
+  if class1=='common_amino_acid' and class2==class1:
+    assert 0
+  return None, None, None
+
 def is_atom_pair_linked(atom1,
                         atom2,
                         distance=None,

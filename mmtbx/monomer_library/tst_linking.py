@@ -2346,7 +2346,7 @@ links = {
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
   "linking_test_XYP_XYP.pdb" : [18,19],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
-  "linking_test_cyclic.pdb" : [67,68],
+  "linking_test_cyclic.pdb" : [68,68],
   "linking_test_over_valence.pdb" : [6,6],
   "linking_test_c2_c6.pdb" : [21,22],
   "linking_test_ccp4_other.pdb" : [71,71],
@@ -2428,7 +2428,9 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     #  expected += 4
     if pdb in ['linking_test_LEU-CSY-VAL.pdb']:
       expected -= 2 # peptide-like link
-  if pdb in ["linking_test_HEM_TYR.pdb"]: # uset defined edits
+  if pdb in ["linking_test_HEM_TYR.pdb",
+             'linking_test_cyclic.pdb',
+            ]: # uset defined edits
     expected += 1
   #
   assert number_of_links == expected, "found %d LINK but expected %s! File: %s" % (

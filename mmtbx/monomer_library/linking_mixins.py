@@ -587,6 +587,20 @@ Residue classes
       if atom2.element.strip() in hydrogens:
         done[atom1.id_str()] = atom2.id_str()
       # bond length cutoff & some logic
+      aa_rc = linking_utils.is_atom_pair_linked(
+          atom1,
+          atom2,
+          distance=distance,
+          max_bonded_cutoff=max_bonded_cutoff,
+          amino_acid_bond_cutoff=amino_acid_bond_cutoff,
+          inter_residue_bond_cutoff=inter_residue_bond_cutoff,
+          second_row_buffer=second_row_buffer,
+          saccharide_bond_cutoff=carbohydrate_bond_cutoff,
+          metal_coordination_cutoff=metal_coordination_cutoff,
+          use_only_bond_cutoff=use_only_bond_cutoff,
+          link_metals=link_metals,
+          verbose=verbose,
+          )
       if not linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
@@ -649,6 +663,8 @@ Residue classes
         if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
           continue
       #
+      verbose=1
+      print(atom1.quote(), atom2.quote(),aa_rc)
       names = [atom1.name, atom2.name]
       if verbose: print('names',names)
       names.sort()
@@ -730,6 +746,10 @@ Residue classes
         atom_group2,
         self.mon_lib_srv,
         )
+      if link is None:
+        link, swap, key = linking_utils.is_atom_pair_linked_tuple(atom1,
+                                                                  atom2,
+                                                                  )
       if verbose:
         print('link',link)
         print('swap',swap)
@@ -745,6 +765,8 @@ Residue classes
       else:
         link_rt_mx_ji = sgtbx.rt_mx(symbol=done_key[2], t_den=space_group.t_den())
       #
+      print(link)
+      assert not aa_rc
       if link:
         # apply a standard link
         origin_id = origin_ids.get_origin_id('link_%s' % key,

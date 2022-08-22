@@ -517,6 +517,8 @@ class server(process_cif_mixin):
       if pH_range in ["neutral"]: rr = ""
       elif pH_range in ["low", "high"]:
         rr = "_pH_%s" % pH_range
+      elif pH_range in ['neutron']:
+        rr = "_%s" % pH_range
       else:
         assert 0, "unknown pH value : %s" % pH_range
       rr_cif_name = "data_%s%s.cif" % (comp_id.upper(), rr)

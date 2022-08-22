@@ -56,6 +56,7 @@ def run():
   f.write(gnp)
   f.close()
   cmd = 'phenix.geometry_minimization tst_pH_gnp.pdb'
+  print(cmd)
   rc = easy_run.go(cmd)
   find = ['Changed 28 bond restraint(s),  added 1 bond restraint(s)',
           'Changed 43 angle restraint(s), added 1 angle restraint(s)',
