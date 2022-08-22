@@ -11,6 +11,30 @@ def construct_xyz(ba, bv,
                   da, dv,
                   period=3,
                   ):
+  """Construct a list of cartesian coordinates based on Z-matrix information
+
+  Args:
+      ba (hierarchy atom): 1st atom
+      bv (float): bond length to ba
+      aa (hierarchy atom): 2nd atom
+      av (float): angle value to ba-aa
+      da (hierarchy atom): 3rd atom
+      dv (float): torsion value to da-aa-ba
+      period (int, optional): periodicity of torsion
+
+  Returns:
+      matrix: List of cartesian coordinates of lenght period
+
+
+           bv
+      ?--------ba
+                 \
+                  \
+                av \
+                    \
+                     \
+                     aa---------da
+  """
   assert ba is not None
   assert aa is not None
   assert da is not None
@@ -35,7 +59,7 @@ def construct_xyz(ba, bv,
     rh_list.append(rh)
   return rh_list
 
-def get_hierarchy_atom(name, element, xyz, occ, b):
+def get_hierarchy_atom(name, element, xyz, occ=1., b=20.):
   atom = iotbx.pdb.hierarchy.atom()
   atom.name = name
   atom.element = element #"H"
@@ -88,3 +112,13 @@ def generate_atom_group_atom_names(rg, names, return_Nones=False, verbose=True):
       yield None, None
     else:
       yield atoms[0].parent(), atoms
+
+if __name__ == '__main__':
+  ba = get_hierarchy_atom('BA', 'B', (0,0,0))
+  aa = get_hierarchy_atom('AA', 'C', (0,1,0))
+  da = get_hierarchy_atom('DA', 'O', (1,1,0))
+  print(ba.format_atom_record())
+  print(aa.format_atom_record())
+  print(da.format_atom_record())
+  rc = construct_xyz(ba, 1, aa, 90, da, 0)
+  print(rc)
