@@ -155,17 +155,6 @@ def get_name(code):
     else:
       return "Unknown or not read"
 
-def get_atom_names(code, alternate=False):
-  cif = get_cif_dictionary(code)
-  if not cif: return cif
-  tmp = []
-  for item in cif.get("_chem_comp_atom", []):
-    if alternate:
-      tmp.append(item.alt_atom_id)
-    else:
-      tmp.append(item.atom_id)
-  return tmp
-
 def get_atom_type_symbol(code):
   cif = get_cif_dictionary(code)
   if not cif: return cif
@@ -195,29 +184,41 @@ def get_hydrogen_names(code,
         tmp.append(item.atom_id)
   return tmp
 
-def get_atom_names(code, alternate=False):
+def get_atom_names(code, alternate=False, heavy_atom_only=False):
   cif = get_cif_dictionary(code)
   if not cif: return cif
   tmp = []
   for item in cif["_chem_comp_atom"]:
+    if heavy_atom_only:
+      if item.type_symbol in ['H', 'D']: continue
     if alternate:
       tmp.append(item.alt_atom_id)
     else:
       tmp.append(item.atom_id)
   return tmp
 
-def get_bond_pairs(code, alternate=False):
+def get_bond_pairs(code, alternate=False, heavy_atom_only=False, use_tuple=False):
   cif = get_cif_dictionary(code)
   if not cif: return cif
+  if heavy_atom_only:
+    heavy_atom_only = get_atom_names(code, heavy_atom_only=True)
   tmp = []
   bonds = cif.get("_chem_comp_bond", {})
   for item in bonds:
+    if heavy_atom_only:
+      if item.atom_id_1 not in heavy_atom_only or item.atom_id_2 not in heavy_atom_only:
+        continue
     if alternate:
       atom1 = get_alternative_name(code, item.atom_id_1)
       atom2 = get_alternative_name(code, item.atom_id_2)
-      tmp.append([atom1, atom2])
+      pair = [atom1, atom2]
     else:
-      tmp.append([item.atom_id_1, item.atom_id_2])
+      pair = [item.atom_id_1, item.atom_id_2]
+    pair.sort()
+    if use_tuple:
+      tmp.append(tuple(pair))
+    else:
+      tmp.append(pair)
   return tmp
 
 def generate_chemical_components_codes(sort_reverse_by_smiles=False,
