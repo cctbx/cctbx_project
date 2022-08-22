@@ -82,12 +82,6 @@ def exercise_2(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
     sin_cos_table     = t.sin_cos_table,
     mon_lib_srv       = t.mon_lib_srv)
   result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb))
-  #
-  # mmtbx.refinement.real_space.check_sites_match(
-  #   ph_answer  = t.ph_answer,
-  #   ph_refined = result.pdb_hierarchy,
-  #   tol        = 0.002)
-
 
 if(__name__ == "__main__"):
   t0 = time.time()

@@ -204,7 +204,9 @@ class run(object):
   def fit_proline(self):
     """
     PRO is a special case. Just sample two possible rotamers.
+    Skip if map isn't available: can't do much in this case!
     """
+    if(self.target_map is None): return
     rotamer_iterator = self.get_rotamer_iterator()
     scorer = mmtbx.refinement.real_space.score3(
       unit_cell    = self.unit_cell,
