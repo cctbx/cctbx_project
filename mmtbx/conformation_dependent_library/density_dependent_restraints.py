@@ -1,6 +1,23 @@
 from __future__ import absolute_import, division, print_function
 import sys
 
+ddr_master_params = '''
+ddr
+  .style = hidden
+  .short_caption = Density dependent restraints
+{
+  enable = False
+    .type = bool
+  bond_weighting = True
+    .type = bool
+  angle_weighting = True
+    .type = bool
+  trans_peptide = True
+    .type = bool
+}
+'''
+
+
 def setup_restraints():
   assert 0
 
@@ -50,7 +67,7 @@ def update_restraints(hierarchy,
                       geometry,
                       ddr_i_seqs,
                       factor=5.,
-                      # bond_weighting=True,
+                      bond_weighting=True,
                       angle_weighting=True,
                       all_trans_peptide=True,
                       log=None,
@@ -64,17 +81,18 @@ def update_restraints(hierarchy,
   # for i in total_i_seqs: print(atoms[i].quote())
   bond_params_table = geometry.bond_params_table
   n_bonds=0
-  for i, bonded in enumerate(bond_params_table):
-    if i in total_i_seqs:
-      for j in bonded:
-        bond = bond_params_table.lookup(i, j)
-        bond.weight*=factor
-        n_bonds+=1
-        if verbose:
-          print(' bond %s-%s %s %s' % (atoms[i].quote(),
-                                       atoms[j].quote(),
-                                       bond.distance_ideal,
-                                       bond.weight))
+  if bond_weighting:
+    for i, bonded in enumerate(bond_params_table):
+      if i in total_i_seqs:
+        for j in bonded:
+          bond = bond_params_table.lookup(i, j)
+          bond.weight*=factor
+          n_bonds+=1
+          if verbose:
+            print(' bond %s-%s %s %s' % (atoms[i].quote(),
+                                         atoms[j].quote(),
+                                         bond.distance_ideal,
+                                         bond.weight))
   n_angles=[]
   if angle_weighting:
     for angle_proxy in geometry.angle_proxies:
