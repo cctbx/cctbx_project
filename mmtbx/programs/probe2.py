@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import math
 from datetime import datetime
+from pathlib import Path
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
@@ -562,7 +563,13 @@ Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
 Output:
-  Kinemage file describing the score and other information, depending on the parameters.
+  Kinemage or text file describing the score and other information,
+  depending on the parameters.
+
+  If neither output.file_name nor output.filename is specified, it will write
+  to a file with the same name as the input model file name but with the
+  extension replaced with with either '.kin' or '.txt' depending on the
+  parameters (.kin when output.format == kinemage and output.count_dots == False).
 Note:
   Some approaches require the target_selection parameter.  Setting the
   target_selection to "=" will re-use the source for the target.  In all
@@ -1723,7 +1730,16 @@ Note:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.file_name is None:
-      raise Sorry("Must specify output.file_name")
+      # If the output file name is not specified, use the same root as the
+      # input file and replace the suffix with .kin for Kinemage output or
+      # .txt for others.
+      suffix = '.kin'
+      if self.params.output.format != 'kinemage' or self.params.output.count_dots:
+        suffix = '.txt'
+      inName = self.data_manager.get_default_model_name()
+      p = Path(inName)
+      self.params.output.file_name = str(p.with_suffix(suffix))
+      print('Setting output.file_name Phil parameter to',self.params.output.file_name)
     if self.params.source_selection is None:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
