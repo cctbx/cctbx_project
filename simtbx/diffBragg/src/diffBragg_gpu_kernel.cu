@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 __device__
-int gen_laue_mats(int laue_group_num, MAT3 *lmat) {
+int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
   if ( laue_group_num < 1 or laue_group_num > 11) {
     return 0;
   }
