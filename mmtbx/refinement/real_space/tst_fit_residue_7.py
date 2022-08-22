@@ -57,9 +57,44 @@ def exercise(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
     ph_refined = result.pdb_hierarchy,
     tol        = 0.002)
 
+def exercise_2(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
+  """
+  Fit PRO. PRO is a special case. No H.
+  Same as above, but without a map.
+  """
+  #
+  t = mmtbx.refinement.real_space.setup_test(
+    pdb_answer        = pdb_answer,
+    pdb_poor          = pdb_poor_str,
+    i_pdb             = i_pdb,
+    d_min             = d_min,
+    residues          = ["PRO"],
+    resolution_factor = resolution_factor)
+  #
+  result = mmtbx.refinement.real_space.fit_residues.run(
+    pdb_hierarchy     = t.ph_poor,
+    vdw_radii         = t.vdw,
+    crystal_symmetry  = t.crystal_symmetry,
+    # map_data          = t.target_map,
+    # backbone_sample   = True,
+    rotatable_hd      = t.rotatable_hd,
+    rotamer_manager   = t.rotamer_manager,
+    sin_cos_table     = t.sin_cos_table,
+    mon_lib_srv       = t.mon_lib_srv)
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb))
+  #
+  # mmtbx.refinement.real_space.check_sites_match(
+  #   ph_answer  = t.ph_answer,
+  #   ph_refined = result.pdb_hierarchy,
+  #   tol        = 0.002)
+
+
 if(__name__ == "__main__"):
   t0 = time.time()
   exercise(
     pdb_poor_str = pdb_poor,
     i_pdb        = 0)
+  exercise_2(
+    pdb_poor_str = pdb_poor,
+    i_pdb        = 1)
   print("Time: %6.4f"%(time.time()-t0))
