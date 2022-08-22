@@ -66,16 +66,16 @@ def new_atom_with_inheritance(name, element, xyz, parent=None):
   return _new_atom(name, element, xyz, occ, b, hetero)
 
 def add_hydrogens_to_atom_group_using_bad(ag,
-                                           atom_name,
-                                           atom_element,
-                                           bond_atom,
-                                           angle_atom,
-                                           dihedral_atom,
-                                           bond_length,
-                                           angle,
-                                           dihedral,
-                                           append_to_end_of_model=False,
-                                           ):
+                                          atom_name,
+                                          atom_element,
+                                          bond_atom,
+                                          angle_atom,
+                                          dihedral_atom,
+                                          bond_length,
+                                          angle,
+                                          dihedral,
+                                          append_to_end_of_model=False,
+                                          ):
   rc = []
   if ag.get_atom(atom_name.strip()): return []
   if type(bond_atom)==type(''):
