@@ -54,6 +54,8 @@ def generate_flipping_his(ag, return_hierarchy=False, chain_id=None, resseq=None
                        [' CE1', ' NE2'],
                        [' HD1', ' HD2'],
                        [' HE1', ' HE2'],
+                       [' DD1', ' DD2'],
+                       [' DE1', ' DE2'],
                       ]:
           a1 = ag.get_atom(n1.strip())
           a2 = ag.get_atom(n2.strip())
@@ -63,8 +65,8 @@ def generate_flipping_his(ag, return_hierarchy=False, chain_id=None, resseq=None
       rc = iotbx.pdb.hierarchy.atom_group()
       rc.resname='HIS'
       for atom in ag.atoms():
-        if hd==0 and atom.name==' HD1': continue
-        if he==0 and atom.name==' HE2': continue
+        if hd==0 and atom.name in [' HD1', ' DD1']: continue
+        if he==0 and atom.name in [' HE2', ' DE2']: continue
         atom = atom.detached_copy()
         rc.append_atom(atom)
       if return_hierarchy:
