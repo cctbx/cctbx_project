@@ -609,7 +609,8 @@ class DataModeler:
         models, presumably optimized from a previous minimzation using this program
         """
 
-        ParameterType = RangedParameter
+        ParameterTypes= {"ranged":RangedParameter , "positive": PositiveParameter}
+        ParameterType= RangedParameter # most params currently only this type
 
         if best is not None:
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
@@ -669,6 +670,7 @@ class DataModeler:
             centers.ucell = [1,1,1,1,1,1]
             betas.ucell = [1,1,1,1,1,1]
         fix = self.params.fix
+        types = self.params.types
         P = Parameters()
         if self.params.init.random_Gs is not None:
             init.G = np.random.choice(self.params.init.random_Gs)
@@ -681,7 +683,7 @@ class DataModeler:
                                   center=centers.RotXYZ[ii], beta=betas.RotXYZ)
                 P.add(p)
 
-            p = RangedParameter(init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
+            p = ParameterTypes[types.G](init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
                               minval=mins.G, maxval=maxs.G,
                               fix=fix.G, name="G_xtal%d" %i_xtal,
                               center=centers.G, beta=betas.G)
@@ -714,7 +716,7 @@ class DataModeler:
             init.Nabc = np.random.choice(self.params.init.random_Nabcs, replace=True, size=3)
         for ii in range(3):
             # Mosaic domain tensor
-            p = ParameterType(init=init.Nabc[ii], sigma=sigma.Nabc[ii],
+            p = ParameterTypes[types.Nabc](init=init.Nabc[ii], sigma=sigma.Nabc[ii],
                               minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
                               fix=fix_Nabc[ii], name="Nabc%d" % (ii,),
                               center=centers.Nabc[ii], beta=betas.Nabc[ii])
@@ -727,13 +729,13 @@ class DataModeler:
             P.add(p)
 
             # diffuse gamma and sigma
-            p = ParameterType(init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
+            p = ParameterTypes[types.diffuse_gamma](init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
                               minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
                               fix=fix_difgam[ii], name="diffuse_gamma%d" % (ii,),
                               center=centers.diffuse_gamma[ii], beta=betas.diffuse_gamma[ii])
             P.add(p)
 
-            p = ParameterType(init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
+            p = ParameterTypes[types.diffuse_sigma](init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
                               minval=mins.diffuse_sigma[ii], maxval=maxs.diffuse_sigma[ii],
                               fix=fix_difsig[ii], name="diffuse_sigma%d" % (ii,),
                               center=centers.diffuse_sigma[ii], beta=betas.diffuse_sigma[ii])

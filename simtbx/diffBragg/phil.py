@@ -348,6 +348,19 @@ max_process = -1
   .type = int
   .help = max exp to process
   .expert_level=0
+types
+  .help = type of target to parameter (see diffBragg.refiners.parameters.py)
+  .expert_level=10
+{
+  G = *ranged positive
+    .type = choice
+  Nabc = *ranged positive
+    .type = choice
+  diffuse_sigma = *ranged positive
+    .type = choice
+  diffuse_gamma = *ranged positive
+    .type = choice
+}
 sigmas
   .help = sensitivity of target to parameter (experimental)
   .expert_level=10
