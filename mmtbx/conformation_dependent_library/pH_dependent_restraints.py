@@ -15,11 +15,20 @@ def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, ne
   k=0
   l=1
   bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+  if 1:
+    print('-'*80)
+    print(i_seqs)
+    # print(pdb_atoms[i_seqs[k]].quote(),pdb_atoms[i_seqs[l]].quote())
+    print(atom1.quote(), atom2.quote())
+    print(neutron1,neutron2)
+    print('k',bond_table_entry)
+    print(i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]])
   if ( not bond_table_entry or
        i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]]):
     k=1
     l=0
     bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+    if 1: print(bond_table_entry)
   if i_seqs[l] in bond_table_entry:
     bond_simple = gpr.bond_simple.proxies[i_seqs[k]]
     bond_simple.distance_ideal = bond.value_dist
@@ -127,6 +136,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                       rg.parent().id,
                                       rg.resseq,
                                       ))
+    bond_counters = [0,0]
     for bond in monomer_restraints.bond_list:
       for rc in _generate_bond_atoms(rg,
                                      bond.atom_id_1,
@@ -134,15 +144,17 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                      bondlength=bond.value_dist,
                                      verbose=verbose):
         atom1, atom2, name1, name2, neutron1, neutron2 = rc
-        bond_counters, atoms_added = process_bonds(gpr,
-                                                   bond,
-                                                   atom_dict,
-                                                   atom1,
-                                                   atom2,
-                                                   name1,
-                                                   name2,
-                                                   neutron1,
-                                                   neutron2)
+        bc, atoms_added = process_bonds( gpr,
+                                         bond,
+                                         atom_dict,
+                                         atom1,
+                                         atom2,
+                                         name1,
+                                         name2,
+                                         neutron1,
+                                         neutron2)
+        for i in range(2):
+          bond_counters[i]+=bc[i]
     lookup={}
     for angle in monomer_restraints.angle_list:
       for rc in _generate_angle_atoms(rg,
