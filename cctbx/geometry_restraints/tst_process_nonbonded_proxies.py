@@ -62,6 +62,7 @@ def test_overlap_atoms():
   '''
   Test that overlapping atoms are being counted
   '''
+  print(raw_records_5)
   clashes = get_clashes_result(raw_records=raw_records_5)
   results = clashes.get_results()
   assert(results.n_clashes == 6), 'Overlapping atoms are not counted properly.'
