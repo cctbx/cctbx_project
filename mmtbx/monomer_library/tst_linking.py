@@ -2449,11 +2449,12 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print("OK")
+  if pdb=='linking_test_cyclic_main_chain.pdb':
+    f=open('%s.geo' % pdb, 'r')
+    lines=f.read()
+    del f
+    assert lines.find('link_TRANS restraints: 1')>-1
   if skip_links: return
-  # test links
-  #if pdb in ["linking_test_LEU-CSY-VAL.pdb",
-  #           ]:
-  #  return
   number_of_links=0
   fname = pdb.replace(".pdb", "_minimized.pdb")
   f=open(fname, "r")
@@ -2466,14 +2467,9 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     expected = 0
   else:
     expected = links[pdb][i]-links[pdb][0]
-    #if pdb in ["linking_test_CD_GHE_A_B.pdb", # duplicates!!! shulders
-    #            ]:
-    #  expected += 4
     if pdb in ['linking_test_LEU-CSY-VAL.pdb']:
       expected -= 2 # peptide-like link
-  if pdb in ["linking_test_HEM_TYR.pdb",
-             'linking_test_cyclic.pdb',
-            ]: # uset defined edits
+  if pdb in ["linking_test_HEM_TYR.pdb"]: # unset defined edits
     expected += 1
   #
   assert number_of_links == expected, "found %d LINK but expected %s! File: %s" % (

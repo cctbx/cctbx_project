@@ -663,8 +663,6 @@ Residue classes
         if "common_amino_acid" in class_key and "common_rna_dna" in class_key:
           continue
       #
-      # verbose=1
-      # print(atom1.quote(), atom2.quote(),aa_rc)
       names = [atom1.name, atom2.name]
       if verbose: print('names',names)
       names.sort()
@@ -746,10 +744,13 @@ Residue classes
         atom_group2,
         self.mon_lib_srv,
         )
-      if link is None and 0:
+      if link is None:
         link, swap, key = linking_utils.is_atom_pair_linked_tuple(atom1,
                                                                   atom2,
                                                                   )
+        if link=='TRANS':
+          key=link
+          link = self.mon_lib_srv.link_link_id_dict[link]
       if verbose:
         print('link',link)
         print('swap',swap)
@@ -765,8 +766,6 @@ Residue classes
       else:
         link_rt_mx_ji = sgtbx.rt_mx(symbol=done_key[2], t_den=space_group.t_den())
       #
-      # print(link)
-      # assert not aa_rc
       if link:
         # apply a standard link
         origin_id = origin_ids.get_origin_id('link_%s' % key,

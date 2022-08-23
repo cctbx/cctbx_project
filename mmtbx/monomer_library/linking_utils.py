@@ -331,14 +331,20 @@ def is_atom_metal_coordinated(lookup,
   if other.element.strip()=='C': return False
   return True
 
+def _get_cis_trans():
+  return 'TRANS'
+
 def is_atom_pair_linked_tuple(atom1,
                               atom2):
-  # print(atom1.quote(), atom2.quote())
   class1 = get_classes(atom1, important_only=True)
   class2 = get_classes(atom2, important_only=True)
-  # print(class1,class2)
   if class1=='common_amino_acid' and class2==class1:
-    assert 0
+    if atom1.name==' N  ' and atom2.name==' C  ':
+      return _get_cis_trans(), False, '?'
+    elif atom1.name==' C  ' and atom2.name==' N  ':
+      return _get_cis_trans(), True, '?'
+    else:
+      print('amino acid link not found',atom1.quote(),atom2.quote())
   return None, None, None
 
 def is_atom_pair_linked(atom1,
