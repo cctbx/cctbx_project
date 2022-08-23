@@ -2422,6 +2422,9 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   f=open(pdb.replace(".pdb", "_minimized.geo"), "r")
   lines = f.read()
   f.close()
+  if pdb=='linking_test_cyclic_main_chain.pdb':
+    if i==1:
+      assert lines.find('link_TRANS restraints: 1')>-1
   bonds = 0
   for line in lines.splitlines():
     for bond_like in ["Bond restraints:",
@@ -2449,11 +2452,6 @@ def run_and_test(cmd, pdb, i, skip_links=False):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print("OK")
-  if pdb=='linking_test_cyclic_main_chain.pdb':
-    f=open('%s.geo' % pdb, 'r')
-    lines=f.read()
-    del f
-    assert lines.find('link_TRANS restraints: 1')>-1
   if skip_links: return
   number_of_links=0
   fname = pdb.replace(".pdb", "_minimized.pdb")
