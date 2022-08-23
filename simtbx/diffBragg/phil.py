@@ -6,12 +6,21 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+apply_laue_symmetry = False
+  .type = bool
+use_geometric_mean_Fhkl = False
+  .type = bool
+  .help = whether to use the geometric mean for Fhkl restraint (when betasFhkl is not None, restratin Fhkl to the mean in each res bin)
 Fhkl_channel_bounds = None
   .type = floats
   .help = Energy bounds for energy-dependent structure factors. Units are eV.
   .help = If provided refine a unique structure factor correction for each bin defined by Fhkl_channel_bins
   .help = 0 and infinity are implicit. Providing a single number, e.g. 8950, will refine two sets of structure
   .help = factors: one for energies [0-8950), and another for energies [8950-infinity]
+Fhkl_dspace_bins = 10
+  .type = int
+  .help = number of resolution bins (out to corner of detector) for computing the average structure factor intensity
+  .help = One can then restrain to these values when fix.Fhkl=False by using the restraint strength betas.Fhkl (default is None in which case no restraints are applied)
 try_strong_mask_only = False
   .type = bool
   .help = if strong spot masks are present in the input refls, then use them
@@ -626,6 +635,9 @@ percentile_cut = None
   .type = float
   .help = percentile below which pixels are masked
   .expert_level = 10
+remove_duplicate_hkl = False
+  .type = bool
+  .help = for hopper, remove duplicate HKLs in input refl files
 space_group = None
   .type = str
   .help = space group to refine structure factors in

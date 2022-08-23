@@ -399,6 +399,8 @@ class DataModeler:
         if remove_duplicate_hkl and not self.no_rlp_info:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
             self.selection_flags = np.logical_and( self.selection_flags, is_not_a_duplicate)
+        else:
+            self.selection_flags  = np.array(self.selection_flags)
 
         if self.params.refiner.res_ranges is not None:
             # TODO add res ranges support for GatherFromReflectionTable
@@ -829,7 +831,6 @@ class DataModeler:
                 p.misc_data = reso, hkl
             P.add(p)
 
-
         # two parameters for optimizing the spectrum
         p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0],
                             minval=mins.spec[0], maxval=maxs.spec[0], fix=fix.spec,
@@ -878,14 +879,8 @@ class DataModeler:
             self.SIM.refining_Fhkl = True
             self.SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
             if self.params.betas.Fhkl is not None:
-                self.SIM.Io = np.zeros_like(self.SIM.Fhkl_scales_init)
-                indices, amps = self.SIM.D.Fhkl_tuple
-                miller_array_map = {h: val ** 2 for h, val in
-                                    zip(indices, amps)}
-
-                for h, i in self.SIM.asu_map_int.items():
-                    for i_chan in range(self.SIM.num_Fhkl_channels):
-                        self.SIM.Io[i + i_chan*num_unique_hkl] = miller_array_map[h]
+                MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % self.params.Fhkl_dspace_bins)
+                self.SIM.set_dspace_binning(self.params.Fhkl_dspace_bins)
 
             assert max_xpos == len(P)-1
 
@@ -1120,10 +1115,16 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-    def save_up(self, x, rank=0):
+    def save_up(self, x, rank=0, i_exp=0):
+        """
+
+        :param x: optimized parameters
+        :param rank: rank number, if calling from MPI program
+        :param i_exp: optional organizational index (if reading inputs from a hopper exp_ref_spec_file )
+        :return:
+        """
         assert self.exper_name is not None
         assert self.refl_name is not None
-        i_exp=0
         Modeler = self
         LOGGER = logging.getLogger("refine")
         Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
@@ -1180,7 +1181,8 @@ class DataModeler:
                     p = self.SIM.P["Fhkl_%d_channel%d" % (i_hkl, i_chan)]
                     scale_fac = p.get_val(x[p.xpos])
                     hessian_term = Fhkl_scale_errors[i_hkl + num_asu*i_chan]
-                    scale_var = 1/hessian_term
+                    with np.errstate(all='ignore'):
+                        scale_var = 1/hessian_term
                     asu_hkls.append(asu)
                     scale_facs.append(scale_fac)
                     scale_vars.append(scale_var)
@@ -1441,7 +1443,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     nparam = len(x)
     J = None
     if compute_grad:
-        # THis should be all params save the Fhkl params
+        # This should be all params save the Fhkl params
         J = np.zeros((nparam-SIM.Num_ASU*SIM.num_Fhkl_channels, npix))  # gradients
 
     model_pix = None
@@ -1788,10 +1790,12 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
             del_Nvol = params.centers.Nvol - Nvol
             fN_vol = .5*del_Nvol**2/params.betas.Nvol
             restraint_terms["Nvol"] = fN_vol
-        if params.betas.Fhkl is not None:  # (experimental)
-            terms = SIM.Io**2 * (SIM.Fhkl_scales-1)**2 / params.betas.Fhkl
-            f_Fhkl = 0.5*np.sum(terms)
-            restraint_terms["Fhkl"] = f_Fhkl
+    if params.betas.Fhkl is not None:  # (experimental)
+        fhkl_grad_channels = {}
+        for i_chan in range(SIM.num_Fhkl_channels):
+            fhkl_restraint_f, fhkl_restraint_grad = SIM.D.Fhkl_restraint_data(i_chan, params.betas.Fhkl, params.use_geometric_mean_Fhkl)
+            fhkl_grad_channels[i_chan] = fhkl_restraint_grad
+            restraint_terms["Fhkl_chan%d"% i_chan] = fhkl_restraint_f
 
 #   accumulate target function
     f_restraints = 0
@@ -1891,12 +1895,14 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
             G = spot_scale_p.get_val(x[spot_scale_p.xpos])
             fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted,
                                                  mod.all_freq, SIM.num_Fhkl_channels, G)
-            fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
 
-            if params.use_restraints and params.betas.Fhkl is not None:
-                g_terms = SIM.Io**2 * (SIM.Fhkl_scales-1)
-                g_terms *= SIM.Fhkl_scales
-                fhkl_grad += g_terms
+            if params.betas.Fhkl is not None:
+                for i_chan in range(SIM.num_Fhkl_channels):
+                    restraint_contribution_to_grad = fhkl_grad_channels[i_chan]
+                    fhkl_slice = slice(i_chan*SIM.Num_ASU, (i_chan+1)*SIM.Num_ASU, 1)
+                    np.add.at(fhkl_grad, fhkl_slice, restraint_contribution_to_grad)
+
+            fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
 
             g = np.append(g, fhkl_grad)
 
@@ -1915,9 +1921,9 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     params.simulator.spectrum.filename = spec
     Modeler = DataModeler(params)
     if params.load_data_from_refls:
-        Modeler.GatherFromReflectionTable(exp, ref)
+        Modeler.GatherFromReflectionTable(exp, ref, sg_symbol=params.space_group)
     else:
-        assert Modeler.GatherFromExperiment(exp, ref)
+        assert Modeler.GatherFromExperiment(exp, ref, sg_symbol=params.space_group)
 
     Modeler.SimulatorFromExperiment(best)
 
@@ -2284,6 +2290,7 @@ def print_profile(stats, timed_methods):
             frac_t = timespent[i_l] / total_time * 100.
             line = fp[l-1][:-1]
             PROFILE_LOGGER.warning("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))
+
 
 def get_lam0_lam1_from_pandas(df):
     lam0 = df.lam0.values[0]
