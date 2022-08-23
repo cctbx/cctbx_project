@@ -22,6 +22,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                         gpr,
                                         error_i_seqs,
                                         log=None,
+                                        verbose=False,
                                         ):
   t0=time.time()
   mon_lib_srv = server.server()
@@ -63,11 +64,20 @@ def adjust_geometry_proxies_registeries(hierarchy,
       k=0
       l=1
       bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+      if verbose:
+        print('-'*80)
+        print(i_seqs)
+        # print(pdb_atoms[i_seqs[k]].quote(),pdb_atoms[i_seqs[l]].quote())
+        print(atom1.quote(), atom2.quote())
+        print(neutron1,neutron2)
+        print('k',bond_table_entry)
+        print(i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]])
       if ( not bond_table_entry or
            i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]]):
         k=1
         l=0
         bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+        if verbose: print(bond_table_entry)
       if i_seqs[l] in bond_table_entry:
         bond_simple = gpr.bond_simple.proxies[i_seqs[k]]
         bond_simple.distance_ideal = bond.value_dist
