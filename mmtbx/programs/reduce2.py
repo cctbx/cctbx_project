@@ -232,9 +232,8 @@ NOTES:
     make_sub_header('Writing output', out=self.logger)
 
     # Write the description output to the specified file.
-    of = open(self.params.output.description_file_name,"w")
-    of.write(outString)
-    of.close()
+    self.data_manager._write_text("description", outString,
+      self.params.output.description_file_name)
 
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
     # Then determine the output file name and write it there.
@@ -250,8 +249,7 @@ NOTES:
       file_name = self.data_manager.get_model_names()[0]
       base = os.path.splitext(os.path.basename(file_name))[0] + "_reduced"
     fullname = base+suffix
-    with open(fullname, 'w') as f:
-      f.write(txt)
+    self.data_manager._write_text("model", txt, fullname)
 
     print('Wrote',fullname,'and',self.params.output.description_file_name, file = self.logger)
 
