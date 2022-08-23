@@ -9,7 +9,7 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissionsand
+# See the License for the specific language governing permissions and
 # limitations under the License.
 
 from __future__ import absolute_import, division, print_function
@@ -2374,9 +2374,7 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    of = open(self.params.output.file_name,"w")
-    of.write(outString)
-    of.close()
+    self.data_manager._write_text("Text", outString, self.params.output.file_name)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
