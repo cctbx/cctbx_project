@@ -16,6 +16,7 @@ def test_S(S):
     print("verify")
     inds, _ = S.D.Fhkl_tuple
 #   NOTE: are symm equivalent indices the same in different bases ?
+    print("SYMBOL:", S.crystal.symbol, "UCELL:", S.crystal.dxtbx_crystal.get_unit_cell())
     sym = crystal.symmetry(S.crystal.dxtbx_crystal.get_unit_cell(), S.crystal.symbol)
     mset = miller.set(sym, inds, True)
     mset_asu = mset.map_to_asu()
@@ -41,7 +42,6 @@ if __name__=="__main__":
     test_S(S)
 
     S2 = sim_data.SimData()
-
     UCELL_A=40.3
     UCELL_B=180.3
     UCELL_C=142.6
@@ -59,5 +59,21 @@ if __name__=="__main__":
     nbC.symbol = C.get_space_group().info().type().lookup_symbol()
     nbC.miller_array = utils.make_miller_array(nbC.symbol, C.get_unit_cell().parameters())
     S2.crystal = nbC
-
     test_S(S2)
+
+    p65_cryst = {'__id__': 'crystal',
+                 'real_space_a': (43.32309880004587, 25.5289818883498, 60.49634260901813),
+                 'real_space_b': (34.201635357808115, -38.82573591182249, -59.255697149884924),
+                 'real_space_c': (41.42476391176581, 229.70849483520402, -126.60059788183489),
+                 'space_group_hall_symbol': ' P 65 2 (x,y,z+1/12)',
+                 'ML_half_mosaicity_deg': 0.06671930026192037,
+                 'ML_domain_size_ang': 6349.223840307989}
+    p65_C = CrystalFactory.from_dict(p65_cryst)
+    S3 = sim_data.SimData()
+
+    nbC = nanoBragg_crystal.NBcrystal()
+    nbC.dxtbx_crystal = p65_C
+    nbC.symbol = p65_C.get_space_group().info().type().lookup_symbol()
+    nbC.miller_array = utils.make_miller_array(nbC.symbol, p65_C.get_unit_cell().parameters())
+    S3.crystal = nbC
+    test_S(S3)

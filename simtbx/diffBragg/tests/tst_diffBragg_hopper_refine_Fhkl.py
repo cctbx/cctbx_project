@@ -67,8 +67,8 @@ nbcryst.miller_array = ma
 assert ma.is_xray_amplitude_array()
 
 SIM = SimData(use_default_crystal=False)
-shape = 3013, 3002
-detdist = 100
+shape = 1000, 1001
+detdist = 140
 SIM.detector = SimData.simple_detector(detdist, 0.1, shape)
 SIM.crystal = nbcryst
 SIM.instantiate_diffBragg(oversample=1, auto_set_spotscale=True, default_F=0)
