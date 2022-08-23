@@ -125,8 +125,9 @@ def run2():
   f.write(llp_neutron)
   f.close()
   cmd = 'phenix.geometry_minimization tst_LLP_neutron.pdb'
+  print(cmd)
   rc = easy_run.go(cmd)
-  find = ['Changed 1 bond restraint(s),  added 0 bond restraint(s)',
+  find = ['Changed 32 bond restraint(s),  added 2 bond restraint(s)',
           'Changed 52 angle restraint(s), added 4 angle restraint(s)',
           ]
   for f in find:

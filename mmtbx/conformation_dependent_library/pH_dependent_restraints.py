@@ -128,6 +128,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                       rg.resseq,
                                       ))
     bond_counters = [0,0]
+    atoms_added = {}
     for bond in monomer_restraints.bond_list:
       for rc in _generate_bond_atoms(rg,
                                      bond.atom_id_1,
@@ -135,17 +136,19 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                      bondlength=bond.value_dist,
                                      verbose=verbose):
         atom1, atom2, name1, name2, neutron1, neutron2 = rc
-        bc, atoms_added = process_bonds( gpr,
-                                         bond,
-                                         atom_dict,
-                                         atom1,
-                                         atom2,
-                                         name1,
-                                         name2,
-                                         neutron1,
-                                         neutron2)
+        bc, ad = process_bonds(gpr,
+                               bond,
+                               atom_dict,
+                               atom1,
+                               atom2,
+                               name1,
+                               name2,
+                               neutron1,
+                               neutron2)
         for i in range(2):
           bond_counters[i]+=bc[i]
+        if ad:
+          atoms_added.update(ad)
     lookup={}
     for angle in monomer_restraints.angle_list:
       for rc in _generate_angle_atoms(rg,
