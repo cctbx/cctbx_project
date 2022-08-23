@@ -8186,6 +8186,9 @@ class map_model_manager(object):
           map_data=mm.map_data())
         self.add_map_manager_by_id(new_mm,map_id)
 
+    # Set the resolution if we didn't already
+      self.set_resolution(d_min)
+
   def _empty_copy(self):
     '''
       Return a copy with no data
