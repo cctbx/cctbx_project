@@ -75,7 +75,7 @@ combine_experiments {
     .help = "Combine refined.expt and integrated.refl files."
     .help = "If False, ignore integrated.refl files in favor of"
     .help = "indexed.refl files in preparation for reintegrating."
-  include scope dials.command_line.combine_experiments.phil_scope
+  include scope dials.command_line.combine.phil_scope
 }
 '''
 
