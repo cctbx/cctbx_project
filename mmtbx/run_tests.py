@@ -469,7 +469,14 @@ molprobity_tests = [
   ["$D/monomer_library/tst_linking.py", "30"],
   ["$D/monomer_library/tst_linking.py", "31"],
   ["$D/monomer_library/tst_linking.py", "32"],
-
+  ["$D/monomer_library/tst_linking.py", "33"],
+  ["$D/monomer_library/tst_linking.py", "34"],
+  ["$D/monomer_library/tst_linking.py", "35"],
+  ["$D/monomer_library/tst_linking.py", "36"],
+  ["$D/monomer_library/tst_linking.py", "37"],
+  ["$D/monomer_library/tst_linking.py", "38"],
+  ["$D/monomer_library/tst_linking.py", "39"],
+  ["$D/monomer_library/tst_linking.py", "40"],
 ]
 
 if libtbx.env.has_module(name="probe"):

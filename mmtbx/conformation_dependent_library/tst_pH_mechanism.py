@@ -50,8 +50,58 @@ HETATM 2478  DN1 GNP A 201       1.698   2.933 -16.423  1.00 17.94           D
 HETATM 2479 DN21 GNP A 201       1.566   1.190 -18.004  1.00 21.01           D
 HETATM 2480 DN22 GNP A 201       0.995   1.532 -19.446  1.00 21.01           D
 '''
+llp_neutron = '''
+REMARK CRYST1   55.532  124.986  130.444  90.00  90.00  90.00 P 21 21 21
+HETATM    1  N   LLP B 258      -0.447 -10.941  14.499  1.00 15.19           N
+HETATM    2  CA  LLP B 258      -0.166 -10.435  13.173  1.00 16.94           C
+HETATM    3  C   LLP B 258       1.020  -9.463  13.270  1.00 16.29           C
+HETATM    4  O   LLP B 258       1.880  -9.487  12.435  1.00 16.55           O
+HETATM    5  CB  LLP B 258      -1.413  -9.787  12.490  1.00 19.72           C
+HETATM    6  CG  LLP B 258      -2.474 -10.860  12.217  1.00 22.40           C
+HETATM    7  CD  LLP B 258      -3.792 -10.723  13.002  1.00 23.55           C
+HETATM    8  CE  LLP B 258      -4.807 -11.905  12.717  1.00 24.31           C
+HETATM    9  NZ  LLP B 258      -6.088 -11.491  13.288  1.00 24.08           N
+HETATM   10  C2  LLP B 258      -9.937  -9.685  14.136  1.00 18.63           C
+HETATM   11  C2' LLP B 258     -10.748  -8.689  13.386  1.00 18.63           C
+HETATM   12  C3  LLP B 258      -8.817 -10.412  13.596  1.00 18.26           C
+HETATM   13  C4  LLP B 258      -8.134 -11.344  14.456  1.00 20.66           C
+HETATM   14  C4' LLP B 258      -7.015 -12.088  13.961  1.00 24.62           C
+HETATM   15  C5  LLP B 258      -8.637 -11.466  15.781  1.00 19.23           C
+HETATM   16  C5' LLP B 258      -7.977 -12.415  16.725  1.00 19.27           C
+HETATM   17  C6  LLP B 258      -9.708 -10.734  16.205  1.00 16.33           C
+HETATM   18  D   LLP B 258      -0.978 -10.290  15.036  1.00 15.65           D
+HETATM   19  DB2 LLP B 258      -1.099  -9.339  11.539  1.00 19.84           D
+HETATM   20  DB3 LLP B 258      -1.817  -8.976  13.109  1.00 21.03           D
+HETATM   21  DD2 LLP B 258      -3.584 -10.689  14.078  1.00 25.88           D
+HETATM   22  DE2 LLP B 258      -4.436 -12.823  13.186  1.00 24.67           D
+HETATM   23  DE3 LLP B 258      -4.912 -12.073  11.641  1.00 23.22           D
+HETATM   24  DG2 LLP B 258      -2.076 -11.872  12.359  1.00 22.69           D
+HETATM   25  DG3 LLP B 258      -2.733 -10.803  11.151  1.00 21.60           D
+HETATM   26  N1  LLP B 258     -10.252  -9.936  15.386  1.00 16.38           N
+HETATM   27  O3  LLP B 258      -8.483 -10.155  12.287  1.00 22.39           O
+HETATM   28  OP1 LLP B 258      -5.476 -15.288  16.374  1.00 16.32           O
+HETATM   29  OP2 LLP B 258      -7.046 -14.828  18.431  1.00 13.48           O
+HETATM   30  OP3 LLP B 258      -4.890 -13.481  18.022  1.00 15.01           O
+HETATM   31  OP4 LLP B 258      -6.764 -13.026  16.528  1.00 20.08           O
+HETATM   32  P   LLP B 258      -6.052 -14.262  17.370  1.00 13.48           P
+HETATM   33  H6  LLP B 258     -10.075 -10.811  17.219  1.00 17.86           H
+HETATM   34 H2'3 LLP B 258     -11.798  -9.003  13.358  1.00 19.77           H
+HETATM   35 H4'1 LLP B 258      -6.902 -13.121  14.273  1.00 23.11           H
+HETATM   36 H5'1 LLP B 258      -8.706 -13.215  16.912  1.00 19.90           H
+HETATM   37 H5'2 LLP B 258      -7.879 -11.891  17.686  1.00 18.49           H
+HETATM   38  D1ZALLP B 258     -11.031  -9.415  15.735  0.94 16.15           D
+HETATM   39  DA ALLP B 258       0.162 -11.264  12.527  0.90 17.45           D
+HETATM   40  DD3ALLP B 258      -4.256  -9.766  12.729  0.67 24.01           D
+HETATM   41 D2'1ALLP B 258     -10.434  -8.534  12.352  0.24 19.01           D
+HETATM   42 D2'2ALLP B 258     -10.701  -7.714  13.885  0.40 19.18           D
+HETATM   43  HA BLLP B 258       0.162 -11.264  12.527  0.10 17.45           H
+HETATM   44  HD3BLLP B 258      -4.256  -9.766  12.729  0.33 24.01           H
+HETATM   45  H1ZBLLP B 258     -11.031  -9.415  15.735  0.06 16.15           H
+HETATM   46 H2'1BLLP B 258     -10.434  -8.534  12.352  0.76 19.01           H
+HETATM   47 H2'2BLLP B 258     -10.701  -7.714  13.885  0.60 19.18           H
+'''
 
-def run():
+def run1():
   f = open('tst_pH_gnp.pdb', 'w')
   f.write(gnp)
   f.close()
@@ -70,8 +120,28 @@ def run():
       assert 0, 'line not found: %s' % f
   return rc
 
+def run2():
+  f = open('tst_LLP_neutron.pdb', 'w')
+  f.write(llp_neutron)
+  f.close()
+  cmd = 'phenix.geometry_minimization tst_LLP_neutron.pdb'
+  rc = easy_run.go(cmd)
+  find = ['Changed 1 bond restraint(s),  added 0 bond restraint(s)',
+          'Changed 52 angle restraint(s), added 4 angle restraint(s)',
+          ]
+  for f in find:
+    for line in rc.stdout_lines:
+      if line.find(f)>-1:
+        print(line)
+        break
+    else:
+      assert 0, 'line not found: %s' % f
+  return rc
+
 if __name__=="__main__":
   args = sys.argv[1:]
   del sys.argv[1:]
-  rc = run(*tuple(args))
+  rc = run1()
+  assert rc.return_code==0
+  rc = run2()
   assert rc.return_code==0

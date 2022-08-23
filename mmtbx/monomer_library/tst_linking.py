@@ -1821,7 +1821,49 @@ XYP   O2B    HO2B   single        0.850 0.020     0.980
 XYP   O3B    HO3B   single        0.850 0.020     0.980
 XYP   O4B    HO4B   single        0.850 0.020     0.980
 """,
-  "linking_test_cyclic.pdb" : """
+# CRYST1   16.302   21.238   70.013  90.07  90.04  67.31 P 1
+# SCALE1      0.061342 -0.025647  0.000016        0.00000
+# SCALE2      0.000000  0.051035  0.000053        0.00000
+# SCALE3      0.000000  0.000000  0.014283        0.00000
+  'linking_test_cyclic_main_chain.pdb' : '''
+ATOM      1  N   SER A   1      -4.265  -4.954  -1.607  1.00  8.10           N
+ATOM      2  CA  SER A   1      -4.144  -5.756  -2.800  1.00 12.96           C
+ATOM      3  C   SER A   1      -4.846  -5.023  -3.931  1.00 15.20           C
+ATOM      4  O   SER A   1      -5.852  -4.345  -3.752  1.00 13.88           O
+ATOM      5  CB  SER A   1      -4.783  -7.118  -2.597  1.00 11.98           C
+ATOM      6  OG  SER A   1      -6.157  -6.982  -2.308  1.00 20.63           O
+ATOM      7  H1  SER A   1      -3.830  -5.404  -0.877  1.00  9.73           H
+ATOM      8  H3  SER A   1      -5.194  -4.834  -1.375  1.00  9.73           H
+ATOM      9  HA  SER A   1      -3.212  -5.906  -3.021  1.00 15.57           H
+ATOM     10  HB2 SER A   1      -4.679  -7.641  -3.407  1.00 14.39           H
+ATOM     11  HB3 SER A   1      -4.346  -7.566  -1.855  1.00 14.39           H
+ATOM     12  HG  SER A   1      -6.551  -6.619  -2.955  1.00 24.78           H
+ATOM     13  N   GLY A   2      -4.267  -5.151  -5.101  1.00  9.33           N
+ATOM     14  CA  GLY A   2      -4.825  -4.626  -6.311  1.00 12.49           C
+ATOM     15  C   GLY A   2      -5.008  -5.783  -7.263  1.00  9.40           C
+ATOM     16  O   GLY A   2      -4.714  -6.935  -6.932  1.00 11.00           O
+ATOM     17  H   GLY A   2      -3.518  -5.556  -5.222  1.00 11.21           H
+ATOM     18  HA2 GLY A   2      -5.683  -4.208  -6.136  1.00 15.01           H
+ATOM     19  HA3 GLY A   2      -4.229  -3.970  -6.704  1.00 15.01           H
+ATOM     20  N   CYS A  33      -2.546   1.149   1.766  1.00  4.81           N
+ATOM     21  CA  CYS A  33      -2.165   0.125   0.812  1.00  7.98           C
+ATOM     22  C   CYS A  33      -3.153  -1.036   0.819  1.00  7.86           C
+ATOM     23  O   CYS A  33      -3.760  -1.377   1.846  1.00  9.25           O
+ATOM     24  CB  CYS A  33      -0.764  -0.397   1.128  1.00  8.49           C
+ATOM     25  SG  CYS A  33       0.515   0.890   1.039  1.00  6.44           S
+ATOM     26  H   CYS A  33      -2.063   1.185   2.476  1.00  5.78           H
+ATOM     27  HA  CYS A  33      -2.161   0.511  -0.078  1.00  9.59           H
+ATOM     28  HB2 CYS A  33      -0.760  -0.760   2.027  1.00 10.20           H
+ATOM     29  HB3 CYS A  33      -0.536  -1.090   0.489  1.00 10.20           H
+ATOM     30  N   GLY A  34      -3.323  -1.639  -0.350  1.00  6.42           N
+ATOM     31  CA  GLY A  34      -4.109  -2.847  -0.461  1.00  8.51           C
+ATOM     32  C   GLY A  34      -3.699  -3.646  -1.668  1.00  5.95           C
+ATOM     33  O   GLY A  34      -2.828  -3.223  -2.415  1.00  5.28           O
+ATOM     34  H   GLY A  34      -2.991  -1.363  -1.093  1.00  7.72           H
+ATOM     35  HA2 GLY A  34      -3.984  -3.392   0.331  1.00 10.22           H
+ATOM     36  HA3 GLY A  34      -5.048  -2.619  -0.543  1.00 10.22           H
+''',
+  "linking_test_cyclic_side_chain.pdb" : """
 ATOM   3269  N   SER P   1      18.059  15.260 -24.071  1.00 30.30           N
 ATOM   3270  CA  SER P   1      17.744  15.799 -25.407  1.00 28.03           C
 ATOM   3271  C   SER P   1      17.804  14.711 -26.452  1.00 26.79           C
@@ -2346,7 +2388,8 @@ links = {
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
   "linking_test_XYP_XYP.pdb" : [18,19],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
-  "linking_test_cyclic.pdb" : [68,68],
+  "linking_test_cyclic_side_chain.pdb" : [67,68], # side chain cross link
+  "linking_test_cyclic_main_chain.pdb" : [34,35], # main chain cyclic
   "linking_test_over_valence.pdb" : [6,6],
   "linking_test_c2_c6.pdb" : [21,22],
   "linking_test_ccp4_other.pdb" : [71,71],
