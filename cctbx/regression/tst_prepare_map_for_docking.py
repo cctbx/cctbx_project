@@ -175,7 +175,7 @@ def exercise():
       mc_ideal, map_id = 'ideal_map')
   ideal_mapCC = new_mmm.map_model_cc(map_id = 'ideal_map')
   # print("Perfect, starting, ideal and achieved mapCC: ", perfect_mapCC, start_mapCC, ideal_mapCC, mapCC)
-  assert(mapCC_ideal_achieved > 0.95)
+  assert(mapCC_ideal_achieved > 0.9)
   assert(mapCC > 0.95*ideal_mapCC)
 
 if(__name__ == "__main__"):
