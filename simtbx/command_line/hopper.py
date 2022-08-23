@@ -8,7 +8,7 @@ import sys
 try:
     import pandas
 except ImportError:
-    print("Please intsall pandas, libtbx.python -m pip install pandas")
+    print("Please install pandas, libtbx.python -m pip install pandas")
     exit()
 
 try:
@@ -138,9 +138,15 @@ class Script:
 
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
-                opt_exp = "%s_%s_%d.expt" % (self.params.tag, basename, i_exp)
-                opt_refl = opt_exp.replace(".expt", ".refl")
-                if opt_exp in exp_names_already and opt_refl in refl_names_already:
+                exists = False
+                for ii in [i_exp, 0]:
+                    opt_exp = "%s_%s_%d.expt" % (self.params.tag, basename, ii)
+                    opt_refl = opt_exp.replace(".expt", ".refl")
+                    if opt_exp in exp_names_already and opt_refl in refl_names_already:
+                        exists = True
+                        break
+                if exists:
+                    print("Found existing!! %d" % i_exp)
                     continue
 
             best = None
@@ -157,9 +163,10 @@ class Script:
             Modeler.rank = COMM.rank
             Modeler.i_exp = i_exp
             if self.params.load_data_from_refls:
-                gathered = Modeler.GatherFromReflectionTable(exp, ref)
+                gathered = Modeler.GatherFromReflectionTable(exp, ref, sg_symbol=self.params.space_group)
             else:
-                gathered = Modeler.GatherFromExperiment(exp, ref, sg_symbol=self.params.space_group)
+                gathered = Modeler.GatherFromExperiment(exp, ref,
+                                                        remove_duplicate_hkl=self.params.remove_duplicate_hkl, sg_symbol=self.params.space_group)
             if not gathered:
                 logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue
@@ -247,7 +254,7 @@ class Script:
             if self.params.profile:
                 Modeler.SIM.D.show_timings(COMM.rank)
 
-            Modeler.save_up(x, rank=COMM.rank)
+            Modeler.save_up(x, rank=COMM.rank, i_exp=i_exp)
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
                 utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
