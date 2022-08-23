@@ -410,7 +410,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     set_close_distances();
 
-    linearize_Fhkl();
+    linearize_Fhkl(false);
     //sanity_check_linear_Fhkl();
     //
     last_kernel_on_GPU=boost::python::object(); // object() returns  None
@@ -2260,27 +2260,46 @@ std::string get_hkl_key(int h, int k , int l){
     return hkl_s;
 }
 
-void diffBragg::linearize_Fhkl(){
+void diffBragg::linearize_Fhkl(bool compute_dists){
         cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
         cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
+
+        cctbx::uctbx::unit_cell ucell;
+        if (compute_dists){
+            double uc_a = a[0]*1e10;
+            double uc_b = b[0]*1e10;
+            double uc_c = c[0]*1e10;
+            double uc_alpha = alpha*RTD;
+            double uc_beta = beta*RTD;
+            double uc_gamma =gamma*RTD;
+            scitbx::af::double6 uc_par(uc_a, uc_b, uc_c,uc_alpha, uc_beta, uc_gamma);
+            ucell = cctbx::uctbx::unit_cell(uc_par);
+        }
 
         db_cryst.ASUid_map.clear();
         db_cryst.FhklLinear_ASUid.clear();
         db_cryst.FhklLinear.clear();
         db_cryst.Fhkl2Linear.clear();
+        db_cryst.ASU_dspace.clear();
+        db_cryst.ASU_Fcell.clear();
+
         int asu_count = 0;
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
+                                double fhkl_val = Fhkl[h][k][l];
+
                                 int h0 = h+ h_min;
                                 int k0 = k+ k_min;
                                 int l0 = l+ l_min;
 
                                 // TODO: add change of basis operation
+
                                 cctbx::miller::index<int> hkl0(h0,k0,l0);
                                 cctbx::miller::asym_index ai(sg, asu, hkl0);
                                 cctbx::miller::index_table_layout_adaptor ila = ai.one_column(true);
                                 cctbx::miller::index<int> hkl0_asu = ila.h();
+
 
                                 int h_asu = hkl0_asu[0];
                                 int k_asu = hkl0_asu[1];
@@ -2289,11 +2308,16 @@ void diffBragg::linearize_Fhkl(){
                                 if (db_cryst.ASUid_map.count(key) == 0){
                                     db_cryst.ASUid_map[key] = asu_count;
                                     asu_count +=1;
+                                    if(compute_dists){
+                                        double d_spacing = ucell.d(hkl0);
+                                        db_cryst.ASU_dspace.push_back(d_spacing);
+                                        db_cryst.ASU_Fcell.push_back(fhkl_val);
+                                    }
                                 }
                                 int asu_id = db_cryst.ASUid_map[key];
                                 db_cryst.FhklLinear_ASUid.push_back(asu_id);
 
-                                db_cryst.FhklLinear.push_back(Fhkl[h][k][l]);
+                                db_cryst.FhklLinear.push_back(fhkl_val);
                                 if (complex_miller)
                                     db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
                         }
@@ -2327,6 +2351,35 @@ af::flex_double diffBragg::ave_wavelength_img(){
   return wavelen_pixels;
 }
 
+boost::python::tuple diffBragg::get_ave_I_cell(bool use_Fhkl_scale, int i_channel, bool use_geometric_mean){
+    SCITBX_ASSERT(db_cryst.ASU_dspace.size() > 0 );
+    SCITBX_ASSERT(db_cryst.dspace_bins.size()>0);
+    db_cryst.use_geometric_mean = use_geometric_mean;
+    std::vector<double> ave = I_cell_ave(db_cryst, use_Fhkl_scale, i_channel, first_deriv_imgs.Fhkl_scale);
+    boost::python::list ave_out;
+    boost::python::list counts_out;
+    for (int i=1; i< ave.size()/2; i++) {// skip the first bin, its for out-of-bounds inserts
+        ave_out.append(ave[i]);
+        counts_out.append(ave[i + ave.size()/2] );
+    }
+    boost::python::tuple out = boost::python::make_tuple(ave_out, counts_out);
+    return out ;
+}
+
+
+np::ndarray diffBragg::Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean){
+    db_cryst.Fhkl_beta = Fhkl_beta;
+    db_cryst.use_geometric_mean = use_geometric_mean;
+    std::vector<double> Ih_grad = Ih_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale);
+
+    boost::python::tuple shape = boost::python::make_tuple(Ih_grad.size());
+    boost::python::tuple stride = boost::python::make_tuple(sizeof(double));
+    np::dtype dt = np::dtype::get_builtin<double>();
+    np::ndarray output = np::empty(shape,dt);
+
+    output = np::from_data(&Ih_grad[0], dt, shape, stride, boost::python::object());
+    return output.copy();
+}
 
 } // end of namespace nanoBragg
 } // end of namespace simtbx

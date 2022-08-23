@@ -23,6 +23,22 @@ namespace boost_python { namespace {
       return indices;
   }
 
+  void set_dspace_bins(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::list bins){
+    diffBragg.db_cryst.dspace_bins.clear();
+    for (int i=0; i< boost::python::len(bins); i++ ){
+        double bin_edge = boost::python::extract<double>(bins[i]);
+        diffBragg.db_cryst.dspace_bins.push_back(bin_edge);
+    }
+  }
+
+  boost::python::list get_dspace_bins(simtbx::nanoBragg::diffBragg& diffBragg){
+    boost::python::list bins;
+    for (int i=0; i < diffBragg.db_cryst.dspace_bins.size(); i++){
+        bins.append(diffBragg.db_cryst.dspace_bins[i]);
+    }
+    return bins;
+  }
+
   void set_hall(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::str hall){
     diffBragg.db_cryst.hall_symbol = boost::python::extract<std::string>(hall);
   }
@@ -32,6 +48,10 @@ namespace boost_python { namespace {
 
   int get_Num_ASU(simtbx::nanoBragg::diffBragg& diffBragg){
     return diffBragg.db_cryst.Num_ASU;
+  }
+
+  bool get_Fhkl_have_scale_factors(simtbx::nanoBragg::diffBragg& diffBragg){
+    return diffBragg.db_flags.Fhkl_have_scale_factors;
   }
 
   boost::python::dict get_ASUid_map(simtbx::nanoBragg::diffBragg& diffBragg){
@@ -383,7 +403,7 @@ namespace boost_python { namespace {
               diffBragg.complex_miller = true;
           }
       }
-      diffBragg.linearize_Fhkl();
+      diffBragg.linearize_Fhkl(true);
   }
 
   static boost::python::tuple get_Fhkl_tuple(simtbx::nanoBragg::diffBragg diffBragg) {
@@ -771,6 +791,11 @@ namespace boost_python { namespace {
       .add_property("Num_ASU",
                      make_function(get_Num_ASU,rbv()),
                     "number of unique ASU miller indices")
+
+      .add_property("Fhkl_have_scale_factors",
+                     make_function(get_Fhkl_have_scale_factors,rbv()),
+                    "boolean flag indicating whether the Fhkl have scale factors initialized (for doing Fhkl refinement)")
+
       .add_property("Fhkl_gradient_indices",
                      make_function(get_Fhkl_grad_inds,rbv()),
                     "return a list of indices")
@@ -778,6 +803,19 @@ namespace boost_python { namespace {
             make_function(&get_hall,rbv()),
             make_function(&set_hall,dcp()),
             "an internal map that specifies the ASU miller index for each entry in FhklLinear")
+
+      .add_property("dspace_bins",
+            make_function(&get_dspace_bins,rbv()),
+            make_function(&set_dspace_bins,dcp()),
+            "set the bins for computing the average structure factor per resolution")
+
+      .def("_ave_I_cell",
+            &simtbx::nanoBragg::diffBragg::get_ave_I_cell,
+            "return python list of average I_cell (provided dspace_bins was set)")
+
+      .def("_Fhkl_restraint_data",
+            &simtbx::nanoBragg::diffBragg::Fhkl_restraint_data,
+            "return numpy array of Fhkl restraint gradients and target contribution")
 
       .def("ave_wavelength_image",
             &simtbx::nanoBragg::diffBragg::ave_wavelength_img,

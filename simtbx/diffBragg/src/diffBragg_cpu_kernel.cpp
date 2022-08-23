@@ -37,6 +37,118 @@ double diffBragg_cpu_kernel_polarization (Eigen::Vector3d incident, Eigen::Vecto
     return polar;
 }
 
+int get_bin(std::vector<double> dspace_bins,  double dspace_sample){
+    int start = 0;
+    int end = dspace_bins.size() - 1;
+    while (start <= end) {
+        int mid = (start + end) / 2;
+        if (dspace_bins[mid] == dspace_sample)
+            return mid;
+        else if (dspace_bins[mid] < dspace_sample)
+            start = mid + 1;
+        else
+            end = mid - 1;
+    }
+    return end + 1;
+}
+
+std::vector<double> I_cell_ave(crystal& db_cryst, bool use_Fhkl_scale, int i_channel,
+            std::vector<double>& Fhkl_scale){
+    std::vector<double> ave;
+    std::vector<double> count;
+    for (int i=0; i < db_cryst.dspace_bins.size(); i++){
+        ave.push_back(0);
+        count.push_back(0);
+    }
+    #pragma omp parallel for
+    for (int i=0; i < db_cryst.ASU_dspace.size(); i++){
+        double d = db_cryst.ASU_dspace[i];
+        double F_cell = db_cryst.ASU_Fcell[i];
+        if (F_cell==0){
+            continue;
+        }
+        int bin = get_bin(db_cryst.dspace_bins, d);
+        if (bin == 0 || bin >= db_cryst.dspace_bins.size() )
+            continue;
+        double scale = 1;
+        if (use_Fhkl_scale)
+            scale = Fhkl_scale[i + db_cryst.Num_ASU*i_channel];
+
+        double summand=scale*F_cell*F_cell;
+        if (db_cryst.use_geometric_mean)
+            summand = log(summand);
+        #pragma omp atomic
+        ave[bin] += summand;
+        #pragma omp atomic
+        count[bin] ++;
+    }
+    for (int i=0; i <ave.size(); i++){
+        if (count[i]>0){
+            if (db_cryst.use_geometric_mean)
+                ave[i] = exp(ave[i]/count[i]);
+            else
+                ave[i] = ave[i]/count[i];
+        }
+    }
+    for (int i=0; i < count.size(); i++)
+        ave.push_back(count[i]);
+    return ave;
+}
+
+std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale){
+    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+    std::vector<double> ave, count;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave.push_back(ave_and_count[i]);
+        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+    }
+
+    ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+    std::vector<double> ave_init;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave_init.push_back(ave_and_count[i]);
+    }
+
+    std::vector<double> out;
+    for (int i=0; i < db_cryst.Num_ASU; i++)
+        out.push_back(0);
+
+    #pragma omp parallel for
+    for (int i=0; i < db_cryst.Num_ASU; i++){
+        double dsp = db_cryst.ASU_dspace[i];
+        int bin = get_bin(db_cryst.dspace_bins, dsp);
+        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+            continue;
+        if(count[bin]==0) continue;
+
+        double F_cell = db_cryst.ASU_Fcell[i];
+        int idx = i_chan*db_cryst.Num_ASU + i;
+        double scale_hkl = Fhkl_scale[idx];
+        double I_cell_init = F_cell*F_cell;
+        double I_cell = scale_hkl * I_cell_init;
+        double U = ave[bin] - ave_init[bin];
+        double grad_term;
+        if (db_cryst.use_geometric_mean){
+            double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+            grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+        }
+        else {
+            grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+        }
+        #pragma omp atomic
+        out[i] += grad_term;
+    }
+
+    double ftarget=0;
+    for (int i=0; i < ave.size(); i++){
+        double U = (ave[i] - ave_init[i]);
+        ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
+    }
+
+    out.push_back(ftarget); // this is an addition to the target function for this particular restraint, added on for convenience
+    return out;
+}
+
 void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
         image_type& floatimage,
@@ -276,10 +388,10 @@ void diffBragg_sum_over_steps(
             double F_cell = db_cryst.default_F;
             double F_cell2 = 0;
             int i_hklasu=0;
-
+            int Fhkl_linear_index=-1;
             if ( (h0<=db_cryst.h_max) && (h0>=db_cryst.h_min) && (k0<=db_cryst.k_max) && (k0>=db_cryst.k_min) && (l0<=db_cryst.l_max) && (l0>=db_cryst.l_min)  ) {
                 /* just take nearest-neighbor */
-                int Fhkl_linear_index = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
+                Fhkl_linear_index = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
                                 (k0- db_cryst.k_min) * db_cryst.l_range +
                                 (l0-db_cryst.l_min);
                 F_cell = db_cryst.FhklLinear[Fhkl_linear_index];

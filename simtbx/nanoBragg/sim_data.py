@@ -351,15 +351,38 @@ class SimData:
   def include_noise(self, val):
     self._include_noise = val
 
+  def get_detector_corner_res(self):
+    dmin = np.inf
+    for p in self.detector:
+      panel_corner_res = p.get_max_resolution_at_corners(self.beam.nanoBragg_constructor_beam.get_s0())
+      dmin = np.min([dmin, panel_corner_res])
+    return dmin
+
   def update_Fhkl_tuple(self):
     if self.crystal.miller_array is not None:
+      d_max, _ = self.crystal.miller_array.resolution_range()
+      d_min = self.get_detector_corner_res()
+      ma_on_detector = self.crystal.miller_array.resolution_filter(d_min=d_min, d_max=d_max)
       if self.using_diffBragg_spots and self.crystal.miller_is_complex:
-        Freal, Fimag = zip(*[(val.real, val.imag) for val in self.crystal.miller_array.data()])
+        Freal, Fimag = zip(*[(val.real, val.imag) for val in ma_on_detector.data()])
         Freal = flex.double(Freal)
         Fimag = flex.double(Fimag)
-        self.D.Fhkl_tuple = self.crystal.miller_array.indices(), Freal, Fimag
+        self.D.Fhkl_tuple = ma_on_detector.indices(), Freal, Fimag
+      elif self.using_diffBragg_spots:
+        self.D.Fhkl_tuple = ma_on_detector.indices(), ma_on_detector.data(), None
       else:
         self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data(), None
+
+  def set_dspace_binning(self, nbins, verbose=False):
+    dsp = self.D.Fhkl.d_spacings().data().as_numpy_array()
+    dsp = np.sort(dsp[dsp >= self.get_detector_corner_res()])
+    bins = [vals[0] for vals in np.array_split(dsp, nbins)] + [dsp[-1]]
+    bins[0] = bins[0]-1e-4
+    bins[-1] = bins[-1]+1e-4
+    if verbose:
+      for d in bins:
+        print(d)
+    self.D.dspace_bins = bins
 
   def _crystal_properties(self):
     if self.crystal is None:
@@ -372,11 +395,14 @@ class SimData:
 
     self.D.xtal_shape = self.crystal.xtal_shape
     self.D.hall_symbol = self.crystal.space_group_info.type().hall_symbol()
+    if hasattr(self.D, "laue_group_num"):
+      self.D.laue_group_num = 1
 
+    # TODO: am I unnecessary?
+    self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
     self.update_Fhkl_tuple()
-
-    ## TODO: am I unnecessary?
     #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+
     if self.using_diffBragg_spots:
       self.D.Omatrix = self.crystal.Omatrix
       self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #

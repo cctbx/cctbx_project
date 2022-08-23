@@ -75,3 +75,37 @@ class _():
         assert variance.dtype==np.float64
         return self.__add_Fhkl_gradients(psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale,
                                          track,errors)
+
+    def ave_I_cell(self, use_Fhkl_scale=False, i_channel=0, use_geometric_mean=False):
+        """
+
+        :param use_Fhkl_scale:
+        :param i_channel:
+        :param use_geometric_mean: boolean flag, whether arithmetic mean or geometric mean is computed per res bin
+        :return:
+        """
+        # TODO add sanity checks here,
+        if not self.dspace_bins:
+            raise ValueError("Set the dspace_bins property first . See sim_data.SimData method set_dspace_binning")
+        if use_Fhkl_scale and not self.Fhkl_have_scale_factors:
+            raise RuntimeError("Set the Fhkl scale factors first! See method self.update_Fhkl_scale_factors")
+        return self._ave_I_cell(use_Fhkl_scale, i_channel, use_geometric_mean)
+
+    def Fhkl_restraint_data(self, i_channel=0, restraint_beta=1e12, use_geometric_mean=False):
+        """
+
+        :param i_channel:  Fhkl channel, should be 0 unless refining wavelength-dependent Fhkl (e.g. two color)
+        :param restraint_beta: restraing the average Fhkl to the initial average Fhkl(per res bin)
+        :param use_geometric_mean: boolean flag, whether arithmetic mean or geometric mean is computed per res bin
+        :return: (target, gradient vector) , 2-tuple contribution to target and gradient in hopper_utils
+        """
+        if not self.dspace_bins:
+            raise ValueError("Set the dspace_bins property first . See sim_data.SimData method set_dspace_binning")
+        if not self.Fhkl_have_scale_factors:
+            raise RuntimeError("Set the Fhkl scale factors first! See method self.update_Fhkl_scale_factors")
+        assert self.dspace_bins
+        restraint_data = self._Fhkl_restraint_data(i_channel, restraint_beta, use_geometric_mean)
+        grad_portion = restraint_data[:-1]
+        assert grad_portion.shape[0] == self.Num_ASU
+        target = restraint_data[-1]
+        return target, grad_portion

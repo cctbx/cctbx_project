@@ -278,7 +278,7 @@ class diffBragg: public nanoBragg{
   void show_fp_fdp();
   bool track_Fhkl;
   std::vector<int> nominal_hkl;
-  void linearize_Fhkl();
+  void linearize_Fhkl(bool compute_dists);
   void sanity_check_linear_Fhkl();
   void update_linear_Fhkl();
 
@@ -314,6 +314,8 @@ class diffBragg: public nanoBragg{
 
   void show_timing_stats(int MPI_RANK);
   bool last_kernel_on_GPU; // reveals whether the GPU kernel was run
+  boost::python::tuple get_ave_I_cell(bool use_Fhkl_scale, int i_channel, bool use_geometric_mean);
+  np::ndarray Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean);
 }; // end of diffBragg
 
 
@@ -322,6 +324,9 @@ double diffBragg_cpu_kernel_polarization(
     Eigen::Vector3d diffracted,
     Eigen::Vector3d polarization_axis,
     double kahn_factor);
+
+std::vector<double> I_cell_ave(crystal& db_cryst,bool use_Fhkl_scale, int i_channel, std::vector<double>& Fhkl_scale);
+std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale);
 
 void diffBragg_sum_over_steps(
       int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,

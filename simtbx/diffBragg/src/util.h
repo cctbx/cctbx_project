@@ -124,6 +124,8 @@ struct flags{
 };
 
 struct crystal{
+    double Fhkl_beta=1e10;
+    bool use_geometric_mean=false;
     std::unordered_set<int> Fhkl_grad_idx_tracker;
     int num_Fhkl_channels=1;
     int laue_group_num=5;
@@ -141,7 +143,9 @@ struct crystal{
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
     double dmin; //res
+    std::vector<double> dspace_bins;
     std::vector<double> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
+    std::vector<double> ASU_dspace, ASU_Fcell;
     std::vector<int> FhklLinear_ASUid;
     std::unordered_map<std::string, int> ASUid_map;
     int Num_ASU;
