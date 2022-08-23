@@ -1,5 +1,5 @@
 ##################################################################################
-# Copyright(c) 2021, Richardson Lab at Duke
+# Copyright(c) 2021-2022, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import math
 from datetime import datetime
+from pathlib import Path
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
@@ -28,68 +29,88 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "1.0.0"
+version = "2.0.0"
 
 master_phil_str = '''
 profile = False
   .type = bool
+  .short_caption = Profile the run
   .help = Profile the performance of the entire run
 
 source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
   .type = atom_selection
+  .short_caption = Source selection
   .help = Source selection description
 
 target_selection = None
   .type = atom_selection
+  .short_caption = Target selection
   .help = Target selection description ('=' means same as source)
 
 use_neutron_distances = False
   .type = bool
+  .short_caption = Use neutron distances
   .help = Use neutron distances (-nuclear in probe)
 
 approach = *self both once surface count_atoms
   .type = choice
+  .short_caption = What to count
   .help = self (src -> src) both (src <=> targ) once (src -> targ) surface (VdW surface) count_atoms (count atoms)
 
 excluded_bond_chain_length = 4
   .type = int
+  .short_caption = Excluded bond chain length
   .help = Exclude chain of atoms bonded to source for this many hops (-4H, -3, -2 , -1 in probe).  When set to 4, an atom chain longer than 3 is only excluded when either the first or the last atom in the chain is a Hydrogen.
 
 minimum_water_hydrogen_occupancy = 0.25
   .type = float
+  .short_caption = Minimum water hydrogen occupancy
   .help = Minimum occupancy for polar hydrogens (0.66 in original Reduce)
 
 maximum_water_hydrogen_b = 80.0
   .type = float
+  .short_caption = Maximum water hydrogen B factor
   .help = Minimum b-factor for polar hydrogens (40.0 in original Reduce)
 
 include_mainchain_mainchain = True
   .type = bool
+  .short_caption = Include mainchain-mainchain interactions
   .help = Include mainchain -> mainchain interactions (-mc in probe)
 
 include_water_water = False
   .type = bool
+  .short_caption = Include water-water interactions
   .help = Include water-to-water interactions (-wat2wat in probe)
 
 keep_unselected_atoms = True
   .type = bool
+  .short_caption = Unselected atoms block dots
   .help = Include atoms that are not selected in the collision neighbor lists (-keep, -drop, -scsurface, -exposed, -asurface, -access in probe)
 
 atom_radius_scale = 1.0
   .type = float
+  .short_caption = Scale applied to atom radii
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-scalevds, -vswscale in probe)
 
 atom_radius_offset = 0.0
   .type = float
+  .short_caption = Offset applied to atom radii
   .help = Atom radius = (r*atom_radius_scale)+atom_radius_offset (-addvdw in probe)
 
 minimum_occupancy = 0.02
   .type = float
+  .short_caption = Minimum occupancy
   .help = Minimum occupancy for a source atom (-minoccupancy in probe)
 
 overlap_scale_factor = 0.5
   .type = float
+  .short_caption = Overlap scale factor
   .help = Fraction of overlap assigned to each atom (-spike in probe)
+
+ignore_lack_of_explicit_hydrogens = False
+  .type = bool
+  .short_caption = Ignore lack of explicit hydrogens
+  .help = For an explicit-hydrogen model, ignore lack of hydrogens (probe behaved this way)
 
 output
   .style = menu_item auto_align
@@ -104,93 +125,105 @@ output
     .short_caption = Dump file name
     .help = Dump file name for regression testing atom characteristics (-DUMPATOMS in probe)
 
-  format = *standard raw oneline
+  format = *kinemage raw oneline
     .type = choice
+    .short_caption = Output format
     .help = Type of output to write (-oneline -unformated -kinemage in probe)
 
   contact_summary = False
     .type = bool
+    .short_caption = Summarize contacts
     .help = Report summary of contacts (-oneline, -summary in probe)
 
   condensed = False
     .type = bool
+    .short_caption = Condensed output
     .help = Condensed output format (-condense, -kinemage in probe)
 
   count_dots = False
     .type = bool
+    .short_caption = Count dots, don't list
     .help = Count dots rather than listing all contacts (-countdots in probe)
 
   hydrogen_bond_output = True
     .type = bool
+    .short_caption = Output hydrogen-bond contacts
     .help = Output hydrogen-bond contacts (-nohbout in probe)
 
   record_added_hydrogens = False
     .type = bool
+    .short_caption = Record Phantom Hydrogens
     .help = Output hydrogen-bond contacts (-dumph2o in probe)
-
-  clash_output = True
-    .type = bool
-    .help = Output clash contacts (-noclashout in probe)
-
-  vdw_output = True
-    .type = bool
-    .help = Output van der Waals contacts (-novdwout in probe)
-
-  separate_worse_clashes = False
-    .type = bool
-    .help = Separately report worse clashes (-sepworse in probe)
-
-  group_name = ""
-    .type = str
-    .help = Specify the group name (-name in probe)
-
-  add_group_name_master_line = False
-    .type = bool
-    .help = Add a master=name line on lists (-dotmaster in probe)
-
-  add_group_line = True
-    .type = bool
-    .help = Add a group line on kinemage output (-nogroup in probe)
-
-  add_kinemage_keyword = False
-    .type = bool
-    .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
-
-  add_lens_keyword = False
-    .type = bool
-    .help = Add lens keywoard to kin file (-lens, -nolens in probe)
-
-  add_group_statement = True
-    .type = bool
-    .help = Add lens keywoard to kin file (-nogroup in probe)
-
-  color_by_na_base = False
-    .type = bool
-    .help = Color by nucleic acid base (-basecolor, -colorbase in probe)
-
-  group_label = ""
-    .type = str
-    .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
-
-  bin_gaps = False
-    .type = bool
-    .help = Bin the gaps (-gapbins in probe)
-
-  merge_contacts = True
-    .type = bool
-    .help = Combine wide and close contacts (True in probe)
 
   report_hydrogen_bonds = True
     .type = bool
+    .short_caption = Report hydrogen bonds
     .help = Report hydrogen bonds (-nohbout in probe)
 
   report_clashes = True
     .type = bool
+    .short_caption = Report clashes
     .help = Report clashes (-noclashout in probe)
 
   report_vdws = True
     .type = bool
+    .short_caption = report VdW contacts
     .help = Report van der Waals contects (-novdwout in probe)
+
+  separate_worse_clashes = False
+    .type = bool
+    .short_caption = Separately report worse clashes
+    .help = Separately report worse clashes (-sepworse in probe)
+
+  group_name = ""
+    .type = str
+    .short_caption = Group name to use
+    .help = Specify the group name (-name in probe)
+
+  add_group_name_master_line = False
+    .type = bool
+    .short_caption = Add group master line
+    .help = Add a master=name line on lists (-dotmaster in probe)
+
+  add_group_line = True
+    .type = bool
+    .short_caption = Add group line
+    .help = Add a group line on kinemage output (-nogroup in probe)
+
+  add_kinemage_keyword = False
+    .type = bool
+    .short_caption = Add kinemage keyword
+    .help = Add kinemage 1 to beginning of kin file (-kinemage in probe)
+
+  add_lens_keyword = False
+    .type = bool
+    .short_caption = Add lens keyword
+    .help = Add lens keywoard to kin file (-lens, -nolens in probe)
+
+  color_by_na_base = False
+    .type = bool
+    .short_caption = Color by nucleic acid base
+    .help = Color by nucleic acid base (-basecolor, -colorbase in probe)
+
+  color_by_gap = True
+    .type = bool
+    .short_caption = Color by gap
+    .help = Assign a color to reported gaps (-atomcolor, -gapcolor, -basecolor in probe)
+
+  group_label = ""
+    .type = str
+    .short_caption = Surface-dots group label
+    .help = Label for the surface-dots group (-name, -scsurface, -exposed, -asurface, -access in probe)
+
+  bin_gaps = False
+    .type = bool
+    .short_caption = Bin the gaps
+    .help = Bin the gaps (-gapbins in probe)
+
+  merge_contacts = True
+    .type = bool
+    .short_caption = Combine wide and close contacts
+    .help = Combine wide and close contacts (True in probe)
 
   only_report_bad_clashes = False
     .type = bool
@@ -198,18 +231,17 @@ output
 
   atoms_are_masters = False
     .type = bool
+    .short_caption = Atoms are masters
     .help = Atoms are listed as masters (-element in probe)
-
-  color_by_gap = True
-    .type = bool
-    .help = Assign a color to reported gaps (-atomcolor, -gapcolor, -basecolor in probe)
 
   default_point_color = "gray"
     .type = str
+    .short_caption = Default color for points
     .help = Default color for output points (-outcolor in probe)
 
   compute_scores = True
     .type = bool
+    .short_caption = Compute scores rather than counting
     .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
 }
 ''' + Helpers.probe_phil_parameters
@@ -514,15 +546,30 @@ def Test():
 class Program(ProgramTemplate):
   description = '''
 Probe2 version {}
-Compute the MolProbity Probe score for a file, or a subset of the file.
-Produce summaries or lists of all contacts, in Kinemage or raw format, depending
-on PHIL parameters.
+
+This program replaces the original "probe" program from the Richarson lab
+at Duke University and was developed by them as part of a supplemental award.
+
+It computes the MolProbity Probe score for a file, or a subset of the file,
+producing summaries or lists of all contacts, in Kinemage or raw format, depending
+on the Phil parameters.
+
+By default, it compares all atoms in the A alternate that meet an occupancy
+criterion against themselves and produces a Kinemage-format file showing all of
+the dot interactions.  See below for the Phil parameter equivalents to some
+original probe command-line arguments.
 
 Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
 Output:
-  Kinemage file describing the score and other information, depending on the parameters.
+  Kinemage or text file describing the score and other information,
+  depending on the parameters.
+
+  If neither output.file_name nor output.filename is specified, it will write
+  to a file with the same name as the input model file name but with the
+  extension replaced with with either '.kin' or '.txt' depending on the
+  parameters (.kin when output.format == kinemage and output.count_dots == False).
 Note:
   Some approaches require the target_selection parameter.  Setting the
   target_selection to "=" will re-use the source for the target.  In all
@@ -548,7 +595,7 @@ Note:
     -kinemage:
       output.add_kinemage_keyword=True
       output.count_dots=False
-      output.format=standard
+      output.format=kinemage
       output.condensed=False
     -scsurface:
       approach=surface
@@ -690,12 +737,12 @@ Note:
     '''
 
     # Store constants used frequently
-    probeRadius = self.params.probe.radius
+    probeRadius = self.params.probe.probe_radius
     include_mainchain_mainchain = self.params.include_mainchain_mainchain
     minimum_occupancy = self.params.minimum_occupancy
     include_water_water = self.params.include_water_water
     excluded_bond_chain_length = self.params.excluded_bond_chain_length
-    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
+    maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.probe_radius
 
     for src in sourceAtoms:
       # Find out what class of dot we should place for this atom.
@@ -908,7 +955,7 @@ Note:
     # added to the list.
     srcInWater = self._inWater[src]
     r = self._extraAtomInfo.getMappingFor(src).vdwRadius
-    pr = self.params.probe.radius
+    pr = self.params.probe.probe_radius
     srcDots = self._dots[src]
     for dotvect in srcDots:
       # Dot on the surface of the atom, at its radius; both dotloc and spikeloc from original code.
@@ -1121,11 +1168,10 @@ Note:
       mast[t] = probeExt.DotScorer.interaction_type_name(t).replace("_"," ")
     extraMaster = ''
     pointid = ''
-    lastpointid = ''
     ptmast = ''
     gapNames = ['z','y','x','w','v','u','t','g','r','q','f','F','Q','R','G','T','U','V','W','X','Y','Z']
     # std gapbins scope at least -.5 to +.5, wider if probeRad > 0.25 standard
-    gaplimit = int(math.floor(((2*(max(self.params.probe.radius,0.25))+0.5)/0.05)+2))
+    gaplimit = int(math.floor(((2*(max(self.params.probe.probe_radius,0.25))+0.5)/0.05)+2))
     gapcounts = [0] * gaplimit
     maxgapcounts = 0
     strcName = ''
@@ -1177,6 +1223,9 @@ Note:
     # Go through all atom types and contact types and report the contacts.
     for atomClass in _allAtomClasses:
       for interactionType in _interactionTypes:
+        # When we switch point types, we need to repeat the point ID.
+        lastPointID = ''
+
         # Write list headers for types that have entries.  Do not write one for weak Hydrogen
         # bonds unless we're separating them out.
         if (len(self._results[atomClass][interactionType]) > 0 and
@@ -1229,8 +1278,8 @@ Note:
           pointid = "{}{:1s}{} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
-          if pointid != lastpointid:
-            lastpointid = pointid
+          if pointid != lastPointID:
+            lastPointID = pointid
             ret += '{{{}}}'.format(pointid)
           else:
             ret += '{"}'
@@ -1363,7 +1412,7 @@ Note:
               gs += 1
 
             if approach == 'surface':
-              p_radius = self.params.probe.radius
+              p_radius = self.params.probe.probe_radius
               a_radius = self._extraAtomInfo.getMappingFor(node.src).vdwRadius
               psas += (a_radius + p_radius)*(a_radius + p_radius)/(a_radius * a_radius)
 
@@ -1578,7 +1627,7 @@ Note:
     ret = ''
     ret += "selection: {}\nname: {}\n".format(selectionName, groupLabel)
     ret += "density: {:.1f} dots per A^2\nprobeRad: {:.3f} A\nVDWrad: (r * {:.3f}) + {:.3f} A\n".format(
-      self.params.probe.density, self.params.probe.radius, self.params.atom_radius_scale,
+      self.params.probe.density, self.params.probe.probe_radius, self.params.atom_radius_scale,
       self.params.atom_radius_offset)
     ret += "score weights: gapWt={:0g}, bumpWt={:0g}, HBWt={:0g}\n".format(
       self.params.probe.gap_weight, self.params.probe.bump_weight, self.params.probe.hydrogen_bond_weight)
@@ -1624,7 +1673,7 @@ Note:
       elif self.params.output.format == 'oneline':
         ret += self._count_summary(intersectionName)
 
-      elif self.params.output.format == 'standard': # Standard/Kinemage format
+      elif self.params.output.format == 'kinemage': # Kinemage format
         ret += self._describe_run("@caption"," command:")
         if self.params.output.contact_summary:
           ret += self._count_summary(intersectionName)
@@ -1637,6 +1686,8 @@ Note:
             ret += "@group dominant {{{}}}\n".format(groupLabel)
 
         ret += self._writeOutput("{} dots".format(selectionName), groupLabel)
+        # Put the water after so they end up in the right group
+        ret += self._phantomHydrogenOutput
 
       else:
         raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
@@ -1679,7 +1730,16 @@ Note:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.file_name is None:
-      raise Sorry("Must specify output.file_name")
+      # If the output file name is not specified, use the same root as the
+      # input file and replace the suffix with .kin for Kinemage output or
+      # .txt for others.
+      suffix = '.kin'
+      if self.params.output.format != 'kinemage' or self.params.output.count_dots:
+        suffix = '.txt'
+      inName = self.data_manager.get_default_model_name()
+      p = Path(inName)
+      self.params.output.file_name = str(p.with_suffix(suffix))
+      print('Setting output.file_name Phil parameter to',self.params.output.file_name)
     if self.params.source_selection is None:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
@@ -1692,8 +1752,8 @@ Note:
       raise Sorry("Invalid atom_radius_offset value: {:0g}".format(ao))
 
     # Ensure consistency among parameters
-    if self.params.probe.contact_cutoff < self.params.probe.radius:
-      self.params.probe.contact_cutoff = self.params.probe.radius
+    if self.params.probe.contact_cutoff < self.params.probe.probe_radius:
+      self.params.probe.contact_cutoff = self.params.probe.probe_radius
 
     # Turn on profiling if we've been asked to in the Phil parameters
     if self.params.profile:
@@ -1708,7 +1768,7 @@ Note:
     outString = ''
 
     if (self.params.output.add_kinemage_keyword and not self.params.output.count_dots
-        and self.params.output.format == 'standard'):
+        and self.params.output.format == 'kinemage'):
       outString += '@kinemage 1\n'
 
     make_sub_header('Interpret Model', out=self.logger)
@@ -1813,7 +1873,7 @@ Note:
     ################################################################################
     # Ensure that the model we've been passed has at least one Hydrogen bonded to a Carbon
     # and at least one polar Hydrogen (bonded to N, O, or S).  Otherwise, raise a Sorry.
-    if not self.params.probe.implicit_hydrogens:
+    if not (self.params.ignore_lack_of_explicit_hydrogens or self.params.probe.implicit_hydrogens):
       foundCBonded = False
       foundPolar = False
       for a in allAtoms:
@@ -1830,7 +1890,8 @@ Note:
       if not (foundCBonded and foundPolar):
         raise Sorry("Did not find both polar and non-polar Hydrogens in model.  For proper operation, "+
                     "Probe requires explicit Hydrogens.  Run Reduce2 or another placement "+
-                    "program on the model before running Probe.")
+                    "program on the model before running Probe, or else add the Phil "+
+                    "parameter ignore_lack_of_explicit_hydrogens=True.")
 
     ################################################################################
     # Get the source selection (and target selection if there is one).  These will be
@@ -1913,11 +1974,13 @@ Note:
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
+      self._phantomHydrogenOutput = ""
       phantomHydrogens = []
       if not self.params.probe.implicit_hydrogens:
         make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
         if self.params.output.record_added_hydrogens:
-          outString += '@vectorlist {water H?} color= gray\n'
+          self._phantomHydrogenOutput += "@master {water H?}\n"
+          self._phantomHydrogenOutput += '@vectorlist {water H?} color= gray master={water H?}\n'
 
         # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
         # a single water in it and asking about the hydrogen radius.  This could also become a
@@ -2018,7 +2081,7 @@ Note:
                   chainID = a.parent().parent().parent().id
                   iCode = a.parent().parent().icode
                   alt = a.parent().altloc
-                  outString += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     a.name, alt, resName, chainID, resID, iCode,
                     a.xyz[0], a.xyz[1], a.xyz[2])
 
@@ -2027,7 +2090,7 @@ Note:
                   chainID = p.parent().parent().parent().id
                   iCode = p.parent().parent().icode
                   alt = p.parent().altloc
-                  outString += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
                     p.name, alt, resName, chainID, resID, iCode,
                     p.xyz[0], p.xyz[1], p.xyz[2])
 
@@ -2119,7 +2182,7 @@ Note:
         include_water_water = self.params.include_water_water
 
         # Produce dots on the surfaces of the selected atoms.
-        maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.radius
+        maxRadius = 2*self._maximumVDWRadius + 2 * self.params.probe.probe_radius
         for src in self._source_atoms_sorted:
           srcInWater = self._inWater[src]
           srcModel = src.parent().parent().parent().parent().id
@@ -2127,7 +2190,7 @@ Note:
           # Find nearby atoms that might come into contact.  This greatly speeds up the
           # search for touching atoms.
           maxRadius = (self._extraAtomInfo.getMappingFor(src).vdwRadius + self._maximumVDWRadius +
-            2 * self.params.probe.radius)
+            2 * self.params.probe.probe_radius)
           nearby = self._spatialQuery.neighbors(src.xyz, 0.00001, maxRadius)
 
           # Select those that are actually within the contact distance based on their
@@ -2151,7 +2214,7 @@ Note:
               continue
             d = (Helpers.rvec3(n.xyz) - Helpers.rvec3(src.xyz)).length()
             if (d <= self._extraAtomInfo.getMappingFor(n).vdwRadius +
-                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.radius):
+                self._extraAtomInfo.getMappingFor(src).vdwRadius + 2*self.params.probe.probe_radius):
               atomList.append(n)
 
           # Find out what class of dot we should place for this atom.
@@ -2184,7 +2247,7 @@ Note:
             # Do nothing for this mode when computing the surface
             pass
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._describe_run("@caption"," command:")
             masterName = "dots"
             if len(self.params.output.group_name) > 0:
@@ -2235,7 +2298,7 @@ Note:
         else: # Not counting the dots
           if self.params.output.format == 'raw':
             pass
-          elif self.params.output.format == 'standard':
+          elif self.params.output.format == 'kinemage':
             outString += self._describe_run("@caption"," command:")
             if self.params.output.add_group_line:
               outString += "@group {{{}}}\n".format(groupLabel)
@@ -2266,7 +2329,7 @@ Note:
             # Acculumlate but do not report results
             outString += self._count_summary("IntersectBothWays 1->2", False)
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._writeOutput("1->2", groupLabel)
             if self.params.output.contact_summary:
               # Acculumlate but do not report results
@@ -2301,7 +2364,7 @@ Note:
             # Accumulate and report results
             outString += self._count_summary("IntersectBothWays 2->1", True)
 
-          elif self.params.output.format == 'standard': # Standard/Kinemage format
+          elif self.params.output.format == 'kinemage': # Kinemage format
             outString += self._writeOutput("2->1", groupLabel)
             if self.params.output.contact_summary:
               # Accumulate and report results

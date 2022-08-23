@@ -35,15 +35,19 @@ version = "0.2.0"
 master_phil_str = '''
 approach = *add remove
   .type = choice
+  .short_caption = Add or remove Hydrogens
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
 n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
+  .short_caption = N terminal charge approach
   .help = Mode for placing H3 at terminal nitrogen.
 use_neutron_distances = False
   .type = bool
+  .short_caption = Use neutron distances
   .help = Use neutron distances (-nuclear in reduce)
 preference_magnitude = 1.0
   .type = float
+  .short_caption = Rotational-preference magnitude
   .help = Multiplier on the rotational-preference energy for rotatable Movers (-penalty in reduce)
 alt_id = None
   .type = str
@@ -51,9 +55,11 @@ alt_id = None
   .help = Alternate to optimize.  The default is to optimize all of them.
 add_flip_movers = False
   .type = bool
+  .short_caption = Add flip movers
   .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
 profile = False
   .type = bool
+  .short_caption = Profile the entire run
   .help = Profile the performance of the entire run
 
 output
@@ -175,6 +181,7 @@ NOTES:
       startAdd = work_clock()
       reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
         model = self.model,
+        use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
         stop_for_unknowns=True
       )

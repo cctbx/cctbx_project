@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021  Richardson Lab at Duke University
+#                Copyright 2021-2022  Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License"],
 # you may not use this file except in compliance with the License.
@@ -47,61 +47,75 @@ probe_phil_parameters = """
 probe
   .style = menu_item auto_align
 {
-  radius = 0.25
+  probe_radius = 0.25
     .type = float
+    .short_caption = Probe radius
     .help = Probe radius (half distance between touched atoms) (-radius in probe)
 
   density = 16.0
     .type = float
+    .short_caption = Dot density
     .help = Probe dots per square angstrom on atom surface (-density in probe)
 
   worse_clash_cutoff = 0.5
     .type = float
+    .short_caption = Worse clash cutoff
     .help = Cutoff for worse clashes, a positive (-divworse in probe)
 
   clash_cutoff = 0.4
     .type = float
+    .short_caption = Clash cutoff
     .help = Cutoff for the clashes, a positive number (-divlow in probe)
 
   contact_cutoff = 0.25
     .type = float
+    .short_caption = Contact cutoff
     .help = Cutoff for the contact (-divhigh in probe)
 
   uncharged_hydrogen_cutoff = 0.6
     .type = float
+    .short_caption = Uncharged hydrogen cutoff
     .help = Cutoff for uncharged hydrogen overlap (-hbregular in probe)
 
   charged_hydrogen_cutoff = 0.8
     .type = float
+    .short_caption = Charged hydroen cutoff
     .help = Cutoff for charged hydrogen overlap (-hbcharged in probe)
 
   bump_weight = 10.0
     .type = float
+    .short_caption = Bump weight
     .help = Weight applied to bump score (-bumpweight in probe)
 
   hydrogen_bond_weight = 4.0
     .type = float
+    .short_caption = Hydrogen bond weight
     .help = Weight applied to hydrogen bond score (-hbweight in probe)
 
   gap_weight = 0.25
     .type = float
+    .short_caption = Gap weight
     .help = Weight applied to gap score (-gapweight in probe)
 
   allow_weak_hydrogen_bonds = False
     .type = bool
+    .short_caption = Count weak hydrogen bonds
     .help = Separately account for weak hydrogen bonds (-LweakHbonds in probe)
 
   implicit_hydrogens = False
     .type = bool
+    .short_caption = Model has implicit hydrogens
     .help = Use implicit hydrogens, no water proxies (-implicit in probe)
 
   ignore_ion_interactions = False
     .type = bool
+    .short_caption = Ignore ion interactions
     .help = Ignore interactions with ions
 
   set_polar_hydrogen_radius = True
     .type = bool
-    .help = Override the radius of polar Hydrogens with 1.05 to ensure it has this value. (-usepolarh in probe)
+    .short_caption = Override polar hydrogen radius
+    .help = Override the radius of polar Hydrogens with to ensure it has the expected value. (-usepolarh in probe)
 }
 """
 

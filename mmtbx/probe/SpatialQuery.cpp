@@ -68,7 +68,8 @@ SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
     }
   }
 
-  // Make sure that we don't have more than 50 bins on a given axis
+  // Make sure that we don't have more than 50 bins on a given axis so that
+  // we don't end up using a ton of memory on the bin.
   Point binSize(DEFAULT_BIN_SIZE, DEFAULT_BIN_SIZE, DEFAULT_BIN_SIZE);
   for (size_t i = 0; i < 3; i++) {
     Coord minSize = (upperBounds[i] - lowerBounds[i]) / 50;
