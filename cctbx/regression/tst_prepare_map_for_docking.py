@@ -178,7 +178,11 @@ def exercise():
   assert(mapCC_ideal_achieved > 0.9)
   # slightly lower tolerance on older compiler
   import platform, sys
-  if sys.platform.startswith('linux') and '.el6.' in platform.platform():
+  if sys.platform.startswith('linux') \
+    and ('.el6.' in platform.platform()
+         or 'centos-6' in platform.platform()
+         or ('azure' in platform.platform() and 'glibc2.10' in platform.platform())
+         or ('azure' in platform.platform() and 'glibc2.12' in platform.platform())):
     assert(mapCC > 0.948*ideal_mapCC)
   else:
     assert(mapCC > 0.95*ideal_mapCC)
