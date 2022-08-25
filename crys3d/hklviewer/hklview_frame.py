@@ -54,7 +54,11 @@ class HKLViewFrame() :
     self.aniso3 = None
     self.uservectors = []
     self.new_miller_array_operations_lst = []
-    self.copyrightpaths = [("CCTBX copyright", libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))),
+    cfilename = libtbx.env.under_root(os.path.join("modules","cctbx_project","COPYRIGHT.txt"))
+    if not os.path.exists( cfilename ):
+      cfilename = libtbx.env.under_root(os.path.join("cctbx", "COPYRIGHT.txt")) # conda installations
+    self.copyrightpaths = [
+     ("CCTBX copyright", cfilename),
      ("NGL copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "License_for_NGL.txt")),
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
