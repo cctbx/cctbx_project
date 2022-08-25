@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.1.0"
+version = "2.2.0"
 
 master_phil_str = '''
 profile = False
@@ -562,6 +562,7 @@ original probe command-line arguments.
 Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
+
 Output:
   Kinemage or text file describing the score and other information,
   depending on the parameters.
@@ -570,6 +571,16 @@ Output:
   to a file with the same name as the input model file name but with the
   extension replaced with with either '.kin' or '.txt' depending on the
   parameters (.kin when output.format == kinemage and output.count_dots == False).
+
+  In addition to writing files, this is derived from the Program Template object
+  and the run() method returns a dictionary whose key values are atom classes
+  (atom names, NA bases, other na and nonbase depending on how the program
+  was run).  Each value is a dictionary of dot interaction types (wide contact,
+  close contact, weak hydrogen bonds, small overlap, bump, bad bump, hydrogen
+  bond) where not all types will be filled in based on the way the program was
+  run.  The value for each interaction type entry is an array of DotInfo objects
+  that describe all dots of that type found by the run.
+
 Note:
   Some approaches require the target_selection parameter.  Setting the
   target_selection to "=" will re-use the source for the target.  In all
@@ -2390,6 +2401,9 @@ Note:
       self._pr.disable()
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
+
+    # Return the results object that has all of the dots.
+    return self._results
 
 # ------------------------------------------------------------------------------
 
