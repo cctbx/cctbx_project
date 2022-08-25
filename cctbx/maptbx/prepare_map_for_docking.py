@@ -1267,9 +1267,10 @@ def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map
   miller_array = marray.customized_copy(data = miller_data)
   return miller_array
 
-def local_mean_intensities(mm, d_min, intensities, r_star):
+def local_mean_intensities(mm, d_min, intensities, r_star, match_falloff = True):
   """
-  Compute local means of input intensities (or amplitudes)
+  Compute local means of input intensities (or amplitudes) using a convolution
+  followed optionally by a resolution-dependent renormalisation
 
   Compulsory argument:
   mm: map_manager corresponding to system from which intensities are obtained
@@ -1278,14 +1279,22 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   r_star: radius in reciprocal space for averaging
   """
 
+  # Check that resolution range of input intensities matches expectation,
+  # allowing some leeway
+  d_star_sq_max = flex.max(intensities.d_star_sq().data())
+  assert d_star_sq_max >= (1/d_min + 0.95*r_star)**2
+
   # Sharpen intensities to reduce dynamic range for numerical stability
   # Save the overall B to put back at end
-  d_star_sq_step = get_d_star_sq_step(intensities)
-  intensities.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
-  b_sharpen = get_sharpening_b(intensities)
-  all_ones = intensities.customized_copy(data = flex.double(intensities.size(), 1))
+  d_star_sq_step = get_d_star_sq_step(intensities, max_bins=100)
+  int_sharp = intensities.customized_copy(data = intensities.data())
+  int_sharp.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
+  b_sharpen = get_sharpening_b(int_sharp)
+  all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
-  int_sharp = intensities.customized_copy(data = intensities.data()*b_terms_miller.data())
+  int_sharp = int_sharp.customized_copy(data = intensities.data()*b_terms_miller.data())
+  # Customized_copy loses binner
+  int_sharp.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
 
   # Turn intensity values into a spherical map inside a cube
   results = intensities_as_expanded_map(mm,int_sharp)
@@ -1308,8 +1317,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   # for the origin term
   stol = flex.sqrt(inverse_intensities.sin_theta_over_lambda_sq().data())
   w = 4 * stol * math.pi * r_star
-  sel = (w == 0.)
-  w.set_selected(sel,0.0001)
+  sel = (w < 0.001)
+  w.set_selected(sel,0.001)
   sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
   sphere_reciprocal.set_selected(sel,1.)
 
@@ -1325,8 +1334,21 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
 
   min_in = flex.min(int_sharp.data())
   if min_in >= 0: # Make sure strictly non-negative remains non-negative
-    extended_mean = extended_mean.customized_copy( data =
+    extended_mean = extended_mean.customized_copy(data =
       (extended_mean.data()+min_in + flex.abs(extended_mean.data()-min_in))/2 )
+
+  # If the option is chosen, match the falloff of the local mean to the input falloff
+  # before removing sharpening (so falloff is as smooth as possible)
+  if match_falloff:
+    extended_mean.use_binner_of(int_sharp)
+    for i_bin in extended_mean.binner().range_used():
+      sel = int_sharp.binner().selection(i_bin)
+      int_sharp_sel = int_sharp.select(sel)
+      mean_int_sharp = flex.mean(int_sharp_sel.data())
+      extended_mean_sel = extended_mean.select(sel)
+      mean_ext_mean = flex.mean(extended_mean_sel.data())
+      ratio = mean_int_sharp / mean_ext_mean
+      extended_mean.data().set_selected(sel, extended_mean_sel.data() * ratio)
 
   # Select data to desired resolution, remove sharpening from above
   local_mean = extended_mean.select(extended_mean.d_spacings().data() >= d_min)
@@ -1447,7 +1469,6 @@ def assess_cryoem_errors(
   over_sampling_factor = 1.
   box_volume = uc.volume()
   weighted_masked_volume = box_volume
-  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
 
   if keep_full_map: # Rearrange later so this choice comes first?
     working_mmm = mmm.deep_copy()
@@ -1455,8 +1476,7 @@ def assess_cryoem_errors(
     # Box the map within xyz bounds, converted to map grid units
     lower_frac = uc.fractionalize(tuple(cart_min))
     upper_frac = uc.fractionalize(tuple(cart_max))
-    map_data = mmm.map_data()
-    all_orig = map_data.all()
+    all_orig = mmm.map_data().all()
     lower_bounds = [int(math.floor(f * n)) for f, n in zip(lower_frac, all_orig)]
     upper_bounds = [int(math.ceil( f * n)) for f, n in zip(upper_frac, all_orig)]
     working_mmm = mmm.extract_all_maps_with_bounds(
@@ -1489,6 +1509,8 @@ def assess_cryoem_errors(
   # Do these calculations at extended resolution to avoid edge effects up to
   # desired resolution
   wuc = working_mmm.crystal_symmetry().unit_cell()
+  ucpars = wuc.parameters()
+  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
   work_mm = working_mmm.map_manager()
   v_star = 1./wuc.volume()
   r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
@@ -1556,6 +1578,15 @@ def assess_cryoem_errors(
     sfsqlm_sel = sfsqlm_sel.customized_copy(data =
       (sfsqlm_sel.data()+min_sfsqlm_bin + flex.abs(sfsqlm_sel.data()-min_sfsqlm_bin))/2.)
     sumfsqr_local_mean.data().set_selected(sel, sfsqlm_sel.data())
+
+    # # for debugging of local mean algorithm
+    # f1f2cos_sel = f1f2cos.select(sel)
+    # mean_f1f2cos_bin = flex.mean_default(f1f2cos_sel.data(),0.)
+    # f1f2cos_lm_sel = f1f2cos_local_mean.select(sel)
+    # mean_f1f2coslm_bin = flex.mean_default(f1f2cos_lm_sel.data(),0.)
+    # mean_sfsqlm_bin = flex.mean_default(sfsqlm_sel.data(),0.)
+    # print("Bin, mean(sumfsq), mean(local_mean), mean(f1f2cos), mean(local_mean): ",
+    #     i_bin, mean_sumfsqr_bin, mean_sfsqlm_bin, mean_f1f2cos_bin, mean_f1f2coslm_bin)
 
     ssqr = sumfsqsel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
@@ -1683,7 +1714,6 @@ def assess_cryoem_errors(
 
     scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
     dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*sigmaS_terms))
-    # expectedFSC_before = flex.mean_default(u_terms,0.)/flex.mean_default(u_terms + sigmaE_terms,0.)
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
     weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*sigmaS_terms))
@@ -1702,6 +1732,11 @@ def assess_cryoem_errors(
       print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC)
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
+
+  # Compensate for numerical instability when sigmaS is extremely small, in which
+  # case dobs is very small and expectE can be very large
+  sel = dobs.data() < 0.00001
+  expectE.data().set_selected(sel,0.)
 
   # At this point, weighted_map_noise is the sum of the noise variance for a
   # weighted half-map. In the following, this sum could be multiplied by two
