@@ -166,7 +166,8 @@ class Script:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref, sg_symbol=self.params.space_group)
             else:
                 gathered = Modeler.GatherFromExperiment(exp, ref,
-                                                        remove_duplicate_hkl=self.params.remove_duplicate_hkl, sg_symbol=self.params.space_group)
+                                                        remove_duplicate_hkl=self.params.remove_duplicate_hkl,
+                                                        sg_symbol=self.params.space_group)
             if not gathered:
                 logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue
@@ -214,23 +215,24 @@ class Script:
                 MAIN_LOGGER.debug("Found %d xtals with unit cells:" %len(xtals))
                 for xtal in xtals:
                     MAIN_LOGGER.debug("%.4f %.4f %.4f %.4f %.4f %.4f" % xtal.get_unit_cell().parameters())
-            Modeler.SimulatorFromExperiment(best)
-            Modeler.SIM.Umatrices = [xtal.get_U() for xtal in xtals]
+            SIM = hopper_utils.get_simulator_for_data_modelers(Modeler)
+            Modeler.set_parameters_for_experiment(best)
+            Modeler.Umatrices = [xtal.get_U() for xtal in xtals]
             # TODO, move this to SimulatorFromExperiment
             if best is not None and "other_spotscales" in list(best) and "other_Umats" in list(best):
-                Modeler.SIM.Umatrices[0] = self.E.get_U()
+                Modeler.Umatrices[0] = self.E.get_U()
                 assert len(xtals) == len(best.other_spotscales.values[0])+1
                 for i_xtal in range(1, len(xtals),1):
                     scale_xt = best.other_spotscales.values[0][i_xtal]
                     Umat_xt = best.other_Umats.values[0][i_xtal]
-                    Modeler.SIM.Umatrices[i_xtal] = Umat_xt
-                    Modeler.SIM.P["G_xtal%d" %i_xtal] = scale_xt
+                    Modeler.Umatrices[i_xtal] = Umat_xt
+                    Modeler.P["G_xtal%d" %i_xtal] = scale_xt
 
-            Modeler.SIM.D.store_ave_wavelength_image = self.params.store_wavelength_images
+            SIM.D.store_ave_wavelength_image = self.params.store_wavelength_images
             if self.params.refiner.verbose is not None and COMM.rank==0:
-                Modeler.SIM.D.verbose = self.params.refiner.verbose
+                SIM.D.verbose = self.params.refiner.verbose
             if self.params.profile:
-                Modeler.SIM.record_timings = True
+                SIM.record_timings = True
             if self.params.use_float32:
                 Modeler.all_data = Modeler.all_data.astype(np.float32)
                 Modeler.all_background = Modeler.all_background.astype(np.float32)
@@ -241,26 +243,26 @@ class Script:
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
                 logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
-            #print("RANK%d, DEV=%d" % (COMM.rank, dev))
 
-            Modeler.SIM.D.device_Id = dev
+            SIM.D.device_Id = dev
 
-            nparam = len(Modeler.SIM.P)
+            nparam = len(Modeler.P)
+            if SIM.refining_Fhkl:
+                nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
             x0 = [1] * nparam
             try:
-                x = Modeler.Minimize(x0)
+                x = Modeler.Minimize(x0, SIM)
             except StopIteration:
                 x = Modeler.target.x0
             if self.params.profile:
-                Modeler.SIM.D.show_timings(COMM.rank)
+                SIM.D.show_timings(COMM.rank)
 
-            Modeler.save_up(x, rank=COMM.rank, i_exp=i_exp)
+            Modeler.save_up(x,SIM, rank=COMM.rank, i_exp=i_exp)
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
-                utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+                utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
-
-            Modeler.clean_up()
+            Modeler.clean_up(SIM)
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
             exp_gatheredRef_spec = COMM.reduce(exp_gatheredRef_spec)

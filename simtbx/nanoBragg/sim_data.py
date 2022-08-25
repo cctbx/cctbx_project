@@ -401,7 +401,7 @@ class SimData:
     # TODO: am I unnecessary?
     self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
     self.update_Fhkl_tuple()
-    #self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
+    self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
     if self.using_diffBragg_spots:
       self.D.Omatrix = self.crystal.Omatrix
@@ -685,6 +685,7 @@ class SimData:
 
     return DetectorFactory.make_detector("", fast, slow, origin,
                                          (pixelsize_mm, pixelsize_mm), image_shape, trusted_range)
+
 
 if __name__ == "__main__":
   S = SimData()

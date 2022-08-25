@@ -183,6 +183,8 @@ def get_diffBragg_instance():
     braggC.miller_array = Fhkl
     idx = braggC.miller_array.indices()
     amps = braggC.miller_array.data()
+    D.Bmatrix = crystal.get_B()
+    D.Umatrix = crystal.get_U()
     D.Fhkl_tuple = idx, amps, None
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
@@ -752,7 +754,6 @@ def simulator_for_refinement(expt, params):
 
     SIM.D.no_Nabc_scale = params.no_Nabc_scale  # TODO check gradients for this setting
     SIM.D.update_oversample_during_refinement = False
-    SIM.num_xtals = params.number_of_xtals
 
     return SIM
 
@@ -843,7 +844,6 @@ def simulator_from_expt_and_params(expt, params=None):
                 defaultF=default_F)
     else:
         miller_data = open_mtz(mtz_name, mtz_column)
-
     crystal.miller_array = miller_data
     if params.refiner.force_symbol is not None:
         crystal.symbol = params.refiner.force_symbol
@@ -1613,22 +1613,74 @@ def get_extracted_params_from_phil_sources(phil_file=None, cmdline_phil_lst=None
     return params
 
 
-def get_laue_group_number(sg_symbol=None):
-    """ get laue group number from space group symbol """
-    if sg_symbol is None:
-        laue_sym = "P-1"
-    else:
-        g = sgtbx.space_group_info(sg_symbol).group()
-        if g.laue_group_type() not in ["2/m", "-3m"]:
-            laue_sym = "P{}".format(g.laue_group_type())
-        else:
-            pg = str(g.build_derived_patterson_group().info().symbol_and_number())
-            lc = re.sub(r'\([^)]*\)', '', pg[2:]).replace(" ", "")
-            if pg[0] == "R":
-                lc = lc.replace(":H", "1")
-            laue_sym = "P{}".format(lc)
+def track_fhkl(Modeler):
+    try:
+        from stream_redirect import Redirect
+    except ImportError:
+        print("Cannot use track_fhkl unless module stream_redirect is installed: pip install stream-redirect")
+        return
+    SIM = Modeler.SIM
+    SIM.D.track_Fhkl = True
+    npix = int( len(Modeler.pan_fast_slow)/ 3)
+    PFS = np.reshape(Modeler.pan_fast_slow, (npix, 3))
+    uroi = set(Modeler.roi_id)
+    all_good_count_stats = []
+    all_bad_count_stats = []
+    all_count_stats = {}
+    for ii, i_roi in enumerate(uroi):
+        output = Redirect(stdout=True)
+        i_roi_sel = Modeler.roi_id == i_roi
+        with output:
+            sel = np.logical_and(i_roi_sel, Modeler.all_trusted)
+            pfs_roi = PFS[sel]
+            pfs_roi = np.ascontiguousarray(pfs_roi.ravel())
+            pfs_roi = flex.size_t(pfs_roi)
+            SIM.D.add_diffBragg_spots(pfs_roi)
+        #i_fcell = Modeler.all_fcell_global_idx[i_roi_sel][0]
+        #shoebox_hkl = SIM.asu_from_i_fcell[i_fcell]
+        lines = output.stdout.split("\n")
+        count_stats = {}
+        for l in lines:
+            if l.startswith("Pixel"):
+                hkl = l.split()[5]
+                hkl = tuple(map(int, hkl.split(",")))
+                hkl = map_hkl_list([hkl], True, SIM.crystal.space_group_info.type().lookup_symbol())[0]
+                count = int(l.split()[8])
+                if hkl in count_stats:
+                    count_stats[hkl] += count
+                else:
+                    count_stats[hkl] = count
+        ntot = sum(count_stats.values())
+        #assert shoebox_hkl in count_stats
+        #print("Shoebox hkl", shoebox_hkl)
+        for hkl in count_stats:
+            frac = 0 if ntot ==0 else count_stats[hkl] / float(ntot)
+            h, k, l = hkl
+            print("\tstep hkl %d,%d,%d : frac=%.1f%%" % (h, k, l, frac * 100))
+            count_stats[hkl] = frac
 
-    hm_symbols = ['P-1', 'P112/m', 'P12/m1', 'P2/m11', 'Pmmm', 'P4/m', 'P4/mmm', 'P-3', 'P-3m1', 'P-31m', 'P6/m',
-                  'P6/mmm', 'Pm-3', 'Pm-3m']
-    lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-    return lgs[hm_symbols.index(laue_sym)]
+        all_count_stats[i_roi] = count_stats
+    return all_count_stats
+
+#
+#        if len(count_stats) == 1:
+#            all_good_count_stats.append([shoebox_hkl, count_stats])
+#        else:
+#            all_bad_count_stats.append([shoebox_hkl, count_stats])
+#    if all_bad_count_stats:
+#        print("Shot %s had %d /  %d rois with HKL variation" % (Modeler.exp_name, len(all_bad_count_stats), len(uroi)))
+#        percs = [stats[sb_hkl] * 100 for sb_hkl, stats in all_bad_count_stats]
+#        ave_perc = sum(percs) / len(percs)
+#        min_perc = min(percs)
+#        nmax = max(len(stats) for _, stats in all_bad_count_stats)
+#        print("\tMin %.1f%%, Mean=%.1f%%, most variation: %d hkls in a shoebox" % (min_perc, ave_perc, nmax))
+#
+#        for sb_h, stats in all_bad_count_stats:
+#            h, k, l = zip(*stats.keys())
+#            if len(set(h)) > 1 or len(set(k)) > 1:
+#                print("Weird HK vary: shot %s" % Modeler.exp_name, sb_h)
+#            if not np.all(np.sort(l) == np.arange(min(l), min(l) + len(l))):
+#                print("Weird L sort: shot %s" % Modeler.exp_name, sb_h)
+#            if len(stats) > 3:
+#                print("Weird Nmax: shot %s" % Modeler.exp_name, sb_h)
+

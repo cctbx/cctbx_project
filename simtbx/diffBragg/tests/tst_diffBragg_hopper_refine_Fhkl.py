@@ -207,14 +207,14 @@ if not args.nolog:
 P.outdir="_temp_fhkl_refine"
 if args.maxiter is not None:
     P.lbfgs_maxiter = args.maxiter
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
+Eopt,_, Mod,SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
 
 logging.disable()
 print("\nResults\n<><><><><><>")
 
 Mod.exper_name = "dummie.expt"
 Mod.refl_name = "dummie.refl"
-Mod.save_up(x)
+Mod.save_up(x, SIM)
 
 # we can track the dominant hkls in each shoebox occuring within the diffBragg model
 #count_stats = utils.track_fhkl(Mod)
@@ -318,6 +318,6 @@ for hkl in nominal_hkl_corrections:
 print("mean percent diff", np.mean(diffs))
 
 assert r1_nominal < r1_nominal_init, "r1_nom=%f, r1_not_nom=%f" %(r1_nominal, r1_nominal_init)
-assert r1_nominal < 0.03
+assert r1_nominal < 0.04
 
 print("OK")

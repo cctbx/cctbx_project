@@ -127,7 +127,7 @@ class DataModeler:
         self.no_rlp_info = False  # whether rlps are stored in the refls table
         self.params = params  # phil params (see diffBragg/phil.py)
         self._abs_path_params()
-        self.SIM = None  # simulator object (instance of nanoBragg.sim_data.SimData
+        self.num_xtals = 1
         self.E = None  # placeholder for the dxtbx.model.Experiment instance
         self.pan_fast_slow =None  # (pid, fast, slow) per pixel
         self.all_background =None  # background model per pixel (photon units)
@@ -235,8 +235,8 @@ class DataModeler:
         print("WARNING ,this attribute will soon be deprecated, use nominal_sigma_rdout instead!")
         return self.nominal_sigma_rdout
 
-    def clean_up(self):
-        free_SIM_mem(self.SIM)
+    def clean_up(self, SIM):
+        free_SIM_mem(SIM)
 
     def set_experiment(self, exp, load_imageset=True):
         if isinstance(exp, str):
@@ -602,17 +602,9 @@ class DataModeler:
         R['shoebox'] = flex.shoebox(shoeboxes)
         R.as_file(output_name)
 
-    def SimulatorFromExperiment(self, best=None):
-        """
-        This instantiates the simulator class and sets the model parameter objects, and attaches them to the
-        simulator as an attribute called P.
-
-        Optional best parameter is a single row of a pandas datafame containing the starting
-        models, presumably optimized from a previous minimzation using this program
-        """
-
-        ParameterTypes= {"ranged":RangedParameter , "positive": PositiveParameter}
-        ParameterType= RangedParameter # most params currently only this type
+    def set_parameters_for_experiment(self, best=None):
+        ParameterTypes = {"ranged": RangedParameter, "positive": PositiveParameter}
+        ParameterType = RangedParameter  # most params currently only this type
 
         if best is not None:
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
@@ -622,7 +614,7 @@ class DataModeler:
                 xax = col((-1, 0, 0))
                 yax = col((0, -1, 0))
                 zax = col((0, 0, -1))
-                rotX,rotY,rotZ = best[["rotX", "rotY", "rotZ"]].values[0]
+                rotX, rotY, rotZ = best[["rotX", "rotY", "rotZ"]].values[0]
                 RX = xax.axis_and_angle_as_r3_rotation_matrix(rotX, deg=False)
                 RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
                 RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
@@ -655,13 +647,6 @@ class DataModeler:
             lam0, lam1 = get_lam0_lam1_from_pandas(best)
             self.params.init.spec = lam0, lam1
 
-        self.SIM = utils.simulator_for_refinement(self.E, self.params)
-
-        if self.params.spectrum_from_imageset:
-            downsamp_spec(self.SIM, self.params, self.E)
-        elif self.params.gen_gauss_spec:
-            set_gauss_spec(self.SIM, self.params, self.E)
-
         init = self.params.init
         sigma = self.params.sigmas
         mins = self.params.mins
@@ -676,7 +661,7 @@ class DataModeler:
         P = Parameters()
         if self.params.init.random_Gs is not None:
             init.G = np.random.choice(self.params.init.random_Gs)
-        for i_xtal in range(self.SIM.num_xtals):
+        for i_xtal in range(self.num_xtals):
             for ii in range(3):
 
                 p = ParameterType(init=0, sigma=sigma.RotXYZ[ii],
@@ -801,7 +786,7 @@ class DataModeler:
                 "Unit cell variable %s (currently=%f) is bounded by %f and %f" % (name, val, minval, maxval))
             P.add(p)
 
-        self.SIM.ucell_man = ucell_man
+        self.ucell_man = ucell_man
 
         p = ParameterType(init=init.detz_shift*1e-3, sigma=sigma.detz_shift,
                           minval=mins.detz_shift*1e-3, maxval=maxs.detz_shift*1e-3,
@@ -840,64 +825,11 @@ class DataModeler:
                             minval=mins.spec[1], maxval=maxs.spec[1], fix=fix.spec,
                             name="lambda_scale", center=centers.spec[1], beta=betas.spec[1])
         P.add(p)
-        # TODO: verify how slow always using lambda coefs is
-        # TODO: ensure lam0/lam1 are not -1 and not np.nan
-        self.SIM.D.use_lambda_coefficients = True
-        self.SIM.D.lambda_coefficients = tuple(self.params.init.spec)
-
-        self.SIM.refining_Fhkl = False
-        self.SIM.Num_ASU = 0
-        self.SIM.num_Fhkl_channels=1
-        self.SIM.Fhkl_channel_bounds = [0, np.inf]
-        if not self.params.fix.Fhkl:
-            if self.params.Fhkl_channel_bounds is not None:
-                assert self.params.Fhkl_channel_bounds == sorted(self.params.Fhkl_channel_bounds)
-                self.SIM.Fhkl_channel_bounds = [0] + self.params.Fhkl_channel_bounds + [np.inf]
-
-            self.SIM.num_Fhkl_channels = len(self.SIM.Fhkl_channel_bounds)-1
-            asu_map = self.SIM.D.get_ASUid_map()
-            self.SIM.asu_map_int = {tuple(map(int, k.split(','))): v for k, v in asu_map.items()}
-
-            num_unique_hkl = len(asu_map)
-            self.SIM.Fhkl_scales_init = np.ones(num_unique_hkl*self.SIM.num_Fhkl_channels)
-            all_Fhkl_xpos = []
-            # NOTE: when setting the scales in C++ we should loop in the same order
-            for i_chan in range(self.SIM.num_Fhkl_channels):
-                for i_hkl in range(num_unique_hkl):
-                    name = "Fhkl_%d_channel%d"% (i_hkl, i_chan)
-                    p = PositiveParameter(init=self.SIM.Fhkl_scales_init[i_hkl + num_unique_hkl*i_chan],
-                                          sigma=1,
-                                          fix=False,
-                                          name=name, center=1, beta=1e20)
-                    P.add(p)
-                    all_Fhkl_xpos.append(P[name].xpos)
-                    assert P[name].xpos == p.xpos
-            min_xpos = np.min(all_Fhkl_xpos)
-            max_xpos = np.max(all_Fhkl_xpos)
-            assert np.allclose(all_Fhkl_xpos, np.arange(min_xpos, max_xpos+1, 1) )
-            self.SIM.Fhkl_xpos_slice = slice(min_xpos, max_xpos+1, 1)
-            self.SIM.refining_Fhkl = True
-            self.SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
-            if self.params.betas.Fhkl is not None:
-                MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % self.params.Fhkl_dspace_bins)
-                self.SIM.set_dspace_binning(self.params.Fhkl_dspace_bins)
-
-            assert max_xpos == len(P)-1
-
-            energies = np.array([utils.ENERGY_CONV/wave for wave, _ in self.SIM.beam.spectrum])
-            Fhkl_channel_ids = np.zeros(len(energies), int)
-            for i_channel, (en1, en2) in enumerate(zip(self.SIM.Fhkl_channel_bounds, self.SIM.Fhkl_channel_bounds[1:])):
-                sel = (energies >= en1) * (energies < en2)
-                Fhkl_channel_ids[sel] = i_channel
-            self.SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
 
         # iterating over this dict is time-consuming when refinine Fhkl, so we split up the names here:
-        self.SIM.non_fhkl_params = [name for name in P if not name.startswith("scale_roi") and not name.startswith("Fhkl_")]
-        self.SIM.scale_roi_names = [name for name in P if name.startswith("scale_roi")]
-        self.SIM.P = P
-        # TODO , fix this attribute hacking
-        self.SIM.roi_id_unique = self.roi_id_unique
-        self.SIM.roi_id_slices = self.roi_id_slices
+        self.non_fhkl_params = [name for name in P if not name.startswith("scale_roi") and not name.startswith("Fhkl_")]
+        self.scale_roi_names = [name for name in P if name.startswith("scale_roi")]
+        self.P = P
 
     def get_data_model_pairs(self, reorder=False):
         if self.best_model is None:
@@ -950,13 +882,16 @@ class DataModeler:
 
         return ret_subimgs
 
-    def Minimize(self, x0):
-        self.target = target = TargetFunc(SIM=self.SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
+    def Minimize(self, x0, SIM):
+        self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
         vary = np.ones(len(x0), bool)
-        assert len(x0) == len(self.SIM.P)
-        for p in self.SIM.P.values():
+        if SIM.refining_Fhkl:
+            assert len(x0) == len(self.P)+SIM.Num_ASU*SIM.num_Fhkl_channels
+        else:
+            assert len(x0) == len(self.P)
+        for p in self.P.values():
             if not p.refine:
                 vary[p.xpos] = False
 
@@ -985,35 +920,35 @@ class DataModeler:
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
-            if self.SIM.P["lambda_offset"].refine:
+            if self.P["lambda_offset"].refine:
                 for lam_id in LAMBDA_IDS:
-                    self.SIM.D.refine(lam_id)
-            if self.SIM.P["RotXYZ0_xtal0"].refine:
-                self.SIM.D.refine(ROTX_ID)
-                self.SIM.D.refine(ROTY_ID)
-                self.SIM.D.refine(ROTZ_ID)
-            if self.SIM.P["Nabc0"].refine:
-                self.SIM.D.refine(NCELLS_ID)
-            if self.SIM.P["Ndef0"].refine:
-                self.SIM.D.refine(NCELLS_ID_OFFDIAG)
-            if self.SIM.P["ucell0"].refine:
-                for i_ucell in range(len(self.SIM.ucell_man.variables)):
-                    self.SIM.D.refine(UCELL_ID_OFFSET + i_ucell)
-            if self.SIM.P["eta_abc0"].refine:
-                self.SIM.D.refine(ETA_ID)
-            if self.SIM.P["detz_shift"].refine:
-                self.SIM.D.refine(DETZ_ID)
-            if self.SIM.D.use_diffuse:
-                self.SIM.D.refine(DIFFUSE_ID)
+                    SIM.D.refine(lam_id)
+            if self.P["RotXYZ0_xtal0"].refine:
+                SIM.D.refine(ROTX_ID)
+                SIM.D.refine(ROTY_ID)
+                SIM.D.refine(ROTZ_ID)
+            if self.P["Nabc0"].refine:
+                SIM.D.refine(NCELLS_ID)
+            if self.P["Ndef0"].refine:
+                SIM.D.refine(NCELLS_ID_OFFDIAG)
+            if self.P["ucell0"].refine:
+                for i_ucell in range(len(self.ucell_man.variables)):
+                    SIM.D.refine(UCELL_ID_OFFSET + i_ucell)
+            if self.P["eta_abc0"].refine:
+                SIM.D.refine(ETA_ID)
+            if self.P["detz_shift"].refine:
+                SIM.D.refine(DETZ_ID)
+            if SIM.D.use_diffuse:
+                SIM.D.refine(DIFFUSE_ID)
 
-            min_kwargs = {'args': (self,True), "method": method, "jac": target.jac,
+            min_kwargs = {'args': (self,SIM, True), "method": method, "jac": target.jac,
                           'hess': self.params.hess, 'callback':callback}
             if method=="L-BFGS-B":
                 min_kwargs["options"] = {"ftol": self.params.ftol, "gtol": 1e-12, "maxfun":1e5,
                                          "maxiter":self.params.lbfgs_maxiter, "eps":1e-20}
 
         else:
-            min_kwargs = {'args': (self,False), "method": method,
+            min_kwargs = {'args': (self,SIM, False), "method": method,
                           'callback': callback,
                           'options': {'maxfev': maxfev,
                                       'fatol': self.params.nelder_mead_fatol}}
@@ -1067,10 +1002,10 @@ class DataModeler:
 
         rescaled_vals = np.zeros_like(xall)
         all_perc_change = []
-        for name in self.SIM.P:
+        for name in self.P:
             if name.startswith("Fhkl_"):
                 continue
-            p = self.SIM.P[name]
+            p = self.P[name]
 
             if not p.refine:
                 continue
@@ -1115,7 +1050,7 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-    def save_up(self, x, rank=0, i_exp=0):
+    def save_up(self, x, SIM, rank=0, i_exp=0):
         """
 
         :param x: optimized parameters
@@ -1127,7 +1062,7 @@ class DataModeler:
         assert self.refl_name is not None
         Modeler = self
         LOGGER = logging.getLogger("refine")
-        Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+        Modeler.best_model, _ = model(x, Modeler, SIM,  compute_grad=False)
         Modeler.best_model_includes_background = False
         LOGGER.info("Optimized values for i_exp %d:" % i_exp)
 
@@ -1139,7 +1074,7 @@ class DataModeler:
         img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
         new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
 
-        if self.SIM.refining_Fhkl:
+        if SIM.refining_Fhkl:
             fhkl_scale_dir = hopper_io.make_rank_outdir(Modeler.params.outdir, "Fhkl_scale", rank)
 
             # ------------
@@ -1149,24 +1084,24 @@ class DataModeler:
             # I do not not how to interact with an unordered_set in openMP
             resid = self.all_data - self.best_model
             V = self.best_model + self.all_sigma_rdout ** 2
-            Gparam = self.SIM.P["G_xtal0"]
+            Gparam = self.P["G_xtal0"]
             G = Gparam.get_val(x[Gparam.xpos])
             # here we must use the CPU method
-            force_cpu = self.SIM.D.force_cpu
-            self.SIM.D.force_cpu = True
+            force_cpu = SIM.D.force_cpu
+            SIM.D.force_cpu = True
             MAIN_LOGGER.info("Getting Fhkl errors (forcing CPUkernel usage)... might take some time")
-            Fhkl_scale_errors = self.SIM.D.add_Fhkl_gradients(
+            Fhkl_scale_errors = SIM.D.add_Fhkl_gradients(
                 self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
-                self.SIM.num_Fhkl_channels, G, track=True, errors=True)
-            self.SIM.D.force_gpu = force_cpu
+                SIM.num_Fhkl_channels, G, track=True, errors=True)
+            SIM.D.force_gpu = force_cpu
             # ------------
 
-            inds = np.sort(np.array(self.SIM.D.Fhkl_gradient_indices))
+            inds = np.sort(np.array(SIM.D.Fhkl_gradient_indices))
 
-            num_asu = len(self.SIM.asu_map_int)
-            idx_to_asu = {idx:asu for asu,idx in self.SIM.asu_map_int.items()}
+            num_asu = len(SIM.asu_map_int)
+            idx_to_asu = {idx:asu for asu,idx in SIM.asu_map_int.items()}
             all_nominal_hkl = set(self.hi_asu_perpix)
-            for i_chan in range(self.SIM.num_Fhkl_channels):
+            for i_chan in range(SIM.num_Fhkl_channels):
                 sel = (inds >= i_chan*num_asu) * (inds < (i_chan+1)*num_asu)
                 if not np.any(sel):
                     continue
@@ -1178,9 +1113,10 @@ class DataModeler:
                 scale_vars = []
                 for i_hkl in inds_chan:
                     asu = idx_to_asu[i_hkl]
-                    p = self.SIM.P["Fhkl_%d_channel%d" % (i_hkl, i_chan)]
-                    scale_fac = p.get_val(x[p.xpos])
-                    hessian_term = Fhkl_scale_errors[i_hkl + num_asu*i_chan]
+                    xpos = i_hkl + i_chan*num_asu
+                    #xval = x[xpos]
+                    scale_fac = SIM.Fhkl_scales[xpos]
+                    hessian_term = Fhkl_scale_errors[xpos]
                     with np.errstate(all='ignore'):
                         scale_var = 1/hessian_term
                     asu_hkls.append(asu)
@@ -1201,10 +1137,9 @@ class DataModeler:
         trace_data = np.array([trace0, trace1, trace2]).T
         np.savetxt(trace_path, trace_data, fmt="%s")
 
-        Modeler.SIM.niter = len(trace0)
-        Modeler.SIM.sigz = trace2[-1]
-        #if Modeler.SIM.num_xtals == 1:
-        hopper_io.save_to_pandas(x, Modeler.SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
+        Modeler.niter = len(trace0)
+        Modeler.sigz = trace2[-1]
+        hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1213,9 +1148,9 @@ class DataModeler:
             sigma_rdout_subimg = None
 
         wavelen_subimg = []
-        if Modeler.SIM.D.store_ave_wavelength_image:
+        if SIM.D.store_ave_wavelength_image:
             bm = Modeler.best_model.copy()
-            Modeler.best_model = Modeler.SIM.D.ave_wavelength_image().as_numpy_array()
+            Modeler.best_model = SIM.D.ave_wavelength_image().as_numpy_array()
             Modeler.best_model_includes_background = True
             _, wavelen_subimg, _, _ = Modeler.get_data_model_pairs()
             Modeler.best_model = bm
@@ -1274,7 +1209,7 @@ class DataModeler:
                         com = xcom + .5, ycom + .5, 0
                         h5_roi_id[ref_idx] = i_roi
                         new_xycalcs[ref_idx] = com
-                        scale_p = Modeler.SIM.P["scale_roi%d" % i_roi]
+                        scale_p = Modeler.P["scale_roi%d" % i_roi]
                         per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
 
             h5.create_dataset("rois", data=Modeler.rois)
@@ -1299,15 +1234,15 @@ class DataModeler:
                                      "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
         rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
         SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
-        write_SIM_logs(Modeler.SIM, log=SIMlog_path, lam=spectrum_file)
+        write_SIM_logs(SIM, log=SIMlog_path, lam=spectrum_file)
 
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
             # TODO separate diffBragg logger
-            utils.show_diffBragg_state(Modeler.SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
-            print("Refiner scale=%f" % Modeler.SIM.Scale_params[0].get_val(x[0]))
+            utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+            print("Refiner scale=%f" % SIM.Scale_params[0].get_val(x[0]))
 
 
-def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args=None,
+def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
         roi_id_slices=None, roi_id_unique=None):
     if not SIM.use_psf:
         return model_pix, J
@@ -1322,22 +1257,22 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
     if roi_id_unique is None:
         roi_id_unique = SIM.roi_id_unique
 
-    coords = pan_fast_slow.as_numpy_array()
+    coords = mod.pan_fast_slow.as_numpy_array()
     pid = coords[0::3]
     fid = coords[1::3]
     sid = coords[2::3]
 
     ref_xpos = []  # Jacobian index (J[xpos]) for the refined  parameters that arent roi scale factors
     if J is not None:
-        for name in SIM.P:
+        for name in mod.P:
             if name.startswith("scale_roi") or name.startswith("Fhkl_"):
                 continue
-            p = SIM.P[name]
+            p = mod.P[name]
             if p.refine:
                 ref_xpos.append( p.xpos)
 
     for i in roi_id_unique:
-        roi_p = SIM.P["scale_roi%d" % i]
+        roi_p = mod.P["scale_roi%d" % i]
         for slc in roi_id_slices[i]:
             pvals = pid[slc]
             fvals = fid[slc]
@@ -1364,30 +1299,33 @@ def convolve_model_with_psf(model_pix, J, SIM, pan_fast_slow, PSF=None, psf_args
     return model_pix, J
 
 
-def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
+def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False):
 
-    if SIM.refining_Fhkl:
-        current_Fhkl_xvals = x[SIM.Fhkl_xpos_slice]
+    pfs = Mod.pan_fast_slow
+
+    if SIM.refining_Fhkl:  # once per iteration
+        nscales = SIM.Num_ASU*SIM.num_Fhkl_channels
+        current_Fhkl_xvals = x[-nscales:]
         SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(current_Fhkl_xvals-1)
         SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales, SIM.num_Fhkl_channels)
 
     # get the unit cell variables
-    nucell = len(SIM.ucell_man.variables)
-    ucell_params = [SIM.P["ucell%d" % i_uc] for i_uc in range(nucell)]
+    nucell = len(Mod.ucell_man.variables)
+    ucell_params = [Mod.P["ucell%d" % i_uc] for i_uc in range(nucell)]
     ucell_xpos = [p.xpos for p in ucell_params]
     unitcell_var_reparam = [x[xpos] for xpos in ucell_xpos]
     unitcell_variables = [ucell_params[i].get_val(xval) for i, xval in enumerate(unitcell_var_reparam)]
-    SIM.ucell_man.variables = unitcell_variables
-    Bmatrix = SIM.ucell_man.B_recipspace
+    Mod.ucell_man.variables = unitcell_variables
+    Bmatrix = Mod.ucell_man.B_recipspace
     SIM.D.Bmatrix = Bmatrix
     if compute_grad:
         for i_ucell in range(len(unitcell_variables)):
             SIM.D.set_ucell_derivative_matrix(
                 i_ucell + UCELL_ID_OFFSET,
-                SIM.ucell_man.derivative_matrices[i_ucell])
+                Mod.ucell_man.derivative_matrices[i_ucell])
 
     # update the mosaicity here
-    eta_params = [SIM.P["eta_abc%d" % i_eta] for i_eta in range(3)]
+    eta_params = [Mod.P["eta_abc%d" % i_eta] for i_eta in range(3)]
     if SIM.umat_maker is not None:
         # we are modeling mosaic spread
         eta_abc = [p.get_val(x[p.xpos]) for p in eta_params]
@@ -1396,26 +1334,26 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         SIM.update_umats_for_refinement(eta_abc)
 
 #   detector parameters
-    DetZ = SIM.P["detz_shift"]
+    DetZ = Mod.P["detz_shift"]
     x_shiftZ = x[DetZ.xpos]
     shiftZ = DetZ.get_val(x_shiftZ)
     SIM.D.shift_origin_z(SIM.detector, shiftZ)
 
-    if SIM.P["lambda_offset"].refine:
-        p0 = SIM.P["lambda_offset"]
-        p1 = SIM.P["lambda_scale"]
+    if Mod.P["lambda_offset"].refine:
+        p0 = Mod.P["lambda_offset"]
+        p1 = Mod.P["lambda_scale"]
         lambda_coef = p0.get_val(x[p0.xpos]), p1.get_val(x[p1.xpos])
         SIM.D.lambda_coefficients = lambda_coef
 
     # Mosaic block
-    Nabc_params = [SIM.P["Nabc%d" % (i_n,)] for i_n in range(3)]
+    Nabc_params = [Mod.P["Nabc%d" % (i_n,)] for i_n in range(3)]
     Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
     if SIM.D.isotropic_ncells:
         Nb = Na
         Nc = Na
     SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
 
-    Ndef_params = [SIM.P["Ndef%d" % (i_n,)] for i_n in range(3)]
+    Ndef_params = [Mod.P["Ndef%d" % (i_n,)] for i_n in range(3)]
     Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
     SIM.D.Ncells_def = Nd, Ne, Nf
 
@@ -1424,7 +1362,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         diffuse_params_lookup = {}
         iso_flags = {'gamma':SIM.isotropic_diffuse_gamma, 'sigma':SIM.isotropic_diffuse_sigma}
         for diff_type in ['gamma', 'sigma']:
-            diff_params = [SIM.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
+            diff_params = [Mod.P["diffuse_%s%d" % (diff_type,i_gam)] for i_gam in range(3)]
             diffuse_params_lookup[diff_type] = diff_params
             diff_vals = []
             for i_diff, param in enumerate(diff_params):
@@ -1451,20 +1389,20 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
 
     # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
     roiScalesPerPix = 1
-    if SIM.P["scale_roi0"].refine:
-        perRoiParams = [SIM.P["scale_roi%d" % roi_id] for roi_id in SIM.roi_id_unique]
+    if Mod.P["scale_roi0"].refine:
+        perRoiParams = [Mod.P["scale_roi%d" % roi_id] for roi_id in Mod.roi_id_unique]
         perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
         roiScalesPerPix = np.zeros(npix)
-        for i_roi, roi_id in enumerate(SIM.roi_id_unique):
-            slc = SIM.roi_id_slices[roi_id][0]
+        for i_roi, roi_id in enumerate(Mod.roi_id_unique):
+            slc = Mod.roi_id_slices[roi_id][0]
             roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
 
-    for i_xtal in range(SIM.num_xtals):
+    for i_xtal in range(Mod.num_xtals):
 
-        if hasattr(SIM, "Umatrices"):  # reflects new change for modeling multi-crystal experiments
-            SIM.D.Umatrix = SIM.Umatrices[i_xtal]
+        if hasattr(Mod, "Umatrices"):  # reflects new change for modeling multi-crystal experiments
+            SIM.D.Umatrix = Mod.Umatrices[i_xtal]
 
-        RotXYZ_params = [SIM.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
+        RotXYZ_params = [Mod.P["RotXYZ%d_xtal%d" % (i_rot, i_xtal)] for i_rot in range(3)]
         rotX,rotY,rotZ = [rot_param.get_val(x[rot_param.xpos]) for rot_param in RotXYZ_params]
 
         ## update parameters:
@@ -1473,7 +1411,7 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
         SIM.D.set_value(ROTY_ID, rotY)
         SIM.D.set_value(ROTZ_ID, rotZ)
 
-        G = SIM.P["G_xtal%d" % i_xtal]
+        G = Mod.P["G_xtal%d" % i_xtal]
         scale = G.get_val(x[G.xpos])
 
         SIM.D.add_diffBragg_spots(pfs)
@@ -1555,20 +1493,20 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
                 d = DetZ.get_deriv(x[DetZ.xpos], d)
                 J[DetZ.xpos] += d
 
-            if SIM.P["lambda_offset"].refine:
+            if Mod.P["lambda_offset"].refine:
                 lambda_derivs = SIM.D.get_lambda_derivative_pixels()
                 lambda_param_names = "lambda_offset", "lambda_scale"
                 for d,name in zip(lambda_derivs, lambda_param_names):
-                    p = SIM.P[name]
+                    p = Mod.P[name]
                     d = d.as_numpy_array()[:npix]
                     d = p.get_deriv(x[p.xpos], d)
                     J[p.xpos] += d
 
-    if SIM.P["scale_roi0"].refine and compute_grad:
+    if Mod.P["scale_roi0"].refine and compute_grad:
         if compute_grad:
             for p in perRoiParams:
                 roi_id = int(p.name.split("scale_roi")[1])
-                slc = SIM.roi_id_slices[roi_id][0]
+                slc = Mod.roi_id_slices[roi_id][0]
                 if dont_rescale_gradient:
                     d = model_pix_noRoi[slc]
                 else:
@@ -1579,8 +1517,8 @@ def model(x, SIM, pfs,  compute_grad=True, dont_rescale_gradient=False):
     return model_pix, J
 
 
-def look_at_x(x, SIM):
-    for name, p in SIM.P.items():
+def look_at_x(x, Mod):
+    for name, p in Mod.P.items():
         if name.startswith("scale_roi") and not p.refine:
             continue
         if name.startswith("Fhkl_"):
@@ -1589,32 +1527,32 @@ def look_at_x(x, SIM):
         print("%s: %f" % (name, val))
 
 
-def get_param_from_x(x, SIM, i_xtal=0, as_dict=False):
-    G = SIM.P['G_xtal%d' %i_xtal]
+def get_param_from_x(x, Mod, i_xtal=0, as_dict=False):
+    G = Mod.P['G_xtal%d' %i_xtal]
     scale = G.get_val(x[G.xpos])
 
-    RotXYZ = [SIM.P["RotXYZ%d_xtal%d" % (i, i_xtal)] for i in range(3)]
+    RotXYZ = [Mod.P["RotXYZ%d_xtal%d" % (i, i_xtal)] for i in range(3)]
     rotX, rotY, rotZ = [r.get_val(x[r.xpos]) for r in RotXYZ]
 
-    Nabc = [SIM.P["Nabc%d" % (i, )] for i in range(3)]
+    Nabc = [Mod.P["Nabc%d" % (i, )] for i in range(3)]
     Na, Nb, Nc = [p.get_val(x[p.xpos]) for p in Nabc]
 
-    Ndef = [SIM.P["Ndef%d" % (i, )] for i in range(3)]
+    Ndef = [Mod.P["Ndef%d" % (i, )] for i in range(3)]
     Nd, Ne, Nf = [p.get_val(x[p.xpos]) for p in Ndef]
 
-    diff_gam_abc = [SIM.P["diffuse_gamma%d" % i] for i in range(3)]
+    diff_gam_abc = [Mod.P["diffuse_gamma%d" % i] for i in range(3)]
     diff_gam_a, diff_gam_b, diff_gam_c = [p.get_val(x[p.xpos]) for p in diff_gam_abc]
 
-    diff_sig_abc = [SIM.P["diffuse_sigma%d" % i] for i in range(3)]
+    diff_sig_abc = [Mod.P["diffuse_sigma%d" % i] for i in range(3)]
     diff_sig_a, diff_sig_b, diff_sig_c = [p.get_val(x[p.xpos]) for p in diff_sig_abc]
 
-    nucell = len(SIM.ucell_man.variables)
-    ucell_p = [SIM.P["ucell%d" % i] for i in range(nucell)]
+    nucell = len(Mod.ucell_man.variables)
+    ucell_p = [Mod.P["ucell%d" % i] for i in range(nucell)]
     ucell_var = [p.get_val(x[p.xpos]) for p in ucell_p]
-    SIM.ucell_man.variables = ucell_var
-    a,b,c,al,be,ga = SIM.ucell_man.unit_cell_parameters
+    Mod.ucell_man.variables = ucell_var
+    a,b,c,al,be,ga = Mod.ucell_man.unit_cell_parameters
 
-    DetZ = SIM.P["detz_shift"]
+    DetZ = Mod.P["detz_shift"]
     detz = DetZ.get_val(x[DetZ.xpos])
 
     if as_dict:
@@ -1655,7 +1593,7 @@ class TargetFunc:
         self.iteration = 0
         self.all_x = []
         self.x0[self.vary] = x
-        #look_at_x(self.x0,self.SIM)
+        #look_at_x(self.x0,self)
         self.hop_iter += 1
         self.minima.append((f,self.x0,accept))
         self.lowest_x = x
@@ -1673,8 +1611,8 @@ class TargetFunc:
             update_terms = (self.delta_x, self.old_J, self.old_model)
         self.all_x.append(self.x0)
 
-        mod, compute_grad = args
-        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, mod, compute_grad)
+        mod, SIM, compute_grad = args
+        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, mod, SIM, compute_grad)
 
         self.t_per_iter.append(time.time())
         if len(self.t_per_iter) > 2:
@@ -1694,8 +1632,7 @@ class TargetFunc:
         return f
 
 
-def target_func(x, udpate_terms, mod, compute_grad=True):
-    SIM = mod.SIM
+def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
     pfs = mod.pan_fast_slow
     data = mod.all_data
     sigma_rdout = mod.all_sigma_rdout
@@ -1712,7 +1649,7 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
         SIM.D.fix(ROTZ_ID)
         for lam_id in LAMBDA_IDS:
             SIM.D.fix(lam_id)
-        for i_ucell in range(len(SIM.ucell_man.variables)):
+        for i_ucell in range(len(mod.ucell_man.variables)):
             SIM.D.fix(UCELL_ID_OFFSET + i_ucell)
         SIM.D.fix(DETZ_ID)
         SIM.D.fix(ETA_ID)
@@ -1720,25 +1657,25 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
     elif compute_grad:
         # actually compute the gradients
         _compute_grad = True
-        if SIM.P["Nabc0"].refine:
+        if mod.P["Nabc0"].refine:
             SIM.D.let_loose(NCELLS_ID)
-        if SIM.P["RotXYZ0_xtal0"].refine:
+        if mod.P["RotXYZ0_xtal0"].refine:
             SIM.D.let_loose(ROTX_ID)
             SIM.D.let_loose(ROTY_ID)
             SIM.D.let_loose(ROTZ_ID)
-        if SIM.P["ucell0"].refine:
-            for i_ucell in range(len(SIM.ucell_man.variables)):
+        if mod.P["ucell0"].refine:
+            for i_ucell in range(len(mod.ucell_man.variables)):
                 SIM.D.let_loose(UCELL_ID_OFFSET + i_ucell)
-        if SIM.P["detz_shift"].refine:
+        if mod.P["detz_shift"].refine:
             SIM.D.let_loose(DETZ_ID)
-        if SIM.P["eta_abc0"].refine:
+        if mod.P["eta_abc0"].refine:
             SIM.D.let_loose(ETA_ID)
-        if SIM.P["lambda_offset"].refine:
+        if mod.P["lambda_offset"].refine:
             for lam_id in LAMBDA_IDS:
                 SIM.D.let_loose(lam_id)
     else:
         _compute_grad = False
-    model_bragg, Jac = model(x, SIM, pfs, compute_grad=_compute_grad)
+    model_bragg, Jac = model(x, mod, SIM, compute_grad=_compute_grad)
 
     if udpate_terms is not None:
         # try a Broyden update ?
@@ -1755,7 +1692,7 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
     model_pix = model_bragg + background
 
     if SIM.use_psf:
-        model_pix, J = convolve_model_with_psf(model_pix, Jac, SIM, pfs)
+        model_pix, J = convolve_model_with_psf(model_pix, Jac, mod, SIM)
 
     resid = data - model_pix
 
@@ -1774,8 +1711,8 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
     restraint_terms = {}
     if params.use_restraints:
         # scale factor restraint
-        for name in SIM.non_fhkl_params:
-            p = SIM.P[name]
+        for name in mod.non_fhkl_params:
+            p = mod.P[name]
             val = p.get_restraint_val(x[p.xpos])
             restraint_terms[name] = val
 
@@ -1819,14 +1756,14 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
         common_grad_term = common_grad_term_all[trusted]
 
         g = np.zeros(Jac.shape[0])
-        for name in SIM.non_fhkl_params:
-            p = SIM.P[name]
+        for name in mod.non_fhkl_params:
+            p = mod.P[name]
             Jac_p = Jac[p.xpos]
             g[p.xpos] += (Jac_p[trusted] * common_grad_term).sum()
 
         if not params.fix.perRoiScale:
-            for name in SIM.scale_roi_names:
-                p = SIM.P[name]
+            for name in mod.scale_roi_names:
+                p = mod.P[name]
                 Jac_p = Jac[p.xpos]
                 roi_id = int(p.name.split("scale_roi")[1])
                 slc = SIM.roi_id_slices[roi_id][0]
@@ -1843,13 +1780,13 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
 
         if params.use_restraints:
             # update gradients according to restraints
-            for name in SIM.non_fhkl_params:
-                p = SIM.P[name]
+            for name in mod.non_fhkl_params:
+                p = mod.P[name]
                 g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if not params.fix.perRoiScale:
-                for name in SIM.scale_roi_names:
-                    p = SIM.P[name]
+                for name in mod.scale_roi_names:
+                    p = mod.P[name]
                     g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
             if params.centers.Nvol is not None:
@@ -1881,9 +1818,9 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
                               0,0,0,
                               1,0,0]
                     if i_N < 3:
-                        p = SIM.P["Nabc%d" % i_N]
+                        p = mod.P["Nabc%d" % i_N]
                     else:
-                        p = SIM.P["Ndef%d" % (i_N-3)]
+                        p = mod.P["Ndef%d" % (i_N-3)]
                     dN = np.reshape(dN, (3,3))
                     dVol_dN = Nvol * np.trace(np.dot(Nmat_inv, dN))
                     dVol_dN_vals.append( dVol_dN)
@@ -1891,7 +1828,7 @@ def target_func(x, udpate_terms, mod, compute_grad=True):
                     g[p.xpos] += p.get_deriv(x[p.xpos], gterm)
 
         if SIM.refining_Fhkl:
-            spot_scale_p = SIM.P["G_xtal0"]
+            spot_scale_p = mod.P["G_xtal0"]
             G = spot_scale_p.get_val(x[spot_scale_p.xpos])
             fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted,
                                                  mod.all_freq, SIM.num_Fhkl_channels, G)
@@ -1925,48 +1862,45 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     else:
         assert Modeler.GatherFromExperiment(exp, ref, sg_symbol=params.space_group)
 
-    Modeler.SimulatorFromExperiment(best)
+    SIM = get_simulator_for_data_modelers(Modeler)
+    Modeler.set_parameters_for_experiment(best=best)
+    SIM.D.device_Id = gpu_device
 
-    Modeler.SIM.rois = Modeler.rois
-    Modeler.SIM.pids = Modeler.pids
-    Modeler.SIM.all_data = Modeler.all_data
-    Modeler.SIM.E = Modeler.E
-
-    Modeler.SIM.D.device_Id = gpu_device
-
-    nparam = len(Modeler.SIM.P)
+    nparam = len(Modeler.P)
+    if SIM.refining_Fhkl:
+        nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
     x0 = [1] * nparam
 
-    x = Modeler.Minimize(x0)
-    Modeler.best_model, _ = model(x, Modeler.SIM, Modeler.pan_fast_slow, compute_grad=False)
+    x = Modeler.Minimize(x0, SIM)
+    Modeler.best_model, _ = model(x, Modeler, SIM, compute_grad=False)
     Modeler.best_model_includes_background = False
 
-    new_crystal = update_crystal_from_x(Modeler.SIM, x)
+    new_crystal = update_crystal_from_x(Modeler, SIM, x)
     new_exp = deepcopy(Modeler.E)
     new_exp.crystal = new_crystal
 
     try:
-        new_exp.beam.set_wavelength(Modeler.SIM.dxtbx_spec.get_weighted_wavelength())
+        new_exp.beam.set_wavelength(SIM.dxtbx_spec.get_weighted_wavelength())
     except Exception: pass
     # if we strip the thickness from the detector, then update it here:
     #new_exp.detector. shift Z mm
-    new_det = update_detector_from_x(Modeler.SIM, x)
+    new_det = update_detector_from_x(Modeler, SIM, x)
     new_exp.detector = new_det
 
     new_refl = get_new_xycalcs(Modeler, new_exp)
 
     if free_mem:
-        Modeler.clean_up()
+        Modeler.clean_up(SIM)
 
     if return_modeler:
-        return new_exp, new_refl, Modeler, x
+        return new_exp, new_refl, Modeler, SIM, x
 
     else:
         return new_exp, new_refl
 
 
-def update_detector_from_x(SIM, x):
-    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+def update_detector_from_x(Mod, SIM, x):
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, Mod)
     detz_shift_mm = detz_shift*1e3
     det = SIM.detector
     det = utils.shift_panelZ(det, detz_shift_mm)
@@ -2001,13 +1935,13 @@ def new_cryst_from_rotXYZ_and_ucell(rotXYZ, ucparam, orig_crystal):
     return new_C
 
 
-def update_crystal_from_x(SIM, x):
+def update_crystal_from_x(Mod, SIM, x):
     """
     :param SIM: sim_data instance containing a nanoBragg crystal object
     :param x: parameters returned by hopper_utils (instance of simtbx.diffBragg.refiners.parameters.Parameters()
     :return: a new dxtbx.model.Crystal object with updated unit cell and orientation matrix
     """
-    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, SIM)
+    scale, rotX, rotY, rotZ, Na, Nb, Nc, _,_,_,_,_,_,_,_,_,a, b, c, al, be, ga, detz_shift = get_param_from_x(x, Mod)
     ucparam = a, b, c, al, be, ga
     return new_cryst_from_rotXYZ_and_ucell((rotX,rotY,rotZ), ucparam, SIM.crystal.dxtbx_crystal)
 
@@ -2092,13 +2026,13 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
     return new_refls
 
 
-def get_mosaicity_from_x(x, SIM):
+def get_mosaicity_from_x(x, Mod, SIM):
     """
     :param x: refinement parameters
     :param SIM: simulator used during refinement
     :return: float or 3-tuple, depending on whether mosaic spread was modeled isotropically
     """
-    eta_params = [SIM.P["eta_abc%d"%i] for i in range(3)]
+    eta_params = [Mod.P["eta_abc%d"%i] for i in range(3)]
     eta_abc = [p.get_val(x[p.xpos]) for p in eta_params]
     if not SIM.D.has_anisotropic_mosaic_spread:
         eta_abc = [eta_abc[0]]*3
@@ -2300,3 +2234,55 @@ def get_lam0_lam1_from_pandas(df):
     assert lam0 != -1
     assert lam1 != -1
     return lam0, lam1
+
+
+def get_simulator_for_data_modelers(data_modeler):
+    self = data_modeler
+    SIM = utils.simulator_for_refinement(self.E, self.params)
+
+    if SIM.D.use_diffuse and self.params.apply_laue_symmetry:
+        #TODO use setter from laue_diffuse branch
+        MAIN_LOGGER.debug("Setting lau group num=%d" % SIM.D.laue_group_num)
+
+    if self.params.spectrum_from_imageset:
+        downsamp_spec(SIM, self.params, self.E)
+    elif self.params.gen_gauss_spec:
+        set_gauss_spec(SIM, self.params, self.E)
+
+    # TODO: verify how slow always using lambda coefs is
+    # TODO: ensure lam0/lam1 are not -1 and not np.nan
+    SIM.D.use_lambda_coefficients = True
+    SIM.D.lambda_coefficients = tuple(self.params.init.spec)
+    _set_Fhkl_refinement_flags(self.params, SIM)
+    return SIM
+
+
+def _set_Fhkl_refinement_flags(params, SIM):
+
+    SIM.refining_Fhkl = False
+    SIM.Num_ASU = 0
+    SIM.num_Fhkl_channels = 1
+    SIM.Fhkl_channel_bounds = [0, np.inf]
+    if not params.fix.Fhkl:
+        if params.Fhkl_channel_bounds is not None:
+            assert params.Fhkl_channel_bounds == sorted(params.Fhkl_channel_bounds)
+            SIM.Fhkl_channel_bounds = [0] + params.Fhkl_channel_bounds + [np.inf]
+
+        SIM.num_Fhkl_channels = len(SIM.Fhkl_channel_bounds) - 1
+        asu_map = SIM.D.get_ASUid_map()
+        SIM.asu_map_int = {tuple(map(int, k.split(','))): v for k, v in asu_map.items()}
+
+        num_unique_hkl = len(asu_map)
+        SIM.Fhkl_scales_init = np.ones(num_unique_hkl * SIM.num_Fhkl_channels)
+        SIM.refining_Fhkl = True
+        SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
+        if params.betas.Fhkl is not None:
+            MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % params.Fhkl_dspace_bins)
+            SIM.set_dspace_binning(params.Fhkl_dspace_bins)
+
+        energies = np.array([utils.ENERGY_CONV / wave for wave, _ in SIM.beam.spectrum])
+        Fhkl_channel_ids = np.zeros(len(energies), int)
+        for i_channel, (en1, en2) in enumerate(zip(SIM.Fhkl_channel_bounds, SIM.Fhkl_channel_bounds[1:])):
+            sel = (energies >= en1) * (energies < en2)
+            Fhkl_channel_ids[sel] = i_channel
+        SIM.D.update_Fhkl_channels(Fhkl_channel_ids)

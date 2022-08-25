@@ -28,7 +28,7 @@ def diffBragg_Umat(rotX, rotY, rotZ, U):
     U = M * sqr(U)
     return U
 
-def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
+def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
                    rank=0):
     LOGGER = logging.getLogger("refine")
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
@@ -37,14 +37,14 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf,\
         diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, \
         diff_sig_b, diff_sig_c, a,b,c,al,be,ga,detz_shift = \
-        hopper_utils.get_param_from_x(x, SIM)
+        hopper_utils.get_param_from_x(x, Mod)
 
-    scale_p = SIM.P["G_xtal0"]
+    scale_p = Mod.P["G_xtal0"]
     scale_init = scale_p.init
 
     Nabc_init = []
     for i in [0,1,2]:
-        p = SIM.P["Nabc%d" % i]
+        p = Mod.P["Nabc%d" % i]
         Nabc_init.append(p.init)
     Nabc_init = tuple(Nabc_init)
 
@@ -52,7 +52,7 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:
         diff_sig_b = diff_sig_c = diff_sig_a
-    eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, SIM)
+    eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, Mod, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
     U = diffBragg_Umat(rotX, rotY, rotZ, SIM.crystal.dxtbx_crystal.get_U())
@@ -66,9 +66,9 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
     Amat = new_cryst.get_A()
     other_Umats = []
     other_spotscales = []
-    if SIM.num_xtals > 1:
-        for i_xtal in range(1,SIM.num_xtals,1):
-            par = hopper_utils.get_param_from_x(x, SIM, i_xtal=i_xtal, as_dict=True)
+    if Mod.num_xtals > 1:
+        for i_xtal in range(1,Mod.num_xtals,1):
+            par = hopper_utils.get_param_from_x(x, Mod, i_xtal=i_xtal, as_dict=True)
             scale_xt = par['scale']
             rotX_xt = par['rotX']
             rotY_xt = par['rotY']
@@ -82,13 +82,13 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
 
     eta = [0]
     lam_coefs = [0], [1]
-    if hasattr(SIM, "P"):
+    if hasattr(Mod, "P"):
         names = "lambda_offset", "lambda_scale"
-        if names[0] in SIM.P and names[1] in SIM.P:
+        if names[0] in Mod.P and names[1] in Mod.P:
             lam_coefs = []
             for name in names:
-                if name in SIM.P:
-                    p = SIM.P[name]
+                if name in Mod.P:
+                    p = Mod.P[name]
                     val = p.get_val(x[p.xpos])
                     lam_coefs.append([val])
             lam_coefs = tuple(lam_coefs)
@@ -131,10 +131,10 @@ def save_to_pandas(x, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls
         stg1_img_path=stg1_img_path,
         ncells_init=Nabc_init, spot_scales_init=scale_init,
         other_Umats = other_Umats, other_spotscales = other_spotscales)
-    if hasattr(SIM, "sigz"):
-        df['sigz'] = [SIM.sigz]
-    if hasattr(SIM, "niter"):
-        df['niter'] = [SIM.niter]
+    if hasattr(Mod, "sigz"):
+        df['sigz'] = [Mod.sigz]
+    if hasattr(Mod, "niter"):
+        df['niter'] = [Mod.niter]
     df.to_pickle(pandas_path)
     return df
 
