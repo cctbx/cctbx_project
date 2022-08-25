@@ -212,6 +212,37 @@ class _SingletonOptimizer(object):
     self._waterBCutoff = 40.0   # @todo Make this a parameter, -WaterBcutoff param in reduce
 
     ################################################################################
+    # Get the Cartesian positions of all of the atoms in the entire model and find
+    # the bond proxies for all of them.  The proxies will not attempt to bond atoms
+    # that are in different model indices.
+    _ReportTiming(None) # Reset timer
+    carts = flex.vec3_double()
+    for a in model.get_atoms():
+      carts.append(a.xyz)
+    self._infoString += _ReportTiming("get coordinates")
+    bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+    self._infoString += _ReportTiming("compute bond proxies")
+
+    ################################################################################
+    # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
+    # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
+    # We won't get bonds between atoms in different conformations.
+    bondedNeighborLists = Helpers.getBondedNeighborLists(model.get_atoms(), bondProxies)
+    self._infoString += _ReportTiming("compute bonded neighbor lists")
+
+    ################################################################################
+    # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+    # This is done for all atoms in the model.
+    global probePhil
+    # This must operate on the entire model, not just the current model index.
+    ret = Helpers.getExtraAtomInfo(
+      model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
+    self._extraAtomInfo = ret.extraAtomInfo
+    self._infoString += ret.warnings
+    self._infoString += _ReportTiming("get extra atom info")
+
+    ################################################################################
     # Run optimization for every desired conformer and every desired model, calling
     # placement and then a derived-class single optimization routine for each.  When
     # the modelIndex or altID is None, that means to run over all available cases.
@@ -223,6 +254,7 @@ class _SingletonOptimizer(object):
     model.setup_riding_h_manager()
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
+    allRotatableHydrogens = model.rotatable_hd_selection(iselection=True)
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
@@ -231,35 +263,6 @@ class _SingletonOptimizer(object):
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
-
-      ################################################################################
-      # Get the Cartesian positions of all of the atoms in the entire model and find
-      # the bond proxies for all of them.
-      _ReportTiming(None) # Reset timer
-      carts = flex.vec3_double()
-      for a in myModel.atoms():
-        carts.append(a.xyz)
-      self._infoString += _ReportTiming("get coordinates")
-      bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-      self._infoString += _ReportTiming("compute bond proxies")
-
-      ################################################################################
-      # Get the bonded neighbor lists for all of the atoms in the model, so we don't get
-      # failures when we look up an atom from another in Helpers.getExtraAtomInfo().
-      # We won't get bonds between atoms in different conformations.
-      bondedNeighborLists = Helpers.getBondedNeighborLists(myModel.atoms(), bondProxies)
-      self._infoString += _ReportTiming("compute bonded neighbor lists")
-
-      ################################################################################
-      # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-      # This is done for all atoms in the model.
-      global probePhil
-      ret = Helpers.getExtraAtomInfo(
-        model = model, bondedNeighborLists = bondedNeighborLists,
-        useNeutronDistances=self._useNeutronDistances, probePhil=probePhil)
-      self._extraAtomInfo = ret.extraAtomInfo
-      self._infoString += ret.warnings
-      self._infoString += _ReportTiming("get extra atom info")
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
@@ -315,7 +318,6 @@ class _SingletonOptimizer(object):
         self._spatialQuery = probeExt.SpatialQuery(self._atoms)
         self._infoString += _ReportTiming("construct spatial query")
 
-
         ################################################################################
         # Initialize any per-alternate data structures now that we have the atoms and
         # other data structures initialized.
@@ -335,9 +337,11 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Get the list of Movers using the _PlaceMovers private function.
-        hyds = model.rotatable_hd_selection(iselection=True)
+        # The list of rotatable hydrogens comes from the global model, not just the current
+        # model index.  However, we only place on atoms that are also in self._atoms, which
+        # only includes those from the current model index.
         self._infoString += _ReportTiming("select rotatable hydrogens")
-        ret = _PlaceMovers(self._atoms, hyds,
+        ret = _PlaceMovers(self._atoms, allRotatableHydrogens,
                            bondedNeighborLists, h_parameterization, self._spatialQuery,
                            self._extraAtomInfo, self._maximumVDWRadius, addFlipMovers)
         self._infoString += ret.infoString
