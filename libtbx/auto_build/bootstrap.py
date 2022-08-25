@@ -8,6 +8,9 @@
 # or
 # curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
+# Environment variables:
+#   CCTBX_SKIP_CHEMDATA_CACHE_REBUILD - if this exists, the rotarama and cablam caches are not rebuilt
+
 from __future__ import absolute_import, division, print_function
 
 import ntpath
@@ -1914,12 +1917,13 @@ environment exists in or is defined by {conda_env}.
 
   def add_install(self):
     """Run after compile, before tests."""
-    self.add_command('mmtbx.rebuild_rotarama_cache',
-                     name="rebuild rotarama",
-    )
-    self.add_command('mmtbx.rebuild_cablam_cache',
-                     name="rebuild cablam",
-    )
+    if os.getenv('CCTBX_SKIP_CHEMDATA_CACHE_REBUILD') is None:
+      self.add_command('mmtbx.rebuild_rotarama_cache',
+                      name="rebuild rotarama",
+      )
+      self.add_command('mmtbx.rebuild_cablam_cache',
+                      name="rebuild cablam",
+      )
 
   def add_tests(self):
     """Run the unit tests."""
