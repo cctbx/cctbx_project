@@ -4,7 +4,7 @@
 jobs:
 - job: xfel_modules
   pool:
-    vmImage: ubuntu-18.04
+    vmImage: ubuntu-latest
   timeoutInMinutes: 120
 
   steps:

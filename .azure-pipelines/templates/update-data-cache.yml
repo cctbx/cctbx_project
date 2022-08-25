@@ -12,7 +12,7 @@
 jobs:
 - job: artifacts
   pool:
-    vmImage: ubuntu-18.04
+    vmImage: ubuntu-latest
   timeoutInMinutes: 120
 
   steps:
@@ -26,6 +26,11 @@ jobs:
       sshKeySecureFile: id_rsa
     displayName: Download SSH key
 
+  - task: DownloadSecureFile@1
+    name: ssh_config
+    inputs:
+      secureFile: ssh.config
+
   # miniforge
   - script: |
       mkdir -p $(System.DefaultWorkingDirectory)/miniforge
@@ -36,6 +41,17 @@ jobs:
 
   - publish: $(System.DefaultWorkingDirectory)/miniforge
     artifact: miniforge
+
+  # mambaforge
+  - script: |
+      mkdir -p $(System.DefaultWorkingDirectory)/mambaforge
+      cd $(System.DefaultWorkingDirectory)/mambaforge
+      wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
+      wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-MacOSX-x86_64.sh
+    displayName: Download mambaforge
+
+  - publish: $(System.DefaultWorkingDirectory)/mambaforge
+    artifact: mambaforge
 
   # chem_data
   - task: DownloadPipelineArtifact@2
@@ -50,6 +66,7 @@ jobs:
     continueOnError: true
 
   - script: |
+      export SVN_SSH="ssh -F $(ssh_config.secureFilePath)"
       if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.svn" ]; then
         rm -fr $(System.DefaultWorkingDirectory)/chem_data
         cd $(System.DefaultWorkingDirectory)

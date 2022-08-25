@@ -2,6 +2,7 @@
 #   - chem_data
 #   - phenix_regression
 #   - phenix_examples
+# A ssh_config secure file is needed
 
 steps:
 - task: InstallSSHKey@0
@@ -21,6 +22,7 @@ steps:
   displayName: Download chem_data
 
 - script: |
+    export SVN_SSH="ssh -F $(ssh_config.secureFilePath)"
     if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
       svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
     fi
