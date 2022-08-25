@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.0.0"
+version = "2.1.0"
 
 master_phil_str = '''
 profile = False
@@ -2023,11 +2023,9 @@ Note:
             self._extraAtomInfo.setMappingFor(a, ei)
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenRadius
-            # with adjustedHydrogenRadius and the distance with placedHydrogenDistance.
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo,
-                              0.0, True, 1.0, 1.0)
+                              0.0, True, adjustedHydrogenRadius, placedHydrogenDistance)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
