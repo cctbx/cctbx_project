@@ -192,9 +192,18 @@ NOTES:
         model = self.model,
         use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
-        stop_for_unknowns=True
+        exclude_water=True,
+        stop_for_unknowns=True,
+        keep_existing_H=False
       )
       reduce_add_h_obj.run()
+      reduce_add_h_obj.show(None)
+      missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
+      if len(missed_residues) > 0:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
       self.model = reduce_add_h_obj.get_model()
       doneAdd = work_clock()
 
