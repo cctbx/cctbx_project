@@ -36,9 +36,13 @@ database = {'Zn2+ tetrahedral': {
         }, #n/a n/a     Insufficient data       Insufficient data       His4
     },
     # 'Mg2+ Nucleotide' : {
-    # (4,2) : {
-    #     ('MG', 'O') : (1.99, 0.02), # water coordination
-    #     ('MG', 'O*') : (2.06, 0.02), # Oxygen atom in PO4
+    # (4,2) : { # 4 water / 2 nucleotide
+    #     ('MG', 'O') : (2.091, 0.048), # water coordination
+    #     ('MG', 'O*') : (2.05, 0.02), # Oxygen atom in PO4
+    #     ('MG', 'O*', 'P*') : (133.5, 1.),
+    #     ('O', 'MG', 'O') : (88.0, 3.),
+    #     ('O', 'MG', 'O*') : (90.0, 3.),
+    #     ('O*', 'MG', 'O*') : (92.0, 3.),
     #   },
     # }
   }
@@ -146,6 +150,7 @@ def get_metal_coordination_proxies(pdb_hierarchy,
 def _bond_generator(atoms):
   for atom in atoms['others']:
     yield atoms['metal'], atom
+
 def _angle_generator(atoms):
   for i, a1 in enumerate(atoms['others']):
    for j, a2 in enumerate(atoms['others']):
@@ -236,6 +241,19 @@ def _get_ideals_mg_nuc(atoms, verbose=False):
   ideals = database[metal_name][key]
   return ideals
 
+def _get_keys(a1,a2,a3=None):
+  args=[a1,a2]
+  if a3: args.append(a3)
+  for i in range(2**len(args)):
+    s = "{0:b}".format(i).zfill(len(args))
+    rc = []
+    for k, j in enumerate(s):
+      if int(j)==0:
+        rc.append(args[k].name.strip())
+      elif int(j)==1:
+        rc.append('%s*' % args[k].element.strip())
+    yield tuple(rc)
+
 def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
   #
   # TODO
@@ -255,10 +273,8 @@ def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
     ideals = get_ideals(atoms)
     if ideals is None: continue
     for a1, a2 in _bond_generator(atoms):
-      key1 = (a1.name.strip(), a2.name.strip())
-      key2 = (a1.name.strip(), '%s*' % a2.element.strip())
-      if key1 in ideals: key = key1
-      elif key2 in ideals: key = key2
+      for key in _get_keys(a1,a2):
+        if key in ideals: break
       if key not in ideals: continue
       t = ideals[key]
       p = geometry_restraints.bond_simple_proxy(
@@ -271,7 +287,8 @@ def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
         origin_id=origin_ids.get_origin_id('metal coordination'))
       bonds.append(p)
     for a1, a2, a3 in _angle_generator(atoms):
-      key = (a1.name.strip(), a2.name.strip(), a3.name.strip())
+      for key in _get_keys(a1,a2,a3):
+        if key in ideals: break
       if key not in ideals: continue
       t = ideals[key]
       p = geometry_restraints.angle_proxy(
