@@ -5,7 +5,6 @@ import numpy as np
 from dials.array_family import flex
 from libtbx.mpi4py import  MPI
 COMM = MPI.COMM_WORLD
-import time
 import logging
 
 LOGGER = logging.getLogger("diffBragg.main")
@@ -27,10 +26,10 @@ def get_equal_partition(weights, partitions):
         load[lightest] += weights[idx]
     return distribution
 
-def prep_dataframe(df):
+def prep_dataframe(df, refls_key="predictions"):
     # TODO make sure all pred files exist
     nshots = len(df)
-    refls_names = df.predictions
+    refls_names = df[refls_key]
     refls_per_shot = []
     if COMM.rank==0:
         LOGGER.info("Loading nrefls per shot")

@@ -163,12 +163,33 @@ class DataModeler:
         self.Hi = None  # miller index (P1)
         self.Hi_asu = None  # miller index (high symmetry)
         self.target = None  # placeholder for the Target class instance
+        self.nanoBragg_beam_spectrum = None  # see spectrun property of NBBeam (nanoBragg_beam.py)
 
         # which attributes to save when pickling a data modeler
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                       "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow", "best_model_includes_background",
                       "all_q_perpix", "all_sigma_rdout"]
+
+    def set_spectrum(self, spectra_file=None, spectra_stride=None, total_flux=None):
+
+        # note , the following 3 settings will only be used if spectrum_from_imageset is False and gause_spec is False
+        if spectra_file is None:
+            spectra_file = self.params.simulator.spectrum.filename
+        if spectra_stride is None:
+            spectra_stride = self.params.simulator.spectrum.stride  # will only be used if spectra_file is not None
+        if total_flux is None:
+            total_flux = self.params.simulator.total_flux
+
+        if self.params.spectrum_from_imageset:
+            self.nanoBragg_beam_spectrum = downsamp_spec_from_params(self.params, self.E)
+        elif self.params.gen_gauss_spec:
+            self.nanoBragg_beam_spectrum = set_gauss_spec(None, self.params, self.E)
+        elif spectra_file is not None:
+            self.nanoBragg_beam_spectrum = utils.load_spectra_file(spectra_file, total_flux, spectra_stride, as_spectrum=True)
+        else:
+            assert total_flux is not None
+            self.nanoBragg_beam_spectrum = [(self.E.beam.get_wavelength(), total_flux)]
 
     def at_minimum(self, x, f, accept):
         self.target.iteration = 0
@@ -506,7 +527,10 @@ class DataModeler:
 
             all_trusted += list(trusted)
             #TODO ignore invalid value warning (handled below), or else mitigate it!
-            all_sigmas += list(np.sqrt(data + sigma_rdout ** 2))
+
+            with np.errstate(invalid='ignore'):
+                all_sigmas += list(np.sqrt(data + sigma_rdout ** 2))
+
             all_sigma_rdout += list(sigma_rdout)
             all_fast += list(X.ravel() + x1)
             all_fast_relative += list(X.ravel())
@@ -795,26 +819,27 @@ class DataModeler:
                           beta=betas.detz_shift)
         P.add(p)
 
-        self.set_slices("roi_id")  # this creates roi_id_unique
-        refls_have_scales = "scale_factor" in list(self.refls.keys())
-        for roi_id in self.roi_id_unique:
-            slc = self.roi_id_slices[roi_id][0]
-            if refls_have_scales:
-                refl_idx = int(self.all_refls_idx[slc][0])
-                init_scale = self.refls[refl_idx]["scale_factor"]
-            else:
-                init_scale = 1
-            p = RangedParameter(init=init_scale, sigma=self.params.sigmas.roiPerScale,
-                              minval=0, maxval=1e12,
-                              fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
-                              center=1,
-                              beta=1e12)
-            if isinstance(self.all_q_perpix, np.ndarray) and self.all_q_perpix.size:
-                q = self.all_q_perpix[slc][0]
-                reso = 1./q
-                hkl = self.all_nominal_hkl[slc][0]
-                p.misc_data = reso, hkl
-            P.add(p)
+        if not self.params.fix.perRoiScale:
+            self.set_slices("roi_id")  # this creates roi_id_unique
+            refls_have_scales = "scale_factor" in list(self.refls.keys())
+            for roi_id in self.roi_id_unique:
+                slc = self.roi_id_slices[roi_id][0]
+                if refls_have_scales:
+                    refl_idx = int(self.all_refls_idx[slc][0])
+                    init_scale = self.refls[refl_idx]["scale_factor"]
+                else:
+                    init_scale = 1
+                p = RangedParameter(init=init_scale, sigma=self.params.sigmas.roiPerScale,
+                                  minval=0, maxval=1e12,
+                                  fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
+                                  center=1,
+                                  beta=1e12)
+                if isinstance(self.all_q_perpix, np.ndarray) and self.all_q_perpix.size:
+                    q = self.all_q_perpix[slc][0]
+                    reso = 1./q
+                    hkl = self.all_nominal_hkl[slc][0]
+                    p.misc_data = reso, hkl
+                P.add(p)
 
         # two parameters for optimizing the spectrum
         p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0],
@@ -1082,7 +1107,7 @@ class DataModeler:
             # , only this time we track all the asu indices that influence the model
             # This is a special call that requires openMP to have num_threads=1 because
             # I do not not how to interact with an unordered_set in openMP
-            resid = self.all_data - self.best_model
+            resid = self.all_data - (self.best_model + self.all_background)  # here best model is just the Bragg portion, hence we add background
             V = self.best_model + self.all_sigma_rdout ** 2
             Gparam = self.P["G_xtal0"]
             G = Gparam.get_val(x[Gparam.xpos])
@@ -1209,8 +1234,9 @@ class DataModeler:
                         com = xcom + .5, ycom + .5, 0
                         h5_roi_id[ref_idx] = i_roi
                         new_xycalcs[ref_idx] = com
-                        scale_p = Modeler.P["scale_roi%d" % i_roi]
-                        per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
+                        if not Modeler.params.fix.perRoiScale:
+                            scale_p = Modeler.P["scale_roi%d" % i_roi]
+                            per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
 
             h5.create_dataset("rois", data=Modeler.rois)
             h5.create_dataset("pids", data=Modeler.pids)
@@ -1220,7 +1246,8 @@ class DataModeler:
                 h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
 
         new_refls["xyzcal.px"] = new_xycalcs
-        new_refls["scale_factor"] = per_refl_scales
+        if not Modeler.params.fix.perRoiScale:
+            new_refls["scale_factor"] = per_refl_scales
         new_refls["h5_roi_idx"] = h5_roi_id
         if Modeler.params.filter_unpredicted_refls_in_output:
             sel = [not np.isnan(x) for x, y, z in new_xycalcs]
@@ -1299,9 +1326,14 @@ def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
     return model_pix, J
 
 
-def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False):
+def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_spectrum=False):
 
     pfs = Mod.pan_fast_slow
+
+    if update_spectrum:
+        # update the photon energy spectrum for this shot
+        SIM.beam.spectrum = Mod.nanoBragg_beam_spectrum
+        SIM.D.xray_beams = SIM.beam.xray_beams
 
     if SIM.refining_Fhkl:  # once per iteration
         nscales = SIM.Num_ASU*SIM.num_Fhkl_channels
@@ -1389,7 +1421,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False):
 
     # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
     roiScalesPerPix = 1
-    if Mod.P["scale_roi0"].refine:
+    if not Mod.params.fix.perRoiScale:
         perRoiParams = [Mod.P["scale_roi%d" % roi_id] for roi_id in Mod.roi_id_unique]
         perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
         roiScalesPerPix = np.zeros(npix)
@@ -1502,7 +1534,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False):
                     d = p.get_deriv(x[p.xpos], d)
                     J[p.xpos] += d
 
-    if Mod.P["scale_roi0"].refine and compute_grad:
+    if not Mod.params.fix.perRoiScale and compute_grad:
         if compute_grad:
             for p in perRoiParams:
                 roi_id = int(p.name.split("scale_roi")[1])
@@ -2150,7 +2182,7 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
         SIM.D.xray_beams = SIM.beam.xray_beams
 
 
-def set_gauss_spec(SIM, params, E):
+def set_gauss_spec(SIM=None, params=None, E=None):
     """
     Generates a gaussian spectrum for the experiment E and attach it to SIM
     in a way that diffBragg understands
@@ -2163,7 +2195,7 @@ def set_gauss_spec(SIM, params, E):
     :param E: dxtbx Experiment
     :return: None
     """
-    if not hasattr(SIM, "D"):
+    if SIM is not None and not hasattr(SIM, "D"):
         raise AttributeError("Cannot set the spectrum until diffBragg has been instantiated!")
     spec_mu = utils.ENERGY_CONV / E.beam.get_wavelength()
     spec_res = params.simulator.spectrum.gauss_spec.res
@@ -2171,10 +2203,14 @@ def set_gauss_spec(SIM, params, E):
     spec_fwhm = params.simulator.spectrum.gauss_spec.fwhm
     spec_ens, spec_wts = generate_gauss_spec(central_en=spec_mu, fwhm=spec_fwhm, res=spec_res,
                                              nchan=spec_nchan, as_spectrum=False)
-    SIM.dxtbx_spec = Spectrum(spec_ens, spec_wts)
     spec_wvs = utils.ENERGY_CONV / spec_ens
-    SIM.beam.spectrum = list(zip(spec_wvs, spec_wts))
-    SIM.D.xray_beams = SIM.beam.xray_beams
+    nanoBragg_beam_spec = list(zip(spec_wvs, spec_wts))
+    if SIM is not None:
+        SIM.dxtbx_spec = Spectrum(spec_ens, spec_wts)
+        SIM.beam.spectrum = nanoBragg_beam_spec
+        SIM.D.xray_beams = SIM.beam.xray_beams
+    else:
+        return nanoBragg_beam_spec
 
 
 def sanity_test_input_lines(input_lines):

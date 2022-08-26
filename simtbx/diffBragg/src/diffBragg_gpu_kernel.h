@@ -69,7 +69,7 @@ __global__ void gpu_sum_over_steps(
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
         bool refine_Icell, bool save_wavelenimage, int laue_group_num,
-        bool Fhkl_gradient_mode, bool using_trusted_mask, bool Fhkl_channels_empty, bool Fhkl_have_scale_factors,
+        bool Fhkl_gradient_mode, bool Fhkl_errors_mode, bool using_trusted_mask, bool Fhkl_channels_empty, bool Fhkl_have_scale_factors,
         int Num_ASU,
         const CUDAREAL* __restrict__ data_residual, const CUDAREAL* __restrict__ data_variance,
         const int* __restrict__ data_freq, const bool* __restrict__ data_trusted,

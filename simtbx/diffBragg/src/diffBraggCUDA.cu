@@ -499,7 +499,7 @@ void diffBragg_sum_over_steps_cuda(
         cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images,
         db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
         db_flags.wavelength_img, db_cryst.laue_group_num,
-        db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(), db_flags.Fhkl_have_scale_factors,
+        db_flags.Fhkl_gradient_mode, db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(), db_flags.Fhkl_have_scale_factors,
         db_cryst.Num_ASU,
         cp.data_residual, cp.data_variance,
         cp.data_freq, cp.data_trusted,
@@ -538,8 +538,13 @@ void diffBragg_sum_over_steps_cuda(
         }
     }
     if (db_flags.Fhkl_gradient_mode){
-        for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++){
-            d_image.Fhkl_scale_deriv[i]= cp.Fhkl_scale_deriv[i];
+        if (db_flags.Fhkl_errors_mode){
+            for (int i=0; i < d_image.Fhkl_hessian.size(); i++)
+                d_image.Fhkl_hessian[i]= cp.Fhkl_scale_deriv[i];
+        }
+        else{
+            for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++)
+                d_image.Fhkl_scale_deriv[i]= cp.Fhkl_scale_deriv[i];
         }
     }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
