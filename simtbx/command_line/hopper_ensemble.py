@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+# LIBTBX_SET_DISPATCHER_NAME ens.hopper
+
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("input", type=str, help="combined pandas pickle")
