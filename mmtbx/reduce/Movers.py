@@ -816,6 +816,8 @@ class MoverAmideFlip(object):
 
   def CoarsePositions(self):
     # returns: The two possible coarse positions with an energy penalty of -0.5 for the flipped.
+    # The -0.5 penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
     return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, -0.5])
 
   def FinePositions(self, coarseIndex):
@@ -1066,6 +1068,8 @@ class MoverHisFlip(object):
     # returns: The two possible coarse positions with an energy penalty of -0.5
     # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
     # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
+    # The -0.5 penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes,
       [ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0,
@@ -1266,8 +1270,7 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
     axis = flex.vec3_double([alphaCarbon.xyz, normal])
     degrees = 180/math.pi * math.acos((lvec3(aToOldN.normalize())*rvec3(aToNewO.normalize()))[0])
     for i in range(len(movable)):
-      # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, -degrees)
+      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, degrees)
 
   #  2) firstDockIndex to the proper plane.
   sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
@@ -2279,7 +2282,7 @@ def Test():
 
     ce1 = pdb.hierarchy.atom()
     ce1.element = "C"
-    ce1.xyz = lvec3([ 1.0, 0.0, 2.0]) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
+    ce1.xyz = lvec3([ 1.0, 0.0, 2.1]) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     ce1h = pdb.hierarchy.atom()
     ce1h.element = "H"
@@ -2398,8 +2401,10 @@ def Test():
 
     # Ensure that the FixUp results meet the specifications (spot check 4th position):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
-    # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
-    # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
+    # 2) The line from the new NE2 to the alpha carbon lies on the
+    #    line from the original CE1 to the alpha carbon
+    # 3) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
+    # 4) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
     fixedUp = mover.FixUp(4).positions
     newCE1Dir = (fixedUp[2] - lvec3(ca.xyz)).normalize()
@@ -2409,6 +2414,9 @@ def Test():
 
     newNE2Dir = (fixedUp[0] - lvec3(ca.xyz)).normalize()
     oldCE1Dir = (rvec3(ce1.xyz) - rvec3(ca.xyz)).normalize()
+    if (newNE2Dir * oldCE1Dir)[0] < 0.9999:
+      return "Movers.Test() MoverHisFlip: Bad NE2 alignment: "+str((newNE2Dir * oldCE1Dir)[0])
+
     newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNE2Dir)) * rvec3(newCE1Dir)).normalize()
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNE2Dir)) * rvec3(oldCE1Dir)).normalize()
     dot = (lvec3(newNormal) * rvec3(oldNormal))[0]

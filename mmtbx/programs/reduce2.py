@@ -30,7 +30,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 
-version = "0.3.0"
+version = "0.4.0"
 
 master_phil_str = '''
 approach = *add remove
