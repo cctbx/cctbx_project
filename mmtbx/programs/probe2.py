@@ -9,7 +9,7 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissionsand
+# See the License for the specific language governing permissions and
 # limitations under the License.
 
 from __future__ import absolute_import, division, print_function
@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.0.0"
+version = "2.2.0"
 
 master_phil_str = '''
 profile = False
@@ -562,6 +562,7 @@ original probe command-line arguments.
 Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
+
 Output:
   Kinemage or text file describing the score and other information,
   depending on the parameters.
@@ -570,6 +571,16 @@ Output:
   to a file with the same name as the input model file name but with the
   extension replaced with with either '.kin' or '.txt' depending on the
   parameters (.kin when output.format == kinemage and output.count_dots == False).
+
+  In addition to writing files, this is derived from the Program Template object
+  and the run() method returns a dictionary whose key values are atom classes
+  (atom names, NA bases, other na and nonbase depending on how the program
+  was run).  Each value is a dictionary of dot interaction types (wide contact,
+  close contact, weak hydrogen bonds, small overlap, bump, bad bump, hydrogen
+  bond) where not all types will be filled in based on the way the program was
+  run.  The value for each interaction type entry is an array of DotInfo objects
+  that describe all dots of that type found by the run.
+
 Note:
   Some approaches require the target_selection parameter.  Setting the
   target_selection to "=" will re-use the source for the target.  In all
@@ -2023,11 +2034,9 @@ Note:
             self._extraAtomInfo.setMappingFor(a, ei)
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-            # @todo Once regression testing is done, consider replacing the 1.0 placedHydrogenRadius
-            # with adjustedHydrogenRadius and the distance with placedHydrogenDistance.
             if len(bondedNeighborLists[a]) == 0:
               newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo,
-                              0.0, True, 1.0, 1.0)
+                              0.0, True, adjustedHydrogenRadius, placedHydrogenDistance)
               for p in newPhantoms:
                 # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
                 # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
@@ -2374,9 +2383,7 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    of = open(self.params.output.file_name,"w")
-    of.write(outString)
-    of.close()
+    self.data_manager._write_text("Text", outString, self.params.output.file_name)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
@@ -2394,6 +2401,9 @@ Note:
       self._pr.disable()
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
+
+    # Return the results object that has all of the dots.
+    return self._results
 
 # ------------------------------------------------------------------------------
 

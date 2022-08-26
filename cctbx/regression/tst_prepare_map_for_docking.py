@@ -5,7 +5,7 @@ from iotbx.data_manager import DataManager
 from iotbx.map_model_manager import map_model_manager
 from cctbx.maptbx.prepare_map_for_docking import add_ordered_volume_mask
 from cctbx.maptbx.prepare_map_for_docking import assess_cryoem_errors
-from cctbx.maptbx.prepare_map_for_docking import write_mtz
+#from cctbx.maptbx.prepare_map_for_docking import write_mtz
 from cctbx import adptbx
 from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times

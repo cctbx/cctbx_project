@@ -30,7 +30,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 
-version = "0.2.0"
+version = "0.3.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -65,10 +65,6 @@ profile = False
 output
   .style = menu_item auto_align
 {
-  model_file_base_name = None
-    .type = str
-    .short_caption = Model output file name base
-    .help = Model output file name
   description_file_name = None
     .type = str
     .short_caption = Description output file name
@@ -99,11 +95,12 @@ Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
 Output:
-  PDB or mmCIF file with added hydrogens.  If output.suffix is set to "pdb" then a PDB file
-  will be written, otherwise an mmCIF (.cif) file will be written.  If output.model_file_base_name
-  is specified, that will be the base file name that is written; otherwise, the file will be
-  written into the current working directory with the same base name as the original file and
-  with _reduced added to it; 1xs0.pdb would be written to ./1xso_reduced.cif by default.
+  PDB or mmCIF file with added hydrogens.  If output.file_name is specified, then the
+  type of file to write will be determined by its suffix (.pdb or .cif).
+  If output.file_name is not specified, the output file will be
+  written into the current working directory with the same base name and type as the
+  original file and with FH or H added to the base name (FH when flips are requested);
+  1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
 
 NOTES:
   If multiple alternates are present in the file and a specific one is not specified on the
@@ -145,6 +142,18 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def validate(self):
+    # Set the default output file name if one has not been given.
+    if self.params.output.file_name is None:
+      inName = self.data_manager.get_default_model_name()
+      suffix = os.path.splitext(os.path.basename(inName))[1]
+      if self.params.add_flip_movers:
+        pad = 'FH'
+      else:
+        pad = 'H'
+      base = os.path.splitext(os.path.basename(inName))[0] + pad
+      self.params.output.file_name = base + suffix
+      print('Writing model output to', self.params.output.file_name)
+
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
@@ -183,9 +192,18 @@ NOTES:
         model = self.model,
         use_neutron_distances=self.params.use_neutron_distances,
         n_terminal_charge=self.params.n_terminal_charge,
-        stop_for_unknowns=True
+        exclude_water=True,
+        stop_for_unknowns=True,
+        keep_existing_H=False
       )
       reduce_add_h_obj.run()
+      reduce_add_h_obj.show(None)
+      missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
+      if len(missed_residues) > 0:
+        bad = ""
+        for res in missed_residues:
+          bad += " " + res
+        raise Sorry("Restraints were not found for the following residues:"+bad)
       self.model = reduce_add_h_obj.get_model()
       doneAdd = work_clock()
 
@@ -232,28 +250,19 @@ NOTES:
     make_sub_header('Writing output', out=self.logger)
 
     # Write the description output to the specified file.
-    of = open(self.params.output.description_file_name,"w")
-    of.write(outString)
-    of.close()
+    self.data_manager._write_text("description", outString,
+      self.params.output.description_file_name)
 
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    # Then determine the output file name and write it there.
-    if str(self.params.output.suffix).lower() == "pdb":
+    suffix = os.path.splitext(self.params.output.file_name)[1]
+    if suffix.lower() == ".pdb":
       txt = self.model.model_as_pdb()
-      suffix = ".pdb"
     else:
       txt = self.model.model_as_mmcif()
-      suffix = ".cif"
-    if self.params.output.model_file_base_name is not None:
-      base = self.params.output.model_file_base_name
-    else:
-      file_name = self.data_manager.get_model_names()[0]
-      base = os.path.splitext(os.path.basename(file_name))[0] + "_reduced"
-    fullname = base+suffix
-    with open(fullname, 'w') as f:
-      f.write(txt)
+    self.data_manager._write_text("model", txt, self.params.output.file_name)
 
-    print('Wrote',fullname,'and',self.params.output.description_file_name, file = self.logger)
+    print('Wrote', self.params.output.file_name,'and',
+      self.params.output.description_file_name, file = self.logger)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
