@@ -114,6 +114,11 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
     residue_name=residue.resname,
     atom_names=residue.atoms().extract_name())
   cif_object=None
+  # if md is None:
+  #   md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+  #     residue_name='%s_EL' % residue.resname,
+  #     atom_names=residue.atoms().extract_name(),
+  #     ad_hoc_single_atom_residues=True)
   if md is None:
     md = get_h_restraints(residue.resname, strict=False)
     # md.show()

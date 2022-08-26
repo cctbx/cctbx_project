@@ -542,6 +542,7 @@ class server(process_cif_mixin):
                               comp_id,
                               pH_range=None, # low *neutral high
                               specific_residue_restraints=None,
+                              ad_hoc_single_atom_residues=False,
                               return_filename=False,
                              ):
     comp_id = comp_id.strip().upper()
@@ -644,6 +645,9 @@ class server(process_cif_mixin):
       if (result is not None):
         if (len(std_comp_id) != 0):
           self.comp_comp_id_dict[std_comp_id] = result
+      elif ad_hoc_single_atom_residues:
+        comp_id = comp_id.replace('_EL', '')
+        result = self.comp_comp_id_dict.get(comp_id)
       else:
         or_std_comp_id = ""
         if (len(std_comp_id) > 0):
@@ -658,6 +662,7 @@ class server(process_cif_mixin):
         atom_names,
         translate_cns_dna_rna_residue_names=None,
         specific_residue_restraints=None,
+        ad_hoc_single_atom_residues=False,
         ):
     # not sure this works with specific_residue_restraints
     rnpani = residue_name_plus_atom_names_interpreter(
@@ -675,6 +680,7 @@ class server(process_cif_mixin):
       self.get_comp_comp_id_direct(
         comp_id=rnpani.work_residue_name,
         specific_residue_restraints=specific_residue_restraints,
+        ad_hoc_single_atom_residues=ad_hoc_single_atom_residues,
         ),
       rnpani.atom_name_interpretation,
       )
