@@ -254,7 +254,7 @@ def _get_keys(a1,a2,a3=None):
         rc.append('%s*' % args[k].element.strip())
     yield tuple(rc)
 
-def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
+def get_proxies(metal_element, coordination, get_defaults, get_ideals, verbose=False):
   #
   # TODO
   #   - check that only one link is made to each resiude
@@ -266,6 +266,8 @@ def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
   atoms = None
   for metal_i_seq, atoms in coordination.items():
     if not atoms: continue #return None, None
+    metal = atoms['metal']
+    if metal.element.upper()!=metal_element: continue
     tmp = get_defaults(atoms)
     if tmp:
       bonds += tmp
@@ -300,13 +302,15 @@ def get_proxies(coordination, get_defaults, get_ideals, verbose=False):
   return bonds, angles
 
 def get_proxies_zn(coordination, verbose=False):
-  return get_proxies(coordination,
+  return get_proxies('ZN',
+                     coordination,
                      _get_defaults_zn,
                      _get_ideals_zn,
                      verbose=verbose)
 
 def get_proxies_mg_nuc(coordination, verbose=False):
-  return get_proxies(coordination,
+  return get_proxies('MG',
+                     coordination,
                      _get_defaults_mg_nuc,
                      _get_ideals_mg_nuc,
                      verbose=verbose)
