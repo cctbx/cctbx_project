@@ -1489,26 +1489,32 @@ class _():
         atom_names_set=set([" N  ", " CA ", " C  ", " O  ", " CB "]))
 
   def convert_semet_to_met(self):
-    for i_seq, atom in enumerate(self.atoms()):
-      if (atom.name.strip()=="SE") and (atom.element.strip().upper()=="SE"):
-        atom_group = atom.parent()
-        if(atom_group.resname == "MSE"):
-          atom_group.resname = "MET"
-          atom.name = " SD "
-          atom.element = " S"
-          for ag_atom in atom_group.atoms():
-            ag_atom.hetero = False
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if(atom_group.resname == "MSE"):
+              atom_group.resname = "MET"
+              for atom in atom_group.atoms():
+                atom.hetero = False
+                if((atom.name.strip()=="SE") and (
+                    atom.element.strip().upper()=="SE")):
+                  atom.name = " SD "
+                  atom.element = " S"
 
   def convert_met_to_semet(self):
-    for i_seq, atom in enumerate(self.atoms()):
-      if((atom.name.strip()=="SD") and (atom.element.strip().upper()=="S")):
-        atom_group = atom.parent()
-        if(atom_group.resname == "MET"):
-          atom_group.resname = "MSE"
-          atom.name = " SE "
-          atom.element = "SE"
-          for ag_atom in atom_group.atoms():
-            ag_atom.hetero = True
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if(atom_group.resname == "MET"):
+              atom_group.resname = "MSE"
+              for atom in atom_group.atoms():
+                atom.hetero = True
+                if((atom.name.strip()=="SD") and (
+                    atom.element.strip().upper()=="S")):
+                  atom.name = " SE "
+                  atom.element = "SE"
 
   def transfer_chains_from_other(self, other):
     i_model = 0
