@@ -57,6 +57,10 @@ add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
   .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
+non_flip_preference = 0.5
+  .type = float
+  .short_caption = Preference to not flip
+  .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
 profile = False
   .type = bool
   .short_caption = Profile the entire run
@@ -226,6 +230,7 @@ NOTES:
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
       Optimizers.probePhil = self.params.probe
+      Optimizers.nonFlipPreference = self.params.non_flip_preference
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, self.model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = work_clock()

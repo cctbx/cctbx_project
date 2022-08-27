@@ -57,6 +57,10 @@ verbosity = 3
 # @todo Consider making this a constructor parameter rather than a global.
 probePhil = None
 
+# Preference for not flipping Movers that are flips.  This keeps them from being flipped
+# unless their score is significantly better than in the original position.
+nonFlipPreference = 0.5
+
 ##################################################################################
 # Helper functions
 
@@ -251,7 +255,13 @@ class _SingletonOptimizer(object):
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
 
-    model.setup_riding_h_manager()
+    try:
+      model.setup_riding_h_manager()
+    except Exception:
+      # If an optimized has already been run on the model, our riding H manager will
+      # have already been set up.  When one has already been set up, this causes
+      # an exception and it doesn't make a new one.
+      pass
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
     allRotatableHydrogens = model.rotatable_hd_selection(iselection=True)
@@ -578,6 +588,7 @@ class _SingletonOptimizer(object):
           # We add the same number of words to the output string in all cases to make things
           # easier for a program to parse.
           if "lipped" in description:
+            global nonFlipPreference
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
             final = self._coarseLocations[m]
@@ -588,7 +599,7 @@ class _SingletonOptimizer(object):
             finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
-            elif abs(finalScore - otherScore) <= 0.5:
+            elif abs(finalScore - otherScore) <= nonFlipPreference:
               description += " Uncertain"
             else:
               description += " ."
@@ -1241,6 +1252,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
   has a printable message in case one or more errors are found.
   """
 
+  global nonFlipPreference
+
   # List of Movers to return
   movers = []
 
@@ -1405,7 +1418,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
 
       if not foundIon:
         try:
-          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists))
+          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference))
           infoString += _VerboseCheck(1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
           moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName;
         except Exception as e:
@@ -1420,7 +1433,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
         # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
         # rather than inserting the Mover into the list of those to be optimized.
         # @todo Consider checking both configurations to see if either one has two bonds.
-        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo)
+        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo, nonFlipPreference)
 
         # Find the four positions to check for Nitrogen ionic bonds
         # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
@@ -1841,7 +1854,22 @@ END
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
-  # Run a fast optimizer on the model.
+  # Run each type of optimizer on the model.
+  # @todo Verify that they all get equivalent results
+  print('Testing _BruteForceOptimizer')
+  opt = _BruteForceOptimizer(True, model,probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0)
+  print('Testing _CliqueOptimizer')
+  opt = _CliqueOptimizer(True, model,probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0)
   print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
 

@@ -685,7 +685,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
 
 ##################################################################################
 class MoverAmideFlip(object):
-  def __init__(self, nh2Atom, caAtomName, bondedNeighborLists):
+  def __init__(self, nh2Atom, caAtomName, bondedNeighborLists, nonFlipPreference):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
        This Mover uses a simple swap of the center positions of the heavy atoms (with
@@ -701,7 +701,13 @@ class MoverAmideFlip(object):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
+       :param nonFlipPreference: Score amount by which the original orientation is preferred
+       over the flipped orientation.  This will bias things so that the flipped orientation
+       is not chosen unless it is this much better than the original.
     """
+
+    # Store away our constructor arguments that we need for later.
+    self._nonFlipPreference = nonFlipPreference
 
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
@@ -815,10 +821,13 @@ class MoverAmideFlip(object):
     self._fixUpPositions = [ [], movable ]
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -0.5 for the flipped.
-    # The -0.5 penalty is to prevent uncertain flips from happening -- unless the
+    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference for the flipped.
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
     # score is this much better we leave it alone.
-    return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, -0.5])
+    return PositionReturn(self._atoms, self._coarsePositions,
+      [ [], [] ],
+      [ [], [] ],
+      [0.0, -self._nonFlipPreference])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -839,7 +848,7 @@ class MoverAmideFlip(object):
 
 ##################################################################################
 class MoverHisFlip(object):
-  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
+  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap, nonFlipPreference):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
@@ -852,7 +861,13 @@ class MoverHisFlip(object):
        :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
        up the information for atoms whose values need to be changed.  Can be
        obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+       :param nonFlipPreference: Score amount by which the original orientation is preferred
+       over the flipped orientation.  This will bias things so that the flipped orientation
+       is not chosen unless it is this much better than the original.
     """
+
+    # Store away our constructor arguments that we need for later.
+    self._nonFlipPreference = nonFlipPreference
 
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
@@ -1065,15 +1080,18 @@ class MoverHisFlip(object):
       self._deleteMes.append(deleteMes)
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -0.5
+    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference
     # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
     # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
-    # The -0.5 penalty is to prevent uncertain flips from happening -- unless the
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
     # score is this much better we leave it alone.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes,
       [ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0,
-       -0.5 - 0.05, -0.5, -0.5, -0.5 - 1.0])
+       -self._nonFlipPreference - 0.05,
+       -self._nonFlipPreference,
+       -self._nonFlipPreference,
+       -self._nonFlipPreference - 1.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -2007,7 +2025,7 @@ def Test():
     bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
-    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists, 0.5)
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and O are flipped in position
@@ -2175,7 +2193,7 @@ def Test():
     bondedNeighborLists[lnh2] = [ ln ]
     bondedNeighborLists[ca] = [ ln ]
 
-    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists, 0.5)
     fixedUp = mover.FixUp(1).positions
 
     # Ensure that the results meet the specifications:
@@ -2350,7 +2368,7 @@ def Test():
       extras.append(probe.ExtraAtomInfo())
     extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
 
-    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap)
+    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5)
 
     # Ensure that the coarse-flip results meet the expections (spot check 4th position):
     # 1) N and C atoms are flipped in pairs
