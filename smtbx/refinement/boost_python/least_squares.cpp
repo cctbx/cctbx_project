@@ -208,14 +208,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
             sgtbx::space_group const&,
             bool,
             scitbx::mat3<FloatType> const&,
-            af::shared<FrameInfo<FloatType> >,
             af::shared<BeamInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             // wavelength, maxSg, F000
             af::shared<FloatType> const&>(
               (arg("data"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("UB"), arg("frames"), arg("beams"), arg("thickness"),
+                arg("UB"), arg("beams"), arg("thickness"),
                 arg("params"))))
           .add_property("ratio", &wt::get_ratio)
           ;
