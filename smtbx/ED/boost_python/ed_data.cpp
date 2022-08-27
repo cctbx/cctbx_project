@@ -35,13 +35,16 @@ namespace boost_python {
                arg("alpha"), arg("beta"), arg("omega"), arg("angle"), arg("scale"),
                arg("UB"))))
         .def_readonly("id", &wt::id)
+        .def_readwrite("tag", &wt::tag)
         .add_property("normal", make_getter(&wt::normal, rir_t()))
         .add_property("RM", make_getter(&wt::RM, rir_t()))
+        .add_property("RMf", make_getter(&wt::RMf, rir_t()))
         .add_property("alpha", &wt::alpha)
         .add_property("beta", &wt::beta)
         .add_property("omega", &wt::omega)
         .add_property("angle", &wt::angle)
-        .add_property("scale", &wt::scale);
+        .add_property("scale", &wt::scale)
+        .def("is_excited", &wt::is_excited);
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
 
@@ -53,7 +56,8 @@ namespace boost_python {
       typedef BeamInfo<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
-        .def(init<typename wt::parent_t *, const miller::index<>&, FloatType, FloatType>
+        .def(init<typename wt::parent_t *,
+          const miller::index<>&, FloatType, FloatType>
           ((arg("parent"), arg("index"), arg("I"), arg("sig"))))
         .add_property("parent", make_function(&wt::get_parent, rir))
         .add_property("index", make_getter(&wt::index, rbv))

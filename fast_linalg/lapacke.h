@@ -27,7 +27,11 @@ _lapack_complex<FloatType> _lapack_ct(FloatType v) {
   return { v, 0 };
 }
 template <typename FloatType>
-_lapack_complex<FloatType> _lapack_ct(std::complex<FloatType> v) {
+_lapack_complex<FloatType> _lapack_ct(FloatType r, FloatType i) {
+  return { r, i };
+}
+template <typename FloatType>
+_lapack_complex<FloatType> _lapack_ct(std::complex<FloatType> const& v) {
   return { v.real(), v.imag() };
 }
 
