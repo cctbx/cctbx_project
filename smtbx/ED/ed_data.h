@@ -8,6 +8,8 @@
 namespace smtbx { namespace ED {
 using namespace cctbx;
 
+template <typename FloatType> struct BeamInfo;
+
 template <typename FloatType>
 struct FrameInfo {
   typedef scitbx::vec3<FloatType> cart_t;
@@ -18,7 +20,7 @@ struct FrameInfo {
   FrameInfo(int id, const cart_t &f_normal,
     FloatType alpha, FloatType beta, FloatType omega,
     FloatType angle, FloatType scale, mat3_t const& UB)
-    : id(id), 
+    : id(id), tag(-1),
     alpha(alpha), beta(beta), omega(omega),
     angle(angle), scale(scale)
   {
@@ -29,13 +31,18 @@ struct FrameInfo {
       ryb(cb, 0, sb, 0, 1, 0, -sb, 0, cb),
       rzo(co, -so, 0, so, co, 0, 0, 0, 1);
     RM = rzo * rxa * ryb;
-    normal = RM * UB * f_normal;
+    RMf = RM * UB;
+    normal = RMf * f_normal;
     normal /= normal.length();
   }
-
-  int id;
+  bool is_excited(const BeamInfo<FloatType> &beam,
+    FloatType Kl,
+    FloatType MaxSg
+    ) const;
+  
+  int id, tag;
   cart_t normal;
-  mat3_t RM;
+  mat3_t RM, RMf;
   FloatType alpha, beta, omega, angle, scale;
 };
 
@@ -59,4 +66,15 @@ struct BeamInfo {
   miller::index<> index;
   FloatType I, sig;
 };
+template <typename FloatType>
+bool FrameInfo<FloatType>::is_excited(const BeamInfo<FloatType>& beam,
+  FloatType Kl, FloatType MaxSg) const
+{
+  typedef scitbx::vec3<FloatType> cart_t;
+  cart_t g = RMf * cart_t(beam.index[0], beam.index[1], beam.index[2]);
+  g[2] += Kl;
+  FloatType Sg = (Kl * Kl - g.length_sq()) / (2 * Kl);
+  return std::abs(Sg) < MaxSg;
+}
+
 }}

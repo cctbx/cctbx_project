@@ -25,7 +25,6 @@ namespace least_squares {
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
       scitbx::mat3<FloatType> const& UB,
-      af::shared<FrameInfo<FloatType> > const& frames,
       af::shared<BeamInfo<FloatType> > const& beams,
       cctbx::xray::thickness<FloatType> const& thickness,
       af::shared<FloatType> const& params)
@@ -33,7 +32,6 @@ namespace least_squares {
       space_group(space_group),
       wavelength(params[0]),
       UB(UB),
-      frames(frames),
       beams(beams),
       thickness(thickness),
       maxSg(params[1]),
@@ -49,13 +47,22 @@ namespace least_squares {
         data.reflections().indices().const_ref(),
         space_group,
         anomalous_flag);
+      for (size_t i = 0; i < beams.size(); i++) {
+        std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
+          frames_map.find(beams[i].parent->id);
+        if (fi != frames_map.end()) {
+          continue;
+        }
+        frames_map.insert(std::make_pair(beams[i].parent->id, beams[i].parent));
+      }
+      frame = 0;
     } 
     f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const & other)
       : data(other.data),
       space_group(other.space_group),
       wavelength(other.wavelength),
       UB(other.UB),
-      frames(other.frames),
+      frames_map(other.frames_map),
       beams(other.beams),
       thickness(other.thickness),
       maxSg(other.maxSg),
@@ -75,8 +82,7 @@ namespace least_squares {
       twin_fraction<FloatType> const* fraction = 0,
       bool compute_grad = true)
     {
-      SMTBX_ASSERT(fraction != 0 &&
-        fraction->tag > 0 && fraction->tag <= frames.size());
+      SMTBX_ASSERT(fraction != 0);
       index = mi_lookup.find_hkl(h);
       if (index == -1) {
         if (!space_group.is_sys_absent(h)) {
@@ -91,7 +97,10 @@ namespace least_squares {
         Fc = f_calc[index];
         Fsq = observables[index];
       }
-      frame_index = fraction->tag;
+      std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
+        frames_map.find(fraction->tag);
+      SMTBX_ASSERT(fi != frames_map.end());
+      frame = fi->second;
       this->h = h;
       ratio = 1;
       if (compute_grad) {
@@ -124,24 +133,23 @@ namespace least_squares {
     FloatType calc_test(FloatType U, cart_t const& K, FloatType t,
       FloatType Sg, cart_t const& n) const
     {
-      FloatType delta_k = U*U / scitbx::fn::pow2(K * n);
+      FloatType delta_k = U / scitbx::fn::pow2(K * n);
       FloatType s_eff = std::sqrt(Sg * Sg + delta_k * delta_k);
       FloatType x1 = scitbx::fn::pow2(sin(scitbx::constants::pi * t * s_eff));
       x1 /= scitbx::fn::pow2(s_eff);
-      return U*U * x1;
+      return U * x1;
     }
 
     virtual FloatType get_observable() const {
       if (observable_updated || !computed) {
         return Fsq;
       }
-      SMTBX_ASSERT(frame_index >= 0)(frame_index);
+      SMTBX_ASSERT(frame != 0);
       int coln = design_matrix.accessor().n_columns();
-      const FrameInfo<FloatType>& frame = frames[frame_index];
-      cart_t g = frame.RM * UB * cart_t(h[0], h[1], h[2]);
+      cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
       FloatType Kl = std::sqrt(1.0 / (wavelength* wavelength) + F000);
-      cart_t K = cart_t(0, 0, Kl);
-      FloatType Sg = (Kl * Kl - scitbx::fn::pow2((K + g).length())) / (2 * Kl);
+      cart_t K = cart_t(0, 0, -Kl);
+      FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       if (std::abs(Sg) > maxSg) {
         observable_updated = true;
         if (grads.size() > 0) {
@@ -159,7 +167,7 @@ namespace least_squares {
       }
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
-        t_part = ((scitbx::constants::pi * t) / (K * frame.normal)),
+        t_part = ((scitbx::constants::pi * t) / (K * frame->normal)),
         P = t_part * std::sqrt(X);
       FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
         I = Fsq * sin_part / X;
@@ -200,12 +208,12 @@ namespace least_squares {
       
       // TESTING 
       {
-        double I = calc_test(Fsq, K, Sg, t, frame.normal);
+        double I = calc_test(Fsq, K, Sg, t, frame->normal);
         if (grads.size() > 0 && index >= 0) {
           FloatType eps = 1e-6;
           FloatType U = std::sqrt(Fsq);
-          FloatType v1 = calc_test(U - eps, K, t, Sg, frame.normal);
-          FloatType v2 = calc_test(U + eps, K, t, Sg, frame.normal);
+          FloatType v1 = calc_test(U - eps, K, t, Sg, frame->normal);
+          FloatType v2 = calc_test(U + eps, K, t, Sg, frame->normal);
           FloatType diff = (v2 - v1) / (2 * eps);
           for (int i = 0; i < coln; i++) {
               grads[i] = design_matrix(index, i) * diff;
@@ -213,8 +221,8 @@ namespace least_squares {
             if (thickness.grad) {
               int grad_index = thickness.grad_index;
               SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-              v1 = calc_test(U, K, t - eps, Sg, frame.normal);
-              v2 = calc_test(U, K, t + eps, Sg, frame.normal);
+              v1 = calc_test(U, K, t - eps, Sg, frame->normal);
+              v2 = calc_test(U, K, t + eps, Sg, frame->normal);
               diff = (v2 - v1) / (2 * eps);
               grads[grad_index] = diff;
             }
@@ -260,7 +268,6 @@ namespace least_squares {
     sgtbx::space_group const& space_group;
     FloatType wavelength;
     scitbx::mat3<FloatType> UB;
-    af::shared<FrameInfo<FloatType> > frames;
     af::shared<BeamInfo<FloatType> > beams;
     cctbx::xray::thickness<FloatType> const& thickness;
     FloatType maxSg, F000;
@@ -269,8 +276,9 @@ namespace least_squares {
     af::shared<FloatType> weights;
     af::versa<FloatType, af::c_grid<2> > design_matrix;
     miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
+    std::map<int, FrameInfo<FloatType>*> frames_map;
     long index;
-    int frame_index;
+    FrameInfo<FloatType>* frame;
     mutable bool observable_updated, computed;
     mutable std::complex<FloatType> Fc;
     mutable FloatType Fsq, ratio;
