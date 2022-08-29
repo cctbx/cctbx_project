@@ -1793,14 +1793,15 @@ def print_profile(stats, timed_methods):
             line = fp[l-1][:-1]
             PROFILE_LOGGER.warning("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))
 
-def get_laue_group_number(symmetry=None):
+def get_laue_group_number(sg_symbol=None):
     """ get laue group number from space group symbol """
     import re
-    if symmetry is None:
-        sg_sym="P -1"
+    import cctbx.sgtbx
+    if sg_symbol is None:
+        laue_sym="P -1"
     else:
-        sg_sym=re.sub(r'\([^)]*\)','',symmetry.patterson_symmetry().space_group_info().symbol_and_number()).rstrip()
+        laue_sym=re.sub(r'\([^)]*\)','',cctbx.sgtbx.space_group_info(sg_symbol).group().build_derived_patterson_group().info().symbol_and_number()).rstrip()
         
-    hm_symbols = ['P -1', 'P 1 1 2/m', 'P 1 2/m 1', 'P 2/m 1 1', 'P m m m', 'P 4/m', 'P 4/m m m', 'P -3', 'P -3 m 1', 'P 6/m', 'P 6/m m m', 'P m -    3', 'P m -3 m']
+    hm_symbols = ['P -1', 'P 1 1 2/m', 'P 1 2/m 1', 'P 2/m 1 1', 'P m m m', 'P 4/m', 'P 4/m m m', 'P -3', 'P -3 m 1', 'P 6/m', 'P 6/m m m', 'P m -3', 'P m -3 m']
     lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    return lgs[hm_symbols.index(sg_sym)] 
+    return lgs[hm_symbols.index(laue_sym)] 
