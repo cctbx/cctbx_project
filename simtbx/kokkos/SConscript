@@ -2,6 +2,7 @@ import os
 import subprocess
 from shutil import copy, which
 
+from libtbx.env_config import get_boost_library_with_python_version
 import libtbx.load_env
 
 #
