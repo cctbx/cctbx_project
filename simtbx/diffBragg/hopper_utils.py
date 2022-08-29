@@ -16,7 +16,6 @@ from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 from simtbx.diffBragg.attr_list import NB_BEAM_ATTRS, NB_CRYST_ATTRS, DIFFBRAGG_ATTRS
 
-
 try:
     from line_profiler import LineProfiler
 except ImportError:
@@ -1795,13 +1794,22 @@ def print_profile(stats, timed_methods):
 
 def get_laue_group_number(sg_symbol=None):
     """ get laue group number from space group symbol """
-    import re
     import cctbx.sgtbx
+    import re
     if sg_symbol is None:
-        laue_sym="P -1"
+        laue_sym="P-1"
     else:
-        laue_sym=re.sub(r'\([^)]*\)','',cctbx.sgtbx.space_group_info(sg_symbol).group().build_derived_patterson_group().info().symbol_and_number()).rstrip()
-        
-    hm_symbols = ['P -1', 'P 1 1 2/m', 'P 1 2/m 1', 'P 2/m 1 1', 'P m m m', 'P 4/m', 'P 4/m m m', 'P -3', 'P -3 m 1', 'P 6/m', 'P 6/m m m', 'P m -3', 'P m -3 m']
-    lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    return lgs[hm_symbols.index(laue_sym)] 
+        g = cctbx.sgtbx.space_group_info(sg_symbol).group()
+        if g.laue_group_type() not in ["2/m", "-3m"]:
+            laue_sym = "P{}".format(g.laue_group_type())
+        else:
+            pg = str(g.build_derived_patterson_group().info().symbol_and_number())
+            lc = re.sub(r'\([^)]*\)', '', pg[2:]).replace(" ", "")
+            if pg[0] == "R":
+                lc = lc.replace(":H", "1")
+            laue_sym = "P{}".format(lc)
+            
+
+    hm_symbols=['P-1','P112/m','P12/m1','P2/m11','Pmmm','P4/m','P4/mmm','P-3','P-3m1','P-31m','P6/m','P6/mmm','Pm-3','Pm-3m']
+    lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    return lgs[hm_symbols.index(laue_sym)]

@@ -212,6 +212,41 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
     return 6;
   }
   if ( laue_group_num == 10 ) {
+  // P -3 1 m
+
+              // x,y,z
+    lmats[0] <<  1, 0, 0,
+                 0, 1, 0,
+                 0, 0, 1;
+
+              // -y,x-y,z
+    lmats[1] <<  0,-1, 0,
+                 1,-1, 0,
+                 0, 0, 1;
+
+              // -x+y,-x,z
+    lmats[2] << -1, 1, 0,
+                -1, 0, 0,
+                 0, 0, 1;
+
+              // -y,-x,-z
+    lmats[3] <<  0,-1, 0,
+                -1, 0, 0,
+                 0, 0,-1;
+
+              // -x+y,y,-z
+    lmats[4] << -1, 1, 0,
+                 0, 1, 0,
+                 0, 0,-1;
+
+              // x,x-y,-z
+    lmats[5] <<  1, 0, 0,
+                 1,-1, 0,
+                 0, 0,-1;
+
+    return 6;
+  }
+  if ( laue_group_num == 11 ) {
   // P 6/m
 
               // x,y,z
@@ -246,7 +281,7 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
 
     return 6;
   }
-  if ( laue_group_num == 11 ) {
+  if ( laue_group_num == 12 ) {
   // P 6/m m m
 
               // x,y,z
@@ -311,7 +346,7 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
 
     return 12;
   }
-  if ( laue_group_num == 12 ) {
+  if ( laue_group_num == 13 ) {
   // P m -3
 
               // x,y,z
@@ -376,7 +411,7 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
 
     return 12;
   }
-  if ( laue_group_num == 13 ) {
+  if ( laue_group_num == 14 ) {
   // P m -3 m
 
               // x,y,z
