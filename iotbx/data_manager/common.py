@@ -19,6 +19,14 @@ class fmodel_mixins(object):
   and "miller_array" data types.
   '''
 
+  def get_fmodel_params(self):
+    '''
+    Return the fmodel parameters as a libtbx.phil.extract object
+    '''
+    if self._fmodel_phil_scope is None:
+      return self.export_phil_scope(as_extract=True).data_manager.fmodel
+    return self._fmodel_phil_scope.extract().data_manager.fmodel
+
   def _resolve_symmetry_conflicts(self, model, reflection_file_server,
                                   params=None):
     '''

@@ -22,6 +22,14 @@ class MillerArrayDataManager(DataManagerBase):
   miller_array_child_datatypes = []                     # track children
 
   # ---------------------------------------------------------------------------
+  # custom constructor for handling fmodel parameters
+  def __init__(self, **kwargs):
+    super(MillerArrayDataManager, self).__init__(**kwargs)
+    if self.supports('model'):
+      # keep the full DataManager PHIL scope and select fmodel when needed
+      self._fmodel_phil_scope = None
+
+  # ---------------------------------------------------------------------------
   # Miller arrays
 
   def add_miller_array_phil_str(self):
@@ -283,11 +291,16 @@ class MillerArrayDataManager(DataManagerBase):
       .type = choice(multi=False)
   }
 }
+''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
+
+    # add fmodel PHIL
+    if self.supports('model'):
+      custom_phil_str += '''
 fmodel {
   include scope iotbx.extract_xtal_data.xray_data_str
   include scope iotbx.extract_xtal_data.neutron_data_str
 }
-''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
+'''
 
     # custom PHIL scope
     setattr(self, '_custom_%s_phil' % datatype,
@@ -318,6 +331,7 @@ fmodel {
     return extract
 
   def _load_miller_array_phil_extract(self, datatype, phil_extract):
+    self._fmodel_phil_scope = self.master_phil.format(python_object=phil_extract)
     extract = phil_extract.data_manager
     extract = getattr(extract, '%s' % datatype)
     for item_extract in extract:
@@ -474,12 +488,6 @@ fmodel {
       getattr(self, '_%s_labels' % datatype)[filename] = labels
       getattr(self, '_%s_types' % datatype)[filename] = types
       self._add(datatype, filename, data)
-
-  def get_fmodel_params(self):
-    '''
-    Return the fmodel parameters as a libtbx.phil.extract object
-    '''
-    return self.export_phil_scope(as_extract=True).data_manager.fmodel
 
 # =============================================================================
 # end

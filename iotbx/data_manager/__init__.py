@@ -163,7 +163,6 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(
       getattr(sys.modules['iotbx.data_manager.common'], 'map_model_mixins'))
-
   if 'model' in datatypes and 'miller_array' in datatypes:
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(
@@ -305,6 +304,10 @@ options are {options}.\
 
       default = self._get_default_name(datatype)
       setattr(phil_extract.data_manager, 'default_%s' % datatype, default)
+
+    if self.supports('model') and self.supports('miller_array'):
+      if self._fmodel_phil_scope is not None:  # non-default fmodel parameters
+        phil_extract.data_manager.fmodel = self.get_fmodel_params()
 
     if as_extract:
       return phil_extract

@@ -776,9 +776,21 @@ ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
 
 # -----------------------------------------------------------------------------
 def test_fmodel_params():
-  dm = DataManager()
+  dm = DataManager(['model'])
+  assert not hasattr(dm, 'get_fmodel_params')
+
+  dm = DataManager(['miller_array'])
+  params = dm.export_phil_scope(as_extract=True)
+  assert not hasattr(params.data_manager, 'fmodel')
+
+  dm = DataManager(['model', 'miller_array'])
   params = dm.get_fmodel_params()
   assert isinstance(params, libtbx.phil.scope_extract)
+
+  phil = iotbx.phil.parse('data_manager.fmodel.xray_data.french_wilson.max_bins=1')
+  dm.load_phil_scope(phil)
+  params = dm.get_fmodel_params()
+  assert params.xray_data.french_wilson.max_bins == 1
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
@@ -791,6 +803,7 @@ if __name__ == '__main__':
   test_map_mixins()
   test_default_filenames()
   test_model_skip_ss_annotations()
+  test_fmodel_params()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_model_and_restraint()

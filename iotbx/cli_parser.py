@@ -435,13 +435,17 @@ class CCTBXParser(ParserBase):
 
     printed_something = False
 
+    # DataManager PHIL
+    data_manager_data_sources = []  # from files
+    data_manager_sources = []       # from command line
+
+    # program PHIL
     data_sources = []
     sources = []
 
     # PHIL files are processed in order from command-line
     if self.data_manager.has_phils():
       phil_names = self.data_manager.get_phil_names()
-      phil = []
       print('  Adding PHIL files:', file=self.logger)
       print('  ------------------', file=self.logger)
       for name in phil_names:
@@ -450,9 +454,9 @@ class CCTBXParser(ParserBase):
         for phil_object in phil_scope.objects:
           if phil_object.name == 'data_manager':
             phil_scope.objects.remove(phil_object)
-        phil.append(phil_scope)
+            data_manager_data_sources.append(phil_scope.customized_copy(objects=[phil_object]))
+        data_sources.append(phil_scope)
         print('    %s' % name, file=self.logger)
-      data_sources.extend(phil)
       print('', file=self.logger)
       printed_something = True
 
@@ -460,6 +464,7 @@ class CCTBXParser(ParserBase):
     # processed in given order
     if len(phil_list) > 0:
       interpreter = self.master_phil.command_line_argument_interpreter()
+      data_manager_interpreter = self.data_manager.master_phil.command_line_argument_interpreter()
       print('  Adding command-line PHIL:', file=self.logger)
       print('  -------------------------', file=self.logger)
       for phil in phil_list:
@@ -469,23 +474,42 @@ class CCTBXParser(ParserBase):
       # check each parameter
       for phil in phil_list:
         processed_arg = None
+        data_manager_processed_arg = None
         try:
           processed_arg = interpreter.process_arg(arg=phil)
         except Sorry as e:
           if e.__str__().startswith('Unknown'):
-            self.unused_phil.append(phil)
+            # check if it is a DataManager parameter
+            try:
+              data_manager_processed_arg = data_manager_interpreter.process_arg(arg=phil)
+            except Sorry as e2:
+              if e2.__str__().startswith('Unknown'):
+                self.unused_phil.append(phil)
           else:
             raise
         if processed_arg is not None:
           sources.append(processed_arg)
+        if data_manager_processed_arg is not None:
+          data_manager_sources.append(data_manager_processed_arg)
+
     if self.namespace.overwrite:  # override overwrite if True
       sources.append(iotbx.phil.parse('output.overwrite=True'))
+
+    # process program parameters
     if len(data_sources) + len(sources) > 0:
       self.working_phil, more_unused_phil = self.master_phil.fetch(
         sources=data_sources + sources, track_unused_definitions=True)
       self.unused_phil.extend(more_unused_phil)
     elif self.working_phil is None:
       self.working_phil = self.master_phil.fetch()
+
+    # process DataManager parameters
+    if len(data_manager_data_sources) + len(data_manager_sources) > 0:
+      diff_phil, more_unused_phil = self.data_manager.master_phil.fetch_diff(
+        sources=data_manager_data_sources + data_manager_sources, track_unused_definitions=True)
+      self.unused_phil.extend(more_unused_phil)
+      # load remaining files and final fmodel parameters
+      self.data_manager.load_phil_scope(diff_phil)
 
     # show unrecognized parameters and abort
     if len(self.unused_phil) > 0 and self.unused_phil_raises_sorry:
