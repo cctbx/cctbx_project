@@ -2,8 +2,19 @@ import os
 import subprocess
 from shutil import copy, which
 
+from libtbx.env_config import get_boost_library_with_python_version
 import libtbx.load_env
 
+
+# =============================================================================
+#
+# Logic to determine the configuration of the current host
+#
+# =============================================================================
+
+#
+# WEH - Is this function used?  This doesn't detect GPUs for Aurora
+#
 def detect_architecture(verbose=True):
   if verbose:
     print('Looking for GPUs ...')
@@ -28,7 +39,11 @@ class system_config(object):
     self.env = {}
 
   def is_host(self):
-    return (self.host_name==os.getenv(self.host_variable))
+    #
+    # WEH - the jlse login nodes all start with the same prefix.  Maybe use a regular expression here?
+    #return (self.host_name==os.getenv(self.host_variable))
+    #
+    return (os.getenv(self.host_variable) is not None and os.getenv(self.host_variable).startswith(self.host_name))
 
   def get_copy(self):
     clone = system_config(self.host_variable, self.host_name)
@@ -42,10 +57,13 @@ cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
 cfg_default.env['LDFLAGS'] = "-Llib"
 cfg_default.env['LDLIBS'] = "-lkokkoscontainers -lkokkoscore -ldl"
 cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
+cfg_default.env['CXXFLAGS'] = ""
 cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
 cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
 cfg_default.env['Kokkos_ARCH_VEGA908'] = "OFF"
 cfg_default.env['Kokkos_ARCH_VEGA90A'] = "OFF"
+cfg_default.env['Kokkos_ENABLE_OPENMP'] = "ON"
+cfg_default.env['Kokkos_ENABLE_SYCL'] = "OFF"
 cfg_default.env['Kokkos_ENABLE_CUDA'] = "OFF"
 cfg_default.env['Kokkos_ENABLE_CUDA_UVM'] = "OFF"
 cfg_default.env['Kokkos_ENABLE_HIP'] = "OFF"
@@ -124,37 +142,77 @@ cfg_darwin_ampere.env['Kokkos_ARCH_VOLTA70'] = "OFF"
 cfg_darwin_ampere.env['Kokkos_ARCH_AMPERE80'] = "ON"
 list_cfg.append(cfg_darwin_ampere)
 
+cfg_arcticus = cfg_default.get_copy()
+cfg_arcticus.host_variable = 'HOSTNAME'
+cfg_arcticus.host_name = 'jlse'                     # What if we want to build on an arcticus node?
+#cfg_arcticus.host_name = 'arcticus'            
+cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
+cfg_arcticus.env['KOKKOS_ARCH'] = ""
+cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "OFF"
+cfg_arcticus.env['Kokkos_ENABLE_SYCL'] = "ON"
+cfg_arcticus.env['LDFLAGS'] = ""
+#cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
+cfg_arcticus.env['LDLIBS'] = " -ldl"
+cfg_arcticus.env['CXX'] = 'dpcpp'
+cfg_arcticus.env['CXXFLAGS'] = "-DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_SYCL=ON -DKOKKOS_DEVICES=SYCL"
+list_cfg.append(cfg_arcticus)
+
 host_message = "not found, using default settings"
 system_settings = cfg_default.env
 for cfg in list_cfg:
   if cfg.is_host():
+    print("System Hostname: {}".format(cfg.host_name))
     system_settings = cfg.env
     host_message = "%s (from %s)"%(cfg.host_name, cfg.host_variable)
     break
 
+
+# Summarize the kokkos configuration on the current machine
+
 print("-"*40)
 print("         Kokkos configuration\n")
-print("     Host: " + host_message)
-print("  Devices: " + system_settings['KOKKOS_DEVICES'])
-print("     Arch: " + system_settings['KOKKOS_ARCH'])
+print("     Host:   " + host_message)
+print("  Devices:   " + system_settings['KOKKOS_DEVICES'])
+print("     Arch:   " + system_settings['KOKKOS_ARCH'])
 print("-"*40)
 
-# libkokkos.a
-# call kokkos build system directly
-# set environment variable defaults if necessary
+
+# =============================================================================
+#
+# Setting the environment to build kokkos and kokkos-kernels
+#
+# =============================================================================
+
+# Set kokkkos environment variable defaults if necessary
+
 if os.getenv('KOKKOS_DEVICES') is None:
   os.environ['KOKKOS_DEVICES'] = system_settings['KOKKOS_DEVICES']
 if os.getenv('KOKKOS_PATH') is None:
-  os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+  if os.getenv('KOKKOS_HOME') is None:
+    os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
+  else:
+    os.environ['KOKKOS_PATH'] = os.getenv('KOKKOS_HOME')
 if os.getenv('KOKKOSKERNELS_PATH') is None:
   os.environ['KOKKOSKERNELS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
 if os.getenv('KOKKOS_ARCH') is None:
   os.environ['KOKKOS_ARCH'] = system_settings['KOKKOS_ARCH']
 if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
   os.environ['KOKKOS_CUDA_OPTIONS'] = system_settings['KOKKOS_CUDA_OPTIONS']
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
+#
+# WEH - TODO
+#       1. Double check that it makes sense to define CUDAREAL at ALCF
+#       2. Double check that we should set these Kokkos flags here as CXXFLAGS
+#
+os.environ['CXX'] = system_settings['CXX']
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations ' + system_settings['CXXFLAGS']
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
+#
+# WEH - TODO
+#       How should we set this value?  SYCL requires c++17
+#
+os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
+
 
 original_cxx = None
 kokkos_lib = 'libkokkos.a'
@@ -166,27 +224,18 @@ if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
   os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
 else:
   os.environ['CXX'] = system_settings['CXX']
-print('='*79)
-print('Building Kokkos')
-print('-'*79)
-returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
-                              cwd=os.environ['KOKKOS_PATH'])
-print()
+  os.environ['SHCXX'] = system_settings['CXX']
 
-print('Copying Kokkos library')
-print('-'*79)
-src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
-dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
-if os.path.isfile(src):
-  copy(src, dst)
-  print('Copied')
-  print('  source:     ', src)
-  print('  destination:', dst)
-else:
-  print('Error: {src} does not exist'.format(src=src))
-print()
 
 # =============================================================================
+#
+# Building the Kokkos library
+#
+# =============================================================================
+
+cmake_is_available = which('cmake')
+
+# -----------------------------------------------------------------------------
 # Build kokkos with CMake
 # The build needs to be in a directory not in the build directory, otherwise
 # kokkos-kernels will find that build directory instead of build/lib/cmake/Kokkos
@@ -208,14 +257,18 @@ print()
 #   flags instead of environment variables
 # - Verify that libraries from cmake version works the same as libkokkos.a
 
-cmake_is_available = which('cmake')
 if cmake_is_available:
-  print('='*79)
+  print('-'*79)
   print('Building kokkos with cmake')
   print('-'*79)
   kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos_build')
   if not os.path.isdir(kokkos_build_dir):
     os.mkdir(kokkos_build_dir)
+  # ..............................................................................
+  # Build kokkos with CMake.
+  # Turn off all ETI builds for now, until needed, for maximum machine compatibility
+  print(system_settings['Kokkos_ENABLE_OPENMP'])
+  print(system_settings)
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOS_PATH'],
@@ -223,11 +276,12 @@ if cmake_is_available:
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ENABLE_SERIAL=ON',
-      '-DKokkos_ENABLE_OPENMP=ON',
+      '-DKokkos_ENABLE_OPENMP={}'.format(system_settings['Kokkos_ENABLE_OPENMP']),
       '-DKokkos_ARCH_VOLTA70={}'.format(system_settings['Kokkos_ARCH_VOLTA70']),
       '-DKokkos_ARCH_AMPERE80={}'.format(system_settings['Kokkos_ARCH_AMPERE80']),
       '-DKokkos_ARCH_VEGA908={}'.format(system_settings['Kokkos_ARCH_VEGA908']),
       '-DKokkos_ARCH_VEGA90A={}'.format(system_settings['Kokkos_ARCH_VEGA90A']),
+      '-DKokkos_ENABLE_SYCL={}'.format(system_settings['Kokkos_ENABLE_SYCL']),
       '-DKokkos_ENABLE_CUDA={}'.format(system_settings['Kokkos_ENABLE_CUDA']),
       '-DKokkos_ENABLE_CUDA_UVM={}'.format(system_settings['Kokkos_ENABLE_CUDA_UVM']),
       '-DKokkos_ENABLE_HIP={}'.format(system_settings['Kokkos_ENABLE_HIP'])
@@ -235,9 +289,9 @@ if cmake_is_available:
     cwd=kokkos_build_dir)
   returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
 
-# -----------------------------------------------------------------------------
-# Build kokkos-kernels with CMake.
-# Turn off all ETI builds for now, until needed, for maximum machine compatibility
+  # ..............................................................................
+  # Build kokkos-kernels with CMake.
+  # Turn off all ETI builds for now, until needed, for maximum machine compatibility
   print('='*79)
   print('Building kokkos_kernels')
   print('-'*79)
@@ -260,12 +314,40 @@ if cmake_is_available:
     cwd=kokkos_kernels_build_dir)
   returncode = subprocess.call(['make', '-j', '4'], cwd=kokkos_kernels_build_dir)
   returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_kernels_build_dir)
+
 else:
   print('*'*79)
   print('cmake was not found')
   print('Skipping builds of kokkos and kokkos-kernels')
   print('*'*79)
-  
+
+
+# =============================================================================
+#
+# Copying libkokkos
+#
+# =============================================================================
+
+src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
+dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
+if os.path.isfile(src):
+  print('-'*79)
+  print('Copying Kokkos library')
+  print('-'*79)
+  copy(src, dst)
+  print('Copied')
+  print('  source:     ', src)
+  print('  destination:', dst)
+else:
+  print('-'*79)
+  print('Copying failed: {src} does not exist'.format(src=src))
+  print('-'*79)
+
+
+# =============================================================================
+#
+# Building libsimtbx_kokkos.so
+#
 # =============================================================================
 
 print('Getting environment variables')
@@ -281,16 +363,67 @@ print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
 # libsimtbx_kokkos.so
+#
+# WEH - TODO
+#       What configuration option should we used to disable local kokkos builds?
+#
 Import("env", "env_etc")
+if os.getenv('KOKKOS_HOME') is None:
+    print('='*79)
+    print('Building Kokkos')
+    print('-'*79)
+    returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
+                                  cwd=os.environ['KOKKOS_PATH'])
+    print()
 
+    print('Copying Kokkos library')
+    print('-'*79)
+    src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
+    dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
+    if os.path.isfile(src):
+      copy(src, dst)
+      print('Copied')
+      print('  source:     ', src)
+      print('  destination:', dst)
+    else:
+      print('Error: {src} does not exist'.format(src=src))
+    print()
+
+    print('Getting environment variables')
+    print('-'*79)
+    kokkos_cxxflags = subprocess.check_output(
+      ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
+      cwd=os.environ['KOKKOS_PATH'])
+    kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
+    kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
+    print("Kokkos CXXFLAGS:",kokkos_cxxflags)
+    kokkos_libname="kokkos"
+    print('='*79)
+else:
+    print('='*79)
+    kokkos_cxxflags = [val.replace('c++11', 'c++17') for val in env['CXXFLAGS']]
+    print("Kokkos CXXFLAGS:",kokkos_cxxflags)
+    kokkos_libname="kokkoscore"
+    print('='*79)
+
+#
+# Build libsimtbx_kokkos.so
+#
+
+#print("HERE?", os.environ['CXX'])
 kokkos_env = env.Clone()
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
+kokkos_env.Replace(SHLINK=os.environ['CXX'])
+kokkos_env.Replace(SHLINKFLAGS=[val.replace('c++11','c++17') for val in env['SHLINKFLAGS']])
+kokkos_env.Prepend(SHCXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
 kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+kokkos_env.Append(LIBS=['sycl'])
 
+#print("HERE!", kokkos_env['SHCXXCOM'])
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
   source=[
@@ -302,7 +435,10 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   ]
 )
 
-# simtbx_kokkos_ext.so
+#print("HERE - y", os.getenv('KOKKOS_DEVICES'))
+#
+# Build simtbx_kokkos_ext.so
+#
 if not env_etc.no_boost_python:
   Import("env_no_includes_boost_python_ext")
   kokkos_ext_env = env_no_includes_boost_python_ext.Clone()
@@ -312,6 +448,8 @@ if not env_etc.no_boost_python:
     paths=env_etc.simtbx_common_includes + [env_etc.python_include])
   kokkos_ext_env.Replace(CXX=os.environ['CXX'])
   kokkos_ext_env.Replace(SHCXX=os.environ['CXX'])
+  kokkos_ext_env.Replace(SHLINK=os.environ['CXX'])
+  kokkos_ext_env.Prepend(SHCXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   kokkos_ext_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
@@ -329,9 +467,14 @@ if not env_etc.no_boost_python:
   elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
     kokkos_ext_env.Append(LIBPATH=[os.path.join(os.environ['ROCM_PATH'], 'lib')])
     kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs + ["amdhip64", "hsa-runtime64"])
+  elif 'SYCL' in os.getenv('KOKKOS_DEVICES'):
+    print("Building with SYCL")
+    kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs)
   else:
     kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs)
 
+  #print("HERE!!", kokkos_ext_env['SHCXX'])
+  #print("HERE!!", kokkos_ext_env['SHLINK'])
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",
     source=['kokkos_ext.cpp']
@@ -340,3 +483,4 @@ if not env_etc.no_boost_python:
 # reset CXX
 if original_cxx is not None:
   os.environ['CXX'] = original_cxx
+  os.environ['SHCXX'] = original_cxx
