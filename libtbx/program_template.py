@@ -470,6 +470,5 @@ output {
 
 # =============================================================================
 
-from libtbx import program_template as pt
 import iotbx.phil
 output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
