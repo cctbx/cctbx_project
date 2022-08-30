@@ -118,6 +118,9 @@ output {
   serial = 0
     .type = int
     .help = Serial number added to automatically generated output filenames
+  serial_format = "%03d"
+    .type = str
+    .help = Format for serial number
   overwrite = False
     .type = bool
     .help = Overwrite files when set to True
@@ -466,3 +469,7 @@ output {
     return get_version()
 
 # =============================================================================
+
+from libtbx import program_template as pt
+import iotbx.phil
+output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
