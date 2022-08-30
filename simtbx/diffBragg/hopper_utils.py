@@ -1794,4 +1794,3 @@ def print_profile(stats, timed_methods):
             frac_t = timespent[i_l] / total_time * 100.
             line = fp[l-1][:-1]
             PROFILE_LOGGER.warning("%5d%14.2f%9.2f%s" % (l, timespent[i_l]*unit*1e3, frac_t, line))
-
