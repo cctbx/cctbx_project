@@ -800,10 +800,11 @@ class HKLViewFrame() :
         raise Sorry(errormsg)
       tabname = ldic.get("tabname", None)
       logfname = ldic.get("logfname", None)
-      self.SendInfoToGUI( {"show_log_file": [tabname, logfname ]  } )
+      self.SendInfoToGUI( {"show_log_file_from_external_cmd": [tabname, logfname ]  } )
       self.validated_preset_buttons = False
       self.validate_preset_buttons()
     except Exception as e:
+      self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
       raise Sorry(str(e))
 
 

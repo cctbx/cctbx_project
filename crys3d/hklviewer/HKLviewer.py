@@ -760,6 +760,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
     xtricorder_cmd = """
 from phasertng.scripts import xtricorder
+
+tabname = "Xtricorder"
 (retobj) = xtricorder.xtricorder(
 '''phasertng {
             hklin.filename = "%s"
@@ -790,7 +792,7 @@ for fname, t in timesortedlogs:
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
 logfname = "%s_xtricorder.log"
-tabname = "Xtricorder"
+
 with open(logfname, 'w') as f:
   f.write(mstr)
 
@@ -815,6 +817,7 @@ shutil.rmtree("%s")
       xtriage_cmd = """
 from mmtbx.scaling import xtriage
 from io import StringIO
+tabname = "Xtriage"
 
 logstrbuf = StringIO()
 xtriageobj = xtriage.run([ "%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
@@ -840,7 +843,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
 
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
-tabname = "Xtriage"
 
 """ %(self.currentfileName, self.current_labels, firstpart)
       self.XtricorderBtn.setEnabled(False)
@@ -951,15 +953,16 @@ tabname = "Xtriage"
               self.comboviewwidth = max(self.comboviewwidth, self.MillerComboBox.fontMetrics().width( e) )
             self.MillerComboBox.view().setMinimumWidth(self.comboviewwidth)
 
-          if self.infodict.get("show_log_file"):
-            tabname, fname = self.infodict.get("show_log_file")
-            mstr = ""
-            with open(fname, 'r') as f:
-              mstr += f.read() + '\\n'
-            self.add_another_text_tab(tabname, mstr)
+          if self.infodict.get("show_log_file_from_external_cmd"):
+            if self.infodict.get("show_log_file_from_external_cmd") != -42:
+              tabname, fname = self.infodict.get("show_log_file_from_external_cmd")
+              mstr = ""
+              with open(fname, 'r') as f:
+                mstr += f.read() + '\\n'
+              self.add_another_text_tab(tabname, mstr)
+            self.waiting = False
             self.XtricorderBtn.setEnabled(True)
             self.XtriageBtn.setEnabled(True)
-            self.waiting = False
             self.AddInfoText("\n")
             self.AddAlertsText("\n")
 
