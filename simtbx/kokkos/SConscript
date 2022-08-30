@@ -418,7 +418,8 @@ kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
 kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
-kokkos_env.Append(LIBS=['sycl'])
+if 'SYCL' in os.getenv('KOKKOS_DEVICES'):
+    kokkos_env.Append(LIBS=['sycl'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
