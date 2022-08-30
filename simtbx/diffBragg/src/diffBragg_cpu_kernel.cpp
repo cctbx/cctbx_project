@@ -25,7 +25,6 @@ void diffBragg_sum_over_steps(
     int laue_group_num = db_cryst.laue_group_num;
     int num_laue_mats = 1;
     int dhh=0, dkk=0, dll=0;
-    double four_mpi_sq = 4.*M_PI*M_PI;
     if (db_flags.use_diffuse){
       anisoG_local = db_cryst.anisoG;
       anisoU_local = db_cryst.anisoU;
@@ -37,7 +36,10 @@ void diffBragg_sum_over_steps(
       }
       dhh = dkk = dll = db_cryst.stencil_size; // Limits of stencil for diffuse calc
     }
-  
+    VEC3 Hmin(db_cryst.h_min, db_cryst.k_min, db_cryst.l_min);
+    VEC3 Hmax(db_cryst.h_max, db_cryst.k_max, db_cryst.l_max);
+    VEC3 dHH(dhh,dkk,dll);
+    VEC3 Hrange(db_cryst.h_range, db_cryst.k_range, db_cryst.l_range);
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
         int pid = panels_fasts_slows[i_pix*3];
@@ -212,75 +214,7 @@ void diffBragg_sum_over_steps(
 	    double I0 = 0;
 	    double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
-              MAT3 UBOinv = UBO.inverse();
-              // loop over laue matrices
-              bool h_bounded= (h0+dhh<=db_cryst.h_max) && (h0-dhh>=db_cryst.h_min) ;
-              bool k_bounded = (k0+dkk<=db_cryst.k_max) && (k0-dkk>=db_cryst.k_min);
-              bool l_bounded =(l0+dll<=db_cryst.l_max) && (l0-dll>=db_cryst.l_min) ;
-              if (h_bounded && k_bounded && l_bounded) {
-                int Fhkl_linear_index_0 = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range
-                                + (k0-db_cryst.k_min) * db_cryst.l_range + (l0-db_cryst.l_min);
-                double _F_cell_0 = db_cryst.FhklLinear[Fhkl_linear_index_0];
-                MAT3 Ginv = anisoG_local.inverse();
-                double anisoG_determ = anisoG_local.determinant();
-                for (int hh=-dhh; hh <= dhh; hh++){
-                  for (int kk=-dkk; kk <= dkk; kk++){
-                    for (int ll=-dll; ll <= dll; ll++){
-                        double ID_this = 0;
-                        double step_diffuse_param_this[6]  = {0,0,0,0,0,0};
-			int Fhkl_linear_index_this = (h0+hh-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
-                                                        (k0+kk-db_cryst.k_min) * db_cryst.l_range + (l0+ll-db_cryst.l_min);
-                        double _F_cell_this = db_cryst.FhklLinear[Fhkl_linear_index_this];
-                        double _this_diffuse_scale;
-                        if (_F_cell_0 != 0.0)
-                          _this_diffuse_scale = _F_cell_this/_F_cell_0;
-                        else
-                          _this_diffuse_scale = 1.0;
-
-                        _this_diffuse_scale *= _this_diffuse_scale/(double)num_laue_mats;
-                        for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                          VEC3 Q0 = UBOinv*laue_mats[iL]*H0;
-                          double exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
-                          double dwf = exp(-exparg);
-                          VEC3 H0_offset(h0+hh, k0+kk, l0+ll);
-                          VEC3 delta_H_offset = H_vec - H0_offset;
-                          VEC3 delta_Q = UBOinv*laue_mats[iL]*delta_H_offset;
-                          VEC3 anisoG_q = anisoG_local*delta_Q;
-
-                          double V_dot_V = anisoG_q.dot(anisoG_q);
-                          double gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
-                          gamma_portion_denom *= gamma_portion_denom;
-                          double gamma_portion = 8.*M_PI*anisoG_determ /
-                          gamma_portion_denom;
-                          double this_I_latt_diffuse = dwf*exparg*gamma_portion;
-
-                          ID_this += this_I_latt_diffuse;
-                          if (db_flags.refine_diffuse){ // add the contributions to diffuse scattering gradients here
-                            for (int i_gam=0; i_gam<3; i_gam++){
-                              VEC3 dV = dG_dgam[i_gam]*delta_Q;
-                              double V_dot_dV = anisoG_q.dot(dV);
-                              double deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
-                              step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
-                            }
-                            MAT3 dU_dsigma;
-                            dU_dsigma << 0,0,0,0,0,0,0,0,0;
-                            for (int i_sig = 0;i_sig<3; i_sig++){
-                              dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
-                              double dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
-                              dU_dsigma(i_sig, i_sig) = 0.;
-                              step_diffuse_param_this[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
-                            }
-                          }
-                        } // end loop over iL (laue group mats)
-                        // Update the lattice interference term here to include diffuse scattering (F_latt squared)
-                        I0 += ID_this * _this_diffuse_scale;
-
-                        for (int idp=0; idp < 6; idp++)
-                          step_diffuse_param[idp] += step_diffuse_param_this[idp]*_this_diffuse_scale;
-                    } // end ll loop
-                  } // end kk loop
-                } // end hh loop
-              } // end if bounded
+	      calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }
 
             /* increment to intensity */
