@@ -86,7 +86,7 @@ void gpu_sum_over_steps(
     //__shared__ CUDAREAL s_Nb;
     //__shared__ CUDAREAL s_Nc;
     __shared__ CUDAREAL s_NaNbNc_squared;
-    __shared__ int s_h_max, s_k_max, s_l_max, s_h_min, s_k_min, s_l_min, s_k_range, s_l_range;
+    __shared__ int s_h_max, s_k_max, s_l_max, s_h_min, s_k_min, s_l_min, s_h_range, s_k_range, s_l_range;
     __shared__ int s_oversample, s_detector_thicksteps, s_sources, s_mosaic_domains,  s_printout_fpixel,
         s_printout_spixel, s_verbose, s_Nsteps;
     __shared__ CUDAREAL s_detector_thickstep, s_detector_attnlen, s_subpixel_size, s_pixel_size, s_lambda0,
@@ -110,7 +110,7 @@ void gpu_sum_over_steps(
     __shared__ MAT3 dG_dgam[3];
     __shared__ int num_laue_mats;
     __shared__ int dhh, dkk, dll;
-    __shared__ CUDAREAL four_mpi_sq;
+    __shared__ VEC3 Hmin, Hmax, dHH, Hrange;
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
@@ -162,7 +162,7 @@ void gpu_sum_over_steps(
         s_h_min = h_min;
         s_k_min = k_min;
         s_l_min = l_min;
-        //s_h_range = h_range;
+        s_h_range = h_range;
         s_k_range = k_range;
         s_l_range = l_range;
 
@@ -208,9 +208,12 @@ void gpu_sum_over_steps(
                 dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
               }
             }
-            four_mpi_sq = 4.*M_PI*M_PI;
             dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
         }
+	Hmin << s_h_min,s_k_min,s_l_min;
+	Hmax << s_h_max,s_k_max,s_l_max;
+	dHH << dhh,dkk,dll;
+	Hrange << s_h_range,s_k_range,s_l_range;
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -393,77 +396,8 @@ void gpu_sum_over_steps(
 
             // are we doing diffuse scattering
             CUDAREAL step_diffuse_param[6]  = {0,0,0,0,0,0};
-            if (s_use_diffuse){ // TODO make this a device method
-              MAT3 UBOinv = UBO.inverse();
-              // loop over laue matrices
-              bool h_bounded= (_h0+dhh<=s_h_max) && (_h0-dhh>=s_h_min) ;
-              bool k_bounded = (_k0+dkk<=s_k_max) && (_k0-dkk>=s_k_min);
-              bool l_bounded =(_l0+dll<=s_l_max) && (_l0-dll>=s_l_min) ;
-              if (h_bounded && k_bounded && l_bounded) {
-                int Fhkl_linear_index_0 = (_h0-s_h_min) * s_k_range * s_l_range
-                                + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);
-                CUDAREAL _F_cell_0 = _FhklLinear[Fhkl_linear_index_0];
-                MAT3 Ginv = anisoG_local.inverse();
-                CUDAREAL anisoG_determ = anisoG_local.determinant();
-                for (int hh=-dhh; hh <= dhh; hh++){
-                  for (int kk=-dkk; kk <= dkk; kk++){
-                    for (int ll=-dll; ll <= dll; ll++){
-                        CUDAREAL ID_this = 0;
-                        CUDAREAL step_diffuse_param_this[6]  = {0,0,0,0,0,0};
-                                int Fhkl_linear_index_this = (_h0+hh-s_h_min) * s_k_range * s_l_range +
-                                                        (_k0+kk-s_k_min) * s_l_range + (_l0+ll-s_l_min);
-                        CUDAREAL _F_cell_this = _FhklLinear[Fhkl_linear_index_this];
-                        CUDAREAL _this_diffuse_scale;
-                        if (_F_cell_0 != 0.0)
-                          _this_diffuse_scale = _F_cell_this/_F_cell_0;
-                        else
-                          _this_diffuse_scale = 1.0;
-
-                        _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats;
-                        for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                          VEC3 Q0 = UBOinv*laue_mats[iL]*H0;
-                          CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
-                          CUDAREAL dwf = exp(-exparg);
-                          VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                          VEC3 delta_H_offset = H_vec - H0_offset;
-                          VEC3 delta_Q = UBOinv*laue_mats[iL]*delta_H_offset;
-                          VEC3 anisoG_q = anisoG_local*delta_Q;
-
-                          CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
-                          CUDAREAL gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
-                          gamma_portion_denom *= gamma_portion_denom;
-                          CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
-                          gamma_portion_denom;
-                          CUDAREAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
-
-                          ID_this += this_I_latt_diffuse;
-                          if (s_refine_diffuse){ // add the contributions to diffuse scattering gradients here
-                            for (int i_gam=0; i_gam<3; i_gam++){
-                              VEC3 dV = dG_dgam[i_gam]*delta_Q;
-                              CUDAREAL V_dot_dV = anisoG_q.dot(dV);
-                              CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
-                              step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
-                            }
-                            MAT3 dU_dsigma;
-                            dU_dsigma << 0,0,0,0,0,0,0,0,0;
-                            for (int i_sig = 0;i_sig<3; i_sig++){
-                              dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
-                              CUDAREAL dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
-                              dU_dsigma(i_sig, i_sig) = 0.;
-                              step_diffuse_param_this[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
-                            }
-                          }
-                        } // end loop over iL (laue group mats)
-
-                        // Update the lattice interference term here to include diffuse scattering (F_latt squared)
-                        I0 += ID_this * _this_diffuse_scale;
-
-                        for (int idp=0; idp < 6; idp++)
-                          step_diffuse_param[idp] += step_diffuse_param_this[idp]*_this_diffuse_scale;
-                    } // end ll loop
-                  } // end kk loop
-                } // end hh loop
-              } // end if bounded
+            if (s_use_diffuse){
+	      calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&_FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,s_refine_diffuse,&I0,step_diffuse_param);
             } // end s_use_diffuse outer
 
             CUDAREAL _F_cell = s_default_F;
