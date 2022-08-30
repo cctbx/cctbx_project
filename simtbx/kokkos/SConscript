@@ -62,6 +62,7 @@ cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
 cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
 cfg_default.env['Kokkos_ARCH_VEGA908'] = "OFF"
 cfg_default.env['Kokkos_ARCH_VEGA90A'] = "OFF"
+cfg_default.env['Kokkos_ENABLE_OPENMP'] = "ON"
 cfg_default.env['Kokkos_ENABLE_SYCL'] = "OFF"
 cfg_default.env['Kokkos_ENABLE_CUDA'] = "OFF"
 cfg_default.env['Kokkos_ENABLE_CUDA_UVM'] = "OFF"
@@ -147,6 +148,7 @@ cfg_arcticus.host_name = 'jlse'                     # What if we want to build o
 #cfg_arcticus.host_name = 'arcticus'            
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
+cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "OFF"
 cfg_arcticus.env['Kokkos_ENABLE_SYCL'] = "ON"
 cfg_arcticus.env['LDFLAGS'] = ""
 #cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
@@ -169,9 +171,9 @@ for cfg in list_cfg:
 
 print("-"*40)
 print("         Kokkos configuration\n")
-print("     Host: " + host_message)
-print("  Devices: " + system_settings['KOKKOS_DEVICES'])
-print("     Arch: " + system_settings['KOKKOS_ARCH'])
+print("     Host:   " + host_message)
+print("  Devices:   " + system_settings['KOKKOS_DEVICES'])
+print("     Arch:   " + system_settings['KOKKOS_ARCH'])
 print("-"*40)
 
 
@@ -202,7 +204,7 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
 #       2. Double check that we should set these Kokkos flags here as CXXFLAGS
 #
 os.environ['CXX'] = system_settings['CXX']
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations' + system_settings['CXXFLAGS']
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations ' + system_settings['CXXFLAGS']
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
 #
@@ -227,24 +229,11 @@ else:
 
 # =============================================================================
 #
-# Copying or building the Kokkos library
+# Building the Kokkos library
 #
 # =============================================================================
 
-src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
-dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
 cmake_is_available = which('cmake')
-
-# -----------------------------------------------------------------------------
-# Copying Kokkos here
-
-if os.path.isfile(src):
-  print('Copying Kokkos library')
-  print('-'*79)
-  copy(src, dst)
-  print('Copied')
-  print('  source:     ', src)
-  print('  destination:', dst)
 
 # -----------------------------------------------------------------------------
 # Build kokkos with CMake
@@ -268,9 +257,8 @@ if os.path.isfile(src):
 #   flags instead of environment variables
 # - Verify that libraries from cmake version works the same as libkokkos.a
 
-elif cmake_is_available:
+if cmake_is_available:
   print('-'*79)
-  print('Copying failed: {src} does not exist'.format(src=src))
   print('Building kokkos with cmake')
   print('-'*79)
   kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos_build')
@@ -286,7 +274,7 @@ elif cmake_is_available:
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ENABLE_SERIAL=ON',
-      '-DKokkos_ENABLE_OPENMP=ON',
+      '-DKokkos_ENABLE_OPENMP={}'.format(system_settings['Kokkos_ENABLE_OPENMP']),
       '-DKokkos_ARCH_VOLTA70={}'.format(system_settings['Kokkos_ARCH_VOLTA70']),
       '-DKokkos_ARCH_AMPERE80={}'.format(system_settings['Kokkos_ARCH_AMPERE80']),
       '-DKokkos_ARCH_VEGA908={}'.format(system_settings['Kokkos_ARCH_VEGA908']),
@@ -327,10 +315,31 @@ elif cmake_is_available:
 
 else:
   print('*'*79)
-  print('Copying failed: {src} does not exist'.format(src=src))
   print('cmake was not found')
   print('Skipping builds of kokkos and kokkos-kernels')
   print('*'*79)
+
+
+# =============================================================================
+#
+# Copying libkokkos
+#
+# =============================================================================
+
+src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
+dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
+if os.path.isfile(src):
+  print('-'*79)
+  print('Copying Kokkos library')
+  print('-'*79)
+  copy(src, dst)
+  print('Copied')
+  print('  source:     ', src)
+  print('  destination:', dst)
+else:
+  print('-'*79)
+  print('Copying failed: {src} does not exist'.format(src=src))
+  print('-'*79)
 
 
 # =============================================================================
@@ -399,7 +408,6 @@ else:
 # Build libsimtbx_kokkos.so
 #
 
-#print("HERE?", os.environ['CXX'])
 kokkos_env = env.Clone()
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
@@ -412,7 +420,6 @@ kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
 kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 kokkos_env.Append(LIBS=['sycl'])
 
-#print("HERE!", kokkos_env['SHCXXCOM'])
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
   source=[
@@ -424,7 +431,6 @@ simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   ]
 )
 
-#print("HERE - y", os.getenv('KOKKOS_DEVICES'))
 #
 # Build simtbx_kokkos_ext.so
 #
@@ -462,8 +468,6 @@ if not env_etc.no_boost_python:
   else:
     kokkos_ext_env.Append(LIBS=env_etc.libm + default_libs)
 
-  #print("HERE!!", kokkos_ext_env['SHCXX'])
-  #print("HERE!!", kokkos_ext_env['SHLINK'])
   simtbx_kokkos_ext = kokkos_ext_env.SharedLibrary(
     target="#lib/simtbx_kokkos_ext.so",
     source=['kokkos_ext.cpp']
