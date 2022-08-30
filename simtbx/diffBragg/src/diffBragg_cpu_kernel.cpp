@@ -31,8 +31,8 @@ void diffBragg_sum_over_steps(
       num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
       for (int iL = 0; iL < num_laue_mats; iL++) laue_mats[iL] = laue_mats[iL].transpose();
       for (int i_gam=0; i_gam<3; i_gam++){
-	dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-	dG_dgam[i_gam](i_gam, i_gam) = 1;
+        dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+        dG_dgam[i_gam](i_gam, i_gam) = 1;
       }
       dhh = dkk = dll = db_cryst.stencil_size; // Limits of stencil for diffuse calc
     }
@@ -165,12 +165,12 @@ void diffBragg_sum_over_steps(
                                     ap_vec[2], bp_vec[2], cp_vec[2];
             }
             Bmat_realspace *= 1e10;
-	    if (db_flags.use_diffuse && db_flags.gamma_miller_units){
-	      anisoG_local = anisoG_local * Bmat_realspace;
-	      for (int i_gam=0; i_gam<3; i_gam++){
-		dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
-	      }
-	    }
+            if (db_flags.use_diffuse && db_flags.gamma_miller_units){
+              anisoG_local = anisoG_local * Bmat_realspace;
+              for (int i_gam=0; i_gam<3; i_gam++){
+                dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+              }
+            }
 
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
@@ -211,10 +211,10 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
-	    double I0 = 0;
-	    double step_diffuse_param[6] = {0,0,0,0,0,0};
+            double I0 = 0;
+            double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
-	      calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
+              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }
 
             /* increment to intensity */
