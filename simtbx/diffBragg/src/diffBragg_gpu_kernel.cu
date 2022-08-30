@@ -940,9 +940,9 @@ void gpu_sum_over_steps(
               bool k_bounded = (_k0+dkk<=s_k_max) && (_k0-dkk>=s_k_min);
               bool l_bounded =(_l0+dll<=s_l_max) && (_l0-dll>=s_l_min) ;
               if (h_bounded && k_bounded && l_bounded) {
-                    int Fhkl_linear_index_0 = (_h0-s_h_min) * s_k_range * s_l_range
-                                    + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);
-                    CUDAREAL _F_cell_0 = _FhklLinear[Fhkl_linear_index_0];
+                int Fhkl_linear_index_0 = (_h0-s_h_min) * s_k_range * s_l_range
+                                + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);
+                CUDAREAL _F_cell_0 = _FhklLinear[Fhkl_linear_index_0];
                 MAT3 Ginv = anisoG_local.inverse();
                 CUDAREAL anisoG_determ = anisoG_local.determinant();
                 for (int hh=-dhh; hh <= dhh; hh++){
@@ -996,10 +996,10 @@ void gpu_sum_over_steps(
                         } // end loop over iL (laue group mats)
 
                         // Update the lattice interference term here to include diffuse scattering (F_latt squared)
-                                I0 += ID_this * _this_diffuse_scale;
+                        I0 += ID_this * _this_diffuse_scale;
 
-                                for (int idp=0; idp < 6; idp++)
-                                  step_diffuse_param[idp] += step_diffuse_param_this[idp]*_this_diffuse_scale;
+                        for (int idp=0; idp < 6; idp++)
+                          step_diffuse_param[idp] += step_diffuse_param_this[idp]*_this_diffuse_scale;
                     } // end ll loop
                   } // end kk loop
                 } // end hh loop
