@@ -733,7 +733,7 @@ void gpu_sum_over_steps(
         s_Nsteps = Nsteps;
         s_overall_scale = _r_e_sqr *_spot_scale * _fluence / Nsteps ;
 
-        if (use_diffuse){
+        if (s_use_diffuse){
             anisoG_local = anisoG;
             anisoU_local = anisoU;
             num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
@@ -742,7 +742,7 @@ void gpu_sum_over_steps(
               dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
               dG_dgam[i_gam](i_gam, i_gam) = 1;
             }
-            if (s_use_diffuse && s_gamma_miller_units){
+            if (s_gamma_miller_units){
               anisoG_local = anisoG_local * Bmat_realspace;
               for (int i_gam=0; i_gam<3; i_gam++){
                 dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
