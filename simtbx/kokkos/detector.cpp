@@ -123,7 +123,7 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::kokkos_detector(int const& arg_device,
                              dxtbx::model::Detector const & arg_detector,
                              dxtbx::model::Beam const& arg_beam):
-    h_deviceID(arg_device),
+    //h_deviceID(arg_device),
     metrology(arg_detector, arg_beam),
     m_panel_count( arg_detector.size() ),
     m_slow_dim_size( arg_detector[0].get_image_size()[0] ),
@@ -133,7 +133,7 @@ namespace simtbx { namespace Kokkos {
 
   kokkos_detector::kokkos_detector(int const& arg_device,
                              const simtbx::nanoBragg::nanoBragg& nB):
-    h_deviceID(arg_device),
+    //h_deviceID(arg_device),
     metrology(nB),
     m_panel_count(1),
     m_slow_dim_size(nB.spixels),

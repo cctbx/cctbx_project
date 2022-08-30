@@ -890,6 +890,7 @@ int main() {
     env_etc.c_link = cc
     #env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
     env_etc.cxx11_is_available = True
+    env_etc.ccflags_base.append("-Wno-error=implicit-function-declaration")
 
     if cc is not None:
       env_base.Replace(
@@ -904,6 +905,9 @@ int main() {
         SHLINK=cxx,
       )
     env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
+
+    print("  CFLAGS:", env_etc.cflags_base)
+    print("  CXXFLAGS:", env_etc.cxxflags_base)
 
   elif env_etc.compiler.startswith("darwin"):
     cc  = env_etc.compiler.replace('darwin_','')

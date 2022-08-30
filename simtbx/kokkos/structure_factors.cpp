@@ -28,7 +28,13 @@ namespace simtbx { namespace Kokkos {
   kokkos_energy_channels::print_Fhkl(int channel, int first_element, int last_element) {
     auto view = d_channel_Fhkl[channel];
     parallel_for("print_Fhkl", RangePolicy<>(first_element, last_element), KOKKOS_LAMBDA (int i) {
-      printf(" Fhkl[ %d ] = '%lf'\n", i, view(i));
+#ifdef __INTEL_LLVM_COMPILER
+      //TODO: Fix SYCL kernel printing, is this needed?
+      //error: SYCL kernel cannot call a variadic function
+      //printf(" Fhkl[ %d ] = '%lf'\n", i, view(i));
+#else
+       printf(" Fhkl[ %d ] = '%lf'\n", i, view(i));
+#endif
     });
   }
 
