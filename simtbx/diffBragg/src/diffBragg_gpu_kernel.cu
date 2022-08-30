@@ -982,7 +982,7 @@ void gpu_sum_over_steps(
                               VEC3 dV = dG_dgam[i_gam]*delta_Q;
                               CUDAREAL V_dot_dV = anisoG_q.dot(dV);
                               CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
-                              step_diffuse_param[i_gam] += gamma_portion*deriv*dwf*exparg;
+                              step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
                             }
                             MAT3 dU_dsigma;
                             dU_dsigma << 0,0,0,0,0,0,0,0,0;
@@ -990,7 +990,7 @@ void gpu_sum_over_steps(
                               dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
                               CUDAREAL dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
                               dU_dsigma(i_sig, i_sig) = 0.;
-                              step_diffuse_param[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
+                              step_diffuse_param_this[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
                             }
                           }
                         } // end loop over iL (laue group mats)
