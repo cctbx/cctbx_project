@@ -1,4 +1,5 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
+#include <simtbx/diffBragg/src/diffuse_util.h>
 #include <assert.h>
 #include <stdbool.h>
 #include<unordered_map>

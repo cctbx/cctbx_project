@@ -7,12 +7,6 @@
 #define CUDAREAL double
 #endif
 
-typedef std::vector<CUDAREAL> image_type;
-typedef Eigen::Matrix<CUDAREAL,3,1> VEC3;
-typedef Eigen::Matrix<CUDAREAL,3,3> MAT3;
-typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
-typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
-
 //#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 
 struct diffBragg_cudaPointers {

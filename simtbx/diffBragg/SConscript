@@ -33,6 +33,7 @@ if (env_etc.enable_cuda):
   diffBragg_env.cudaSharedLibrary(
     target="#lib/libsimtbx_diffBraggCUDA",
     source=["src/diffBraggCUDA.cu", "src/diffBragg_gpu_kernel.cu"])
+  diffBragg_env.Prepend(NVCCFLAGS=["-DDIFFBRAGG_HAVE_CUDA"])
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
 
 env_simtbx.SharedLibrary(

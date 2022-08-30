@@ -9,7 +9,6 @@
 #include <boost/python.hpp>
 #include<Eigen/StdVector>
 #include <boost/python/numpy.hpp>
-typedef std::vector<double> image_type;
 
 #ifdef NANOBRAGG_HAVE_CUDA
 #include "diffBraggCUDA.h"

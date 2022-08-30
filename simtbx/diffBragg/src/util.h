@@ -7,6 +7,10 @@
 #include<vector>
 
 typedef std::vector<double> image_type;
+typedef Eigen::Matrix<double,3,1> VEC3;
+typedef Eigen::Matrix<double,3,3> MAT3;
+typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
+typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
 struct timer_variables{
     double add_spots_pre=0; // times the initializations for add spots kernel
