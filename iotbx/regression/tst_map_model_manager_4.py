@@ -215,11 +215,11 @@ def exercise( out = sys.stdout):
   dc = mmm1.deep_copy()
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points )
-  assert dc.mask_info(quiet=True).marked_points in  [9184, 9318]
+  assert dc.mask_info(quiet=True).marked_points in  [9184, 9318, 8862]
   dc.create_spherical_mask()
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)
-  assert dc.mask_info(quiet=True).marked_points in [1311, 1286]
+  assert dc.mask_info(quiet=True).marked_points in [1311, 1286, 1354]
   dc.create_spherical_mask(soft_mask_radius=1)
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)
@@ -227,11 +227,11 @@ def exercise( out = sys.stdout):
   dc.create_spherical_mask(soft_mask=False)
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)
-  assert dc.mask_info(quiet=True).marked_points in [1566, 1458]
+  assert dc.mask_info(quiet=True).marked_points in [1566, 1458, 1812]
   dc.create_spherical_mask(mask_radius = 4)
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)
-  assert dc.mask_info(quiet=True).marked_points in [886, 914]
+  assert dc.mask_info(quiet=True).marked_points in [886, 914, 820]
   dc.create_spherical_mask(soft_mask=False, mask_radius = 4)
   dc.mask_info(quiet=True)
   print (dc.mask_info(quiet=True).marked_points)

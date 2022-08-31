@@ -326,14 +326,14 @@ def exercise(file_name, out = sys.stdout):
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.resolution_filter(d_min=3.5, d_max=6, map_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered')
-  assert approx_equal(cc , 0.676687646486)
+  assert approx_equal(cc , 0.6504435255003295)
 
   # Get map-map CC with mask
   dc=mam_dc.deep_copy()
   dc.duplicate_map_manager(map_id='map_manager',new_map_id='filtered')
   dc.create_mask_around_density(mask_id='filtered')
   cc=dc.map_map_cc('map_manager','filtered',mask_id='mask')
-  assert approx_equal(cc , 0.443401641784)
+  assert approx_equal(cc , 0.4515628372038732)
 
   # box around model
   mam=mam_dc.deep_copy()
@@ -350,7 +350,7 @@ def exercise(file_name, out = sys.stdout):
       soft_mask_around_edges = True)
   new_mm_2=mam.map_manager()
   assert approx_equal( (mam_dc.map_data().all(),new_mm_2.map_data().all()),
-    ((18, 25, 20),(41,36,38)))
+    ((18, 25, 20),(40,35,38)))
 
   # extract_around_model (get new mam)
   new_mam_dc=mam_dc.extract_all_maps_around_model(
@@ -365,7 +365,7 @@ def exercise(file_name, out = sys.stdout):
       selection_string="resseq 221:221", soft_mask_around_edges = True)
   new_mm_2a=new_mam_dc.map_manager()
   assert approx_equal( (mam_dc.map_data().all(),new_mm_2a.map_data().all()),
-    ((18, 25, 20),(41,36,38)))
+    ((18, 25, 20),(40,35,38)))
   assert approx_equal(new_mm_2.map_data(),new_mm_2a.map_data())
 
   # box around_density

@@ -3795,6 +3795,194 @@ class map_model_manager(object):
 
     return local_kw
 
+  def get_map_rmse(self, 
+      map_id = 'map_manager',
+      mask_id = 'mask',
+      fc_map_id = 'fc_for_model_comparison',
+      fofc_map_id = 'fofc_for_model_comparison',
+      model = None,
+      d_min = None,
+      r_free = None, r_work = None,
+      match_overall_b = True,):
+    """  Estimate map rms error by comparison with model in region containing
+      the model. Suitable for cases where model is not refined against this
+      map. If refined against this map, correct for degrees of freedom by 
+      estimating overfitting from ratio of Rfree/Rwork.
+      If match_overall_b is True, adjust average B of model to match fall-off
+      of the Fourier coefficients representing the map
+      Return group_args object with:
+        map_rmse = fofc_info_inside.sd  # map rms error
+        map_rmse_to_sd_ratio = ratio_error_to_input_map  # rmse / sd of map
+        map_sd = map_info.sd  # SD of the map (rms after setting mean to zero)
+
+     """
+  
+    mmm = self.deep_copy() # we are going to modify things
+  
+    if r_free is not None and r_work is not None:
+      overfitting_ratio = max(1., r_free/max(1.e-10, r_work))
+    else:
+      overfitting_ratio = 1
+  
+    if model is None:
+      model = mmm.model()
+  
+    if d_min is None:
+      d_min = mmm.resolution()
+  
+    if match_overall_b:   #Match B to map
+      model = mmm.match_model_b_to_map(map_id = map_id, model = model,
+       d_min = d_min,)
+  
+    mmm.generate_map(model = model,
+         gridding=mmm.get_any_map_manager().map_data().all(),
+         d_min=d_min,
+         map_id = fc_map_id)
+  
+    mmm.create_mask_around_atoms(
+       model = mmm.model(),
+       mask_atoms_atom_radius = 2.* d_min,
+       soft_mask = False,
+      )
+  
+    map_info = mmm._get_mean_sd_of_map(map_id = map_id) 
+    fc_info= mmm._get_mean_sd_of_map(map_id = fc_map_id)
+    map_info_inside = mmm._get_mean_sd_of_map(
+       map_id = map_id, mask_id = mask_id)
+    fc_info_inside= mmm._get_mean_sd_of_map(
+       map_id = fc_map_id, mask_id = mask_id)
+  
+    # get ratio of rms inside mask to overall
+    rms_inside_to_all_ratio = map_info_inside.sd / max(1.e-10, map_info.sd)
+  
+    # And offset to add to fc_map to make insides match
+    offset = map_info_inside.mean - fc_info_inside.mean
+  
+    # and ratio of rms in map to fc
+    ratio = map_info_inside.sd / max(1.e-10, fc_info_inside.sd)
+  
+    # Get optimal ratio to minimize fo-fc inside mask
+    scale_ratio = mmm._get_scale_ratio(map_id_1 = map_id,
+       map_id_2 = fc_map_id, mask_id = mask_id)
+  
+    print("Ratio of sd values: %.2f   Optimal scale_ratio: %.2f "%(
+        ratio, scale_ratio), file = self.log)
+  
+    input_map = mmm.get_map_manager_by_id(map_id).map_data()
+  
+    # Set mean of input map inside mask to 0
+    input_map -= map_info_inside.mean 
+  
+    fc_map = mmm.get_map_manager_by_id(fc_map_id).map_data()
+    # Offset and scale fc map to match input map inside mask
+    fc_map += offset
+    fc_map *= scale_ratio
+    fofc = input_map - fc_map
+    mm_fofc = mmm.get_map_manager_by_id(map_id).customized_copy(
+       map_data = fofc)
+    mmm.add_map_manager_by_id(map_manager = mm_fofc, map_id = fofc_map_id)
+  
+  
+    fofc_info_inside = mmm._get_mean_sd_of_map(
+       map_id = fofc_map_id, mask_id = mask_id)
+    ratio_error_to_input_map_inside = fofc_info_inside.sd / max(
+           1.e-10, map_info_inside.sd)
+    ratio_error_to_input_map= fofc_info_inside.sd / max(
+           1.e-10, map_info.sd)
+    print("Mean overall for input map: %.2f  Inside mask: %.2f Diff: %.2f" %(
+       map_info.mean, map_info_inside.mean, 
+       map_info.mean - map_info_inside.mean), file = self.log)
+  
+    print("RMS overall for input map: %.2f  Inside mask: %.2f  Ratio: %.2f" %(
+       map_info.sd, map_info_inside.sd, map_info.sd /max(1.e-10,
+           map_info_inside.sd) ), file = self.log)
+    print(
+      "RMS inside for fc map: %.2f  Ratio input map to fc map inside: %.2f" %(
+       fc_info_inside.sd, ratio), file = self.log)
+  
+    print("RMS inside mask for fo-fc map: %.2f" %(fofc_info_inside.sd), 
+      file = self.log)
+  
+    print(
+     "Ratio rms (inside mask) fo-fc to RMS (inside mask) input map: %.2f" %(
+      ratio_error_to_input_map_inside), file = self.log)
+    print("Ratio rms (inside mask) fo-fc to RMS (all) input map: %.2f" %(
+      ratio_error_to_input_map), file = self.log)
+
+    map_rmse = fofc_info_inside.sd * overfitting_ratio  # map rms error
+    map_rmse_to_sd_ratio = ratio_error_to_input_map * overfitting_ratio 
+    # rmse / sd of map
+    print("Estimated ratio of map rms error to map sd: %.2f" %(
+       map_rmse_to_sd_ratio), file = self.log)
+    print("Estimated map rms error: %.2f" %(map_rmse), file = self.log)
+ 
+    return group_args(group_args_type = 'Map error estimates',
+      map_rmse = map_rmse,  # map rms error in region of macromolecule
+      map_rmse_to_sd_ratio = map_rmse_to_sd_ratio,  # rmse / sd of map
+      map_sd = map_info.sd,  # SD of the map (rms after setting mean to zero)
+      map_mean = map_info.mean, # Mean of the map
+     )
+  
+  
+  def match_model_b_to_map(self, map_id = 'map_manager', model = None,
+       d_min = None,):
+      from cctbx.maptbx.segment_and_split_map import get_b_iso
+      from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+      if not d_min:
+        d_min = self.d_min()
+      if not model:
+        model = self.model()
+      map_coeffs = self.map_as_fourier_coefficients(map_id = map_id,
+          d_min = d_min,)
+      f,phi=map_coeffs_as_fp_phi(map_coeffs)
+      b_mean,aniso_scale_and_b=get_b_iso(f,d_min=d_min,
+          return_aniso_scale_and_b=True)
+  
+      mean_b_in_model = model.get_b_iso().min_max_mean().mean
+      low_b_in_model = model.get_b_iso().min_max_mean().min
+      offset_b = (b_mean - mean_b_in_model)
+      new_b = max(low_b_in_model,model.get_b_iso() + offset_b)
+      model.set_b_iso(new_b)
+      print("Matching model to map by setting B average from %.2f to %.2f " %(
+          mean_b_in_model,model.get_b_iso().min_max_mean().mean),
+         file = self.log)
+      return model
+  
+  def _get_scale_ratio(self, map_id_1 = 'map_manager',
+       map_id_2 = 'fofc_for_model_comparison', mask_id = 'mask'):
+    # Optimal scale to apply to map 2 to minimize rms difference from map 1
+    map_data_1 = self.get_map_manager_by_id(map_id_1).map_data().as_1d()
+    map_data_2 = self.get_map_manager_by_id(map_id_2).map_data().as_1d()
+    if mask_id is not None:
+      mask_data = self.get_map_manager_by_id(mask_id).map_data().as_1d()
+      sel = (mask_data > 0.5)
+      map_data_1 = map_data_1.select(sel)
+      map_data_2 = map_data_2.select(sel)
+    map_data_1 = map_data_1 - map_data_1.min_max_mean().mean
+    map_data_2 = map_data_2 - map_data_2.min_max_mean().mean
+    cc = flex.linear_correlation(map_data_1,map_data_2).coefficient()
+    ratio = (map_data_1 * map_data_2).min_max_mean().mean / max( 1.e-10,
+     flex.pow2(map_data_2).min_max_mean().mean)
+    return ratio
+          
+  def _get_mean_sd_of_map(self, map_id = 'map_manager', mask_id = None):
+    """ 
+    Get mean and sd of map specified by map_id, inside mask if mask_id set
+    """
+    map_data = self.get_map_manager_by_id(map_id).map_data().as_1d()
+  
+    if mask_id is not None:
+      mask_data = self.get_map_manager_by_id(mask_id).map_data().as_1d()
+      map_data = map_data.select(mask_data > 0.5)
+  
+    mean_value = flex.mean(map_data)
+    sd = map_data.sample_standard_deviation()
+    return group_args(group_args_type = 'map sd',
+      map_id = map_id,
+      mask_id = mask_id,
+      mean = mean_value,
+      sd = sd,
+      n=map_data.size())
   def find_k_sol_b_sol(self,
     model = None,
     d_min = None,
