@@ -1279,10 +1279,9 @@ def local_mean_intensities(mm, d_min, intensities, r_star, match_falloff = True)
   r_star: radius in reciprocal space for averaging
   """
 
-  # Check that resolution range of input intensities matches expectation,
-  # allowing some leeway
+  # Check that resolution range has been extended from d_min
   d_star_sq_max = flex.max(intensities.d_star_sq().data())
-  assert d_star_sq_max >= (1/d_min + 0.95*r_star)**2
+  assert d_star_sq_max > 1/d_min**2
 
   # Sharpen intensities to reduce dynamic range for numerical stability
   # Save the overall B to put back at end
