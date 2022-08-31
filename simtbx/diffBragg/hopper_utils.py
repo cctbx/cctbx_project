@@ -634,7 +634,7 @@ class DataModeler:
         if not self.params.fix.diffuse_gamma or not self.params.fix.diffuse_sigma:
             assert self.params.use_diffuse_models
         self.SIM.D.use_diffuse = self.params.use_diffuse_models
-        if self.params.use_diffuse_models and self.params.dissue_use_laue_symm:
+        if self.params.use_diffuse_models and self.params.symmetrize_diffuse:
             assert self.params.space_group is not None
             self.SIM.D.laue_group_num = utils.get_laue_group_num(self.params.space_group)  # TODO this can also be retrieved from crystal model if params.space_group is None
         self.SIM.D.gamma_miller_units = self.params.gamma_miller_units
