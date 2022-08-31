@@ -123,7 +123,6 @@ Inputs: Model file (PDB, mmCIF)
     #
     self.get_data_inputs()  # get any file-based information
     # self.print_params()
-
     self.starting_model = self.model
     self.model_list = []
     self.processed_model = None
@@ -252,19 +251,33 @@ Inputs: Model file (PDB, mmCIF)
     self.titles=[]
 
     # Read in default model as pdb_in
-    file_name=self.data_manager.get_default_model_name()
-    if not file_name in [
-          getattr(params.input_files,'model',None),]:
-      # set it by default
-      self.params.input_files.model=file_name
-      print ("Set model=%s " %(file_name),file=self.logger)
-
+    file_name = getattr(params.input_files,'model',None)
+    if file_name:
+      if not os.path.isfile(file_name):
+        raise Sorry("The file %s is missing?" %(file_name))
+      else:
+        pass # ok so far
+    else: # guess it
+      try:
+        file_name=self.data_manager.get_default_model_name()
+        self.params.input_files.model=file_name
+      except Exception as e:
+        pass # did not work
 
   def get_data_inputs(self):  # get any file-based information
     self.set_defaults()
     file_name=self.params.input_files.model
-    self.model=self.data_manager.get_model(filename=file_name)
+    if not file_name:
+      raise Sorry("Unable to guess model file name...please specify")
+    if not os.path.isfile(file_name):
+      raise Sorry("Missing the model file '%s'" %(file_name))
+    if 1: #try:
+      self.model=self.data_manager.get_model(filename=file_name)
+    if 0:#except Exception as e:
+      raise Sorry("Failed to read model file '%s'" %(file_name))
+
     print("Read model from %s" %(file_name), file = self.logger)
+
     if not self.model:
       raise Sorry("Missing model")
 

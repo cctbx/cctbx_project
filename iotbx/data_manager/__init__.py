@@ -431,6 +431,7 @@ options are {options}.\
       else:
         return self._get(datatype, filename=default_filename)
     elif filename not in self._get_current_storage().keys():
+      ok = True
       try:
         # try to load file if not already available
         # use type-specific function call instead of _process_file because
@@ -439,6 +440,8 @@ options are {options}.\
         getattr(self, 'process_%s_file' % datatype)(filename)
         return self._get_current_storage()[filename]
       except Sorry:
+        ok = False
+      if not ok:
         raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
     else:
       return self._get_current_storage()[filename]
