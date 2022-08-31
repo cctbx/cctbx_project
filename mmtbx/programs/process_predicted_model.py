@@ -175,7 +175,12 @@ Inputs: Model file (PDB, mmCIF)
     else:
       model_list = [info.model]
     for m in model_list:
-      chain_id = m.first_chain_id()
+      chain_id = m.first_chain_id().strip()
+      if not chain_id:
+        if len(model_list) > 1:
+          raise Sorry(
+           "Input model cannot have a blank chain ID and non-blank chain IDS")
+        chain_id = "A"
       fn = "%s_%s.pdb" %(prefix,chain_id)
       print("Copying predicted model chain %s to %s" %(
            chain_id,fn), file = self.logger)
@@ -234,8 +239,8 @@ Inputs: Model file (PDB, mmCIF)
       text += "\n\nResidues by domain (as chains):"
 
       self.processed_model_text = ""
-      for chain_id  in chain_id_list:
-        m = processed_model.apply_selection_string("chain %s" %(chain_id))
+      for chain_id in chain_id_list:
+        m = processed_model.apply_selection_string("chain '%s'" %(chain_id))
         n_found = m.get_hierarchy().overall_counts().n_residues
         text += "\nCHAIN: %s   Residues: %s " %(
            chain_id,n_found)
