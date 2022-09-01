@@ -634,9 +634,14 @@ class DataModeler:
         if not self.params.fix.diffuse_gamma or not self.params.fix.diffuse_sigma:
             assert self.params.use_diffuse_models
         self.SIM.D.use_diffuse = self.params.use_diffuse_models
-        if self.params.use_diffuse_models and self.params.symmetrize_diffuse:
-            assert self.params.space_group is not None
-            self.SIM.D.laue_group_num = utils.get_laue_group_num(self.params.space_group)  # TODO this can also be retrieved from crystal model if params.space_group is None
+        if self.params.use_diffuse_models:
+            if self.params.symmetrize_diffuse:
+                assert self.params.space_group is not None
+                self.SIM.D.laue_group_num = utils.get_laue_group_num(self.params.space_group)  # TODO this can also be retrieved from crystal model if params.space_group is None
+                MAIN_LOGGER.debug("Set laue group number: %d (for diffuse models)" % self.SIM.D.laue_group_num)
+            if self.params.diffuse_stencil_size > 0:
+                self.SIM.D.stencil_size = self.params.diffuse_stencil_size
+                MAIN_LOGGER.debug("Set diffuse stencil size: %d" % self.SIM.D.stencil_size)
         self.SIM.D.gamma_miller_units = self.params.gamma_miller_units
         self.SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
         self.SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma
