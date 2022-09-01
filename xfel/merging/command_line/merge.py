@@ -143,13 +143,14 @@ class Script(object):
       try:
         factory = importlib.import_module('xfel.merging.application.' + step_factory_name + '.factory')
       except ModuleNotFoundError:
+        custom_worker_path = os.environ.get('XFEL_CUSTOM_WORKER_PATH')
+        if custom_worker_path is None: raise
         # remember the system path so the custom worker can temporarily modify it
         sys_path = copy.deepcopy(sys.path)
         pathstr = os.path.join(
-            '~', '.cctbx.xfel', 'merging', 'application', step_factory_name,
-            'factory.py'
+            custom_worker_path, step_factory_name, 'factory.py'
         )
-        pathstr = os.path.expanduser(pathstr)
+
         modulename = 'xfel.merging.application.' + step_factory_name + '.factory'
         spec = importlib.util.spec_from_file_location(modulename, pathstr)
         factory = importlib.util.module_from_spec(spec)

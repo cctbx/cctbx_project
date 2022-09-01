@@ -1,7 +1,20 @@
 ## Custom merging workers
 
-`cctbx.xfel.merge` supports custom workers located or linked in
-`~/.cctbx.xfel/merging/application/`.
+`cctbx.xfel.merge` supports custom workers located or linked in the location
+defined by environment variable `XFEL_CUSTOM_WORKER_PATH`. If this feature is
+used, the custom worker directory should be structured analogously to
+`cctbx_project/xfel/merging/application`. This example makes a worker called
+`annulus` available:
+```
+$ export XFEL_CUSTOM_WORKER_PATH=~/psii_spread/merging/application
+$ tree $XFEL_CUSTOM_WORKER_PATH
+/net/cci/dwpaley/psii_spread/merging/application
+└── annulus
+    ├── annulus_statistics.py
+    ├── factory.py
+    ├── phil.py
+    └── spread_roi.py
+```
 
 ### Requirements for all merging workers
 
@@ -40,7 +53,7 @@ from beam_statistics import beam_statistics
 
 ### Optional custom phil strings
 
-- Any file `phil.py` under `~/.cctbx.xfel/merging/application` will be checked
+- Any file `phil.py` under `$XFEL_CUSTOM_WORKER_PATH` will be checked
   for a module-level variable `phil_str` which will be added to the global
   `cctbx.xfel.merge` phil string before parsing.
 
