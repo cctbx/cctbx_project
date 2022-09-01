@@ -1,3 +1,12 @@
+2022.8
+======
+
+* Update to handle new PAE format from AlphaFold
+* CCTBXParser can parse DataManager PHIL parameters and provide more
+  information about ambiguous parameters
+* Initial support for density dependent restraints
+* Bug fixes and updates for cctbx.HKLviewer
+
 2022.7
 ======
 
