@@ -22,12 +22,6 @@ args = parser.parse_args()
 if args.cuda:
     os.environ["DIFFBRAGG_USE_CUDA"] = "1"
 
-if os.environ.get("DIFFBRAGG_USE_CUDA") is None:
-    if args.laue:
-        raise NotImplementedError("laue mode only avaialble in GPUkernel (for now)")
-    if args.stencil >0:
-        raise NotImplementedError("diffuse model stenciling only available in GPUkernel (for now)")
-
 from simtbx.nanoBragg import sim_data
 from simtbx.diffBragg import utils
 
