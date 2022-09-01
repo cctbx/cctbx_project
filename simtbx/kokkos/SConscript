@@ -144,17 +144,16 @@ list_cfg.append(cfg_darwin_ampere)
 
 cfg_arcticus = cfg_default.get_copy()
 cfg_arcticus.host_variable = 'HOSTNAME'
-cfg_arcticus.host_name = 'jlse'                     # What if we want to build on an arcticus node?
-#cfg_arcticus.host_name = 'arcticus'            
+#cfg_arcticus.host_name = 'jlse'                     # What if we want to build on an arcticus node?
+cfg_arcticus.host_name = 'arcticus'            
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
-cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "OFF"
+cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "ON"
 cfg_arcticus.env['Kokkos_ENABLE_SYCL'] = "ON"
-cfg_arcticus.env['LDFLAGS'] = ""
-#cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
+#cfg_arcticus.env['LDFLAGS'] = " "
 cfg_arcticus.env['LDLIBS'] = " -ldl"
-cfg_arcticus.env['CXX'] = 'dpcpp'
-cfg_arcticus.env['CXXFLAGS'] = "-DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_SYCL=ON -DKOKKOS_DEVICES=SYCL"
+cfg_arcticus.env['CXX'] = 'icpx'
+#cfg_arcticus.env['CXXFLAGS'] = " "
 list_cfg.append(cfg_arcticus)
 
 host_message = "not found, using default settings"
@@ -204,15 +203,14 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
 #       2. Double check that we should set these Kokkos flags here as CXXFLAGS
 #
 os.environ['CXX'] = system_settings['CXX']
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations ' + system_settings['CXXFLAGS']
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations' + system_settings['CXXFLAGS']
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
 #
 # WEH - TODO
 #       How should we set this value?  SYCL requires c++17
-#
-os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
-
+# SM - Better to pass it to CMake of Kokkos via `-DCMAKE_CXX_STANDARD=17` rather than OS env
+#os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
 
 original_cxx = None
 kokkos_lib = 'libkokkos.a'
@@ -259,9 +257,9 @@ cmake_is_available = which('cmake')
 
 if cmake_is_available:
   print('-'*79)
-  print('Building kokkos with cmake')
+  print('Building Kokkos with CMake')
   print('-'*79)
-  kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos_build')
+  kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos/build')
   if not os.path.isdir(kokkos_build_dir):
     os.mkdir(kokkos_build_dir)
   # ..............................................................................
@@ -270,6 +268,11 @@ if cmake_is_available:
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOS_PATH'],
+      '-DCMAKE_CXX_STANDARD=17',
+      '-DCMAKE_CXX_EXTENSIONS=OFF',
+      '-DCMAKE_BUILD_TYPE=Release',
+      '-DKokkos_ENABLE_DEPRECATED_CODE_3=OFF',
+      '-B {}'.format(kokkos_build_dir),
       '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
@@ -291,7 +294,7 @@ if cmake_is_available:
   # Build kokkos-kernels with CMake.
   # Turn off all ETI builds for now, until needed, for maximum machine compatibility
   print('='*79)
-  print('Building kokkos_kernels')
+  print('Building Kokkos-Kernels with CMake')
   print('-'*79)
   kokkos_kernels_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos-kernels/build')
   if not os.path.isdir(kokkos_kernels_build_dir):
@@ -299,9 +302,11 @@ if cmake_is_available:
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOSKERNELS_PATH'],
+      '-DCMAKE_BUILD_TYPE=Release',
       '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
+      '-B {}'.format(kokkos_kernels_build_dir),
       '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
       '-DKokkosKernels_ADD_DEFAULT_ETI={}'.format(system_settings['KokkosKernels_ADD_DEFAULT_ETI']),
       '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(system_settings['KokkosKernels_INST_LAYOUTLEFT:BOOL']),

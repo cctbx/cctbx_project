@@ -25,6 +25,7 @@ try:
     env.Append(LIBS=env_etc.boost_numpy_lib)
 except ImportError:
   # We don't have numpy
+  print("Warning: numpy library not found!!!")
   env_npy = env
 
 npy_bridge = env_npy.SharedObject(source="numpy_bridge.cpp")
