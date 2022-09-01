@@ -851,9 +851,6 @@ int main() {
 
   elif (env_etc.compiler == 'unix_icpx'):
     # get icpx compilers from environment
-    # just use CC and
-    # CXX from environment for linux and macOS. No checks are done since
-    # it is currently a full path on linux, but just a name on macOS
     cc = os.environ.get('CC', None)
     cxx = os.environ.get('CXX', None)
 
@@ -868,37 +865,35 @@ int main() {
 
     # use environment flags if available
     if libtbx.env.build_options.use_environment_flags:
-      env_etc.ccflags_base = ['-fPIC', '-fno-strict-aliasing'] + \
-        ['-DNDEBUG', '-O3', '-funroll-loops'] + \
-        ['-DBOOST_ALL_NO_LIB']
+      env_etc.ccflags_base = []
       env_etc.cxxflags_base = []
-      env_etc.ccflags_base.append('-ffast-math')
-      #env_etc.cxxflags_base = env_etc.ccflags_base
-      env_etc.shlinkflags = ['-shared','-fPIC']
+      env_etc.shlinkflags = ['-shared']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
-      env_etc.ldflags = ['-fPIC']
-      env_base.Append(LINKFLAGS='-fPIC')
-      #libtbx.env.build_options.env_cxxflags = \
-      #  libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-      #libtbx.env.build_options.env_cppflags = \
-      #  libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
       env_etc.static_libraries = 0
     else:
       env_etc.ccflags_base = ['-fPIC', '-fno-strict-aliasing'] + \
         ['-DNDEBUG', '-O3', '-funroll-loops'] + \
         ['-DBOOST_ALL_NO_LIB']
       env_etc.ccflags_base.append('-ffast-math')
-      env_etc.cxxflags_base = ['-fPIC']
+      env_etc.cxxflags_base = []
+      #Shared libs needs to be setup with PIC otherwise linker bails
       env_etc.shlinkflags = ['-shared','-fPIC']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
       env_etc.static_libraries = 0
+      #Need to pass PIC compilation to linker in base env, otherwise linker bails
       env_base.Append(LINKFLAGS='-fPIC')
     env_etc.static_bpl = 0
     env_etc.c_link = cc
     #TODO SM: Get actual oneapi version instead of underlying clang version
     env_etc.icx_version = libtbx.env_config.get_gcc_version(command_name="icx")
     env_etc.cxx11_is_available = True
+
+    #FIXME SM: Build fails due to implicit func declaration warnings treated
+    #as errors in Intel oneapi compiler which is based on LLVM
     env_etc.ccflags_base.append('-Wno-error=implicit-function-declaration')
+
+    #FIXME SM: Too many deprecated warnings makes it difficult to read log
+    #Its better to look at and fix underlying warnings
     env_etc.ccflags_base.append('-Wno-deprecated-declarations')
 
     if cc is not None:
