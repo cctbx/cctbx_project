@@ -203,7 +203,7 @@ if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
 #       2. Double check that we should set these Kokkos flags here as CXXFLAGS
 #
 os.environ['CXX'] = system_settings['CXX']
-os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG' + system_settings['CXXFLAGS']
+os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double -DNDEBUG -Wno-deprecated-declarations' + system_settings['CXXFLAGS']
 os.environ['LDFLAGS'] = system_settings['LDFLAGS']
 os.environ['LDLIBS'] = system_settings['LDLIBS']
 #
