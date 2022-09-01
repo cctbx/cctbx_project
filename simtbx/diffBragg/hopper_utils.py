@@ -4,7 +4,6 @@ import os
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
-import h5py
 
 from simtbx.diffBragg import hopper_io
 import numpy as np
@@ -124,6 +123,7 @@ class DataModeler:
 
     def __init__(self, params):
         """ params is a simtbx.diffBragg.hopper phil"""
+        self.Fhkl_channel_ids = None # this should be a list the same length as the spectrum. specifies which Fhkl to refine, depending on the energy (for eg. two color experiment)
         self.no_rlp_info = False  # whether rlps are stored in the refls table
         self.params = params  # phil params (see diffBragg/phil.py)
         self._abs_path_params()
@@ -190,6 +190,16 @@ class DataModeler:
         else:
             assert total_flux is not None
             self.nanoBragg_beam_spectrum = [(self.E.beam.get_wavelength(), total_flux)]
+
+    def set_Fhkl_channels(self, SIM):
+        if self.nanoBragg_beam_spectrum is None:
+            raise AttributeError("Needs nanoBragg_beam_spectrum property first!")
+        energies = np.array([utils.ENERGY_CONV / wave for wave, _ in self.nanoBragg_beam_spectrum])
+        Fhkl_channel_ids = np.zeros(len(energies), int)
+        for i_channel, (en1, en2) in enumerate(zip(SIM.Fhkl_channel_bounds, SIM.Fhkl_channel_bounds[1:])):
+            sel = (energies >= en1) * (energies < en2)
+            Fhkl_channel_ids[sel] = i_channel
+        self.Fhkl_channel_ids = Fhkl_channel_ids
 
     def at_minimum(self, x, f, accept):
         self.target.iteration = 0
@@ -1075,14 +1085,23 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-    def save_up(self, x, SIM, rank=0, i_exp=0):
+    def save_up(self, x, SIM, rank=0, i_exp=0,
+                save_fhkl_data=True, save_modeler_file=True,
+                save_refl=True,
+                save_sim_info=True):
         """
 
-        :param x: optimized parameters
-        :param rank: rank number, if calling from MPI program
-        :param i_exp: optional organizational index (if reading inputs from a hopper exp_ref_spec_file )
+        :param x:
+        :param SIM:
+        :param rank:
+        :param i_exp:
+        :param save_fhkl_data:
+        :param save_modeler_file:
+        :param save_refl:
+        :param save_sim_info:
         :return:
         """
+        # TODO optionally create directories
         assert self.exper_name is not None
         assert self.refl_name is not None
         Modeler = self
@@ -1091,15 +1110,9 @@ class DataModeler:
         Modeler.best_model_includes_background = False
         LOGGER.info("Optimized values for i_exp %d:" % i_exp)
 
-        rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
-        rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
-        rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
-
         basename = os.path.splitext(os.path.basename(self.exper_name))[0]
-        img_path = os.path.join(rank_imgs_outdir, "%s_%s_%d.h5" % (Modeler.params.tag, basename, i_exp))
-        new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
 
-        if SIM.refining_Fhkl:
+        if save_fhkl_data and SIM.refining_Fhkl:
             fhkl_scale_dir = hopper_io.make_rank_outdir(Modeler.params.outdir, "Fhkl_scale", rank)
 
             # ------------
@@ -1153,18 +1166,21 @@ class DataModeler:
                 np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars,
                          is_nominal_hkl=is_nominal_hkl)
 
-        trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
 
         # TODO: pretty formatting ?
-        # hop number, gradient descent index (resets with each new hop), target functional
-        trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
+        if Modeler.target is not None:
+            rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
+            trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
+            # hop number, gradient descent index (resets with each new hop), target functional
+            trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
 
-        trace_data = np.array([trace0, trace1, trace2]).T
-        np.savetxt(trace_path, trace_data, fmt="%s")
+            trace_data = np.array([trace0, trace1, trace2]).T
+            np.savetxt(trace_path, trace_data, fmt="%s")
 
-        Modeler.niter = len(trace0)
-        Modeler.sigz = trace2[-1]
-        hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, img_path, rank)
+            Modeler.niter = len(trace0)
+            Modeler.sigz = trace2[-1]
+
+        hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, None, rank)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1181,15 +1197,15 @@ class DataModeler:
             Modeler.best_model = bm
             Modeler.best_model_includes_background = False
 
-        comp = {"compression": "lzf"}
-        new_refls = deepcopy(Modeler.refls)
-        has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
-        if has_xyzcal:
-            new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
-        per_refl_scales = flex.double(len(new_refls), 1)
-        new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
-        h5_roi_id = flex.int(len(Modeler.refls), -1)
-        with h5py.File(img_path, "w") as h5:
+        if save_refl:
+            rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
+            new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+            new_refls = deepcopy(Modeler.refls)
+            has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
+            if has_xyzcal:
+                new_refls['dials.xyzcal.px'] = deepcopy(new_refls['xyzcal.px'])
+            per_refl_scales = flex.double(len(new_refls), 1)
+            new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
             sigmaZs = []
             for i_roi in range(len(data_subimg)):
                 dat = data_subimg[i_roi]
@@ -1205,12 +1221,7 @@ class DataModeler:
                     sigmaZ = Z[trust].std()
 
                 sigmaZs.append(sigmaZ)
-                h5.create_dataset("data/roi%d" % i_roi, data=data_subimg[i_roi], **comp)
-                h5.create_dataset("model/roi%d" % i_roi, data=model_subimg[i_roi], **comp)
-                if wavelen_subimg:
-                    h5.create_dataset("wavelength/roi%d" % i_roi, data=wavelen_subimg[i_roi], **comp)
                 if bragg_subimg[0] is not None:
-                    h5.create_dataset("bragg/roi%d" % i_roi, data=bragg_subimg[i_roi], **comp)
                     if np.any(bragg_subimg[i_roi] > 0):
                         ref_idx = Modeler.refls_idx[i_roi]
                         ref = Modeler.refls[ref_idx]
@@ -1232,36 +1243,30 @@ class DataModeler:
                         xcom = (X * I).sum() / Isum
                         ycom = (Y * I).sum() / Isum
                         com = xcom + .5, ycom + .5, 0
-                        h5_roi_id[ref_idx] = i_roi
                         new_xycalcs[ref_idx] = com
                         if not Modeler.params.fix.perRoiScale:
                             scale_p = Modeler.P["scale_roi%d" % i_roi]
                             per_refl_scales[ref_idx] = scale_p.get_val(x[scale_p.xpos])
 
-            h5.create_dataset("rois", data=Modeler.rois)
-            h5.create_dataset("pids", data=Modeler.pids)
-            h5.create_dataset("sigma_rdout", data=Modeler.all_sigma_rdout)
-            h5.create_dataset("sigmaZ_vals", data=sigmaZs)
-            if Modeler.Hi_asu is not None:
-                h5.create_dataset("Hi_asu", data=Modeler.Hi_asu)
+            new_refls["xyzcal.px"] = new_xycalcs
+            if not Modeler.params.fix.perRoiScale:
+                new_refls["scale_factor"] = per_refl_scales
+            if Modeler.params.filter_unpredicted_refls_in_output:
+                sel = [not np.isnan(x) for x, y, z in new_xycalcs]
+                new_refls = new_refls.select(flex.bool(sel))
+            new_refls.as_file(new_refls_file)
 
-        new_refls["xyzcal.px"] = new_xycalcs
-        if not Modeler.params.fix.perRoiScale:
-            new_refls["scale_factor"] = per_refl_scales
-        new_refls["h5_roi_idx"] = h5_roi_id
-        if Modeler.params.filter_unpredicted_refls_in_output:
-            sel = [not np.isnan(x) for x, y, z in new_xycalcs]
-            new_refls = new_refls.select(flex.bool(sel))
-        new_refls.as_file(new_refls_file)
-
-        modeler_file = os.path.join(rank_imgs_outdir,
-                                    "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
-        np.save(modeler_file, Modeler)
-        spectrum_file = os.path.join(rank_imgs_outdir,
-                                     "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
-        rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
-        SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
-        write_SIM_logs(SIM, log=SIMlog_path, lam=spectrum_file)
+        if save_modeler_file:
+            rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
+            modeler_file = os.path.join(rank_imgs_outdir,
+                                        "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
+            np.save(modeler_file, Modeler)
+        if save_sim_info:
+            spectrum_file = os.path.join(rank_imgs_outdir,
+                                         "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
+            rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
+            SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+            write_SIM_logs(SIM, log=SIMlog_path, lam=spectrum_file)
 
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
             # TODO separate diffBragg logger
@@ -1334,6 +1339,9 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         # update the photon energy spectrum for this shot
         SIM.beam.spectrum = Mod.nanoBragg_beam_spectrum
         SIM.D.xray_beams = SIM.beam.xray_beams
+        # update Fhkl channels
+        if Mod.Fhkl_channel_ids is not None:
+            SIM.D.update_Fhkl_channels(Mod.Fhkl_channel_ids)
 
     if SIM.refining_Fhkl:  # once per iteration
         nscales = SIM.Num_ASU*SIM.num_Fhkl_channels
@@ -2290,6 +2298,8 @@ def get_simulator_for_data_modelers(data_modeler):
     SIM.D.use_lambda_coefficients = True
     SIM.D.lambda_coefficients = tuple(self.params.init.spec)
     _set_Fhkl_refinement_flags(self.params, SIM)
+    data_modeler.set_Fhkl_channels(SIM)  # if doing ensemble refinement, do this on all modelers!
+
     return SIM
 
 
@@ -2315,10 +2325,3 @@ def _set_Fhkl_refinement_flags(params, SIM):
         if params.betas.Fhkl is not None:
             MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % params.Fhkl_dspace_bins)
             SIM.set_dspace_binning(params.Fhkl_dspace_bins)
-
-        energies = np.array([utils.ENERGY_CONV / wave for wave, _ in SIM.beam.spectrum])
-        Fhkl_channel_ids = np.zeros(len(energies), int)
-        for i_channel, (en1, en2) in enumerate(zip(SIM.Fhkl_channel_bounds, SIM.Fhkl_channel_bounds[1:])):
-            sel = (energies >= en1) * (energies < en2)
-            Fhkl_channel_ids[sel] = i_channel
-        SIM.D.update_Fhkl_channels(Fhkl_channel_ids)

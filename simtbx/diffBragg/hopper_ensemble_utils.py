@@ -129,15 +129,18 @@ def target_func(x, modelers):
     g = COMM.bcast(COMM.reduce(g))
     g_fhkl = COMM.bcast(COMM.reduce(g_fhkl))
 
-    #if modelers[0].betas.Fhkl is not None:
-    #    for i_chan in range(modelers.SIM.num_Fhkl_channels):
-    #        fhkl_restraint_f, fhkl_restraint_grad = modelers.SIM.D.Fhkl_restraint_data(
-    #            i_chan, modelers[0].params.betas.Fhkl,
-    #            modelers[0].params.use_geometric_mean_Fhkl)
-    #
-    #        f += fhkl_restraint_f
-    #        fhkl_slice = slice(i_chan*modelers.SIM.Num_ASU, (i_chan+1)*modelers.SIM.Num_ASU, 1)
-    #        np.add.at(g_fhkl, fhkl_slice, fhkl_restraint_grad)
+    if modelers.params.betas.Fhkl is not None:
+        if COMM.rank==0:
+            for i_chan in range(modelers.SIM.num_Fhkl_channels):
+                fhkl_restraint_f, fhkl_restraint_grad = modelers.SIM.D.Fhkl_restraint_data(
+                    i_chan, modelers.params.betas.Fhkl,
+                    modelers.params.use_geometric_mean_Fhkl)
+
+                f += fhkl_restraint_f
+                fhkl_slice = slice(i_chan*modelers.SIM.Num_ASU, (i_chan+1)*modelers.SIM.Num_ASU, 1)
+                np.add.at(g_fhkl, fhkl_slice, fhkl_restraint_grad)
+        f = COMM.bcast(f)
+        g_fhkl = COMM.bcast(g_fhkl)
 
     g_fhkl *= modelers.SIM.Fhkl_scales # need to rescale the Fhkl gradient according to the reparameterization on Fhkl scale factord
 
@@ -160,6 +163,37 @@ class DataModelers:
         self.max_sigma = 1e20  # max sigma allowed for an optimized amplitude to be included in mtz
         self.outdir = None  # output folder, if None, defaults to the folder used when running hopper
         self.save_freq = None  # optional integer, if provided, save mtz files each 'save_freq' iterations
+        self.npix_to_alloc = 0
+        self.save_modeler_params = False  # if True, save modelers to pandas files at each iteration
+
+    def set_Fhkl_channels(self):
+        if self.SIM is None:
+            raise AttributeError("cant set Fhkl channels without a SIM attribute")
+        for i_shot, mod in self.data_modelers.items():
+            mod.set_Fhkl_channels(self.SIM)
+            self.data_modelers[i_shot] = mod
+
+    def _determine_per_rank_max_num_pix(self):
+        max_npix = 0
+        for i_shot, modeler in self.data_modelers.items():
+            x1, x2, y1, y2 = map(np.array, zip(*modeler.rois))
+            npix = np.sum((x2-x1)*(y2-y1))
+            max_npix = max(npix, max_npix)
+        return max_npix
+
+    def _mpi_set_allocation_volume(self):
+        assert self.SIM is not None
+        assert hasattr(self.SIM, "D")
+
+        MAIN_LOGGER.debug("BEGIN DETERMINE MAX PIX")
+        self.npix_to_alloc = self._determine_per_rank_max_num_pix()
+        # TODO in case of randomize devices, shouldnt this be total max across all ranks?
+        n = COMM.gather(self.npix_to_alloc)
+        if COMM.rank == 0:
+            n = max(n)
+        self.npix_to_alloc = COMM.bcast(n)
+        MAIN_LOGGER.debug("DONE DETERMINE MAX PIX (each GPU will allocate space for %d pixels" % self.npix_to_alloc)
+        self.SIM.D.Npix_to_allocate = int(self.npix_to_alloc)  # needs to be int32
 
     def _mpi_sanity_check_num_params(self):
         num_param_per_shot = []
@@ -294,6 +328,7 @@ class DataModelers:
 
         self._set_mtz_data()
         self.set_device_id()
+        self._mpi_set_allocation_volume()
 
     @property
     def params(self):
@@ -305,7 +340,7 @@ class DataModelers:
             raise ValueError("No added data modelers! therefore no params")
         return self.data_modelers[0].params
 
-    def Minimize(self, save=True):
+    def Minimize(self, save=True, save_modelers=False):
         """
         :param save:  save an optimized MTZ file when finished
         """
@@ -411,3 +446,16 @@ class DataModelers:
                 ma = miller.array(mset, flex.double(optimized_data), flex.double(optimized_sigmas))
                 ma = ma.set_observation_type_xray_intensity().as_amplitude_array()
                 ma.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_name)
+
+        if self.save_modeler_params:
+
+            for i_shot, mod in self.data_modelers.items():
+                temp = mod.params.tag
+                if ref_iter is not None:
+                    mod.params.tag = mod.params.tag + ".iter%d" % ref_iter
+                mod.save_up(x, self.SIM, COMM.rank,
+                            save_modeler_file=False,
+                            save_fhkl_data=False,
+                            save_sim_info=False,
+                            save_refl=False)
+                mod.params.tag = temp

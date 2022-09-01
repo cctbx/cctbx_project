@@ -28,11 +28,12 @@ def diffBragg_Umat(rotX, rotY, rotZ, U):
     U = M * sqr(U)
     return U
 
+
 def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
                    rank=0):
     LOGGER = logging.getLogger("refine")
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
-    rank_pandas_outdir =make_rank_outdir(params.outdir, "pandas",rank)
+    rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)
 
     scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf,\
         diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, \
