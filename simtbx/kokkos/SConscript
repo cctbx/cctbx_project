@@ -144,17 +144,16 @@ list_cfg.append(cfg_darwin_ampere)
 
 cfg_arcticus = cfg_default.get_copy()
 cfg_arcticus.host_variable = 'HOSTNAME'
-cfg_arcticus.host_name = 'jlse'                     # What if we want to build on an arcticus node?
-#cfg_arcticus.host_name = 'arcticus'            
+#cfg_arcticus.host_name = 'jlse'                     # What if we want to build on an arcticus node?
+cfg_arcticus.host_name = 'arcticus'            
 cfg_arcticus.env['KOKKOS_DEVICES'] = "SYCL"
 cfg_arcticus.env['KOKKOS_ARCH'] = ""
-cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "OFF"
+cfg_arcticus.env['Kokkos_ENABLE_OPENMP'] = "ON"
 cfg_arcticus.env['Kokkos_ENABLE_SYCL'] = "ON"
-cfg_arcticus.env['LDFLAGS'] = ""
 #cfg_arcticus.env['LDFLAGS'] = " -fsycl -DKOKKOS_DEPENDENCE"
 cfg_arcticus.env['LDLIBS'] = " -ldl"
-cfg_arcticus.env['CXX'] = 'dpcpp'
-cfg_arcticus.env['CXXFLAGS'] = "-DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_SYCL=ON -DKOKKOS_DEVICES=SYCL"
+cfg_arcticus.env['CXX'] = 'icpx'
+#cfg_arcticus.env['CXXFLAGS'] = "-fPIC -DKokkos_ENABLE_SYCL=ON -DKOKKOS_DEVICES=SYCL"
 list_cfg.append(cfg_arcticus)
 
 host_message = "not found, using default settings"
@@ -211,7 +210,7 @@ os.environ['LDLIBS'] = system_settings['LDLIBS']
 # WEH - TODO
 #       How should we set this value?  SYCL requires c++17
 #
-os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
+#os.environ['KOKKOS_CXX_STANDARD'] = "c++17"
 
 
 original_cxx = None
@@ -270,6 +269,13 @@ if cmake_is_available:
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOS_PATH'],
+      '-DCMAKE_CXX_STANDARD=17',
+      '-DCMAKE_CXX_EXTENSIONS=OFF',
+      '-DCMAKE_BUILD_TYPE=Release',
+      '-DKokkos_ENABLE_DEPRECATED_CODE_3=OFF',
+      '-DKokkos_ENABLE_TESTS=OFF',
+      '-DKokkos_ENABLE_EXAMPLES=OFF',
+      '-B {}'.format(libtbx.env.under_dist('simtbx', '../../kokkos_build')),
       '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',

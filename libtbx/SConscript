@@ -868,29 +868,38 @@ int main() {
 
     # use environment flags if available
     if libtbx.env.build_options.use_environment_flags:
-      env_etc.ccflags_base = []
+      env_etc.ccflags_base = ['-fPIC', '-fno-strict-aliasing'] + \
+        ['-DNDEBUG', '-O3', '-funroll-loops'] + \
+        ['-DBOOST_ALL_NO_LIB']
       env_etc.cxxflags_base = []
-      env_etc.shlinkflags = ['-shared']
+      env_etc.ccflags_base.append('-ffast-math')
+      #env_etc.cxxflags_base = env_etc.ccflags_base
+      env_etc.shlinkflags = ['-shared','-fPIC']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
-      libtbx.env.build_options.env_cxxflags = \
-        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-      libtbx.env.build_options.env_cppflags = \
-        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      env_etc.ldflags = ['-fPIC']
+      env_base.Append(LINKFLAGS='-fPIC')
+      #libtbx.env.build_options.env_cxxflags = \
+      #  libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      #libtbx.env.build_options.env_cppflags = \
+      #  libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
       env_etc.static_libraries = 0
     else:
-      env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
-        ["-DNDEBUG", "-O3", "-funroll-loops"] + \
-        ["-DBOOST_ALL_NO_LIB"]
-      env_etc.ccflags_base.append("-ffast-math")
-      env_etc.cxxflags_base = []
-      env_etc.shlinkflags = ['-shared']
+      env_etc.ccflags_base = ['-fPIC', '-fno-strict-aliasing'] + \
+        ['-DNDEBUG', '-O3', '-funroll-loops'] + \
+        ['-DBOOST_ALL_NO_LIB']
+      env_etc.ccflags_base.append('-ffast-math')
+      env_etc.cxxflags_base = ['-fPIC']
+      env_etc.shlinkflags = ['-shared','-fPIC']
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
       env_etc.static_libraries = 0
+      env_base.Append(LINKFLAGS='-fPIC')
     env_etc.static_bpl = 0
     env_etc.c_link = cc
-    #env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
+    #TODO SM: Get actual oneapi version instead of underlying clang version
+    env_etc.icx_version = libtbx.env_config.get_gcc_version(command_name="icx")
     env_etc.cxx11_is_available = True
-    env_etc.ccflags_base.append("-Wno-error=implicit-function-declaration")
+    env_etc.ccflags_base.append('-Wno-error=implicit-function-declaration')
+    env_etc.ccflags_base.append('-Wno-deprecated-declarations')
 
     if cc is not None:
       env_base.Replace(
@@ -905,8 +914,8 @@ int main() {
         SHLINK=cxx,
       )
     env_base.Replace(SHLIBSUFFIX=env_etc.shlibsuffix)
-
-    print("  CFLAGS:", env_etc.cflags_base)
+    print("  VERSION:", env_etc.icx_version) 
+    print("  CFLAGS:", env_etc.ccflags_base)
     print("  CXXFLAGS:", env_etc.cxxflags_base)
 
   elif env_etc.compiler.startswith("darwin"):
@@ -1358,7 +1367,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
-      ('^unix_icpx$', [['-fiopenmp -fopenmp-targets=spir64']]*2),
+      ('^unix_icpx$', [['-fiopenmp', '-fopenmp-targets=spir64']]*2),
       ('^unix_conda$',[['-fopenmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
@@ -1530,15 +1539,9 @@ def enable_sycl_if_possible():
   #
   # Hard-code the use of SYCL for ALCF compiler
   #
-  env_etc.have_openmp = False
   if (env_etc.compiler == "unix_icpx"):
     print("libtbx.scons: SYCL is available.")
     env_etc.have_sycl = True
-    #cflags = env_base['CFLAGS']
-    #cflags.append('-fsycl')
-    #cflags.append('-fno-sycl-id-queries-fit-in-int')
-    #cflags.append('-fsycl-dead-args-optimization')
-    #env_base['CFLAGS'] = cflags
     cxxflags = env_base['CXXFLAGS']
     cxxflags.append('-fsycl')
     cxxflags.append('-fno-sycl-id-queries-fit-in-int')
