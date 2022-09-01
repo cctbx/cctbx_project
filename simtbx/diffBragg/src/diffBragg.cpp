@@ -2367,18 +2367,46 @@ boost::python::tuple diffBragg::get_ave_I_cell(bool use_Fhkl_scale, int i_channe
 }
 
 
-np::ndarray diffBragg::Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean){
-    db_cryst.Fhkl_beta = Fhkl_beta;
-    db_cryst.use_geometric_mean = use_geometric_mean;
-    std::vector<double> Ih_grad = Ih_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale);
+np::ndarray diffBragg::Fhkl_restraint_data(
+        int i_channel, double Fhkl_beta,
+        bool use_geometric_mean, int flag){
+    if (flag==0){
+        db_cryst.Fhkl_beta = Fhkl_beta;
+        db_cryst.use_geometric_mean = use_geometric_mean;
+    }
+    else{
+        db_cryst.Friedel_beta = Fhkl_beta;
+    }
 
-    boost::python::tuple shape = boost::python::make_tuple(Ih_grad.size());
+    std::vector<double> restraint_data;
+    for (int i=0; i < db_cryst.Num_ASU+1; i++)
+        restraint_data.push_back(0);
+    if (flag==0)
+        Ih_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale, restraint_data);
+    else
+        Friedel_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale, restraint_data);
+
+    boost::python::tuple shape = boost::python::make_tuple(restraint_data.size());
     boost::python::tuple stride = boost::python::make_tuple(sizeof(double));
     np::dtype dt = np::dtype::get_builtin<double>();
     np::ndarray output = np::empty(shape,dt);
 
-    output = np::from_data(&Ih_grad[0], dt, shape, stride, boost::python::object());
+    output = np::from_data(&restraint_data[0], dt, shape, stride, boost::python::object());
     return output.copy();
+}
+
+
+void diffBragg::set_Friedel_mate_inds(boost::python::list pos_inds, boost::python::list neg_inds){
+    int N = boost::python::len(pos_inds);
+    SCITBX_ASSERT(boost::python::len(neg_inds) == N);
+    db_cryst.pos_inds.clear();
+    db_cryst.neg_inds.clear();
+    for (int i=0; i<N; i++){
+        int pos = boost::python::extract<int>(pos_inds[i]);
+        int neg = boost::python::extract<int>(neg_inds[i]);
+        db_cryst.pos_inds.push_back(pos);
+        db_cryst.neg_inds.push_back(neg);
+    }
 }
 
 } // end of namespace nanoBragg

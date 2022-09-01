@@ -167,6 +167,10 @@ betas
   .help = variances for the restraint targets
   .expert_level=0
 {
+  Friedel = None
+    .type = float
+    .help = set this to some value to restraint Friedel mates during refinement (ensemble mode) . Lower values are
+    .help = tightly restrained . (Exploratory, experimental phil param)
   ucell_a = None
     .type = float
     .help = restraint variance for unit cell a

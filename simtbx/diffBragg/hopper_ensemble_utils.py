@@ -40,8 +40,32 @@ class TargetFuncEnsemble:
     def __call__(self, x, *args, **kwargs):
         self.t_per_iter = np.append(self.t_per_iter, time.time())
         modelers = args[0]
+
         self.x0[self.vary] = x
+
+        # sync the centric amplitudes
+        if modelers.SIM.num_Fhkl_channels >1:
+            num_fhkl_x = modelers.SIM.Num_ASU*modelers.SIM.num_Fhkl_channels
+            fhkl_param_start = len(self.x0) - num_fhkl_x
+            channel0_amps = self.x0[fhkl_param_start: fhkl_param_start+modelers.SIM.Num_ASU]
+            centric_amps = channel0_amps[modelers.SIM.is_centric]
+            for i_chan in range(1, modelers.SIM.num_Fhkl_channels):
+                offset = fhkl_param_start + i_chan*modelers.SIM.Num_ASU
+                np.put(self.x0, modelers.SIM.where_is_centric + offset, centric_amps)
+
         f,  self.g, ave_zscore_sig = target_func(self.x0, modelers)
+
+        # resitribute all centric gradients into channel0 centrics
+        if modelers.SIM.num_Fhkl_channels >1:
+            num_fhkl_x = modelers.SIM.Num_ASU*modelers.SIM.num_Fhkl_channels
+            fhkl_param_start = len(self.x0) - num_fhkl_x
+            where_to_add_grad = modelers.SIM.where_is_centric + fhkl_param_start
+            for i_chan in range(1, modelers.SIM.num_Fhkl_channels):
+                chan_start = fhkl_param_start + i_chan*modelers.SIM.Num_ASU
+                chan_grad = self.g[chan_start: chan_start+modelers.SIM.Num_ASU]
+                chan_centric_grad = chan_grad[modelers.SIM.is_centric]
+                np.add.at(self.g, where_to_add_grad, chan_centric_grad)
+
         self.niter += 1
 
         min_info = "it=%d | t/it=%.4fs | F=%10.7g | sigZ=%10.7g" \
@@ -129,18 +153,22 @@ def target_func(x, modelers):
     g = COMM.bcast(COMM.reduce(g))
     g_fhkl = COMM.bcast(COMM.reduce(g_fhkl))
 
-    if modelers.params.betas.Fhkl is not None:
-        if COMM.rank==0:
+    if COMM.rank==0:
+        for beta, how in [(modelers.params.betas.Fhkl, "ave"), (modelers.params.betas.Friedel, "Friedel")]:
+            if beta is None:
+                continue
+
             for i_chan in range(modelers.SIM.num_Fhkl_channels):
                 fhkl_restraint_f, fhkl_restraint_grad = modelers.SIM.D.Fhkl_restraint_data(
-                    i_chan, modelers.params.betas.Fhkl,
-                    modelers.params.use_geometric_mean_Fhkl)
-
+                    i_chan,
+                    beta,
+                    modelers.params.use_geometric_mean_Fhkl,
+                    how)
                 f += fhkl_restraint_f
                 fhkl_slice = slice(i_chan*modelers.SIM.Num_ASU, (i_chan+1)*modelers.SIM.Num_ASU, 1)
                 np.add.at(g_fhkl, fhkl_slice, fhkl_restraint_grad)
-        f = COMM.bcast(f)
-        g_fhkl = COMM.bcast(g_fhkl)
+    f = COMM.bcast(f)
+    g_fhkl = COMM.bcast(g_fhkl)
 
     g_fhkl *= modelers.SIM.Fhkl_scales # need to rescale the Fhkl gradient according to the reparameterization on Fhkl scale factord
 
@@ -297,7 +325,8 @@ class DataModelers:
             np.add.at(vary, x_slice, shot_vary)
 
         vary = COMM.bcast(COMM.reduce(vary))
-        vary[-num_fhkl_param:] = 1  # we will always vary the fhkl params in ensemble refinement (current default)
+        # TODO: actually, if there are more than 1 Fhkl channels, then we want to fix the centric Fhkls in all but 1 of the channels
+        vary[-num_fhkl_param:] = self._get_fhkl_vary_flags() #1  # we will always vary the fhkl params in ensemble refinement (current default)
         vary = vary.astype(bool)
 
         # use the first data modeler to set the diffBragg internal refinement flags
@@ -329,6 +358,22 @@ class DataModelers:
         self._set_mtz_data()
         self.set_device_id()
         self._mpi_set_allocation_volume()
+
+    def _get_fhkl_vary_flags(self):
+        # we vary all Fhkl, however if there are more than 1 Fhkl channels
+        # we only vary the centrics in the first channel, and then set those as the values in the other channels
+        # (no anomalous scattering in centrics)
+        num_fhkl_param = self.SIM.Num_ASU*self.SIM.num_Fhkl_channels
+        fhkl_vary = np.ones(num_fhkl_param, int)
+
+        if self.SIM.num_Fhkl_channels > 1:
+            assert self.SIM.is_centric is not None
+            for i_chan in range(1, self.SIM.num_Fhkl_channels):
+                channel_slc = slice(i_chan*self.SIM.Num_ASU, (i_chan+1) *self.SIM.Num_ASU, 1)
+                np.subtract.at(fhkl_vary, channel_slc, self.SIM.is_centric.astype(int))
+
+        return fhkl_vary
+
 
     @property
     def params(self):
@@ -407,7 +452,8 @@ class DataModelers:
             Gparam = mod.P["G_xtal0"]
             G = Gparam.get_val(x[Gparam.xpos])
             # here we must use the CPU method
-            MAIN_LOGGER.info("Getting Fhkl errors for shot %d/%d ... " % (i_shot+1, self.num_modelers))
+            if i_shot % 100==0:
+                MAIN_LOGGER.info("Getting Fhkl errors for shot %d/%d ... " % (i_shot+1, self.num_modelers))
             Fhkl_scale_hessian += self.SIM.D.add_Fhkl_gradients(
                 mod.pan_fast_slow, resid, V, mod.all_trusted, mod.all_freq,
                 self.SIM.num_Fhkl_channels, G, track=False, errors=True)
@@ -416,6 +462,20 @@ class DataModelers:
         Fhkl_scale_hessian = COMM.reduce(Fhkl_scale_hessian)
 
         if COMM.rank==0:
+            # resitribute the Hessian for centrics
+            if self.SIM.num_Fhkl_channels > 1:
+                for i_chan in range(1, self.SIM.num_Fhkl_channels):
+                    chan_start = i_chan * self.SIM.Num_ASU
+                    chan_hess = Fhkl_scale_hessian[chan_start: chan_start + self.SIM.Num_ASU]
+                    chan_centric_hess = chan_hess[self.SIM.is_centric]
+                    np.add.at(Fhkl_scale_hessian, self.SIM.where_is_centric, chan_centric_hess)
+
+                total_centric_hess = Fhkl_scale_hessian[self.SIM.where_is_centric]
+                for i_chan in range(1, self.SIM.num_Fhkl_channels):
+                    chan_start = i_chan * self.SIM.Num_ASU
+                    where_to_put_hess = self.SIM.where_is_centric + chan_start
+                    np.put(Fhkl_scale_hessian, where_to_put_hess, total_centric_hess)
+
             if not os.path.exists(self.outdir):
                 os.makedirs(self.outdir)
 

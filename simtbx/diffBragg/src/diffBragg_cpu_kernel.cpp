@@ -95,7 +95,7 @@ std::vector<double> I_cell_ave(crystal& db_cryst, bool use_Fhkl_scale, int i_cha
     return ave;
 }
 
-std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale){
+void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
     std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
     std::vector<double> ave, count;
     for (int i=0; i < ave_and_count.size()/2; i++){
@@ -103,15 +103,11 @@ std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<dou
         count.push_back(ave_and_count[i+ave_and_count.size()/2]);
     }
 
-    ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
-    std::vector<double> ave_init;
-    for (int i=0; i < ave_and_count.size()/2; i++){
-        ave_init.push_back(ave_and_count[i]);
-    }
-
-    std::vector<double> out;
-    for (int i=0; i < db_cryst.Num_ASU; i++)
-        out.push_back(0);
+    //ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+    //std::vector<double> ave_init;
+    //for (int i=0; i < ave_and_count.size()/2; i++){
+    //    ave_init.push_back(ave_and_count[i]);
+    //}
 
     #pragma omp parallel for
     for (int i=0; i < db_cryst.Num_ASU; i++){
@@ -126,28 +122,75 @@ std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<dou
         double scale_hkl = Fhkl_scale[idx];
         double I_cell_init = F_cell*F_cell;
         double I_cell = scale_hkl * I_cell_init;
-        double U = ave[bin] - ave_init[bin];
-        double grad_term;
-        if (db_cryst.use_geometric_mean){
-            double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
-            grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+
+        double U;
+        if (bin==1){
+            U = ave[bin] - ave[bin+1];
+        }
+        else if (bin==db_cryst.dspace_bins.size()-1) {
+            U = ave[bin] - ave[bin-1];
         }
         else {
-            grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+            U = 2*ave[bin] - ave[bin+1] - ave[bin-1];
         }
+        double grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+
+        //if (db_cryst.use_geometric_mean){
+        //    double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+        //    grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+        //}
+        //else {
+        //    grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+        //}
+
         #pragma omp atomic
         out[i] += grad_term;
     }
 
     double ftarget=0;
-    for (int i=0; i < ave.size(); i++){
-        double U = (ave[i] - ave_init[i]);
+    for (int i=1; i < ave.size()-1; i++){
+        double U = (ave[i] - ave[i+1]);
         ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
     }
 
-    out.push_back(ftarget); // this is an addition to the target function for this particular restraint, added on for convenience
-    return out;
+    out[db_cryst.Num_ASU] = ftarget;
 }
+
+
+void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+
+    SCITBX_ASSERT(db_cryst.neg_inds.size() == db_cryst.pos_inds.size()) ;
+
+    double log_beta = log(2*M_PI*db_cryst.Friedel_beta);
+    double ftarget = 0;
+    #pragma omp parallel for reduction(+:ftarget)
+    for (int i_pair=0; i_pair < db_cryst.neg_inds.size(); i_pair++){
+        int i_minus = db_cryst.neg_inds[i_pair];
+        int i_plus = db_cryst.pos_inds[i_pair] ;
+
+        int channel_offset = db_cryst.Num_ASU*i_chan;
+        double s_minus = Fhkl_scale[channel_offset + i_minus];
+        double s_plus = Fhkl_scale[channel_offset + i_plus];
+
+        double F_minus =  db_cryst.ASU_Fcell[i_minus];
+        double I_minus = F_minus*F_minus;
+        double F_plus = db_cryst.ASU_Fcell[i_plus];
+        double I_plus = F_plus*F_plus;
+
+        double friedel_diff = s_plus*I_plus - s_minus*I_minus;
+        ftarget += friedel_diff *friedel_diff / db_cryst.Friedel_beta + log_beta;
+
+        double grad_incr_s_plus =  friedel_diff/db_cryst.Friedel_beta*I_plus;
+        double grad_incr_s_minus =  -friedel_diff/db_cryst.Friedel_beta*I_minus;
+        #pragma omp atomic
+        out[i_plus] += grad_incr_s_plus;
+        #pragma omp atomic
+        out[i_minus] += grad_incr_s_minus;
+    }
+
+    out[db_cryst.Num_ASU] = ftarget;
+}
+
 
 void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,

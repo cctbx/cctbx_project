@@ -91,7 +91,7 @@ class _():
             raise RuntimeError("Set the Fhkl scale factors first! See method self.update_Fhkl_scale_factors")
         return self._ave_I_cell(use_Fhkl_scale, i_channel, use_geometric_mean)
 
-    def Fhkl_restraint_data(self, i_channel=0, restraint_beta=1e12, use_geometric_mean=False):
+    def Fhkl_restraint_data(self, i_channel=0, restraint_beta=1e12, use_geometric_mean=False, how="ave"):
         """
 
         :param i_channel:  Fhkl channel, should be 0 unless refining wavelength-dependent Fhkl (e.g. two color)
@@ -99,13 +99,41 @@ class _():
         :param use_geometric_mean: boolean flag, whether arithmetic mean or geometric mean is computed per res bin
         :return: (target, gradient vector) , 2-tuple contribution to target and gradient in hopper_utils
         """
-        if not self.dspace_bins:
-            raise ValueError("Set the dspace_bins property first . See sim_data.SimData method set_dspace_binning")
+        assert how in ["ave", "Friedel"]
+        if how=="ave":
+            if not self.dspace_bins:
+                raise ValueError("Set the dspace_bins property first . See sim_data.SimData method set_dspace_binning")
+            assert self.dspace_bins
+
         if not self.Fhkl_have_scale_factors:
             raise RuntimeError("Set the Fhkl scale factors first! See method self.update_Fhkl_scale_factors")
-        assert self.dspace_bins
-        restraint_data = self._Fhkl_restraint_data(i_channel, restraint_beta, use_geometric_mean)
+
+        flags = {"ave":0, "Friedel": 1}   # controls which underlying restraint method is called in diffBragg
+
+        restraint_data = self._Fhkl_restraint_data(i_channel, restraint_beta, use_geometric_mean, flags[how])
+        # the restraint data is always the gradient terms (1 per ASU) followed by the contribution to the target function
         grad_portion = restraint_data[:-1]
         assert grad_portion.shape[0] == self.Num_ASU
         target = restraint_data[-1]
         return target, grad_portion
+
+    def prep_Friedel_restraints(self):
+        """
+        set the indices of all the positive and negative Fridel mates, for use within diffBragg
+        to compute Friedel mate retraints .
+        During refinement of Fhkls, Friedel mates should not drift too far apart, especially in the absence
+        of anomalous signals
+        """
+        asu_map = self.get_ASUid_map()
+        asu_map_int = {tuple(map(int, k.split(','))): v for k, v in asu_map.items()}
+        pos_h = set([h for h in asu_map_int if np.all(np.array(h) > 0)])
+        pos_inds = []
+        neg_inds = []
+        for h in pos_h:
+            h_minus = -h[0],-h[1],-h[2]
+            if h_minus not in asu_map_int:
+                continue
+            pos_inds.append(int(asu_map_int[h]))
+            neg_inds.append(int(asu_map_int[h_minus]))
+
+        self._set_Friedel_mate_inds(pos_inds, neg_inds)

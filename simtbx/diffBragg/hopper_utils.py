@@ -7,6 +7,7 @@ from dials.model.data import Shoebox
 
 from simtbx.diffBragg import hopper_io
 import numpy as np
+from cctbx import crystal, miller
 from scipy.optimize import dual_annealing, basinhopping
 from collections import Counter
 from scitbx.matrix import sqr, col
@@ -2309,6 +2310,7 @@ def _set_Fhkl_refinement_flags(params, SIM):
     SIM.Num_ASU = 0
     SIM.num_Fhkl_channels = 1
     SIM.Fhkl_channel_bounds = [0, np.inf]
+    SIM.centric_flags = None
     if not params.fix.Fhkl:
         if params.Fhkl_channel_bounds is not None:
             assert params.Fhkl_channel_bounds == sorted(params.Fhkl_channel_bounds)
@@ -2325,3 +2327,21 @@ def _set_Fhkl_refinement_flags(params, SIM):
         if params.betas.Fhkl is not None:
             MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % params.Fhkl_dspace_bins)
             SIM.set_dspace_binning(params.Fhkl_dspace_bins)
+        if params.betas.Friedel is not None:
+            MAIN_LOGGER.debug("Restraining Friedel pairs")
+            SIM.D.prep_Friedel_restraints()
+
+        if SIM.num_Fhkl_channels > 1:
+            assert params.space_group is not None
+            sym = crystal.symmetry(SIM.D.unit_cell_tuple, params.space_group)
+            hkl_flex = flex.miller_index(list(SIM.asu_map_int.keys()))
+            mset = miller.set(sym, hkl_flex, True)
+            cent = mset.centric_flags()
+            cent_map = {h: flag for h, flag in zip(cent.indices(), cent.data())}
+            SIM.is_centric = np.zeros(SIM.Num_ASU, bool)
+            for h, idx in SIM.asu_map_int.items():
+                is_centric = cent_map[h]
+                SIM.is_centric[idx] = is_centric
+
+            SIM.where_is_centric = np.where(SIM.is_centric)[0]
+

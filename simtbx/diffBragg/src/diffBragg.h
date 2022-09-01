@@ -315,7 +315,8 @@ class diffBragg: public nanoBragg{
   void show_timing_stats(int MPI_RANK);
   bool last_kernel_on_GPU; // reveals whether the GPU kernel was run
   boost::python::tuple get_ave_I_cell(bool use_Fhkl_scale, int i_channel, bool use_geometric_mean);
-  np::ndarray Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean);
+  np::ndarray Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean, int flag);
+  void set_Friedel_mate_inds(boost::python::list pos_inds, boost::python::list neg_inds);
 }; // end of diffBragg
 
 
@@ -326,7 +327,8 @@ double diffBragg_cpu_kernel_polarization(
     double kahn_factor);
 
 std::vector<double> I_cell_ave(crystal& db_cryst,bool use_Fhkl_scale, int i_channel, std::vector<double>& Fhkl_scale);
-std::vector<double> Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale);
+void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
+void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
 
 void diffBragg_sum_over_steps(
       int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
