@@ -115,6 +115,9 @@ namespace Kokkos {
     // precalculate crystal orientations
     init_crystal_orientation();
 
+    // precalculate detector coordinates
+    init_detector_coordinates();
+
     std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
 
     // the for loop around panels.  Offsets given.
@@ -197,6 +200,9 @@ namespace Kokkos {
     // precalculate crystal orientations
     init_crystal_orientation();
 
+    // precalculate detector coordinates
+    init_detector_coordinates();
+
     // for call for all panels at the same time
     debranch_maskall_Kernel(
     kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
@@ -254,7 +260,10 @@ namespace Kokkos {
     the simulation where to look for structure factors.  If -1, skip this source wavelength. */
     
     // precalculate crystal orientations
-    init_crystal_orientation();    
+    init_crystal_orientation();
+
+    // precalculate detector coordinates
+    init_detector_coordinates();
 
     for (int ictr = 0; ictr < SIM.sources; ++ictr){
       if (ichannels[ictr] < 0) continue; // the ichannel array
@@ -418,6 +427,13 @@ namespace Kokkos {
 
     crystal_orientation_kernel(SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
     m_a0, m_b0, m_c0, SIM.mosaic_spread, SIM.mosaic_domains, m_mosaic_umats, m_crystal_orientation);
+    fence();
+  }
+
+  exascale_api::init_detector_coordinates(); {
+    ::Kokkos::resize(m_detector_coordinates, H*W, 3);
+
+    detector_coordinates_kernel(...);
     fence();
   }
 
