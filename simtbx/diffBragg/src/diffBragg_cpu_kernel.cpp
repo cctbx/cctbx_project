@@ -174,6 +174,7 @@ void diffBragg_sum_over_steps(
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
+	    Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
@@ -213,7 +214,7 @@ void diffBragg_sum_over_steps(
             double I0 = 0;
             double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
-              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
+              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }
 
             /* increment to intensity */

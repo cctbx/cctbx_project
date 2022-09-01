@@ -74,6 +74,7 @@ void gpu_sum_over_steps(
     __shared__ bool s_no_Nabc_scale;
     __shared__ bool s_compute_curvatures;
     __shared__ MAT3 s_Ot;
+    __shared__ MAT3 Ainv;
     __shared__ bool s_refine_diffuse;
     __shared__ bool s_gamma_miller_units;
     __shared__ MAT3 _NABC;
@@ -144,6 +145,7 @@ void gpu_sum_over_steps(
         Bmat_realspace = eig_B*1e10;
         s_Ot = eig_O.transpose();
         Amat_init = eig_U*Bmat_realspace*s_Ot;
+        Ainv = eig_U*(Bmat_realspace.transpose().inverse())* (eig_O.inverse());
         _NABC << Na,Nd,Nf,
                 Nd,Nb,Ne,
                 Nf,Ne,Nc;
@@ -209,10 +211,10 @@ void gpu_sum_over_steps(
             }
             dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
         }
-	Hmin << s_h_min,s_k_min,s_l_min;
-	Hmax << s_h_max,s_k_max,s_l_max;
-	dHH << dhh,dkk,dll;
-	Hrange << s_h_range,s_k_range,s_l_range;
+        Hmin << s_h_min,s_k_min,s_l_min;
+        Hmax << s_h_max,s_k_max,s_l_max;
+        dHH << dhh,dkk,dll;
+        Hrange << s_h_range,s_k_range,s_l_range;
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -396,7 +398,7 @@ void gpu_sum_over_steps(
             // are we doing diffuse scattering
             CUDAREAL step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
-	      calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,UBO,&_FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,s_refine_diffuse,&I0,step_diffuse_param);
+              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&_FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,s_refine_diffuse,&I0,step_diffuse_param);
             } // end s_use_diffuse outer
 
             CUDAREAL _F_cell = s_default_F;
