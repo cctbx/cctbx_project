@@ -103,11 +103,12 @@ void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scal
         count.push_back(ave_and_count[i+ave_and_count.size()/2]);
     }
 
-    //ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
-    //std::vector<double> ave_init;
-    //for (int i=0; i < ave_and_count.size()/2; i++){
-    //    ave_init.push_back(ave_and_count[i]);
-    //}
+    ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+    std::vector<double> ave_init;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave_init.push_back(ave_and_count[i]);
+    }
+
 
     #pragma omp parallel for
     for (int i=0; i < db_cryst.Num_ASU; i++){
@@ -122,39 +123,89 @@ void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scal
         double scale_hkl = Fhkl_scale[idx];
         double I_cell_init = F_cell*F_cell;
         double I_cell = scale_hkl * I_cell_init;
-
-        double U;
-        if (bin==1){
-            U = ave[bin] - ave[bin+1];
-        }
-        else if (bin==db_cryst.dspace_bins.size()-1) {
-            U = ave[bin] - ave[bin-1];
+        double U = ave[bin] - ave_init[bin];
+        double grad_term;
+        if (db_cryst.use_geometric_mean){
+            double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+            grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
         }
         else {
-            U = 2*ave[bin] - ave[bin+1] - ave[bin-1];
+            grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
         }
-        double grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
-
-        //if (db_cryst.use_geometric_mean){
-        //    double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
-        //    grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
-        //}
-        //else {
-        //    grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
-        //}
-
         #pragma omp atomic
         out[i] += grad_term;
     }
 
     double ftarget=0;
-    for (int i=1; i < ave.size()-1; i++){
-        double U = (ave[i] - ave[i+1]);
+    for (int i=0; i < ave.size(); i++){
+        double U = (ave[i] - ave_init[i]);
         ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
     }
 
-    out[db_cryst.Num_ASU] = ftarget;
+    out[db_cryst.Num_ASU] = ftarget; // this is an addition to the target function for this particular restraint, added on for convenience
 }
+
+
+//void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+//    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+//    std::vector<double> ave, count;
+//    for (int i=0; i < ave_and_count.size()/2; i++){
+//        ave.push_back(ave_and_count[i]);
+//        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+//    }
+//
+//    //ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+//    //std::vector<double> ave_init;
+//    //for (int i=0; i < ave_and_count.size()/2; i++){
+//    //    ave_init.push_back(ave_and_count[i]);
+//    //}
+//
+//    #pragma omp parallel for
+//    for (int i=0; i < db_cryst.Num_ASU; i++){
+//        double dsp = db_cryst.ASU_dspace[i];
+//        int bin = get_bin(db_cryst.dspace_bins, dsp);
+//        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+//            continue;
+//        if(count[bin]==0) continue;
+//
+//        double F_cell = db_cryst.ASU_Fcell[i];
+//        int idx = i_chan*db_cryst.Num_ASU + i;
+//        double scale_hkl = Fhkl_scale[idx];
+//        double I_cell_init = F_cell*F_cell;
+//        double I_cell = scale_hkl * I_cell_init;
+//
+//        double U;
+//        if (bin==1){
+//            U = ave[bin] - ave[bin+1];
+//        }
+//        else if (bin==db_cryst.dspace_bins.size()-1) {
+//            U = ave[bin] - ave[bin-1];
+//        }
+//        else {
+//            U = 2*ave[bin] - ave[bin+1] - ave[bin-1];
+//        }
+//        double grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+//
+//        //if (db_cryst.use_geometric_mean){
+//        //    double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+//        //    grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+//        //}
+//        //else {
+//        //    grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+//        //}
+//
+//        #pragma omp atomic
+//        out[i] += grad_term;
+//    }
+//
+//    double ftarget=0;
+//    for (int i=1; i < ave.size()-1; i++){
+//        double U = (ave[i] - ave[i+1]);
+//        ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
+//    }
+//
+//    out[db_cryst.Num_ASU] = ftarget;
+//}
 
 
 void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){

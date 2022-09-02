@@ -1347,7 +1347,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
     if SIM.refining_Fhkl:  # once per iteration
         nscales = SIM.Num_ASU*SIM.num_Fhkl_channels
         current_Fhkl_xvals = x[-nscales:]
-        SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(current_Fhkl_xvals-1)
+        SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp( Mod.params.sigmas.Fhkl *(current_Fhkl_xvals-1))
         SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales, SIM.num_Fhkl_channels)
 
     # get the unit cell variables
@@ -1880,7 +1880,7 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
                     fhkl_slice = slice(i_chan*SIM.Num_ASU, (i_chan+1)*SIM.Num_ASU, 1)
                     np.add.at(fhkl_grad, fhkl_slice, restraint_contribution_to_grad)
 
-            fhkl_grad *= SIM.Fhkl_scales  # sigma is always 1 for now..
+            fhkl_grad *= SIM.Fhkl_scales*params.sigmas.Fhkl  # sigma is always 1 for now..
 
             g = np.append(g, fhkl_grad)
 

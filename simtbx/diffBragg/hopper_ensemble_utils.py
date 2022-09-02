@@ -154,6 +154,7 @@ def target_func(x, modelers):
     g_fhkl = COMM.bcast(COMM.reduce(g_fhkl))
 
     if COMM.rank==0:
+        t = time.time()
         for beta, how in [(modelers.params.betas.Fhkl, "ave"), (modelers.params.betas.Friedel, "Friedel")]:
             if beta is None:
                 continue
@@ -167,10 +168,12 @@ def target_func(x, modelers):
                 f += fhkl_restraint_f
                 fhkl_slice = slice(i_chan*modelers.SIM.Num_ASU, (i_chan+1)*modelers.SIM.Num_ASU, 1)
                 np.add.at(g_fhkl, fhkl_slice, fhkl_restraint_grad)
+        t = time.time()-t
+        MAIN_LOGGER.debug("Fhkl restraint comp took %.4f sec" %t)
     f = COMM.bcast(f)
     g_fhkl = COMM.bcast(g_fhkl)
 
-    g_fhkl *= modelers.SIM.Fhkl_scales # need to rescale the Fhkl gradient according to the reparameterization on Fhkl scale factord
+    g_fhkl *= modelers.SIM.Fhkl_scales*modelers.params.sigmas.Fhkl  # need to rescale the Fhkl gradient according to the reparameterization on Fhkl scale factord
 
     g = np.append(g, g_fhkl)
 
@@ -426,9 +429,8 @@ class DataModelers:
         asu_hkls = [idx_to_asu[i] for i in range(self.SIM.Num_ASU)]
         inds, amps = self.SIM.D.Fhkl_tuple
         amplitude_map = {h: amp for h, amp in zip(inds, amps)}
-        # all amps in asu_hkls dhouls also be in amplitude_map (TODO: do this test BEFORE refinement!)
         assert set(asu_hkls).intersection(amplitude_map) == set(asu_hkls)
-        self.initial_intens = np.array([amplitude_map[h] for h in asu_hkls])
+        self.initial_intens = np.array([amplitude_map[h]**2 for h in asu_hkls])
         self.flex_asu = flex.miller_index(asu_hkls)
 
     def save_up(self, x, ref_iter=None):
