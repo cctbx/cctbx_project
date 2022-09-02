@@ -11,15 +11,19 @@ parser.add_argument("--onlyDiffuse", action='store_true')
 parser.add_argument("--sigma", default=[1,1,1], type=float, nargs=3)
 parser.add_argument("--gamma", default=[100,100,100], type=float, nargs=3)
 parser.add_argument("--idx", type=int, default=0, choices=[0,1,2], help="diffuse parameter index (0,1,2 ->a,b,c)")
+parser.add_argument("--stencil", type=int, default=0, help="sets the stencil property in diffBragg (default is 0)")
+parser.add_argument("--laue", action="store_true", help="sets the laue group number for the spacegroup")
 parser.add_argument("--grad", choices=['sigma','gamma'], default='gamma')
 
 import pylab as plt
+import os
+
 args = parser.parse_args()
 if args.cuda:
-    import os
     os.environ["DIFFBRAGG_USE_CUDA"] = "1"
 
 from simtbx.nanoBragg import sim_data
+from simtbx.diffBragg import utils
 
 S = sim_data.SimData(use_default_crystal=True)
 det_shape = (1024,1024)
@@ -28,6 +32,15 @@ S.instantiate_diffBragg(verbose=0, oversample=0, auto_set_spotscale=True)
 #S.D.record_time = True
 S.D.spot_scale = 100000
 S.D.use_diffuse = True
+if args.laue:
+    symbol = S.crystal.space_group_info.type().lookup_symbol()
+    S.D.laue_group_num = utils.get_laue_group_number(symbol)
+    if symbol.replace(" ","")=="P43212":
+        assert S.D.laue_group_num==7  # for default P43212
+    print("Laue group number set to %d" % S.D.laue_group_num)
+S.D.stencil_size = args.stencil
+assert S.D.stencil_size== args.stencil
+print("diffuse scattering stencil size set to %d" % S.D.stencil_size)
 S.D.diffuse_gamma = tuple(args.gamma)
 S.D.diffuse_sigma = tuple(args.sigma)
 

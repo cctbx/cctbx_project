@@ -542,6 +542,13 @@ use_diffuse_models = False
   .help = if True, let the values of init.diffuse_sigma and init.diffuse_gamma
   .help = be used to define the diffuse scattering. Set e.g. fix.diffuse_sigma=True in order to refine them
   .expert_level = 10
+diffuse_stencil_size = 0
+  .type = int
+  .help = Increase to add accuracy to diffuse scattering models, at the expense of longer computations
+  .help = Best to increment by values of 1 when testing
+symmetrize_diffuse = True
+  .type = bool
+  .help = use the laue group rotation operators to symmetrize diffuse signals
 gamma_miller_units = False
   .type = bool
   .help = if True, let the values of init.diffuse_gamma be expressed in Miller index units

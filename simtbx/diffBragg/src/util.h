@@ -7,6 +7,10 @@
 #include<vector>
 
 typedef std::vector<double> image_type;
+typedef Eigen::Matrix<double,3,1> VEC3;
+typedef Eigen::Matrix<double,3,3> MAT3;
+typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
+typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
 struct timer_variables{
     double add_spots_pre=0; // times the initializations for add spots kernel
@@ -105,6 +109,8 @@ struct flags{
 };
 
 struct crystal{
+    int laue_group_num=1;
+    int stencil_size=0;
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;

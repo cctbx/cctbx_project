@@ -1,4 +1,5 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
+#include <simtbx/diffBragg/src/diffuse_util.h>
 #include <assert.h>
 #include <stdbool.h>
 #include<unordered_map>
@@ -17,7 +18,27 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
-
+    MAT3 anisoG_local;
+    MAT3 anisoU_local;
+    MAT3 laue_mats[24];
+    MAT3 dG_dgam[3];
+    int laue_group_num = db_cryst.laue_group_num;
+    int num_laue_mats = 1;
+    int dhh=0, dkk=0, dll=0;
+    if (db_flags.use_diffuse){
+      anisoG_local = db_cryst.anisoG;
+      anisoU_local = db_cryst.anisoU;
+      num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+      for (int i_gam=0; i_gam<3; i_gam++){
+        dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+        dG_dgam[i_gam](i_gam, i_gam) = 1;
+      }
+      dhh = dkk = dll = db_cryst.stencil_size; // Limits of stencil for diffuse calc
+    }
+    VEC3 Hmin(db_cryst.h_min, db_cryst.k_min, db_cryst.l_min);
+    VEC3 Hmax(db_cryst.h_max, db_cryst.k_max, db_cryst.l_max);
+    VEC3 dHH(dhh,dkk,dll);
+    VEC3 Hrange(db_cryst.h_range, db_cryst.k_range, db_cryst.l_range);
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
         int pid = panels_fasts_slows[i_pix*3];
@@ -143,10 +164,17 @@ void diffBragg_sum_over_steps(
                                     ap_vec[2], bp_vec[2], cp_vec[2];
             }
             Bmat_realspace *= 1e10;
+            if (db_flags.use_diffuse && db_flags.gamma_miller_units){
+              anisoG_local = anisoG_local * Bmat_realspace;
+              for (int i_gam=0; i_gam<3; i_gam++){
+                dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+              }
+            }
 
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
+            Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
@@ -183,73 +211,17 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
-            double I_latt_diffuse = 0;
-            double step_dI_latt_diffuse[6] = {0,0,0,0,0,0};
+            double I0 = 0;
+            double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
-                Eigen::Matrix3d Amat = UBO;
-                Eigen::Matrix3d Ainv = UBO.inverse();
-                Eigen::Matrix3d anisoG = db_cryst.anisoG;
-                Eigen::Matrix3d dG_dgam[3];
-                for (int i_gam=0; i_gam<3; i_gam++){
-                  dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-                  dG_dgam[i_gam](i_gam, i_gam) = 1;
-                }
-                if (db_flags.gamma_miller_units){
-                  anisoG = anisoG * Bmat_realspace;
-                  for (int i_gam=0; i_gam<3; i_gam++){
-                    dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
-                  }
-                }
-                Eigen::Matrix3d Ginv = anisoG.inverse();
-                double anisoG_determ = anisoG.determinant();
-                for (int hh=0; hh <1; hh++){
-                    for (int kk=0; kk <1; kk++){
-                        for (int ll=0; ll <1; ll++){
-                            Eigen::Vector3d H0_offset(h0+hh, k0+kk, l0+ll);
-                            Eigen::Vector3d Q0 = db_cryst.UMATS_RXYZ[mos_tic].transpose()*Ainv*H0_offset;
-                            double exparg = 4*M_PI*M_PI*Q0.dot(db_cryst.anisoU*Q0);
-                            //double dwf = exp(-exparg);
-                            Eigen::Vector3d delta_H_offset = H_vec - H0_offset;
-                            Eigen::Vector3d delta_Q = db_cryst.UMATS_RXYZ[mos_tic].transpose()*Ainv*delta_H_offset;
-                            Eigen::Vector3d anisoG_q = anisoG*delta_Q;
-                            double V_dot_V = anisoG_q.dot(anisoG_q);
-                            double gamma_portion = 8.*M_PI*anisoG_determ /
-                                    pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
-
-                            double this_I_latt_diffuse = gamma_portion;
-
-                            /*                            if (exparg  >= .5) // only valid up to a point
-                                exparg = 1;
-                            */
-                            this_I_latt_diffuse *= (exparg);
-
-                            I_latt_diffuse += this_I_latt_diffuse;
-
-                            if (db_flags.refine_diffuse){
-                                 for (int i_gam=0; i_gam<3; i_gam++){
-                                    Eigen::Vector3d dV = dG_dgam[i_gam]*delta_Q;
-                                    double V_dot_dV = anisoG_q.dot(dV);
-                                    double deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                                    step_dI_latt_diffuse[i_gam] += gamma_portion*deriv*exparg;
-                                 }
-                                 for (int i_sig = 0;i_sig<3; i_sig++){
-                                   double dexparg = 4*M_PI*M_PI*Q0.dot(db_cryst.dU_dsigma[i_sig]*Q0);
-                                   /*                              if (exparg  >= .5) // only valid up to a point
-                                     dexparg = 0;
-                                   */
-                                   step_dI_latt_diffuse[i_sig+3] += gamma_portion*dexparg;
-                                 }
-                            }
-                        }
-                    }
-                }
+              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }
 
             /* increment to intensity */
             double latt_scale = 1;
             if (db_flags.only_diffuse)
                 latt_scale = 0;
-            double I_noFcell = (F_latt*F_latt*latt_scale + I_latt_diffuse) * count_scale;
+            double I_noFcell = (F_latt*F_latt*latt_scale + I0) * count_scale;
 
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
@@ -402,8 +374,8 @@ void diffBragg_sum_over_steps(
                 double step_scale = count_scale*I_cell;
                 for (int i_gam=0; i_gam <3; i_gam++){
                     int i_sig = i_gam + 3;
-                    dI_latt_diffuse[i_gam] += step_scale*step_dI_latt_diffuse[i_gam];
-                    dI_latt_diffuse[i_sig] += step_scale*step_dI_latt_diffuse[i_sig];
+                    dI_latt_diffuse[i_gam] += step_scale*step_diffuse_param[i_gam];
+                    dI_latt_diffuse[i_sig] += step_scale*step_diffuse_param[i_sig];
                 }
             }
 
