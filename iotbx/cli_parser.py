@@ -423,6 +423,31 @@ class CCTBXParser(ParserBase):
     print('', file=self.logger)
 
   # ---------------------------------------------------------------------------
+  def raise_Sorry_for_unused_phil(self):
+    '''
+    Convenience function for aborting when there are unused PHIL
+    parameters. This function is useful when custom PHIL handling is
+    necessary.
+    '''
+    if len(self.unused_phil) > 0 and self.unused_phil_raises_sorry:
+      advice = ''
+      print('  Unrecognized PHIL parameters:', file=self.logger)
+      print('  -----------------------------', file=self.logger)
+      for phil in self.unused_phil:
+        print('    %s' % phil, file=self.logger)
+        if str(phil).find('.qi.')>-1:
+          advice = 'Consider setting a QM package using PHENIX_MOPAC, PHENIX_ORCA or similar.'
+      print('', file=self.logger)
+      error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
+                      self.prog
+      error_message += wordwrap('Please run this program with the --show-defaults option to see what parameters are available.', max_chars=self.text_width) + '\n'
+      error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
+      if advice:
+        error_message += wordwrap(advice, max_chars=self.text_width) + '\n'
+      if self.unused_phil_raises_sorry:
+        raise Sorry(error_message)
+
+  # ---------------------------------------------------------------------------
   def process_phil(self, phil_list):
     ''''
     Process PHIL arguments
@@ -512,23 +537,7 @@ class CCTBXParser(ParserBase):
       self.data_manager.load_phil_scope(diff_phil)
 
     # show unrecognized parameters and abort
-    if len(self.unused_phil) > 0 and self.unused_phil_raises_sorry:
-      advice = ''
-      print('  Unrecognized PHIL parameters:', file=self.logger)
-      print('  -----------------------------', file=self.logger)
-      for phil in self.unused_phil:
-        print('    %s' % phil, file=self.logger)
-        if str(phil).find('.qi.')>-1:
-          advice = 'Consider setting a QM package using PHENIX_MOPAC, PHENIX_ORCA or similar.'
-      print('', file=self.logger)
-      error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
-                      self.prog
-      error_message += wordwrap('Please run this program with the --show-defaults option to see what parameters are available.', max_chars=self.text_width) + '\n'
-      error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
-      if advice:
-        error_message += wordwrap(advice, max_chars=self.text_width) + '\n'
-      if self.unused_phil_raises_sorry:
-        raise Sorry(error_message)
+    self.raise_Sorry_for_unused_phil()
 
     # process input phil for file/directory defintions and add to DataManager
     # Note: if a PHIL file is input as a PHIL parameter, the contents of the
