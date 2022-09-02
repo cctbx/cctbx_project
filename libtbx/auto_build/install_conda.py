@@ -580,7 +580,7 @@ channel
       print(output)
 
   # ---------------------------------------------------------------------------
-  def _retry_command(self, command_list, text, prefix):
+  def _retry_command(self, command_list, text, prefix, verbose=None):
     """
     Internal convenience function for retrying creation/update of a
     conda environment.
@@ -593,6 +593,8 @@ channel
         Text to be printed. Usually "installion into" or "update of"
       prefix: str
         Directory of conda environment
+      verbose: bool
+        Used to override self.verbose
 
     Returns
     -------
@@ -600,7 +602,7 @@ channel
     """
 
     run_command = check_output
-    if self.verbose:
+    if self.verbose or verbose:
       run_command = call
 
     for retry in range(self.max_retries):
@@ -753,7 +755,7 @@ builder.""".format(filename=filename, builder=builder))
           text=text_messages[0], builder=builder, filename=filename),
           file=self.log)
 
-    self._retry_command(command_list, text_messages[1], prefix)
+    self._retry_command(command_list, text_messages[1], prefix, verbose=True)
 
     # on Windows, also download the Visual C++ 2008 Redistributable
     # use the same version as conda-forge
@@ -812,7 +814,7 @@ builder.""".format(filename=filename, builder=builder))
     for package in package_list:
       print('  -', package, file=self.log)
 
-    self._retry_command(command_list, text_messages[1], prefix)
+    self._retry_command(command_list, text_messages[1], prefix, verbose=True)
 
     print('-'*79, file=self.log)
     return prefix
