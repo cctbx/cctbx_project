@@ -1615,6 +1615,27 @@ def get_extracted_params_from_phil_sources(phil_file=None, cmdline_phil_lst=None
     return params
 
 
+def get_laue_group_number(sg_symbol=None):
+    """ get laue group number from space group symbol """
+    if sg_symbol is None:
+        laue_sym = "P-1"
+    else:
+        g = sgtbx.space_group_info(sg_symbol).group()
+        if g.laue_group_type() not in ["2/m", "-3m"]:
+            laue_sym = "P{}".format(g.laue_group_type())
+        else:
+            pg = str(g.build_derived_patterson_group().info().symbol_and_number())
+            lc = re.sub(r'\([^)]*\)', '', pg[2:]).replace(" ", "")
+            if pg[0] == "R":
+                lc = lc.replace(":H", "1")
+            laue_sym = "P{}".format(lc)
+
+    hm_symbols = ['P-1', 'P112/m', 'P12/m1', 'P2/m11', 'Pmmm', 'P4/m', 'P4/mmm', 'P-3', 'P-3m1', 'P-31m', 'P6/m',
+                  'P6/mmm', 'Pm-3', 'Pm-3m']
+    lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    return lgs[hm_symbols.index(laue_sym)]
+
+
 def track_fhkl(Modeler):
     try:
         from stream_redirect import Redirect

@@ -2,392 +2,6 @@
 #include <simtbx/diffBragg/src/diffuse_util.h>
 #include <stdio.h>
 
-__device__
-int gen_laue_mats(int laue_group_num, MAT3 *lmat) {
-  if ( laue_group_num < 1 or laue_group_num > 11) {
-    return 0;
-    //throw std::invalid_argument( "Laue group number must be in (1,11) " );
-  }
-  if ( laue_group_num == 1 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    return 1;
-  }
-  if ( laue_group_num == 2 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << 1, 0, 0,
-               0,-1, 0,
-               0, 0, 1;
-
-    return 2;
-  }
-  if ( laue_group_num == 3 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << 1, 0, 0,
-               0,-1, 0,
-               0, 0,-1;
-
-    lmat[2] << -1, 0, 0,
-                0, 1, 0,
-                0, 0,-1;
-
-    lmat[3] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    return 4;
-  }
-  if ( laue_group_num == 4 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[2] <<  0, 1, 0,
-               -1, 0, 0,
-                0, 0, 1;
-
-    lmat[3] <<  0,-1, 0,
-                1, 0, 0,
-                0, 0, 1;
-
-    return 4;
-  }
-  if ( laue_group_num == 5 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[2] <<  0, 1, 0,
-               -1, 0, 0,
-                0, 0, 1;
-
-    lmat[3] <<  0,-1, 0,
-                1, 0, 0,
-                0, 0, 1;
-
-    lmat[4] << -1, 0, 0,
-                0, 1, 0,
-                0, 0,-1;
-
-    lmat[5] <<  1, 0, 0,
-                0,-1, 0,
-                0, 0,-1;
-
-    lmat[6] <<  0, 1, 0,
-                1, 0, 0,
-                0, 0,-1;
-
-    lmat[7] <<  0,-1, 0,
-               -1, 0, 0,
-                0, 0,-1;
-
-    return 8;
-  }
-  if ( laue_group_num == 6 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] <<  0,-1, 0,
-                1,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1, 1, 0,
-               -1, 0, 0,
-                0, 0, 1;
-
-    return 3;
-  }
-  if ( laue_group_num == 7 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] <<  0, 1, 0,
-               -1,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1,-1, 0,
-                1, 0, 0,
-                0, 0, 1;
-
-    lmat[3] << 0,-1, 0,
-              -1, 0, 0,
-               0, 0, -1;
-
-    lmat[4] << -1, 0, 0,
-                1, 1, 0,
-                0, 0,-1;
-
-    lmat[5] <<  1, 1, 0,
-                0,-1, 0,
-                0, 0,-1;
-
-    return 6;
-  }
-  if ( laue_group_num == 8 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] <<  0, 1, 0,
-               -1,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1,-1, 0,
-                1, 0, 0,
-                0, 0, 1;
-
-    lmat[3] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[4] <<  0,-1, 0,
-                1, 1, 0,
-                0, 0, 1;
-
-    lmat[5] <<  1, 1, 0,
-               -1, 0, 0,
-                0, 0, 1;
-
-    return 6;
-  }
-  if ( laue_group_num == 9 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] <<  0, 1, 0,
-               -1,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1,-1, 0,
-                1, 0, 0,
-                0, 0, 1;
-
-    lmat[3] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[4] <<  0,-1, 0,
-                1, 1, 0,
-                0, 0, 1;
-
-    lmat[5] <<  1, 1, 0,
-               -1, 0, 0,
-                0, 0, 1;
-
-    lmat[6] << 0, 1, 0,
-               1, 0, 0,
-               0, 0,-1;
-
-    lmat[7] <<  1, 0, 0,
-               -1,-1, 0,
-                0, 0,-1;
-
-    lmat[8] << -1,-1, 0,
-                0, 1, 0,
-                0, 0,-1;
-
-    lmat[9] <<  0,-1, 0,
-               -1, 0, 0,
-                0, 0,-1;
-
-    lmat[10] << -1, 0, 0,
-                 1, 1, 0,
-                 0, 0,-1;
-
-    lmat[11] <<  1, 1, 0,
-                 0,-1, 0,
-                 0, 0,-1;
-
-    return 12;
-  }
-  if ( laue_group_num == 10 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1, 0, 0,
-                0, 1, 0,
-                0, 0,-1;
-
-    lmat[3] << 1, 0, 0,
-               0,-1, 0,
-               0, 0,-1;
-
-    lmat[4] << 0, 1, 0,
-               0, 0, 1,
-               1, 0, 0;
-
-    lmat[5] << 0,-1, 0,
-               0, 0,-1,
-               1, 0, 0;
-
-    lmat[6] << 0,-1, 0,
-               0, 0, 1,
-              -1, 0, 0;
-
-    lmat[7] << 0, 1, 0,
-               0, 0,-1,
-              -1, 0, 0;
-
-    lmat[8] << 0, 0, 1,
-               1, 0, 0,
-               0, 1, 0;
-
-    lmat[9] << 0, 0,-1,
-              -1, 0, 0,
-               0, 1, 0;
-
-    lmat[10] << 0, 0,-1,
-                1, 0, 0,
-                0,-1, 0;
-
-    lmat[11] << 0, 0, 1,
-               -1, 0, 0,
-                0,-1, 0;
-
-    return 12;
-  }
-  if ( laue_group_num == 11 ) {
-
-    lmat[0] << 1, 0, 0,
-               0, 1, 0,
-               0, 0, 1;
-
-    lmat[1] << -1, 0, 0,
-                0,-1, 0,
-                0, 0, 1;
-
-    lmat[2] << -1, 0, 0,
-                0, 1, 0,
-                0, 0,-1;
-
-    lmat[3] << 1, 0, 0,
-               0,-1, 0,
-               0, 0,-1;
-
-    lmat[4] << 0, 1, 0,
-               0, 0, 1,
-               1, 0, 0;
-
-    lmat[5] << 0,-1, 0,
-               0, 0,-1,
-               1, 0, 0;
-
-    lmat[6] << 0,-1, 0,
-               0, 0, 1,
-              -1, 0, 0;
-
-    lmat[7] << 0, 1, 0,
-               0, 0,-1,
-              -1, 0, 0;
-
-    lmat[8] << 0, 0, 1,
-               1, 0, 0,
-               0, 1, 0;
-
-    lmat[9] << 0, 0,-1,
-              -1, 0, 0,
-               0, 1, 0;
-
-    lmat[10] << 0, 0,-1,
-                1, 0, 0,
-                0,-1, 0;
-
-    lmat[11] << 0, 0, 1,
-               -1, 0, 0,
-                0,-1, 0;
-
-    lmat[12] << 0, 1, 0,
-                1, 0, 0,
-                0, 0, -1;
-
-    lmat[13] <<  0,-1, 0,
-                -1, 0, 0,
-                 0, 0,-1;
-
-    lmat[14] <<  0, 1, 0,
-                -1, 0, 0,
-                 0, 0,-1;
-
-    lmat[15] <<  0, 1, 0,
-                -1, 0, 0,
-                 0, 0, 1;
-
-    lmat[16] << 1, 0, 0,
-                0, 0,-1,
-                0, 1, 0;
-
-    lmat[17] << -1, 0, 0,
-                 0, 0, 1,
-                 0, 1, 0;
-
-    lmat[18] << -1, 0, 0,
-                 0, 0,-1,
-                 0,-1, 0;
-
-    lmat[19] << 1, 0, 0,
-                0, 0, 1,
-                0,-1, 0;
-
-    lmat[20] << 0, 0,-1,
-                0, 1, 0,
-                1, 0, 0;
-
-    lmat[21] << 0, 0, 1,
-                0,-1, 0,
-                1, 0, 0;
-
-    lmat[22] << 0, 0, 1,
-                0, 1, 0,
-               -1, 0, 0;
-
-    lmat[23] << 0, 0,-1,
-                0,-1, 0,
-               -1, 0, 0;
-
-    return 24;
-  }
-  else {
-    return 0;
-    //throw std::invalid_argument( "Laue group must  be an integer in [1,11]" );
-  }
-  return 0;
-};
-
-
 __global__
 void gpu_sum_over_steps(
         int Npix_to_model, unsigned int* panels_fasts_slows,
@@ -445,7 +59,7 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
         const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
         CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
-        bool refine_Icell, bool save_wavelenimage, int laue_group_num,
+        bool refine_Icell, bool save_wavelenimage, int laue_group_num, int stencil_size,
         bool Fhkl_gradient_mode, bool Fhkl_errors_mode, bool using_trusted_mask, bool Fhkl_channels_empty, bool Fhkl_have_scale_factors,
         int Num_ASU,
         const CUDAREAL* __restrict__ data_residual, const CUDAREAL* __restrict__ data_variance,
@@ -508,6 +122,8 @@ void gpu_sum_over_steps(
     __shared__ MAT3 laue_mats[24];
     __shared__ MAT3 dG_dgam[3];
     __shared__ int num_laue_mats;
+    __shared__ int dhh, dkk, dll;
+    __shared__ VEC3 Hmin, Hmax, dHH, Hrange;
     //extern __shared__ CUDAREAL det_vecs[];
     //__shared__ int det_stride;
 
@@ -596,22 +212,26 @@ void gpu_sum_over_steps(
         s_Nsteps = Nsteps;
         s_overall_scale = _r_e_sqr *_spot_scale * _fluence / Nsteps ;
 
-        anisoG_local = anisoG;
-        anisoU_local = anisoU;
-        num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
-        for (int iL = 0; iL < num_laue_mats; iL++) laue_mats[iL] = laue_mats[iL].transpose();
-        // anisoG_local = anisoG;
-        for (int i_gam=0; i_gam<3; i_gam++){
-          dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-          dG_dgam[i_gam](i_gam, i_gam) = 1;
+        if (s_use_diffuse){
+            anisoG_local = anisoG;
+            anisoU_local = anisoU;
+            num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+            for (int i_gam=0; i_gam<3; i_gam++){
+              dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+              dG_dgam[i_gam](i_gam, i_gam) = 1;
+            }
+            if (s_gamma_miller_units){
+              anisoG_local = anisoG_local * Bmat_realspace;
+              for (int i_gam=0; i_gam<3; i_gam++){
+                dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+              }
+            }
+            dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
         }
-        if (s_use_diffuse && s_gamma_miller_units){
-          anisoG_local = anisoG_local * Bmat_realspace;
-          for (int i_gam=0; i_gam<3; i_gam++){
-            dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
-          }
-        }
-
+        Hmin << s_h_min,s_k_min,s_l_min;
+        Hmax << s_h_max,s_k_max,s_l_max;
+        dHH << dhh,dkk,dll;
+        Hrange << s_h_range,s_k_range,s_l_range;
         //det_stride = Npanels*3;
         //for(int i=0; i< det_stride; i++){
         //    det_vecs[i] = fdet_vectors[i];
@@ -839,50 +459,8 @@ void gpu_sum_over_steps(
             // are we doing diffuse scattering
             CUDAREAL step_diffuse_param[6]  = {0,0,0,0,0,0};
             if (s_use_diffuse){
-              //MAT3 Amat = UBO;
-              //MAT3 Ainv = UBO.inverse();
-              // loop over laue matrices
-              MAT3 Ginv = anisoG_local.inverse();
-              CUDAREAL anisoG_determ = anisoG_local.determinant();
-              for (int hh=0; hh <1; hh++){
-                for (int kk=0; kk <1; kk++){
-                  for (int ll=0; ll <1; ll++){
-                    for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                      VEC3 H0_offset(_h0+hh, _k0+kk, _l0+ll);
-                      VEC3 Q0 = Ainv*laue_mats[iL]*H0_offset;
-                      CUDAREAL exparg = 4*M_PI*M_PI*Q0.dot(anisoU_local*Q0);
-                      CUDAREAL dwf = exp(-exparg);
-                      VEC3 delta_H_offset = H_vec - H0_offset;
-                      VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
-                      VEC3 anisoG_q = anisoG_local*delta_Q;
-
-                      CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
-                      CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
-                        pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
-                      CUDAREAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
-
-                      I0 += this_I_latt_diffuse / (CUDAREAL)num_laue_mats;
-                      if (s_refine_diffuse){
-                        for (int i_gam=0; i_gam<3; i_gam++){
-                          VEC3 dV = dG_dgam[i_gam]*delta_Q;
-                          CUDAREAL V_dot_dV = anisoG_q.dot(dV);
-                          CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 16*M_PI*M_PI*V_dot_dV/(1+4*M_PI*M_PI*V_dot_V);
-                          step_diffuse_param[i_gam] += gamma_portion*deriv*dwf*exparg/(CUDAREAL)num_laue_mats;
-                        }
-                        MAT3 dU_dsigma;
-                        dU_dsigma << 0,0,0,0,0,0,0,0,0;
-                        for (int i_sig = 0;i_sig<3; i_sig++){
-                          dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
-                          CUDAREAL dexparg = 4*M_PI*M_PI*Q0.dot(dU_dsigma*Q0);
-                          dU_dsigma(i_sig, i_sig) = 0.;
-                          step_diffuse_param[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg)/(CUDAREAL)num_laue_mats;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&_FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,s_refine_diffuse,&I0,step_diffuse_param);
+            } // end s_use_diffuse outer
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;

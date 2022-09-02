@@ -6,8 +6,6 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
-apply_laue_symmetry = False
-  .type = bool
 use_geometric_mean_Fhkl = False
   .type = bool
   .help = whether to use the geometric mean for Fhkl restraint (when betasFhkl is not None, restratin Fhkl to the mean in each res bin)

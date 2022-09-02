@@ -229,7 +229,7 @@ void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl
         double I_plus = F_plus*F_plus;
 
         double sI_plus = s_plus*I_plus;
-        double dI_minus = s_minus*I_minus;
+        double sI_minus = s_minus*I_minus;
         double S = sI_plus + sI_minus; // 'S' is for summed intensity
         if (S==0) continue;
         double D = sI_plus - sI_minus; // 'D' is for difference intensity
@@ -239,7 +239,7 @@ void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl
         ftarget += friedel_diff*friedel_diff / db_cryst.Friedel_beta + log_beta;
 
         double D_by_S = D/S;
-        double friedel_diff_by_beta = .5* friedel_diff / db_cryst.Friedel_beta
+        double friedel_diff_by_beta = .5* friedel_diff / db_cryst.Friedel_beta;
         double grad_incr_s_plus =  friedel_diff_by_beta * I_plus/S *(1-D_by_S);
         double grad_incr_s_minus =  -friedel_diff_by_beta * I_minus/S * (1+D_by_S);
         #pragma omp atomic
@@ -263,6 +263,27 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
+    MAT3 anisoG_local;
+    MAT3 anisoU_local;
+    MAT3 laue_mats[24];
+    MAT3 dG_dgam[3];
+    int laue_group_num = db_cryst.laue_group_num;
+    int num_laue_mats = 1;
+    int dhh=0, dkk=0, dll=0;
+    if (db_flags.use_diffuse){
+      anisoG_local = db_cryst.anisoG;
+      anisoU_local = db_cryst.anisoU;
+      num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+      for (int i_gam=0; i_gam<3; i_gam++){
+        dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
+        dG_dgam[i_gam](i_gam, i_gam) = 1;
+      }
+      dhh = dkk = dll = db_cryst.stencil_size; // Limits of stencil for diffuse calc
+    }
+    VEC3 Hmin(db_cryst.h_min, db_cryst.k_min, db_cryst.l_min);
+    VEC3 Hmax(db_cryst.h_max, db_cryst.k_max, db_cryst.l_max);
+    VEC3 dHH(dhh,dkk,dll);
+    VEC3 Hrange(db_cryst.h_range, db_cryst.k_range, db_cryst.l_range);
     if (db_flags.track_Fhkl_indices)
         db_cryst.Fhkl_grad_idx_tracker.clear();
 
@@ -437,7 +458,7 @@ void diffBragg_sum_over_steps(
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
-            Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
+	        Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
@@ -474,9 +495,8 @@ void diffBragg_sum_over_steps(
                 omega_pixel = 1;
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
-
-            double I_latt_diffuse = 0;
-            double step_dI_latt_diffuse[6] = {0,0,0,0,0,0};
+            double I0 = 0;
+            double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
               calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
             }

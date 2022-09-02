@@ -401,7 +401,7 @@ class DataModelers:
         num_fhkl_refined = int(np.sum(fhkl_is_varied))
         bounds = [(None, None)] * len(x0_for_refinement)
         for i in np.arange(num_fhkl_refined, 0, -1):
-            bounds[-i] = (None, 13)
+            bounds[-i] = (None, 8)
         min_kwargs = {
             "args": (self,),
             "method": "L-BFGS-B",

@@ -131,7 +131,8 @@ struct crystal{
     bool use_geometric_mean=false;
     std::unordered_set<int> Fhkl_grad_idx_tracker;
     int num_Fhkl_channels=1;
-    int laue_group_num=5;
+    int laue_group_num=1;
+    int stencil_size=0;
     Eigen::Matrix3d anisoG;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
