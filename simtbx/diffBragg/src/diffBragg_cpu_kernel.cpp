@@ -174,7 +174,7 @@ void diffBragg_sum_over_steps(
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
-	    Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
+            Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
