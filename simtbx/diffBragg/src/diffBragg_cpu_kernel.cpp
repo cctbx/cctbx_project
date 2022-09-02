@@ -228,18 +228,27 @@ void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl
         double F_plus = db_cryst.ASU_Fcell[i_plus];
         double I_plus = F_plus*F_plus;
 
-        double friedel_diff = s_plus*I_plus - s_minus*I_minus;
-        ftarget += friedel_diff *friedel_diff / db_cryst.Friedel_beta + log_beta;
+        double D = s_plus*I_plus - s_minus*I_minus;
+        double S = s_plus*I_plus + s_minus*I_minus;
 
-        double grad_incr_s_plus =  friedel_diff/db_cryst.Friedel_beta*I_plus;
-        double grad_incr_s_minus =  -friedel_diff/db_cryst.Friedel_beta*I_minus;
+        if (S==0) continue;
+
+        double friedel_diff = 0.5*D/S; //(s_plus*I_plus - s_minus*I_minus)/I_ave;
+
+        ftarget += friedel_diff*friedel_diff / db_cryst.Friedel_beta + log_beta;
+
+        //double grad_incr_s_plus =  friedel_diff/db_cryst.Friedel_beta*I_plus/I_ave;
+        //double grad_incr_s_minus =  -friedel_diff/db_cryst.Friedel_beta*I_minus/ I_ave;
+        double D_by_S = D/S;
+        double grad_incr_s_plus =  .5*friedel_diff/db_cryst.Friedel_beta * I_plus/S *(1-D_by_S);
+        double grad_incr_s_minus =  -.5*friedel_diff/db_cryst.Friedel_beta * I_minus/S * (1+D_by_S);
         #pragma omp atomic
         out[i_plus] += grad_incr_s_plus;
         #pragma omp atomic
         out[i_minus] += grad_incr_s_minus;
     }
 
-    out[db_cryst.Num_ASU] = ftarget;
+    out[db_cryst.Num_ASU] = ftarget*0.5;
 }
 
 

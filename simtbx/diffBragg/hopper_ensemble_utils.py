@@ -397,10 +397,16 @@ class DataModelers:
         target = TargetFuncEnsemble(self._vary)
         x0_for_refinement = target.x0[self._vary]
 
+        fhkl_is_varied = self._get_fhkl_vary_flags()
+        num_fhkl_refined = int(np.sum(fhkl_is_varied))
+        bounds = [(None, None)] * len(x0_for_refinement)
+        for i in np.arange(num_fhkl_refined, 0, -1):
+            bounds[-i] = (None, 13)
         min_kwargs = {
             "args": (self,),
             "method": "L-BFGS-B",
             "jac": target.jac,
+            "bounds": bounds,
             "options" : {
                 "ftol": self.params.ftol,
                 "gtol": 1e-12,
