@@ -125,6 +125,7 @@ struct flags{
 
 struct crystal{
     double Friedel_beta = 1e10; // restraint factor for Friedel pairs
+    double Finit_beta = 1e10; // restraint factor for Friedel pairs
     std::vector<int> pos_inds; // indices of the positive Friedel mate
     std::vector<int> neg_inds; // indices of the negative Friedel mate
     double Fhkl_beta=1e10;

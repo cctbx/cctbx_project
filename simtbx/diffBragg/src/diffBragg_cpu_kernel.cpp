@@ -207,10 +207,46 @@ void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scal
 //    out[db_cryst.Num_ASU] = ftarget;
 //}
 
+void Finit_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+
+    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+    std::vector<double> ave, count;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave.push_back(ave_and_count[i]);
+        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+    }
+
+    double ftarget=0;
+    #pragma omp parallel for reduction(+:ftarget)
+    for (int i=0; i < db_cryst.Num_ASU; i++){
+        double dsp = db_cryst.ASU_dspace[i];
+        int bin = get_bin(db_cryst.dspace_bins, dsp);
+        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+            continue;
+        double N = count[bin];
+        if(N==0) continue;
+        double F_cell = db_cryst.ASU_Fcell[i];
+        double I_cell_init = F_cell*F_cell;
+
+        int idx = i_chan*db_cryst.Num_ASU + i;
+        double scale_hkl = Fhkl_scale[idx];
+        double I_cell_current = scale_hkl * I_cell_init;
+
+        double I_ave = ave[bin];
+        double U = (I_cell_current - I_cell_init) / I_ave;
+
+        ftarget += U*U/2/db_cryst.Finit_beta;
+        double grad_term = U/db_cryst.Finit_beta * I_cell_init/I_ave *(1-U/N);
+        #pragma omp atomic
+        out[idx] += grad_term;
+    }
+    out[db_cryst.Num_ASU] = ftarget;
+}
 
 void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
 
     SCITBX_ASSERT(db_cryst.neg_inds.size() == db_cryst.pos_inds.size()) ;
+
 
     double log_beta = log(2*M_PI*db_cryst.Friedel_beta);
     double ftarget = 0;
@@ -458,7 +494,7 @@ void diffBragg_sum_over_steps(
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
-	        Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
+                Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;

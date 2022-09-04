@@ -165,6 +165,8 @@ betas
   .help = variances for the restraint targets
   .expert_level=0
 {
+  Finit = None
+    .type = float
   Friedel = None
     .type = float
     .help = set this to some value to restraint Friedel mates during refinement (ensemble mode) . Lower values are
@@ -708,7 +710,7 @@ logging
   overwrite = True
     .type = bool
     .help = overwrite the existing logfiles
-  logname = None
+  logname = mainLog
     .type = str
     .help = if logfiles=True, then write the log to this file, stored in the folder specified by outdir
     .help = if None, then defaults to main_stage1.log for hopper, main_pred.log for prediction, main_stage2.log for stage_two
@@ -717,7 +719,7 @@ profile = False
   .type = bool
   .help = profile the workhorse functions
   .expert_level = 0
-profile_name = None
+profile_name = lineProf
   .type = str
   .help = name of the output file that stores the line-by-line profile (written to folder specified by outdir)
   .help = if None, defaults to prof_stage1.log, prof_pred.log, prof_stage2.log for hopper, prediction, stage_two respectively

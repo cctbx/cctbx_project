@@ -2374,8 +2374,12 @@ np::ndarray diffBragg::Fhkl_restraint_data(
         db_cryst.Fhkl_beta = Fhkl_beta;
         db_cryst.use_geometric_mean = use_geometric_mean;
     }
-    else{
+    else if (flag==1){
         db_cryst.Friedel_beta = Fhkl_beta;
+    }
+    else{
+        db_cryst.use_geometric_mean = false;
+        db_cryst.Finit_beta = Fhkl_beta;
     }
 
     std::vector<double> restraint_data;
@@ -2383,8 +2387,10 @@ np::ndarray diffBragg::Fhkl_restraint_data(
         restraint_data.push_back(0);
     if (flag==0)
         Ih_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale, restraint_data);
-    else
+    else if (flag==1)
         Friedel_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale, restraint_data);
+    else
+        Finit_grad_terms(db_cryst, i_channel, first_deriv_imgs.Fhkl_scale, restraint_data);
 
     boost::python::tuple shape = boost::python::make_tuple(restraint_data.size());
     boost::python::tuple stride = boost::python::make_tuple(sizeof(double));

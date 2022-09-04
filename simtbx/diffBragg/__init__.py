@@ -99,8 +99,8 @@ class _():
         :param use_geometric_mean: boolean flag, whether arithmetic mean or geometric mean is computed per res bin
         :return: (target, gradient vector) , 2-tuple contribution to target and gradient in hopper_utils
         """
-        assert how in ["ave", "Friedel"]
-        if how=="ave":
+        assert how in ["ave", "Friedel", "init"]
+        if how=="ave" or how == "init":
             if not self.dspace_bins:
                 raise ValueError("Set the dspace_bins property first . See sim_data.SimData method set_dspace_binning")
             assert self.dspace_bins
@@ -108,7 +108,7 @@ class _():
         if not self.Fhkl_have_scale_factors:
             raise RuntimeError("Set the Fhkl scale factors first! See method self.update_Fhkl_scale_factors")
 
-        flags = {"ave":0, "Friedel": 1}   # controls which underlying restraint method is called in diffBragg
+        flags = {"ave":0, "Friedel": 1, "init": 2}   # controls which underlying restraint method is called in diffBragg
 
         restraint_data = self._Fhkl_restraint_data(i_channel, restraint_beta, use_geometric_mean, flags[how])
         # the restraint data is always the gradient terms (1 per ASU) followed by the contribution to the target function

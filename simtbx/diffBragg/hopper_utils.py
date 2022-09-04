@@ -200,6 +200,7 @@ class DataModeler:
         for i_channel, (en1, en2) in enumerate(zip(SIM.Fhkl_channel_bounds, SIM.Fhkl_channel_bounds[1:])):
             sel = (energies >= en1) * (energies < en2)
             Fhkl_channel_ids[sel] = i_channel
+        SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
         self.Fhkl_channel_ids = Fhkl_channel_ids
 
     def at_minimum(self, x, f, accept):
@@ -1272,7 +1273,6 @@ class DataModeler:
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
             # TODO separate diffBragg logger
             utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
-            print("Refiner scale=%f" % SIM.Scale_params[0].get_val(x[0]))
 
 
 def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
@@ -2302,6 +2302,7 @@ def get_simulator_for_data_modelers(data_modeler):
         downsamp_spec(SIM, self.params, self.E)
     elif self.params.gen_gauss_spec:
         set_gauss_spec(SIM, self.params, self.E)
+    data_modeler.nanoBragg_beam_spectrum = SIM.beam.spectrum
 
     # TODO: verify how slow always using lambda coefs is
     # TODO: ensure lam0/lam1 are not -1 and not np.nan
@@ -2333,7 +2334,7 @@ def _set_Fhkl_refinement_flags(params, SIM):
         SIM.Fhkl_scales_init = np.ones(num_unique_hkl * SIM.num_Fhkl_channels)
         SIM.refining_Fhkl = True
         SIM.Num_ASU = num_unique_hkl  # TODO replace with diffBragg property
-        if params.betas.Fhkl is not None:
+        if params.betas.Fhkl is not None or params.betas.Finit is not None:
             MAIN_LOGGER.debug("Restraining to average Fhkl with %d bins" % params.Fhkl_dspace_bins)
             SIM.set_dspace_binning(params.Fhkl_dspace_bins)
         if params.betas.Friedel is not None:
@@ -2353,4 +2354,3 @@ def _set_Fhkl_refinement_flags(params, SIM):
                 SIM.is_centric[idx] = is_centric
 
             SIM.where_is_centric = np.where(SIM.is_centric)[0]
-

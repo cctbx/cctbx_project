@@ -14,19 +14,23 @@ parser.add_argument("--sigmaG", default=1, type=float)
 parser.add_argument("--maxiter", default=None, type=int)
 parser.add_argument("--geo", action="store_true")
 args = parser.parse_args()
+import os
+
 if args.cuda:
-    import os
     os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
-from cctbx import miller
 import logging
 import sys
+import pandas
 import numpy as np
+
+from cctbx import miller
 from dials.array_family import flex
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from simtbx.nanoBragg.sim_data import SimData
 from simtbx.diffBragg import hopper_utils
 from simtbx.diffBragg import utils
+from simtbx.diffBragg.hopper_ensemble_utils import load_inputs
 from dxtbx.model import Experiment
 from simtbx.nanoBragg import make_imageset
 from simtbx.diffBragg.phil import hopper_phil, philz
@@ -255,14 +259,13 @@ for hkl in main_hkls_from_refls:
         continue
     if not is_nominal[hkl]:
         num_not_nominal += 1
-    #print(hkl, scale[hkl], scale_var[hkl], is_nominal[hkl])
-#assert num_not_nominal == 0
 
 nominal_hkl_corrections = {h:s for h,s in zip(asu, asu_corrections) if is_nominal[h]}
 not_nominal_hkl_corrections = {h:s for h,s in zip(asu, asu_corrections) if not is_nominal[h]}
 
 nominal_hkl_init = {h:1 for h in asu if is_nominal[h]}
 not_nominal_hkl_init = {h:1 for h in asu if not is_nominal[h]}
+
 
 def compute_r_factor_with_gt(corrections):
     gt_data = flex.double()
@@ -319,5 +322,33 @@ print("mean percent diff", np.mean(diffs))
 
 assert r1_nominal < r1_nominal_init, "r1_nom=%f, r1_not_nom=%f" %(r1_nominal, r1_nominal_init)
 assert r1_nominal < 0.04
+
+# test hopper_ensemble_refiner using this one shot
+# dump the refinement data to the reflection table format (e.g. the pixel data and background estimates)
+input_refl = os.path.join(P.outdir, "input_data.refl")
+Mod.dump_gathered_to_refl(input_refl)
+df = pandas.read_pickle("%s/pandas/rank0/stage1_dummie_0.pkl"% P.outdir)
+refl_col = "input_refls"
+df[refl_col] = [input_refl]
+P.refiner.load_data_from_refl = True
+P.refiner.check_expt_format = False
+modelers = load_inputs(df, P, exper_key="opt_exp_name", refls_key=refl_col)
+modelers.outdir=P.outdir
+modelers.prep_for_refinement()
+modelers.Minimize(save=True)
+
+from iotbx.reflection_file_reader import any_reflection_file
+opt_F = any_reflection_file("_temp_fhkl_refine/optimized_channel0.mtz").as_miller_arrays()[0]
+opt_map = {h:v for h,v in zip(opt_F.indices(), opt_F.data())}
+hcommon = set(ma_map).intersection(opt_map)
+
+mset_common = ma.miller_set(flex.miller_index(list(hcommon)), ma.anomalous_flag())
+ma_vals = flex.double([ma_map[h] for h in hcommon])
+opt_vals = flex.double([opt_map[h] for h in hcommon])
+
+ma_common = miller.array(mset_common, ma_vals).set_observation_type_xray_amplitude()
+opt_common = miller.array(mset_common, opt_vals).set_observation_type_xray_amplitude()
+r1 = ma_common.r1_factor(opt_common)
+assert r1 < 0.04
 
 print("OK")

@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import time
+import sys
 import socket
 import logging
 import os
@@ -9,9 +10,12 @@ from scipy.optimize import basinhopping
 
 
 from libtbx.mpi4py import MPI
-from simtbx.diffBragg import hopper_utils
-from cctbx import miller, crystal
+from simtbx.diffBragg import hopper_ensemble_utils, hopper_utils
+from simtbx.diffBragg.prep_stage2_input import prep_dataframe
+from cctbx import miller, crystal, sgtbx
 from dials.array_family import flex
+from dxtbx.model import ExperimentList
+from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 
 COMM = MPI.COMM_WORLD
@@ -20,9 +24,11 @@ MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
 class TargetFuncEnsemble:
 
-    def __init__(self, vary):
+    def __init__(self, vary, xinit=None):
         self.vary = vary
         self.x0 = np.ones(len(self.vary), np.float64)  # initial full parameter list
+        if xinit is not None:
+            self.x0 = xinit
         self.niter = 0
         self.t_per_iter = np.array([])
 
@@ -96,11 +102,11 @@ def target_func(x, modelers):
     g = np.zeros(modelers.num_total_modelers * num_shot_params)
     g_fhkl = np.zeros(num_fhkl_params)
     zscore_sigs = []
+    fcell_params = x[-num_fhkl_params:]
     for i_shot in modelers:
         shot_modeler = modelers[i_shot]
         shot_x_slice = modelers.x_slices[i_shot]
         per_shot_params = x[shot_x_slice]
-        fcell_params = x[-num_fhkl_params:]
         x_for_shot = np.hstack((per_shot_params, fcell_params))
         model_bragg, Jac = hopper_utils.model(x_for_shot, shot_modeler, modelers.SIM, compute_grad=True, update_spectrum=True)
 
@@ -155,7 +161,9 @@ def target_func(x, modelers):
 
     if COMM.rank==0:
         t = time.time()
-        for beta, how in [(modelers.params.betas.Fhkl, "ave"), (modelers.params.betas.Friedel, "Friedel")]:
+        for beta, how in [(modelers.params.betas.Fhkl, "ave"),
+                          (modelers.params.betas.Friedel, "Friedel"),
+                          (modelers.params.betas.Finit, "init")]:
             if beta is None:
                 continue
 
@@ -388,7 +396,7 @@ class DataModelers:
             raise ValueError("No added data modelers! therefore no params")
         return self.data_modelers[0].params
 
-    def Minimize(self, save=True, save_modelers=False):
+    def Minimize(self, save=True):
         """
         :param save:  save an optimized MTZ file when finished
         """
@@ -517,13 +525,158 @@ class DataModelers:
 
         if self.save_modeler_params:
 
+            num_fhkl_params = self.SIM.Num_ASU * self.SIM.num_Fhkl_channels
+            fcell_params = x[-num_fhkl_params:]
             for i_shot, mod in self.data_modelers.items():
                 temp = mod.params.tag
                 if ref_iter is not None:
                     mod.params.tag = mod.params.tag + ".iter%d" % ref_iter
-                mod.save_up(x, self.SIM, COMM.rank,
+                else:
+                    mod.params.tag = mod.params.tag + ".final"
+                # TODO: x should be for this particular modeler (fhkl_slice)
+                shot_x_slice = self.x_slices[i_shot]
+                per_shot_params = x[shot_x_slice]
+                x_for_shot = np.hstack((per_shot_params, fcell_params))
+                mod.save_up(x_for_shot, self.SIM, COMM.rank,
                             save_modeler_file=False,
                             save_fhkl_data=False,
                             save_sim_info=False,
                             save_refl=False)
                 mod.params.tag = temp
+
+
+def mem_usage(rank):
+    if COMM.rank == rank:
+        memMB = get_memory_usage()
+        host = socket.gethostname()
+        MAIN_LOGGER.info("Rank %d reporting memory usage: %f GB on Rank 0 node %s" % (COMM.rank, memMB / 1e3, host))
+
+
+def get_gather_name(exper_name, gather_dir):
+    gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
+    gathered_name += "_withData.refl"
+    gathered_name = os.path.join(gather_dir, gathered_name)
+    return os.path.abspath(gathered_name)
+
+
+def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictions',
+                gather_dir=None):
+
+    work_distribution = prep_dataframe(pandas_table, refls_key)
+    COMM.Barrier()
+    num_exp = len(pandas_table)
+    first_exper_file = pandas_table[exper_key].values[0]
+    detector = ExperimentList.from_file(first_exper_file, check_format=False)[0].detector
+    if detector is None and params.refiner.reference_geom is None:
+        raise RuntimeError("No detector in experiment, must provide a reference geom.")
+    # TODO verify all shots have the same detector ?
+    if params.refiner.reference_geom is not None:
+        detector = ExperimentList.from_file(params.refiner.reference_geom, check_format=False)[
+            0].detector
+        MAIN_LOGGER.debug("Using reference geom from expt %s" % params.refiner.reference_geom)
+
+    if COMM.size > num_exp:
+        raise ValueError("Requested %d MPI ranks to process %d shots. Reduce number of ranks to %d"
+                         % (COMM.size, num_exp, num_exp))
+
+    exper_names = pandas_table[exper_key]
+    assert len(exper_names) == len(set(exper_names))
+    worklist = work_distribution[COMM.rank]
+    MAIN_LOGGER.info("EVENT: begin loading inputs")
+
+    shot_modelers = hopper_ensemble_utils.DataModelers()
+    for ii, i_exp in enumerate(worklist):
+        exper_name = exper_names[i_exp]
+        MAIN_LOGGER.info("EVENT: BEGIN loading experiment list")
+        expt_list = ExperimentList.from_file(exper_name, check_format=params.refiner.check_expt_format)
+        MAIN_LOGGER.info("EVENT: DONE loading experiment list")
+        if len(expt_list) != 1:
+            MAIN_LOGGER.critical("Input experiments need to have length 1, %s does not" % exper_name)
+        expt = expt_list[0]
+        expt.detector = detector  # in case of supplied ref geom
+
+        exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name))
+
+        refl_name = exper_dataframe[refls_key].values[0]
+        refls = flex.reflection_table.from_file(refl_name)
+
+        good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
+        refls = refls.select(good_sel)
+
+        exp_cry_sym = expt.crystal.get_space_group().type().lookup_symbol()
+        if exp_cry_sym.replace(" ", "") != params.space_group:
+            gr = sgtbx.space_group_info(params.space_group).group()
+            expt.crystal.set_space_group(gr)
+            #raise ValueError("Crystals should all have the same space group symmetry")
+
+        MAIN_LOGGER.info("EVENT: LOADING ROI DATA")
+        shot_modeler = hopper_utils.DataModeler(params)
+        shot_modeler.exper_name = exper_name
+        shot_modeler.refl_name = refl_name
+        shot_modeler.rank = COMM.rank
+        if params.refiner.load_data_from_refl:
+            gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=params.space_group)
+            MAIN_LOGGER.debug("tried loading from reflection table")
+        else:
+            gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=params.space_group)
+            MAIN_LOGGER.debug("tried loading data from expt table")
+        if not gathered:
+            raise IOError("Failed to gather data from experiment %s", exper_name)
+        else:
+            MAIN_LOGGER.debug("successfully loaded data")
+        MAIN_LOGGER.info("EVENT: DONE LOADING ROI")
+
+        if gather_dir is not None:
+            gathered_name = get_gather_name(exper_name, gather_dir)
+            shot_modeler.dump_gathered_to_refl(gathered_name, do_xyobs_sanity_check=False)
+            MAIN_LOGGER.info("SAVED ROI DATA TO %s" % gathered_name)
+            all_data = shot_modeler.all_data.copy()
+            all_roi_id = shot_modeler.roi_id.copy()
+            all_bg = shot_modeler.all_background.copy()
+            all_trusted = shot_modeler.all_trusted.copy()
+            all_pids = np.array(shot_modeler.pids)
+            all_rois = np.array(shot_modeler.rois)
+            new_Modeler = hopper_utils.DataModeler(params)
+            assert new_Modeler.GatherFromReflectionTable(exper_name, gathered_name, sg_symbol=params.space_group)
+            assert np.allclose(new_Modeler.all_data, all_data)
+            assert np.allclose(new_Modeler.all_background, all_bg)
+            assert np.allclose(new_Modeler.rois, all_rois)
+            assert np.allclose(new_Modeler.pids, all_pids)
+            assert np.allclose(new_Modeler.all_trusted, all_trusted)
+            assert np.allclose(new_Modeler.roi_id, all_roi_id)
+            MAIN_LOGGER.info("Gathered file approved!")
+
+        if gather_dir is not None:
+            continue
+
+        shot_modeler.set_parameters_for_experiment(best=exper_dataframe)
+        shot_modeler.set_spectrum()
+        MAIN_LOGGER.info("Will simulate %d energy channels" % len(shot_modeler.nanoBragg_beam_spectrum))
+
+        # verify this
+        shot_modeler.Umatrices = [shot_modeler.E.crystal.get_U()]
+
+        mem_usage(0)
+        if COMM.rank==0:
+            print("Finished loading image %d / %d" % (ii + 1, len(worklist)), flush=True)
+
+        shot_modelers.add_modeler(shot_modeler)
+
+    if gather_dir is not None:
+        if COMM.rank==0:
+            pandas_table['ens.hopper.imported'] = [get_gather_name(f_exp, gather_dir) for f_exp in pandas_table[exper_key]]
+            pd_name = os.path.join(params.outdir, "preImport_for_ensemble.pkl")
+            pandas_table.to_pickle(pd_name)
+            print("Wrote file %s to be used to re-run ens.hopper . Use optional ens.hopper arg '--refl ens.hopper.imported', and the phil param load_data_from_refl=True to load the imported data" % pd_name)
+        COMM.barrier()
+        sys.exit()
+    shot_modelers.mpi_set_x_slices()
+
+    assert shot_modelers.num_modelers > 0
+
+    # use the first shot modeler to create a sim data instance:
+    shot_modelers.SIM = hopper_utils.get_simulator_for_data_modelers(shot_modelers[0])
+
+    shot_modelers.set_Fhkl_channels()
+
+    return shot_modelers

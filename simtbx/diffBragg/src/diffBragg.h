@@ -329,6 +329,7 @@ double diffBragg_cpu_kernel_polarization(
 std::vector<double> I_cell_ave(crystal& db_cryst,bool use_Fhkl_scale, int i_channel, std::vector<double>& Fhkl_scale);
 void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
 void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
+void Finit_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
 
 void diffBragg_sum_over_steps(
       int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
