@@ -38,6 +38,7 @@ double diffBragg_cpu_kernel_polarization (Eigen::Vector3d incident, Eigen::Vecto
 }
 
 int get_bin(std::vector<double> dspace_bins,  double dspace_sample){
+//  use binary search to find bin corresponding to dspace_sample as dspace_bins are unevenly sized
     int start = 0;
     int end = dspace_bins.size() - 1;
     while (start <= end) {
@@ -238,7 +239,7 @@ void Finit_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_s
         ftarget += U*U/2/db_cryst.Finit_beta;
         double grad_term = U/db_cryst.Finit_beta * I_cell_init/I_ave *(1-U/N);
         #pragma omp atomic
-        out[idx] += grad_term;
+        out[i] += grad_term;
     }
     out[db_cryst.Num_ASU] = ftarget;
 }

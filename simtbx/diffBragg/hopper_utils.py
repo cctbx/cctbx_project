@@ -192,7 +192,7 @@ class DataModeler:
             assert total_flux is not None
             self.nanoBragg_beam_spectrum = [(self.E.beam.get_wavelength(), total_flux)]
 
-    def set_Fhkl_channels(self, SIM):
+    def set_Fhkl_channels(self, SIM, set_in_diffBragg=True):
         if self.nanoBragg_beam_spectrum is None:
             raise AttributeError("Needs nanoBragg_beam_spectrum property first!")
         energies = np.array([utils.ENERGY_CONV / wave for wave, _ in self.nanoBragg_beam_spectrum])
@@ -200,7 +200,8 @@ class DataModeler:
         for i_channel, (en1, en2) in enumerate(zip(SIM.Fhkl_channel_bounds, SIM.Fhkl_channel_bounds[1:])):
             sel = (energies >= en1) * (energies < en2)
             Fhkl_channel_ids[sel] = i_channel
-        SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
+        if set_in_diffBragg:
+            SIM.D.update_Fhkl_channels(Fhkl_channel_ids)
         self.Fhkl_channel_ids = Fhkl_channel_ids
 
     def at_minimum(self, x, f, accept):

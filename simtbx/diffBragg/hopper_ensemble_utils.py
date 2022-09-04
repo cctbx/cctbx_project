@@ -209,7 +209,7 @@ class DataModelers:
         if self.SIM is None:
             raise AttributeError("cant set Fhkl channels without a SIM attribute")
         for i_shot, mod in self.data_modelers.items():
-            mod.set_Fhkl_channels(self.SIM)
+            mod.set_Fhkl_channels(self.SIM, set_in_diffBragg=False)
             self.data_modelers[i_shot] = mod
 
     def _determine_per_rank_max_num_pix(self):
