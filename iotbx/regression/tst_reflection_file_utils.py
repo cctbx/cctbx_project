@@ -673,6 +673,51 @@ No array of experimental phases found.
 """
   else: raise Exception_expected
 
+def exercise_hklf_plus_ins_or_res():
+  import textwrap
+  from os import path
+  import shutil
+  from libtbx.test_utils import approx_equal
+
+  try:
+    hklf4 = ['   1   0   0    1.11    0.11',
+             '   0   1  -1    2.22    0.22',
+             '  -1   0   1    4.44    0.44']
+    hklf4 = [li + '\n' for li in hklf4]
+    ins = textwrap.dedent(
+    """\
+    TITL 03srv209 in Pbca
+    CELL 0.71073 7.35 9.541 12.842 90 90 90
+    ZERR 4 0.002 0.002 0.003 0 0 0
+    LATT 1
+    SYMM 0.5-X,-Y,0.5+Z
+    SYMM -X,0.5+Y,0.5-Z
+    SYMM 0.5+X,0.5-Y,-Z
+    SFAC C H O N
+    UNIT 32 40 16 8
+    HKLF 4
+    """)
+    folder = 'temp_data_hklf_plus_ins_res'
+    if not path.exists(folder):
+      os.mkdir(folder)
+    insfn = path.join(folder, '03srv209.ins')
+    hklfn = path.join(folder, '03srv209.hkl')
+    with open(insfn, 'w') as f:
+      f.write(ins)
+    with open(hklfn, 'w') as f:
+      f.writelines(hklf4)
+    rf = reflection_file_reader.any_reflection_file(hklfn+'=hklf+ins/res')
+    ma = rf.as_miller_arrays()[0]
+    cs = ma.crystal_symmetry()
+    assert cs.is_identical_symmetry(
+      crystal.symmetry(unit_cell='7.35 9.541 12.842 90 90 90',
+                       space_group_symbol='Pbca'))
+    assert all(ma.indices() == flex.miller_index([(1,0,0), (0,1,-1), (-1,0,1)]))
+    assert approx_equal(ma.data(), [1.11, 2.22, 4.44])
+    assert approx_equal(ma.sigmas(), [0.11, 0.22, 0.44])
+  finally:
+    shutil.rmtree(folder, ignore_errors=True)
+
 def exercise_extract_miller_array_from_file():
   from iotbx import reflection_file_utils as rfu
   from libtbx.test_utils import approx_equal
@@ -828,6 +873,7 @@ def exercise():
   if (mtz is None):
     print("Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available")
     return
+  exercise_hklf_plus_ins_or_res()
   exercise_get_amplitudes_and_get_phases_deg()
   exercise_get_xtal_data()
   exercise_get_r_free_flags()
