@@ -21,8 +21,10 @@
 namespace kokkostbx {
 
 template <typename NumType>
-struct vector3 : public vector_base<vector3<NumType>, NumType, 3> {
-    using vector_base = kokkostbx::vector_base<vector3<NumType>, NumType, 3>;
+//struct vector3 : public vector_base<vector3<NumType>, NumType, 3> {
+struct vector3 : public vector<NumType, 3> {
+    //using vector_base = kokkostbx::vector_base<vector<NumType>, NumType, 3>;
+    using vector_base = kokkostbx::vector<NumType, 3>;
 
     vector3() = default;
     KOKKOS_FUNCTION vector3(NumType val) : vector_base(val){};
