@@ -53,6 +53,12 @@ struct vector_base {
         }
     }
 
+    KOKKOS_FUNCTION vector_base(Derived v) {
+        for (size_t i = 0; i < size; ++i) {
+            data[i] = v[i];
+        }
+    }
+
     // OPERATORS
     // streaming
     friend std::ostream& operator<<(

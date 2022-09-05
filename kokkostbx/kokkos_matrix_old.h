@@ -16,11 +16,11 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
     // data stored in row-major format!
     using vector_base =
         kokkostbx::vector_base<matrix_base<Derived, NumType, rank>, NumType, rank * rank>;
-    using VectorType = kokkostbx::vector<NumType, rank>;
+    using vector = kokkostbx::vector<NumType, rank>;
 
     matrix_base() = default;
-    KOKKOS_FUNCTION matrix_base(NumType val) : vector_base(val) {};
-    KOKKOS_FUNCTION matrix_base(NumType arr[]) : vector_base(arr) {};
+    KOKKOS_FUNCTION matrix_base(NumType val) : vector_base(val){};
+    KOKKOS_FUNCTION matrix_base(NumType arr[]) : vector_base(arr){};
 
     static Derived KOKKOS_FUNCTION diagonal_matrix(NumType arr[]) {
         Derived diagonal;
@@ -42,38 +42,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         return vector_base::data[row * rank + col];
     }
 
-    // Override multiplication
-    KOKKOS_FUNCTION friend Derived operator*(const Derived& lhs, const Derived& rhs) {
-        Derived prod = lhs;
-        prod *= rhs;
-        return prod;
-    }
-
-    KOKKOS_FUNCTION friend VectorType operator*(const Derived& lhs, const VectorType& rhs) {
-        return lhs.dot(rhs);
-    }    
-
-    KOKKOS_FUNCTION friend Derived operator*(const Derived& lhs, const NumType& rhs) {
-        Derived prod = lhs;
-        prod *= rhs;
-        return prod;
-    }
-
-    KOKKOS_FUNCTION friend Derived operator*(const NumType& lhs, const Derived& rhs) {
-        return rhs * lhs;
-    }   
-
-    KOKKOS_FUNCTION void operator*=(const Derived& rhs) {
-        Derived prod = this->dot(rhs);
-        for (size_t i = 0; i < size; ++i) {
-            vector_base::data[i] = prod[i];
-        }
-    }  
-
-    KOKKOS_FUNCTION void operator*=(const NumType& rhs) {
-        vector_base::operator*=(rhs);
-    }    
-
+    template <typename VectorType>
     KOKKOS_FUNCTION VectorType dot(const VectorType v) const {
         static_assert(v.get_size() == get_rank(), "Vector length must be equal to matrix rank!");
         VectorType result;
@@ -118,6 +87,16 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         printf("\n");
     }
 
+    // KOKKOS_FUNCTION void transpose() {
+    //     for (size_t i=0; i<(rank-1); ++i) {
+    //         for (size_t j=(i+1); j<rank; ++j) {
+    //             NumType temp = vector_base::data[i*rank+j];
+    //             vector_base::data[i*rank+j] = vector_base::data[j*rank+i];
+    //             vector_base::data[j*rank+i] = temp;
+    //         }
+    //     }
+    // }
+
     KOKKOS_FUNCTION Derived transpose() const {
         Derived new_mat;
         for (size_t i = 0; i < rank; ++i) {
@@ -141,4 +120,3 @@ struct matrix : public matrix_base<matrix<NumType, rank>, NumType, rank> {
 }  // namespace kokkostbx
 
 #endif
-

@@ -209,7 +209,7 @@ void kokkos_sum_over_steps(
 
     const MAT3 Bmat_realspace = eig_B * 1e10;
     const MAT3 eig_Otranspose = eig_O.transpose();
-    const MAT3 Amat_init = eig_U.dot(Bmat_realspace.dot(eig_Otranspose));
+    const MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
     const MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
     const double NABC_det = _NABC.determinant();  // TODO is this slow ?
     const double NABC_det_sq = NABC_det * NABC_det;
@@ -388,7 +388,7 @@ void kokkos_sum_over_steps(
                                 int amat_idx = _mos_tic;
                                 MAT3 UBO = Amatrices(amat_idx);
 
-                                VEC3 H_vec = UBO.dot(q_vec);
+                                VEC3 H_vec = UBO * q_vec;
                                 CUDAREAL _h = H_vec[0];
                                 CUDAREAL _k = H_vec[1];
                                 CUDAREAL _l = H_vec[2];
@@ -400,7 +400,7 @@ void kokkos_sum_over_steps(
                                 VEC3 H0(_h0, _k0, _l0);
 
                                 VEC3 delta_H = H_vec - H0;
-                                VEC3 V = _NABC.dot(delta_H);
+                                VEC3 V = _NABC * delta_H;
                                 CUDAREAL _hrad_sqr = V.dot(V);
                                 CUDAREAL exparg = _hrad_sqr * C / 2;
                                 CUDAREAL I0 = 0;
@@ -428,12 +428,12 @@ void kokkos_sum_over_steps(
                                         for (int kk = 0; kk < 1; kk++) {
                                             for (int ll = 0; ll < 1; ll++) {
                                                 VEC3 H0_offset(_h0 + hh, _k0 + kk, _l0 + ll);
-                                                VEC3 Q0 = Ainv.dot(H0_offset);
+                                                VEC3 Q0 = Ainv * H0_offset;
                                                 CUDAREAL exparg =
                                                     4 * M_PI * M_PI * Q0.dot(anisoU.dot(Q0));
                                                 VEC3 delta_H_offset = H_vec - H0_offset;
-                                                VEC3 delta_Q = Ainv.dot(delta_H_offset);
-                                                VEC3 anisoG_q = local_anisoG.dot(delta_Q);
+                                                VEC3 delta_Q = Ainv * delta_H_offset;
+                                                VEC3 anisoG_q = local_anisoG * delta_Q;
 
                                                 CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
                                                 CUDAREAL gamma_portion =
@@ -454,7 +454,7 @@ void kokkos_sum_over_steps(
                                                         if (gamma_miller_units) {
                                                             dG_dgam = dG_dgam.dot(Amat);
                                                         }
-                                                        VEC3 dV = dG_dgam.dot(delta_Q);
+                                                        VEC3 dV = dG_dgam * delta_Q;
                                                         CUDAREAL V_dot_dV = anisoG_q.dot(dV);
                                                         CUDAREAL deriv =
                                                             (Ginv.dot(dG_dgam)).trace() -
@@ -629,7 +629,7 @@ void kokkos_sum_over_steps(
                                 if (refine_Umat(0)) {
                                     MAT3 RyRzUBOt = RotMats(1) * RotMats(2) * UBOt;
                                     VEC3 delta_H_prime =
-                                        (UMATS(_mos_tic).dot(dRotMats(0).dot(RyRzUBOt)))
+                                        (UMATS(_mos_tic) * dRotMats(0) * RyRzUBOt)
                                             .transpose()
                                             .dot(q_vec);
                                     CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
