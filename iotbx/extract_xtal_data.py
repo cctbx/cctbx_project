@@ -245,6 +245,9 @@ class run(object):
       self.raw_flags = self._extract_flags()
       if(self.raw_flags is not None):
         flags_info = self.raw_flags.info()
+        if(self.raw_flags.anomalous_flag() and
+           not self.raw_data_truncated.anomalous_flag()):
+          self.raw_flags = self.raw_flags.as_non_anomalous_array()
         self.raw_flags_truncated = self.raw_flags.common_set(
           self.raw_data_truncated)
     if(extract_r_free_flags and self.raw_flags is not None):
