@@ -306,7 +306,7 @@ class any_reflection_file(object):
           raise Sorry("Can't open files %s.ins or %s.res"
                       "required by the option hklf+ins/res" % ((name,)*2))
         crystal_symmetry = crystal_symmetry_from_ins.extract_from(
-          file=shelx_file)
+          file=shelx_file, close_file=False)
         shelx_file.seek(0)
         remaining = shelx_file.read()
         shelx_file.close()

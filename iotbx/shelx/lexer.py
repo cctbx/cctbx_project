@@ -26,14 +26,16 @@ class command_stream(object):
   shelx_commands.update(commands_allowing_atom_names)
 
 
-  def __init__(self, file=None, filename=None):
+  def __init__(self, file=None, filename=None, close_when_deleted=True):
     assert [file, filename].count(None) == 1
     if file is None: file = open(filename)
     self.file = file
+    self.close_when_deleted = close_when_deleted
 
   def __del__(self):
-    if hasattr(self,'file') and hasattr(self.file,'close'):
-      self.file.close()
+    if self.close_when_deleted:
+      if hasattr(self,'file') and hasattr(self.file,'close'):
+        self.file.close()
 
   _cmd_pat = re.compile(r"""
     ^
