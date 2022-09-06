@@ -71,15 +71,15 @@ def run(only_i=None,
 
   for i, cmd in enumerate(cmds):
     if only_i is None:
-      print i, cmd
+      print(i, cmd)
       continue
     else:
       if chunk_n!=1 or chunk_size!=len(cmds):
         if only_i!=i//chunk_size+1: continue
       else:
         if only_i!=i+1: continue
-    print 'Running', i+1
-    print 'Command', cmd
+    print('Running', i+1)
+    print('Command', cmd)
     easy_run.call(cmd)
 
 if __name__=="__main__":
@@ -146,7 +146,7 @@ test_run_script = """
 import os, sys
 
 def run(only_i=None):
-  print "%s " % only_i
+  print("%s " % only_i)
   f=file("test_%s.output" % only_i, "wb")
   f.write("Testing %s\\n" % only_i)
   f.close()
@@ -409,7 +409,8 @@ def run(phenix_source=None,
 
   number_of_jobs = len(lines)
   print('\n  Number of lines in command file',number_of_jobs)
-  number_of_chunks = min(number_of_chunks, number_of_jobs)
+  if number_of_chunks is not None:
+    number_of_chunks = min(number_of_chunks, number_of_jobs)
   if number_of_chunks is None:
     if size_of_chunks==1:
       number_of_chunks=len(lines)
@@ -484,13 +485,13 @@ def run(phenix_source=None,
     outl += "  '''%s ''',\n" % line
   python_run_filename = os.path.join(os.getcwd(), python_run_filename)
   print("  Writing queue python script:\n    %s" % python_run_filename)
-  f=file(python_run_filename, "wb")
+  f=open(python_run_filename, "w")
   f.write(script_file % outl)
   f.close()
 
   qsub_run_filename = os.path.join(os.getcwd(), qsub_run_filename)
   print("  Writing queue command script:\n    %s" % qsub_run_filename)
-  f=file(qsub_run_filename, "wb")
+  f=open(qsub_run_filename, "w")
   f.write(run_file % (
     code,
     code,
