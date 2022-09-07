@@ -55,6 +55,9 @@ class RefineCryoemSignal(RefineBase):
     self.large_shifts_beta = list(cell_tensor*math.log(2.)*d_min**2)
     # Apply a relatively weak restraint to sphericity of beta
     self.sigmaSphericityBeta = cell_tensor * 5*d_min**2
+    # sigmaSphericityBiso = adptbx.u_as_b(adptbx.beta_as_u_cart(self.unit_cell, tuple(self.sigmaSphericityBeta)))
+    # print("sigmaSphericityBiso: ",tuple(sigmaSphericityBiso))
+
 
   def sphericity_restraint(self, anisoBeta, do_gradient=True, do_hessian=True,
       sigma_factor = 1.):
@@ -140,8 +143,8 @@ class RefineCryoemSignal(RefineBase):
       f1f2cos = self.f1f2cos_miller.data().select(sel)
       sumfsqr = self.sumfsqr_miller.data().select(sel)
       sigmaE_terms = sumfsqr/2 - f1f2cos
-      mf1000 = sumfsqr/2000
-      sigmaE_terms = (sigmaE_terms+mf1000 + flex.abs(sigmaE_terms - mf1000))/2
+      min_sigE = sumfsqr/100000
+      sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
       # Use local sphere fsc to compute relative weight of local vs global fitting
       # Steepness of sigmoid controlled by factor applied to fsc
@@ -1267,7 +1270,7 @@ def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map
   miller_array = marray.customized_copy(data = miller_data)
   return miller_array
 
-def local_mean_intensities(mm, d_min, intensities, r_star, match_falloff = True):
+def local_mean_intensities(mm, d_min, intensities, r_star):
   """
   Compute local means of input intensities (or amplitudes) using a convolution
   followed optionally by a resolution-dependent renormalisation
@@ -1335,19 +1338,6 @@ def local_mean_intensities(mm, d_min, intensities, r_star, match_falloff = True)
   if min_in >= 0: # Make sure strictly non-negative remains non-negative
     extended_mean = extended_mean.customized_copy(data =
       (extended_mean.data()+min_in + flex.abs(extended_mean.data()-min_in))/2 )
-
-  # If the option is chosen, match the falloff of the local mean to the input falloff
-  # before removing sharpening (so falloff is as smooth as possible)
-  if match_falloff:
-    extended_mean.use_binner_of(int_sharp)
-    for i_bin in extended_mean.binner().range_used():
-      sel = int_sharp.binner().selection(i_bin)
-      int_sharp_sel = int_sharp.select(sel)
-      mean_int_sharp = flex.mean(int_sharp_sel.data())
-      extended_mean_sel = extended_mean.select(sel)
-      mean_ext_mean = flex.mean(extended_mean_sel.data())
-      ratio = mean_int_sharp / mean_ext_mean
-      extended_mean.data().set_selected(sel, extended_mean_sel.data() * ratio)
 
   # Select data to desired resolution, remove sharpening from above
   local_mean = extended_mean.select(extended_mean.d_spacings().data() >= d_min)
@@ -1701,18 +1691,20 @@ def assess_cryoem_errors(
     f1f2cos = f1f2cos_local_mean.data().select(sel)
     sumfsqr = sumfsqr_local_mean.data().select(sel)
     sigmaE_terms = sumfsqr/2 - f1f2cos
-    mf1000 = sumfsqr/2000
-    sigmaE_terms = (sigmaE_terms+mf1000 + flex.abs(sigmaE_terms - mf1000))/2
+    min_sigE = sumfsqr/100000
+    sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
     fsc = f1f2cos/(f1f2cos + sigmaE_terms)
     steep = 12.
     wt_terms = flex.exp(steep*fsc)
     wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
     sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
-    sigmaS_terms = (sigmaS_terms+mf1000 + flex.abs(sigmaS_terms-mf1000))/2
+    # Make sure sigmaS is non-negative
+    sigmaS_terms = (sigmaS_terms + flex.abs(sigmaS_terms))/2
 
     scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
-    dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*sigmaS_terms))
+    # Arrange Dobs calculation so sigmaS can be zero
+    dobs_terms = flex.sqrt(sigmaS_terms / (sigmaS_terms + sigmaE_terms/2.))
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
     weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*sigmaS_terms))
@@ -1720,7 +1712,6 @@ def assess_cryoem_errors(
     # Apply corrections to mc1 and mc2 to compute mapCC after rescaling
     # SigmaE variance is twice as large for half-maps before averaging
     scale_terms_12 = 1./flex.sqrt(sigmaS_terms + sigmaE_terms)
-    # scale_terms_12 = 1./(abeta_terms + sigmaE_terms / (asqr_scale * sigmaT_bins[i_bin_used] * abeta_terms))
     # Overwrite mc1 and mc2, but not needed later.
     mc1.data().set_selected(sel, mc1.data().select(sel) * scale_terms_12)
     mc2.data().set_selected(sel, mc2.data().select(sel) * scale_terms_12)
