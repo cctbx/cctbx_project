@@ -55,7 +55,7 @@ namespace simtbx { namespace Kokkos {
              (af::shared<double> (simtbx::Kokkos::kokkos_detector::*)(af::shared<std::size_t>))
              &simtbx::Kokkos::kokkos_detector::get_whitelist_raw_pixels,
             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
-        //.def("each_image_free", &simtbx::Kokkos::kokkos_detector::each_image_free)
+        .def("each_image_free", &simtbx::Kokkos::kokkos_detector::each_image_free)
         ;
     }
   };
