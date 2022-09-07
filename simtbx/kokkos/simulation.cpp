@@ -29,8 +29,19 @@ namespace Kokkos {
   // extract subview from [start_index * length; (start_index + 1) * length)
   template <typename T>
   view_1d_t<T> extract_subview(view_1d_t<T> A, int start_index, int length) {
-    return ::Kokkos::subview(A, ::Kokkos::pair<int, int>(start_index * length, (start_index + 1) * length ));
+    const int begin = start_index * length;
+    const int end = begin + length ;
+    return ::Kokkos::subview(A, ::Kokkos::pair<int, int>(begin, end));
   }
+
+  template <typename T>
+  ::Kokkos::View<T*****> extract_subview(::Kokkos::View<T*****> A, int start_index, int length) {
+    const int begin = start_index * length;
+    const int end = begin + length ;
+    return ::Kokkos::subview(A, ::Kokkos::pair<int, int>(begin, end), ::Kokkos::ALL, ::Kokkos::ALL, ::Kokkos::ALL, ::Kokkos::ALL);
+  }
+
+
 
   // make a unit vector pointing in same direction and report magnitude (both args can be same vector)
   double cpu_unitize(const double * vector, double * new_unit_vector) {
@@ -116,9 +127,9 @@ namespace Kokkos {
     init_crystal_orientation();
 
     // precalculate detector coordinates
-    init_detector_coordinates();
+    init_detector_coordinates(kdt);
 
-    std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
+    const std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
 
     // the for loop around panels.  Offsets given.
     for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++){
@@ -201,7 +212,7 @@ namespace Kokkos {
     init_crystal_orientation();
 
     // precalculate detector coordinates
-    init_detector_coordinates();
+    init_detector_coordinates(kdt);
 
     // for call for all panels at the same time
     debranch_maskall_Kernel(
@@ -263,7 +274,7 @@ namespace Kokkos {
     init_crystal_orientation();
 
     // precalculate detector coordinates
-    init_detector_coordinates();
+    init_detector_coordinates(kdt);
 
     for (int ictr = 0; ictr < SIM.sources; ++ictr){
       if (ichannels[ictr] < 0) continue; // the ichannel array
@@ -430,10 +441,56 @@ namespace Kokkos {
     fence();
   }
 
-  exascale_api::init_detector_coordinates(); {
-    ::Kokkos::resize(m_detector_coordinates, H*W, 3);
+  exascale_api::init_detector_coordinates(simtbx::Kokkos::kokkos_detector & kdt); {
+    ::Kokkos::resize(m_detector_coordinates, kdt.m_slow_dim_size*kdt.m_fast_dim_size,
+     SIM.oversample, SIM.oversample, SIM.detector_thicksteps, 5);
 
-    detector_coordinates_kernel(...);
+    const std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
+
+    // the for loop around panels.  Offsets given.
+    for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++){
+      // loop thru panels and increment the array ptrs
+      detector_coordinates_kernel(
+      kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.roi_xmin,
+      SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
+      SIM.pixel_size, m_subpixel_size, SIM.detector_thickstep, SIM.detector_thicksteps,
+      SIM.detector_thick, SIM.detector_attnlen,
+      extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
+      SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
+      SIM.dmin, nullptr,
+      // return arrays:
+      extract_subview(kdt.m_max_I_x_reduction, panel_id, panel_size),
+      extract_subview(kdt.m_max_I_y_reduction, panel_id, panel_size),
+      extract_subview(kdt.m_rangemap, panel_id, panel_size),
+      extract_subview(m_detector_coordinates, panel_id, panel_size));
+      fence();
+    }
+  }
+
+  exascale_api::init_detector_coordinates_allpanel(simtbx::Kokkos::kokkos_detector & kdt); {
+    ::Kokkos::resize(m_detector_coordinates, kdt.m_total_pixel_count,
+     SIM.oversample, SIM.oversample, SIM.detector_thicksteps, 5);
+
+    detector_coordinates_allpanel_kernel(
+    kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
+    SIM.oversample, SIM.point_pixel,
+    SIM.pixel_size, m_subpixel_size,
+    SIM.detector_thickstep, SIM.detector_thicksteps,
+    SIM.detector_thick, SIM.detector_attnlen,
+    m_vector_length,
+    kdt.m_sdet_vector,
+    kdt.m_fdet_vector,
+    kdt.m_odet_vector,
+    kdt.m_pix0_vector,
+    kdt.m_distance, kdt.m_distance, m_beam_vector,
+    kdt.m_active_pixel_list,
+    // return arrays:
+    kdt.m_max_I_x_reduction,
+    kdt.m_max_I_y_reduction,
+    m_detector_coordinates);
     fence();
   }
 

@@ -10,12 +10,12 @@ using simtbx::nanoBragg::GAUSS_ARGCHK;
 using simtbx::nanoBragg::TOPHAT;
 
 void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
-    int roi_ymin, int roi_ymax, int oversample, int point_pixel,
+    int roi_ymin, int roi_ymax, int oversample, bool point_pixel,
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thickstep,
     int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
     const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
     const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
-    int curved_detector, CUDAREAL distance, CUDAREAL close_distance,
+    bool curved_detector, CUDAREAL distance, CUDAREAL close_distance,
      const vector_cudareal_t beam_vector,
     CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin,
     int phisteps, int sources,
@@ -64,7 +64,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                 }
 
                 // allow for the use of a mask
-                if (maskimage != NULL) {
+                if (maskimage != nullptr) {
                         // skip any flagged pixels in the mask
                         if ((*maskimage)(pixIdx) == 0) {
                                 return;
@@ -321,7 +321,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     }
 
 void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pixels,
-    int oversample, int point_pixel,
+    int oversample, bool point_pixel,
     CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps,
     CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
     const int vec_len,
@@ -587,7 +587,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
     const vector_cudareal_t  sdet_vector, const vector_cudareal_t  fdet_vector,
     const vector_cudareal_t  odet_vector, const vector_cudareal_t  pix0_vector,
-    CUDAREAL close_distance, int point_pixel, CUDAREAL detector_thick,
+    CUDAREAL close_distance, bool point_pixel, CUDAREAL detector_thick,
     const vector_cudareal_t  source_X, const vector_cudareal_t  source_Y,
     const vector_cudareal_t  source_Z,
     const vector_cudareal_t  source_lambda, const vector_cudareal_t  source_I,
@@ -787,5 +787,232 @@ void crystal_orientation_kernel(CUDAREAL phi0, CUDAREAL phistep,
                         orientations(phi_tic, mos_tic, 7) = c[2];
                         orientations(phi_tic, mos_tic, 8) = c[3];
                 }
+        });
+}
+
+void detector_coordinates_kernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
+    int roi_ymin, int roi_ymax, int oversample, bool point_pixel,
+    CUDAREAL pixel_size, CUDAREAL subpixel_size, CUDAREAL detector_thickstep,
+    int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
+    const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
+    const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
+    bool curved_detector, CUDAREAL distance, CUDAREAL close_distance,
+    const vector_cudareal_t beam_vector,
+    const vector_ushort_t * maskimage,
+    vector_float_t max_I_x_reduction/*out*/,
+    vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap,
+    ::Kokkos::View<CUDAREAL*****> detector_coordinates) {
+
+        const int total_pixels = spixels * fpixels;
+
+        Kokkos::parallel_for("detector_coordinates", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
+
+                const int fpixel = pixIdx % fpixels;
+                const int spixel = pixIdx / fpixels;
+                // allow for just a region of interest (roi) on detector to be rendered
+                if (fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
+                        return;
+                }
+
+                // allow for the use of a mask
+                if (maskimage != nullptr) {
+                        // skip any flagged pixels in the mask
+                        if ((*maskimage)(pixIdx) == 0) {
+                                return;
+                        }
+                }
+
+                CUDAREAL omega_sub_reduction = 0.0;
+                CUDAREAL max_I_x_sub_reduction = 0.0;
+                CUDAREAL max_I_y_sub_reduction = 0.0;
+
+                // add this now to avoid problems with skipping later
+                // loop over sub-pixels
+                for (int subS = 0; subS < oversample; ++subS) { // Y voxel
+                        for (int subF = 0; subF < oversample; ++subF) { // X voxel
+                                // absolute mm position on detector (relative to its origin)
+                                CUDAREAL Fdet = subpixel_size * (fpixel * oversample + subF) + subpixel_size / 2.0; // X voxel
+                                CUDAREAL Sdet = subpixel_size * (spixel * oversample + subS) + subpixel_size / 2.0; // Y voxel
+
+                                max_I_x_sub_reduction = Fdet;
+                                max_I_y_sub_reduction = Sdet;
+
+                                for (int thick_tic = 0; thick_tic < detector_thicksteps; ++thick_tic) {
+                                        // assume "distance" is to the front of the detector sensor layer
+                                        CUDAREAL Odet = thick_tic * detector_thickstep; // Z Orthagonal voxel.
+
+                                        // construct detector subpixel position in 3D space
+                                        //                      pixel_X = distance;
+                                        //                      pixel_Y = Sdet-Ybeam;
+                                        //                      pixel_Z = Fdet-Xbeam;
+                                        CUDAREAL pixel_pos[4];
+                                        pixel_pos[1] = Fdet * fdet_vector(1)
+                                                     + Sdet * sdet_vector(1)
+                                                     + Odet * odet_vector(1)
+                                                            + pix0_vector(1); // X
+                                        pixel_pos[2] = Fdet * fdet_vector(2)
+                                                     + Sdet * sdet_vector(2)
+                                                     + Odet * odet_vector(2)
+                                                            + pix0_vector(2); // Y
+                                        pixel_pos[3] = Fdet * fdet_vector(3)
+                                                     + Sdet * sdet_vector(3)
+                                                     + Odet * odet_vector(3)
+                                                            + pix0_vector(3); // Z
+
+                                        if (curved_detector) {
+                                                // construct detector pixel that is always "distance" from the sample
+                                                CUDAREAL dbvector[] = { 0.0, 0.0, 0.0, 0.0 };
+                                                dbvector[1] = distance * beam_vector(1);
+                                                dbvector[2] = distance * beam_vector(2);
+                                                dbvector[3] = distance * beam_vector(3);
+                                                // treat detector pixel coordinates as radians
+                                                CUDAREAL newvector[] = { 0.0, 0.0, 0.0, 0.0 };
+                                                rotate_axis(dbvector, newvector, sdet_vector, pixel_pos[2] / distance);
+                                                rotate_axis(newvector, pixel_pos, fdet_vector, pixel_pos[3] / distance);
+                                        }
+
+                                        // construct the diffracted-beam unit vector to this sub-pixel
+                                        CUDAREAL diffracted[4];
+                                        CUDAREAL airpath = unitize(pixel_pos, diffracted);
+
+                                        // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
+                                        CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance / airpath;
+                                        // option to turn off obliquity effect, inverse-square-law only
+                                        if (point_pixel) {
+                                                omega_pixel = 1.0 / airpath / airpath;
+                                        }
+
+                                        // now calculate detector thickness effects
+                                        CUDAREAL capture_fraction = 1.0;
+                                        if (detector_thick > 0.0 && detector_mu> 0.0) {
+                                                // inverse of effective thickness increase
+                                                CUDAREAL odet[4];
+                                                odet[1] = odet_vector(1);
+                                                odet[2] = odet_vector(2);
+                                                odet[3] = odet_vector(3);
+                                                CUDAREAL parallax = dot_product(odet, diffracted);
+                                                capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
+                                                                - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
+                                        }
+                                        detector_coordinates( pixIdx, subS, subF, thick_tic, 0 ) = diffracted[1];
+                                        detector_coordinates( pixIdx, subS, subF, thick_tic, 1 ) = diffracted[2];
+                                        detector_coordinates( pixIdx, subS, subF, thick_tic, 2 ) = diffracted[3];
+                                        detector_coordinates( pixIdx, subS, subF, thick_tic, 3 ) = omega_pixel;
+                                        detector_coordinates( pixIdx, subS, subF, thick_tic, 4 ) = capture_fraction;
+                                } // end of detector thickness loop
+                                
+                        } // end of sub-pixel y loop
+                        
+                } // end of sub-pixel x loop
+                max_I_x_reduction( pixIdx ) = max_I_x_sub_reduction;
+                max_I_y_reduction( pixIdx ) = max_I_y_sub_reduction;
+                rangemap( pixIdx ) = true;
+        });
+    }
+
+
+void detector_coordinates_allpanel_kernel(int npanels, int spixels, int fpixels, int total_pixels,
+    int oversample, bool point_pixel,
+    CUDAREAL pixel_size, CUDAREAL subpixel_size,
+    CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
+    const int vec_len,
+    const vector_cudareal_t sdet_vector, const vector_cudareal_t fdet_vector,
+    const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
+    const vector_cudareal_t distance, const vector_cudareal_t close_distance,
+    const vector_cudareal_t beam_vector,
+    const vector_int_t pixel_lookup,
+    vector_float_t max_I_x_reduction/*out*/,
+    vector_float_t max_I_y_reduction /*out*/, 
+    vector_bool_t rangemap
+    ::Kokkos::View<CUDAREAL*****> detector_coordinates) {
+
+        Kokkos::parallel_for("detector_coordinates_allpanel", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
+                // position in pixel array
+                const int j = pixel_lookup(pixIdx);//pixIdx: index into pixel subset; j: index into the data.
+                const int i_panel = j / (fpixels*spixels); // the panel number
+                const int j_panel = j % (fpixels*spixels); // the pixel number within the panel
+                const int fpixel = j_panel % fpixels;
+                const int spixel = j_panel / fpixels;
+
+                // reset photon count for this pixel
+                CUDAREAL omega_sub_reduction = 0.0;
+                CUDAREAL max_I_x_sub_reduction = 0.0;
+                CUDAREAL max_I_y_sub_reduction = 0.0;
+
+                // add this now to avoid problems with skipping later
+                // move this to the bottom to avoid accessing global device memory. floatimage[j] = I_bg;
+                // loop over sub-pixels
+                int subS, subF;
+                for (subS = 0; subS < oversample; ++subS) { // Y voxel
+                        for (subF = 0; subF < oversample; ++subF) { // X voxel
+                                // absolute mm position on detector (relative to its origin)
+                                CUDAREAL Fdet = subpixel_size * (fpixel * oversample + subF) + subpixel_size / 2.0; // X voxel
+                                CUDAREAL Sdet = subpixel_size * (spixel * oversample + subS) + subpixel_size / 2.0; // Y voxel
+                                // Fdet = pixel_size*fpixel;
+                                // Sdet = pixel_size*spixel;
+
+                                max_I_x_sub_reduction = Fdet;
+                                max_I_y_sub_reduction = Sdet;
+
+                                int thick_tic;
+                                for (thick_tic = 0; thick_tic < detector_thicksteps; ++thick_tic) {
+                                        // assume "distance" is to the front of the detector sensor layer
+                                        CUDAREAL Odet = thick_tic * detector_thickstep; // Z Orthagonal voxel.
+
+                                        // construct detector subpixel position in 3D space
+                                        //                      pixel_X = distance;
+                                        //                      pixel_Y = Sdet-Ybeam;
+                                        //                      pixel_Z = Fdet-Xbeam;
+                                        //CUDAREAL * pixel_pos = tmpVector1;
+                                        CUDAREAL pixel_pos[4];
+                                        int iVL = vec_len * i_panel;
+                                        pixel_pos[1] = Fdet * fdet_vector(iVL+1)
+                                                     + Sdet * sdet_vector(iVL+1)
+                                                     + Odet * odet_vector(iVL+1)
+                                                                    + pix0_vector(iVL+1); // X
+                                        pixel_pos[2] = Fdet * fdet_vector(iVL+2)
+                                                     + Sdet * sdet_vector(iVL+2)
+                                                     + Odet * odet_vector(iVL+2)
+                                                            + pix0_vector(iVL+2); // Y
+                                        pixel_pos[3] = Fdet * fdet_vector(iVL+3)
+                                                     + Sdet * sdet_vector(iVL+3)
+                                                     + Odet * odet_vector(iVL+3)
+                                                            + pix0_vector(iVL+3); // Z
+
+                                        // construct the diffracted-beam unit vector to this sub-pixel
+                                        //CUDAREAL * diffracted = tmpVector2;
+                                        CUDAREAL diffracted[4];
+                                        CUDAREAL airpath = unitize(pixel_pos, diffracted);
+
+                                        // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
+                                        CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance(i_panel) / airpath;
+                                        // option to turn off obliquity effect, inverse-square-law only
+                                        if (point_pixel) {
+                                                omega_pixel = 1.0 / airpath / airpath;
+                                        }
+
+                                        // now calculate detector thickness effects
+                                        CUDAREAL capture_fraction = 1.0;
+                                        if (detector_thick > 0.0 && detector_mu> 0.0) {
+                                                // inverse of effective thickness increase
+                                                CUDAREAL odet[4];
+                                                odet[1] = odet_vector(iVL+1);
+                                                odet[2] = odet_vector(iVL+2);
+                                                odet[3] = odet_vector(iVL+3);
+                                                CUDAREAL parallax = dot_product(odet, diffracted);
+                                                capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
+                                                                - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
+                                        }
+                                        detector_coordinates( j, subS, subF, thick_tic, 0 ) = diffracted[1];
+                                        detector_coordinates( j, subS, subF, thick_tic, 1 ) = diffracted[2];
+                                        detector_coordinates( j, subS, subF, thick_tic, 2 ) = diffracted[3];
+                                        detector_coordinates( j, subS, subF, thick_tic, 3 ) = omega_pixel;
+                                        detector_coordinates( j, subS, subF, thick_tic, 4 ) = capture_fraction;                                        
+                                } // end of detector thickness loop     
+                        } // end of sub-pixel y loop
+                } // end of sub-pixel x loop
+                max_I_x_reduction( j ) = max_I_x_sub_reduction;
+                max_I_y_reduction( j ) = max_I_y_sub_reduction;
+                rangemap( j ) = true;
         });
 }
