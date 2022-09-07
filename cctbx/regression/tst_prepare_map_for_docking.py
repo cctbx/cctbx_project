@@ -180,16 +180,12 @@ def exercise():
       u_star=u_star_s2).data() # Corrected for anisotropy
   sigmaE_terms = all_ones.apply_debye_waller_factors(u_star=u_star_e2).data() * se_target * volume_ratio
   scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
-  dobs_terms = 1./flex.sqrt(1. + sigmaE_terms/(2*sigmaS_terms))
+  dobs_terms = flex.sqrt(sigmaS_terms / (sigmaS_terms + sigmaE_terms/2.))
 
   # Now take starting map, with anisotropy and average errors, and apply ideal
   # correction factors to get E and Dobs
   eE_ideal = new_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max)
   eE_ideal = eE_ideal.customized_copy(data = eE_ideal.data()*scale_terms)
-  # Compensate for potential numerical instability when sigmaS is extremely small, in
-  # which case dobs is very small and eE_ideal can become very large
-  sel = (dobs_terms < 0.00001)
-  eE_ideal.data().set_selected(sel,0.)
   mean_Esqr_ideal = flex.mean_default(flex.pow2(flex.abs(eE_ideal.data())),0)
   mc_ideal_wtd = eE_ideal.customized_copy(data = eE_ideal.data()*dobs_terms)
 
@@ -212,8 +208,8 @@ def exercise():
   if debug:
     print("Perfect, starting, ideal and achieved mapCC: ", perfect_mapCC, start_mapCC, ideal_mapCC, achieved_mapCC)
   else:
-    assert(mapCC_ideal_achieved > 0.95)
-    assert(achieved_mapCC > 0.95*ideal_mapCC)
+    assert(mapCC_ideal_achieved > 0.96)
+    assert(achieved_mapCC > 0.97*ideal_mapCC)
 
 if(__name__ == "__main__"):
   exercise()

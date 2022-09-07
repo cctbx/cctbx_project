@@ -149,7 +149,7 @@ class RefineCryoemSignal(RefineBase):
       # Use local sphere fsc to compute relative weight of local vs global fitting
       # Steepness of sigmoid controlled by factor applied to fsc
       fsc = f1f2cos/(f1f2cos + sigmaE_terms)
-      steep = 12.
+      steep = 9.
       wt_terms = flex.exp(steep*fsc)
       wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
       meanwt = flex.mean_default(wt_terms,0.)
@@ -1695,7 +1695,7 @@ def assess_cryoem_errors(
     sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
     fsc = f1f2cos/(f1f2cos + sigmaE_terms)
-    steep = 12.
+    steep = 9.
     wt_terms = flex.exp(steep*fsc)
     wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
     sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
