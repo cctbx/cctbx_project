@@ -21,12 +21,13 @@ class ModelDataManager(DataManagerBase):
   def add_model_phil_str(self):
     '''
     Add custom PHIL and storage for type
+    The type is a choice(multi=True) PHIL parameter, so it is always a list
     '''
 
     # set up storage
-    # self._model_types = dict()  # [filename] = type
+    # self._model_types = dict()  # [filename] = [type]
     self._model_types = dict()
-    self._default_model_type = 'x_ray'
+    self._default_model_type = ['x_ray']
     self._possible_model_types = ['x_ray', 'neutron', 'electron', 'reference']
 
     # custom PHIL section
@@ -39,7 +40,8 @@ model
     .short_caption = Model file
     .style = file_type:pdb input_file
   type = *%s
-    .type = choice(multi=False)
+    .type = choice(multi=True)
+    .short_caption = Model type(s)
 }
 ''' % ' '.join(self._possible_model_types)
 
@@ -79,8 +81,32 @@ model
   def add_model(self, filename, data):
     return self._add(ModelDataManager.datatype, filename, data)
 
+  def _is_valid_model_type(self, model_type):
+    """
+    Convenience function for checking if the model type is valid
+    This will also check that model_type is a list to conform with the
+    PHIL parameter
+
+    Parameters
+    ----------
+    model_type: list
+      The model_type(s) to check.
+
+    Returns
+    -------
+    bool:
+    """
+    if not isinstance(model_type, list):
+      raise Sorry('The model_type argument must be a list.')
+    if len(model_type) == 0:
+      return False
+    valid = True
+    for mt in model_type:
+      valid = valid and (mt in self._possible_model_types)
+    return valid
+
   def set_default_model_type(self, model_type):
-    if (model_type not in self._possible_model_types):
+    if not self._is_valid_model_type(model_type):
       raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
                   (model_type, ', '.join(self._possible_model_types)))
     self._default_model_type = model_type
@@ -126,7 +152,7 @@ model
       filename = self.get_default_model_name()
     if (model_type is None):
       model_type = self._default_model_type
-    elif (model_type not in self._possible_model_types):
+    elif not self._is_valid_model_type(model_type):
       raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
                   (model_type, ', '.join(self._possible_model_types)))
     self._model_types[filename] = model_type
@@ -143,7 +169,7 @@ model
       names = all_names
     else:
       for filename in all_names:
-        if (model_type == self.get_model_type(filename)):
+        if (model_type in self.get_model_type(filename)):
           names.append(filename)
     return names
 

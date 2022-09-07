@@ -230,29 +230,51 @@ END
   assert dm.get_model(cif_filename).input_model_format_cif()
 
   # test type
-  assert dm.get_model_type() == 'x_ray'
-  dm.set_model_type(test_filename, 'neutron')
-  assert dm.get_model_type() == 'neutron'
+  assert dm.get_model_type() == ['x_ray']
+  dm.set_model_type(test_filename, ['neutron'])
+  assert dm.get_model_type() == ['neutron']
   phil_scope = dm.export_phil_scope()
   extract = phil_scope.extract()
-  assert extract.data_manager.model[0].type == 'neutron'
+  assert extract.data_manager.model[0].type == ['neutron']
   with open(test_eff, 'w') as f:
     f.write(phil_scope.as_str())
   new_phil_scope = iotbx.phil.parse(file_name=test_eff)
   new_dm = DataManager(['model'])
   new_dm.load_phil_scope(new_phil_scope)
-  assert new_dm.get_model_type(test_filename) == 'neutron'
+  assert new_dm.get_model_type(test_filename) == ['neutron']
   new_dm = DataManager(['model'])
   try:
-    new_dm.set_default_model_type('nonsense')
-  except Sorry:
-    pass
-  new_dm.set_default_model_type('electron')
+    new_dm.set_default_model_type(['nonsense'])
+  except Sorry as s:
+    assert 'Unrecognized' in str(s)
+  # single model_type
+  new_dm.set_default_model_type(['electron'])
   new_dm.process_model_file(test_filename)
-  assert new_dm.get_model_type() == 'electron'
+  assert new_dm.get_model_type() == ['electron']
   assert len(new_dm.get_model_names()) == 1
+  assert len(new_dm.get_model_names(model_type='x_ray')) == 0
   assert len(new_dm.get_model_names(model_type='electron')) == 1
   assert len(new_dm.get_model_names(model_type='neutron')) == 0
+  assert len(new_dm.get_model_names(model_type='reference')) == 0
+  # multiple model_type
+  new_dm.set_model_type(filename=test_filename, model_type=['x_ray', 'reference'])
+  assert len(new_dm.get_model_names(model_type='x_ray')) == 1
+  assert len(new_dm.get_model_names(model_type='electron')) == 0
+  assert len(new_dm.get_model_names(model_type='neutron')) == 0
+  assert len(new_dm.get_model_names(model_type='reference')) == 1
+  # check PHIL
+  multiple_type_phil_str = new_dm.export_phil_scope().as_str()
+  multiple_type_phil = iotbx.phil.parse(multiple_type_phil_str)
+  new_dm = DataManager(phil=multiple_type_phil)
+  assert new_dm.get_model_names()[0] == test_filename
+  assert len(new_dm.get_model_names(model_type='x_ray')) == 1
+  assert len(new_dm.get_model_names(model_type='electron')) == 0
+  assert len(new_dm.get_model_names(model_type='neutron')) == 0
+  assert len(new_dm.get_model_names(model_type='reference')) == 1
+  try:
+    new_dm.set_model_type(filename=test_filename, model_type=['electron', 'nonsense'])
+  except Sorry as s:
+    assert 'Unrecognized' in str(s)
 
   os.remove(test_eff)
   os.remove(test_filename)
