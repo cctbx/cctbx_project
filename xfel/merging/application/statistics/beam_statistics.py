@@ -12,9 +12,7 @@ class beam_statistics(worker):
 
   def run(self, experiments, reflections):
     self.logger.log_step_time("BEAM_STATISTICS")
-    f_wavelengths = flex.double()
-    for experiment in experiments:
-      f_wavelengths = flex.double([b.get_wavelength() for b in experiments.beams()])
+    f_wavelengths = flex.double([b.get_wavelength() for b in experiments.beams()])
 
     flex_all_wavelengths = self.mpi_helper.aggregate_flex(f_wavelengths, flex.double)
 
