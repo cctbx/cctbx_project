@@ -1,5 +1,6 @@
 from __future__ import division
-
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 
 def main():
     from simtbx.nanoBragg.sim_data import SimData

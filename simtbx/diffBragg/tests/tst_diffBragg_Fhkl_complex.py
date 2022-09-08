@@ -1,4 +1,6 @@
 from __future__ import division
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 
 from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
 from dxtbx.model import Crystal
