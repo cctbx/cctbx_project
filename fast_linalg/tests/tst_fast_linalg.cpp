@@ -160,7 +160,9 @@ int main(int argc, char** argv) {
                                  486,  590, 1310,
                                 1670, 2030,  446,
                                  614,  782,  950 };
-    all_correct = all_correct && check_packed_packed(N, cp, cp_ref);
+    if (!check_packed_packed(N, cp, cp_ref)) {
+      all_correct = false;
+    }
 
     // Copy cp into cp1 which is the usual packed upper triangle
     // The trick here is that the lower triangle in column-major
@@ -168,7 +170,9 @@ int main(int argc, char** argv) {
     double cp1[N * (N + 1) / 2];
     fast_linalg::tfttp(fast_linalg::LAPACK_COL_MAJOR, 'N', 'L', N, cp_ref, cp1);
     std::cout << "Rectangular full packed -> packed # ";
-    all_correct = all_correct && check_packed_full(N, cp1, c_ref);
+    if (!check_packed_full(N, cp1, c_ref)) {
+      all_correct = false;
+    }
   }
   {
     const lapack_int N = 4,
@@ -217,6 +221,24 @@ int main(int argc, char** argv) {
       if (all_correct) {
         all_correct = cmp_arraysc(&vr_tst[0], &vr[0], LDVR * N);
       }
+    }
+    printf("\nTest getrf/getri - general matrix eigen problem.\n");
+    lapack_int ipiv[N];
+    info = fast_linalg::getrf(LAPACK_ROW_MAJOR, N, N, a, LDA, ipiv);
+    if (info > 0) {
+      printf("Failed getrf - LU decomposition.\n");
+      all_correct = false;
+    }
+    else {
+      print_matrix("After getrf", N, N, a, 1);
+    }
+    info = fast_linalg::getri(LAPACK_ROW_MAJOR, N, a, LDA, ipiv);
+    if (info > 0) {
+      printf("Failed getri - matrix inverse.\n");
+      all_correct = false;
+    }
+    else {
+      print_matrix("After getrf", N, N, a, 1);
     }
   }
   {
