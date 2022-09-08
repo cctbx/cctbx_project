@@ -84,6 +84,9 @@ input {
       .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
       .help = The idea behind the "per_node" method is that it doesn't require MPI communications across nodes. But if the input file load varies strongly
       .help = between the nodes, "global" is a much better option.
+    balance_verbose = False
+      .type = bool
+      .help = print load balancing details to the main log
     balance_mpi_alltoall_slices = 1
       .type = int
       .expert_level = 2

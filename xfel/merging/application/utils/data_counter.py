@@ -13,6 +13,37 @@ class data_counter(object):
       from xfel.merging.application.mpi_logger import mpi_logger
       self.logger = mpi_logger(params)
 
+  def count_each(self, experiments, reflections, verbose=False):
+    self.logger.log_step_time("CALC_LOAD_STATISTICS")
+
+    # MPI-gather individual counts
+    comm = self.mpi_helper.comm
+    MPI = self.mpi_helper.MPI
+
+    # count experiments and reflections
+    experiment_count = len(experiments) if experiments != None else 0
+    reflection_count = len(reflections) if reflections != None else 0
+
+    # count images
+    if experiments != None:
+      image_count = sum(len(iset) for iset in experiments.imagesets())
+    else:
+      image_count = 0
+
+    experiment_count_list   = comm.gather(experiment_count, root=0)
+    image_count_list        = comm.gather(image_count, root=0)
+    reflection_count_list   = comm.gather(reflection_count, root=0)
+
+    # rank 0: log data statistics
+    if self.mpi_helper.rank == 0 and verbose:
+      self.logger.main_log('Experiments by rank: ' + ', '.join(experiment_count_list))
+      self.logger.main_log('Images by rank: ' + ', '.join(image_count_list))
+      self.logger.main_log('Reflections by rank: ' + ', '.join(reflection_count_list))
+
+    self.logger.log_step_time("CALC_LOAD_STATISTICS", True)
+
+    return (experiment_count_list, image_count_list, reflection_count_list) # for load balancing purposes
+
   def count(self, experiments, reflections):
     self.logger.log_step_time("CALC_LOAD_STATISTICS")
 
