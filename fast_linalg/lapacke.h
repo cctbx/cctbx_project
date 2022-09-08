@@ -112,6 +112,20 @@ extern "C" {
     _lapack_complex_float* w, _lapack_complex_float*vl, lapack_int ldvl,
     _lapack_complex_float*vr, lapack_int ldvr);
 
+  fast_linalg_api lapack_int lapack_cgetrf(int matrix_order,
+    lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int* ipiv);
+  fast_linalg_api lapack_int lapack_zgetrf(int matrix_order,
+    lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int* ipiv);
+
+  fast_linalg_api lapack_int lapack_cgetri(int matrix_order,
+    lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int* ipiv);
+  fast_linalg_api lapack_int lapack_zgetri(int matrix_order,
+    lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int* ipiv);
+
   fast_linalg_api void cblas_ssyr(int Order, int Uplo, int N, float Alpha,
     const float *X, int incX, float* A, int lda);
   fast_linalg_api void cblas_dsyr(int Order, int Uplo, int N, double Alpha,
@@ -295,6 +309,39 @@ namespace fast_linalg {
   }
   //@}
 
+  /// @name Performs LU decomosition of a complex matrix
+  //@{
+  inline lapack_int getrf(int matrix_order,
+    lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int* ipiv)
+  {
+    return lapack_cgetrf(matrix_order, m, n, a, lda, ipiv);
+  }
+  inline lapack_int getrf(int matrix_order,
+    lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int* ipiv)
+  {
+    return lapack_zgetrf(matrix_order, m, n, a, lda, ipiv);
+  }
+  //@}
+
+  /// @name Performs complex matrix inversion after a call to getrf
+  //@{
+  inline lapack_int lapack_getri(int matrix_order,
+    lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int* ipiv)
+  {
+    return lapack_cgetri(matrix_order, n, a, lda, ipiv);
+  }
+
+  inline lapack_int getri(int matrix_order,
+    lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int* ipiv)
+  {
+    return lapack_zgetri(matrix_order, n, a, lda, ipiv);
+  }
+  //@}
+
   /// @name Performs a symmetric rank-1 update (upacked matrix!)
   //@{
   inline void syr(int Order, int Uplo, int N, float Alpha,
@@ -450,6 +497,23 @@ namespace fast_linalg {
     return 0;
   }
 
+  template <typename FloatType>
+  lapack_int getrf(int, lapack_int, lapack_int,
+    _lapack_complex<FloatType>* , lapack_int,
+    _lapack_complex<FloatType>*)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+    return 0;
+  }
+
+  template <typename FloatType>
+  lapack_int lapack_getri(int, lapack_int, _lapack_complex<FloatType>*,
+    lapack_int, _lapack_complex<FloatType>*)
+  {
+    SCITBX_NOT_IMPLEMENTED();
+    return 0;
+  }
+  
   template <typename FloatType>
   void syr(int, int, int, FloatType, const FloatType*, int,
     FloatType*, int)

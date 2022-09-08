@@ -147,24 +147,10 @@ namespace least_squares {
       SMTBX_ASSERT(frame != 0);
       int coln = design_matrix.accessor().n_columns();
       cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
-      FloatType Kl = std::sqrt(1.0 / (wavelength* wavelength) + F000);
+      FloatType Kl = scitbx::constants::two_pi / wavelength;
+      Kl = std::sqrt(Kl*Kl + F000);
       cart_t K = cart_t(0, 0, -Kl);
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
-      if (std::abs(Sg) > maxSg) {
-        observable_updated = true;
-        if (grads.size() > 0) {
-          if (index >= 0) {
-            memcpy(grads.begin(), &design_matrix(index, 0), sizeof(FloatType)*coln);
-            if (thickness.grad) {
-              grads[thickness.grad_index] = 0;
-            }
-          }
-          else {
-            std::fill(grads.begin(), grads.end(), 0);
-          }
-        }
-        return Fsq;
-      }
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
         t_part = ((scitbx::constants::pi * t) / (K * frame->normal)),
@@ -206,35 +192,35 @@ namespace least_squares {
       }
       observable_updated = true;
       
-      // TESTING 
-      {
-        double I = calc_test(Fsq, K, Sg, t, frame->normal);
-        if (grads.size() > 0 && index >= 0) {
-          FloatType eps = 1e-6;
-          FloatType U = std::sqrt(Fsq);
-          FloatType v1 = calc_test(U - eps, K, t, Sg, frame->normal);
-          FloatType v2 = calc_test(U + eps, K, t, Sg, frame->normal);
-          FloatType diff = (v2 - v1) / (2 * eps);
-          for (int i = 0; i < coln; i++) {
-              grads[i] = design_matrix(index, i) * diff;
-            }
-            if (thickness.grad) {
-              int grad_index = thickness.grad_index;
-              SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-              v1 = calc_test(U, K, t - eps, Sg, frame->normal);
-              v2 = calc_test(U, K, t + eps, Sg, frame->normal);
-              diff = (v2 - v1) / (2 * eps);
-              grads[grad_index] = diff;
-            }
-          }
+      //// TESTING 
+      //{
+      //  double I = calc_test(Fsq, K, Sg, t, frame->normal);
+      //  if (grads.size() > 0 && index >= 0) {
+      //    FloatType eps = 1e-6;
+      //    FloatType U = std::sqrt(Fsq);
+      //    FloatType v1 = calc_test(U - eps, K, t, Sg, frame->normal);
+      //    FloatType v2 = calc_test(U + eps, K, t, Sg, frame->normal);
+      //    FloatType diff = (v2 - v1) / (2 * eps);
+      //    for (int i = 0; i < coln; i++) {
+      //        grads[i] = design_matrix(index, i) * diff;
+      //      }
+      //      if (thickness.grad) {
+      //        int grad_index = thickness.grad_index;
+      //        SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
+      //        v1 = calc_test(U, K, t - eps, Sg, frame->normal);
+      //        v2 = calc_test(U, K, t + eps, Sg, frame->normal);
+      //        diff = (v2 - v1) / (2 * eps);
+      //        grads[grad_index] = diff;
+      //      }
+      //    }
 
-        ratio = Fsq / I;
-        Fc *= std::sqrt(std::abs(ratio));
-        return (Fsq = I);
-      }
-      //ratio = sin_part / X;
-      //Fc *= std::sqrt(std::abs(ratio));
-      //return (Fsq = I);
+      //  ratio = Fsq / I;
+      //  Fc *= std::sqrt(std::abs(ratio));
+      //  return (Fsq = I);
+      //}
+      ratio = sin_part / X;
+      Fc *= std::sqrt(std::abs(ratio));
+      return (Fsq = I);
     }
     virtual std::complex<FloatType> get_f_calc() const {
       if (!observable_updated) {

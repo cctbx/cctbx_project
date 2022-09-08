@@ -13,8 +13,8 @@ namespace fast_linalg {
     lapack_int, lapack_int, double, const double *,
     lapack_int, double, double *);
   typedef lapack_int(LAPACKE_ssfrk_t) (int, char, char, char,
-    lapack_int, lapack_int, double, const float *,
-    lapack_int, double, float *);
+    lapack_int, lapack_int, float, const float *,
+    lapack_int, float, float *);
   typedef lapack_int(LAPACKE_dtfttp_t) (int, char, char,
     lapack_int, const double *, double *);
   typedef lapack_int(LAPACKE_stfttp_t) (int, char, char,
@@ -44,6 +44,18 @@ namespace fast_linalg {
   typedef lapack_int(LAPACKE_zgeev_t)(int, char, char, lapack_int,
     _lapack_complex_double*, lapack_int, _lapack_complex_double*,
     _lapack_complex_double*, lapack_int, _lapack_complex_double*, lapack_int);
+
+  typedef lapack_int (LAPACKE_cgetrf_t)(int, lapack_int, lapack_int,
+    _lapack_complex_float*, lapack_int,
+    lapack_int*);
+  typedef lapack_int (LAPACKE_cgetri_t)(int, lapack_int,
+    _lapack_complex_float*, lapack_int, lapack_int*);
+
+  typedef lapack_int(LAPACKE_zgetrf_t)(int, lapack_int, lapack_int,
+    _lapack_complex_double*, lapack_int,
+    lapack_int*);
+  typedef lapack_int(LAPACKE_zgetri_t)(int, lapack_int,
+    _lapack_complex_double*, lapack_int, lapack_int*);
 
   typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
     int, float *, int);
@@ -98,6 +110,10 @@ namespace fast_linalg {
       LAPACKE_zheev = &lib.get<LAPACKE_zheev_t>("LAPACKE_zheev");
       LAPACKE_cgeev = &lib.get<LAPACKE_cgeev_t>("LAPACKE_cgeev");
       LAPACKE_zgeev = &lib.get<LAPACKE_zgeev_t>("LAPACKE_zgeev");
+      LAPACKE_cgetrf = &lib.get< LAPACKE_cgetrf_t>("LAPACKE_cgetrf");
+      LAPACKE_zgetrf = &lib.get< LAPACKE_zgetrf_t>("LAPACKE_zgetrf");
+      LAPACKE_cgetri = &lib.get< LAPACKE_cgetri_t>("LAPACKE_cgetri");
+      LAPACKE_zgetri = &lib.get< LAPACKE_zgetri_t>("LAPACKE_zgetri");
 
       openblas_get_num_threads = &lib.get<openblas_get_num_threads_t>(
         "openblas_get_num_threads");
@@ -139,7 +155,10 @@ namespace fast_linalg {
       LAPACKE_zheev = 0;
       LAPACKE_cgeev = 0;
       LAPACKE_zgeev = 0;
-
+      LAPACKE_cgetrf = 0;
+      LAPACKE_cgetri = 0;
+      LAPACKE_zgetrf = 0;
+      LAPACKE_zgetri = 0;
 
       openblas_get_num_threads = 0;
       openblas_get_num_procs = 0;
@@ -176,6 +195,11 @@ namespace fast_linalg {
     LAPACKE_zheev_t *LAPACKE_zheev;
     LAPACKE_cgeev_t* LAPACKE_cgeev;
     LAPACKE_zgeev_t* LAPACKE_zgeev;
+    LAPACKE_cgetrf_t* LAPACKE_cgetrf;
+    LAPACKE_cgetri_t* LAPACKE_cgetri;
+    LAPACKE_zgetrf_t* LAPACKE_zgetrf;
+    LAPACKE_zgetri_t* LAPACKE_zgetri;
+
 
     openblas_get_num_threads_t *openblas_get_num_threads;
     openblas_get_num_procs_t *openblas_get_num_procs;
@@ -372,6 +396,38 @@ lapack_int lapack_zgeev(int matrix_order, char joblv, char jobvr,
 {
   return (*Wrapper::instance().LAPACKE_zgeev)(
     matrix_order, joblv, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
+}
+//............................................................................
+//............................................................................
+lapack_int lapack_cgetrf(int matrix_order,
+  lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+  lapack_int* ipiv)
+{
+  return (*Wrapper::instance().LAPACKE_cgetrf)(
+    matrix_order, m, n, a, lda, ipiv);
+}
+lapack_int lapack_zgetrf(int matrix_order,
+  lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+  lapack_int* ipiv)
+{
+  return (*Wrapper::instance().LAPACKE_zgetrf)(
+    matrix_order, m, n, a, lda, ipiv);
+}
+//............................................................................
+//............................................................................
+lapack_int lapack_cgetri(int matrix_order,
+  lapack_int n, _lapack_complex_float* a, lapack_int lda,
+  lapack_int* ipiv)
+{
+  return (*Wrapper::instance().LAPACKE_cgetri)(
+    matrix_order, n, a, lda, ipiv);
+}
+lapack_int lapack_zgetri(int matrix_order,
+  lapack_int n, _lapack_complex_double* a, lapack_int lda,
+  lapack_int* ipiv)
+{
+  return (*Wrapper::instance().LAPACKE_zgetri)(
+    matrix_order, n, a, lda, ipiv);
 }
 //............................................................................
 //............................................................................
