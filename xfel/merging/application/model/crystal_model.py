@@ -200,14 +200,15 @@ class crystal_model(worker):
     else:
       arrays = space_group = unit_cell = None
 
-    arrays, space_group, unit_cell = self.mpi_helper.comm.bcast((arrays, space_group, unit_cell), root=0)
+    if self.purpose != "cosym":
+      arrays, space_group, unit_cell = self.mpi_helper.comm.bcast((arrays, space_group, unit_cell), root=0)
 
     # save space group and unit cell as scaling targets
     if self.purpose == "scaling":
       self.params.scaling.space_group = space_group
       self.params.scaling.unit_cell   = unit_cell
 
-    if self.purpose == "scaling":
+    if self.purpose in ["scaling", "cosym"]:
       mtz_column_F = str(self.params.scaling.mtz.mtz_column_F.lower())
     elif self.purpose == "statistics":
       mtz_column_F = str(self.params.statistics.cciso.mtz_column_F.lower())
