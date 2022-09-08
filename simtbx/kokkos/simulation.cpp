@@ -136,16 +136,9 @@ namespace Kokkos {
       // loop thru panels and increment the array ptrs
       kokkosSpotsKernel(
       kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.roi_xmin,
-      SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
-      SIM.pixel_size, m_subpixel_size, m_steps, SIM.detector_thickstep, SIM.detector_thicksteps,
-      SIM.detector_thick, SIM.detector_attnlen,
-      extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
-      SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
-      kdt.metrology.Xbeam[panel_id], kdt.metrology.Ybeam[panel_id],
-      SIM.dmin, SIM.phisteps,
+      SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample,
+      extract_subview(m_detector_coordinates, panel_id, panel_size),
+      m_steps, SIM.detector_thicksteps, SIM.dmin, SIM.phisteps,
       SIM.sources, m_source_X, m_source_Y, m_source_Z,
       m_source_I, m_source_lambda, SIM.xtal_shape, SIM.mosaic_domains, m_crystal_orientation,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
@@ -157,10 +150,7 @@ namespace Kokkos {
       nullptr,
       // return arrays:
       extract_subview(kdt.m_floatimage, panel_id, panel_size),
-      extract_subview(kdt.m_omega_reduction, panel_id, panel_size),
-      extract_subview(kdt.m_max_I_x_reduction, panel_id, panel_size),
-      extract_subview(kdt.m_max_I_y_reduction, panel_id, panel_size),
-      extract_subview(kdt.m_rangemap, panel_id, panel_size));
+      extract_subview(kdt.m_omega_reduction, panel_id, panel_size));
       fence();
     }
 
@@ -217,17 +207,8 @@ namespace Kokkos {
     // for call for all panels at the same time
     debranch_maskall_Kernel(
     kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
-    SIM.oversample, SIM.point_pixel,
-    SIM.pixel_size, m_subpixel_size, m_steps,
-    SIM.detector_thickstep, SIM.detector_thicksteps,
-    SIM.detector_thick, SIM.detector_attnlen,
-    m_vector_length,
-    kdt.m_sdet_vector,
-    kdt.m_fdet_vector,
-    kdt.m_odet_vector,
-    kdt.m_pix0_vector,
-    kdt.m_distance, kdt.m_distance, m_beam_vector,
-    kdt.m_Xbeam, kdt.m_Ybeam,
+    SIM.oversample, m_detector_coordinates,
+    m_steps, SIM.detector_thicksteps,
     SIM.dmin, SIM.phisteps,
     SIM.sources, m_source_X, m_source_Y, m_source_Z,
     m_source_I, m_source_lambda, SIM.xtal_shape, SIM.mosaic_domains, m_crystal_orientation,
@@ -239,10 +220,7 @@ namespace Kokkos {
     kdt.m_active_pixel_list,
     // return arrays:
     kdt.m_floatimage,
-    kdt.m_omega_reduction,
-    kdt.m_max_I_x_reduction,
-    kdt.m_max_I_y_reduction,
-    kdt.m_rangemap);
+    kdt.m_omega_reduction);
     fence();
 
     //don't want to free the kec data when the nanoBragg goes out of scope, so switch the pointer
@@ -298,18 +276,8 @@ namespace Kokkos {
 
       debranch_maskall_Kernel(
       kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
-      SIM.oversample, SIM.point_pixel,
-      SIM.pixel_size, m_subpixel_size, m_steps,
-      SIM.detector_thickstep, SIM.detector_thicksteps,
-      SIM.detector_thick, SIM.detector_attnlen,
-      m_vector_length,
-      kdt.m_sdet_vector,
-      kdt.m_fdet_vector,
-      kdt.m_odet_vector,
-      kdt.m_pix0_vector,
-      kdt.m_distance, kdt.m_distance, m_beam_vector,
-      kdt.m_Xbeam, kdt.m_Ybeam,
-      SIM.dmin, SIM.phisteps,
+      SIM.oversample, m_detector_coordinates,
+      m_steps, SIM.detector_thicksteps, SIM.dmin, SIM.phisteps,
       1, c_source_X, c_source_Y, c_source_Z,
       c_source_I, c_source_lambda, SIM.xtal_shape, SIM.mosaic_domains, m_crystal_orientation,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
@@ -320,10 +288,7 @@ namespace Kokkos {
       kdt.m_active_pixel_list,
       // return arrays:
       kdt.m_floatimage,
-      kdt.m_omega_reduction,
-      kdt.m_max_I_x_reduction,
-      kdt.m_max_I_y_reduction,
-      kdt.m_rangemap);
+      kdt.m_omega_reduction);
       fence();
     //don't want to free the kec data when the nanoBragg goes out of scope, so switch the pointer
     // cu_current_channel_Fhkl = NULL;
@@ -362,15 +327,9 @@ namespace Kokkos {
 
         // the for loop around panels.  Offsets given.
         for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++) {
-          add_background_kokkos_kernel(SIM.sources,
-          SIM.oversample,
+          add_background_kokkos_kernel(SIM.sources, SIM.oversample,
+          extract_subview(m_detector_coordinates, panel_id, panel_size),
           SIM.pixel_size, kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.detector_thicksteps,
-          SIM.detector_thickstep, SIM.detector_attnlen,
-          extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
-          kdt.metrology.dists[panel_id], SIM.point_pixel, SIM.detector_thick,
           m_source_X, m_source_Y, m_source_Z,
           m_source_lambda, m_source_I,
           SIM.stols, stol_of, Fbg_of,
