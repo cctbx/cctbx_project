@@ -5,6 +5,8 @@ These unit tests check our functon update_dxtbx_geoms which allows
 one to update those models for beam/detector post-instantiation
 """
 from __future__ import division
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 
 from argparse import ArgumentParser
 parser = ArgumentParser()

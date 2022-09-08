@@ -1,4 +1,6 @@
 from __future__ import division
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 
 from simtbx.diffBragg import utils
 from simtbx.nanoBragg.tst_nanoBragg_basic import pdb_lines
