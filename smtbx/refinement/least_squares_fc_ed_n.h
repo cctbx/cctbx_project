@@ -118,7 +118,7 @@ namespace least_squares {
         f_calc_function(parent.f_calc_function.fork()),
         fc_cr(parent.fc_cr.fork()),
         beams(beams),
-        thickness(thickness),
+        thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Fcs(Fcs),
         Fc_offset(Fc_offset)
@@ -138,79 +138,31 @@ namespace least_squares {
         // Builds (up)rime based on input vector u according to equation 12.16
         // based on P matrix as defined in 12.17
         const FrameInfo<FloatType>& frame = *beams[0]->parent;
-        const FloatType Kl = 1.0 / parent.wavelength,
-          Kl_sq = Kl * Kl;
+        FloatType Kl = scitbx::constants::two_pi / parent.wavelength;
+        Kl = std::sqrt(Kl * Kl + parent.F000);
         const cart_t K = cart_t(0, 0, -Kl);
         // Projection of K onto normal of frame
-        const FloatType Kn = -frame.normal[2] * Kl;
-        // This is the constant factor for eigenvalues used in eq. 12.17
-        // find "excited" beams
-        af::shared<const BeamInfo<FloatType>*> excited;
-        std::vector<size_t> excited_indices;
-        // holds Fc of the excited beams
-        af::shared<complex_t> u;
-        for (size_t i = 0; i < beams.size(); i++) {
-          miller::index<> h = beams[i]->index;
-          // g vector of miller index according to definition on page 276
-          cart_t g = frame.RM * parent.UB * cart_t(h[0], h[1], h[2]);
-          // Sg is the distance from Bragg condition
-          FloatType Sg = (Kl * Kl - scitbx::fn::pow2((K + g).length())) / (2 * Kl);
-          bool is_excited = std::abs(Sg) < parent.maxSg;
-          int ii = parent.mi_lookup.find_hkl(h);
-          complex_t Fc_x = 0;
-          if (ii == -1) {
-            if (!parent.space_group.is_sys_absent(h)) {
-              //SMTBX_ASSERT(ii >= 0)(h.as_string());
-              Fc_x = calc_one_h(h);
-            }
-          }
-          else {
-            Fc_x = Fcs_k[ii];
-          }
-          if (is_excited) {
-            excited.push_back(beams[i]);
-            excited_indices.push_back(Fc_offset + i);
-            u.push_back(Fc_x);
-          }
-          else {
-            // FK: I am not entirely sure that they not maybe simply ignored, that is
-            // removed from the refinement completely, if not considered "excited".
-            // See also Acta Cryst A 71, 2015, p 240 left bottom
-            Fcs[Fc_offset + i] = Fc_x;
-          }
-        }
-        if (excited.size() == 0) {
-          return;
-        }
-        if (excited.size() == 1) {
-          Fcs[excited_indices[0]] = u[0];
-          return;
-        }
-        // A will contain first row and column the initial kienmatical structure factor,
+        const FloatType Kn = frame.normal * K;
+        // A will contain first row and column the initial kinematical structure factor,
         // diagonally the excitation error and off diagonally the relative miller
         // index based structure factor, as defined in 12.11 a&b in order to be evaluated
         // in the eigenvalue problem, defined in 12.10
         using namespace fast_linalg;
         af::versa<_lapack_complex<FloatType>, af::mat_grid> A(
-          af::mat_grid(excited.size(), excited.size()));
-        af::shared<FloatType> M(excited.size());
-
-        for (size_t i = 0; i < excited.size(); i++) {
-          miller::index<> h_i = excited[i]->index;
+          af::mat_grid(beams.size(), beams.size()));
+        af::shared<FloatType> M(beams.size());
+        const FloatType SfacToVolts = 47.87801;
+        for (size_t i = 0; i < beams.size(); i++) {
+          miller::index<> h_i = beams[i]->index;
           cart_t g_i = frame.RM * parent.UB * cart_t(h_i[0], h_i[1], h_i[2]);
-          FloatType s = (Kl * Kl - (K + g_i).length_sq())/(2*Kl);
+          FloatType s = (Kl * Kl - (K + g_i).length_sq());
           FloatType i_den = std::sqrt(1./(1 + g_i * frame.normal/Kn));
-          A(i, i) = _lapack_ct(s*i_den);
+          A(i, i) = _lapack_ct(s*i_den*i_den);
           M[i] = i_den;
-          for (size_t j = i + 1; j < excited.size(); j++) {
-            miller::index<> h_j = excited[j]->index;
+          for (size_t j = i + 1; j < beams.size(); j++) {
+            miller::index<> h_j = beams[j]->index;
             cart_t g_j = frame.RM * parent.UB * cart_t(h_j[0], h_j[1], h_j[2]);
-            miller::index<> h_i_m_j = h_i - excited[j]->index;
-            //cart_t g_i_m_j = frame.RM * parent.UB * cart_t(h_i_m_j[0], h_i_m_j[1], h_i_m_j[2]);
-            /*FK: I think this check is what we need to ensure in the F_calcs... 
-                  we need to provide all F_calcs in the range of -2*(hkl)_max to 2*(hkl)_max 
-                  to be able to fill the matrix. This will be a requirement to k_data 
-                  that is given to ed_n_shared_data*/
+            miller::index<> h_i_m_j = h_i - beams[j]->index;
             int i_m_j = parent.mi_lookup.find_hkl(h_i_m_j);
             complex_t Fc_i_m_j = 0;
             if (i_m_j == -1) {
@@ -223,63 +175,67 @@ namespace least_squares {
               Fc_i_m_j = Fcs_k[i_m_j];
             }
             FloatType j_den = std::sqrt(1. / (1 + g_j * frame.normal / Kn));
-            A(i, j) = _lapack_ct(Fc_i_m_j * i_den * j_den);
+            A(i, j) = _lapack_ct(SfacToVolts * Fc_i_m_j * i_den * j_den);
             A(j, i) = _lapack_ct(A(i, j).real, -A(i, j).imag);
           }
         }
+        // eigenvalues
+        af::shared<_lapack_complex<FloatType> > ev(beams.size());
+        // right eigenvectors
+        af::versa<_lapack_complex<FloatType>, af::c_grid<2> > eV(
+          af::c_grid<2>(beams.size(), beams.size()));
+        lapack_int info = geev(LAPACK_ROW_MAJOR, 'N', 'V', beams.size(),
+          A.begin(), beams.size(), ev.begin(), 0, beams.size(), eV.begin(), beams.size());
+        SMTBX_ASSERT(!info)(info);
+        af::versa<complex_t, af::mat_grid>
+          B(af::mat_grid(beams.size(), beams.size())),
+          Bi(af::mat_grid(beams.size(), beams.size()));
 
-        af::shared<FloatType> ev(excited.size());
-        lapack_int info = heev(LAPACK_ROW_MAJOR,
-          LAPACK_EIGENVALUES_AND_EIGENVECTORS, LAPACK_UPPER,
-          excited.size(), A.begin(), excited.size(), ev.begin());
-        // A is now replaced with the columnwise eigenvectors
-        af::versa<complex_t, af::mat_grid> C(
-          af::mat_grid(excited.size(), excited.size()));
-        for (size_t i = 0; i < excited.size(); i++) {
-          for (size_t j = 0; j < excited.size(); j++) {
-            C(i, j) = complex_t(A(i, j).real, A(i, j).imag);
+        for (size_t i = 0; i < beams.size(); i++) {
+          for (size_t j = 0; j < beams.size(); j++) {
+            B(i, j) = complex_t(eV(i, j).real, eV(i, j).imag);
           }
         }
-        //THIS CRIES FOR PARALLELISATION!
-        // This is the eigenvalue system defined in 12.10
-        //scitbx::matrix::eigensystem::real_symmetric<FloatType> es(A.const_ref());
-        // These gamma are the eigenvalues from eq. 12.10
-        // FK: At some point I want to look at the es.values() to see whether they are generate
-        //af::shared<FloatType> gamma = es.values();
-        // This will carry the exponential factors of diagonal matrix in equation 12.17
-        // no Kn in the book!
-        //const complex_t exp_k(0, scitbx::constants::two_pi * thickness / Kn);
-        const complex_t exp_k(0, scitbx::constants::two_pi * thickness);
-        af::shared<complex_t> exp_L(excited.size());
-        for (size_t i = 0; i < excited.size(); i++) {
-          exp_L[i] = std::exp(ev[i] * exp_k);
+        // invert eV now
+        {
+          af::shared<lapack_int> pivots(beams.size());
+          info = getrf(LAPACK_ROW_MAJOR, beams.size(), beams.size(), eV.begin(),
+            beams.size(), pivots.begin());
+          SMTBX_ASSERT(!info)(info);
+          info = getri(LAPACK_ROW_MAJOR, beams.size(), eV.begin(),
+            beams.size(), pivots.begin());
+          SMTBX_ASSERT(!info)(info);
+          for (size_t i = 0; i < beams.size(); i++) {
+            for (size_t j = 0; j < beams.size(); j++) {
+              Bi(i, j) = complex_t(eV(i, j).real, eV(i, j).imag);
+            }
+          }
         }
-        // C is a matrix consisting of the eigenvectors of A.
-        //af::versa<FloatType, af::mat_grid> C = es.vectors();
-        // I do not think we need to transpose, if we later use matrix_tanspose_multiply
-        // OR is the vectors oriented wrongly?
-        //C.ref().transpose_square_in_place();
-        
-        // Generate P(n+1,n+1) = C * I*gamma * C^(-1),
+        const complex_t exp_k(0, scitbx::constants::pi * thickness / Kn);
+        //af::versa<complex_t, af::mat_grid> P(af::mat_grid(beams.size(), beams.size()));
+        for (size_t i = 0; i < beams.size(); i++) {
+          complex_t m = std::exp(complex_t(ev[i].real, ev[i].imag) * exp_k);
+          for (size_t j = 0; j < beams.size(); j++) {
+            B(j, i) *= m;
+          }
+        }
+        // Generate P(n,n) = B * I*gamma * B^(-1),
         // where gamma is a vector with the eigenvalues, I is a diagonal identy matrix
         // and C^(-1), due to the symmetry and "realness" of C, is the transpose of C
         // and n is the number of measured, excited beams.
-        af::versa<complex_t, af::c_grid<2> > P(
-          af::c_grid<2>(excited.size(), excited.size()),
-          *af::matrix_transpose_multiply_diagonal_multiply_as_packed_u(
-            C.const_ref(), exp_L.const_ref()).begin()); 
-
-        for (size_t i = 0; i < excited.size(); i++) {
-          for (size_t j = 0; j < excited.size(); j++) {
+        af::versa<complex_t, af::mat_grid> P = af::matrix_multiply(B.const_ref(), Bi.const_ref());
+        for (size_t i = 0; i < beams.size(); i++) {
+          for (size_t j = 0; j < beams.size(); j++) {
             P(i, j) *= M[i]; // M is on the left - apply to rows
             P(j, i) /= M[i]; // M^-1 is on the right - > apply to cols
           }
         }
+        af::shared<complex_t> u(beams.size());
+        u[0] = complex_t(1, 0);
         /* compute up now and assign to Fcs using at Fc_offset+exited_indices[i] */
-        af::shared<complex_t> up = af::matrix_multiply(P.const_ref(),
-          u.const_ref());
-        for (size_t i = 0; i < up.size(); i++) {
-          Fcs[excited_indices[i]] = up[i];
+        af::shared<complex_t> up = af::matrix_multiply(P.const_ref(), u.const_ref());
+        for (size_t i = 0; i < beams.size(); i++) {
+          Fcs[Fc_offset + i] = up[i]; // P(i, 0);
         }
       }
       ed_n_shared_data const& parent;
