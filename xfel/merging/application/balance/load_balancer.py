@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
-from dxtbx.model.experiment_list import ExperimentList
-from xfel.merging.application.reflection_table_utils import reflection_table_utils
 import math
 
 class load_balancer(worker):
