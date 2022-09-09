@@ -273,17 +273,28 @@ print('-'*79)
 kokkos_cxxflags = subprocess.check_output(
   ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
   cwd=os.environ['KOKKOS_PATH'])
-kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
-kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
-if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
-  kokkos_cxxflags = [f.strip('"') for f in kokkos_cxxflags[1:]]
+#print('5'*79)
+#print(os.environ['KOKKOS_CXXFLAGS'])
+#print('5'*79)
+#kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
+#kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
+kokkos_cxxflags = os.environ['KOKKOS_CXXFLAGS'].split()
+#if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
+#  kokkos_cxxflags = [f.strip('"') for f in kokkos_cxxflags[1:]]
 print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
 print('='*79)
 
 # libsimtbx_kokkos.so
 Import("env", "env_etc")
 
+# remove -ffast-math compile option
 kokkos_env = env.Clone()
+ccflags = kokkos_env['SHCCFLAGS']
+o = '-ffast-math'
+if o in ccflags:
+  ccflags.remove(o)
+kokkos_env.Replace(SHCCFLAGS=ccflags)
+
 kokkos_env.Replace(CXX=os.environ['CXX'])
 kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)

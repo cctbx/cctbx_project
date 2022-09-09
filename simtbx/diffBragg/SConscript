@@ -36,6 +36,15 @@ if (env_etc.enable_cuda):
   ])
 
 if (env_etc.enable_kokkos):
+  print('Getting kokkos build variables')
+  print('-'*79)
+  kokkos_cxxflags = os.environ['KOKKOS_CXXFLAGS'].split()
+  if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
+    kokkos_cxxflags = [f.strip('"') for f in kokkos_cxxflags[1:]]
+  print('KOKKOS_CXXFLAGS:', kokkos_cxxflags)
+  print('='*79)
+
+  '''
   kokkos_cxxflags = ['-std=c++14',
                      '-Xcudafe', 
                      '--diag_suppress=esa_on_defaulted_function_ignored', 
@@ -45,6 +54,7 @@ if (env_etc.enable_kokkos):
                      '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/core/src', 
                      '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/containers/src', 
                      '-I/pscratch/sd/f/fwittwer/alcc-recipes/cctbx/modules/kokkos/algorithms/src']
+  '''
 
   if os.getenv('KOKKOS_PATH') is None:
     os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
@@ -56,15 +66,26 @@ if (env_etc.enable_kokkos):
   diffBragg_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
   diffBragg_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
-  simtbx_kokkos_lib = diffBragg_env.SharedLibrary(
+  # remove DNANOBRAGG_HAVE_CUDA compile option
+  ccflags = diffBragg_env['CPPDEFINES']
+  o = 'NANOBRAGG_HAVE_CUDA'
+  if o in ccflags:
+    ccflags.remove(o)
+
+  diffBraggKokkos_lib = diffBragg_env.SharedLibrary(
     target="#lib/libsimtbx_diffBraggKOKKOS",
-    source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp"])
+    source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp", "../../kokkostbx/kokkos_utils.cpp"],
+    LIBS=['kokkoscontainers', 'kokkoscore'],
+    CPPDEFINES=ccflags)
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggKOKKOS"])
 
+  libs = env_simtbx['LIBS']
+  print("LIBS: ", libs)
 
+  if 'Cuda' in os.getenv("KOKKOS_DEVICES"):
+    env_simtbx.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
+    env_simtbx.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'compat')])
+    env_simtbx.Append(LIBS=["cudart", "cuda"])
 env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
-  source=[
-    diffBragg_obj
-  ]
-)
+  source=[diffBragg_obj])
