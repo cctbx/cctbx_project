@@ -11,7 +11,7 @@ import iotbx.phil
 
 from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
-from iotbx.reflection_file_utils import reflection_file_server
+from iotbx.reflection_file_utils import label_table, reflection_file_server
 from libtbx import Auto
 from libtbx.utils import Sorry
 
@@ -350,15 +350,24 @@ fmodel {
         phil_labels = []
         phil_types = {}
         for label in item_extract.labels:
-          if label.name not in file_labels:
-            raise Sorry('The label, %s, could not be found in %s.' %
-                        (label.name, item_extract.file))
-          phil_labels.append(label.name)
+          label_name = label.name
+          if label_name not in file_labels:
+            # try matching
+            lbl_tab = label_table(miller_arrays=self.get_miller_arrays(filename=item_extract.file),
+                                  err=os.devnull)
+            match = lbl_tab.match_data_label(
+              label=label.name, command_line_switch='miller_array.label', f=self.logger)
+            if match is not None:
+              label_name = match.info().label_string()
+            else:
+              raise Sorry('The label, %s, could not be found in %s.' %
+                          (label.name, item_extract.file))
+          phil_labels.append(label_name)
           if label.type not in getattr(self, '_possible_%s_types' % datatype):
             raise Sorry('Unrecognized %s type, "%s," possible choices are %s.' %
                         (datatype, label.type, ', '.join(
                           getattr(self, '_possible_%s_types' % datatype))))
-          phil_types[label.name] = label.type
+          phil_types[label_name] = label.type
         getattr(self, '_%s_labels' % datatype)[item_extract.file] = phil_labels
         getattr(self, '_%s_types' % datatype)[item_extract.file] = phil_types
 
