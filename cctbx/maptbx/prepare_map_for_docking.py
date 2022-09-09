@@ -143,17 +143,32 @@ class RefineCryoemSignal(RefineBase):
       f1f2cos = self.f1f2cos_miller.data().select(sel)
       sumfsqr = self.sumfsqr_miller.data().select(sel)
       sigmaE_terms = sumfsqr/2 - f1f2cos
+      # Make sure sigmaE is positive
       min_sigE = sumfsqr/100000
       sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
       # Use local sphere fsc to compute relative weight of local vs global fitting
-      # Steepness of sigmoid controlled by factor applied to fsc
-      fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+      # Steepness of sigmoid controlled by factor applied to fsc.
+      # Mean value of f1f2cos should dominate sigmaS_terms calculation when signal
+      # is good but should be completely determined by the anisotropic error model
+      # when there is little signal.
+      # Keep some influence of anisotropic error model throughout for training.
+      # wt_terms weight the anisotropy model in sigmaS calculation, with this
+      # weight falling off with increasing local fsc.
+      # Behaviour of wt as a function of fsc determined by steepness parameter for
+      # the sigmoid function and the maximum fractional weight for the local
+      # statistics. Values of local_weight near 1 seem to be better than lower
+      # values: setting it to 1 would probably be fine too.
       steep = 9.
+      local_weight = 0.95
+      fsc = f1f2cos/(f1f2cos + sigmaE_terms)
       wt_terms = flex.exp(steep*fsc)
-      wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
+      wt_terms = 1. - local_weight * (wt_terms/(math.exp(steep/2) + wt_terms))
       meanwt = flex.mean_default(wt_terms,0.)
       sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
+      # Make sure sigmaS is non-negative
+      sigmaS_terms = (sigmaS_terms + flex.abs(sigmaS_terms))/2
+
       s2sigE = 2*sigmaS_terms + sigmaE_terms
       var_terms = s2sigE*sigmaE_terms
 
@@ -1670,6 +1685,11 @@ def assess_cryoem_errors(
   expectE = mc1.customized_copy(data = (mc1.data() + mc2.data())/2)
   expectE.use_binner_of(mc1)
   dobs = expectE.customized_copy(data=flex.double(expectE.size(),0))
+  # For debugging and data inspection, set make_mtz_files true, but false normally
+  make_mtz_files = False
+  if make_mtz_files:
+    sigmaS = expectE.customized_copy(data=flex.double(expectE.size(),0))
+    sigmaE = expectE.customized_copy(data=flex.double(expectE.size(),0))
   i_bin_used = 0 # Keep track in case full range of bins not used
   weighted_map_noise = 0.
   if verbosity > 0:
@@ -1694,19 +1714,26 @@ def assess_cryoem_errors(
     min_sigE = sumfsqr/100000
     sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
-    fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+    # Compute the relative weight between the local statistics and the overall
+    # anisotropic signal model, as in refinement code.
     steep = 9.
+    local_weight = 0.95
+    fsc = f1f2cos/(f1f2cos + sigmaE_terms)
     wt_terms = flex.exp(steep*fsc)
-    wt_terms = 1. - (wt_terms/(math.exp(steep/2) + wt_terms))
+    wt_terms = 1. - local_weight * (wt_terms/(math.exp(steep/2) + wt_terms))
     sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
     # Make sure sigmaS is non-negative
     sigmaS_terms = (sigmaS_terms + flex.abs(sigmaS_terms))/2
-
     scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
     # Arrange Dobs calculation so sigmaS can be zero
     dobs_terms = flex.sqrt(sigmaS_terms / (sigmaS_terms + sigmaE_terms/2.))
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
+
+    if make_mtz_files:
+      sigmaS.data().set_selected(sel, sigmaS_terms)
+      sigmaE.data().set_selected(sel, sigmaE_terms)
+
     weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*sigmaS_terms))
 
     # Apply corrections to mc1 and mc2 to compute mapCC after rescaling
@@ -1727,6 +1754,11 @@ def assess_cryoem_errors(
   # case dobs is very small and expectE can be very large
   sel = dobs.data() < 0.00001
   expectE.data().set_selected(sel,0.)
+
+  if make_mtz_files:
+    write_mtz(sigmaS,"sigmaS.mtz","sigmaS")
+    write_mtz(sigmaE,"sigmaE.mtz","sigmaE")
+    write_mtz(dobs,"Dobs.mtz","Dobs")
 
   # At this point, weighted_map_noise is the sum of the noise variance for a
   # weighted half-map. In the following, this sum could be multiplied by two
