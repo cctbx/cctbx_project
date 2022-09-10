@@ -114,6 +114,15 @@ namespace lookup_utils{
       }
       return(permutation_table);
     }
+
+    scitbx::af::shared<cctbx::miller::index<> > get_unique() const {
+      scitbx::af::shared<cctbx::miller::index<> > rv(hkl_lookup_.size());
+      lookup_map_type::const_iterator itr = hkl_lookup_.begin();
+      for (size_t j=0; itr != hkl_lookup_.end(); itr++, j++) {
+        rv[j] = itr->first;
+      }
+      return rv;
+    }
   };
 
 

@@ -210,7 +210,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             scitbx::mat3<FloatType> const&,
             af::shared<BeamInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // wavelength, maxSg, F000
+            // wavelength, maxSg, F000, cell volume
             af::shared<FloatType> const&>(
               (arg("data"),
                 arg("space_group"), arg("anomalous_flag"),
@@ -236,7 +236,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             scitbx::mat3<FloatType> const&,
             af::shared<BeamInfo<FloatType> > const&,
             cctbx::xray::thickness<FloatType> const&,
-            // wavelength, epsilon, maxSg, F000
+            // wavelength, epsilon, maxSg, F000, cell volume
             af::shared<FloatType> const&,
             bool, bool>(
               (arg("data"), arg("reparametrisation"),
