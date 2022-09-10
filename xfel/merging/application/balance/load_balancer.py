@@ -109,44 +109,37 @@ class load_balancer(worker):
     send_tuples = mpi_communicator.bcast(send_tuples, root=0)
 
     self.logger.log_step_time("LB_SPLIT_LIST", True)
-    self.logger.log_step_time("LB_EXPTS_AND_REFLS_POINT_TO_POINT")
+    self.logger.log_step_time("LB_EXPTS_AND_REFLS_ALLTOALL")
 
     # carry out load balancing with point-to-point mpi communication
     send_instructions = send_tuples[self.mpi_helper.rank]
 
     # pare down balanced_experiments and balanced_reflections as we separate off what to send out
+    send_data = [(None, None) for j in range(len(send_tuples))]
+    recv_data = [(None, None) for j in range(len(send_tuples))]
     for (j, count) in send_instructions:
-      send_experiments = experiments[-count:]
-      mpi_communicator.send(send_experiments, dest=j, tag=0)
+      send_expt_j = experiments[-count:]
+      mpi_communicator.send(send_expt_j, dest=j, tag=0)
       experiments = experiments[:-count]
-      send_reflections = self.reflection_table_stub(reflections)
-      for k, e in enumerate(send_experiments):
+      send_refl_j = self.reflection_table_stub(reflections)
+      for k, e in enumerate(send_expt_j):
         r = reflections.select(reflections['exp_id'] == e.identifier) # select matching reflections to send
         r['id'] = flex.int(len(r), k)
-        send_reflections.extend(r)
+        send_refl_j.extend(r)
         reflections = reflections.select(reflections['exp_id'] != e.identifier) # remove from this rank's reflections
-      mpi_communicator.send(send_reflections, dest=j, tag=1) # 0 for expts, 1 for refls
+      send_data[j] = (send_expt_j, send_refl_j)
+    recv_data = mpi_communicator.alltoall(send_data)
 
     # tack on only what was targeted to be received by the current rank
-    identifiers_taken = set([e.identifier for e in experiments])
-    for i, receive_instructions in enumerate(send_tuples):
-      for (j, count) in receive_instructions:
-        if j == self.mpi_helper.rank:
-          received_experiments = mpi_communicator.recv(source=i, tag=0)
-          received_reflections = mpi_communicator.recv(source=i, tag=1)
-          # note: if this passes assertions we can probably switch from appending each one
-          # to extending by the received expts list
-          for e in received_experiments:
-            assert e.identifier not in identifiers_taken
-            identifiers_taken.add(e.identifier)
-            experiments.append(e)
-            r = received_reflections.select(received_reflections['exp_id'] == e.identifier)
-            reflections.extend(r)
-            received_reflections = received_reflections.select(received_reflections['exp_id'] != e.identifier)
-          assert len(received_reflections) == 0
-    # may want to add some more assertions about number of things passed around
+    for (received_expt_i, received_refl_i) in recv_data:
+      if received_expt_i is None: continue
+      current_ids = set([e.identifier for e in experiments])
+      recv_ids = set([e.identifier for e in received_expt_i])
+      assert current_ids.isdisjoint(recv_ids)
+      experiments.extend(received_expt_i)
+      reflections.extend(received_refl_i)
 
-    self.logger.log_step_time("LB_EXPTS_AND_REFLS_POINT_TO_POINT", True)
+    self.logger.log_step_time("LB_EXPTS_AND_REFLS_ALLTOALL", True)
 
     return experiments, reflections
 
