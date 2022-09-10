@@ -15,27 +15,7 @@
  // note: this can be long
 #define lapack_int int
 #endif
-#ifndef _lapack_complex_float
-template <typename FloatType>
-struct _lapack_complex { FloatType real, imag; };
 
-typedef _lapack_complex<float> _lapack_complex_float;
-typedef _lapack_complex<double> _lapack_complex_double;
-
-template <typename FloatType>
-_lapack_complex<FloatType> _lapack_ct(FloatType v) {
-  return { v, 0 };
-}
-template <typename FloatType>
-_lapack_complex<FloatType> _lapack_ct(FloatType r, FloatType i) {
-  return { r, i };
-}
-template <typename FloatType>
-_lapack_complex<FloatType> _lapack_ct(std::complex<FloatType> const& v) {
-  return { v.real(), v.imag() };
-}
-
-#endif
 namespace fast_linalg {
   const int LAPACK_ROW_MAJOR = 101,
     LAPACK_COL_MAJOR = 102;
@@ -97,33 +77,33 @@ extern "C" {
     float* w);
 
   fast_linalg_api lapack_int lapack_zheev(int matrix_order, char jobz,
-    char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    char uplo, lapack_int n, std::complex<double>* a, lapack_int lda,
     double* w);
   fast_linalg_api lapack_int lapack_cheev(int matrix_order, char jobz,
-    char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    char uplo, lapack_int n, std::complex<float>* a, lapack_int lda,
     float* w);
 
   fast_linalg_api lapack_int lapack_zgeev(int matrix_order, char jobvl,
-    char jovr, lapack_int n, _lapack_complex_double* a, lapack_int lda,
-    _lapack_complex_double* w, _lapack_complex_double* vl,
-    lapack_int ldvl, _lapack_complex_double* vr, lapack_int ldvr);
+    char jovr, lapack_int n, std::complex<double>* a, lapack_int lda,
+    std::complex<double>* w, std::complex<double>* vl,
+    lapack_int ldvl, std::complex<double>* vr, lapack_int ldvr);
   fast_linalg_api lapack_int lapack_cgeev(int matrix_order, char jobvl,
-    char jovr,lapack_int n, _lapack_complex_float* a, lapack_int lda,
-    _lapack_complex_float* w, _lapack_complex_float*vl, lapack_int ldvl,
-    _lapack_complex_float*vr, lapack_int ldvr);
+    char jovr,lapack_int n, std::complex<float>* a, lapack_int lda,
+    std::complex<float>* w, std::complex<float>*vl, lapack_int ldvl,
+    std::complex<float>*vr, lapack_int ldvr);
 
   fast_linalg_api lapack_int lapack_cgetrf(int matrix_order,
-    lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int m, lapack_int n, std::complex<float>* a, lapack_int lda,
     lapack_int* ipiv);
   fast_linalg_api lapack_int lapack_zgetrf(int matrix_order,
-    lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda,
     lapack_int* ipiv);
 
   fast_linalg_api lapack_int lapack_cgetri(int matrix_order,
-    lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int n, std::complex<float>* a, lapack_int lda,
     lapack_int* ipiv);
   fast_linalg_api lapack_int lapack_zgetri(int matrix_order,
-    lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int n, std::complex<double>* a, lapack_int lda,
     lapack_int* ipiv);
 
   fast_linalg_api void cblas_ssyr(int Order, int Uplo, int N, float Alpha,
@@ -275,14 +255,14 @@ namespace fast_linalg {
   //@{
 
   inline lapack_int heev(int matrix_order, char jobz,
-    char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    char uplo, lapack_int n, std::complex<float>* a, lapack_int lda,
     float* w)
   {
     return lapack_cheev(matrix_order, jobz, uplo, n, a, lda, w);
   }
 
   inline lapack_int heev(int matrix_order, char jobz,
-    char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    char uplo, lapack_int n, std::complex<double>* a, lapack_int lda,
     double* w)
   {
     return lapack_zheev(matrix_order, jobz, uplo, n, a, lda, w);
@@ -293,17 +273,17 @@ namespace fast_linalg {
   //@{
 
   inline lapack_int geev(int matrix_order, char jobvl, char jobvr,
-    lapack_int n, _lapack_complex_float* a, lapack_int lda,
-    _lapack_complex_float* w, _lapack_complex_float* vl, lapack_int ldvl,
-    _lapack_complex_float* vr, lapack_int ldvr)
+    lapack_int n, std::complex<float>* a, lapack_int lda,
+    std::complex<float>* w, std::complex<float>* vl, lapack_int ldvl,
+    std::complex<float>* vr, lapack_int ldvr)
   {
     return lapack_cgeev(matrix_order, jobvl, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
   }
 
   inline lapack_int geev(int matrix_order, char jobvl, char jobvr,
-    lapack_int n, _lapack_complex_double* a, lapack_int lda,
-    _lapack_complex_double* w, _lapack_complex_double* vl, lapack_int ldvl,
-    _lapack_complex_double* vr, lapack_int ldvr)
+    lapack_int n, std::complex<double>* a, lapack_int lda,
+    std::complex<double>* w, std::complex<double>* vl, lapack_int ldvl,
+    std::complex<double>* vr, lapack_int ldvr)
   {
     return lapack_zgeev(matrix_order, jobvl, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
   }
@@ -312,13 +292,13 @@ namespace fast_linalg {
   /// @name Performs LU decomosition of a complex matrix
   //@{
   inline lapack_int getrf(int matrix_order,
-    lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int m, lapack_int n, std::complex<float>* a, lapack_int lda,
     lapack_int* ipiv)
   {
     return lapack_cgetrf(matrix_order, m, n, a, lda, ipiv);
   }
   inline lapack_int getrf(int matrix_order,
-    lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda,
     lapack_int* ipiv)
   {
     return lapack_zgetrf(matrix_order, m, n, a, lda, ipiv);
@@ -328,14 +308,14 @@ namespace fast_linalg {
   /// @name Performs complex matrix inversion after a call to getrf
   //@{
   inline lapack_int lapack_getri(int matrix_order,
-    lapack_int n, _lapack_complex_float* a, lapack_int lda,
+    lapack_int n, std::complex<float>* a, lapack_int lda,
     lapack_int* ipiv)
   {
     return lapack_cgetri(matrix_order, n, a, lda, ipiv);
   }
 
   inline lapack_int getri(int matrix_order,
-    lapack_int n, _lapack_complex_double* a, lapack_int lda,
+    lapack_int n, std::complex<double>* a, lapack_int lda,
     lapack_int* ipiv)
   {
     return lapack_zgetri(matrix_order, n, a, lda, ipiv);
@@ -480,7 +460,7 @@ namespace fast_linalg {
   }
 
   template <typename FloatType>
-  inline lapack_int heev(int, char, char, lapack_int, _lapack_complex<FloatType>*,
+  inline lapack_int heev(int, char, char, lapack_int, std::complex<FloatType>*,
     lapack_int, FloatType*)
   {
     SCITBX_NOT_IMPLEMENTED();
@@ -489,9 +469,9 @@ namespace fast_linalg {
   
   template <typename FloatType>
   inline lapack_int geev(int, char, char, lapack_int,
-    _lapack_complex<FloatType>*, lapack_int,
-    _lapack_complex<FloatType>*, _lapack_complex<FloatType>*,
-    lapack_int, _lapack_complex<FloatType>*, lapack_int)
+    std::complex<FloatType>*, lapack_int,
+    std::complex<FloatType>*, std::complex<FloatType>*,
+    lapack_int, std::complex<FloatType>*, lapack_int)
   {
     SCITBX_NOT_IMPLEMENTED();
     return 0;
@@ -499,16 +479,16 @@ namespace fast_linalg {
 
   template <typename FloatType>
   lapack_int getrf(int, lapack_int, lapack_int,
-    _lapack_complex<FloatType>* , lapack_int,
-    _lapack_complex<FloatType>*)
+    std::complex<FloatType>* , lapack_int,
+    std::complex<FloatType>*)
   {
     SCITBX_NOT_IMPLEMENTED();
     return 0;
   }
 
   template <typename FloatType>
-  lapack_int lapack_getri(int, lapack_int, _lapack_complex<FloatType>*,
-    lapack_int, _lapack_complex<FloatType>*)
+  lapack_int lapack_getri(int, lapack_int, std::complex<FloatType>*,
+    lapack_int, std::complex<FloatType>*)
   {
     SCITBX_NOT_IMPLEMENTED();
     return 0;

@@ -35,6 +35,7 @@ namespace least_squares {
       beams(beams),
       thickness(thickness),
       maxSg(params[1]),
+      cellVolume(params[3]),
       F000(params[2]),
       index(-1),
       observable_updated(false),
@@ -66,6 +67,7 @@ namespace least_squares {
       beams(other.beams),
       thickness(other.thickness),
       maxSg(other.maxSg),
+      cellVolume(other.cellVolume),
       F000(other.F000),
       mi_lookup(other.mi_lookup),
       observable_updated(false),
@@ -94,8 +96,9 @@ namespace least_squares {
       }
       else {
         observable_updated = false;
-        Fc = f_calc[index];
-        Fsq = observables[index];
+        const FloatType SfacToVolts = 47.87801 / cellVolume;
+        Fc = f_calc[index] * SfacToVolts;
+        Fsq = observables[index] * SfacToVolts * SfacToVolts;
       }
       std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
@@ -145,9 +148,11 @@ namespace least_squares {
         return Fsq;
       }
       SMTBX_ASSERT(frame != 0);
+      FloatType FsqToVolts = scitbx::fn::pow2(47.87801 / cellVolume);
+      Fsq *= FsqToVolts;
       int coln = design_matrix.accessor().n_columns();
       cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
-      FloatType Kl = scitbx::constants::two_pi / wavelength;
+      FloatType Kl = 1 / wavelength;
       Kl = std::sqrt(Kl*Kl + F000);
       cart_t K = cart_t(0, 0, -Kl);
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
@@ -220,7 +225,7 @@ namespace least_squares {
       //}
       ratio = sin_part / X;
       Fc *= std::sqrt(std::abs(ratio));
-      return (Fsq = I);
+      return (Fsq = I / FsqToVolts);
     }
     virtual std::complex<FloatType> get_f_calc() const {
       if (!observable_updated) {
@@ -256,7 +261,7 @@ namespace least_squares {
     scitbx::mat3<FloatType> UB;
     af::shared<BeamInfo<FloatType> > beams;
     cctbx::xray::thickness<FloatType> const& thickness;
-    FloatType maxSg, F000;
+    FloatType maxSg, cellVolume, F000;
     af::shared<std::complex<FloatType> > f_calc;
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
