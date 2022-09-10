@@ -47,7 +47,7 @@ bool check_packed_full(int N, const double* x, const double* y) {
   return correct;
 }
 using namespace fast_linalg;
-extern void print_matrix(char* desc, lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda);
+extern void print_matrix(char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda);
 void print_matrix(char* desc, lapack_int m, lapack_int n, double* a, lapack_int lda);
 
 template <typename FT>
@@ -66,12 +66,12 @@ template <typename CT>
 bool cmp_arraysc(const CT* a, const CT* b, size_t l) {
   int m = 100;
   for (size_t i = 0; i < l; i++) {
-    if ((int)(a[i].real * m) - (int)(b[i].real * m) > 0) {
-      printf("\n!!%6.2f != %6.2f", a[i].real, b[i].real);
+    if ((int)(a[i].real() * m) - (int)(b[i].real() * m) > 0) {
+      printf("\n!!%6.2f != %6.2f", a[i].real(), b[i].real());
       return false;
     }
-    if ((int)(a[i].imag * m) - (int)(b[i].imag * m) > 0) {
-      printf("\n!!%6.2f != %6.2f", a[i].imag, b[i].imag);
+    if ((int)(a[i].imag() * m) - (int)(b[i].imag() * m) > 0) {
+      printf("\n!!%6.2f != %6.2f", a[i].imag(), b[i].imag());
       return false;
     }
   }
@@ -181,8 +181,8 @@ int main(int argc, char** argv) {
       LDVR = N;
     lapack_int n = N, lda = LDA, ldvl = LDVL, ldvr = LDVR;
     /* Local arrays */
-    _lapack_complex_double w[N], vl[LDVL * N], vr[LDVR * N];
-    _lapack_complex_double a[LDA * N] = {
+    std::complex<double> w[N], vl[LDVL * N], vr[LDVR * N];
+    std::complex<double> a[LDA * N] = {
       {6.0161 , 1.5243}, {-3.5696 ,-6.9555}, {8.4695 ,-5.7720}, {7.8672 ,-6.2221},
       {3.5749 , 4.0301}, {-8.9314 , 7.1091}, {-1.6872 ,-6.7515}, {3.6823 , 7.5440},
       {1.6773 ,-3.7865}, {8.6006 , 5.4106}, {-1.6935 ,-9.8013}, {-6.2401 ,-6.4186},
@@ -200,14 +200,14 @@ int main(int argc, char** argv) {
       print_matrix("Eigenvalues", 1, n, w, 1);
       print_matrix("Left eigenvectors", n, n, vl, ldvl);
       print_matrix("Right eigenvectors", n, n, vr, ldvr);
-      _lapack_complex_double w_tst[] = {
+      std::complex<double> w_tst[] = {
         {2.3797,-14.9575}, {8.3883,-2.7927}, {-11.9239,1.2782}, {-12.1793,15.1970} };
-      _lapack_complex_double vl_tst[] = {
+      std::complex<double> vl_tst[] = {
          {0.3059,0.0463}, {0.6846,0.0000}, {-0.1280,-0.3516}, {-0.1127,0.1348},
          {-0.0363,-0.3859}, {0.1345,0.3407}, {-0.4961,0.0883}, {0.8112,0.0000},
         {0.7488,0.0000}, {-0.0083,0.5602}, {0.0598,0.3013}, {-0.2160,-0.2566},
         {0.0752,0.4332}, {0.2884,0.0103}, {0.7154,0.0000}, {0.2851,0.3425} };
-      _lapack_complex_double vr_tst[] = {
+      std::complex<double> vr_tst[] = {
         {0.0300,0.5231}, {0.8717,0.0000}, {0.6162,0.0000}, {-0.2737,0.1951},
         {-0.0563,-0.1815}, {0.1617,0.3467}, {0.1741,-0.1522}, {0.6838,0.0000},
         {0.7645,0.0000}, {-0.0686,0.1140}, {-0.1895,-0.3938}, {-0.0635,-0.1354},
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
       LDA = N;
     lapack_int n = N, lda = LDA;
     double w[N];
-    _lapack_complex_double a[LDA * N] = {
+    std::complex<double> a[LDA * N] = {
       {-8.1415, 0} ,      {0,0} ,            {0,0},             {0,0},
       {-1.5971,1.3513} ,  {0.6667,0} ,       {0,0} ,            {0,0},
       {-0.8081, 0.5664},  {0.5465, -1.8765}, {8.6014,0},        {0,0},
@@ -264,7 +264,7 @@ int main(int argc, char** argv) {
       print_matrix("Eigenvectors (stored columnwise)", n, n, a, lda);
 
       double w_tst[] = { -12.8458, -5.5622, 7.3574, 19.8155 };
-      _lapack_complex_double v_tst[] = {
+      std::complex<double> v_tst[] = {
         {-0.7032,0.0000}, {-0.6776,0.0000}, {0.1122,0.0000}, {-0.1840,0.0000},
         {0.2135,0.4198}, {-0.4081,-0.4845}, {-0.3705,-0.0302}, {0.4611,0.1616},
         {-0.1296,-0.0949}, {0.0602,0.1302}, {-0.8117,-0.3629}, {-0.2210,-0.3380},
@@ -317,11 +317,11 @@ int main(int argc, char** argv) {
   return all_correct ? 0 : 1;
 }
 
-void print_matrix(char* desc, lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda) {
+void print_matrix(char* desc, lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda) {
   printf("\n %s\n", desc);
   for (lapack_int i = 0; i < m; i++) {
     for (lapack_int j = 0; j < n; j++) {
-      printf(" {%6.4f,%6.4f},", a[i * lda + j].real, a[i * lda + j].imag);
+      printf(" {%6.4f,%6.4f},", a[i * lda + j].real(), a[i * lda + j].imag());
     }
     printf("\n");
   }

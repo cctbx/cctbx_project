@@ -34,28 +34,28 @@ namespace fast_linalg {
     double*, lapack_int, double*);
 
   typedef lapack_int(LAPACKE_cheev_t)(int, char, char, lapack_int,
-    _lapack_complex_float*, lapack_int, float*);
+    std::complex<float>*, lapack_int, float*);
   typedef lapack_int(LAPACKE_zheev_t)(int, char, char, lapack_int,
-    _lapack_complex_double*, lapack_int, double*);
+    std::complex<double>*, lapack_int, double*);
 
   typedef lapack_int(LAPACKE_cgeev_t)(int, char, char, lapack_int,
-    _lapack_complex_float*, lapack_int, _lapack_complex_float*,
-    _lapack_complex_float*, lapack_int, _lapack_complex_float*, lapack_int);
+    std::complex<float>*, lapack_int, std::complex<float>*,
+    std::complex<float>*, lapack_int, std::complex<float>*, lapack_int);
   typedef lapack_int(LAPACKE_zgeev_t)(int, char, char, lapack_int,
-    _lapack_complex_double*, lapack_int, _lapack_complex_double*,
-    _lapack_complex_double*, lapack_int, _lapack_complex_double*, lapack_int);
+    std::complex<double>*, lapack_int, std::complex<double>*,
+    std::complex<double>*, lapack_int, std::complex<double>*, lapack_int);
 
   typedef lapack_int (LAPACKE_cgetrf_t)(int, lapack_int, lapack_int,
-    _lapack_complex_float*, lapack_int,
+    std::complex<float>*, lapack_int,
     lapack_int*);
   typedef lapack_int (LAPACKE_cgetri_t)(int, lapack_int,
-    _lapack_complex_float*, lapack_int, lapack_int*);
+    std::complex<float>*, lapack_int, lapack_int*);
 
   typedef lapack_int(LAPACKE_zgetrf_t)(int, lapack_int, lapack_int,
-    _lapack_complex_double*, lapack_int,
+    std::complex<double>*, lapack_int,
     lapack_int*);
   typedef lapack_int(LAPACKE_zgetri_t)(int, lapack_int,
-    _lapack_complex_double*, lapack_int, lapack_int*);
+    std::complex<double>*, lapack_int, lapack_int*);
 
   typedef void (cblas_ssyr_t)(int, int, int, float, const float *,
     int, float *, int);
@@ -368,13 +368,13 @@ lapack_int lapack_dsyev(int matrix_order, char jobz,
 //............................................................................
 //............................................................................
 lapack_int lapack_cheev(int matrix_order, char jobz,
-  char uplo, lapack_int n, _lapack_complex_float* a, lapack_int lda, float* w)
+  char uplo, lapack_int n, std::complex<float>* a, lapack_int lda, float* w)
 {
   return (*Wrapper::instance().LAPACKE_cheev)(
     matrix_order, jobz, uplo, n, a, lda, w);
 }
 lapack_int lapack_zheev(int matrix_order, char jobz,
-  char uplo, lapack_int n, _lapack_complex_double* a, lapack_int lda, double* w)
+  char uplo, lapack_int n, std::complex<double>* a, lapack_int lda, double* w)
 {
   return (*Wrapper::instance().LAPACKE_zheev)(
     matrix_order, jobz, uplo, n, a, lda, w);
@@ -382,17 +382,17 @@ lapack_int lapack_zheev(int matrix_order, char jobz,
 //............................................................................
 //............................................................................
 lapack_int lapack_cgeev(int matrix_order, char joblv, char jobvr,
-  lapack_int n, _lapack_complex_float* a, lapack_int lda,
-  _lapack_complex_float* w, _lapack_complex_float* vl, lapack_int ldvl,
-  _lapack_complex_float* vr, lapack_int ldvr)
+  lapack_int n, std::complex<float>* a, lapack_int lda,
+  std::complex<float>* w, std::complex<float>* vl, lapack_int ldvl,
+  std::complex<float>* vr, lapack_int ldvr)
 {
   return (*Wrapper::instance().LAPACKE_cgeev)(
     matrix_order, joblv, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
 }
 lapack_int lapack_zgeev(int matrix_order, char joblv, char jobvr,
-  lapack_int n, _lapack_complex_double* a, lapack_int lda,
-  _lapack_complex_double* w, _lapack_complex_double* vl, lapack_int ldvl,
-  _lapack_complex_double* vr, lapack_int ldvr)
+  lapack_int n, std::complex<double>* a, lapack_int lda,
+  std::complex<double>* w, std::complex<double>* vl, lapack_int ldvl,
+  std::complex<double>* vr, lapack_int ldvr)
 {
   return (*Wrapper::instance().LAPACKE_zgeev)(
     matrix_order, joblv, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr);
@@ -400,14 +400,14 @@ lapack_int lapack_zgeev(int matrix_order, char joblv, char jobvr,
 //............................................................................
 //............................................................................
 lapack_int lapack_cgetrf(int matrix_order,
-  lapack_int m, lapack_int n, _lapack_complex_float* a, lapack_int lda,
+  lapack_int m, lapack_int n, std::complex<float>* a, lapack_int lda,
   lapack_int* ipiv)
 {
   return (*Wrapper::instance().LAPACKE_cgetrf)(
     matrix_order, m, n, a, lda, ipiv);
 }
 lapack_int lapack_zgetrf(int matrix_order,
-  lapack_int m, lapack_int n, _lapack_complex_double* a, lapack_int lda,
+  lapack_int m, lapack_int n, std::complex<double>* a, lapack_int lda,
   lapack_int* ipiv)
 {
   return (*Wrapper::instance().LAPACKE_zgetrf)(
@@ -416,14 +416,14 @@ lapack_int lapack_zgetrf(int matrix_order,
 //............................................................................
 //............................................................................
 lapack_int lapack_cgetri(int matrix_order,
-  lapack_int n, _lapack_complex_float* a, lapack_int lda,
+  lapack_int n, std::complex<float>* a, lapack_int lda,
   lapack_int* ipiv)
 {
   return (*Wrapper::instance().LAPACKE_cgetri)(
     matrix_order, n, a, lda, ipiv);
 }
 lapack_int lapack_zgetri(int matrix_order,
-  lapack_int n, _lapack_complex_double* a, lapack_int lda,
+  lapack_int n, std::complex<double>* a, lapack_int lda,
   lapack_int* ipiv)
 {
   return (*Wrapper::instance().LAPACKE_zgetri)(
