@@ -66,26 +66,34 @@ if (env_etc.enable_kokkos):
   diffBragg_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
   diffBragg_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
+  diffBraggKokkos_env = diffBragg_env.Clone()
+  
   # remove DNANOBRAGG_HAVE_CUDA compile option
-  ccflags = diffBragg_env['CPPDEFINES']
+  ccflags = diffBraggKokkos_env['CPPDEFINES']
   o = 'NANOBRAGG_HAVE_CUDA'
   if o in ccflags:
     ccflags.remove(o)
 
-  diffBraggKokkos_lib = diffBragg_env.SharedLibrary(
+  diffBraggKokkos_lib = diffBraggKokkos_env.SharedLibrary(
     target="#lib/libsimtbx_diffBraggKOKKOS",
     source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp", "../../kokkostbx/kokkos_utils.cpp"],
-    LIBS=['kokkoscontainers', 'kokkoscore'],
-    CPPDEFINES=ccflags)
-  env_simtbx.Prepend(LIBS=["simtbx_diffBraggKOKKOS"])
+    LIBS=['kokkoscontainers', 'kokkoscore'])
 
   libs = env_simtbx['LIBS']
   print("LIBS: ", libs)
 
+  libpath = []
+  libs = []
   if 'Cuda' in os.getenv("KOKKOS_DEVICES"):
-    env_simtbx.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'lib64')])
-    env_simtbx.Append(LIBPATH=[os.path.join(os.environ['CUDA_HOME'], 'compat')])
-    env_simtbx.Append(LIBS=["cudart", "cuda"])
+    libpath += [os.path.join(os.environ['CUDA_HOME'], 'lib64')]
+    libpath += [os.path.join(os.environ['CUDA_HOME'], 'compat')]
+    libs += ["cudart", "cuda"]
+  elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
+    libpath += [os.path.join(os.environ['ROCM_PATH'], 'lib')]
+    libs += ["amdhip64", "hsa-runtime64"])
+
 env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
-  source=[diffBragg_obj])
+  source=[diffBragg_obj],
+  LIBPATH=env_simtbx['LIBPATH'] + libpath,
+  LIBS=['simtbx_diffBraggKOKKOS'] + env_simtbx['LIBS'] + libs)
