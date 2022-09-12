@@ -49,10 +49,20 @@ class RefineCryoemSignal(RefineBase):
     self.x = start_x[:]         # Full set of parameters
     d_min = math.sqrt(1./flex.max(sumfsqr_lm.d_star_sq().data()))
     cell_tensor = flex.double((astar*astar, bstar*bstar, cstar*cstar, astar*bstar, astar*cstar, bstar*cstar))
-    # Maximum beta should give an exponential argument < 50 at resolution limit
-    self.max_beta = list(cell_tensor*45*d_min**2)
+
+    # Maximum beta should usually give an exponential argument < 50 at resolution limit
+    self.max_beta = cell_tensor * 45 * d_min**2
+    # But make sure that maximum is higher than initial estimate
+    # This can be an issue for subvolumes with unusually low signal
+    asqr_beta = flex.double(self.x[self.n_bins + 1:self.n_bins + 7])
+    if (self.max_beta[0] < 3 * asqr_beta[0]):
+      rescale = 3 * asqr_beta[0]/self.max_beta[0]
+      self.max_beta = rescale * self.max_beta
+    self.max_beta = list(self.max_beta)
+
     # Choose maximum shift in beta to change by less than factor of 2 at resolution limit
     self.large_shifts_beta = list(cell_tensor*math.log(2.)*d_min**2)
+
     # Apply a relatively weak restraint to sphericity of beta
     self.sigmaSphericityBeta = cell_tensor * 5*d_min**2
     # sigmaSphericityBiso = adptbx.u_as_b(adptbx.beta_as_u_cart(self.unit_cell, tuple(self.sigmaSphericityBeta)))
@@ -1613,6 +1623,8 @@ def assess_cryoem_errors(
   intercept = (sumwy - slope * sumwx) / sumw
   wilson_scale_signal = math.exp(intercept)
   wilson_b_signal = -4 * slope
+  if verbosity > 0:
+    print("\n  Wilson B for signal power: ", wilson_b_signal)
   n_bins = ssqr_bins.size()
 
   sigmaT_bins = [1.]*n_bins
