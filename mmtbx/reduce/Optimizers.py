@@ -936,6 +936,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       # update the best.
       score = 0
       for i in range(len(movers)):
+        score += states[i].preferenceEnergies[curStateValues[i]]
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -950,8 +951,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     ret = 0.0
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
-      self._coarseLocations[movers[i]] = bestState[i]
-      self._highScores[m] = 0
+      self._coarseLocations[m] = bestState[i]
+      self._highScores[m] = states[i].preferenceEnergies[curStateValues[i]]
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
       self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1073,7 +1074,8 @@ class _CliqueOptimizer(_BruteForceOptimizer):
 
         # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
         # update the best.
-        for m in cutMovers:
+        for i, m in enumerate(cutMovers):
+          score += states[m].preferenceEnergies[curStateValues[i]]
           for a in states[m].atoms:
             score += self._scoreAtom(a)
         self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1090,7 +1092,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       for i,m in enumerate(movers):
         self._setMoverState(states[m], bestState[i])
         self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = 0
+        self._highScores[m] = states[m].preferenceEnergies[bestState[i]]
         for a in states[m].atoms:
           self._highScores[m] += self._scoreAtom(a)
         self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1420,7 +1422,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
         try:
           movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference))
           infoString += _VerboseCheck(1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
-          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName;
+          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
         except Exception as e:
           infoString += _VerboseCheck(0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
