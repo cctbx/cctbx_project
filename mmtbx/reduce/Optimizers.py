@@ -59,7 +59,14 @@ probePhil = None
 
 # Preference for not flipping Movers that are flips.  This keeps them from being flipped
 # unless their score is significantly better than in the original position.
+# @todo Move this parameter into a reducePhil struct
 nonFlipPreference = 0.5
+
+# Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
+# removal and fixup for Histidines that are not placed as Movers, but for flips that
+# are Movers we don't adjust the bond angles.
+# @todo Move this parameter into a reducePhil struct
+skipBondFixup = False
 
 ##################################################################################
 # Helper functions
@@ -635,13 +642,15 @@ class _SingletonOptimizer(object):
         # and deletion status for all atoms that have entries for each.
         # This must be done after we print the scores because the print methods move the
         # coarse state to see how much it changed.
-        self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
-        for m in self._movers:
-          loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
-          self._moverInfo[m],loc))
-          self._doFixup(m.FixUp(loc))
-        self._infoString += _ReportTiming("fix up Movers")
+        global skipBondFixup
+        if not skipBondFixup:
+          self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
+          for m in self._movers:
+            loc = self._coarseLocations[m]
+            self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
+            self._moverInfo[m],loc))
+            self._doFixup(m.FixUp(loc))
+          self._infoString += _ReportTiming("fix up Movers")
 
       ################################################################################
       # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,

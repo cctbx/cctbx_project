@@ -30,7 +30,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 
-version = "0.4.0"
+version = "0.5.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -61,6 +61,10 @@ non_flip_preference = 0.5
   .type = float
   .short_caption = Preference to not flip
   .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
+skip_bond_fix_up = False
+  .type = bool
+  .short_caption = Skip fixup step for Movers
+  .help = For debugging purposes, it can be useful to only do flips with no bond fix-up to compare scores.
 profile = False
   .type = bool
   .short_caption = Profile the entire run
@@ -231,6 +235,7 @@ NOTES:
       startOpt = work_clock()
       Optimizers.probePhil = self.params.probe
       Optimizers.nonFlipPreference = self.params.non_flip_preference
+      Optimizers.skipBondFixup = self.params.skip_bond_fix_up
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, self.model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = work_clock()
@@ -238,6 +243,7 @@ NOTES:
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
       outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      print(opt.getAtomDump())
 
     else: # Removing Hydrogens from the model rather than adding them.
       make_sub_header('Removing Hydrogens', out=self.logger)
