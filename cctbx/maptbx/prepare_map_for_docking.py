@@ -1968,12 +1968,17 @@ def run():
       map_file_name = "ordered_volume_mask.map"
     ordered_mm.write_map(map_file_name)
 
-  # The following could loop over different regions
-  if cutout_specified:
-    # Refine to get scale and error parameters for docking region
-    results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
-      verbosity=verbosity, sphere_cent=sphere_cent, radius=radius,
-      shift_map_origin=shift_map_origin)
+  # Default to sphere containing most of ordered volume
+  if not cutout_specified:
+    target_completeness = 0.98
+    radius = get_mask_radius(mmm.get_map_manager_by_id(mask_id),target_completeness)
+    ucpars = mm1.unit_cell().parameters()
+    sphere_cent = (ucpars[0]/2,ucpars[1]/2,ucpars[2]/2)
+
+  # Refine to get scale and error parameters for docking region
+  results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
+    verbosity=verbosity, sphere_cent=sphere_cent, radius=radius,
+    shift_map_origin=shift_map_origin)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
