@@ -187,7 +187,13 @@ class jf16m_cxigeom2nexus(object):
       if self.params.raw:
         unassembled_data_key = "data/JF07T32V01/data"
       else:
+        unassembled_file = h5py.File(self.params.unassembled_file, "r")
         unassembled_data_key = "data/data"
+        if not unassembled_file.get(unassembled_data_key):
+          unassembled_data_key = "data/JF07T32V01/data"
+        if not unassembled_file.get(unassembled_data_key):
+          raise Sorry("couldn't find unassembled data in the indicated file")
+        unassembled_file.close()
     data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
 
     if self.params.raw_file is not None:
