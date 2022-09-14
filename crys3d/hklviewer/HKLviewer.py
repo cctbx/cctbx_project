@@ -292,6 +292,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.ReadPersistedQsettings()
     self.buttonsdeflist =[]
     self.app = thisapp
+    self.cctbxversion = "unversioned"
     self.actiondebug.setVisible(False)
     self.UseOSBrowser = False
     self.devmode = False
@@ -932,7 +933,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.aboutform.copyrightstxt.setText(txts)
             self.aboutform.setFixedSize( self.aboutform.sizeHint() )
           if self.infodict.get("cctbxversion"):
-            self.aboutform.writeAboutstr( self.infodict["cctbxversion"])
+            self.cctbxversion = self.infodict["cctbxversion"]
+            self.aboutform.writeAboutstr( self.cctbxversion )
 
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
@@ -2502,7 +2504,12 @@ clip_plane {
     if not write_factory_default_settings:  # don't store system specific value as a default
       self.settings.setValue("PythonPath", self.cctbxpython )
     self.settings.beginGroup("MillerTableColumnHeader")
-
+    ###### Code below should be done elsewhere such as in conda installation scripts for CCTBX
+    # This presumes Qt is present in the CCTBX build and will then provide a path for GUI dispatchers
+    cctbxbindir = os.path.split(self.cctbxpython)[0]
+    cctbxversionsettings = QSettings("CCTBX", self.cctbxversion ) # version number sent from cctbx process
+    cctbxversionsettings.setValue("DispatcherPath", cctbxbindir )
+    #####################
     for philname, dummy, value in self.colnames_select_lst:
       self.settings.setValue(philname, int(value) )
     if len(self.colnames_select_lst) == 0:
