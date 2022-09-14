@@ -381,7 +381,7 @@ if 'SYCL' in os.getenv('KOKKOS_DEVICES'):
   #Remove duplicate flags
   kokkos_env.Replace(CXXFLAGS=[list(OrderedDict.fromkeys(kokkos_env['CXXFLAGS']))])
   kokkos_env.Replace(SHLINKFLAGS=[list(OrderedDict.fromkeys(kokkos_env['SHLINKFLAGS']))])
-
+  #kokkos_env.Append(LIBS=['sycl'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
