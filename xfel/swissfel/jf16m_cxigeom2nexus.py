@@ -280,7 +280,6 @@ class jf16m_cxigeom2nexus(object):
         if not beam_h5.get(spectral_data_key+":SPECTRUM_CENTER/pulse_id"):
           spectral_data_key = "data/SARFE10-PSSS059"
       if not beam_h5.get(spectral_data_key+":SPECTRUM_CENTER/pulse_id"):
-        import pdb; pdb.set_trace()
         raise Sorry("couldn't find spectral data at the indicated address")
 
       beam_pulse_ids = beam_h5[spectral_data_key+':SPECTRUM_CENTER/pulse_id'][()]
