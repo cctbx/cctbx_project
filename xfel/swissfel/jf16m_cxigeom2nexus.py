@@ -56,6 +56,10 @@ phil_scope = parse("""
     .type = str
     .expert_level = 2
     .help = Override hdf5 key name in unassembled file
+  spectral_data_key = None
+    .type = str
+    .expert_level = 2
+    .help = Override beam hdf5 file key for spectral data
   pedestal_file = None
     .type = str
     .help = path to Jungfrau pedestal file
@@ -185,16 +189,16 @@ class jf16m_cxigeom2nexus(object):
       unassembled_data_key = self.params.unassembled_data_key
     else:
       if self.params.raw:
-        unassembled_data_key = "data/JF07T32V01/data"
+        unassembled_data_key = "data/JF07T32V01"
       else:
         unassembled_file = h5py.File(self.params.unassembled_file, "r")
-        unassembled_data_key = "data/data"
+        unassembled_data_key = "data"
         if not unassembled_file.get(unassembled_data_key):
-          unassembled_data_key = "data/JF07T32V01/data"
+          unassembled_data_key = "data/JF07T32V01"
         if not unassembled_file.get(unassembled_data_key):
           raise Sorry("couldn't find unassembled data in the indicated file")
         unassembled_file.close()
-    data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key)
+    data[data_key] = h5py.ExternalLink(self.params.unassembled_file, unassembled_data_key+"/data")
 
     if self.params.raw_file is not None:
       assert not self.params.raw
@@ -265,18 +269,28 @@ class jf16m_cxigeom2nexus(object):
     elif self.params.beam_file is not None:
       # data file has pulse ids, need to match those to the beam file, which may have more pulses
       if self.params.raw:
-        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/JF07T32V01/pulse_id'][()]
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
       else:
-        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')['data/pulse_id'][()]
+        data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
       beam_h5 = h5py.File(self.params.beam_file, 'r')
-      beam_pulse_ids = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/pulse_id'][()]
-      beam_energies = beam_h5['data/SARFE10-PSSS059:SPECTRUM_CENTER/data'][()]
+      if self.params.spectral_data_key:
+        spectral_data_key = self.params.spectral_data_key
+      else:
+        spectral_data_key = "SARFE10-PSSS059"
+        if not beam_h5.get(spectral_data_key+":SPECTRUM_CENTER/pulse_id"):
+          spectral_data_key = "data/SARFE10-PSSS059"
+      if not beam_h5.get(spectral_data_key+":SPECTRUM_CENTER/pulse_id"):
+        import pdb; pdb.set_trace()
+        raise Sorry("couldn't find spectral data at the indicated address")
+
+      beam_pulse_ids = beam_h5[spectral_data_key+':SPECTRUM_CENTER/pulse_id'][()]
+      beam_energies = beam_h5[spectral_data_key+':SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.recalculate_wavelength:
         orig_energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.include_spectra:
-        beam_spectra_x = beam_h5['data/SARFE10-PSSS059:SPECTRUM_X/data'][()]
-        beam_spectra_y = beam_h5['data/SARFE10-PSSS059:SPECTRUM_Y/data'][()]
+        beam_spectra_x = beam_h5[spectral_data_key+':SPECTRUM_X/data'][()]
+        beam_spectra_y = beam_h5[spectral_data_key+':SPECTRUM_Y/data'][()]
         spectra_x = np.ndarray((len(data_pulse_ids),beam_spectra_x.shape[1]), dtype='f8')
         spectra_y = np.ndarray((len(data_pulse_ids),beam_spectra_y.shape[1]), dtype='f8')
 
