@@ -119,7 +119,6 @@ class load_balancer(worker):
     recv_data = [(None, None) for j in range(len(send_tuples))]
     for (j, count) in send_instructions:
       send_expt_j = experiments[-count:]
-      mpi_communicator.send(send_expt_j, dest=j, tag=0)
       experiments = experiments[:-count]
       send_refl_j = self.reflection_table_stub(reflections)
       for k, e in enumerate(send_expt_j):
