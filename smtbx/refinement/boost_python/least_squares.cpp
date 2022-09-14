@@ -201,7 +201,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static void wrap_ed_two_beam() {
         using namespace boost::python;
         typedef f_calc_function_ed_two_beam<FloatType> wt;
-        typedef f_calc_function_base<FloatType> at;
+        typedef f_calc_function_base<FloatType> f_calc_f_t;
+
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed_two_beam", no_init)
           .def(init<builder_base<FloatType> const&,
@@ -224,24 +225,22 @@ namespace smtbx { namespace refinement { namespace least_squares {
         using namespace boost::python;
         typedef ed_n_shared_data<FloatType> wt;
         typedef f_calc_function_base<FloatType> f_calc_f_t;
-        typedef builder_base<FloatType> data_t;
 
         class_<wt, std::auto_ptr<wt> >("ed_n_shared_data", no_init)
-          .def(init<data_t const&,
-            reparametrisation const&,
-            bool,
+          .def(init<reparametrisation const&,
             f_calc_f_t&,
             cctbx::xray::fc_correction<FloatType> const&,
             sgtbx::space_group const&,
+            bool,
             scitbx::mat3<FloatType> const&,
             af::shared<BeamInfo<FloatType> > const&,
             cctbx::xray::thickness<FloatType> const&,
             // wavelength, epsilon, maxSg, F000, cell volume
             af::shared<FloatType> const&,
             bool, bool>(
-              (arg("data"), arg("reparametrisation"),
-                arg("anomalous_flag"), arg("f_calc_function"), arg("fc_correction"),
-                arg("space_group"),
+              (arg("reparametrisation"),
+                arg("f_calc_function"), arg("fc_correction"),
+                arg("space_group"), arg("anomalous_flag"),
                 arg("UB"), arg("beams"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           //.add_property("ratio", &wt::get_ratio)
