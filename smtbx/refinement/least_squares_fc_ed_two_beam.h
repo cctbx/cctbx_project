@@ -96,9 +96,9 @@ namespace least_squares {
       }
       else {
         observable_updated = false;
-        const FloatType SfacToVolts = 47.87801 / cellVolume;
-        Fc = f_calc[index] * SfacToVolts;
-        Fsq = observables[index] * SfacToVolts * SfacToVolts;
+        const FloatType sfac_k = scitbx::constants::four_pi_sq * 4.429182e-01 / cellVolume;
+        Fc = f_calc[index] * sfac_k;
+        Fsq = observables[index] * sfac_k * sfac_k;
       }
       std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
@@ -148,17 +148,15 @@ namespace least_squares {
         return Fsq;
       }
       SMTBX_ASSERT(frame != 0);
-      FloatType FsqToVolts = scitbx::fn::pow2(47.87801 / cellVolume);
-      Fsq *= FsqToVolts;
       int coln = design_matrix.accessor().n_columns();
       cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
       FloatType Kl = 1 / wavelength;
-      Kl = std::sqrt(Kl*Kl + F000);
+      //Kl = std::sqrt(Kl*Kl + F000);
       cart_t K = cart_t(0, 0, -Kl);
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
-        t_part = ((scitbx::constants::pi * t) / (K * frame->normal)),
+        t_part = ((scitbx::constants::pi * t)),// / (K * frame->normal)),
         P = t_part * std::sqrt(X);
       FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
         I = Fsq * sin_part / X;
@@ -225,7 +223,7 @@ namespace least_squares {
       //}
       ratio = sin_part / X;
       Fc *= std::sqrt(std::abs(ratio));
-      return (Fsq = I / FsqToVolts);
+      return (Fsq = I);
     }
     virtual std::complex<FloatType> get_f_calc() const {
       if (!observable_updated) {
