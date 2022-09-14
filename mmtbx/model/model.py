@@ -3851,13 +3851,6 @@ class manager(object):
          scattering_table in ["n_gaussian","wk1995", "it1992", "electron"]):
         not_hd_sel = ~hd_selection
         m = m.select(not_hd_sel)
-    size = m.size()
-    atoms = m.get_hierarchy().atoms()
-    bs = flex.double(size, 10.0)
-    atoms.set_b(bs)
-    occs = flex.double(size, 1.0)
-    atoms.set_occ(occs)
-    #
     return mmtbx.model.statistics.geometry(
       model           = m,
       fast_clash      = fast_clash,
