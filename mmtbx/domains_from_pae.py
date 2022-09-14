@@ -52,7 +52,7 @@ def parse_pae_file(pae_file):
     import numpy
     import os
     _, ext = os.path.splitext(pae_file)
-    if ext == '.json':
+    if ext == '.json' or ext == '.jsn':
         import json
 
         try:
