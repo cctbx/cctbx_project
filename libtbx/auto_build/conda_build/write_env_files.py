@@ -10,7 +10,7 @@ import sys
 
 # =============================================================================
 # unix files
-bash_template = '''
+bash_template = '''\
 #!/usr/bin/env bash
 
 export {program}_PREFIX={prefix}
@@ -18,7 +18,7 @@ export {program}_VERSION={version}
 export PATH={bin_dir}:$PATH
 '''
 
-csh_template = '''
+csh_template = '''\
 #!/usr/bin/env csh
 
 setenv {program}_PREFIX {prefix}
@@ -27,7 +27,7 @@ setenv PATH {bin_dir}:$PATH
 '''
 
 # Windows file
-bat_template = '''
+bat_template = '''\
 @echo off
 set {program}_PREFIX=%~dp0
 set {program}_VERSION={version}
