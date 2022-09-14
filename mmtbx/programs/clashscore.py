@@ -89,7 +89,7 @@ Example:
     # if do_flips, make keep_hydrogens false
     if self.params.do_flips : self.params.keep_hydrogens = False
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    result = clashscore(
+    self.result = clashscore(
       pdb_hierarchy=hierarchy,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
@@ -100,6 +100,9 @@ Example:
       b_factor_cutoff=self.params.b_factor_cutoff,
       do_flips=self.params.do_flips)
     if self.params.verbose:
-      result.show_old_output(out=self.logger)
+      self.result.show_old_output(out=self.logger)
     else:
-      print(round(result.get_clashscore(),2), file=self.logger)
+      print(round(self.result.get_clashscore(),2), file=self.logger)
+
+  def get_results(self):
+    return self.result
