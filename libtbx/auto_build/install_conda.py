@@ -743,7 +743,7 @@ builder.""".format(filename=filename, builder=builder))
       command_list.append("-y")
     if builder in self.env_without_python:
       python_version = tuple(int(i) for i in (python or "36"))
-      python_requirement = "conda-forge::python>=%s.%s,<%s.%s" % (
+      python_requirement = '"conda-forge::python>=%s.%s,<%s.%s"' % (
           python_version[0],
           python_version[1],
           python_version[0],
