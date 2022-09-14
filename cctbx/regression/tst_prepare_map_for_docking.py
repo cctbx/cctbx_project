@@ -192,24 +192,32 @@ def exercise():
   # Now get results from assessment of signal and errors
   expectE = results.expectE
   mean_Esqr = flex.mean_default(flex.pow2(flex.abs(expectE.data())),0)
+  eps_mean_Esqr = 0.1
   if debug:
-    print("Mean value of ideal E**2: ", mean_Esqr_ideal)
+    print("\n\nRegression tests:")
+    print("\nMean value of ideal E**2: ", mean_Esqr_ideal)
     print("Mean value of E**2 for docking map: ", mean_Esqr)
+    print("   Target for each is 1 with an allowed deviation of ",eps_mean_Esqr)
   else:
-    assert approx_equal(mean_Esqr_ideal, 1.0, eps=0.1)
-    assert approx_equal(mean_Esqr, 1.0, eps=0.1)
+    assert approx_equal(mean_Esqr_ideal, 1.0, eps=eps_mean_Esqr)
+    assert approx_equal(mean_Esqr, 1.0, eps=eps_mean_Esqr)
 
+  target_ideal_achieved = 0.95
   mapCC_ideal_achieved = mc_ideal_wtd.map_correlation(other=mc_achieved)
   if debug:
-    print("CC between ideal and achieved maps:",mapCC_ideal_achieved)
+    print("\nCC between ideal and achieved maps:",mapCC_ideal_achieved)
+    print("   Target is >= ", target_ideal_achieved)
   new_mmm.add_map_from_fourier_coefficients(
       mc_ideal_wtd, map_id = 'ideal_map')
   ideal_mapCC = new_mmm.map_model_cc(map_id = 'ideal_map')
+  target_achieved = 0.95*ideal_mapCC
   if debug:
-    print("Perfect, starting, ideal and achieved mapCC: ", perfect_mapCC, start_mapCC, ideal_mapCC, achieved_mapCC)
+    print("\nPerfect, starting and ideal mapCC: ", perfect_mapCC, start_mapCC, ideal_mapCC)
+    print("Achieved mapCC: ", achieved_mapCC)
+    print("   Target is >= ", target_achieved)
   else:
-    assert(mapCC_ideal_achieved > 0.96)
-    assert(achieved_mapCC > 0.97*ideal_mapCC)
+    assert(mapCC_ideal_achieved > target_ideal_achieved)
+    assert(achieved_mapCC > target_achieved)
 
 if(__name__ == "__main__"):
   exercise()
