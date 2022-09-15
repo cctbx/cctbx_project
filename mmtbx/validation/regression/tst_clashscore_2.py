@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import time
 import libtbx.load_env
-import os
 
 from mmtbx.command_line.molprobity import run as mp_run
 from libtbx.utils import multi_out
