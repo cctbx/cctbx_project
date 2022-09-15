@@ -97,11 +97,34 @@ def get_selection_from_user(hierarchy):
     rc = get_class(atom_group.resname)
     if rc in ['common_amino_acid', 'common_water']: continue
     print(j, residue_group.id_str(), atom_group.resname, rc)
-    opts.append('chain %s and resid %s and resname %s' % (
-      residue_group.parent().id,
-      residue_group.resid(),
-      atom_group.resname,
-    ))
+    print(dir(residue_group))
+    for conformer in residue_group.conformers():
+      print(dir(conformer))
+      for residue in conformer.residues():
+        print(dir(residue))
+        sel_str = 'chain %s and resid %s and resname %s' % (
+            residue_group.parent().id,
+            residue_group.resid(),
+            residue.resname,
+          )
+        print(sel_str)
+        if residue.is_pure_main_conf:
+          opts.append(sel_str)
+        else:
+          altlocs=[]
+          print(dir(altlocs))
+          for atom in residue.atoms():
+            print(atom.quote())
+            print(dir(atom))
+            print(atom.parent().altloc)
+            altloc = atom.parent().altloc
+            if altloc not in altlocs: altlocs.append(altloc)
+          print(altlocs)
+          ts = []
+          for altloc in altlocs:
+            ts.append('(%s and altloc %s)' % (sel_str, altloc))
+          print(ts)
+          opts.append(' or '.join(ts))
     j+=1
   print('\n\n')
   for i, sel in enumerate(opts):
@@ -268,6 +291,8 @@ Usage examples:
       s=s.replace('   ','_')
       s=s.replace('  ','_')
       s=s.replace(' ','_')
+      s=s.replace('(','')
+      s=s.replace(')','')
       return s
 
     pf = '%s_%s.phil' % (

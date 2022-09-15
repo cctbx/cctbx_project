@@ -90,7 +90,10 @@ class orca_manager(base_qm_manager.base_qm_manager):
     del f
     for line in lines:
       if line.find('FINAL SINGLE POINT ENERGY')>-1:
-        self.energy = float(line.split()[-1])
+        if len(line.strip())==5:
+          self.energy = float(line.split()[-1])
+        else:
+          self.energy = 1e-9
         self.units = 'Hartree'
     return self.energy, None
 

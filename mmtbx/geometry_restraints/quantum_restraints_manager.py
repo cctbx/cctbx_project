@@ -60,6 +60,14 @@ def digester(model,
               )
   return qm_grm
 
+def get_prefix(params):
+  if hasattr(params, 'output') and hasattr(params.output, 'prefix'):
+    prefix = params.output.prefix
+  else:
+    prefix = 'qmr'
+    # print('changing prefix to %s' % prefix)
+  return prefix
+
 def write_pdb_file(model, filename, log=None):
   outl = model.model_as_pdb()
   print('    Writing PDB : %s' % filename, file=log)
@@ -253,7 +261,9 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                          qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
+  if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
   buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
+  if write_steps: write_pdb_file(buffer_model, 'post_remove_altloc.pdb', None)
   for residue_group in buffer_model.get_hierarchy().residue_groups():
     if (residue_group.atom_groups_size() != 1):
       raise Sorry("Not implemented: cannot run QI on buffer "+
@@ -535,7 +545,7 @@ def setup_qm_jobs(model,
                   energy_only=False,
                   pre_refinement=True,
                   log=StringIO()):
-  prefix = params.output.prefix
+  prefix = get_prefix(params)
   objects = []
   for i, qmr in enumerate(params.qi.qm_restraints):
     number_of_macro_cycles = 1
@@ -676,7 +686,7 @@ def update_restraints(model,
   #
   # update model restraints
   #
-  prefix = params.output.prefix
+  prefix = get_prefix(params)
   for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
     zip(objects,
         xyzs,

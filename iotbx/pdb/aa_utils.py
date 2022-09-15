@@ -87,7 +87,6 @@ def get_useable_sorted_on_size(code):
   tmp = []
   overall = {}
   for code in rc:
-    print('code',code)
     aa_type = get_aa_type(code)
     overall.setdefault(aa_type, [])
     overall[aa_type].append(code)
@@ -109,8 +108,12 @@ def tst_types(code):
     print(key, item)
 
 if __name__ == '__main__':
-  import os
-  for resname in ['CYS', 'DAL', 'NWM', 'GLY']:
+  import os, sys
+  if len(sys.argv)>1:
+    aa_list = sys.argv[1:]
+  else:
+    aa_list = ['CYS', 'DAL', 'NWM', 'GLY']
+  for resname in aa_list:
     rc = get_aa_parent(resname)
     print('  Parent %s : %s' % (resname, rc))
     rc = get_aa_children(resname)

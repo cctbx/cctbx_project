@@ -167,7 +167,8 @@ def get_restraints_from_model_via_grm(ligand_model,
       if key=='comp_%s' % resname.strip():
         break
     else:
-      assert 0 # should never get here...
+      outl = 'To write restraints, a restraints file needs to be provided to refinement.'
+      raise Sorry(outl)
   for key, loop in co.loops.items():
     if key=='_chem_comp_bond':
       values = []
