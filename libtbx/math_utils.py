@@ -186,7 +186,29 @@ def normalize_angle(phi, deg=False, zero_centered=False):
     phi -= period
   return phi
 
-def percentile_based_spread(values, pbs_fraction=0.608):
+def percentile_based_spread(values, pbs_fraction=0.608, sort = None):
+  """
+  See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
+  pbs_fraction parameter is for 3D geometries, and should be adjusted as
+  circumstances dictate.
+  """
+  if sort is None:
+    if hasattr(values, 'size'):
+      n = values.size()
+    else:
+      n = len(values)
+    if n < 100000:  # sort is slow if more than 100000
+      sort = True
+    else:
+      sort = False
+  
+  if sort:
+    return percentile_based_spread_with_sort(values, pbs_fraction=pbs_fraction)
+  else:
+    return percentile_based_spread_with_selection(
+        values, pbs_fraction=pbs_fraction)
+
+def percentile_based_spread_with_sort(values, pbs_fraction=0.608):
   """
   See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
   pbs_fraction parameter is for 3D geometries, and should be adjusted as
@@ -208,3 +230,39 @@ def percentile_based_spread(values, pbs_fraction=0.608):
   frac_delta = (pbs_fraction - frac_low) / (frac_high - frac_low)
   x_frac = x_low + (frac_delta * (x_high - x_low))
   return x_frac
+
+def percentile_based_spread_with_selection(values, pbs_fraction=0.608,
+   tolerance = 0.0001):
+  """
+  See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
+  pbs_fraction parameter is for 3D geometries, and should be adjusted as
+  circumstances dictate.
+  This version uses selection to get the pbs within tolerance of true value
+   if possible
+  """
+  from scitbx.array_family import flex
+  values = flex.double(values)
+  mmm = values.min_max_mean()
+  low = mmm.min
+  high = mmm.max
+  max_tries = values.size()  # absolute limit 
+  last_value = low
+  too_low = True
+  for i in range(max_tries):
+    if high - low < tolerance:
+       break
+    if too_low:
+      working =  0.5 * (last_value + high)
+    else:
+      working =  0.5 * (last_value + low)
+    frac = (values < working).count(True) / values.size()
+    too_low = (frac < pbs_fraction)
+    last_value = working
+    if too_low:
+      low = working
+    else:
+      high = working
+  return last_value 
+
+
+

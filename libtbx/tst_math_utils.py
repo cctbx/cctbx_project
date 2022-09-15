@@ -151,6 +151,8 @@ def exercise_percentile_based_spread():
     x = random.gauss(300, 30)
     deltas.append(x)
   pbs = percentile_based_spread(deltas)
+  pbs_1 = percentile_based_spread(deltas, sort = False)
+  assert abs(pbs - pbs_1) < 0.01
   rmsd = math.sqrt(sum([ x**2 for x in deltas]) / n_points)
   assert (pbs > 100) and (pbs < rmsd)
   # Test small list processing
