@@ -2432,6 +2432,9 @@ class module:
         path = dist_path / sub_dir / "__init__.py"
         if path.isfile():
           result.append(path.dirname().dirname())
+      path = dist_path / "src"
+      if (path / self.name).isdir() or (path / "__init__.py").isfile():
+        result.append(path)
     return result
 
   def has_top_level_directory(self, directory_name):
