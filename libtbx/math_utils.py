@@ -201,7 +201,7 @@ def percentile_based_spread(values, pbs_fraction=0.608, sort = None):
       sort = True
     else:
       sort = False
-  
+
   if sort:
     return percentile_based_spread_with_sort(values, pbs_fraction=pbs_fraction)
   else:
@@ -245,7 +245,7 @@ def percentile_based_spread_with_selection(values, pbs_fraction=0.608,
   mmm = values.min_max_mean()
   low = mmm.min
   high = mmm.max
-  max_tries = values.size()  # absolute limit 
+  max_tries = values.size()  # absolute limit
   last_value = low
   too_low = True
   for i in range(max_tries):
@@ -262,7 +262,4 @@ def percentile_based_spread_with_selection(values, pbs_fraction=0.608,
       low = working
     else:
       high = working
-  return last_value 
-
-
-
+  return last_value
