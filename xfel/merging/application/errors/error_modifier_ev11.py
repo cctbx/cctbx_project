@@ -124,7 +124,7 @@ class error_modifier_ev11(worker):
       global_sum_of_der_wrt_sadd_in_bin     = comm.reduce(flex.sum(sum_of_der_wrt_sadd_in_bin),   MPI.SUM, root=0)
 
       if self.mpi_helper.rank == 0:
-        if global_number_of_reflections_in_bin > 0:
+        if global_number_of_reflections_in_bin > 0 and global_sum_of_delta_squared_in_bin > 0:
 
           global_weight_for_bin = math.sqrt(global_number_of_reflections_in_bin)
 
