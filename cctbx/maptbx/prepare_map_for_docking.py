@@ -1585,8 +1585,6 @@ def assess_cryoem_errors(
     # Adjust very low sumfsqr_local_mean values, then divide sum by 2 to get mean)
     sumfsqsel = sumfsqr.select(sel)
     mean_sumfsqr_bin = flex.mean_default(sumfsqsel.data(),0.)
-
-    # Adjust very low sumfsqr_local_mean values
     sfsqlm_sel = sumfsqr_local_mean.select(sel)
     min_sfsqlm_bin = mean_sumfsqr_bin / 10000
     sfsqlm_sel = sfsqlm_sel.customized_copy(data =
@@ -1677,6 +1675,9 @@ def assess_cryoem_errors(
   # Convert beta parameters to Baniso for (optional) use and output
   a_baniso = adptbx.u_as_b(adptbx.beta_as_u_cart(mc1.unit_cell(), a_beta))
 
+  # For debugging and data inspection, set make_intermediate_files true, but false normally
+  make_intermediate_files = False
+
   if verbosity > 0:
     print("\nRefinement of scales and error terms completed\n")
     print("\nParameters for A and BEST curve correction")
@@ -1697,9 +1698,7 @@ def assess_cryoem_errors(
   expectE = mc1.customized_copy(data = (mc1.data() + mc2.data())/2)
   expectE.use_binner_of(mc1)
   dobs = expectE.customized_copy(data=flex.double(expectE.size(),0))
-  # For debugging and data inspection, set make_mtz_files true, but false normally
-  make_mtz_files = False
-  if make_mtz_files:
+  if make_intermediate_files:
     sigmaS = expectE.customized_copy(data=flex.double(expectE.size(),0))
     sigmaE = expectE.customized_copy(data=flex.double(expectE.size(),0))
   i_bin_used = 0 # Keep track in case full range of bins not used
@@ -1742,7 +1741,7 @@ def assess_cryoem_errors(
     expectE.data().set_selected(sel, expectE.data().select(sel) * scale_terms)
     dobs.data().set_selected(sel, dobs_terms)
 
-    if make_mtz_files:
+    if make_intermediate_files:
       sigmaS.data().set_selected(sel, sigmaS_terms)
       sigmaE.data().set_selected(sel, sigmaE_terms)
 
@@ -1767,10 +1766,23 @@ def assess_cryoem_errors(
   sel = dobs.data() < 0.00001
   expectE.data().set_selected(sel,0.)
 
-  if make_mtz_files:
+  if make_intermediate_files:
+    # Write out sigmaS, sigmaE and Dobs both as mtz files and intensities-as-maps
+
     write_mtz(sigmaS,"sigmaS.mtz","sigmaS")
+    results = intensities_as_expanded_map(work_mm,sigmaS)
+    coeffs_as_map = results.mm_data # map_manager with intensities
+    coeffs_as_map.write_map("sigmaS.map")
+
     write_mtz(sigmaE,"sigmaE.mtz","sigmaE")
+    results = intensities_as_expanded_map(work_mm,sigmaE)
+    coeffs_as_map = results.mm_data # map_manager with intensities
+    coeffs_as_map.write_map("sigmaE.map")
+
     write_mtz(dobs,"Dobs.mtz","Dobs")
+    results = intensities_as_expanded_map(work_mm,dobs)
+    coeffs_as_map = results.mm_data # map_manager with intensities
+    coeffs_as_map.write_map("Dobs.map")
 
   # At this point, weighted_map_noise is the sum of the noise variance for a
   # weighted half-map. In the following, this sum could be multiplied by two
