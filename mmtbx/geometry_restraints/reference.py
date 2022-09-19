@@ -1,7 +1,7 @@
-
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
+from libtbx.utils import Sorry
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("mmtbx_reference_coordinate_ext")
 from mmtbx.rotamer.sidechain_angles import collect_residue_torsion_angles
@@ -30,6 +30,8 @@ def generate_torsion_restraints(
     bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
   actual_selection = bool_pdbh_selection.iselection()
   assert len(sites_cart) == len(actual_selection)
+  if abs(sigma) < 1e-6:
+    raise Sorry("Please set non-zero sigma for reference model restraints.")
   weight = 1.0 / (sigma**2)
   selection_to_sites_map = get_selection_to_sites_map(
                              sites_cart=sites_cart,
