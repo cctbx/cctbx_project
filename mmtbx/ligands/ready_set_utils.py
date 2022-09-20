@@ -384,7 +384,9 @@ def _hierarchy_into_slots(hierarchy,
                           verbose=False,
                           ):
   def _is_linked(residue_group1, residue_group2, bpt):
+    print(residue_group1, residue_group2)
     if residue_group2 is None: return False
+    if residue_group2 is False: return False
     atom_group1 = residue_group1.only_atom_group()
     atom_group2 = residue_group2.only_atom_group()
     c_atom = atom_group1.get_atom('N') # order important
