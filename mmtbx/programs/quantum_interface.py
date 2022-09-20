@@ -98,6 +98,11 @@ def get_selection_from_user(hierarchy):
     if rc in ['common_amino_acid', 'common_water']: continue
     print(j, residue_group.id_str(), atom_group.resname, rc)
     print(dir(residue_group))
+    # opts.append('chain %s and resid %s and resname %s' % (
+    #   residue_group.parent().id,
+    #   residue_group.resid(),
+    #   atom_group.resname,
+    # ))
     for conformer in residue_group.conformers():
       print(dir(conformer))
       for residue in conformer.residues():
