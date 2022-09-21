@@ -367,7 +367,6 @@ class run_one(object):
 
   def _assert_same_model(self):
     assert self.model.is_same_model(other = self.map_model_manager.model())
-    assert self.model.selection(string="water").count(True)==0
 
   def _call(self, func, msg):
     timer = user_plus_sys_time()
