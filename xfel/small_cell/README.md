@@ -550,7 +550,24 @@ $ iotbx.reflection_file_converter rtr_all.mtz --label="Iobs,SIGIobs" --shelx=rtr
 ```
 
 The resulting file `rtr.hkl` contains the final intensities for structure refinement.
-  
+
+**Note:** Unlike for macromolecular data, here we do not apply a per-shot resolution cutoff based on individual image I/sigma measurements.
+For validation of the overall resolution limit of the dataset, find the following table in the ShelXL `.lst` file:
+
+```
+Resolution(A)    0.80     0.83     0.87     0.91     0.96     1.02     1.11     1.20     1.40     1.81     inf
+
+Number in group        75.      73.      71.      72.      69.      71.      72.      72.      73.      71.
+
+           GooF      1.465    1.298    1.327    1.359    1.296    1.065    1.109    0.987    1.197    1.631
+
+            K        2.105    1.747    1.252    1.071    1.085    0.982    1.079    1.086    0.999    0.899
+
+            R1       0.490    0.400    0.347    0.378    0.328    0.242    0.163    0.139    0.141    0.169
+```
+This refinement, taken from a recent high-resolution dataset, shows that R1 is <0.5 and (almost) monotonically increasing to the final bin, so we
+conclude that the 0.8 Å cutoff is appropriate.
+
 
 ---
 <details> <summary> Docker instructions </summary>
