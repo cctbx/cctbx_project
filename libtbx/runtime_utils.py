@@ -325,7 +325,7 @@ class detached_process_client(detached_base):
     if os.path.exists(self.error_file):
       try :
         (error, traceback_info) = easy_pickle.load(self.error_file)
-      except EOFError :
+      except (EOFError, TypeError):
         pass
       else :
         self.callback_error(error, traceback_info)
