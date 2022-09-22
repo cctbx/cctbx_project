@@ -507,7 +507,8 @@ output.output_dir=.
 
 $ mpirun -n 32 cctbx.xfel.merge mark1.phil
 $ mpirun -n 32 cctbx.xfel.merge mark0.phil
-$ iotbx.reflection_file_converter mark0_all.mtz --label="Iobs,SIGIobs" --shelx=mark0.hkl
+$ iotbx.reflection_file_converter mark0_all.mtz --label="Iobs,SIGIobs" --shelx=mark0.hkl \
+    --shelx_std_dynamic_range
 ```
 
 At this point, the file mark0.hkl can be used for structure solution. An ins file must be prepared by hand.

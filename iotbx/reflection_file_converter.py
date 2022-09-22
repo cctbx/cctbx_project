@@ -183,6 +183,10 @@ def run(
       type="string",
       help="write intensity or amplitude data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
+    .option(None, "--shelx_std_dynamic_range",
+      action="store_true",
+      default=False,
+      help="for ShelX output, do not use full dynamic range")
   ).process(args=args)
   co = command_line.options
   if (co.random_seed is not None):
@@ -590,7 +594,7 @@ def run(
       data_status = "HKLF 3 (amplitude)"
     print("Writing SHELX", data_status, "file:", file_name)
     processed_array.export_as_shelx_hklf(
-      open(file_name, "w"),full_dynamic_range=True)
+      open(file_name, "w"),full_dynamic_range=(not co.shelx_std_dynamic_range))
     n_output_files += 1
     print()
   if (n_output_files == 0):
