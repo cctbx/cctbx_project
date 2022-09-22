@@ -186,6 +186,12 @@ def normalize_angle(phi, deg=False, zero_centered=False):
     phi -= period
   return phi
 
+def median(values, sort = None):
+  """ Return median value which is same as percentile_based_spread with 
+    cutoff of 0.5
+  """
+  return percentile_based_spread(values, pbs_fraction=0.5, sort = sort)
+
 def percentile_based_spread(values, pbs_fraction=0.608, sort = None):
   """
   See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
