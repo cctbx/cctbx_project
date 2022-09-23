@@ -72,14 +72,14 @@ def miller_array_export_as_shelx_hklf(
     def fmt_fullrange_data(v):
       if (v < 0.):
         if (abs(v) < 1.):
-          result = "%8.5g" % v
+          result = "%8.5f" % v
         else:
           result = "%8.6g" % v
           if ("." not in result): # FORTRAN F8.2 interprets -123456 as -1234.56
             result = "%7d." % round(v)
       else:
         if (v < 1.):
-          result = "%8.6g" % v
+          result = "%8.6f" % v
         else:
           result = "%8.7g" % v
       if ("." not in result): # FORTRAN F8.2 interprets 1234567 as 12345.67
