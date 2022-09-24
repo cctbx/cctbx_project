@@ -1726,25 +1726,24 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     bool* trust_ptr = reinterpret_cast<bool*>(trusted.get_data());
     int* freq_ptr = reinterpret_cast<int*>(freq.get_data());
 
-    bool init_vecs = first_deriv_imgs.residual.empty();
+    int n_data_alloc = first_deriv_imgs.residual.size();
+    while (n_data_alloc < Npix_to_model){
+        first_deriv_imgs.residual.push_back(0);
+        first_deriv_imgs.variance.push_back(0);
+        first_deriv_imgs.trusted.push_back(0);
+        first_deriv_imgs.freq.push_back(0);
+        n_data_alloc ++;
+    }
 
     for (int i=0; i < Npix_to_model; i++){
         double resid = *(resid_ptr+i);
         double var = *(var_ptr+i);
         bool trust = *(trust_ptr+i);
         int fr = *(freq_ptr+i);
-        if (init_vecs){
-            first_deriv_imgs.residual.push_back(resid);
-            first_deriv_imgs.variance.push_back(var);
-            first_deriv_imgs.trusted.push_back(trust);
-            first_deriv_imgs.freq.push_back(fr);
-        }
-        else{
-            first_deriv_imgs.residual[i] = resid;
-            first_deriv_imgs.variance[i] = var;
-            first_deriv_imgs.trusted[i] = trust;  // Note  trusted flags shouldnt change, so we can consider commenting out this line
-            first_deriv_imgs.freq[i] = fr;  // Note  trusted flags shouldnt change, so we can consider commenting out this line
-        }
+        first_deriv_imgs.residual[i] = resid;
+        first_deriv_imgs.variance[i] = var;
+        first_deriv_imgs.trusted[i] = trust;
+        first_deriv_imgs.freq[i] = fr;
     }
 
     db_flags.Fhkl_gradient_mode = true;
