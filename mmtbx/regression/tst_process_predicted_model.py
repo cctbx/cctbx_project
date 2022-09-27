@@ -102,7 +102,7 @@ def tst_01(log = sys.stdout):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
-    assert vrms == target_vrms
+    assert approx_equal(vrms, target_vrms, eps=0.01)
 
   # use process_predicted_model to convert lddt or rmsd to B
 
