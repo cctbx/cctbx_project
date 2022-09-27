@@ -98,10 +98,11 @@ def tst_01(log = sys.stdout):
 
   model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
   models = model_info.model_list
-  for mm,n1,n2 in zip(models,[84,88],[88,84]):
+  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1506528458663525,1.1506528458663525],[84,88],[88,84]):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
+    assert vrms == target_vrms
 
   # use process_predicted_model to convert lddt or rmsd to B
 

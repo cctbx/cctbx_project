@@ -171,6 +171,20 @@ master_phil_str = """
       .help = Keep everything if processing yields no residues
       .short_caption = Keep all if no result
 
+     vrms_from_rmsd_intercept = 0.25
+       .type = float
+       .help = Estimate of vrms (error in model) from pLDDT will be based on\
+           vrms_from_rmsd_intercept + vrms_from_rmsd_slope * pLDDT \
+           where mean pLDDT of non-low_confidence_residues is used.
+       .short_caption = vRMS intercept
+
+     vrms_from_rmsd_slope = 1.0
+       .type = float
+       .help = Estimate of vrms (error in model) from pLDDT will be based on\
+           vrms_from_rmsd_intercept + vrms_from_rmsd_slope * pLDDT \
+           where mean pLDDT of non-low_confidence_residues is used.
+       .short_caption = vRMS slope
+
     }
 
     """
@@ -260,6 +274,7 @@ def process_predicted_model(
       processed_model:  single model with regions identified in chainid field
       model_list:  list of models representing domains
       lddt_list: one lddt on scale of 0 to 1 for each residue in input model.
+      vrms_list: one vrms estimate (rms model error in A for each model)
 
   How to get the parameters object set up:
 
@@ -451,6 +466,8 @@ def process_predicted_model(
     model_list = []
     chainid_list = []
 
+  # Estimate vrms (model error) for each domain
+  vrms_list = get_vrms_list(p, model_list)
   return group_args(
     group_args_type = 'processed predicted model',
     model = new_model,
@@ -458,8 +475,18 @@ def process_predicted_model(
     chainid_list = chainid_list,
     remainder_sequence_str = remainder_sequence_str,
     b_values = b_values,
+    vrms_list = vrms_list,
     )
 
+def get_vrms_list(p, model_list):
+  vrms_list = []
+  for m in model_list:
+    b_values = m.apply_selection_string(
+      'name ca and not element ca').get_b_iso()
+    rmsd = get_rmsd_from_lddt(get_lddt_from_b(b_values)).min_max_mean().mean
+    vrms = rmsd * p.vrms_from_rmsd_slope + p.vrms_from_rmsd_intercept
+    vrms_list.append(vrms)
+  return vrms_list
 
 def get_selection_for_short_segments(ph, minimum_sequential_residues):
   chain_dict = {}
