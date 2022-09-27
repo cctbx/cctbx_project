@@ -219,7 +219,6 @@ if cmake_is_available:
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOS_PATH'],
-      '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ENABLE_SERIAL=ON',
@@ -247,7 +246,6 @@ if cmake_is_available:
   returncode = subprocess.call([
       'cmake',
       os.environ['KOKKOSKERNELS_PATH'],
-      '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
@@ -300,7 +298,7 @@ kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+kokkos_env.Append(LIBS=['kokkoscontainers','kokkos'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
