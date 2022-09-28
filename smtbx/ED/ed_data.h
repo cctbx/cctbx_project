@@ -3,6 +3,7 @@
 #include <cctbx/miller.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
+#include <scitbx/constants.h>
 #include <smtbx/error.h>
 
 namespace smtbx { namespace ED {
@@ -37,7 +38,8 @@ struct FrameInfo {
   }
   bool is_excited(const BeamInfo<FloatType> &beam,
     FloatType Kl,
-    FloatType MaxSg
+    FloatType MaxSg,
+    FloatType MaxG
     ) const;
   
   int id, tag;
@@ -66,15 +68,17 @@ struct BeamInfo {
   miller::index<> index;
   FloatType I, sig;
 };
+
 template <typename FloatType>
 bool FrameInfo<FloatType>::is_excited(const BeamInfo<FloatType>& beam,
-  FloatType Kl, FloatType MaxSg) const
+  FloatType Kl, FloatType MaxSg, FloatType MaxG) const
 {
   typedef scitbx::vec3<FloatType> cart_t;
   cart_t g = RMf * cart_t(beam.index[0], beam.index[1], beam.index[2]);
+  FloatType gl = g.length();
   g[2] += Kl;
-  FloatType Sg = (Kl * Kl - g.length_sq()) / (2 * Kl);
-  return std::abs(Sg) < MaxSg;
+  FloatType Sg = std::abs((Kl * Kl - g.length_sq()) / (2 * Kl));
+  return Sg < MaxSg && gl < MaxG && Sg/(gl* angle) < 1.0;
 }
 
 }}

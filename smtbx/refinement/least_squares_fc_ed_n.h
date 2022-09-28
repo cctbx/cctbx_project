@@ -43,15 +43,13 @@ namespace least_squares {
       bool do_build = true)
       : reparamn(reparamn),
       f_calc_function(f_calc_function),
-      eps(params[1]),
       space_group(space_group),
       fc_cr(fc_cr),
-      wavelength(params[0]),
-      F000(params[3]),
+      Kl(params[0]),
+      Fc2Ug(params[1]),
+      eps(params[2]),
       UB(UB),
       thickness(thickness),
-      maxSg(params[2]),
-      cellVolume(params[4]),
       compute_grad(compute_grad)
     {
       for (size_t i = 0; i < beams.size(); i++) {
@@ -136,10 +134,9 @@ namespace least_squares {
 
       void operator()() const {
         const FrameInfo<FloatType>& frame = *beams[0]->parent;
-        FloatType Kl = scitbx::constants::pi / parent.wavelength;
-        Kl = std::sqrt(Kl * Kl + parent.F000);
+        const FloatType Kl = parent.Kl, Fc2Ug = parent.Fc2Ug;
         const cart_t K = cart_t(0, 0, -Kl);
-        // Projection of K onto normal of frame
+        // Projection of K onto normal of frame normal, K*frame.normal
         const FloatType Kn = -frame.normal[2] * Kl;
         // A will contain first row and column the initial kinematical structure factor,
         // diagonally the excitation error and off diagonally the relative miller
@@ -150,7 +147,6 @@ namespace least_squares {
         af::versa<complex_t, af::mat_grid> A(af::mat_grid(n_beams, n_beams));
         af::shared<FloatType> M(n_beams);
         M[0] = 1; //for g0
-        const FloatType sfac_k = scitbx::constants::four_pi_sq * 4.429182e-01 / parent.cellVolume;
         for (size_t i = 1; i < n_beams; i++) {
           miller::index<> h_i = beams[i - 1]->index;
           int ii = parent.mi_lookup.find_hkl(h_i);
@@ -168,27 +164,27 @@ namespace least_squares {
           FloatType i_den = std::sqrt(1. / (1 + g_i * frame.normal / Kn));
           A(i, i) = s * i_den * i_den;
 
-          A(0, i) = sfac_k * Fc_i * i_den;
-          A(i, 0) = std::conj(A(0, i));
+          A(i, 0) = Fc2Ug * Fc_i * i_den;
+          A(0, i) = std::conj(A(i, 0));
 
           M[i] = i_den;
           for (size_t j = i + 1; j < n_beams; j++) {
             miller::index<> h_j = beams[j - 1]->index;
             cart_t g_j = frame.RMf * cart_t(h_j[0], h_j[1], h_j[2]);
-            miller::index<> h_j_m_i = h_j - h_i;
-            int j_m_i = parent.mi_lookup.find_hkl(h_j_m_i);
-            complex_t Fc_j_m_i = 0;
-            if (j_m_i == -1) {
-              if (!parent.space_group.is_sys_absent(h_j_m_i)) {
-                SMTBX_ASSERT(j_m_i >= 0)(h_j_m_i.as_string());
+            miller::index<> h_i_m_j = h_i - h_j;
+            int i_m_j = parent.mi_lookup.find_hkl(h_i_m_j);
+            complex_t Fc_i_m_j = 0;
+            if (i_m_j == -1) {
+              if (!parent.space_group.is_sys_absent(h_i_m_j)) {
+                SMTBX_ASSERT(i_m_j >= 0)(h_i_m_j.as_string());
               }
             }
             else {
-              Fc_j_m_i = Fcs_k[j_m_i];
+              Fc_i_m_j = Fcs_k[i_m_j];
             }
             FloatType j_den = std::sqrt(1. / (1 + g_j * frame.normal / Kn));
-            A(i, j) = sfac_k * Fc_j_m_i * i_den * j_den;
-            A(j, i) = std::conj(A(i, j));
+            A(j, i) = Fc2Ug * Fc_i_m_j * i_den * j_den;
+            A(i, j) = std::conj(A(j, i));
           }
         }
 /*
@@ -221,8 +217,8 @@ namespace least_squares {
         af::versa<complex_t, af::mat_grid> &B = A;
         af::versa<complex_t, af::mat_grid> eV = af::matrix_transpose(A.const_ref());
 
-        //const complex_t exp_k(0, scitbx::constants::pi * thickness / Kn);
-        const complex_t exp_k(0, scitbx::constants::pi * thickness);
+        const complex_t exp_k(0, scitbx::constants::pi * thickness / Kn);
+        //const complex_t exp_k(0, scitbx::constants::pi * thickness);
         // B = B*diag(exp(2*pi*thickness*ev/(2*Kn))
         //af::versa<complex_t, af::mat_grid> P(af::mat_grid(n_beams, n_beams));
         for (size_t i = 0; i < n_beams; i++) {
@@ -247,7 +243,24 @@ namespace least_squares {
         */
         af::shared<complex_t> up = af::matrix_multiply(P.const_ref(), u.const_ref());
         for (size_t i = 1; i < n_beams; i++) {
-          Fcs[Fc_offset + i - 1] = up[i] / sfac_k; // / SfacToVolts; // P(i, 0);
+          Fcs[Fc_offset + i - 1] = up[i]; // / SfacToVolts; // P(i, 0);
+          // is this really needed? Eq 4, 2013
+          /*
+          miller::index<> h_i = beams[i - 1]->index;
+          cart_t g_i = frame.RMf * cart_t(h_i[0], h_i[1], h_i[2]);
+          cart_t g_i_p = g_i + frame.normal * (g_i * frame.normal);
+          for (size_t j = 1; j < n_beams; j++) {
+            if (j == i) {
+              continue;
+            }
+            miller::index<> h_j = beams[j - 1]->index;
+            cart_t g_j = frame.RMf * cart_t(h_j[0], h_j[1], h_j[2]);
+            cart_t g_j_p = g_j + frame.normal * (g_j * frame.normal);
+            if ((g_i_p - g_j_p).length_sq() < 1e-3) {
+              Fcs[Fc_offset + i - 1] += up[j];
+            }
+          }
+          */
         }
       }
       ed_n_shared_data const& parent;
@@ -371,11 +384,10 @@ namespace least_squares {
 
     reparametrisation const& reparamn;
     f_calc_function_base_t& f_calc_function;
-    FloatType eps;
     cctbx::xray::fc_correction<FloatType> const& fc_cr;
     sgtbx::space_group const& space_group;
     af::shared<miller::index<> > indices;
-    FloatType wavelength, F000;
+    FloatType Kl, Fc2Ug, eps;
     scitbx::mat3<FloatType> UB;
     size_t beam_n;
     // a map of beams by frame id
@@ -388,7 +400,6 @@ namespace least_squares {
     std::map<int, size_t> frame_offsets;
 
     cctbx::xray::thickness<FloatType> const& thickness;
-    FloatType maxSg, cellVolume;
     bool compute_grad;
     // newly-calculated, aligned by frames
     af::shared<complex_t> Fcs;
