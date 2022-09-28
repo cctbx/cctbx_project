@@ -420,8 +420,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 if (fc_cr->grad) {
                   int grad_idx = fc_cr->get_grad_index();
                   af::const_ref<FloatType> fc_cr_grads = fc_cr->get_gradients();
-                  SMTBX_ASSERT(grad_idx < 0 ||
-                    grad_idx+fc_cr_grads.size() >= gradients.size());
+                  SMTBX_ASSERT(grad_idx >= 0 &&
+                    grad_idx+fc_cr_grads.size() <= gradients.size());
                   FloatType grad_m = fc_cr->get_grad_Fc_multiplier();
                   if (grad_m != 1) {
                     for (int gi = 0; gi < gradients.size(); gi++) {

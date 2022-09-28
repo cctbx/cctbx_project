@@ -30,13 +30,11 @@ namespace least_squares {
       af::shared<FloatType> const& params)
       : data(data),
       space_group(space_group),
-      wavelength(params[0]),
+      Kl(params[0]),
+      Fc2Ug(params[1]),
       UB(UB),
       beams(beams),
       thickness(thickness),
-      maxSg(params[1]),
-      cellVolume(params[3]),
-      F000(params[2]),
       index(-1),
       observable_updated(false),
       computed(false)
@@ -61,14 +59,12 @@ namespace least_squares {
     f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const & other)
       : data(other.data),
       space_group(other.space_group),
-      wavelength(other.wavelength),
+      Kl(other.Kl),
+      Fc2Ug(other.Fc2Ug),
       UB(other.UB),
       frames_map(other.frames_map),
       beams(other.beams),
       thickness(other.thickness),
-      maxSg(other.maxSg),
-      cellVolume(other.cellVolume),
-      F000(other.F000),
       mi_lookup(other.mi_lookup),
       observable_updated(false),
       computed(false)
@@ -96,9 +92,8 @@ namespace least_squares {
       }
       else {
         observable_updated = false;
-        const FloatType sfac_k = scitbx::constants::four_pi_sq * 4.429182e-01 / cellVolume;
-        Fc = f_calc[index] * sfac_k;
-        Fsq = observables[index] * sfac_k * sfac_k;
+        Fc = f_calc[index] * Fc2Ug;
+        Fsq = observables[index] * Fc2Ug * Fc2Ug;
       }
       std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
@@ -107,8 +102,7 @@ namespace least_squares {
       this->h = h;
       ratio = 1;
       if (compute_grad) {
-        grads.resize(design_matrix.accessor().n_columns()+
-          (thickness.grad ? 1 : 0));
+        grads.resize(design_matrix.accessor().n_columns());
       }
       else {
         grads.resize(0);
@@ -122,12 +116,11 @@ namespace least_squares {
     }
 
     // for derivatives testing
-    FloatType calc(FloatType U, cart_t const& K, FloatType t,
+    FloatType calc(FloatType Fsq, cart_t const& K, FloatType t,
       FloatType Sg, cart_t const& n) const
     {
       FloatType Kl = K.length(),
-        t_part = ((scitbx::constants::pi * t) / (K * n)),
-        Fsq = U*U;
+        t_part = ((scitbx::constants::pi * t) / (K * n));
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         sin_part = scitbx::fn::pow2(std::sin(t_part * std::sqrt(X)));
       return Fsq * sin_part / X;
@@ -150,24 +143,21 @@ namespace least_squares {
       SMTBX_ASSERT(frame != 0);
       int coln = design_matrix.accessor().n_columns();
       cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
-      FloatType Kl = 1 / wavelength;
-      //Kl = std::sqrt(Kl*Kl + F000);
       cart_t K = cart_t(0, 0, -Kl);
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
-        t_part = ((scitbx::constants::pi * t)),// / (K * frame->normal)),
+        t_part = ((scitbx::constants::pi * t) / (K * frame->normal)),
         P = t_part * std::sqrt(X);
       FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
         I = Fsq * sin_part / X;
       // update gradients...
       if (grads.size() > 0) {
         if (index >= 0) {
-          FloatType U = std::sqrt(Fsq);
-          FloatType grad_fc = 2*U*sin_part/X + Fsq *
-            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) * U) * X - sin_part * 2 * U)/(X*X);
+          FloatType grad_fsq = sin_part/X + Fsq *
+            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) / 2.0) * X - sin_part)/(X*X);
           for (int i = 0; i < coln; i++) {
-            grads[i] = design_matrix(index, i) * grad_fc;
+            grads[i] = design_matrix(index, i) * grad_fsq;
           }
           if (thickness.grad) {
             int grad_index = thickness.grad_index;
@@ -175,19 +165,18 @@ namespace least_squares {
             grads[grad_index] = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
           }
 
-          /* Testing derivatives shows consistensy with analytical expressions above
-          FloatType eps = 1e-6;
-          FloatType v1 = calc(U - eps, K, t, Sg, frame.normal);
-          FloatType v2 = calc(U + eps, K, t, Sg, frame.normal);
-          FloatType diff = (v2 - v1) / (2*eps);
-          
-          v1 = calc(U, K, t - eps, Sg, frame.normal);
-          v2 = calc(U, K, t + eps, Sg, frame.normal);
-          diff = (v2 - v1) / (2 * eps);
-          FloatType grad_t = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
-          FloatType v = calc(U, K, Sg, t, frame.normal);
-          v = 0; // allow for a breakpoint here
-          */
+          /* Testing derivatives shows consistensy with analytical expressions above */
+          //FloatType eps = 1e-6;
+          //FloatType v1 = calc(Fsq - eps, K, t, Sg, frame->normal);
+          //FloatType v2 = calc(Fsq + eps, K, t, Sg, frame->normal);
+          //FloatType diff = (v2 - v1) / (2*eps);
+          //
+          //v1 = calc(Fsq, K, t - eps, Sg, frame->normal);
+          //v2 = calc(Fsq, K, t + eps, Sg, frame->normal);
+          //diff = (v2 - v1) / (2 * eps);
+          //FloatType grad_t = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
+          //FloatType v = calc(Fsq, K, Sg, t, frame->normal);
+          //v = 0; // allow for a breakpoint here
         }
         else {
           std::fill(grads.begin(), grads.end(), 0);
@@ -255,11 +244,10 @@ namespace least_squares {
   private:
     data_t const& data;
     sgtbx::space_group const& space_group;
-    FloatType wavelength;
+    FloatType Kl, Fc2Ug;
     scitbx::mat3<FloatType> UB;
     af::shared<BeamInfo<FloatType> > beams;
     cctbx::xray::thickness<FloatType> const& thickness;
-    FloatType maxSg, cellVolume, F000;
     af::shared<std::complex<FloatType> > f_calc;
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
