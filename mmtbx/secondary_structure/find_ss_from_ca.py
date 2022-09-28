@@ -329,6 +329,9 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
   elif hasattr(model,'hierarchy'): # a model object with hierarchy and info
     hierarchy=model.hierarchy
     info=model.info
+  elif hasattr(model,'get_hierarchy'): # mmtbx.model object
+    hierarchy=model.get_hierarchy()
+    info = {}
   else:
     return []  # nothing here
 
