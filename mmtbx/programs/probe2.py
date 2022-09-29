@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.2.0"
+version = "2.3.0"
 
 master_phil_str = '''
 profile = False
@@ -398,16 +398,7 @@ def _condense(dotInfoList, condense):
     # cause an attribute error.  If that happens, we don't sort.
     try:
       thisAtom = sorted(
-        dotInfoList[curAtomIndex:curAtomEndIndex+1],
-        key=lambda dot: "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
-          dot.target.parent().parent().parent().id, # chain
-          str(dot.target.parent().parent().resseq_as_int()), # residue number
-          dot.target.parent().parent().icode, # insertion code
-          dot.target.parent().resname, # residue name
-          dot.target.name, # atom name
-          dot.target.parent().altloc, # alternate location
-          dot.target.xyz[0], dot.target.xyz[1], dot.target.xyz[2]
-        )
+        dotInfoList[curAtomIndex:curAtomEndIndex+1]
       )
     except AttributeError:
       thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
@@ -466,6 +457,35 @@ class DotInfo:
     self.angle = angle              # Angle associated with the bump
     self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
 
+  def _makeName(self, atom):
+      # Make the name for an atom, which includes its chain and residue information
+      # along with other atom data, and also includes its location to distinguish
+      # among H? atoms that are otherwise identical.
+      return "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
+        atom.parent().parent().parent().id, # chain
+        str(atom.parent().parent().resseq_as_int()), # residue number
+        atom.parent().parent().icode, # insertion code
+        atom.parent().resname, # residue name
+        atom.name, # atom name
+        atom.parent().altloc, # alternate location
+        atom.xyz[0], atom.xyz[1], atom.xyz[2])
+
+  def __lt__(self, other):
+      # Sort dots based on characteristics of their source and target atoms, then their gap.
+      # We include the XYZ position in the sort so that we get the same order and grouping each
+      # time even though the phantom H? atoms are otherwise identical.
+      # There may be no target atoms specified (may be Python None value), which will
+      # cause an attribute error.  If that happens, we pass the exception through to the caller.
+      # When the source and target are the same, we check the gap and sort such that
+      # smaller (more negative) gaps are first; this makes it so that the condensed output
+      # lists the smallest one.
+
+      selfName = self._makeName(self.src) + self._makeName(self.target)
+      otherName = other._makeName(other.src) + other._makeName(other.target)
+
+      return (selfName < otherName) or (
+        (selfName == otherName) and (self.gap < other.gap)
+      )
 
 # ------------------------------------------------------------------------------
 
