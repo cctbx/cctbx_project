@@ -90,7 +90,7 @@ if (env_etc.enable_kokkos):
     libs += ["cudart", "cuda"]
   elif 'HIP' in os.getenv('KOKKOS_DEVICES'):
     libpath += [os.path.join(os.environ['ROCM_PATH'], 'lib')]
-    libs += ["amdhip64", "hsa-runtime64"])
+    libs += ["amdhip64", "hsa-runtime64"]
 
 env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
