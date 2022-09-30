@@ -30,7 +30,7 @@ if (env_etc.enable_cuda):
     source=["src/diffBraggCUDA.cu", "src/diffBragg_gpu_kernel.cu"])
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
 
- if (env_etc.enable_cuda or env_etc.enable_kokkos):
+if (env_etc.enable_cuda or env_etc.enable_kokkos):
   diffBragg_obj = diffBragg_env.SharedObject(
   source=[
     "src/diffBragg_ext.cpp",
