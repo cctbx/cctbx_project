@@ -89,7 +89,7 @@ list_cfg.append(cfg_linux_a100)
 cfg_spock = cfg_default.get_copy()
 cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
 cfg_spock.host_name = 'spock'
-cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
+cfg_spock.env['KOKKOS_DEVICES'] = "OpenMP;HIP"
 cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
 cfg_spock.env['Kokkos_ARCH_VEGA908'] = "ON"
 cfg_spock.env['Kokkos_ENABLE_HIP'] = "ON"
@@ -298,7 +298,10 @@ kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-kokkos_env.Append(LIBS=['kokkoscontainers','kokkos'])
+kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+if 'HIP' in os.getenv('KOKKOS_DEVICES'):
+  kokkos_env.Replace(LINK=os.environ['CXX'])
+  kokkos_env.Replace(SHLINK=os.environ['CXX'])
 
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",

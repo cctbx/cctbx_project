@@ -205,7 +205,7 @@ void diffBragg_sum_over_steps(
                             Eigen::Vector3d anisoG_q = db_cryst.anisoG*delta_Q;
                             double V_dot_V = anisoG_q.dot(anisoG_q);
                             double gamma_portion = 8.*M_PI*anisoG_determ /
-                                    pow( (1.+ V_dot_V* 4*M_PI*M_PI),2);
+                                    pow( (1.+ V_dot_V* 4*M_PI*M_PI),2.);
 
                             double this_I_latt_diffuse = gamma_portion;
 
@@ -360,7 +360,7 @@ void diffBragg_sum_over_steps(
                }
                double Freal = F_cell;
                double Fimag = F_cell2;
-               F_cell = sqrt(pow(Freal,2) + pow(Fimag,2));// TODO work around the sqrt ?
+               F_cell = sqrt(pow(Freal,2.) + pow(Fimag,2.));// TODO work around the sqrt ?
                //if (verbose> 3 && i_step==0){
                //     double II = I_noFcell*F_cell*F_cell;
                //     printf("hkl= %f %f %f  hkl1= %d %d %d  |Fcell| after=%f, Ino=%f, I=%f\n", h,k,l,h0,k0,l0, F_cell, I_noFcell, II);
@@ -545,8 +545,8 @@ void diffBragg_sum_over_steps(
             for (int i_pan_orig=0; i_pan_orig < 3; i_pan_orig++){
                 if (db_flags.refine_panel_origin[i_pan_orig]){
                     double per_k = 1/airpath;
-                    double per_k3 = pow(per_k,3);
-                    double per_k5 = pow(per_k,5);
+                    double per_k3 = pow(per_k,3.);
+                    double per_k5 = pow(per_k,5.);
                     double lambda_ang = lambda*1e10;
 
                     Eigen::Matrix3d M = -two_C*(NABC*UBO)/lambda_ang;
@@ -568,8 +568,8 @@ void diffBragg_sum_over_steps(
             for (int i_pan_rot=0; i_pan_rot < 3; i_pan_rot++){
                 if(db_flags.refine_panel_rot[i_pan_rot]){
                     double per_k = 1/airpath;
-                    double per_k3 = pow(per_k,3);
-                    double per_k5 = pow(per_k,5);
+                    double per_k3 = pow(per_k,3.);
+                    double per_k5 = pow(per_k,5.);
                     double lambda_ang = lambda*1e10;
                     Eigen::Matrix3d M = -two_C*(NABC*UBO)/lambda_ang;
 
