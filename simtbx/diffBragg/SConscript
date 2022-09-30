@@ -35,7 +35,6 @@ if (env_etc.enable_cuda):
   diffBragg_env.Prepend(NVCCFLAGS=["-DDIFFBRAGG_HAVE_CUDA"])
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
 
-
 if (env_etc.enable_cuda or env_etc.enable_kokkos):
   diffBragg_obj = diffBragg_env.SharedObject(
   source=[
