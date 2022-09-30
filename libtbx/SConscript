@@ -1558,7 +1558,6 @@ def enable_kokkos_if_possible():
       returncode = subprocess.call([
           'cmake',
           os.environ['KOKKOS_PATH'],
-          '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
           '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
           '-DCMAKE_INSTALL_LIBDIR=lib',
           '-DKokkos_ENABLE_SERIAL=ON',
@@ -1586,7 +1585,6 @@ def enable_kokkos_if_possible():
       returncode = subprocess.call([
           'cmake',
           os.environ['KOKKOSKERNELS_PATH'],
-          '-DCMAKE_CXX_COMPILER={}'.format(os.environ['CXX']),
           '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
           '-DCMAKE_INSTALL_LIBDIR=lib',
           '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
