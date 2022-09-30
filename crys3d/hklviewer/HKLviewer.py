@@ -771,16 +771,18 @@ tabname = "Xtricorder"
             suite.store = logfile
             suite.level = logfile
             suite.database = "%s"
+            commensurate.patterson.percent = 10
           }
 '''
 )
 retval = retobj.exit_code()
 errormsg = retobj.error_type() + " error, " + retobj.error_message()
 import glob, shutil
-xtricordermtzfiles = glob.glob("%s/**/*%s/*%s*.data.mtz", recursive=True) # just one file if succeeded
-if len(xtricordermtzfiles) > 0 :  # xtricorder succeeded
+mtzfiles = glob.glob("%s/**/*%s/*%s*.data.mtz", recursive=True)
+if len(mtzfiles) > 0 :  # xtricorder succeeded
+  timesortedmtzfiles = sorted( [ (p, os.path.getmtime(p) )   for p in mtzfiles ], key=lambda e: e[1] )
   self.hklin =  "%s" + "_xtricorder.mtz"
-  shutil.copyfile( xtricordermtzfiles[0], self.hklin )
+  shutil.copyfile( timesortedmtzfiles[-1][0], self.hklin ) # copy the last file only
   self.LoadReflectionsFile(self.hklin)
 
 logs = glob.glob("%s/**/*.logfile.log", recursive=True)
@@ -798,6 +800,7 @@ with open(logfname, 'w') as f:
   f.write(mstr)
 
 shutil.rmtree("%s")
+
 """ %(self.currentfileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
@@ -1136,6 +1139,12 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
             self.AlignVectorGroupBox.setChecked( False)
+
+            for tabname in ["Xtricorder",  "Xtriage"]:
+              if self.__dict__.get(tabname, None) is not None: # remove any existing one with the same name
+                self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
+                self.__dict__[tabname].setParent(None)
+
             # display only those miller table columns that have been persisted if any
             stored_colnames_select_lst = []
             current_philstr = "selected_info {\n"
