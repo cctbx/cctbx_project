@@ -4,6 +4,9 @@ Import("env_etc env_simtbx nanoBragg_obj nanoBragg_env")
 
 diffBragg_env = nanoBragg_env.Clone()
 
+if (env_etc.enable_kokkos):
+  diffBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
+
 env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("simtbx"),"../../eigen"))
 if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
   for candidate in env_etc.conda_cpppath:

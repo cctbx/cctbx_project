@@ -438,7 +438,7 @@ void kokkos_sum_over_steps(
                                                 CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
                                                 CUDAREAL gamma_portion =
                                                     8. * M_PI * anisoG_determ /
-                                                    pow((1. + V_dot_V * 4 * M_PI * M_PI), 2);
+                                                    pow((1. + V_dot_V * 4 * M_PI * M_PI), 2.);
 
                                                 // if (exparg >= 0.5)
                                                 //     exparg = 1;
@@ -800,8 +800,8 @@ void kokkos_sum_over_steps(
                                 for (int i_pan_orig = 0; i_pan_orig < 3; i_pan_orig++) {
                                     if (refine_panel_origin(i_pan_orig)) {
                                         CUDAREAL per_k = 1 / _airpath;
-                                        CUDAREAL per_k3 = pow(per_k, 3);
-                                        CUDAREAL per_k5 = pow(per_k, 5);
+                                        CUDAREAL per_k3 = pow(per_k, 3.);
+                                        CUDAREAL per_k5 = pow(per_k, 5.);
                                         CUDAREAL lambda_ang = _lambda * 1e10;
 
                                         MAT3 M = -two_C * (_NABC.dot(UBO)) / lambda_ang;
@@ -832,8 +832,8 @@ void kokkos_sum_over_steps(
                                 for (int i_pan_rot = 0; i_pan_rot < 3; i_pan_rot++) {
                                     if (refine_panel_rot(i_pan_rot)) {
                                         CUDAREAL per_k = 1 / _airpath;
-                                        CUDAREAL per_k3 = pow(per_k, 3);
-                                        CUDAREAL per_k5 = pow(per_k, 5);
+                                        CUDAREAL per_k3 = pow(per_k, 3.);
+                                        CUDAREAL per_k5 = pow(per_k, 5.);
                                         CUDAREAL lambda_ang = _lambda * 1e10;
                                         MAT3 M = -two_C * (_NABC.dot(UBO)) / lambda_ang;
                                         VEC3 dk = _Fdet * (dF_vecs(_pid * 3 + i_pan_rot)) +
@@ -1114,7 +1114,7 @@ void kokkos_sum_over_steps(
             }  // end ucell deriv image increment
 
             // update the Ncells derivative image
-            if (refine_Ncells(1)) {
+            if (refine_Ncells(0)) {
                 CUDAREAL value = _scale_term * Ncells_manager_dI[0];
                 CUDAREAL value2 = _scale_term * Ncells_manager_dI2[0];
                 int idx = pixIdx;

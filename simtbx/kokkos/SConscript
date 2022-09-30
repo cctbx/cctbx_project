@@ -235,7 +235,10 @@ kokkos_env.Replace(SHCXX=os.environ['CXX'])
 kokkos_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
 kokkos_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-kokkos_env.Append(LIBS=['kokkoscontainers','kokkos'])
+kokkos_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
+if 'HIP' in os.getenv('KOKKOS_DEVICES'):
+  kokkos_env.Replace(LINK=os.environ['CXX'])
+  kokkos_env.Replace(SHLINK=os.environ['CXX'])
 
 if use_sycl:
   kokkos_env.Replace(SHLINK=os.environ['CXX'])

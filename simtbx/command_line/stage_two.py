@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
