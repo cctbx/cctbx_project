@@ -394,14 +394,7 @@ def _condense(dotInfoList, condense):
     # Sort the dots for the same source atom based on characteristics of their target atom.
     # We include the XYZ position in the sort so that we get the same order and grouping each
     # time even though the phantom H? atoms are otherwise identical.
-    # There may be no target atoms specified (may be Python None value), which will
-    # cause an attribute error.  If that happens, we don't sort.
-    try:
-      thisAtom = sorted(
-        dotInfoList[curAtomIndex:curAtomEndIndex+1]
-      )
-    except AttributeError:
-      thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
+    thisAtom = sorted(dotInfoList[curAtomIndex:curAtomEndIndex+1])
 
     # Remove duplicates (same target atom) if we've been asked to.
     # We do this by scanning through and accumulating counts as long as the target
@@ -475,13 +468,14 @@ class DotInfo:
       # We include the XYZ position in the sort so that we get the same order and grouping each
       # time even though the phantom H? atoms are otherwise identical.
       # There may be no target atoms specified (may be Python None value), which will
-      # cause an attribute error.  If that happens, we pass the exception through to the caller.
-      # When the source and target are the same, we check the gap and sort such that
-      # smaller (more negative) gaps are first; this makes it so that the condensed output
-      # lists the smallest one.
+      # be treated as the empty string.
 
-      selfName = self._makeName(self.src) + self._makeName(self.target)
-      otherName = other._makeName(other.src) + other._makeName(other.target)
+      selfName = self._makeName(self.src)
+      if self.target is not None:
+        selfName += self._makeName(self.target)
+      otherName = other._makeName(other.src)
+      if other.target is not None:
+        otherName += other._makeName(other.target)
 
       return (selfName < otherName) or (
         (selfName == otherName) and (self.gap < other.gap)
