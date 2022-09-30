@@ -75,7 +75,7 @@ if (env_etc.enable_kokkos):
   diffBragg_env.Prepend(CXXFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   diffBragg_env.Prepend(CPPFLAGS=['-DCUDAREAL=double'] + kokkos_cxxflags)
   diffBragg_env.Prepend(CPPPATH=[os.environ['KOKKOS_PATH']])
-  diffBragg_env.Append(LIBS=['kokkoscontainers','kokkos'])
+  diffBragg_env.Append(LIBS=['kokkoscontainers','kokkoscore'])
 
   diffBraggKokkos_env = diffBragg_env.Clone()
   
@@ -89,7 +89,7 @@ if (env_etc.enable_kokkos):
   diffBraggKokkos_lib = diffBraggKokkos_env.SharedLibrary(
     target="#lib/libsimtbx_diffBraggKOKKOS",
     source=["src/diffBraggKOKKOS.cpp", "src/diffBragg_kokkos_kernel.cpp", "../../kokkostbx/kokkos_utils.cpp"],
-    LIBS=['kokkoscontainers', 'kokkos'])
+    LIBS=['kokkoscontainers', 'kokkoscore'])
 
   libs = env_simtbx['LIBS']
   print("LIBS: ", libs)
