@@ -3,6 +3,8 @@ import libtbx.load_env
 Import("env_etc env_simtbx nanoBragg_obj nanoBragg_env")
 
 diffBragg_env = nanoBragg_env.Clone()
+if (env_etc.enable_kokkos):
+  diffBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
 
 if (env_etc.enable_kokkos):
   diffBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
