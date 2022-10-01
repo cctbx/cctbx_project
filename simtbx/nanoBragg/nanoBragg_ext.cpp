@@ -1972,6 +1972,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("to_smv_format",&nanoBragg::to_smv_format,
         (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
+      .def("get_intfile_scale",&nanoBragg::get_intfile_scale,
+        (arg_("intfile_scale")=0),
+        "expose the intfile_scale multiplier to raw pixels that is normally hidden within the to_smv_format interface.\nintfile_scale is applied before rounding off to integral pixel values")
       .def("raw_pixels_unsigned_short_as_python_bytes",&raw_pixels_unsigned_short_as_python_bytes,
         (arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "get the unsigned short raw pixels as a Python bytes object.  Intfile_scale is applied before rounding off to integral pixel values")
