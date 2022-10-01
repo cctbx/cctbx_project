@@ -1,3 +1,12 @@
+2022.9
+======
+
+* Improvements to cctbx.HKLviewer for viewing output from xtriage or xtricorder
+* Improve stability of prepare_map_for_docking
+* DataManager models can now have multiple types (e.g. x-ray, neutron, etc.)
+* Fix any_reflection_file_reader when reading "hklf+ins/res" (#787)
+* Fix binary and source installers when /usr/bin/python is not available (#788)
+
 2022.8
 ======
 
