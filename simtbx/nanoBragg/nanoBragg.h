@@ -582,6 +582,7 @@ class nanoBragg {
 
     /* utility function for outputting an image to examine */
     void to_smv_format(std::string const& fileout, double intfile_scale, int debug_x, int debug_y);
+    double get_intfile_scale(double intfile_scale) const;
     void to_smv_format_streambuf(boost_adaptbx::python::streambuf &, double, int const&, int const&) const;
 };
 
