@@ -35,6 +35,9 @@ INSTALL_SH = """\
 #!/bin/bash
 if [ -z "$PYTHON_EXE" ]; then
   PYTHON_EXE='/usr/bin/python'
+  if [ ! -f $PYTHON_EXE ]; then
+    PYTHON_EXE='/usr/bin/python3'
+  fi
   if [ -f "/usr/bin/python2.7" ]; then
     PYTHON_EXE='/usr/bin/python2.7'
   elif [ -f "/usr/bin/python2.6" ]; then

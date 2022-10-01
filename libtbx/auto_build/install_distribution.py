@@ -329,10 +329,10 @@ class installer(object):
       tarball.close()
       cwd = os.getcwd()
       os.chdir(dest_dir)
-      unpack_cmd = os.path.join('.', 'bin', 'conda-unpack')
+      unpack_cmd = [sys.executable, os.path.join('.', 'bin', 'conda-unpack')]
       if sys.platform == 'win32':
-        unpack_cmd = os.path.join('.', 'Scripts', 'conda-unpack.exe')
-      subprocess.check_call([unpack_cmd])
+        unpack_cmd = [os.path.join('.', 'Scripts', 'conda-unpack.exe')]
+      subprocess.check_call(unpack_cmd)
       os.chdir(cwd)
 
     # Reconfigure
@@ -354,7 +354,7 @@ class installer(object):
   def install_from_source(self):
     log = self.out # open(os.path.join(self.tmp_dir, "source.log"), "w")
     cmd = [
-      'python',
+      sys.executable,
       os.path.join('modules', 'cctbx_project', 'libtbx', 'auto_build', 'bootstrap.py'),
       'base',
       'build',
