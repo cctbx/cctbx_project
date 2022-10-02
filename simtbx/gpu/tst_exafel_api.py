@@ -9,6 +9,8 @@ Test 1) standard C++ result CPU
      5) exafel api interface to GPU, with GAUSS_ARGCHK
 """
 from __future__ import absolute_import, division, print_function
+import numpy as np
+import dxtbx
 from scitbx.array_family import flex
 from scitbx.matrix import sqr
 from simtbx.nanoBragg import nanoBragg, shapetype
@@ -27,9 +29,11 @@ class several_wavelength_case:
   self.DETECTOR = DETECTOR
   self.BEAM = BEAM
   self.CRYSTAL = CRYSTAL
+  self.domains_per_crystal = 5.E10 # put Bragg spots on larger scale relative to background
 
  def several_wavelength_case_for_CPU(self):
   SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
+  SIM.adc_offset_adu=0
   for x in range(len(self.wavlen)):
     SIM.flux = self.flux[x]
     SIM.wavelength_A = self.wavlen[x]
@@ -42,6 +46,8 @@ class several_wavelength_case:
     SIM.xtal_shape = shapetype.Gauss
     SIM.interpolate = 0
     SIM.add_nanoBragg_spots()
+  SIM.raw_pixels*=self.domains_per_crystal
+  ref_max_bragg = flex.max(SIM.raw_pixels) # get the maximum pixel value for a Bragg spot
 
   SIM.wavelength_A = self.BEAM.get_wavelength()
   SIM.Fbg_vs_stol = water
@@ -53,6 +59,9 @@ class several_wavelength_case:
   SIM.exposure_s=1.0 # multiplies flux x exposure
   SIM.progress_meter=False
   SIM.add_background()
+  ref_mean_with_background = flex.mean(SIM.raw_pixels)
+  print ("Ratio",ref_max_bragg/ref_mean_with_background)
+  assert ref_max_bragg > 10. * ref_mean_with_background # data must be sensible, Bragg >> solvent
   return SIM
 
  def modularized_exafel_api_for_GPU(self, argchk=False, cuda_background=True):
@@ -60,6 +69,7 @@ class several_wavelength_case:
   gpu_channels_singleton = gpu_energy_channels(deviceId = 0)
 
   SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
+  SIM.adc_offset_adu=0
   SIM.device_Id = 0
 
   assert gpu_channels_singleton.get_deviceID()==SIM.device_Id
@@ -95,7 +105,7 @@ class several_wavelength_case:
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
       gpu_simulation.add_energy_channel_from_gpu_amplitudes(
         x, gpu_channels_singleton, gpu_detector)
-  per_image_scale_factor = 1.0
+  per_image_scale_factor = self.domains_per_crystal # 1.0
   gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
 
@@ -150,20 +160,30 @@ if __name__=="__main__":
   SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
   SIM = SWC.several_wavelength_case_for_CPU()
   SIM.to_smv_format(fileout="test_full_e_002.img")
+  scale = SIM.get_intfile_scale()
+  print ("Scale",scale)
+  SIM.raw_pixels *= scale
   SIM.to_cbf("test_full_e_002.cbf")
+  # verify cbf (double) and smv (int) produce the same image to within an ADU
+  loader_smv = dxtbx.load("test_full_e_002.img")
+  loader_cbf = dxtbx.load("test_full_e_002.cbf")
+  assert np.allclose(loader_cbf.get_raw_data().as_numpy_array(), loader_smv.get_raw_data().as_numpy_array(), atol=1.1)
 
-  print("\n# Use case: modularized api argchk=False, cuda_background=False")
+  print("\n# Use case 3: modularized api argchk=False, cuda_background=False")
   SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
+  SIM3.raw_pixels *= scale
   SIM3.to_cbf("test_full_e_003.cbf")
   diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
 
-  print("\n# Use case: modularized api argchk=False, cuda_background=True")
+  print("\n# Use case 4: modularized api argchk=False, cuda_background=True")
   SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
+  SIM4.raw_pixels *= scale
   SIM4.to_cbf("test_full_e_004.cbf")
   diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
-  print("\n# Use case: modularized api argchk=True, cuda_background=True")
+  print("\n# Use case 5: modularized api argchk=True, cuda_background=True")
   SIM5 = SWC.modularized_exafel_api_for_GPU(argchk=True, cuda_background=True)
+  SIM5.raw_pixels *= scale
   SIM5.to_cbf("test_full_e_005.cbf")
   diffs("CPU",SIM.raw_pixels, "GPU",SIM5.raw_pixels)
 
