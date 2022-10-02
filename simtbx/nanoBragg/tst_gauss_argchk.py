@@ -204,6 +204,7 @@ def simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, a
   SIM.progress_meter=False
   SIM.add_background()
   ref_mean_with_background = flex.mean(SIM.raw_pixels)
+  print ("Ratio",ref_max_bragg/ref_mean_with_background)
   assert ref_max_bragg > 10. * ref_mean_with_background # data must be sensible, Bragg >> solvent
   return SIM
 
