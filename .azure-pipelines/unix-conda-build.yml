@@ -157,6 +157,13 @@ steps:
 # test
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/cctbx_project/scitbx
+    sed -i .bak 's/"$D\/suffixtree/#"$D\/suffixtree/g' run_tests.py
+  displayName: Skip scitbx/suffixtree/test/tst_single.py for -O1 on macOS
+  condition: and(eq(variables['MODULES'], 'modules1'), eq(variables['OS'], 'osx-64'))
+
+- script: |
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
