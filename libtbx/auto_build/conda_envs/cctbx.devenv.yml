@@ -21,3 +21,6 @@ dependencies:
   - dials-data
   - pytest-mock
   - pytest-xdist
+
+  # extra
+  - packaging
