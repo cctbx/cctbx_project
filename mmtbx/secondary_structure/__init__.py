@@ -135,13 +135,15 @@ secondary_structure
       .short_caption = Conservative mode of from_ca
     max_rmsd = 1
       .type = float
-      .help = Maximum rmsd to consider two chains with identical sequences \
+      .help = Only applies if search_method = from_ca. \
+              Maximum rmsd to consider two chains with identical sequences \
               as the same for ss identification
       .short_caption = Maximum rmsd
       .expert_level = 3
     use_representative_chains = True
       .type = bool
-      .help = Use a representative of all chains with the same sequence. \
+      .help = Only applies if search_method = from_ca. \
+              Use a representative of all chains with the same sequence. \
               Alternative is to examine each chain individually. Can be \
               much slower with use_representative_of_chain=False if there \
               are many symmetry copies. Ignored unless ss_by_chain is True.
@@ -149,7 +151,8 @@ secondary_structure
       .expert_level = 3
     max_representative_chains = 100
       .type = float
-      .help = Maximum number of representative chains
+      .help = Only applies if search_method = from_ca. \
+              Maximum number of representative chains
       .short_caption = Maximum representative chains
       .expert_level = 3
 
