@@ -38,6 +38,9 @@ phil_scope = parse("""
     .type = float
     .help = If set, add this offset (in eV) to the energy axis in the \
             spectra in the beam file and to the per-shot wavelength.
+  pulse_offset = 0
+    .type = int
+    .help = If set, index into beam pulse_ids with this offset.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -272,6 +275,7 @@ class jf16m_cxigeom2nexus(object):
         data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
       else:
         data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
+      #data_pulse_ids += self.params.pulse_offset
       beam_h5 = h5py.File(self.params.beam_file, 'r')
       if self.params.spectral_data_key:
         spectral_data_key = self.params.spectral_data_key
@@ -283,6 +287,7 @@ class jf16m_cxigeom2nexus(object):
         raise Sorry("couldn't find spectral data at the indicated address")
 
       beam_pulse_ids = beam_h5[spectral_data_key+':SPECTRUM_CENTER/pulse_id'][()]
+      beam_pulse_ids += self.params.pulse_offset
       beam_energies = beam_h5[spectral_data_key+':SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.recalculate_wavelength:
@@ -294,20 +299,30 @@ class jf16m_cxigeom2nexus(object):
         spectra_y = np.ndarray((len(data_pulse_ids),beam_spectra_y.shape[1]), dtype='f8')
 
       for i, pulse_id in enumerate(data_pulse_ids):
-        where = np.where(beam_pulse_ids==pulse_id)[0][0]
-        if self.params.recalculate_wavelength:
-          assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
-          x = beam_spectra_x[where]
-          y = beam_spectra_y[where].astype(float)
-          ycorr = y - np.percentile(y, 10)
-          e = sum(x*ycorr) / sum(ycorr)
-          energies[i] = e
-          orig_energies[i] = beam_energies[where]
+        try:
+          where = np.where(beam_pulse_ids==pulse_id)[0][0]
+        except IndexError:
+          energies[i] = .00001
+          if self.params.recalculate_wavelength:
+            orig_energies[i] = .00001
+          if self.params.include_spectra:
+            spectra_x[i] = np.zeros(beam_spectra_x[0].size)+0.00001
+            spectra_y[i] = np.zeros(beam_spectra_y[0].size)+0.00001
+          print("filling zero spectrum for missing pulse id")
         else:
-          energies[i] = beam_energies[where]
-        if self.params.include_spectra:
-          spectra_x[i] = beam_spectra_x[where]
-          spectra_y[i] = beam_spectra_y[where]
+          if self.params.recalculate_wavelength:
+            assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
+            x = beam_spectra_x[where]
+            y = beam_spectra_y[where].astype(float)
+            ycorr = y - np.percentile(y, 10)
+            e = sum(x*ycorr) / sum(ycorr)
+            energies[i] = e
+            orig_energies[i] = beam_energies[where]
+          else:
+            energies[i] = beam_energies[where]
+          if self.params.include_spectra:
+            spectra_x[i] = beam_spectra_x[where]
+            spectra_y[i] = beam_spectra_y[where]
 
       if self.params.energy_offset:
         energies += self.params.energy_offset
