@@ -101,7 +101,8 @@ master_phil = iotbx.phil.parse("""
 
      ss_by_chain = None
        .type = bool
-       .help = Find secondary structure only within individual chains. \
+       .help = Only applies if search_method = from_ca. \
+              Find secondary structure only within individual chains. \
                Alternative is to allow H-bonds between chains. Can be \
                much slower with ss_by_chain=False. If your model is complete \
                use ss_by_chain=True. If your model is many fragments, use \
