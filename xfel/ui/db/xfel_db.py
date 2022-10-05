@@ -328,11 +328,11 @@ class db_application(object):
         sql_cursor = dbobj.cursor()
         sql_cursor.execute(query)
         cursor = dummy_cursor(sql_cursor)
-        sql_cursor.close()
         if commit:
           dbobj.commit()
         else:
           dbobj.rollback()
+        sql_cursor.close()
 
         if self.params.db.verbose:
           et = time.time() - st
