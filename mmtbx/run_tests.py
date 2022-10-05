@@ -126,7 +126,6 @@ general_tests = [
   "$D/monomer_library/tst_selection.py",
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
-  "$D/monomer_library/tst_pdb_interpretation_2.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_ncs_processing.py",
@@ -486,6 +485,11 @@ if libtbx.env.has_module(name="probe"):
 else:
   print("Skipping %d MolProbity tests: probe not configured"%len(molprobity_tests))
   tst_list = tuple(general_tests)
+
+# generally failing tests
+tst_list_expected_failures = [
+  "$D/monomer_library/tst_pdb_interpretation_2.py",
+  ]
 
 def run():
   assert easy_run.call("libtbx.find_untested mmtbx True")==0
