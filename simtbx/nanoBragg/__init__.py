@@ -214,7 +214,19 @@ class _():
 
     return explist
 
-  def to_cbf(self, cbf_filename, toggle_conventions=False):
+  def to_cbf(self, cbf_filename, toggle_conventions=False, intfile_scale=1.0):
+    """write a CBF-format image file to disk from the raw pixel array
+    intfile_scale: multiplicative factor applied to raw pixels before output
+         intfile_scale > 0 : value of the multiplicative factor
+         intfile_scale = 1 (default): do not apply a factor
+         intfile_scale = 0 : compute a reasonable scale factor to set max pixel to 55000; given by get_intfile_scale()"""
+
+    if intfile_scale != 1.0:
+      cache_pixels = self.raw_pixels
+      if intfile_scale > 0: self.raw_pixels = self.raw_pixels * intfile_scale
+      else: self.raw_pixels = self.raw_pixels * self.get_intfile_scale()
+      # print("switch to scaled")
+
     if toggle_conventions:
       # switch to DIALS convention before writing CBF
       CURRENT_CONV = self.beamcenter_convention
@@ -225,6 +237,10 @@ class _():
 
     if toggle_conventions:
       self.beamcenter_convention=CURRENT_CONV
+
+    if intfile_scale != 1.0:
+      self.raw_pixels = cache_pixels
+      # print("switch back to cached")
 
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)

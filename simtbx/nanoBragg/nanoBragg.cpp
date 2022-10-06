@@ -3951,7 +3951,7 @@ nanoBragg::add_noise()
 }
 // end of add_noise()
 
-double nanoBragg::get_intfile_scale( double intfile_scale) const {
+double nanoBragg::get_intfile_scale(double intfile_scale) const {
     const double* floatimage = raw_pixels.begin();
     double max_value = (double)std::numeric_limits<unsigned short int>::max();
     double saturation = floor(max_value - 1 );

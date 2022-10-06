@@ -118,11 +118,11 @@ output_scale=1.E9
 SIM.adc_offset_adu=0
 smv_filename = "test_full_100.img"
 SIM.to_smv_format(fileout=smv_filename, intfile_scale=output_scale)
+
 # write the simulation to disk using cbf writer
-SIM.raw_pixels*=output_scale
 cbf_filename = "test_full_100.cbf"
 print("write simulation to disk (%s)" % cbf_filename)
-SIM.to_cbf(cbf_filename)
+SIM.to_cbf(cbf_filename, intfile_scale=output_scale)
 
 # load the CBF from disk
 print("Open file %s using dxtbx" % cbf_filename)
