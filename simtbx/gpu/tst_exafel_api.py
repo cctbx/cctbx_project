@@ -159,11 +159,10 @@ if __name__=="__main__":
   print("\n# Use case 2.  Three-wavelength polychromatic source")
   SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
   SIM = SWC.several_wavelength_case_for_CPU()
-  SIM.to_smv_format(fileout="test_full_e_002.img")
+  SIM.to_smv_format(fileout="test_full_e_002.img") # scales by default
   scale = SIM.get_intfile_scale()
   print ("Scale",scale)
-  SIM.raw_pixels *= scale
-  SIM.to_cbf("test_full_e_002.cbf")
+  SIM.to_cbf("test_full_e_002.cbf", intfile_scale=scale)
   # verify cbf (double) and smv (int) produce the same image to within an ADU
   loader_smv = dxtbx.load("test_full_e_002.img")
   loader_cbf = dxtbx.load("test_full_e_002.cbf")
@@ -171,20 +170,17 @@ if __name__=="__main__":
 
   print("\n# Use case 3: modularized api argchk=False, cuda_background=False")
   SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
-  SIM3.raw_pixels *= scale
-  SIM3.to_cbf("test_full_e_003.cbf")
+  SIM3.to_cbf("test_full_e_003.cbf", intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
 
   print("\n# Use case 4: modularized api argchk=False, cuda_background=True")
   SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
-  SIM4.raw_pixels *= scale
-  SIM4.to_cbf("test_full_e_004.cbf")
+  SIM4.to_cbf("test_full_e_004.cbf", intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
   print("\n# Use case 5: modularized api argchk=True, cuda_background=True")
   SIM5 = SWC.modularized_exafel_api_for_GPU(argchk=True, cuda_background=True)
-  SIM5.raw_pixels *= scale
-  SIM5.to_cbf("test_full_e_005.cbf")
+  SIM5.to_cbf("test_full_e_005.cbf", intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM5.raw_pixels)
 
 print("OK")
