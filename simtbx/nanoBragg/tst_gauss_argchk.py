@@ -230,16 +230,13 @@ if __name__=="__main__":
   SIM.adc_offset_adu=0
   SIM.to_smv_format(fileout="test_full_001.img", intfile_scale=output_scale)
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
-  SIM.raw_pixels*=output_scale
-  SIM.to_cbf("test_full_001.cbf")
+  SIM.to_cbf("test_full_001.cbf", intfile_scale=output_scale)
 
   if runmode=="GPU":
     bragg_engine = nanoBragg.add_nanoBragg_spots_cuda
     SIM3 = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
-    SIM3.raw_pixels*=output_scale
-    SIM3.to_cbf("test_full_003.cbf")
+    SIM3.to_cbf("test_full_003.cbf", intfile_scale=output_scale)
     SIM4 = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
-    SIM4.raw_pixels*=output_scale
     assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
     assert approx_equal(SIM.raw_pixels, SIM4.raw_pixels)
 
