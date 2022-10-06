@@ -303,7 +303,7 @@ class db_application(object):
       assert val in ['execute', 'cache_commits']
     return super(db_application, self).__setattr__(prop, val)
 
-  def execute_query(self, query, commit = False):
+  def execute_query(self, query, commit=True):
     from MySQLdb import OperationalError
 
     if self.mode == 'cache_commits' and commit:
@@ -319,19 +319,23 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None:
-          dbobj = get_db_connection(self.params)
+
+        # Get the (maybe cached) connection
+        # We enable autocommit on the connection by default, to avoid stale
+        # reads arising from unclosed transactions. See:
+        # https://stackoverflow.com/questions/1617637/pythons-mysqldb-not-getting-updated-row
+        if not commit: # connection caching is not attempted if commit=False
+          dbobj = get_db_connection(self.params, autocommit=False)
+        elif self.dbobj is None:
+          dbobj = get_db_connection(self.params, autocommit=True)
           if self.cache_connection:
             self.dbobj = dbobj
         else:
           dbobj = self.dbobj
+
         sql_cursor = dbobj.cursor()
         sql_cursor.execute(query)
         cursor = dummy_cursor(sql_cursor)
-        if commit:
-          dbobj.commit()
-        else:
-          dbobj.rollback()
         sql_cursor.close()
 
         if self.params.db.verbose:
