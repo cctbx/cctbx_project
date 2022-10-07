@@ -139,7 +139,6 @@ test_cbf.Amatrix = sqr(CRYSTAL.get_A()).transpose()
 test_cbf.oversample = oversmaple
 test_cbf.xtal_shape = shapetype.Gauss
 test_cbf.add_nanoBragg_spots()
-test_cbf.raw_pixels*=output_scale
 
 # verify test_cbf and SIM produce the same Bragg spot image
 print("Check the intensities haven't changed, and that  cbf writing preserved geometry")
