@@ -63,6 +63,8 @@ jobs:
     path: ./modules/cctbx_project
 
   - script: |
+      set -xe
+
       cd $(Pipeline.Workspace)
       mkdir $(PYTHON_VERSION)_$(OS)
       cd $(PYTHON_VERSION)_$(OS)
@@ -76,7 +78,7 @@ jobs:
         mkdir -p ${directory}
         cd ${directory}
         echo Downloading ${filename} to ${directory}
-        wget --retry-connrefused --no-http-keep-alive --retry-on-http-error=500,502,503,520,524,525 ${url}
+        wget --no-clobber --retry-connrefused --no-http-keep-alive --retry-on-http-error=500,502,503,520,524,525 ${url}
         cd ..
         if [ "$(OS)" = "win-64" ]; then
           echo ${directory}\\${filename} >> filenames.txt
@@ -86,6 +88,7 @@ jobs:
       done
       ls
     displayName: Download conda packages
+    retryCountOnTaskFailure: 3
 
   - publish: $(Pipeline.Workspace)/$(PYTHON_VERSION)_$(OS)
     artifact: $(PYTHON_VERSION)_$(OS)

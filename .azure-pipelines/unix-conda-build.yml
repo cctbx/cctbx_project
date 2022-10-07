@@ -168,6 +168,7 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
+    rm -fr tests
     mkdir tests
     cd tests
     export PYTHONDEVMODE=1
@@ -192,6 +193,7 @@ steps:
   failOnStderr: false
   displayName: Test
   condition: ne(variables['PYTHON_VERSION'], 'py310')
+  retryCountOnTaskFailure: 3
 
 - script: |
     set -xe
@@ -199,6 +201,7 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
+    rm -fr tests
     mkdir tests
     cd tests
     export PYTHONDEVMODE=1
@@ -220,6 +223,7 @@ steps:
   failOnStderr: false
   displayName: Test
   condition: eq(variables['PYTHON_VERSION'], 'py310')
+  retryCountOnTaskFailure: 3
 
 - task: PublishTestResults@2
   condition: succeededOrFailed()

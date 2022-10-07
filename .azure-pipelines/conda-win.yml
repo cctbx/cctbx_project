@@ -183,6 +183,7 @@ jobs:
       call libtbx.scons -j 4
     displayName: Configure and Build
     condition: ne(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -215,6 +216,7 @@ jobs:
       call libtbx.scons -j 4
     displayName: Configure and Build (Python 3.10)
     condition: eq(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   # test
   - script: |
