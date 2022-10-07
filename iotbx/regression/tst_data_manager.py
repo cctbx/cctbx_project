@@ -212,6 +212,7 @@ END
   dm.process_model_file(pdb_filename)
   assert not dm.get_model(pdb_filename).input_model_format_cif()
   dm.write_model_file(m, test_filename, overwrite=True)
+  os.remove(test_output_filename)
 
   # test reading PDB writing CIF
   test_filename = 'test_model.pdb'
@@ -303,6 +304,7 @@ END
 
   os.remove(test_eff)
   os.remove(test_filename)
+  os.remove(test_output_filename)
 
   # test reading/writing CIF
   test_filename = 'test_model_datatype.cif'
@@ -603,7 +605,6 @@ def test_miller_array_datatype():
   label_subset = labels[3:8]
   dm = DataManager(['miller_array', 'phil'])
   dm.process_miller_array_file(data_mtz)
-  dm._miller_array_labels[data_mtz] = label_subset
   dm.set_miller_array_type(label=label_subset[2], array_type='electron')
   assert dm.get_miller_array_type(label=label_subset[2]) == 'electron'
   dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
@@ -612,16 +613,15 @@ def test_miller_array_datatype():
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
   assert new_dm.get_miller_array_type(label=label_subset[2]) == 'electron'
-  fs = new_dm.get_reflection_file_server(array_type='x_ray')
+  fs = new_dm.get_reflection_file_server(array_type='x_ray', labels=[label_subset])
   assert len(fs.get_miller_arrays(None)) == 4
-  fs = new_dm.get_reflection_file_server(array_type='electron')
+  fs = new_dm.get_reflection_file_server(array_type='electron', labels=[label_subset])
   assert len(fs.get_miller_arrays(None)) == 1
   os.remove('test.phil')
 
   label_subset = list()
   dm = DataManager(['miller_array', 'phil'])
   dm.process_miller_array_file(data_mtz)
-  dm._miller_array_labels[data_mtz] = label_subset
   dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
                      overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
@@ -840,6 +840,81 @@ def test_fmodel_params():
   assert params.xray_data.french_wilson.max_bins == 1
 
 # -----------------------------------------------------------------------------
+def test_user_selected_labels():
+  dm = DataManager(['miller_array', 'phil'])
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+  dm.process_miller_array_file(data_mtz)
+  params = dm.export_phil_scope(as_extract=True)
+  assert len(params.data_manager.miller_array[0].user_selected_labels) == 0
+
+  # user_selected_labels
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = FRACTION
+    user_selected_labels = BGP
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  dm.load_miller_array_phil_extract(working_phil.extract())
+  params = dm.export_phil_scope(as_extract=True)
+  assert params.data_manager.miller_array[0].user_selected_labels == ['FRACTION', 'BGP']
+
+  # wrong label
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = abc
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  try:
+    dm.load_miller_array_phil_extract(working_phil.extract())
+  except Sorry as s:
+    assert 'abc, could not be found in' in str(s)
+
+  # labels
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    labels.name = fraction
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  dm.load_miller_array_phil_extract(working_phil.extract())
+  params = dm.export_phil_scope(as_extract=True)
+  assert params.data_manager.miller_array[0].user_selected_labels == ['fraction']
+  for label in params.data_manager.miller_array[0].labels:
+    assert label.name != 'fraction'  # fraction is only stored in user_selected_labels
+
+  # wrong label
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    labels.name = DEF
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  try:
+    dm.load_miller_array_phil_extract(working_phil.extract())
+  except Sorry as s:
+    assert 'DEF, could not be found in' in str(s)
+
+# -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
@@ -851,6 +926,7 @@ if __name__ == '__main__':
   test_default_filenames()
   test_model_skip_ss_annotations()
   test_fmodel_params()
+  test_user_selected_labels()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_model_and_restraint()
