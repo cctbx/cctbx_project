@@ -281,8 +281,16 @@ class initialize(initialize_base):
       columns_dict[table_name] = [c[0] for c in cursor.fetchall() if c[0] != 'id']
     return columns_dict
 
+class dummy_cursor(object):
+  def __init__(self, sql_cursor):
+    self.rowcount = sql_cursor.rowcount
+    self.lastrowid = sql_cursor.lastrowid
+    self.prefetched = sql_cursor.fetchall()
+  def fetchall(self):
+    return self.prefetched
+
 class db_application(object):
-  def __init__(self, params, cache_connection = False, mode = 'execute'):
+  def __init__(self, params, cache_connection = True, mode = 'execute'):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection
@@ -295,16 +303,15 @@ class db_application(object):
       assert val in ['execute', 'cache_commits']
     return super(db_application, self).__setattr__(prop, val)
 
-  def execute_query(self, query, commit = False):
+  def execute_query(self, query, commit=True):
     from MySQLdb import OperationalError
-    from time import time
 
     if self.mode == 'cache_commits' and commit:
       self.last_query = query
       return
 
     if self.params.db.verbose:
-      st = time()
+      st = time.time()
       self.query_count += 1
 
     retry_count = 0
@@ -312,19 +319,27 @@ class db_application(object):
     sleep_time = 0.1
     while retry_count < retry_max:
       try:
-        if self.dbobj is None:
-          dbobj = get_db_connection(self.params)
+
+        # Get the (maybe cached) connection
+        # We enable autocommit on the connection by default, to avoid stale
+        # reads arising from unclosed transactions. See:
+        # https://stackoverflow.com/questions/1617637/pythons-mysqldb-not-getting-updated-row
+        if not commit: # connection caching is not attempted if commit=False
+          dbobj = get_db_connection(self.params, autocommit=False)
+        elif self.dbobj is None:
+          dbobj = get_db_connection(self.params, autocommit=True)
           if self.cache_connection:
             self.dbobj = dbobj
         else:
           dbobj = self.dbobj
-        cursor = dbobj.cursor()
-        cursor.execute(query)
-        if commit:
-          dbobj.commit()
+
+        sql_cursor = dbobj.cursor()
+        sql_cursor.execute(query)
+        cursor = dummy_cursor(sql_cursor)
+        sql_cursor.close()
 
         if self.params.db.verbose:
-          et = time() - st
+          et = time.time() - st
           if et > 1:
             print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
