@@ -2,6 +2,7 @@
 Extend the tests in tst_gauss_argchk.
 Both test cases excercise a simple monolithic detector
 tst_exafel_api introduces polychromatic beam (3 wavelengths in this simplified example)
+Supply command-line context=[kokkos_gpu | cuda] to switch between both implementations
 Test 1) standard C++ result CPU
      2) CPU, but use the stable sort version of CPU background (FUTURE PLAN)
      3) exafel api interface to GPU, fast evaluation on many energy channels, CPU background
@@ -14,8 +15,29 @@ import dxtbx
 from scitbx.array_family import flex
 from scitbx.matrix import sqr
 from simtbx.nanoBragg import nanoBragg, shapetype
-
 from simtbx.nanoBragg.tst_gauss_argchk import water, basic_crystal, basic_beam, basic_detector, amplitudes
+from simtbx import get_exascale
+
+def parse_input():
+  from iotbx.phil import parse
+  master_phil="""
+    context = kokkos_gpu *cuda
+      .type = choice
+      .optional = False
+      .help = backend for parallel execution
+  """
+  phil_scope = parse(master_phil)
+  # The script usage
+  import libtbx.load_env # implicit import
+  from dials.util.options import ArgumentParser
+  # Create the parser
+  parser = ArgumentParser(
+        usage="\n libtbx.python tst_exafel_api context=[kokkos_gpu|cuda]",
+        phil=phil_scope,
+        epilog="test monolithic detector, three-energy beam, cuda vs. kokkos")
+  # Parse the command line. quick_parse is required for MPI compatibility
+  params, options = parser.parse_args(show_diff_phil=True,quick_parse=True)
+  return params,options
 
 class several_wavelength_case:
  def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model):
@@ -64,9 +86,9 @@ class several_wavelength_case:
   assert ref_max_bragg > 10. * ref_mean_with_background # data must be sensible, Bragg >> solvent
   return SIM
 
- def modularized_exafel_api_for_GPU(self, argchk=False, cuda_background=True):
-  from simtbx.gpu import gpu_energy_channels
-  gpu_channels_singleton = gpu_energy_channels(deviceId = 0)
+ def modularized_exafel_api_for_GPU(self, params, argchk=False, gpu_background=True):
+  gpu_channels_type = get_exascale("gpu_energy_channels",params.context)
+  gpu_channels_singleton = gpu_channels_type (deviceId = 0)
 
   SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
   SIM.adc_offset_adu=0
@@ -89,12 +111,11 @@ class several_wavelength_case:
     SIM.xtal_shape = shapetype.Gauss
   SIM.interpolate = 0
   # allocate GPU arrays
-  from simtbx.gpu import exascale_api
-  gpu_simulation = exascale_api(nanoBragg = SIM)
+  gpu_simulation = get_exascale("exascale_api",params.context)(nanoBragg = SIM)
   gpu_simulation.allocate()
 
-  from simtbx.gpu import gpu_detector as gpud
-  gpu_detector = gpud(deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
+  gpu_detector = get_exascale("gpu_detector",params.context)(
+                 deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
   gpu_detector.each_image_allocate()
 
   # loop over energies
@@ -109,7 +130,7 @@ class several_wavelength_case:
   gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
   SIM.wavelength_A = self.BEAM.get_wavelength() # return to canonical energy for subsequent background
 
-  if cuda_background:
+  if gpu_background:
       SIM.Fbg_vs_stol = water
       SIM.amorphous_sample_thick_mm = 0.02
       SIM.amorphous_density_gcm3 = 1
@@ -147,6 +168,7 @@ def diffs(labelA, A, labelB, B):
   assert max < 1.0
 
 if __name__=="__main__":
+  params,options = parse_input()
   # make the dxtbx objects
   BEAM = basic_beam()
   DETECTOR = basic_detector()
@@ -159,28 +181,32 @@ if __name__=="__main__":
   print("\n# Use case 2.  Three-wavelength polychromatic source")
   SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
   SIM = SWC.several_wavelength_case_for_CPU()
-  SIM.to_smv_format(fileout="test_full_e_002.img") # scales by default
+  SIM.to_smv_format(fileout="test_full_cpu_002.img") # scales by default
   scale = SIM.get_intfile_scale()
   print ("Scale",scale)
-  SIM.to_cbf("test_full_e_002.cbf", intfile_scale=scale)
+  SIM.to_cbf("test_full_cpu_002.cbf", intfile_scale=scale)
   # verify cbf (double) and smv (int) produce the same image to within an ADU
-  loader_smv = dxtbx.load("test_full_e_002.img")
-  loader_cbf = dxtbx.load("test_full_e_002.cbf")
+  loader_smv = dxtbx.load("test_full_cpu_002.img")
+  loader_cbf = dxtbx.load("test_full_cpu_002.cbf")
   assert np.allclose(loader_cbf.get_raw_data().as_numpy_array(), loader_smv.get_raw_data().as_numpy_array(), atol=1.1)
 
-  print("\n# Use case 3: modularized api argchk=False, cuda_background=False")
-  SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
-  SIM3.to_cbf("test_full_e_003.cbf", intfile_scale=scale)
+  # Switch the remaining tests based on GPU context
+  gpu_instance_type = get_exascale("gpu_instance", params.context)
+  gpu_instance = gpu_instance_type(deviceId = 0)
+
+  print("\n# Use case 3 (%s): modularized api argchk=False, gpu_background=False"%params.context)
+  SIM3 = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=False)
+  SIM3.to_cbf("test_full_%s_003.cbf"%(params.context), intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
 
-  print("\n# Use case 4: modularized api argchk=False, cuda_background=True")
-  SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
-  SIM4.to_cbf("test_full_e_004.cbf", intfile_scale=scale)
+  print("\n# Use case 4 (%s): modularized api argchk=False, gpu_background=True"%(params.context))
+  SIM4 = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=True)
+  SIM4.to_cbf("test_full_%s_004.cbf"%(params.context), intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
-  print("\n# Use case 5: modularized api argchk=True, cuda_background=True")
-  SIM5 = SWC.modularized_exafel_api_for_GPU(argchk=True, cuda_background=True)
-  SIM5.to_cbf("test_full_e_005.cbf", intfile_scale=scale)
+  print("\n# Use case 5 (%s): modularized api argchk=True, gpu_background=True"%(params.context))
+  SIM5 = SWC.modularized_exafel_api_for_GPU(params=params, argchk=True, gpu_background=True)
+  SIM5.to_cbf("test_full_%s_005.cbf"%(params.context), intfile_scale=scale)
   diffs("CPU",SIM.raw_pixels, "GPU",SIM5.raw_pixels)
 
 print("OK")
