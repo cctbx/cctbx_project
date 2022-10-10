@@ -66,8 +66,9 @@ jobs:
       set -xe
 
       cd $(Pipeline.Workspace)
-      mkdir $(PYTHON_VERSION)_$(OS)
+      mkdir -p $(PYTHON_VERSION)_$(OS)
       cd $(PYTHON_VERSION)_$(OS)
+      rm -f filenames.txt
       for url in `grep https $(Pipeline.Workspace)/modules/cctbx_project/libtbx/auto_build/conda_envs/cctbx_$(PYTHON_VERSION)_$(OS).txt`; do
         filename=${url##*/}
         filename=${filename%#*}

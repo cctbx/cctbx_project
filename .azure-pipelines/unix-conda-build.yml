@@ -105,9 +105,11 @@ steps:
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda remove  -y --all -n $(PYTHON_VERSION)
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
+  retryCountOnTaskFailure: 3
 
 # - script: |
 #     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
