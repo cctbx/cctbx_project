@@ -658,8 +658,10 @@ def run2(args,
   return (params.output_file_name, n_refl)
 
 def validate_params(params):
-  if (params.input.cif_file is None) and (params.input.pdb_id is None):
+  if params.input.cif_file is None and params.input.pdb_id is None:
     raise Sorry("No CIF file provided!")
+  if params.input.cif_file == [] and params.input.pdb_id is None:
+    raise Sorry("No structure factors found!")
   if (params.input.pdb_id is not None):
     if (params.input.cif_file is not None):
       raise Sorry("Please specify either a PDB ID or a CIF file, not both.")
