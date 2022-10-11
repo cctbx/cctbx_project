@@ -37,6 +37,7 @@ dependencies:
   # extra
   - libsvm-official
   - pytest
+  - packaging
 
   # docs
   - docutils
