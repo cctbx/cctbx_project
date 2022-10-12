@@ -660,7 +660,7 @@ Installation of Python packages may fail.
              pkg_info=pkg_info['summary'],
              pkg_qualifier=' ' + (package_version or ''))
     if download_only:
-      pip_cmd = filter(None, ['pip', 'download',
+      pip_cmd = filter(None, [sys.executable, '-m', 'pip', 'download',
                               pkg_info['package'] + pkg_info['version'],
                               '-d', pkg_info['cachedir'], pkg_info['debug']])
       if extra_options:

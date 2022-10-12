@@ -13,7 +13,7 @@ import subprocess
 import libtbx.load_env
 
 try:
-  pip_version_cmd = ['python', '-c', 'import pip; print(pip.__version__)']
+  pip_version_cmd = [sys.executable, '-c', 'import pip; print(pip.__version__)']
   pip_version_str = subprocess.check_output(pip_version_cmd).decode().strip()
   import pkg_resources
 
@@ -146,7 +146,7 @@ def require(pkgname, version=None):
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
-  pip_install_cmd = ['pip', 'install', requirestring]
+  pip_install_cmd = [sys.executable, '-m', 'pip', 'install', requirestring]
   pip_install_result = subprocess.run(pip_install_cmd)
   exit_code = pip_install_result.returncode
   if not has_req_tracker:
