@@ -89,13 +89,18 @@ namespace af = scitbx::af;
   exascale_api::add_energy_channel_from_gpu_amplitudes(
     int const& ichannel,
     simtbx::gpu::gpu_energy_channels & gec,
-    simtbx::gpu::gpu_detector & gdt
+    simtbx::gpu::gpu_detector & gdt,
+    double const& weight
   ){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
-        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
+        int source_count = SIM.sources;
+        af::shared<double> weighted_sources_I = af::shared<double>(source_count);
+        double* wptr = weighted_sources_I.begin();
+        for (std::size_t iwt = 0; iwt < source_count; iwt++){wptr[iwt] = weight*(SIM.source_I[iwt]);}
+        cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, wptr, SIM.sources));
         cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
 
         // magic happens here: take pointer from singleton, temporarily use it for add Bragg iteration:

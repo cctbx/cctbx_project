@@ -76,6 +76,7 @@ if OPT.enable_cuda:
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
     ["$D/gpu/tst_exafel_api.py","context=cuda"],# CPU / GPU, polychromatic beam, monolithic detector
+    ["$D/gpu/tst_unified.py","context=cuda"],   # GPU, exaFEL full API
   ]
 else:
   tst_list.append(
@@ -84,6 +85,7 @@ else:
 if OPT.enable_kokkos and sys.platform.startswith('linux'):
    tst_list_parallel += [
      ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
+     ["$D/gpu/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
    ]
 if OPT.enable_cuda:
   if OPT.enable_cxx11 and sys.platform != 'win32':
