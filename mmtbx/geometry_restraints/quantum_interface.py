@@ -48,6 +48,8 @@ def get_qm_restraints_scope(validate=True, verbose=False):
       .type = int
     read_output_to_skip_opt_if_available = False
       .type = bool
+    ignore_input_differences = False
+      .type = bool
     view_output = None
       .type = str
   }

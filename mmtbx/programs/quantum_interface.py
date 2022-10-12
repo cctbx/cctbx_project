@@ -45,8 +45,23 @@ def add_histidine_H_atoms(hierarchy):
       ag = _add_HIS_H_atom_to_atom_group(ag, name)
   return ag
 
-def generate_flipping_his(ag, return_hierarchy=False, chain_id=None, resseq=None):
+def assert_histidine_double_protonated(ag):
+  count = 0
+  for atom in ag.atoms():
+    if atom.name.strip() in ['HD1', 'HE2', 'DD1', 'DE2']:
+      count+=1
+  if count not in [1]:
+    raise Sorry('incorrect protonation of %s' % ag.id_str())
+
+def generate_flipping_his(ag,
+                          return_hierarchy=False,
+                          include_unprotonated=False,
+                          chain_id=None,
+                          resseq=None):
   # assume double protonated HIS
+  assert_histidine_double_protonated(ag)
+  booleans = [[1,1], [1,0], [0,1]]
+  if include_unprotonated: booleans = [[1,1], [1,0], [0,1], [0,0]]
   for flip in range(2):
     for i, (hd, he) in enumerate([[1,1], [1,0], [0,1], [0,0]]):
       if i==0 and flip:

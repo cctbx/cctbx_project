@@ -131,7 +131,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
     self.times.append(time.time()-t0)
 
   def _input_header(self):
-    standard_options = '''%scf
+    standard_options = '''%scf maxiter=500
 
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
