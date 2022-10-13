@@ -196,7 +196,6 @@ namespace simtbx { namespace Kokkos {
   af::shared<double>
   kokkos_detector::get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
     //return the data array for the multipanel detector case, but only for whitelist pixels
-    //ToDo check if this function works as intended. It seems like active_pixel is unnecessary or wrong
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
     transfer_shared2kokkos(active_pixel_selection, selection);
     // vector_size_t::HostMirror host_selection = create_mirror_view(active_pixel_selection);
@@ -205,7 +204,8 @@ namespace simtbx { namespace Kokkos {
     // }
     // deep_copy(active_pixel_selection, host_selection);
 
-    vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", m_active_pixel_size);
+    size_t output_pixel_size = selection.size();
+    vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
     // CUDAREAL * cu_active_pixel_results;
     // std::size_t * cu_active_pixel_selection;
 
@@ -218,7 +218,7 @@ namespace simtbx { namespace Kokkos {
     auto temp = m_accumulate_floatimage;
 
     parallel_for("get_active_pixel_selection",
-                  range_policy(0, m_active_pixel_size),
+                  range_policy(0, output_pixel_size),
                   KOKKOS_LAMBDA (const int i) {
       size_t index = active_pixel_selection( i );
       active_pixel_results( i ) = temp( index );
@@ -233,7 +233,7 @@ namespace simtbx { namespace Kokkos {
     // vector_cudareal_t::HostMirror host_results = create_mirror_view(active_pixel_results);
     // deep_copy(host_results, active_pixel_results);
 
-    af::shared<double> output_array(m_active_pixel_size, af::init_functor_null<double>());
+    af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
     transfer_kokkos2shared(output_array, active_pixel_results);
 
     // double* output_array_ptr = output_array.begin();
@@ -248,6 +248,7 @@ namespace simtbx { namespace Kokkos {
     //   cudaMemcpyDeviceToHost));
     // cudaSafeCall(cudaFree(cu_active_pixel_selection));
     // cudaSafeCall(cudaFree(cu_active_pixel_results));
+    SCITBX_ASSERT(output_array.size() == output_pixel_size);
     return output_array;
   }
 
