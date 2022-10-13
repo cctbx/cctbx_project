@@ -198,22 +198,9 @@ namespace simtbx { namespace Kokkos {
     //return the data array for the multipanel detector case, but only for whitelist pixels
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
     transfer_shared2kokkos(active_pixel_selection, selection);
-    // vector_size_t::HostMirror host_selection = create_mirror_view(active_pixel_selection);
-    // for (int i=0; i<selection.size(); ++i) {
-    //   host_selection( i ) = selection[ i ];
-    // }
-    // deep_copy(active_pixel_selection, host_selection);
 
     size_t output_pixel_size = selection.size();
     vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
-    // CUDAREAL * cu_active_pixel_results;
-    // std::size_t * cu_active_pixel_selection;
-
-    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * active_pixel_list.size() ));
-    // cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * selection.size() ));
-    // cudaSafeCall(cudaMemcpy(cu_active_pixel_selection,
-    //              selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
-    //              cudaMemcpyHostToDevice));
 
     auto temp = m_accumulate_floatimage;
 
@@ -223,31 +210,10 @@ namespace simtbx { namespace Kokkos {
       size_t index = active_pixel_selection( i );
       active_pixel_results( i ) = temp( index );
     });
-    // int smCount = 84; //deviceProps.multiProcessorCount;
-    // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-    // dim3 numBlocks(smCount * 8, 1);
-    // int total_pixels = active_pixel_list.size();
-    // get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-    //   cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
-
-    // vector_cudareal_t::HostMirror host_results = create_mirror_view(active_pixel_results);
-    // deep_copy(host_results, active_pixel_results);
 
     af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
     transfer_kokkos2shared(output_array, active_pixel_results);
 
-    // double* output_array_ptr = output_array.begin();
-    // for (int i=0; i<m_active_pixel_size; ++i) {
-    //   output_array_ptr[ i ] = host_results( i );
-    // }
-
-    // cudaSafeCall(cudaMemcpy(
-    //   begin,
-    //   cu_active_pixel_results,
-    //   sizeof(*cu_active_pixel_results) * active_pixel_list.size(),
-    //   cudaMemcpyDeviceToHost));
-    // cudaSafeCall(cudaFree(cu_active_pixel_selection));
-    // cudaSafeCall(cudaFree(cu_active_pixel_results));
     SCITBX_ASSERT(output_array.size() == output_pixel_size);
     return output_array;
   }
