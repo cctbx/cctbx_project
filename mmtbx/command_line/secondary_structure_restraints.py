@@ -120,6 +120,8 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   defpars.pdb_interpretation.c_beta_restraints=False
   defpars.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   defpars.pdb_interpretation.allow_polymer_cross_special_position=True
+  # defpars.pdb_interpretation.flip_symmetric_amino_acids=False
+  # defpars.pdb_interpretation.sort_atoms=False
   model = mmtbx.model.manager(
       model_input=pdb_structure,
       crystal_symmetry=cs,
