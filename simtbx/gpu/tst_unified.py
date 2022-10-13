@@ -7,13 +7,14 @@ Test 0) use monochromatic interface to generate a background-only pattern as ref
      2) exafel api interface, GPU background, monochromatic, use add_energy_multichannel_mask_allpanel (equate 1,2)
      3) exafel api interface, GPU background,  3-wavelength, use add_energy_channel_from_gpu_amplitudes
      4) exafel api interface, GPU background,  3-wavelength, use add_energy_multichannel_mask_allpanel (equate 3,4)
+     5-6) verify the get_whitelist_raw_pixels API
 Not implemented yet:
-     5) implement shoebox masks and verify the get_whitelist_raw_pixels API
-     6) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel int mask (equate 3,6)
-     7) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel bool mask (equate 3,7)
+     7) implement shoebox masks and resulting mask
+     8) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel int mask (equate 3,8)
+     9) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel bool mask (equate 3,9)
 Not implemented yet: multipanel detector, write to .h5 file
-     8) 3-wavelength, use add_energy_multichannel_mask_allpanel, use all-pixel int mask (equate 3,8)
-     9) 3-wavelength, use add_energy_multichannel_mask_allpanel, use whitelist
+     10) 3-wavelength, use add_energy_multichannel_mask_allpanel, use all-pixel int mask (equate 3,10)
+     11) 3-wavelength, use add_energy_multichannel_mask_allpanel, use whitelist
 """
 from __future__ import absolute_import, division, print_function
 import numpy as np
@@ -50,7 +51,7 @@ def parse_input():
   return params,options
 
 class several_wavelength_case:
-  def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model, weights):
+  def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model, weights, special=0):
     SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
     nchannels = len(weights)
     assert nchannels in [1,3]
@@ -70,6 +71,7 @@ class several_wavelength_case:
     self.BEAM = BEAM
     self.CRYSTAL = CRYSTAL
     self.domains_per_crystal = 5.E10 # put Bragg spots on larger scale relative to background
+    self.special = special # flag one-time special test cases
 
   def set_pythony_beams(self,SIM): # for the multiwavelength case with use of multiple nanoBragg sources
     pythony_beams = flex_Beam()
@@ -162,16 +164,46 @@ class several_wavelength_case:
     SIM.exposure_s=1.0 # multiplies flux x exposure
     gpu_simulation.add_background(gpu_detector)
 
-    # deallocate GPU arrays afterward
     gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU
+    if self.special == 1: #special test breaks encapsulation
+      self.special_test_case_1(SIM,gpu_detector)
+      gpu_detector.each_image_free()
+      return SIM
     self.data_array = gpu_detector.get_raw_pixels()
     assert self.data_array.focus()[0] == len(self.DETECTOR) # number of panels
     if len(self.DETECTOR) == 1: # if one panel, we can assert data are the same both ways
       single_size = self.data_array.focus()[1:3]
       self.data_array.reshape(flex.grid((single_size[0],single_size[1])))
       assert np.allclose(SIM.raw_pixels, self.data_array)
+    # deallocate GPU arrays afterward
     gpu_detector.each_image_free()
     return SIM
+
+  def special_test_case_1(self,SIM,gpu_detector):
+    reference_raw_pixels = SIM.raw_pixels
+    image_size = len(SIM.raw_pixels)
+    even_pixels = flex.size_t(range(0,image_size,2))
+    odd_pixels = flex.size_t(range(1,image_size,2))
+    assert image_size == len(even_pixels) + len(odd_pixels)
+    even_values = gpu_detector.get_whitelist_raw_pixels(even_pixels)
+    odd_values = gpu_detector.get_whitelist_raw_pixels(odd_pixels)
+    assert (len(even_values) == len(even_pixels)) and (len(odd_values) == len(odd_pixels))
+
+    working_raw_pixels = flex.double(image_size) # blank array
+    working_raw_pixels.set_selected(even_pixels, even_values)
+    working_raw_pixels.set_selected(odd_pixels, odd_values)
+    working_raw_pixels.reshape(flex.grid(SIM.raw_pixels.focus()))
+    SIM.raw_pixels = working_raw_pixels
+    SIM.to_cbf("test_unified_%s_005.cbf"%(params.context), intfile_scale=scale) # straight image; scale seems to come from global scope
+    assert np.allclose(SIM.raw_pixels, reference_raw_pixels) # reassembly equates with original image
+
+    workin2_raw_pixels = flex.double(image_size) # blank array
+    workin2_raw_pixels.set_selected(even_pixels, odd_values) #assemble the image from two half-selections
+    workin2_raw_pixels.set_selected(odd_pixels, even_values) #but in the wrong order
+    workin2_raw_pixels.reshape(flex.grid(SIM.raw_pixels.focus()))
+    SIM.raw_pixels = workin2_raw_pixels
+    SIM.to_cbf("test_unified_%s_006.cbf"%(params.context), intfile_scale=scale) # mixed up checkerboard
+    assert not np.allclose(SIM.raw_pixels, reference_raw_pixels) # wrong-order distorts image
 
 if __name__=="__main__":
   params,options = parse_input()
@@ -286,5 +318,12 @@ if __name__=="__main__":
   print("low energy radius of gyration",math.sqrt(lo_rg_sq))
   print("hi energy radius of gyration",math.sqrt(hi_rg_sq))
   assert lo_rg_sq > hi_rg_sq
+
+  print ("\n Use cases 5-6. Test the whitelist concept")
+  # perform with 1-color image, same image as SIM1
+  # recalculate the several_wavelength_case instance:
+  reference = SIM1.raw_pixels
+  SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model, weights=flex.double([1.]), special=1)
+  SIM_working = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=True)
 
 print("OK")
