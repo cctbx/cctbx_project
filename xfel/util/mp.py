@@ -477,10 +477,9 @@ class get_slurm_submit_command(get_submit_command):
       self.options_inside_submit_script.append(err_str)
 
     # -q <queue>
-    if self.params.queue is None:
-      raise Sorry("Queue not specified.")
-    queue_str = "#SBATCH --partition %s" % self.params.queue
-    self.options_inside_submit_script.append(queue_str)
+    if self.params.queue is not None:
+      queue_str = "#SBATCH --partition %s" % self.params.queue
+      self.options_inside_submit_script.append(queue_str)
 
     # -l walltime=<wall_time_limit> (optional)
     if self.params.wall_time is not None:
