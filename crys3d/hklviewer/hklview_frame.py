@@ -63,6 +63,7 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
+    buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
       self.context = zmq.Context()
@@ -422,6 +423,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
+        self.set_scene(phl.viewer.scene_id)
         phl.hkls.sigma_color_radius = False
 
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
@@ -584,6 +586,7 @@ class HKLViewFrame() :
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
       array._data = array.data().as_int()
+      self.mprint(array.info().label_string() +  " looks like R-free flags. Mapping to zeros and ones", verbose=1)
     return array
 
 
@@ -769,10 +772,12 @@ class HKLViewFrame() :
       hkls = self.origarrays["HKLs"]
       nanarr = flex.double(len(hkls), float("nan"))
       m = miller.match_indices(hkls, procarray.indices() )
+      #m = miller.match_indices(procarray.indices(), hkls )
       indices_of_matched_hkls = m.pairs().column(0)
       for i,e in enumerate(indices_of_matched_hkls):
         nanarr[e] = procarray.data()[i]
       self.origarrays[label] = list(nanarr)
+
       self.arrayinfos.append(arrayinfo)
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
