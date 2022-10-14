@@ -744,16 +744,23 @@ class HKLViewFrame() :
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
-    if arrid2 != -1:
-      millarr2 = deepcopy(self.procarrays[arrid2])
-      self.mprint("Creating %s data with array1 as %s and array2 as %s through the operation:\n\n%s" \
-                   %(label, millarr1.info().label_string(), millarr2.info().label_string(), operation))
-      newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
+    try:
+      if arrid2 != -1:
+        millarr2 = deepcopy(self.procarrays[arrid2])
+        self.mprint("Creating %s data with array1 as %s and array2 as %s through the operation:\n\n%s" \
+                     %(label, millarr1.info().label_string(), millarr2.info().label_string(), operation))
+        newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
+      else:
+        self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
+                     %(label, millarr1.info().label_string(), operation))
+        newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
+
+    if newarray is None:
+       # allow quickly amending broken python code without having to use new column label
+      self.params.miller_array_operation = ""
     else:
-      self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
-                   %(label, millarr1.info().label_string(), operation))
-      newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
-    if newarray is not None:
       self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
