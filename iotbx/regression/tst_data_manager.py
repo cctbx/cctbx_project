@@ -534,11 +534,32 @@ def test_miller_array_datatype():
   new_dm = DataManager(['miller_array'])
   try:
     new_dm.set_default_miller_array_type('q')
-  except Sorry:
-    pass
+  except Sorry as s:
+    assert 'Unrecognized miller_array type, "q,"' in str(s)
   new_dm.set_default_miller_array_type('neutron')
   new_dm.process_miller_array_file(data_mtz)
   assert new_dm.get_miller_array_type(label=label) == 'neutron'
+
+  os.remove('test_phil')
+
+  # test array_type
+  assert dm.get_miller_array_array_type() == 'unknown'
+  label = labels[6]
+  dm.set_miller_array_array_type(data_mtz, label, 'nonsense')
+  assert dm.get_miller_array_array_type(label=label) == 'nonsense'
+  dm.write_phil_file(dm.export_phil_scope().as_str(),
+                     filename='test_phil', overwrite=True)
+  loaded_phil = iotbx.phil.parse(file_name='test_phil')
+  new_dm.load_phil_scope(loaded_phil)
+  assert new_dm.get_miller_array_array_type(label=label) == 'nonsense'
+  new_dm = DataManager(['miller_array'])
+  try:
+    new_dm.set_default_miller_array_array_type('q')
+  except Sorry as s:
+    assert 'Unrecognized miller_array type, "q,"' in str(s)
+  new_dm.set_default_miller_array_array_type('intensity')
+  new_dm.process_miller_array_file(data_mtz)
+  assert new_dm.get_miller_array_array_type(label=label) == 'intensity'
 
   os.remove('test_phil')
 

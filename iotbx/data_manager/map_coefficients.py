@@ -1,5 +1,8 @@
 '''
 Child class of MillerArrayDataManager for handling map coefficients
+
+This will eventually be deprecated.
+The array_type PHIL parameter should be used instead
 '''
 from __future__ import absolute_import, division, print_function
 
@@ -115,10 +118,9 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     data = self.get_miller_array(filename)
     miller_arrays = data.as_miller_arrays()
     current_labels = []
-    if filename in self.get_map_coefficients_names():
-      current_labels = self.get_map_coefficients_labels(filename)
     labels = []
     types = {}
+    array_types = {}
     datatype_dict = getattr(self, '_%s_arrays' % datatype)
     for array in miller_arrays:
       label = array.info().label_string()
@@ -127,20 +129,30 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
         if filename not in datatype_dict.keys():
           datatype_dict[filename] = dict()
         datatype_dict[filename][label] = array
-        types[label] = getattr(self, '_default_%s_type' % datatype)
+        types[label] = getattr(self, self._default_type_str % datatype)
+        array_types[label] = 'complex'
 
     # update data structures
     if len(labels) > 0:
-      current_labels = getattr(self, '_%s_labels' % datatype)
+      current_labels = getattr(self, self._labels_str % datatype)
       if filename not in current_labels:
         current_labels[filename] = labels
       else:
-        current_labels[filename] += labels
-      current_types = getattr(self, '_%s_types' % datatype)
+        for label in labels:
+          if label not in current_labels[filename]:
+            current_labels[filename].append(label)
+      current_types = getattr(self, self._type_str % datatype)
       if filename not in current_types:
         current_types[filename] = types
       else:
         current_types[filename].update(types)
+      current_array_types = getattr(self, self._array_type_str % datatype)
+      if filename not in current_array_types:
+        current_array_types[filename] = array_types
+      else:
+        current_array_types[filename].update(array_types)
+      current_user_selected_labels = getattr(self, self._user_selected_labels_str % datatype)
+      current_user_selected_labels[filename] = []
       self._add(datatype, filename, data)
 
   def write_map_coefficients_file(

@@ -25,6 +25,9 @@ class MillerArrayDataManager(DataManagerBase):
   _type_str = '_%s_types'
   _default_type_str = '_default_%s_type'
   _possible_types_str = '_possible_%s_types'
+  _array_type_str = '_%s_array_types'
+  _default_array_type_str = '_default_%s_array_type'
+  _possible_array_types_str = '_possible_%s_array_types'
   _labels_str = '_%s_labels'
   _arrays_str = '_%s_arrays'
   _user_selected_labels_str = '_user_selected_%s_labels'
@@ -71,6 +74,13 @@ class MillerArrayDataManager(DataManagerBase):
     return self._set_default_miller_array_type(MillerArrayDataManager.datatype,
                                                array_type)
 
+  def get_default_miller_array_array_type(self):
+    return self._get_default_miller_array_array_type(MillerArrayDataManager.datatype)
+
+  def set_default_miller_array_array_type(self, array_type=None):
+    return self._set_default_miller_array_array_type(MillerArrayDataManager.datatype,
+                                                     array_type)
+
   def get_default_miller_array_type(self):
     return self._get_default_miller_array_type(MillerArrayDataManager.datatype)
 
@@ -91,6 +101,14 @@ class MillerArrayDataManager(DataManagerBase):
     return self._get_miller_array_type(MillerArrayDataManager.datatype,
                                        filename, label)
 
+  def set_miller_array_array_type(self, filename=None, label=None, array_type=None):
+    return self._set_miller_array_array_type(MillerArrayDataManager.datatype,
+                                             filename, label, array_type)
+
+  def get_miller_array_array_type(self, filename=None, label=None):
+    return self._get_miller_array_array_type(MillerArrayDataManager.datatype,
+                                             filename, label)
+
   def get_miller_array_labels(self, filename=None):
     '''
     Returns a list of array labels
@@ -102,6 +120,12 @@ class MillerArrayDataManager(DataManagerBase):
     Returns a dict of array types, keyed by label
     '''
     return self._get_array_types(MillerArrayDataManager.datatype, filename)
+
+  def get_miller_array_array_types(self, filename=None):
+    '''
+    Returns a dict of array array_types, keyed by label
+    '''
+    return self._get_array_array_types(MillerArrayDataManager.datatype, filename)
 
   def get_miller_arrays(self, labels=None, filename=None):
     '''
@@ -135,6 +159,8 @@ class MillerArrayDataManager(DataManagerBase):
       self._miller_array_arrays[filename] = {}
     if filename not in self._miller_array_types.keys():
       self._miller_array_types[filename] = {}
+    if filename not in self._miller_array_array_types.keys():
+      self._miller_array_array_types[filename] = {}
     merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
     miller_arrays = self.get_miller_array(filename).\
       as_miller_arrays(merge_equivalents=merge_equivalents)
@@ -144,6 +170,17 @@ class MillerArrayDataManager(DataManagerBase):
       labels.append(label)
       self._miller_array_arrays[filename][label] = array
       self._miller_array_types[filename][label] = self._default_miller_array_type
+      self._miller_array_array_types[filename][label] = self._default_miller_array_array_type
+      if array.is_xray_amplitude_array():
+        self._miller_array_array_types[filename][label] = 'amplitude'
+      elif array.is_xray_intensity_array():
+        self._miller_array_array_types[filename][label] = 'intensity'
+      elif array.is_complex_array():
+        self._miller_array_array_types[filename][label] = 'complex'
+      elif array.is_hendrickson_lattman_array():
+        self._miller_array_array_types[filename][label] = 'hendrickson_lattman'
+      elif array.is_nonsense():
+        self._miller_array_array_types[filename][label] = 'nonsense'
     self._miller_array_labels[filename] = labels
     self._user_selected_miller_array_labels[filename] = []
 
@@ -276,6 +313,7 @@ class MillerArrayDataManager(DataManagerBase):
 
     # set up storage
     # self._miller_array_types = {}                 # [filename] = type dict
+    # self._miller_array_array_types = {}           # [filename] = type dict
     # self._miller_array_labels = {}                # [filename] = label list
     # self._miller_array_arrays = {}                # [filename] = array dict
     # self._user_selected_miller_array_labels = {}  # [filename] = array dict
@@ -283,6 +321,10 @@ class MillerArrayDataManager(DataManagerBase):
     setattr(self, self._default_type_str % datatype, 'x_ray')
     setattr(self, self._possible_types_str % datatype,
             ['x_ray', 'neutron', 'electron'])
+    setattr(self, self._array_type_str % datatype, {})
+    setattr(self, self._default_array_type_str % datatype, 'unknown')
+    setattr(self, self._possible_array_types_str % datatype,
+            ['amplitude', 'complex', 'hendrickson_lattman', 'intensity', 'nonsense', 'unknown'])
     setattr(self, self._labels_str % datatype, {})
     setattr(self, self._arrays_str % datatype, {})
     setattr(self, self._user_selected_labels_str % datatype, {})
@@ -304,6 +346,8 @@ class MillerArrayDataManager(DataManagerBase):
       .type = str
     type = *%s
       .type = choice(multi=False)
+    array_type = *%s
+      .type = choice(multi=False)
   }
   user_selected_labels = None
     .type = str
@@ -311,7 +355,9 @@ class MillerArrayDataManager(DataManagerBase):
     .help = Storage for user selected labels (can be shorter)
     .style = hidden
 }
-''' % (datatype, ' '.join(getattr(self, self._possible_types_str % datatype)))
+''' % (datatype,
+      ' '.join(getattr(self, self._possible_types_str % datatype)),
+      ' '.join(getattr(self, self._possible_array_types_str % datatype)))
 
     # add fmodel PHIL
     if self.supports('model'):
@@ -340,6 +386,7 @@ fmodel {
       item_extract.file = filename
       labels = self._get_array_labels(datatype, filename=filename)
       types = self._get_array_types(datatype, filename=filename)
+      array_types = self._get_array_array_types(datatype, filename=filename)
       user_selected_labels = self._get_user_selected_array_labels(datatype, filename=filename)
       if len(labels) != len(types.keys()):
         raise Sorry('Some labels do not have types.\n{}\n{}'.format(labels, list(types.keys())))
@@ -348,6 +395,7 @@ fmodel {
         label_extract = deepcopy(item_extract.labels[0])
         label_extract.name = label
         label_extract.type = types[label]
+        label_extract.array_type = array_types[label]
         labels_extract.append(label_extract)
       item_extract.labels = labels_extract
       item_extract.user_selected_labels = user_selected_labels
@@ -399,6 +447,7 @@ fmodel {
         # labels from PHIL
         phil_labels = []
         phil_types = {}
+        phil_array_types = {}
         phil_user_selected_labels = []
         specified_labels = item_extract.labels + item_extract.user_selected_labels
         for label in specified_labels:
@@ -422,15 +471,24 @@ fmodel {
                           (datatype, label.type, ', '.join(
                             getattr(self, self._possible_types_str % datatype))))
             phil_types[label_name] = label.type
+          if hasattr(label, 'array_type'):
+            if label.array_type not in getattr(self, self._possible_array_types_str % datatype):
+              raise Sorry(self._unrecognized_type_error_str %
+                          (datatype, label.array_type, ', '.join(
+                            getattr(self, self._possible_array_types_str % datatype))))
+            phil_array_types[label_name] = label.array_type
 
         # update storage
         labels_storage = getattr(self, self._labels_str % datatype)[item_extract.file]
         types_storage = getattr(self, self._type_str % datatype)[item_extract.file]
+        array_types_storage = getattr(self, self._array_type_str % datatype)[item_extract.file]
         for label in phil_labels:
           if label not in labels_storage:
             labels_storage.append(label)
           if label in phil_types:
             types_storage[label] = phil_types[label]
+          if label in phil_array_types:
+            array_types_storage[label] = phil_array_types[label]
         user_selected_labels_storage = getattr(self, self._user_selected_labels_str % datatype)[item_extract.file]
         for label in phil_user_selected_labels:
           if label not in user_selected_labels_storage:
@@ -445,6 +503,16 @@ fmodel {
 
   def _get_default_miller_array_type(self, datatype):
     return getattr(self, self._default_type_str % datatype)
+
+  def _set_default_miller_array_array_type(self, datatype, array_type):
+    if array_type not in getattr(self, self._possible_array_types_str % datatype):
+      raise Sorry(self._unrecognized_type_error_str %
+                  (datatype, array_type,
+                   ', '.join(getattr(self, self._possible_array_types_str % datatype))))
+    setattr(self, self._default_array_type_str % datatype, array_type)
+
+  def _get_default_miller_array_array_type(self, datatype):
+    return getattr(self, self._default_array_type_str % datatype)
 
   def _set_miller_array_type(self, datatype, filename=None, label=None,
                              array_type=None):
@@ -468,6 +536,29 @@ fmodel {
       label = self._get_array_labels(datatype, filename)[0]
     types = self._get_array_types(datatype, filename)
     return types.get(label, getattr(self, self._default_type_str % datatype))
+
+  def _set_miller_array_array_type(self, datatype, filename=None, label=None,
+                                   array_type=None):
+    if filename is None:
+      filename = self._get_default_name(datatype)
+    if label is None:
+      label = self._get_array_labels(datatype, filename)[0]
+    if array_type is None:
+      array_type = getattr(self, self._default_array_type_str % datatype)
+    elif array_type not in getattr(self, self._possible_array_types_str % datatype):
+      raise Sorry(self._unrecognized_type_error_str %
+                  (datatype,
+                   array_type,
+                   ', '.join(getattr(self, self._possible_array_types_str % datatype))))
+    getattr(self, self._array_type_str % datatype)[filename][label] = array_type
+
+  def _get_miller_array_array_type(self, datatype, filename=None, label=None):
+    if filename is None:
+      filename = self._get_default_name(datatype)
+    if label is None:
+      label = self._get_array_labels(datatype, filename)[0]
+    types = self._get_array_array_types(datatype, filename)
+    return types.get(label, getattr(self, self._default_array_type_str % datatype))
 
   def _filter_miller_array_child_datatypes(self, filename):
     # filter arrays (e.g self.filter_map_coefficients_arrays)
@@ -512,6 +603,13 @@ fmodel {
   def _get_array_types(self, datatype, filename=None):
     filename = self._check_miller_array_default_filename(datatype, filename)
     storage_dict = getattr(self, self._type_str % datatype)
+    self._check_miller_array_storage_dict(datatype, storage_dict, filename)
+    types = storage_dict[filename]
+    return types
+
+  def _get_array_array_types(self, datatype, filename=None):
+    filename = self._check_miller_array_default_filename(datatype, filename)
+    storage_dict = getattr(self, self._array_type_str % datatype)
     self._check_miller_array_storage_dict(datatype, storage_dict, filename)
     types = storage_dict[filename]
     return types
@@ -568,6 +666,7 @@ fmodel {
     if len(labels) > 1:
       getattr(self, self._labels_str % datatype)[filename] = labels
       getattr(self, self._type_str % datatype)[filename] = types
+      getattr(self, self._array_type_str % datatype)[filename] = {}
       getattr(self, self._user_selected_labels_str % datatype)[filename] = []
       self._add(datatype, filename, data)
 
