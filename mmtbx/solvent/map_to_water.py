@@ -215,6 +215,9 @@ class run(object):
     self.ma         = msg_accumulator(log = self.log)
     self.total_time = 0
     #
+    if(self.params.scattering_table=="electron"):
+      self.mmm.model().neutralize_scatterers()
+    #
     if(not self.params.keep_input_water):
       self._call(self._remove_input_water, "Removing water in input model")
     if("per_chain" in self.params.mode):
