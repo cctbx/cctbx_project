@@ -175,7 +175,7 @@ namespace Kokkos {
   ){
     // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
     // coordinates for the active pixel list are absolute offsets into the detector array
-    af::shared<int> active_pixel_list;
+    af::shared<std::size_t> active_pixel_list;
     const bool* jptr = all_panel_mask.begin();
     for (int j=0; j < all_panel_mask.size(); ++j){
       if (jptr[j]) {
@@ -190,7 +190,7 @@ namespace Kokkos {
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
-    af::shared<int> const active_pixel_list
+    af::shared<std::size_t> const active_pixel_list
   ){
     kdt.set_active_pixels_on_GPU(active_pixel_list);
 
@@ -257,7 +257,7 @@ namespace Kokkos {
     af::shared<int> const ichannels,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
-    af::shared<int> const active_pixel_list,
+    af::shared<std::size_t> const active_pixel_list,
     af::shared<double> const weight
   ){
     kdt.set_active_pixels_on_GPU(active_pixel_list);

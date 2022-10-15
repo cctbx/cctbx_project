@@ -29,12 +29,12 @@ struct exascale_api {
   void add_energy_channel_mask_allpanel(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &,
-    af::shared<int> const
+    af::shared<std::size_t> const
   );
   void add_energy_multichannel_mask_allpanel(af::shared<int> const,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &,
-    af::shared<int> const,
+    af::shared<std::size_t> const,
     af::shared<double> const
   );
 

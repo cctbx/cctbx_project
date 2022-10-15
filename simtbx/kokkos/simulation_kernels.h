@@ -373,7 +373,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     const vector_cudareal_t Fhkl, const hklParams FhklParams,
     int nopolar, const vector_cudareal_t polar_vector,
     CUDAREAL polarization, CUDAREAL fudge,
-    const vector_int_t pixel_lookup,
+    const vector_size_t pixel_lookup,
     vector_float_t floatimage /*out*/, vector_float_t omega_reduction/*out*/,
     vector_float_t max_I_x_reduction/*out*/, vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap) {
 

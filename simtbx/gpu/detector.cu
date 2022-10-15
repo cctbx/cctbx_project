@@ -219,10 +219,10 @@ namespace gpu {
   }
 
   void
-  gpu_detector::set_active_pixels_on_GPU(af::shared<int> active_pixel_list_value){
+  gpu_detector::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value){
     active_pixel_list = active_pixel_list_value;
     cudaSafeCall(cudaSetDevice(h_deviceID));
-    int * ptr_active_pixel_list = active_pixel_list.begin();
+    std::size_t * ptr_active_pixel_list = active_pixel_list.begin();
     cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
     cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
                             ptr_active_pixel_list,
