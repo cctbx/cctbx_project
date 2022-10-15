@@ -51,7 +51,7 @@ struct gpu_detector{
   void scale_in_place(const double&);
   void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
   af::flex_double get_raw_pixels();
-  void set_active_pixels_on_GPU(af::shared<int>);
+  void set_active_pixels_on_GPU(af::shared<std::size_t>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   void each_image_free();
 
@@ -78,8 +78,8 @@ struct gpu_detector{
   CUDAREAL * cu_distance, * cu_Xbeam, * cu_Ybeam;
 
   /* all-panel whitelist of active pixels on GPU */
-  af::shared<int> active_pixel_list;
-  int * cu_active_pixel_list;
+  af::shared<std::size_t> active_pixel_list;
+  std::size_t * cu_active_pixel_list;
 
   packed_metrology const metrology;
   private:

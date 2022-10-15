@@ -50,7 +50,7 @@ struct kokkos_detector{
   void scale_in_place(const double&);
   void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
   af::flex_double get_raw_pixels();
-  void set_active_pixels_on_GPU(af::shared<int>);
+  void set_active_pixels_on_GPU(af::shared<std::size_t>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   inline void each_image_free(){} //no op in Kokkos
   int h_deviceID;
@@ -92,9 +92,9 @@ struct kokkos_detector{
   vector_cudareal_t m_Ybeam = vector_cudareal_t("m_Ybeam", 0);
 
   // all-panel whitelist of active pixels on GPU
-  af::shared<int> active_pixel_list;
-  int m_active_pixel_size;
-  vector_int_t m_active_pixel_list = vector_int_t("m_active_pixel_list", 0);
+  af::shared<std::size_t> active_pixel_list;
+  std::size_t m_active_pixel_size;
+  vector_size_t m_active_pixel_list = vector_size_t("m_active_pixel_list", 0);
 };
 } // Kokkos
 } // simtbx

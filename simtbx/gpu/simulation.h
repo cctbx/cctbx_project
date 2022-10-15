@@ -31,7 +31,7 @@ struct exascale_api {
   void add_energy_channel_mask_allpanel(int const&,
     simtbx::gpu::gpu_energy_channels &,
     simtbx::gpu::gpu_detector &,
-    af::shared<int> const
+    af::shared<std::size_t> const
   );
   void add_background(simtbx::gpu::gpu_detector &, int const&);
   void allocate();

@@ -167,7 +167,7 @@ namespace af = scitbx::af;
   ){
         // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
         // coordinates for the active pixel list are absolute offsets into the detector array
-        af::shared<int> active_pixel_list;
+        af::shared<std::size_t> active_pixel_list;
         const bool* jptr = all_panel_mask.begin();
         for (int j=0; j < all_panel_mask.size(); ++j){
           if (jptr[j]) {
@@ -183,7 +183,7 @@ namespace af = scitbx::af;
     int const& ichannel,
     simtbx::gpu::gpu_energy_channels & gec,
     simtbx::gpu::gpu_detector & gdt,
-    af::shared<int> const active_pixel_list
+    af::shared<std::size_t> const active_pixel_list
   ){
         cudaSafeCall(cudaSetDevice(SIM.device_Id));
 

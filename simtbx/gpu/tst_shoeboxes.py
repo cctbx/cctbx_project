@@ -115,7 +115,7 @@ class whitelist_case(several_wavelength_case):
         print("USE_WHITELIST(pixel_address)_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
         gpu_simulation.add_energy_channel_mask_allpanel(
-            x, gpu_channels_singleton, gpu_detector, positive_mask.iselection().as_int())
+            x, gpu_channels_singleton, gpu_detector, positive_mask.iselection())
         per_image_scale_factor = self.domains_per_crystal # 1.0
         gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
         positive_mask_int_pixels = gpu_detector.get_raw_pixels()
@@ -125,7 +125,7 @@ class whitelist_case(several_wavelength_case):
         print("USE_WHITELIST(pixel_address)_API+++++++++++++ Wavelength %d=%.6f, Flux %.6e, Fluence %.6e"%(
             x, SIM.wavelength_A, SIM.flux, SIM.fluence))
         gpu_simulation.add_energy_channel_mask_allpanel(
-            x, gpu_channels_singleton, gpu_detector, negative_mask.iselection().as_int())
+            x, gpu_channels_singleton, gpu_detector, negative_mask.iselection())
       gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
       negative_mask_int_pixels = gpu_detector.get_raw_pixels()
       gpu_detector.scale_in_place(0) # reset

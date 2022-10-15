@@ -187,7 +187,7 @@ namespace simtbx { namespace Kokkos {
   }
 
   void
-  kokkos_detector::set_active_pixels_on_GPU(af::shared<int> active_pixel_list_value) {
+  kokkos_detector::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {
     m_active_pixel_size = active_pixel_list_value.size();
     transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
     active_pixel_list = active_pixel_list_value;

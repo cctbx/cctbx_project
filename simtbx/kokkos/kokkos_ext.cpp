@@ -104,13 +104,13 @@ namespace simtbx { namespace Kokkos {
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
              "The pixel_active_mask_bools is a large array with one bool per detector pixel")
         .def("add_energy_channel_mask_allpanel",
-             static_cast<void (exascale_api::*)(int const&,kokkos_energy_channels&,kokkos_detector&, af::shared<int> const) >
+             static_cast<void (exascale_api::*)(int const&,kokkos_energy_channels&,kokkos_detector&, af::shared<std::size_t> const) >
              (&exascale_api::add_energy_channel_mask_allpanel),
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"
              "The pixel_active_list_ints is a small array with integer-offset addresses for each pixel-of-interest")
         .def("add_energy_multichannel_mask_allpanel",
-             static_cast<void (exascale_api::*)(af::shared<int> const,kokkos_energy_channels&,kokkos_detector&, af::shared<int> const,
+             static_cast<void (exascale_api::*)(af::shared<int> const,kokkos_energy_channels&,kokkos_detector&, af::shared<std::size_t> const,
              af::shared<double> const) >
              (&exascale_api::add_energy_multichannel_mask_allpanel),
              (arg_("ichannels"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints"), arg_("weights")),

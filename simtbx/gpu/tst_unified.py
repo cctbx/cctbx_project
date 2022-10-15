@@ -147,7 +147,7 @@ class several_wavelength_case:
             ichannels = flex.int(range(len(self.flux))),
             gpu_amplitudes = gpu_channels_singleton,
             gpu_detector = gpu_detector,
-            pixel_active_list_ints = flex.int(range(NN)),
+            pixel_active_list_ints = flex.size_t(range(NN)),
             weights = self.frac/len(self.frac)
       )
     per_image_scale_factor = self.domains_per_crystal # 1.0
