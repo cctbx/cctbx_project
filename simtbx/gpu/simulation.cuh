@@ -339,6 +339,7 @@ __global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size){
       pixIdx < total_pixels; pixIdx += stride) {
     const int j = pixIdx; /* position in pixel array */
     lhs[j] = lhs[j] + (double)rhs[j]; // specifically add low precision to high precision array
+    rhs[j] = 0; // reset deepest array for next calculation
     }
   }
 
