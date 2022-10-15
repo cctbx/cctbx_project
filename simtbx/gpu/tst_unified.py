@@ -8,11 +8,12 @@ Test 0) use monochromatic interface to generate a background-only pattern as ref
      3) exafel api interface, GPU background,  3-wavelength, use add_energy_channel_from_gpu_amplitudes
      4) exafel api interface, GPU background,  3-wavelength, use add_energy_multichannel_mask_allpanel (equate 3,4)
      5-6) verify the get_whitelist_raw_pixels API
-Not implemented yet:
+Moved to tst_shoeboxes:
      7) implement shoebox masks and resulting mask
      8) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel int mask (equate 3,8)
      9) 3-wavelength, use add_energy_channel_mask_allpanel, use all-pixel bool mask (equate 3,9)
 Not implemented yet: multipanel detector, write to .h5 file
+                     also implement with 3-color, not just mono, thus forcing weights
      10) 3-wavelength, use add_energy_multichannel_mask_allpanel, use all-pixel int mask (equate 3,10)
      11) 3-wavelength, use add_energy_multichannel_mask_allpanel, use whitelist
 """

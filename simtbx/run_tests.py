@@ -77,6 +77,7 @@ if OPT.enable_cuda:
     "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
     ["$D/gpu/tst_exafel_api.py","context=cuda"],# CPU / GPU, polychromatic beam, monolithic detector
     ["$D/gpu/tst_unified.py","context=cuda"],   # GPU, exaFEL full API
+    ["$D/gpu/tst_shoeboxes.py","context=cuda"],   # GPU, test whitelist API
   ]
 else:
   tst_list.append(
@@ -86,6 +87,7 @@ if OPT.enable_kokkos and sys.platform.startswith('linux'):
    tst_list_parallel += [
      ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
      ["$D/gpu/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
+     ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
    ]
 if OPT.enable_cuda:
   if OPT.enable_cxx11 and sys.platform != 'win32':
