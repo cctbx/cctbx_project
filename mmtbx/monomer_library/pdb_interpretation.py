@@ -5784,12 +5784,6 @@ class process(object):
 
     self._geometry_restraints_manager = None
     self._xray_structure = None
-    # Find NCS
-    self.ncs_obj = None
-    if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
-       self.all_chain_proxies.params.ncs_search.enabled):
-      self.ncs_obj = self.search_for_ncs(
-        hierarchy = self.all_chain_proxies.pdb_hierarchy)
     # attempt to fix pH problems
     if self.all_chain_proxies.nonbonded_energy_type_registry.n_unknown_type_symbols():
       from mmtbx.conformation_dependent_library import pH_dependent_restraints
@@ -5816,6 +5810,12 @@ class process(object):
           if atom_i_seq in unknown_atoms:
             self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
                 item.type_energy
+    # Find NCS -- THIS MUST LAST -----------------------------------------------
+    self.ncs_obj = None
+    if(len(list(self.all_chain_proxies.pdb_hierarchy.models())) == 1 and
+       self.all_chain_proxies.params.ncs_search.enabled):
+      self.ncs_obj = self.search_for_ncs(
+        hierarchy = self.all_chain_proxies.pdb_hierarchy)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
