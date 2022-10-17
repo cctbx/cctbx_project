@@ -301,19 +301,22 @@ class jf16m_cxigeom2nexus(object):
         try:
           where = np.where(beam_pulse_ids==pulse_id)[0][0]
         except IndexError:
+          # No spectrum in file. Add bogus energy to fail in indexing
           energies[i] = .00001
           if self.params.recalculate_wavelength:
             orig_energies[i] = .00001
           if self.params.include_spectra:
             spectra_x[i] = np.zeros(beam_spectra_x[0].size)+0.00001
             spectra_y[i] = np.zeros(beam_spectra_y[0].size)+0.00001
-          print("filling zero spectrum for missing pulse id")
+          print("filling zero spectrum for missing pulse id ", pulse_id)
         else:
           if self.params.recalculate_wavelength:
             assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
             x = beam_spectra_x[where]
             y = beam_spectra_y[where].astype(float)
+            # super basic baseline subtraction
             ycorr = y - np.percentile(y, 10)
+            # weighted mean
             e = sum(x*ycorr) / sum(ycorr)
             energies[i] = e
             orig_energies[i] = beam_energies[where]
