@@ -275,7 +275,6 @@ class jf16m_cxigeom2nexus(object):
         data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
       else:
         data_pulse_ids = h5py.File(self.params.unassembled_file, 'r')[unassembled_data_key+'/pulse_id'][()]
-      #data_pulse_ids += self.params.pulse_offset
       beam_h5 = h5py.File(self.params.beam_file, 'r')
       if self.params.spectral_data_key:
         spectral_data_key = self.params.spectral_data_key
