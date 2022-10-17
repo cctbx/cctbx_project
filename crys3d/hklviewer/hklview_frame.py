@@ -775,15 +775,19 @@ class HKLViewFrame() :
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
-
+      # store this new miller_array in the origarrays dictionary allows making a table of the data later
+      # we assume number of HKLs in data file is the same or greater than the HKLs in the new procarray
       hkls = self.origarrays["HKLs"]
-      nanarr = flex.double(len(hkls), float("nan"))
-      m = miller.match_indices(hkls, procarray.indices() )
-      #m = miller.match_indices(procarray.indices(), hkls )
-      indices_of_matched_hkls = m.pairs().column(0)
+      # make temporary data array the size of hkls
+      datarr = flex.double(len(hkls), float("nan"))
+      m = miller.match_indices(procarray.indices(), hkls )
+      # get single indices in hkls matching procarray.indices()
+      indices_of_matched_hkls = m.pairs().column(1)
+      # assign data values corresponding to matching indices to datarr
       for i,e in enumerate(indices_of_matched_hkls):
-        nanarr[e] = procarray.data()[i]
-      self.origarrays[label] = list(nanarr)
+        datarr[e] = procarray.data()[i]
+      # join datarr to dictionary so it can be tabulated togetehr with other data sets
+      self.origarrays[label] = list(datarr)
 
       self.arrayinfos.append(arrayinfo)
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)

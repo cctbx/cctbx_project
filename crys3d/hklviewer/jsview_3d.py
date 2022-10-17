@@ -955,7 +955,7 @@ class HKLview_3d:
       # get binvals by dividing bindata_sorted with nbins
       binvals = [bindata_sorted[0]] * (nbins+1) #
       for i,e in enumerate(bindata_sorted):
-        idiv = int((nbins+1)*float(i)/len(bindata_sorted))
+        idiv = int( (nbins+1)*float(i)/len(bindata_sorted))
         binvals[idiv] = e
       nuniquevalues = len(set(list(bindata)))
     binvals.sort()
@@ -1271,7 +1271,6 @@ class HKLview_3d:
         if self.binvals[-1] < self.binvalsboundaries[1]:
           vals[-1] = self.binvalsboundaries[1]
         self.binvalsboundaries = vals
-        self.binvalsboundaries = list(set(self.binvalsboundaries)) # skip repeated numbers if any
         self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
 
@@ -1300,7 +1299,7 @@ class HKLview_3d:
 
     def getprecision(v1,v2):
       diff = abs(v1-v2); precision = 1; e = 1
-      while diff*e < 1.0:
+      while diff*e < 1.0 and diff > 0:
         e *= 10
         precision += 1
       return precision
