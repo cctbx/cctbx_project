@@ -172,13 +172,28 @@ class CCTBXParser(ParserBase):
           base_registry=iotbx.phil.default_converter_registry)
 
     # set up master and working PHIL scopes
-    self.master_phil = iotbx.phil.parse(
-      program_class.master_phil_str, process_includes=True)
-    required_output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
-    self.master_phil.adopt_scope(required_output_phil)
+    self.master_phil = self.get_master_phil()
     self.working_phil = None
 
     self.add_default_options()
+
+  # ---------------------------------------------------------------------------
+  def get_master_phil(self):
+    '''
+    Convenience function for getting the full master PHIL scope
+    This adds some standard PHIL scopes
+
+    Returns
+    -------
+    master_phil: libtbx.phil.scope
+      the combined master PHIL from the program and some standard scopes
+    '''
+    master_phil = iotbx.phil.parse(
+      self.program_class.master_phil_str, process_includes=True)
+    required_output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
+    master_phil.adopt_scope(required_output_phil)
+
+    return master_phil
 
   # ---------------------------------------------------------------------------
   def add_default_options(self):
