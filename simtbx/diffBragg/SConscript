@@ -3,6 +3,8 @@ import libtbx.load_env
 Import("env_etc env_simtbx nanoBragg_obj nanoBragg_env")
 
 diffBragg_env = nanoBragg_env.Clone()
+if (env_etc.enable_kokkos):
+  diffBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
 
 if (env_etc.enable_kokkos):
   diffBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
@@ -30,7 +32,6 @@ if (env_etc.enable_cuda):
     target="#lib/libsimtbx_diffBraggCUDA",
     source=["src/diffBraggCUDA.cu", "src/diffBragg_gpu_kernel.cu"])
   env_simtbx.Prepend(LIBS=["simtbx_diffBraggCUDA"])
-
 
 if (env_etc.enable_cuda or env_etc.enable_kokkos):
   diffBragg_obj = diffBragg_env.SharedObject(
