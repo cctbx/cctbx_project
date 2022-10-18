@@ -18,7 +18,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 from dials.array_family import flex
 from scitbx.matrix import sqr
-from simtbx.gpu.tst_unified import several_wavelength_case
+from simtbx.tests.tst_unified import several_wavelength_case
 from simtbx.nanoBragg.tst_gauss_argchk import water, basic_crystal, basic_beam, basic_detector, amplitudes
 from simtbx import get_exascale
 from simtbx.nanoBragg import nanoBragg, shapetype
