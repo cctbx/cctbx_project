@@ -325,7 +325,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt) {
+  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt, int const& override_source) {
         // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -376,7 +376,7 @@ namespace Kokkos {
         // the for loop around panels.  Offsets given.
         for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++) {
           add_background_kokkos_kernel(SIM.sources,
-          SIM.oversample,
+          SIM.oversample, override_source,
           SIM.pixel_size, kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
           extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),

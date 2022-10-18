@@ -38,7 +38,7 @@ struct exascale_api {
     af::shared<double> const
   );
 
-  void add_background(simtbx::Kokkos::kokkos_detector &);
+  void add_background(simtbx::Kokkos::kokkos_detector &, int const&);
   void allocate();
   //~exascale_api();
 

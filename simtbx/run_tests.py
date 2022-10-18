@@ -85,6 +85,7 @@ else:
   )
 if OPT.enable_kokkos and sys.platform.startswith('linux'):
    tst_list_parallel += [
+     ["$D/gpu/tst_gpu_multisource_background.py","context=kokkos_gpu"],# CPU / GPU background comparison
      ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
      ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
      ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
