@@ -119,6 +119,9 @@ phil_str = '''
     output_dir = "."
       .type = str
       .help = Directory for output files
+    add_output_dir_option = True
+      .type = bool
+      .help = If True, include output.output_dir on the command line.
     split_logs = True
       .type = bool
       .help = Option to split error and log files into separate per process
@@ -461,11 +464,16 @@ class Script(object):
     if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'rungroup') and params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
-    command = "%s %s output.output_dir=%s %s %s" % (
-      params.input.dispatcher, data_str, output_dir,
-      logging_str, extra_str
-    )
-
+    if params.output.add_output_dir_option:
+      command = "%s %s output.output_dir=%s %s %s" % (
+        params.input.dispatcher, data_str, output_dir,
+        logging_str, extra_str
+      )
+    else:
+      command = "%s %s %s %s" % (
+        params.input.dispatcher, data_str,
+        logging_str, extra_str
+      )
     job_name = "r%s"%params.input.run_num
 
     submission_id = do_submit(command, submit_path, stdoutdir, params.mp, job_name=job_name, dry_run=params.dry_run)
