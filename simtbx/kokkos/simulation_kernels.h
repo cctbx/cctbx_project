@@ -629,7 +629,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 //                 float * max_I_y_reduction, bool * rangemap);
 
 
-void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
+void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
     const vector_cudareal_t  sdet_vector, const vector_cudareal_t  fdet_vector,
@@ -644,7 +644,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     vector_float_t floatimage)
 {
 
-    int oversample=-1, override_source=-1; //override features that usually slow things down,
+    int oversample=-1;                     //override features that usually slow things down,
                                            //like oversampling pixels & multiple sources
     int source_start = 0;
     // allow user to override automated oversampling decision at call time with arguments

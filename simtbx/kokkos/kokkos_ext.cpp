@@ -120,6 +120,7 @@ namespace simtbx { namespace Kokkos {
              "to use for structure factor lookup.  If -1, skip this source wavelength."
              )
         .def("add_background", &simtbx::Kokkos::exascale_api::add_background,
+             (arg_("detector"), arg_("override_source")=-1),
              "Add a background field directly on the GPU")
         .def("show",&simtbx::Kokkos::exascale_api::show)
         ;
