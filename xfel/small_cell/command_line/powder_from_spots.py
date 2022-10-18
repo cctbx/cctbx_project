@@ -49,14 +49,14 @@ the pattern if the detector internal metrology was refined carefully but the
 detector subsequently shifted during the experiment.
 """
 
-phil_scope = parse(
+master_phil = parse(
     """
   n_bins = 3000
     .type = int
     .help = Number of bins in the radial average
   d_max = 20
     .type = float
-  d_min = 1.4
+  d_min = 2
     .type = float
   panel = None
     .type = int
@@ -80,6 +80,14 @@ phil_scope = parse(
   xyz_offset = 0. 0. 0.
     .type = floats
     .help = origin offset in millimeters
+  unit_cell = None
+    .type = unit_cell
+    .help = Show positions of miller indices from this unit_cell and space \
+            group. Not implemented.
+  space_group = None
+    .type = space_group
+    .help = Show positions of miller indices from this unit_cell and space \
+            group. Not implemented.
 output {
   log = dials.powder_from_spots.log
     .type = str
@@ -94,18 +102,38 @@ output {
   geom_file = None
     .type = path
     .help = Output a (possibly modified) geometry. For use with center_scan.
+  plot_file = None
+    .type = path
+    .help = Output a powder pattern in image format.
 }
 center_scan {
-  d_min = 14
+  d_min = None
     .type = float
-  d_max = 15
+  d_max = None
     .type = float
   step_px = None
     .type = float
     .multiple = True
 }
+plot {
+  interactive = True
+    .type = bool
+}
 """
 )
+multi_scan_phil = parse(
+    """
+  center_scan.step_px=2
+  center_scan.step_px=1
+  center_scan.step_px=.5
+  center_scan.step_px=.25
+  center_scan.step_px=.125
+  center_scan.step_px=.0625
+  center_scan.step_px=.03125
+"""
+)
+phil_scope = master_phil.fetch(multi_scan_phil)
+
 
 
 
@@ -128,12 +156,15 @@ class Script(object):
     assert len(params.input.experiments) == len(params.input.reflections) == 1
     experiments = params.input.experiments[0].data
     reflections = params.input.reflections[0].data
-    cscan = Center_scan(experiments, reflections, params)
-    for step in params.center_scan.step_px:
-      cscan.search_step(step)
 
-    if params.output.geom_file is not None:
-      experiments.as_file(params.output.geom_file)
+    if params.center_scan.d_min:
+      assert params.center_scan.d_max
+      cscan = Center_scan(experiments, reflections, params)
+      for step in params.center_scan.step_px:
+        cscan.search_step(step)
+      if params.output.geom_file is not None:
+        experiments.as_file(params.output.geom_file)
+
     averager = Spotfinder_radial_average(experiments, reflections, params)
     averager.calculate()
     averager.plot()
