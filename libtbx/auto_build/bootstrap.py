@@ -2305,6 +2305,10 @@ class XFELBuilder(CCIBuilder):
   ]
   HOT_EXTRA = ['msgpack']
 
+  def __init__(self, *args, **kwargs):
+    kwargs['no_boost_src'] = True
+    super(XFELBuilder, self).__init__(args, kwargs)
+
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
       extra_opts=['--dials'] + extra_opts)
