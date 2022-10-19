@@ -123,12 +123,14 @@ namespace least_squares {
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<complex_t>& Fcs,
+        af::shared<FloatType>& Is,
         size_t Fc_offset)
         : parent(parent),
         beams(beams),
         thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Fcs(Fcs),
+        Is(Is),
         Fc_offset(Fc_offset)
       {}
 
@@ -159,6 +161,9 @@ namespace least_squares {
           else {
             Fc_i = Fcs_k[ii];
           }
+          if (Fcs.size() != 0) {
+            Fcs[i - 1] = Fc_i;
+          }
           cart_t g_i = frame.RMf * cart_t(h_i[0], h_i[1], h_i[2]);
           FloatType s = (Kl * Kl - (K + g_i).length_sq());
           FloatType i_den = std::sqrt(1. / (1 + g_i * frame.normal / Kn));
@@ -183,8 +188,8 @@ namespace least_squares {
               Fc_i_m_j = Fcs_k[i_m_j];
             }
             FloatType j_den = std::sqrt(1. / (1 + g_j * frame.normal / Kn));
-            A(j, i) = Fc2Ug * Fc_i_m_j * i_den * j_den;
-            A(i, j) = std::conj(A(j, i));
+            A(i, j) = Fc2Ug * Fc_i_m_j * i_den * j_den;
+            A(j, i) = std::conj(A(i, j));
           }
         }
 /*
@@ -214,36 +219,40 @@ namespace least_squares {
           A.begin(), n_beams, ev.begin());
         SMTBX_ASSERT(!info)(info);
         // heev replaces A with column-wise eigenvectors
-        af::versa<complex_t, af::mat_grid> &B = A;
-        af::versa<complex_t, af::mat_grid> eV = af::matrix_transpose(A.const_ref());
+        af::versa<complex_t, af::mat_grid> B(af::mat_grid(n_beams, n_beams));
+        af::versa<complex_t, af::mat_grid> Bi(af::mat_grid(n_beams, n_beams));
 
         const complex_t exp_k(0, scitbx::constants::pi * thickness / Kn);
-        //const complex_t exp_k(0, scitbx::constants::pi * thickness);
-        // B = B*diag(exp(2*pi*thickness*ev/(2*Kn))
-        //af::versa<complex_t, af::mat_grid> P(af::mat_grid(n_beams, n_beams));
+        // initBi = B^H and update B = B*diag(exp(2*pi*thickness*ev/(2*Kn))
         for (size_t i = 0; i < n_beams; i++) {
           complex_t m = std::exp(ev[i] * exp_k);
           for (size_t j = 0; j < n_beams; j++) {
-            B(j, i) *= m;
+            B(j, i) = A(j, i) * m;
+            Bi(i, j) = std::conj(A(j, i));
           }
         }
-        // P = B*eV^-1
-        af::versa<complex_t, af::mat_grid> P = af::matrix_multiply(B.const_ref(), eV.const_ref());
-        //P = M*P*M^-1, m - diagonal, M[0] = 1, so start with 1
+        // S = B*Bi
+        af::versa<complex_t, af::mat_grid> S = af::matrix_multiply(B.const_ref(), Bi.const_ref());
+        //update S = M*P*M^-1, m - diagonal, M[0] = 1, so start with 1
         for (size_t i = 1; i < n_beams; i++) {
           for (size_t j = 1; j < n_beams; j++) {
-            P(i, j) *= M[i]; // M is on the left - apply to rows
-            P(j, i) /= M[i]; // M^-1 is on the right - > apply to cols
+            S(i, j) *= M[i]; // M is on the left - apply to rows
+            S(j, i) /= M[i]; // M^-1 is on the right - > apply to cols
           }
         }
-        af::shared<complex_t> u(n_beams);
-        u[0] = complex_t(1, 0);
-        /* compute up now and assign to Fcs using at Fc_offset+exited_indices[i]
-        * (could save a lot useless calculations if this is used first from the right)
-        */
-        af::shared<complex_t> up = af::matrix_multiply(P.const_ref(), u.const_ref());
+        // extract first col of S
+        //af::shared<complex_t> u(n_beams);
+        //u(0) = 1;
+        //af::shared<complex_t> up = af::matrix_multiply(S.const_ref(), u.const_ref());
         for (size_t i = 1; i < n_beams; i++) {
-          Fcs[Fc_offset + i - 1] = up[i]; // / SfacToVolts; // P(i, 0);
+          size_t idx = Fc_offset + i - 1;
+          Is[idx] = std::norm(S(i, 0));
+          if (Fcs.size() != 0) {
+            FloatType Fsq = std::norm(Fcs[idx]);
+            if (Fsq != 0) {
+              Fcs[idx] *= std::sqrt(Is[idx] / Fsq);
+            }
+          }
           // is this really needed? Eq 4, 2013
           /*
           miller::index<> h_i = beams[i - 1]->index;
@@ -269,9 +278,11 @@ namespace least_squares {
       const af::shared<complex_t>& Fcs_k;
       size_t Fc_offset;
       af::shared<complex_t>& Fcs;
+      af::shared<FloatType>& Is;
     };
 
     void process_frames_mt(af::shared<complex_t>& Fcs_,
+      af::shared<FloatType> &Is_,
       af::shared<complex_t> const& Fcs_k,
       int thread_count = -1)
     {
@@ -294,6 +305,7 @@ namespace least_squares {
               f_itr->second,
               Fcs_k,
               Fcs_,
+              Is_,
               Fc_offset)
           );
           accumulators.push_back(pf);
@@ -308,12 +320,13 @@ namespace least_squares {
     void build() {
       // Generate Fcs at current position
       {
+        Is.resize(beam_n);
         Fcs.resize(beam_n);
         af::shared<complex_t> Fc_cur(indices.size());
         for (size_t ih = 0; ih < indices.size(); ih++) {
           Fc_cur[ih] = calc_one_h(indices[ih]);
         }
-        process_frames_mt(Fcs, Fc_cur);
+        process_frames_mt(Fcs, Is, Fc_cur);
         if (!compute_grad) {
           return;
         }
@@ -326,7 +339,8 @@ namespace least_squares {
       design_matrix.resize(af::c_grid<2>(beam_n, param_n));
       // Generate Arrays for storing positive and negative epsilon Fcs for numerical
       // generation of gradients
-      af::shared<complex_t> Fcs_p(beam_n), Fcs_m(beam_n), Fc_eps(indices.size());
+      af::shared<complex_t> Fc_eps(indices.size()), dummy;
+      af::shared<FloatType> Is_p(beam_n), Is_m(beam_n);
       FloatType t_eps = 2 * eps;
       for (size_t i = 0, n = 0; i < params.size(); i++) {
         af::ref<double> x = params[i]->components();
@@ -340,7 +354,7 @@ namespace least_squares {
             Fc_eps[i_h] = calc_one_h(indices[i_h]);
           }
           //Generate Fcs at x+eps
-          process_frames_mt(Fcs_p, Fc_eps);
+          process_frames_mt(dummy, Is_p, Fc_eps);
 
           x[j] -= t_eps;
           if (cp != 0) {
@@ -350,14 +364,12 @@ namespace least_squares {
             Fc_eps[i_h] = calc_one_h(indices[i_h]);
           }
           //Generate Fcs at x-eps
-          process_frames_mt(Fcs_m, Fc_eps);
+          process_frames_mt(dummy, Is_m, Fc_eps);
           
           // compute grads
           for (size_t bi = 0; bi < beam_n; bi++) {
-            complex_t grad_fc = (Fcs_p[bi] - Fcs_m[bi]) / t_eps;
-            design_matrix(bi, n) = 2 * (
-              Fcs[bi].real() * grad_fc.real() +
-              Fcs[bi].imag() * grad_fc.imag());
+            FloatType grad_I = (Is_p[bi] - Is_m[bi]) / t_eps;
+            design_matrix(bi, n) = grad_I;
           }
 
           // reset to original value
@@ -403,6 +415,7 @@ namespace least_squares {
     bool compute_grad;
     // newly-calculated, aligned by frames
     af::shared<complex_t> Fcs;
+    af::shared<FloatType> Is;
     // 
     af::versa<FloatType, af::c_grid<2> > design_matrix;
     lookup_t mi_lookup;
@@ -432,7 +445,6 @@ namespace least_squares {
     {
       SMTBX_ASSERT(fraction->tag >= 0);
       index = data.find_hkl(fraction->tag, h);
-      Fsq = std::norm(data.Fcs[index]);
     }
 
     virtual boost::shared_ptr<f_calc_function_base_t> fork() const {
@@ -441,7 +453,7 @@ namespace least_squares {
     }
 
     virtual FloatType get_observable() const {
-      return Fsq;
+      return data.Is[index];
     }
     virtual std::complex<FloatType> get_f_calc() const {
       return data.Fcs[index];
@@ -457,7 +469,6 @@ namespace least_squares {
   private:
     ed_n_shared_data<FloatType> const& data;
     size_t index;
-    mutable FloatType Fsq;
   };
 
 }}}
