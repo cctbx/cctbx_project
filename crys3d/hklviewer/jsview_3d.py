@@ -332,6 +332,7 @@ class HKLview_3d:
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,
+            "scene_id",
             "show_missing",
             "show_only_missing",
             "show_systematic_absences",
