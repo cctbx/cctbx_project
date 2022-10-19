@@ -4,58 +4,73 @@ The conda build environment psana_environment.yml is suitable
 for general use and contains the usual CCTBX dependencies plus psana and its
 dependencies.
 
-The build steps below were tested on Aug 17, 2022. They should be done in a
-clean environment (no cctbx installation has been activated, etc.)
+The build steps below were tested on Oct 19, 2022. They should be done in a clean environment: start
+a new shell before proceeding.
 
-Creating the conda environment (step `base`) may take up to ~20 min with no
-obvious progress occurring.
+## Prerequisite: Install Miniconda3 and add mamba
+
+If needed, visit: https://docs.conda.io/en/latest/miniconda.html and install the correct Miniconda
+for your platform. Activate your `base` environment and do: `conda install mamba -c conda-forge`.
+Mamba is a much faster C++ implementation of conda.
 
 ## General build
 
-These steps were tested on a CentOS 7.9 machine with 12 cores. In the
+These steps were tested on a CentOS 7.9 machine with 64 cores. In the
 bootstrap.py step you should adjust nproc to suit your environment.
 
 ```
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=12 --python=39 --no-boost-src hot update base
-$ conda activate `pwd`/conda_base # if no conda is availble, first source mc3/etc/profile.d/conda.sh
-$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml --nproc=12 --python=39 build
-$ source build/conda_setpaths.sh
-$ libtbx.python -c "import psana" # Should exit with no output
+$ mamba env create -f psana_environment.yml -p $PWD/conda_base
+$ conda activate `pwd`/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 hot update build
+$ echo $PWD/build/conda_setpaths.sh
 ```
+To activate the cctbx environment, `source` the script that was printed in the final step.
 
 ## LCLS build
 
-Follow the general build proceedure but first run the steps that require internet access using
-an ssh connection to pslogin.slac.stanford.edu (up through the hot update base step). Use the psana
-or psana-ffb nodes for the build step.
+Since the `psana` compute nodes do not have internet access, we use `psexport` for everything except `build`.
+```
+dwpaley@pslogin02:~
+$ ssh psexport
+[...]
+$ cd /reg/d/psdm/<experiment>/scratch/dwpaley
+$ mkdir cctbx; cd cctbx
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
+$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
+$ mamba env create -f psana_environment.yml -p $PWD/conda_base
+$ conda activate $PWD/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 hot update
+$ exit
+$ ssh psana
+[...]
+$ cd /reg/d/psdm/<experiment>/scratch/dwpaley/cctbx
+$ conda activate $PWD/conda_base
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 build
+$ echo $PWD/build/conda_setpaths.sh
+```
 
-## Alternative build using mamba and the conda compilers
+## Alternative build using the conda compilers
 
-The `bootstrap.py base` step above takes >1 hr, mainly to create the conda environment. This can be improved to ~15 min using
-Mamba, a C++ implementation of Conda. You need a base Conda environment with Mamba installed (`conda install mamba -c conda-forge`).
-
-Additionally, it is sometimes needed to use a standardized set of compilers, such as the ones distributed by conda. These instructions
-demonstrate these two use cases.
+It is sometimes needed to use a standardized set of compilers, such as the ones distributed by conda. The following steps
+will accommodate that use case.
 
 ```
 $ cd $INSTALL; mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml \
-  --no-boost-src --python=39 hot update
+    hot update
 $ source ~/miniconda3/etc/profile.d/conda.sh # modify as needed
 $ conda activate base
 $ mamba env create -f psana_environment.yml -p `pwd`/conda_base
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --config-flags="--no_bin_python"             \
-  --no-boost-src --python=39 --nproc=10 build
+  --nproc=10 build
 $ source build/conda_setpaths.sh
-$ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
 ```
 
 # cctbx.xfel tests
