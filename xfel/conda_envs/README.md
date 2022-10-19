@@ -52,7 +52,7 @@ $ mamba env create -f psana_environment.yml -p `pwd`/conda_base
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --config-flags="enable_cxx11" --config-flags="--no_bin_python"             \
+  --config-flags="--no_bin_python"             \
   --no-boost-src --python=39 --nproc=10 build
 $ source build/conda_setpaths.sh
 $ source modules/cctbx_project/xfel/conda_envs/test_psana_lcls.sh
