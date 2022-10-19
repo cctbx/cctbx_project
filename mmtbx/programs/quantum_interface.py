@@ -175,6 +175,8 @@ Usage examples:
       .type = atom_selection
       .help = what to select
       .multiple = True
+    format = *phenix_refine quantum_interface
+      .type = choice
     write_qmr_phil = False
       .type = bool
     run_qmr = False
@@ -224,11 +226,11 @@ Usage examples:
     self.data_manager.add_model('ligand', selected_model)
 
     if self.params.qi.write_qmr_phil:
-      self.write_qmr_phil()
+      self.write_qmr_phil(self.params.qi.format)
 
     if self.params.qi.run_qmr:
       self.params.qi.qm_restraints.selection=self.params.qi.selection
-      self.run_qmr()
+      self.run_qmr(self.params.qi.format)
 
     if self.params.qi.iterate_histidine:
       self.iterate_histidine(self.params.qi.iterate_histidine)
@@ -267,7 +269,7 @@ Usage examples:
                         log=log)
       # run clashscore
 
-  def run_qmr(self, log=None):
+  def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
     rc = update_restraints( model,
                             self.params,
@@ -302,6 +304,9 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
+
+    if format=='quantum_inteface':
+      qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
 
     def safe_filename(s):
       s=s.replace('chain ','')

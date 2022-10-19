@@ -175,7 +175,6 @@ end
       if 1:
         freeze_outl += '{C %d C} # Restraining %s\n' % (i, atom.id_str())
         added+=1
-      print(atom.quote(),sel,added)
     freeze_outl += 'end\nend\n'
     if added: outl+=freeze_outl
     assert outl.find('Opt')>-1
