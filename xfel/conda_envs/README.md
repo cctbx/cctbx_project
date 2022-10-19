@@ -48,7 +48,7 @@ $ ssh psana
 [...]
 $ cd /reg/d/psdm/<experiment>/scratch/dwpaley/cctbx
 $ conda activate $PWD/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 build
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=12 build
 $ echo $PWD/build/conda_setpaths.sh
 ```
 
