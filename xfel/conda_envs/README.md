@@ -52,25 +52,14 @@ $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=12 buil
 $ echo $PWD/build/conda_setpaths.sh
 ```
 
-## Alternative build using the conda compilers
+## Build with conda compilers
 
-It is sometimes needed to use a standardized set of compilers, such as the ones distributed by conda. The following steps
-will accommodate that use case.
-
+On machines that are old or weird, the system compilers may not work correctly. We can have `bootstrap.py` build
+with standardized compilers from conda instead. Replace the step `python bootstrap.py ... build` with the following:
 ```
-$ cd $INSTALL; mkdir cctbx; cd cctbx
-$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
-$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml \
-    hot update
-$ source ~/miniconda3/etc/profile.d/conda.sh # modify as needed
-$ conda activate base
-$ mamba env create -f psana_environment.yml -p `pwd`/conda_base
-$ conda activate `pwd`/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=psana_environment.yml \
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
   --nproc=10 build
-$ source build/conda_setpaths.sh
 ```
 
 # cctbx.xfel tests
