@@ -2288,6 +2288,7 @@ class XFELLegacyBuilder(CCIBuilder):
     pass
 
 class XFELBuilder(CCIBuilder):
+  PYDEFAULT = '39'
   CODEBASES_EXTRA = [
     'dials',
     'iota',
@@ -2307,7 +2308,11 @@ class XFELBuilder(CCIBuilder):
 
   def __init__(self, *args, **kwargs):
     kwargs['no_boost_src'] = True
-    super(XFELBuilder, self).__init__(args, kwargs)
+    if kwargs['python'] == '27':
+      print('Warning: Python 2.7 was requested (maybe by default).')
+      print('Py27 is no longer supported. Resetting to Py{}.'.format(self.PYDEFAULT))
+      kwargs['python'] = self.PYDEFAULT
+    super(XFELBuilder, self).__init__(*args, **kwargs)
 
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
