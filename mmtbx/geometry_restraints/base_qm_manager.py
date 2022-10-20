@@ -125,8 +125,13 @@ class base_manager():
       self.basis_set,
       self.solvent_model,
       )
+    residues = []
     for atom in self.atoms:
       outl += '  %s\n' % atom.quote()
+      if atom.parent().id_str() not in residues:
+        residues.append(atom.parent().id_str())
+    outl += '  residues\n'
+    outl += '\n  '.join(residues)
     return outl
 
   def get_charge(self): return self.charge
