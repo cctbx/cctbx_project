@@ -175,7 +175,6 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
-    #self.btn_mp = wx.Button(self, label='Multiprocessing...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
@@ -239,6 +238,9 @@ class SettingsDialog(BaseDialog):
     adv.Center()
 
     adv.ShowModal()
+
+
+## check for configure multiprocessinig parameters statement
 
   def onDBCredentialsButton(self, e):
     creds = DBCredentialsDialog(self, self.params)
@@ -329,6 +331,8 @@ class DBCredentialsDialog(BaseDialog):
                                            value=params.db.password)
     self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL, border=10)
 
+
+
     # Drop tables button
     self.chk_drop_tables = wx.CheckBox(self,
                                        label='Delete and regenerate all tables')
@@ -347,12 +351,21 @@ class DBCredentialsDialog(BaseDialog):
       self.main_sizer.Add(self.web_location, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    
+    self.btn_db_start = gctr.Button(self, name='start_db', label='Start DB Server')
+    self.db_btn_OK = wx.Button(self, name='db_OK', label="OK", id=wx.ID_OK)
+    self.db_btn_OK.SetDefault()
+    self.db_btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+    self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.button_sizer.Add(self.btn_db_start)
+    self.button_sizer.Add(-1,-1, proportion=1)
+    self.button_sizer.Add(self.db_btn_OK)
+    self.button_sizer.Add(self.db_btn_cancel)
+    self.main_sizer.Add(self.button_sizer,flag=wx.EXPAND | wx.ALL, border=10)
+
 
     self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
+    self.Bind(wx.EVT_CHECKBOX, self.onStartDB, self.btn_db_start)
 
     self.Fit()
     self.SetTitle('Database Credentials')
@@ -367,6 +380,43 @@ class DBCredentialsDialog(BaseDialog):
       if (msg.ShowModal() == wx.ID_NO):
         self.chk_drop_tables.SetValue(False)
     e.Skip()
+
+  def onStartDB(self, e):
+    # render new dialog box with texctrl
+    start_db_dialog = StartDBDialog(self, self.params)
+    start_db_dialog.Center()
+    #if (start_db_dialog.ShowModal() == wx.ID_OK):
+    self.params.db.root_psswd = start_db_dialog.get_db_root_psswd.ctr.GetValue()
+    # Call new OnStartDB
+
+class StartDBDialog(BaseDialog):
+  ''' Dialog to start DB '''
+
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    self.start_db_sizer = wx.BoxSizer(wx.VERTICAL)
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        style=wx.NO_BORDER,
+                        *args, **kwargs)
+
+    self.get_db_root_psswd = gctr.TextButtonCtrl(self,
+                                       name='db_root',
+                                       label='DB Server Root Password',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button=True,
+                                       big_button_label='Launch Server',
+                                       big_button_size=(130, -1))
+    self.start_db_sizer.Add(self.get_db_root_psswd, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.Fit()
+    self.SetTitle('Database Credentials')
 
 class LCLSFacilityOptions(BaseDialog):
   ''' Options settings specific to LCLS'''
