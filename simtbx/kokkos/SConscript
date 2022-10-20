@@ -154,7 +154,7 @@ if cmake_is_available:
       '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(OnOff[False]),
       '-DKokkosKernels_INST_LAYOUTRIGHT:BOOL={}'.format(OnOff[False]),
       '-DKokkosKernels_ENABLE_TPL_CUBLAS={}'.format(OnOff[False]),
-      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(OnOff[False]
+      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(OnOff[False])
     ],
     cwd=kokkos_kernels_build_dir)
   returncode = subprocess.call(['make', '-j', '4'], cwd=kokkos_kernels_build_dir)
