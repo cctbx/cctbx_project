@@ -4,157 +4,43 @@ from shutil import copy, which
 
 import libtbx.load_env
 
-def detect_architecture(verbose=True):
-  if verbose:
-    print('Looking for GPUs ...')
-  available_gpu = subprocess.check_output(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'])
-  available_gpu = available_gpu.split(b'\n')
-  first_entry = available_gpu[0].decode('utf8')
-  if len(first_entry)>0:
-    if verbose:
-      print( ' Found ', first_entry)
-    if 'A100' in first_entry:
-      architecture = "Ampere80"
-    else:
-      architecture = "Volta70"
-  else:
-    architecture = "HSW"
-  return architecture
-
-class system_config(object):
-  def __init__(self, host_variable, host_name):
-    self.host_variable = host_variable
-    self.host_name = host_name
-    self.env = {}
-
-  def is_host(self):
-    return (self.host_name==os.getenv(self.host_variable))
-
-  def get_copy(self):
-    clone = system_config(self.host_variable, self.host_name)
-    clone.env = dict(self.env)
-    return clone
-
-cfg_default = system_config(host_variable = 'NO_WHERE', host_name='N/A')
-cfg_default.env['KOKKOS_DEVICES'] = "OpenMP"
-cfg_default.env['KOKKOS_ARCH'] = "HSW"
-cfg_default.env['KOKKOS_CUDA_OPTIONS'] = ""
-cfg_default.env['LDFLAGS'] = "-Llib"
-cfg_default.env['LDLIBS'] = "-lkokkoscontainers -lkokkoscore -ldl"
-cfg_default.env['CXX'] = os.environ.get('CXX', 'g++')
-cfg_default.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_default.env['Kokkos_ARCH_AMPERE80'] = "OFF"
-cfg_default.env['Kokkos_ARCH_VEGA908'] = "OFF"
-cfg_default.env['Kokkos_ARCH_VEGA90A'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_CUDA'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_CUDA_UVM'] = "OFF"
-cfg_default.env['Kokkos_ENABLE_HIP'] = "OFF"
-cfg_default.env['KokkosKernels_ADD_DEFAULT_ETI'] = "OFF"
-cfg_default.env['KokkosKernels_INST_LAYOUTLEFT:BOOL'] = "OFF"
-cfg_default.env['KokkosKernels_INST_LAYOUTRIGHT:BOOL'] = "OFF"
-cfg_default.env['KokkosKernels_ENABLE_TPL_CUBLAS'] = "OFF"
-cfg_default.env['KokkosKernels_ENABLE_TPL_CUSPARSE'] = "OFF"
-list_cfg = []
-
-cfg_corigpu = cfg_default.get_copy()
-cfg_corigpu.host_variable = 'NERSC_HOST'
-cfg_corigpu.host_name = 'cori'
-cfg_corigpu.env['KOKKOS_DEVICES'] = "Cuda"
-cfg_corigpu.env['KOKKOS_ARCH'] = "Volta70"
-cfg_corigpu.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
-cfg_corigpu.env['Kokkos_ARCH_VOLTA70'] = "ON"
-cfg_corigpu.env['Kokkos_ENABLE_CUDA'] = "ON"
-cfg_corigpu.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
-cfg_corigpu.env['LDFLAGS'] += " -L$(CUDA_HOME)/lib64"
-cfg_corigpu.env['LDLIBS'] += " -lcudart -lcuda"
-cfg_corigpu.env['CXX'] = ''
-list_cfg.append(cfg_corigpu)
-
-cfg_perlmutter = cfg_corigpu.get_copy()
-cfg_perlmutter.host_name = 'perlmutter'
-cfg_perlmutter.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_perlmutter.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_perlmutter.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_perlmutter)
-
-# Generic Linux machine with NVIDIA A100 HW
-cfg_linux_a100 = cfg_corigpu.get_copy()
-cfg_linux_a100.host_variable = 'KOKKOS_HOST'
-cfg_linux_a100.host_name = 'linux_a100'
-cfg_linux_a100.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_linux_a100.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_linux_a100.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_linux_a100)
-
-cfg_spock = cfg_default.get_copy()
-cfg_spock.host_variable = 'LMOD_SYSTEM_NAME'
-cfg_spock.host_name = 'spock'
-cfg_spock.env['KOKKOS_DEVICES'] = "HIP"
-cfg_spock.env['KOKKOS_ARCH'] = "Vega908"
-cfg_spock.env['Kokkos_ARCH_VEGA908'] = "ON"
-cfg_spock.env['Kokkos_ENABLE_HIP'] = "ON"
-cfg_spock.env['CXX'] = 'hipcc'
-list_cfg.append(cfg_spock)
-
-cfg_crusher = cfg_spock.get_copy()
-cfg_crusher.host_name = 'crusher'
-cfg_crusher.env['KOKKOS_ARCH'] = "Vega90A"
-cfg_crusher.env['Kokkos_ARCH_VEGA908'] = "OFF"
-cfg_crusher.env['Kokkos_ARCH_VEGA90A'] = "ON"
-list_cfg.append(cfg_crusher)
-
-cfg_darwin_volta = cfg_default.get_copy()
-cfg_darwin_volta.host_variable = 'SLURM_JOB_PARTITION'
-cfg_darwin_volta.host_name = 'volta-x86'
-cfg_darwin_volta.env['KOKKOS_DEVICES'] = "Cuda"
-cfg_darwin_volta.env['KOKKOS_ARCH'] = "Volta70"
-cfg_darwin_volta.env['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
-cfg_darwin_volta.env['Kokkos_ARCH_VOLTA70'] = "ON"
-cfg_darwin_volta.env['Kokkos_ENABLE_CUDA'] = "ON"
-cfg_darwin_volta.env['Kokkos_ENABLE_CUDA_UVM'] = "ON"
-cfg_darwin_volta.env['LDFLAGS'] += "-L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/compat"
-cfg_darwin_volta.env['LDLIBS'] += " -lcudart -lcuda"
-cfg_darwin_volta.env['CXX'] = ''
-list_cfg.append(cfg_darwin_volta)
-
-cfg_darwin_ampere = cfg_darwin_volta.get_copy()
-cfg_darwin_ampere.host_name = 'shared-gpu-ampere'
-cfg_darwin_ampere.env['KOKKOS_ARCH'] = 'Ampere80'
-cfg_darwin_ampere.env['Kokkos_ARCH_VOLTA70'] = "OFF"
-cfg_darwin_ampere.env['Kokkos_ARCH_AMPERE80'] = "ON"
-list_cfg.append(cfg_darwin_ampere)
-
-host_message = "not found, using default settings"
-system_settings = cfg_default.env
-for cfg in list_cfg:
-  if cfg.is_host():
-    system_settings = cfg.env
-    host_message = "%s (from %s)"%(cfg.host_name, cfg.host_variable)
-    break
-
-print("-"*40)
-print("         Kokkos configuration\n")
-print("     Host: " + host_message)
-print("  Devices: " + system_settings['KOKKOS_DEVICES'])
-print("     Arch: " + system_settings['KOKKOS_ARCH'])
-print("-"*40)
-
 # libkokkos.a
 # call kokkos build system directly
 # set environment variable defaults if necessary
 if os.getenv('KOKKOS_DEVICES') is None:
-  os.environ['KOKKOS_DEVICES'] = system_settings['KOKKOS_DEVICES']
+  os.environ['KOKKOS_DEVICES'] = "OpenMP"
+use_openmp = "OpenMP" in os.getenv('KOKKOS_DEVICES')
+use_cuda = "Cuda" in os.getenv('KOKKOS_DEVICES')
+use_hip = "HIP" in os.getenv('KOKKOS_DEVICES')
 if os.getenv('KOKKOS_PATH') is None:
   os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
 if os.getenv('KOKKOSKERNELS_PATH') is None:
   os.environ['KOKKOSKERNELS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
 if os.getenv('KOKKOS_ARCH') is None:
-  os.environ['KOKKOS_ARCH'] = system_settings['KOKKOS_ARCH']
-if os.getenv('KOKKOS_CUDA_OPTIONS') is None:
-  os.environ['KOKKOS_CUDA_OPTIONS'] = system_settings['KOKKOS_CUDA_OPTIONS']
+  os.environ['KOKKOS_ARCH'] = "HSW"
+if use_cuda and os.getenv('KOKKOS_CUDA_OPTIONS') is None:
+  os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
-os.environ['LDFLAGS'] = system_settings['LDFLAGS']
-os.environ['LDLIBS'] = system_settings['LDLIBS']
+
+library_flags = "-Llib"
+if use_cuda:
+  library_flags += " -L$(CUDA_HOME)/lib64"
+  if os.getenv('CUDA_COMPATIBILITY'):
+    library_flags += " -L$(CUDA_HOME)/compat"
+os.environ['LDFLAGS'] = library_flags
+
+linked_libraries = "-lkokkoscontainers -lkokkoscore -ldl"
+if use_cuda:
+  linked_libraries += " -lcudart -lcuda"
+os.environ['LDLIBS'] = linked_libraries
+
+
+print("-"*40)
+print("         Kokkos configuration\n")
+print("  Devices: " + os.getenv('KOKKOS_DEVICES'))
+print("     Arch: " + os.getenv('KOKKOS_ARCH'))
+print("-"*40)
+
 
 original_cxx = None
 kokkos_lib = 'libkokkos.a'
@@ -162,10 +48,12 @@ kokkos_cxxflags = None
 
 if os.getenv('CXX') is not None:
   original_cxx = os.environ['CXX']
-if 'Cuda' in os.getenv('KOKKOS_DEVICES'):
+if use_cuda:
   os.environ['CXX'] = os.path.join(os.environ['KOKKOS_PATH'], 'bin', 'nvcc_wrapper')
+elif use_hip:
+  os.environ['CXX'] = 'hipcc'
 else:
-  os.environ['CXX'] = system_settings['CXX']
+  os.environ['CXX'] = os.environ.get('CXX', 'g++')
 print('='*79)
 print('Building Kokkos')
 print('-'*79)
@@ -208,6 +96,13 @@ print()
 #   flags instead of environment variables
 # - Verify that libraries from cmake version works the same as libkokkos.a
 
+OnOff = {True:'ON', False:'OFF'}
+supported_architectures = ['HSW', 'Zen', 'Zen2', 'Zen3', 'Volta70', 'Ampere80', 'Vega908', 'Vega90A']
+architectures = {}
+for arch in supported_architectures:
+  architectures[arch] = OnOff[ arch in os.getenv('KOKKOS_ARCH') ]
+
+
 cmake_is_available = which('cmake')
 if cmake_is_available:
   print('='*79)
@@ -223,14 +118,18 @@ if cmake_is_available:
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ENABLE_SERIAL=ON',
-      '-DKokkos_ENABLE_OPENMP=ON',
-      '-DKokkos_ARCH_VOLTA70={}'.format(system_settings['Kokkos_ARCH_VOLTA70']),
-      '-DKokkos_ARCH_AMPERE80={}'.format(system_settings['Kokkos_ARCH_AMPERE80']),
-      '-DKokkos_ARCH_VEGA908={}'.format(system_settings['Kokkos_ARCH_VEGA908']),
-      '-DKokkos_ARCH_VEGA90A={}'.format(system_settings['Kokkos_ARCH_VEGA90A']),
-      '-DKokkos_ENABLE_CUDA={}'.format(system_settings['Kokkos_ENABLE_CUDA']),
-      '-DKokkos_ENABLE_CUDA_UVM={}'.format(system_settings['Kokkos_ENABLE_CUDA_UVM']),
-      '-DKokkos_ENABLE_HIP={}'.format(system_settings['Kokkos_ENABLE_HIP'])
+      '-DKokkos_ENABLE_OPENMP={}'.format(OnOff[use_openmp]),
+      '-DKokkos_ARCH_HSW={}'.format(architectures['HSW']),
+      '-DKokkos_ARCH_ZEN={}'.format(architectures['Zen']),
+      '-DKokkos_ARCH_ZEN2={}'.format(architectures['Zen2']),
+      '-DKokkos_ARCH_ZEN3={}'.format(architectures['Zen3']),
+      '-DKokkos_ARCH_VOLTA70={}'.format(architectures['Volta70']),
+      '-DKokkos_ARCH_AMPERE80={}'.format(architectures['Ampere80']),
+      '-DKokkos_ARCH_VEGA908={}'.format(architectures['Vega908']),
+      '-DKokkos_ARCH_VEGA90A={}'.format(architectures['Vega90A']),
+      '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
+      '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
+      '-DKokkos_ENABLE_HIP={}'.format(OnOff['use_hip'])
     ],
     cwd=kokkos_build_dir)
   returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
@@ -251,11 +150,11 @@ if cmake_is_available:
       '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
       '-DCMAKE_INSTALL_LIBDIR=lib',
       '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
-      '-DKokkosKernels_ADD_DEFAULT_ETI={}'.format(system_settings['KokkosKernels_ADD_DEFAULT_ETI']),
-      '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(system_settings['KokkosKernels_INST_LAYOUTLEFT:BOOL']),
-      '-DKokkosKernels_INST_LAYOUTRIGHT:BOOL={}'.format(system_settings['KokkosKernels_INST_LAYOUTRIGHT:BOOL']),
-      '-DKokkosKernels_ENABLE_TPL_CUBLAS={}'.format(system_settings['KokkosKernels_ENABLE_TPL_CUBLAS']),
-      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(system_settings['KokkosKernels_ENABLE_TPL_CUSPARSE'])
+      '-DKokkosKernels_ADD_DEFAULT_ETI={}'.format(OnOff[False]),
+      '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(OnOff[False]),
+      '-DKokkosKernels_INST_LAYOUTRIGHT:BOOL={}'.format(OnOff[False]),
+      '-DKokkosKernels_ENABLE_TPL_CUBLAS={}'.format(OnOff[False]),
+      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(OnOff[False]
     ],
     cwd=kokkos_kernels_build_dir)
   returncode = subprocess.call(['make', '-j', '4'], cwd=kokkos_kernels_build_dir)
