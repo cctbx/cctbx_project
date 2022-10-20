@@ -111,12 +111,10 @@ def run(params):
 
   if fail_deltas:
     fail_five_numbers = five_number_summary(flex.double(fail_deltas))
-    print(f"Five number summary of {fail_total} fail image processing times:",
-          "{:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(*fail_five_numbers))
+    print("Five number summary of {} fail image processing times: {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(fail_total, *fail_five_numbers))
   if good_deltas:
     good_five_numbers = five_number_summary(flex.double(good_deltas))
-    print(f"Five number summary of {good_total} good image processing times:",
-          "{:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(*good_five_numbers))
+    print("Five number summary of {} good image processing times: {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(good_total, *good_five_numbers))
 
   if params.wall_time and params.num_nodes and params.num_cores_per_node-0.5:
     for i in range(params.num_nodes):
