@@ -78,12 +78,13 @@ input {
     ranks_per_node = 68
         .type = int
         .help = number of MPI ranks per node
-    balance = *global per_node
+    balance = *global1 global2 per_node
       .type = choice
       .multiple = False
-      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
+      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global1/2) or over the ranks on each node (per_node)
       .help = The idea behind the "per_node" method is that it doesn't require MPI communications across nodes. But if the input file load varies strongly
-      .help = between the nodes, "global" is a much better option.
+      .help = between the nodes, "global1/2" is a much better option. "global1" is accomplished by reshuffling all data across all ranks while "global2" is
+      .help = accomplished by sending the minimal necessary information between ranks to deterministically evenly balance the load.
     balance_verbose = False
       .type = bool
       .help = print load balancing details to the main log
