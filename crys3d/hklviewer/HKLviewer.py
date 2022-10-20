@@ -512,6 +512,8 @@ newarray._sigmas = sigs
     self.NewHKLscenes = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.filterlst = ["MTZ Files (*.mtz)", "CIF Files (*.cif)", "HKL Files (*.hkl)",
+                      "SCA Files (*.sca)", "All Files (*)"]
     self.ipresetbtn = -1
     self.isfirsttime = False
     self.closing = False
@@ -695,15 +697,22 @@ newarray._sigmas = sigs
     self.onlymissingcheckbox.setChecked(False)
 
 
-
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
+            ";;".join(self.filterlst), "", options)
     if self.currentfileName:
       self.setWindowFilenameTitles( self.currentfileName)
       self.send_message('openfilename = "%s"' %self.currentfileName )
+      # Rearrange filters to use the current filter as default for next time we open a file
+      # The default filter is the first one. So promote the one chosen to be first in the list for next time
+      idx = self.filterlst.index(filtr) # find its place in the list of filters
+      self.filterlst.pop(idx ) # remove it from the list
+      # make a new list with it as the first element
+      newfilterlst = [filtr]
+      newfilterlst.extend(self.filterlst)
+      self.filterlst = newfilterlst
 
 
   def onSaveReflectionFile(self):
