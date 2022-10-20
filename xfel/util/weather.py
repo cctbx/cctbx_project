@@ -109,8 +109,14 @@ def run(params):
       plt.plot([(sec+ms*1e-3) - reference], [rank], 'rx')
     #if counter > 100: break
 
-  if fail_deltas: print("Five number summary of %d fail image processing times:"%fail_total, five_number_summary(flex.double(fail_deltas)))
-  if good_deltas: print("Five number summary of %d good image processing times:"%good_total, five_number_summary(flex.double(good_deltas)))
+  if fail_deltas:
+    fail_five_numbers = five_number_summary(flex.double(fail_deltas))
+    print(f"Five number summary of {fail_total} fail image processing times:",
+          "{:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(*fail_five_numbers))
+  if good_deltas:
+    good_five_numbers = five_number_summary(flex.double(good_deltas))
+    print(f"Five number summary of {good_total} good image processing times:",
+          "{:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(*good_five_numbers))
 
   if params.wall_time and params.num_nodes and params.num_cores_per_node-0.5:
     for i in range(params.num_nodes):
