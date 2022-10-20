@@ -543,7 +543,7 @@ def test_miller_array_datatype():
   os.remove('test_phil')
 
   # test array_type
-  assert dm.get_miller_array_array_type() == 'unknown'
+  assert dm.get_miller_array_array_type() == 'integer'
   label = labels[6]
   dm.set_miller_array_array_type(data_mtz, label, 'nonsense')
   assert dm.get_miller_array_array_type(label=label) == 'nonsense'
@@ -934,6 +934,29 @@ data_manager {
     dm.load_miller_array_phil_extract(working_phil.extract())
   except Sorry as s:
     assert 'DEF, could not be found in' in str(s)
+
+  # test file server
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = IPR
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  dm.load_miller_array_phil_extract(working_phil.extract())
+  fs = dm.get_reflection_file_server()
+  ma = fs.get_miller_arrays(None)
+  fs_labels = [m.info().label_string() for m in ma]
+  # only I,SIGI should be ignored in reflection file server
+  all_labels = dm.get_miller_array_labels()
+  assert 'I,SIGI,merged' in all_labels
+  assert 'I,SIGI,merged' not in fs_labels
+  for label in all_labels:
+    if label != 'I,SIGI,merged':
+      assert label in fs_labels
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':

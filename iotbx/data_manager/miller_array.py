@@ -115,6 +115,9 @@ class MillerArrayDataManager(DataManagerBase):
     '''
     return self._get_array_labels(MillerArrayDataManager.datatype, filename)
 
+  def get_miller_array_user_selected_labels(self, filename=None):
+    return self._get_user_selected_array_labels(MillerArrayDataManager.datatype, filename)
+
   def get_miller_array_types(self, filename=None):
     '''
     Returns a dict of array types, keyed by label
@@ -179,6 +182,10 @@ class MillerArrayDataManager(DataManagerBase):
         self._miller_array_array_types[filename][label] = 'complex'
       elif array.is_hendrickson_lattman_array():
         self._miller_array_array_types[filename][label] = 'hendrickson_lattman'
+      elif array.is_integer_array():
+        self._miller_array_array_types[filename][label] = 'integer'
+      elif array.is_bool_array():
+        self._miller_array_array_types[filename][label] = 'bool'
       elif array.is_nonsense():
         self._miller_array_array_types[filename][label] = 'nonsense'
     self._miller_array_labels[filename] = labels
@@ -259,6 +266,28 @@ class MillerArrayDataManager(DataManagerBase):
       labels += [None]*(len(filenames) - len(labels))
     assert len(filenames) == len(labels)
 
+    # check for user selected labels
+    selected_labels = deepcopy(labels)
+    for i, filename in enumerate(filenames):
+      current_selected_labels = self.get_miller_array_user_selected_labels(filename)
+      current_all_labels = labels[i]
+      if labels[i] is None:
+        current_all_labels = self.get_miller_array_labels(filename)
+      if len(current_selected_labels) > 0:
+        selected_types = set()
+        # add selected labels
+        for j, label in enumerate(current_selected_labels):
+          label = self._match_label(label, self.get_miller_arrays(filename=filename))
+          selected_types.add(self.get_miller_array_array_types(filename)[label])
+          current_selected_labels[j] = label
+        # add remaining labels that are a different type
+        for label in current_all_labels:
+          if self.get_miller_array_array_types(filename)[label] not in selected_types \
+            or self.get_miller_array_array_types(filename)[label] == 'unknown':
+            current_selected_labels.append(label)
+        selected_labels[i] = current_selected_labels
+    labels = selected_labels
+
     # force crystal symmetry if a crystal symmetry is provided
     if crystal_symmetry is not None and force_symmetry is None:
       force_symmetry = True
@@ -324,7 +353,8 @@ class MillerArrayDataManager(DataManagerBase):
     setattr(self, self._array_type_str % datatype, {})
     setattr(self, self._default_array_type_str % datatype, 'unknown')
     setattr(self, self._possible_array_types_str % datatype,
-            ['amplitude', 'complex', 'hendrickson_lattman', 'intensity', 'nonsense', 'unknown'])
+            ['amplitude', 'bool', 'complex', 'hendrickson_lattman', 'integer',
+             'intensity', 'nonsense', 'unknown'])
     setattr(self, self._labels_str % datatype, {})
     setattr(self, self._arrays_str % datatype, {})
     setattr(self, self._user_selected_labels_str % datatype, {})
