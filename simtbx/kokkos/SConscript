@@ -129,7 +129,7 @@ if cmake_is_available:
       '-DKokkos_ARCH_VEGA90A={}'.format(architectures['Vega90A']),
       '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
       '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
-      '-DKokkos_ENABLE_HIP={}'.format(OnOff['use_hip'])
+      '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip])
     ],
     cwd=kokkos_build_dir)
   returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
