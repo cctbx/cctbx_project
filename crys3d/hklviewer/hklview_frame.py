@@ -758,12 +758,15 @@ class HKLViewFrame() :
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
     if newarray is None:
-       # allow quickly amending broken python code without having to use new column label
-      self.params.miller_array_operation = ""
+       # allow user to quickly amend his broken python code without having to enter a new column label
+      self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
+      # and update_settings() won't bail out with a "No change in PHIL parameters" message
     else:
       self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
+      if isinstance( newarray.sigmas(), flex.double):
+        newarray._info.labels = [ label, "Sig" +label ]
       procarray, procarray_info = self.process_miller_array(newarray)
       self.procarrays.append(procarray)
       self.viewer.proc_arrays = self.procarrays
@@ -787,7 +790,13 @@ class HKLViewFrame() :
       for i,e in enumerate(indices_of_matched_hkls):
         datarr[e] = procarray.data()[i]
       # join datarr to dictionary so it can be tabulated togetehr with other data sets
-      self.origarrays[label] = list(datarr)
+      self.origarrays[newarray._info.labels[0]] = list(datarr)
+      datarr = flex.double(len(hkls), float("nan"))
+      if isinstance( newarray.sigmas(), flex.double):
+        for i,e in enumerate(indices_of_matched_hkls):
+          datarr[e] = procarray.sigmas()[i]
+        # join datarr to dictionary so it can be tabulated togetehr with other data sets
+        self.origarrays[newarray._info.labels[1]] = list(datarr)
 
       self.arrayinfos.append(arrayinfo)
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
