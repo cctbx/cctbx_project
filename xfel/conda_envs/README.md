@@ -24,7 +24,8 @@ $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
 $ mamba env create -f psana_environment.yml -p $PWD/conda_base
 $ conda activate `pwd`/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 hot update build
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
+    --python=39 --no-boost-src hot update build
 $ echo $PWD/build/conda_setpaths.sh
 ```
 To activate the cctbx environment, `source` the script that was printed in the final step.
@@ -42,13 +43,15 @@ $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
 $ mamba env create -f psana_environment.yml -p $PWD/conda_base
 $ conda activate $PWD/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 hot update
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
+    --python=39 --no-boost-src hot update
 $ exit
 $ ssh psana
 [...]
 $ cd /reg/d/psdm/<experiment>/scratch/dwpaley/cctbx
 $ conda activate $PWD/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=12 build
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=12 \
+    --python=39 --no-boost-src build
 $ echo $PWD/build/conda_setpaths.sh
 ```
 
@@ -59,7 +62,7 @@ with standardized compilers from conda instead. Replace the step `python bootstr
 ```
 $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --nproc=10 build
+  --nproc=10 --python=39 --no-boost-src build
 ```
 
 # cctbx.xfel tests
