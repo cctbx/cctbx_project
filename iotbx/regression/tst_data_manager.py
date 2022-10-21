@@ -499,13 +499,13 @@ def test_miller_array_datatype():
   labels = ['M_ISYM', 'BATCH', 'I,SIGI,merged', 'IPR,SIGIPR,merged',
             'FRACTIONCALC', 'XDET', 'YDET', 'ROT', 'WIDTH', 'LP', 'MPART',
             'FLAG', 'BGPKRATIOS']
-  for label in dm.get_miller_array_labels():
+  for label in dm.get_miller_array_all_labels():
     assert label in labels
 
-  assert len(dm.get_miller_arrays()) == len(dm.get_miller_array_labels())
+  assert len(dm.get_miller_arrays()) == len(dm.get_miller_array_all_labels())
 
   # test access by label
-  label = dm.get_miller_array_labels()[3]
+  label = dm.get_miller_array_all_labels()[3]
   new_label = dm.get_miller_arrays(labels=[label])[0].info().label_string()
   assert label == new_label
 
@@ -516,13 +516,14 @@ def test_miller_array_datatype():
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
   assert data_mtz == new_dm.get_default_miller_array_name()
-  for label in new_dm.get_miller_array_labels():
+  for label in new_dm.get_miller_array_all_labels():
     assert label in labels
 
   os.remove('test.phil')
 
   # test type
   assert dm.get_miller_array_type() == 'x_ray'
+  dm.set_miller_array_user_selected_labels()
   label = labels[3]
   dm.set_miller_array_type(data_mtz, label, 'electron')
   assert dm.get_miller_array_type(label=label) == 'electron'
@@ -570,13 +571,14 @@ def test_miller_array_datatype():
   mtz_object = dataset.mtz_object()
   dm.write_miller_array_file(mtz_object, filename='test.mtz', overwrite=True)
   dm.process_miller_array_file('test.mtz')
-  new_labels = dm.get_miller_array_labels('test.mtz')
+  new_labels = dm.get_miller_array_all_labels('test.mtz')
   assert 'label1,SIGlabel1' in new_labels
   assert 'label2,SIGlabel2' in new_labels
 
   os.remove('test.mtz')
 
   # test file server
+  dm.set_miller_array_user_selected_labels(labels=[])
   fs1 = dm.get_reflection_file_server()
   fs2 = dm.get_reflection_file_server([data_mtz, 'test.mtz'])
   assert len(fs1.miller_arrays) == len(fs2.miller_arrays)
@@ -603,7 +605,7 @@ def test_miller_array_datatype():
   miller_array = fs.get_amplitudes(None, None, True, None, None)
   assert miller_array.info().label_string() == 'I,as_amplitude_array,merged'
 
-  for label in dm.get_miller_array_labels():
+  for label in dm.get_miller_array_all_labels():
     dm.set_miller_array_type(label=label, array_type='electron')
   fs = dm.get_reflection_file_server(array_type='x_ray')
   assert len(fs.get_miller_arrays(None)) == 2
@@ -626,6 +628,7 @@ def test_miller_array_datatype():
   label_subset = labels[3:8]
   dm = DataManager(['miller_array', 'phil'])
   dm.process_miller_array_file(data_mtz)
+  dm.set_miller_array_user_selected_labels(labels=label_subset)
   dm.set_miller_array_type(label=label_subset[2], array_type='electron')
   assert dm.get_miller_array_type(label=label_subset[2]) == 'electron'
   dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
@@ -951,7 +954,7 @@ data_manager {
   ma = fs.get_miller_arrays(None)
   fs_labels = [m.info().label_string() for m in ma]
   # only I,SIGI should be ignored in reflection file server
-  all_labels = dm.get_miller_array_labels()
+  all_labels = dm.get_miller_array_all_labels()
   assert 'I,SIGI,merged' in all_labels
   assert 'I,SIGI,merged' not in fs_labels
   for label in all_labels:
