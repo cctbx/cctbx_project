@@ -234,6 +234,7 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call .\build\setpaths.bat
+      rmdir /S /Q tests
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
@@ -256,6 +257,7 @@ jobs:
     failOnStderr: false
     displayName: Test
     condition: ne(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -267,6 +269,7 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call .\build\setpaths.bat
+      rmdir /S /Q tests
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
@@ -286,6 +289,7 @@ jobs:
     failOnStderr: false
     displayName: Test (Python 3.10)
     condition: eq(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()
