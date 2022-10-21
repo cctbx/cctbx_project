@@ -778,25 +778,33 @@ class HKLViewFrame() :
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
-      # store this new miller_array in the origarrays dictionary allows making a table of the data later
-      # we assume number of HKLs in data file is the same or greater than the HKLs in the new procarray
+      # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
+      # First create a superset of HKLs existing miller arrays and the new procarray.
       hkls = self.origarrays["HKLs"]
-      # make temporary data array the size of hkls
+      m = miller.match_indices(procarray.indices(), hkls )
+      # get subset of indices in hkls matching procarray.indices()
+      indices_of_matched_hkls = m.pairs().column(1)
+      # pad hkls with the indices only present in procarray.indices()
+      hkls.extend(  procarray.indices().select( m.singles(0)) )
+      # hkls is now a superset of indices.
+      # Make temporary data array the size of hkls. This will be filled with datavalues
+      # from procarray matching the order of indices in hkls
       datarr = flex.double(len(hkls), float("nan"))
+      # assign data values corresponding to matching indices to datarr
       m = miller.match_indices(procarray.indices(), hkls )
       # get single indices in hkls matching procarray.indices()
       indices_of_matched_hkls = m.pairs().column(1)
-      # assign data values corresponding to matching indices to datarr
       for i,e in enumerate(indices_of_matched_hkls):
         datarr[e] = procarray.data()[i]
-      # join datarr to dictionary so it can be tabulated togetehr with other data sets
+      # datarr is now a copy of data values in procarray but ordered to match the indices in hkls
+      # join datarr to dictionary so it can be tabulated together with other data sets
       self.origarrays[newarray._info.labels[0]] = list(datarr)
-      datarr = flex.double(len(hkls), float("nan"))
+      # If we have Sigmas then also store values and label for these in origarrays
       if isinstance( newarray.sigmas(), flex.double):
+        sigarr = flex.double(len(hkls), float("nan"))
         for i,e in enumerate(indices_of_matched_hkls):
-          datarr[e] = procarray.sigmas()[i]
-        # join datarr to dictionary so it can be tabulated togetehr with other data sets
-        self.origarrays[newarray._info.labels[1]] = list(datarr)
+          sigarr[e] = procarray.sigmas()[i]
+        self.origarrays[newarray._info.labels[1]] = list(sigarr)
 
       self.arrayinfos.append(arrayinfo)
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
@@ -1016,7 +1024,9 @@ class HKLViewFrame() :
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
-          self.origarrays["HKLs"] = mtzobj.extract_miller_indices()
+          # deep copy to avoid out of range errors elsewhere if user merges reflections and
+          # we need to extend list of reflections
+          self.origarrays["HKLs"] = mtzobj.extract_miller_indices()[:]
           for mtzlbl in mtzobj.column_labels():
             col = mtzobj.get_column( mtzlbl )
             newarr = col.extract_values_and_selection_valid().values.deep_copy()
@@ -1026,7 +1036,7 @@ class HKLViewFrame() :
             self.origarrays[mtzlbl] = list(newarr)
 
         if len(self.origarrays.items()) == 0:
-          self.origarrays["HKLs"] = arrays[0].indices()
+          self.origarrays["HKLs"] = arrays[0].indices()[:]
           for arr in arrays:
             if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
               if arr.sigmas() == None:
@@ -1321,9 +1331,7 @@ class HKLViewFrame() :
 
   def tabulate_arrays(self, datalabels):
     if len(self.origarrays) == 0: # if not an mtz file then split columns
-      # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
-      #self.viewer.SupersetMillerArrays()
-      self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()
+      self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()[:]
       for arr in self.viewer.proc_arrays:
         if arr.is_complex_array():
           ampls, phases = self.viewer.Complex2AmplitudesPhases(arr.data())
@@ -1376,7 +1384,14 @@ class HKLViewFrame() :
         if "crystal_id" in label or "wavelength_id" in label or "scale_group_code" in label:
           continue
         fulllabel = label + crystlbl + wavelbl + scalelbl
-        datalst.append( (label, list(self.origarrays[fulllabel])))
+        pydatlst = list(self.origarrays[fulllabel])
+        # If a merged array has been created by the user pydatlst could be shorter than len(hkls).
+        # pydatlst must have the same size as hkls when received by helpers.MillerArrayTableModel()
+        # If it is not, then pad nan values at the end to make up for it.
+        # Otherwise the tabulated reflection data won't display correctly
+        if len(pydatlst) < len(hkls):
+          pydatlst.extend( [float("nan")]*(len(hkls)-len(pydatlst) ))
+        datalst.append( (label, pydatlst))
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
