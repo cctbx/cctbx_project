@@ -365,7 +365,7 @@ class DBCredentialsDialog(BaseDialog):
 
 
     self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
-    self.Bind(wx.EVT_CHECKBOX, self.onStartDB, self.btn_db_start)
+    self.Bind(wx.EVT_BUTTON, self.onStartDB, self.btn_db_start)
 
     self.Fit()
     self.SetTitle('Database Credentials')
@@ -382,12 +382,10 @@ class DBCredentialsDialog(BaseDialog):
     e.Skip()
 
   def onStartDB(self, e):
-    # render new dialog box with texctrl
+    print("starting db")
     start_db_dialog = StartDBDialog(self, self.params)
-    start_db_dialog.Center()
-    #if (start_db_dialog.ShowModal() == wx.ID_OK):
-    self.params.db.root_psswd = start_db_dialog.get_db_root_psswd.ctr.GetValue()
-    # Call new OnStartDB
+    if (start_db_dialog.ShowModal() == wx.ID_OK):
+      self.params.db.root_psswd = start_db_dialog.get_db_root_psswd.ctr.GetValue()
 
 class StartDBDialog(BaseDialog):
   ''' Dialog to start DB '''
@@ -398,25 +396,83 @@ class StartDBDialog(BaseDialog):
                *args, **kwargs):
 
     self.params = params
-    self.start_db_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.start_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+    self.vsiz = wx.BoxSizer(wx.VERTICAL)
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
                         style=wx.NO_BORDER,
                         *args, **kwargs)
 
+    font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.FONTWEIGHT_BOLD, False)
+    warning_label1 = wx.StaticText(self, wx.ID_STATIC, 'Aaron is worried about your health')
+    warning_label1.SetFont(font)
+    self.start_db_sizer.Add(warning_label1, 0, wx.ALL|wx.LEFT)
+    self.vsiz.Add(self.start_db_sizer,0, wx.ALL, 0)
+    warning_label2 = wx.StaticText(self, wx.ID_STATIC, 'Have you seen the doctor lately?')
+    warning_label2.SetFont(font)
+    self.start_db_sizer2.Add(warning_label2, 0, wx.ALL|wx.RIGHT)
+    self.vsiz.Add(self.start_db_sizer2,0, wx.ALL, 5)
     self.get_db_root_psswd = gctr.TextButtonCtrl(self,
-                                       name='db_root',
-                                       label='DB Server Root Password',
-                                       label_style='bold',
-                                       label_size=(150, -1),
-                                       big_button=True,
-                                       big_button_label='Launch Server',
-                                       big_button_size=(130, -1))
-    self.start_db_sizer.Add(self.get_db_root_psswd, flag=wx.EXPAND | wx.ALL, border=10)
+                                           name='db_root_password',
+                                           label='DB Root Password',
+                                           label_style='bold',
+                                           label_size=(150, -1),
+                                           text_style=wx.TE_PASSWORD,
+                                           big_button=True,
+                                           big_button_label='Launch Server',
+                                           big_button_size=(130, -1))
+    
+    self.start_db_sizer3.Add(self.get_db_root_psswd)
+    self.start_db_sizer3.Add(-1,-1,proportion=1)
+    self.start_db_cancel_btn = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+    self.start_db_sizer3.Add(self.start_db_cancel_btn)
+    self.vsiz.Add(self.start_db_sizer3,0, wx.ALL, 20)
+    self.main_sizer.Add(self.start_db_sizer,flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.start_db_sizer2,flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.start_db_sizer3,flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    self.get_db_root_psswd.Bind(wx.EVT_BUTTON, self.onLaunchDB)
+
+
 
     self.Fit()
-    self.SetTitle('Database Credentials')
+    self.Center()
+    self.SetTitle('Start Database')
+
+  def onLaunchDB(self, e):
+    print("launching db")
+    launch_db_dialog = LaunchDBDialog(self, self.params)
+
+class LaunchDBDialog(BaseDialog):
+  ''' Dialog to start DB '''
+
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        style=wx.NO_BORDER,
+                        *args, **kwargs)
+
+    # verify that all db credentials exist
+    def submit_start_server_job(params):
+      from xfel.command_line.cxi_mpi_submit import do_submit      
+    # call a function that:
+      # writes a sh script to submit job
+      # returns the location where the db files will live
+      # function to determine path of db if doesn't exist
+    db_file_location = "path/to/db"
+    self.launch_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    msg_text = "DB will be located in " + str(db_file_location)
+    self.db_start_box = wx.MessageBox(msg_text,"DB Info", wx.OK | wx.ICON_INFORMATION)
 
 class LCLSFacilityOptions(BaseDialog):
   ''' Options settings specific to LCLS'''
