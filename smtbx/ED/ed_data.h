@@ -1,18 +1,19 @@
 #pragma once
-#include <boost/shared_ptr.hpp>
-#include <cctbx/miller.h>
-#include <scitbx/vec3.h>
-#include <scitbx/mat3.h>
+#include <smtbx/ED/utils.h>
 #include <scitbx/constants.h>
-#include <smtbx/error.h>
 
 namespace smtbx { namespace ED {
 using namespace cctbx;
 
+struct Fc_registry {
+
+};
+
 template <typename FloatType> struct BeamInfo;
 
 template <typename FloatType>
-struct FrameInfo {
+class FrameInfo {
+public:
   typedef scitbx::vec3<FloatType> cart_t;
   typedef scitbx::mat3<FloatType> mat3_t;
 
@@ -23,7 +24,8 @@ struct FrameInfo {
     FloatType angle, FloatType scale, mat3_t const& UB)
     : id(id), tag(-1),
     alpha(alpha), beta(beta), omega(omega),
-    angle(angle), scale(scale)
+    angle(angle), scale(scale),
+    offset(~0)
   {
     FloatType ca = std::cos(alpha), sa = std::sin(alpha),
       cb = std::cos(beta), sb = std::sin(beta),
@@ -42,29 +44,34 @@ struct FrameInfo {
     FloatType MaxG
     ) const;
   
+  void top_up(FloatType Kl,
+    size_t num, FloatType min_d,
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::space_group const& space_group, bool anomalous
+  );
+
+  void add_beam(const miller::index<>& index,
+    FloatType I, FloatType sig);
+
   int id, tag;
   cart_t normal;
   mat3_t RM, RMf;
   FloatType alpha, beta, omega, angle, scale;
+  size_t offset; // for internal bookeeping
+  // first indices correspond to measured beams
+  af::shared<miller::index<> > indices;
+  af::shared<BeamInfo<FloatType> > beams;
 };
 
 template <typename FloatType>
 struct BeamInfo {
-  typedef FrameInfo<FloatType> parent_t;
-
   BeamInfo() {}
 
-  BeamInfo(parent_t *parent, const miller::index<>& index,
+  BeamInfo(const miller::index<>& index,
     FloatType I, FloatType sig)
-    : parent(parent),
-    index(index),
+    : index(index),
     I(I), sig(sig)
-  {
-    SMTBX_ASSERT(parent != 0);
-  }
-  
-  FrameInfo <FloatType>& get_parent() { return *parent; }
-  FrameInfo<FloatType>* parent;
+  {}
   miller::index<> index;
   FloatType I, sig;
 };
@@ -73,12 +80,47 @@ template <typename FloatType>
 bool FrameInfo<FloatType>::is_excited(const BeamInfo<FloatType>& beam,
   FloatType Kl, FloatType MaxSg, FloatType MaxG) const
 {
-  typedef scitbx::vec3<FloatType> cart_t;
-  cart_t g = RMf * cart_t(beam.index[0], beam.index[1], beam.index[2]);
-  FloatType gl = g.length();
-  g[2] += Kl;
-  FloatType Sg = std::abs((Kl * Kl - g.length_sq()) / (2 * Kl));
-  return Sg < MaxSg && gl < MaxG && Sg/(gl* angle) < 1.0;
+  return utils<FloatType>::is_excited_h(beam.index, RMf, Kl, MaxSg, MaxG, angle);
 }
+
+template <typename FloatType>
+void FrameInfo<FloatType>::add_beam(
+  const miller::index<>& index,
+  FloatType I, FloatType sig)
+{
+  beams.push_back(BeamInfo<FloatType>(index, I, sig));
+}
+
+template <typename FloatType>
+void FrameInfo<FloatType>::top_up(
+  FloatType Kl,
+  size_t num, FloatType min_d,
+  uctbx::unit_cell const& unit_cell,
+  sgtbx::space_group const &space_group, bool anomalous)
+{
+  if (indices.size() >= num) {
+    return;
+  }
+  typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
+
+  af::shared< utils<FloatType>::ExcitedBeam> ebeams =
+    utils<FloatType>::generate_index_set(RMf, Kl, min_d, unit_cell, space_group, anomalous);
+
+  lookup_t existing = lookup_t(
+    indices.const_ref(),
+    space_group,
+    anomalous);
+
+  for (size_t i = 0; i < ebeams.size(); i++) {
+    if (existing.find_hkl(ebeams[i].h) >= 0) {
+      continue;
+    }
+    indices.push_back(ebeams[i].h);
+    if (indices.size() >= num) {
+      break;
+    }
+  }
+}
+
 
 }}

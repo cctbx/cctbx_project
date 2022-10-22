@@ -24,16 +24,13 @@ namespace least_squares {
     f_calc_function_ed_two_beam(data_t const& data,
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
-      scitbx::mat3<FloatType> const& UB,
-      af::shared<BeamInfo<FloatType> > const& beams,
+      af::shared<FrameInfo<FloatType> > const& frames,
       cctbx::xray::thickness<FloatType> const& thickness,
       af::shared<FloatType> const& params)
       : data(data),
       space_group(space_group),
       Kl(params[0]),
       Fc2Ug(params[1]),
-      UB(UB),
-      beams(beams),
       thickness(thickness),
       index(-1),
       observable_updated(false),
@@ -46,13 +43,8 @@ namespace least_squares {
         data.reflections().indices().const_ref(),
         space_group,
         anomalous_flag);
-      for (size_t i = 0; i < beams.size(); i++) {
-        std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
-          frames_map.find(beams[i].parent->id);
-        if (fi != frames_map.end()) {
-          continue;
-        }
-        frames_map.insert(std::make_pair(beams[i].parent->id, beams[i].parent));
+      for (size_t i = 0; i < frames.size(); i++) {
+        frames_map.insert(std::make_pair(frames[i].id, &frames[i]));
       }
       frame = 0;
     } 
@@ -61,9 +53,7 @@ namespace least_squares {
       space_group(other.space_group),
       Kl(other.Kl),
       Fc2Ug(other.Fc2Ug),
-      UB(other.UB),
       frames_map(other.frames_map),
-      beams(other.beams),
       thickness(other.thickness),
       mi_lookup(other.mi_lookup),
       observable_updated(false),
@@ -95,7 +85,7 @@ namespace least_squares {
         Fc = f_calc[index] * Fc2Ug;
         Fsq = observables[index] * Fc2Ug * Fc2Ug;
       }
-      std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
+      std::map<int, const FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
       SMTBX_ASSERT(fi != frames_map.end());
       frame = fi->second;
@@ -245,17 +235,15 @@ namespace least_squares {
     data_t const& data;
     sgtbx::space_group const& space_group;
     FloatType Kl, Fc2Ug;
-    scitbx::mat3<FloatType> UB;
-    af::shared<BeamInfo<FloatType> > beams;
     cctbx::xray::thickness<FloatType> const& thickness;
     af::shared<std::complex<FloatType> > f_calc;
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
     af::versa<FloatType, af::c_grid<2> > design_matrix;
     miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
-    std::map<int, FrameInfo<FloatType>*> frames_map;
+    std::map<int, const FrameInfo<FloatType>*> frames_map;
     long index;
-    FrameInfo<FloatType>* frame;
+    const FrameInfo<FloatType>* frame;
     mutable bool observable_updated, computed;
     mutable std::complex<FloatType> Fc;
     mutable FloatType Fsq, ratio;

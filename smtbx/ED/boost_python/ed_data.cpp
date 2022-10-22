@@ -8,6 +8,7 @@
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <smtbx/ED/ed_data.h>
+#include <smtbx/ED/utils.h>
 
 // what is going on here???
 //#ifdef __WIN32__
@@ -44,7 +45,12 @@ namespace boost_python {
         .add_property("omega", &wt::omega)
         .add_property("angle", &wt::angle)
         .add_property("scale", &wt::scale)
-        .def("is_excited", &wt::is_excited);
+        .def_readwrite("indices", &wt::indices)
+        .def_readwrite("beams", &wt::beams)
+        .def("is_excited", &wt::is_excited)
+        .def("add_beam", &wt::add_beam)
+        .def("top_up", &wt::top_up)
+        ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
 
@@ -56,13 +62,9 @@ namespace boost_python {
       typedef BeamInfo<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
-        .def(init<typename wt::parent_t *,
-          const miller::index<>&, FloatType, FloatType>
-          ((arg("parent"), arg("index"), arg("I"), arg("sig"))))
-        .add_property("parent", make_function(&wt::get_parent, rir))
-        .add_property("index", make_getter(&wt::index, rbv))
+        .add_property("h", make_getter(&wt::index, rbv))
         .add_property("I", &wt::I)
-        .add_property("sig", &wt::sig);
+        .add_property("s", &wt::sig);
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_info");
     }
 
@@ -72,10 +74,48 @@ namespace boost_python {
     }
   };
 
+  template <typename FloatType>
+  struct ed_utils_wrapper {
+    static void wrap_excited_beam() {
+      using namespace boost::python;
+      typedef utils<FloatType>::ExcitedBeam wt;
+      class_<wt>("ExcitedBeam", no_init)
+        .add_property("weight", &wt::w)
+        .add_property("s", &wt::s)
+        .add_property("h", &wt::h)
+        .add_property("g", &wt::g)
+        ;
+
+    }
+
+    static void wrap_utils() {
+      using namespace boost::python;
+      typedef utils<FloatType> wt;
+      class_<wt>("utils", no_init)
+        .def("build_eigen_matrix", &wt::build_eigen_matrix)
+        .staticmethod("build_eigen_matrix")
+        .def("calc_I", &wt::calc_I)
+        .staticmethod("calc_I")
+        .def("is_excited_g", &wt::is_excited_g)
+        .staticmethod("is_excited_g")
+        .def("is_excited_h", &wt::is_excited_h)
+        .staticmethod("is_excited_h")
+        .def("generate_index_set", &wt::generate_index_set)
+        .staticmethod("generate_index_set")
+        .def("update_index_set", &wt::update_index_set)
+        .staticmethod("update_index_set")
+        ;
+    }
+    static void wrap() {
+      wrap_excited_beam();
+      wrap_utils();
+    }
+  };
 
   namespace {
     void init_module() {
       ed_data_wrapper<double>::wrap();
+      ed_utils_wrapper<double>::wrap();
     }
   }
 
