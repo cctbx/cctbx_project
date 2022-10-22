@@ -208,14 +208,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def(init<builder_base<FloatType> const&,
             sgtbx::space_group const&,
             bool,
-            scitbx::mat3<FloatType> const&,
-            af::shared<BeamInfo<FloatType> >,
+            af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             // Kl, Fc2Ug
             af::shared<FloatType> const&>(
               (arg("data"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("UB"), arg("beams"), arg("thickness"),
+                arg("frame"), arg("thickness"),
                 arg("params"))))
           .add_property("ratio", &wt::get_ratio)
           ;
@@ -232,8 +231,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             cctbx::xray::fc_correction<FloatType> const&,
             sgtbx::space_group const&,
             bool,
-            scitbx::mat3<FloatType> const&,
-            af::shared<BeamInfo<FloatType> > const&,
+            af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             // Kl, Fc2Ug, epsilon
             af::shared<FloatType> const&,
@@ -241,7 +239,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
               (arg("reparametrisation"),
                 arg("f_calc_function"), arg("fc_correction"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("UB"), arg("beams"), arg("thickness"),
+                arg("frames"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           //.add_property("ratio", &wt::get_ratio)
           ;
