@@ -117,14 +117,26 @@ model
   def set_default_model(self, filename):
     return self._set_default(ModelDataManager.datatype, filename)
 
-  def get_model(self, filename=None):
+  def get_model(self, filename=None, model_type=None):
     """
     Retrieve a stored mmtbx.model.manager object
+
+    If model_type is None and there is only one model type, then the
+    model is returned. If there is more than one model type, then a
+    Sorry is raised.
+
+    If a model_type is specified when a model has more than one type, a
+    copy of the model is returned if model_type is not the default type.
 
     Parameters
     ----------
     filename : str
         Optionally specify which model using its filepath
+    model_type: str
+        Optionally specify the type of the model
+        The options are the same as for the scattering dictionary
+        ["n_gaussian", "wk1995", "it1992", "electron", "neutron"] and
+        "x_ray" which will default to "n_gaussian".
 
     Returns
     -------
@@ -133,7 +145,7 @@ model
 
     """
     model = self._get(ModelDataManager.datatype, filename)
-    if (self.supports('restraint')):
+    if self.supports('restraint'):
       restraint_objects = list()
       for filename in self.get_restraint_names():
         restraint_objects.append((filename, self.get_restraint(filename)))
@@ -144,6 +156,32 @@ model
       if filename:
         model.info().full_file_name = os.path.abspath(filename)
         model.info().file_name = os.path.split(filename)[-1]
+    if model_type is None:
+      if len(self.get_model_type(filename=filename)) > 1:
+        raise Sorry('''
+There is more than one model type, {}. You must specify one.
+'''.format(self.get_model_type(filename=filename)))
+    else:
+      type_options = ['x_ray', 'n_gaussian', 'wk1995', 'it1992', 'electron', 'neutron']
+      if model_type not in type_options:
+        raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
+                    (model_type, ', '.join(type_options)))
+      check_type = model_type
+      if check_type in ['n_gaussian', 'wk1995', 'it1992']:
+        check_type = 'x_ray'
+      if check_type not in self.get_model_type(filename=filename):
+        raise Sorry('''
+The model type, {}, is not one of the types set for the model, {}.
+The choices are {}.
+'''.format(model_type, filename, self.get_model_type(filename=filename)))
+      if len(self.get_model_type(filename=filename)) > 1 \
+        and model_type not in self.get_default_model_type():
+          model = model.deep_copy()
+
+      # set scattering dictionary based on model type
+      # if model_type == 'x_ray':
+      #   model_type = 'n_gaussian'
+      # model.setup_scattering_dictionaries(scattering_table=model_type)
 
     return model
 

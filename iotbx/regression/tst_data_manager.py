@@ -262,7 +262,32 @@ END
   assert len(new_dm.get_model_names(model_type='electron')) == 0
   assert len(new_dm.get_model_names(model_type='neutron')) == 0
   assert len(new_dm.get_model_names(model_type='reference')) == 1
+  new_dm.set_model_type(filename=test_filename, model_type=['x_ray', 'neutron'])
+  try:
+    new_dm.get_model(filename=test_filename)
+  except Sorry as s:
+    assert 'There is more than one model type' in str(s)
+  try:
+    new_dm.get_model(filename=test_filename, model_type='electron')
+  except Sorry as s:
+    assert 'electron, is not one of the types' in str(s)
+  try:
+    new_dm.get_model(filename=test_filename, model_type='not_a_valid_type')
+  except Sorry as s:
+    assert 'model type, "not_a_valid_type' in str(s)
+  # check for copy
+  new_dm.set_model_type(filename=test_filename, model_type=['electron'])
+  model = new_dm.get_model(filename=test_filename)
+  test_model = new_dm.get_model(filename=test_filename, model_type='electron')
+  assert test_model is model
+  new_dm.set_model_type(filename=test_filename, model_type=['electron', 'neutron'])
+  test_model = new_dm.get_model(filename=test_filename, model_type='electron')
+  assert test_model is model
+  test_model = new_dm.get_model(filename=test_filename, model_type='neutron')
+  assert test_model is not model
+
   # check PHIL
+  new_dm.set_model_type(filename=test_filename, model_type=['x_ray', 'reference'])
   multiple_type_phil_str = new_dm.export_phil_scope().as_str()
   multiple_type_phil = iotbx.phil.parse(multiple_type_phil_str)
   new_dm = DataManager(phil=multiple_type_phil)
