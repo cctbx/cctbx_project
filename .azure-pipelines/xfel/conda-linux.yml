@@ -125,6 +125,7 @@ jobs:
              eq(variables['Build.DefinitionName'], 'CI'),
              eq(variables['Build.DefinitionName'], 'CI branch'),
              eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
              eq(variables['Build.DefinitionName'], 'Full')),
           ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
@@ -140,6 +141,7 @@ jobs:
              eq(variables['Build.DefinitionName'], 'CI'),
              eq(variables['Build.DefinitionName'], 'CI branch'),
              eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
              eq(variables['Build.DefinitionName'], 'Full')),
           ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
