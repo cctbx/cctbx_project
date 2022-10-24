@@ -815,6 +815,8 @@ class HKLViewFrame() :
                 }
       self.SendInfoToGUI(mydict)
       self.validated_preset_buttons = False
+      self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+      self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
     return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
 
 
@@ -943,7 +945,8 @@ class HKLViewFrame() :
                   "file_name": self.params.openfilename
                 }
       self.SendInfoToGUI(mydict)
-    #self.params.openfilename = None
+    self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+    self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
 
 
   def load_reflections_file(self, file_name):
@@ -1969,6 +1972,8 @@ master_phil_str = """
   action = *is_running is_terminating reset_view
     .type = choice
   tabulate_miller_array_ids = "[]"
+    .type = str
+  tooltip_data = "[]"
     .type = str
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)

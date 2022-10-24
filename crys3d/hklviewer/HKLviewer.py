@@ -1179,6 +1179,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
           if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
 
+          if self.infodict.get("include_tooltip_lst"):
+            self.include_tooltip_lst = self.infodict.get("include_tooltip_lst", [])
+
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
           if self.infodict.get("orig_hkl_ids"):
@@ -2230,7 +2233,12 @@ clip_plane {
                    self.window, triggered=self.testaction)
     myqa.setData(("make_newdata", row ))
     self.millertablemenu.addAction(myqa)
-
+    if len(self.millertable.selectedrows) ==1:
+      myqa = QAction("Display tooltips for %s" %self.millerarraylabels[row], self.window, triggered=self.testaction)
+      myqa.setCheckable(True)
+      myqa.setChecked(self.include_tooltip_lst[row] )
+      myqa.setData(("tooltip_data", row))
+      self.millertablemenu.addAction(myqa)
     if len(self.millertable.selectedrows) > 0:
       arraystr = ""
       labels = []
@@ -2270,6 +2278,9 @@ clip_plane {
         self.makenewdataform.show()
       if strval=="tabulate_data":
         self.send_message('tabulate_miller_array_ids = "%s"' %str(val))
+      if strval=="tooltip_data":
+        self.include_tooltip_lst[val] = not self.include_tooltip_lst[val]
+        self.send_message('tooltip_data = "%s"' %str([val, self.include_tooltip_lst[val]]))
 
 
   def DisplayData(self, idx, row):

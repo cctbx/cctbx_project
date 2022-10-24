@@ -239,6 +239,7 @@ class HKLview_3d:
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
+    self.include_tooltip_lst = []
     self.mouse_moved = False
     self.HKLsceneKey = None
     self.handshakewait = 5
@@ -365,6 +366,10 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "show_hkl"):
       self.show_hkl()
+
+    if has_phil_path(diff_phil, "tooltip_data"):
+      tablerow, binclude = eval(self.params.tooltip_data)
+      self.include_tooltip_lst[tablerow] = binclude
 
     if has_phil_path(diff_phil, "background_colour"):
       self.set_background_colour()
@@ -666,7 +671,9 @@ class HKLview_3d:
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
-    for proc_array in self.proc_arrays:
+    for tablerow,proc_array in enumerate(self.proc_arrays):
+      if not self.include_tooltip_lst[tablerow]:
+        continue
       sigvals = []
       datvals = []
       if proc_array.sigmas() is not None:
