@@ -261,12 +261,13 @@ class condensed_probe_line_info(probe_line_info):
     self.srcAtom = sp[3]
     self.targAtom = sp[4]
     self.min_gap = float(sp[6])
+    self.gap = float(sp[7])
     self.x = float(sp[-5])
     self.y = float(sp[-4])
     self.z = float(sp[-3])
     self.sBval = float(sp[-2])
     self.tBval = float(sp[-1])
-    self.overlap_value = self.min_gap
+    self.overlap_value = self.gap
 
 class raw_probe_line_info(probe_line_info):
   def __init__(self, line):
@@ -356,31 +357,22 @@ class probe_clashscore_manager(object):
     key = line_info.targAtom+line_info.srcAtom
     if (line_info.srcAtom < line_info.targAtom):
       key = line_info.srcAtom+line_info.targAtom
-    if self.condensed_probe:
-      if (line_info.type == "bo"):
-        if (line_info.min_gap <= -0.4):
-          if (key in clash_hash):
-            if (line_info.min_gap < clash_hash[key].min_gap):
-              clash_hash[key] = line_info
-          else :
+    if line_info.type == "bo":
+      if (line_info.overlap_value <= -0.4):
+        if (key in clash_hash):
+          if (line_info.overlap_value < clash_hash[key].overlap_value):
             clash_hash[key] = line_info
-      elif (line_info.type == "hb"):
+        else :
+          clash_hash[key] = line_info
+    elif (line_info.type == "hb"):
+      if self.condensed_probe:
         hbond_hash[key] = line_info
-    else: # not condensed
-      if (line_info.type == "so" or line_info.type == "bo"):
-        if (line_info.overlap_value <= -0.4):
-          if (key in clash_hash):
-            if (line_info.overlap_value < clash_hash[key].overlap_value):
-              clash_hash[key] = line_info
-          else :
-            clash_hash[key] = line_info
-      elif (line_info.type == "hb"):
+      else: # not condensed
         if (key in hbond_hash):
           if (line_info.gap < hbond_hash[key].gap):
             hbond_hash[key] = line_info
         else :
           hbond_hash[key] = line_info
-
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
@@ -426,9 +418,10 @@ class probe_clashscore_manager(object):
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
   def get_condensed_clashes(self, lines):
+    # Standalone faster parsing of output when only clashscore is needed.
     def parse_line(line):
       sp = line.split(':')
-      return sp[3], sp[4], float(sp[6])
+      return sp[3], sp[4], float(sp[7])
     def parse_h_line(line):
       sp = line.split(':')
       return sp[3], sp[4]
@@ -482,7 +475,7 @@ class probe_clashscore_manager(object):
     # while os.path.isdir(tempdir):
     #   tempdir = "tmp_for_probe_debug_%d" % random.randint(1000,9999)
     # os.mkdir(tempdir)
-    # print "Dumping info to %s" % tempdir
+    # print ("Dumping info to %s" % tempdir)
     # with open(tempdir + os.sep + 'model.pdb', 'w') as f:
     #   f.write(pdb_string)
     # with open(tempdir + os.sep + 'probe_out.txt', 'w') as f:
