@@ -71,6 +71,18 @@ def run(args):
       user_phil.append(parse(arg))
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
+
+  def _get_password(params):
+    if params.db.server.root_password is None:
+      import getpass
+      print ("You must specify a root password")
+      rootpw1 = getpass.getpass()
+      print ("Re-enter password")
+      rootpw2 = getpass.getpass()
+      if rootpw1 != rootpw2:
+        raise Sorry("Passwords don't match")
+      params.db.server.root_password = rootpw1
+          
   params = phil_scope.fetch(sources=user_phil).extract()
 
   cnf_path = os.path.join(params.db.server.basedir, 'my.cnf')
@@ -79,15 +91,8 @@ def run(args):
   if initialize:
     assert params.db.user is not None and len(params.db.user) > 0 and \
            params.db.name is not None and len(params.db.name) > 0
-    import getpass
     print("Initializing")
-    print ("You must specify a root password")
-    rootpw1 = getpass.getpass()
-    print ("Re-enter password")
-    rootpw2 = getpass.getpass()
-    if rootpw1 != rootpw2:
-      raise Sorry("Passwords don't match")
-    rootpw = rootpw1
+    _get_password(params)       
 
     print ("Initializing database")
     os.makedirs(params.db.server.basedir)
@@ -99,7 +104,7 @@ def run(args):
   elif params.db.server.prompt_for_root_password:
     import getpass
     print ("please enter root password to raise the connection")
-    rootpw3 = getpass.getpass()
+    params.db.server.root_password = getpass.getpass()
 
   print ("Starting server")
   assert os.path.exists(cnf_path)
@@ -110,36 +115,39 @@ def run(args):
 
   params.db.host = '127.0.0.1'
   if initialize:
-    new_user = params.db.user
-    new_password = params.db.password
-    new_db = params.db.name
-    params.db.user = 'root'
-    params.db.password = ''
-    params.db.name = ''
-    print ("Changing password")
+    #new_user = params.db.user
+    #new_password = params.db.password
+    #new_db = params.db.name
+    #params.db.user = 'root'
+    #params.db.password = ''
+    #params.db.name = ''
+    #print ("Changing password")
     app = db_application(params)
-    app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(rootpw))
-    params.db.password = rootpw
-    print ("Creating empty database %s"%new_db)
-    app.execute_query("CREATE DATABASE %s"%new_db)
-    print ("Creating new user %s"%new_user)
-    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(new_user, new_password))
+    app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(params.db.server.root_password))
+    #params.db.password = rootpw
+    print ("Creating empty database %s"%params.db.name)
+    app.execute_query("CREATE DATABASE %s"%params.db.name)
+    print ("Creating new user %s"%params.db.user)
+    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(params.db.user, params.db.password))
     print ("Setting permissions")
-    app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(new_db, new_user))
+    app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(params.db.name, params.db.user))
+    rootpw = rootpw1
     app.execute_query("FLUSH PRIVILEGES")
-    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
+    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%params.db.user)
     app.execute_query("FLUSH PRIVILEGES")
     print ("Initialized")
   else:
     app = db_application(params)
 
-  if params.db.server.prompt_for_root_password:
-    params.db.user = 'root'
-    params.db.password = rootpw3
+  #if params.db.server.prompt_for_root_password:
+    #params.db.user = 'root'
+   # params.db.server.root_password = rootpw3
 
   print ("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")
 
+  # remove root password from params
+  params.db.server.root_password = None
   try:
     while True:
       if server_process.poll() is not None:

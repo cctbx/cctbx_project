@@ -382,10 +382,9 @@ class DBCredentialsDialog(BaseDialog):
     e.Skip()
 
   def onStartDB(self, e):
-    print("starting db")
-    start_db_dialog = StartDBDialog(self, self.params)
-    if (start_db_dialog.ShowModal() == wx.ID_OK):
-      self.params.db.root_psswd = start_db_dialog.get_db_root_psswd.ctr.GetValue()
+    self.start_db_dialog = StartDBDialog(self, self.params)
+    if (self.start_db_dialog.ShowModal() == wx.ID_OK):
+      print("Preparing to initialize DB")
 
 class StartDBDialog(BaseDialog):
   ''' Dialog to start DB '''
@@ -405,16 +404,25 @@ class StartDBDialog(BaseDialog):
                         content_style=content_style,
                         style=wx.NO_BORDER,
                         *args, **kwargs)
-
-    font = wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.FONTWEIGHT_BOLD, False)
-    warning_label1 = wx.StaticText(self, wx.ID_STATIC, 'Aaron is worried about your health')
+    warn_icon = wx.ArtProvider.GetBitmap(wx.ART_WARNING, wx.ART_OTHER, (50,50))
+    self.staticbmp = wx.StaticBitmap(self, -1, warn_icon, pos=(1,1))
+    self.start_db_sizer.Add(self.staticbmp, flag=wx.ALL)
+    self.vsiz.Add(self.start_db_sizer, 0)
+    font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.FONTWEIGHT_NORMAL, False)
+    warning_label1 = wx.StaticText(self, wx.ID_STATIC, 'This will initialize the server! Make sure the server is not already running!')
     warning_label1.SetFont(font)
-    self.start_db_sizer.Add(warning_label1, 0, wx.ALL|wx.LEFT)
-    self.vsiz.Add(self.start_db_sizer,0, wx.ALL, 0)
-    warning_label2 = wx.StaticText(self, wx.ID_STATIC, 'Have you seen the doctor lately?')
-    warning_label2.SetFont(font)
-    self.start_db_sizer2.Add(warning_label2, 0, wx.ALL|wx.RIGHT)
-    self.vsiz.Add(self.start_db_sizer2,0, wx.ALL, 5)
+    self.start_db_sizer.Add(warning_label1, 0, wx.ALL|wx.RIGHT)
+    self.vsiz.Add(self.start_db_sizer,0, wx.ALL, 20)
+    self.get_db_basedir = gctr.TextButtonCtrl(self,
+                                              name='basedir',
+                                              label='DB Base Directory',
+                                              label_style='bold',
+                                              label_size=(150,-1),
+                                              big_button_size=(130,-1),
+                                              value=os.path.join(self.params.output_folder, 'MySql')
+                                              )
+    self.start_db_sizer2.Add(self.get_db_basedir)
+    self.vsiz.Add(self.start_db_sizer2,0, wx.ALL, 40)
     self.get_db_root_psswd = gctr.TextButtonCtrl(self,
                                            name='db_root_password',
                                            label='DB Root Password',
@@ -429,7 +437,7 @@ class StartDBDialog(BaseDialog):
     self.start_db_sizer3.Add(-1,-1,proportion=1)
     self.start_db_cancel_btn = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
     self.start_db_sizer3.Add(self.start_db_cancel_btn)
-    self.vsiz.Add(self.start_db_sizer3,0, wx.ALL, 20)
+    self.vsiz.Add(self.start_db_sizer3,0, wx.ALL, 60)
     self.main_sizer.Add(self.start_db_sizer,flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer2,flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer3,flag=wx.EXPAND | wx.ALL, border=10)
@@ -445,6 +453,11 @@ class StartDBDialog(BaseDialog):
 
   def onLaunchDB(self, e):
     print("launching db")
+    print('params',dir(self.params.db))
+
+    self.params.db.server.root_password = self.get_db_root_psswd.ctr.GetValue()
+    self.params.db.server.basedir = self.get_db_basedir.ctr.GetValue()
+    print('basedir', self.params.db.server.basedir)
     launch_db_dialog = LaunchDBDialog(self, self.params)
 
 class LaunchDBDialog(BaseDialog):
@@ -462,17 +475,33 @@ class LaunchDBDialog(BaseDialog):
                         style=wx.NO_BORDER,
                         *args, **kwargs)
 
-    # verify that all db credentials exist
-    def submit_start_server_job(params):
-      from xfel.command_line.cxi_mpi_submit import do_submit      
-    # call a function that:
-      # writes a sh script to submit job
-      # returns the location where the db files will live
-      # function to determine path of db if doesn't exist
-    db_file_location = "path/to/db"
+    def _submit_start_server_job(params):
+      from xfel.command_line.cxi_mpi_submit import do_submit
+      assert self.params.db.user is not None, f"DB User not defined!"
+      assert self.params.db.password is not None, f"Password for DB User not defined!"
+      assert self.params.db.server.root_password is not None, f"Root password for DB not defined!" 
+      assert self.params.db.server.basedir is not None, f"Base directory for DB not defined!"
+      
+      try:
+         print('basedir',params.db.server.basedir, os.path.exists(params.db.server.basedir)) 
+         if not os.path.exists(params.db.server.basedir):
+           import copy
+           new_params = copy.deepcopy(params)
+           new_params.mp.log_name = "mysql.log"
+           new_params.mp.err_name = "mysql.err"
+           params.mp.extra_args = "db.port=%d db.server.basedir=%s db.user=%s db.name=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.experiment_tag)
+           print("submitting job")
+           do_submit('cctbx.xfel.ui_server', new_params.output_folder, new_params.output_folder, new_params.mp, 'cctbxmysql')
+      except: 
+         raise RuntimeError(f"Couldn\'t submit job to start MySql DB.\n Could MySql already be running?\n Check if {params.db.server.basedir} exists.")      
+
+      
+    _submit_start_server_job(self.params)  
+    db_file_location = self.params.db.server.basedir
     self.launch_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    msg_text = "DB will be located in " + str(db_file_location)
+    msg_text = "DB will be located in\n" + str(db_file_location)
     self.db_start_box = wx.MessageBox(msg_text,"DB Info", wx.OK | wx.ICON_INFORMATION)
+
 
 class LCLSFacilityOptions(BaseDialog):
   ''' Options settings specific to LCLS'''

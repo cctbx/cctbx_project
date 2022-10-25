@@ -123,6 +123,26 @@ db {
   logging_batch_size = 3
     .type = int
     .help = Number of images to log at once. Increase if using many (thousands) of processors.
+  server {
+    basedir = None
+      .type = path
+      .help = Root folder for mysql database
+
+    prompt_for_root_password = False
+      .type = bool
+      .help = Whether to always ask for the root password. Note, root password is always \
+              needed when the database is initialized.
+    
+    root_user = 'root'
+      .type = str
+      .help = username for root
+      .expert_level = 2
+
+    root_password = None
+      .type = str
+      .help = Password for root user
+      .expert_level = 2
+  }
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
