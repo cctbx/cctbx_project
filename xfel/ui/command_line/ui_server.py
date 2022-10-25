@@ -23,21 +23,7 @@ While the server is running, the user can connect to with with the xfel gui by p
 
 """
 
-phil_str = """
-db {
-  server {
-    basedir = None
-      .type = path
-      .help = Root folder for mysql database
-
-    prompt_for_root_password = False
-      .type = bool
-      .help = Whether to always ask for the root password. Note, root password is always \
-              needed when the database is initialized.
-  }
-}
-"""
-phil_scope = parse(phil_str + db_phil_str)
+phil_scope = parse(phil_str)
 
 default_cnf = \
 """
@@ -115,16 +101,8 @@ def run(args):
 
   params.db.host = '127.0.0.1'
   if initialize:
-    #new_user = params.db.user
-    #new_password = params.db.password
-    #new_db = params.db.name
-    #params.db.user = 'root'
-    #params.db.password = ''
-    #params.db.name = ''
-    #print ("Changing password")
     app = db_application(params)
     app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(params.db.server.root_password))
-    #params.db.password = rootpw
     print ("Creating empty database %s"%params.db.name)
     app.execute_query("CREATE DATABASE %s"%params.db.name)
     print ("Creating new user %s"%params.db.user)
@@ -138,10 +116,6 @@ def run(args):
     print ("Initialized")
   else:
     app = db_application(params)
-
-  #if params.db.server.prompt_for_root_password:
-    #params.db.user = 'root'
-   # params.db.server.root_password = rootpw3
 
   print ("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")
