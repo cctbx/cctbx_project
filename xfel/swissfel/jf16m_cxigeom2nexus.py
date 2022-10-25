@@ -48,6 +48,11 @@ phil_scope = parse("""
     .type = bool
     .help = Whether to split the 4x2 modules into indivdual asics \
             accounting for borders and gaps.
+  include_separate_leaf_transformation = False
+    .type = bool
+    .expert_level = 2
+    .help = Whether to add an extra hierarchy level for the last level. \
+            Generally not needed.
   trusted_range = None
     .type = floats(size=2)
     .help = Set the trusted range
@@ -465,8 +470,12 @@ class jf16m_cxigeom2nexus(object):
                 asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * gap))) + \
                                         (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * gap)))
 
-              self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
-                                 transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
+              if self.params.include_separate_leaf_transformation:
+                self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
+                                   transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
+                fs_depends_on = transformations.name+'/'+a_name
+              else:
+                fs_depends_on = transformations.name+'/'+m_name
 
               asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
               asicmodule.attrs['NX_class'] = 'NXdetector_module'
@@ -479,17 +488,23 @@ class jf16m_cxigeom2nexus(object):
               asicmodule.create_dataset('data_size', (2,), data=[asic_slow - border*2, asic_fast - border*2], dtype='i')
 
               self.create_vector(asicmodule, 'fast_pixel_direction',pixel_size,
-                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
-                                 transformation_type='translation', units='mm', vector=fast.elems, offset=(0. ,0., 0.))
+                                 depends_on=fs_depends_on,
+                                 transformation_type='translation', units='mm', vector=fast.elems,
+                                 offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else asic_vector)
               self.create_vector(asicmodule, 'slow_pixel_direction',pixel_size,
-                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
-                                 transformation_type='translation', units='mm', vector=slow.elems, offset=(0., 0., 0.))
+                                 depends_on=fs_depends_on,
+                                 transformation_type='translation', units='mm', vector=slow.elems,
+                                 offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else asic_vector)
         else:
           module_vector = self.hierarchy[q_key][m_key]['local_origin'].elems
-          self.create_vector(transformations, m_name, 0.0, depends_on=q_name,
-                             equipment='detector', equipment_component='detector_module',
-                             transformation_type='rotation', units='degrees', vector=(0. ,0., -1.),
-                             offset = module_vector, offset_units = 'mm')
+          if self.params.include_separate_leaf_transformation:
+            self.create_vector(transformations, m_name, 0.0, depends_on=q_name,
+                               equipment='detector', equipment_component='detector_module',
+                               transformation_type='rotation', units='degrees', vector=(0. ,0., -1.),
+                               offset = module_vector, offset_units = 'mm')
+            fs_depends_on = transformations.name+'/'+m_name
+          else:
+            fs_depends_on = transformations.name+'/'+q_name
 
           modulemodule = detector.create_group(array_name+'Q%dM%d'%(quad,module_num))
           modulemodule.attrs['NX_class'] = 'NXdetector_module'
@@ -500,11 +515,13 @@ class jf16m_cxigeom2nexus(object):
           fast = self.hierarchy[q_key][m_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key]['local_slow'].elems
           self.create_vector(modulemodule, 'fast_pixel_direction',pixel_size,
-                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
-                             transformation_type='translation', units='mm', vector=fast, offset=(0. ,0., 0.))
+                             depends_on=fs_depends_on,
+                             transformation_type='translation', units='mm', vector=fast,
+                             offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else module_vector)
           self.create_vector(modulemodule, 'slow_pixel_direction',pixel_size,
-                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
-                             transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
+                             depends_on=fs_depends_on,
+                             transformation_type='translation', units='mm', vector=slow,
+                             offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else module_vector)
     f.close()
 
 if __name__ == '__main__':
