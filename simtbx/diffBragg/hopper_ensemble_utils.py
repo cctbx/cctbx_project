@@ -374,6 +374,7 @@ class DataModelers:
         # we vary all Fhkl, however if there are more than 1 Fhkl channels
         # we only vary the centrics in the first channel, and then set those as the values in the other channels
         # (no anomalous scattering in centrics)
+
         num_fhkl_param = self.SIM.Num_ASU*self.SIM.num_Fhkl_channels
         fhkl_vary = np.ones(num_fhkl_param, int)
 
@@ -382,6 +383,22 @@ class DataModelers:
             for i_chan in range(1, self.SIM.num_Fhkl_channels):
                 channel_slc = slice(i_chan*self.SIM.Num_ASU, (i_chan+1) *self.SIM.Num_ASU, 1)
                 np.subtract.at(fhkl_vary, channel_slc, self.SIM.is_centric.astype(int))
+
+        # only refine hkls that are present in the reflection tables
+        all_nominal_hkl = set()
+        for mod in self.data_modelers.values():
+            all_nominal_hkl = all_nominal_hkl.union(mod.hi_asu_perpix)
+        all_nominal_hkl = COMM.gather(all_nominal_hkl)
+        if COMM.rank == 0:
+            all_nominal_hkl = set(all_nominal_hkl[0]).union(*all_nominal_hkl[1:])
+            asu_inds_to_vary = [self.SIM.asu_map_int[h] for h in all_nominal_hkl]
+        else:
+            asu_inds_to_vary = None
+        asu_inds_to_vary = set(COMM.bcast(asu_inds_to_vary))
+        for i_chan in range(self.SIM.num_Fhkl_channels):
+            for i_asu in asu_inds_to_vary:
+                if i_asu not in asu_inds_to_vary:
+                    fhkl_vary[i_asu + self.SIM.Num_ASU*i_chan] = 0
 
         return fhkl_vary
 
