@@ -25,7 +25,7 @@ from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QCombo
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
-from .qt import QColor, QFont, QCursor, QDesktopServices
+from .qt import QColor, QFont, QIcon, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
 try: # if invoked by cctbx.python or some such
@@ -2239,6 +2239,30 @@ clip_plane {
       myqa.setChecked(self.include_tooltip_lst[row] )
       myqa.setData(("tooltip_data", row))
       self.millertablemenu.addAction(myqa)
+
+    if len(self.millertable.selectedrows) > 1:
+      arraystr = ""
+      labels = []
+      sum = 0
+      for i,row in enumerate(self.millertable.selectedrows):
+        labels.append( self.millerarraylabels[row] )
+        sum += int(self.include_tooltip_lst[row])
+      myqa = QAction("Display tooltips for %s" %  " and ".join(labels),
+                     self.window, triggered=self.testaction)
+      myqa.setCheckable(True)
+      if len(self.millertable.selectedrows) == sum:
+        myqa.setChecked(True )
+      if sum == 0:
+        myqa.setChecked(False )
+      if len(self.millertable.selectedrows) > sum and sum > 0:
+        myqa = QAction(QIcon( os.path.join(os.path.dirname(os.path.abspath(__file__)), "partiallychecked.png")),
+                       "Display tooltips for %s" %  " and ".join(labels),
+                       self.window, triggered=self.testaction)
+        myqa.setCheckable(True)
+
+      myqa.setData(("tooltip_data", self.millertable.selectedrows))
+      self.millertablemenu.addAction(myqa)
+
     if len(self.millertable.selectedrows) > 0:
       arraystr = ""
       labels = []
@@ -2279,8 +2303,17 @@ clip_plane {
       if strval=="tabulate_data":
         self.send_message('tabulate_miller_array_ids = "%s"' %str(val))
       if strval=="tooltip_data":
-        self.include_tooltip_lst[val] = not self.include_tooltip_lst[val]
-        self.send_message('tooltip_data = "%s"' %str([val, self.include_tooltip_lst[val]]))
+        if isinstance(val, list): # if we highlighted more rows then toggle tooltips on or off by
+          sum = 0   # taking the opposite of the rounded integer average of the tooltip visibility
+          for row in self.millertable.selectedrows:
+            sum += int(self.include_tooltip_lst[row])
+          bval = bool(round(float(sum)/len(self.millertable.selectedrows)))
+          for row in self.millertable.selectedrows:
+            self.include_tooltip_lst[row] = not bval
+            self.send_message('tooltip_data = "%s"' %str([row, self.include_tooltip_lst[row]]))
+        else: # only rightclicked one row so toggle its tooltip visibility
+          self.include_tooltip_lst[val] = not self.include_tooltip_lst[val]
+          self.send_message('tooltip_data = "%s"' %str([val, self.include_tooltip_lst[val]]))
 
 
   def DisplayData(self, idx, row):
