@@ -712,7 +712,6 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
 
                     // loop over sources now
                     for(int source=source_start; source<sources; ++source) {
-                        double n_source_scale = (have_single_source) ? orig_sources : source_I[source];
 
                         // retrieve stuff from cache
                         CUDAREAL incident[4];
