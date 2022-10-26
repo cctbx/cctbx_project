@@ -647,16 +647,16 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
     int oversample=-1;                     //override features that usually slow things down,
                                            //like oversampling pixels & multiple sources
     int source_start = 0;
-    int orig_sources = sources;
+    CUDAREAL n_source_scale = sources;
     // allow user to override automated oversampling decision at call time with arguments
     if(oversample<=0) oversample = nanoBragg_oversample;
     if(oversample<=0) oversample = 1;
-    bool have_single_source = false;
+    bool full_spectrum = true;
     if(override_source>=0) {
         // user-specified source in the argument
         source_start = override_source;
         sources = source_start +1;
-        have_single_source = true;
+        full_spectrum = false;
     }
     // make sure we are normalizing with the right number of sub-steps
     int steps = oversample*oversample;
@@ -720,7 +720,8 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                         incident[2] = -source_Y(source);
                         incident[3] = -source_Z(source);
                         CUDAREAL lambda = source_lambda(source);
-                        CUDAREAL source_fraction = source_I(source);
+                        CUDAREAL source_fraction = full_spectrum * source_I(source);
+                        source_fraction += !full_spectrum * n_source_scale;
                         // construct the incident beam unit vector while recovering source distance
                         unitize(incident, incident);
 
@@ -766,7 +767,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                         }
 
                         // accumulate unscaled pixel intensity from this
-                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*n_source_scale;
+                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*source_fraction;
                     } // end of source loop
                 } // end of detector thickness loop
             } // end of sub-pixel y loop
