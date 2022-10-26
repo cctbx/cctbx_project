@@ -658,6 +658,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
         sources = source_start +1;
         full_spectrum = false;
     }
+    n_source_scale *= !full_spectrum;
     // make sure we are normalizing with the right number of sub-steps
     int steps = oversample*oversample;
     CUDAREAL subpixel_size = pixel_size/oversample;
@@ -719,8 +720,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                         incident[2] = -source_Y(source);
                         incident[3] = -source_Z(source);
                         CUDAREAL lambda = source_lambda(source);
-                        CUDAREAL source_fraction = full_spectrum * source_I(source);
-                        source_fraction += !full_spectrum * n_source_scale;
+                        CUDAREAL source_fraction = full_spectrum * source_I(source) + n_source_scale;
                         // construct the incident beam unit vector while recovering source distance
                         unitize(incident, incident);
 
