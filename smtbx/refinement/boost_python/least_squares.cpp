@@ -233,7 +233,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             bool,
             af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // Kl, Fc2Ug, epsilon
+            // Kl, Fc2Ug, epsilon, mat_type
             af::shared<FloatType> const&,
             bool, bool>(
               (arg("reparametrisation"),

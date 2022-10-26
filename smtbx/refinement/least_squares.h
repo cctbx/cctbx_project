@@ -377,7 +377,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
               break;
             }
             for (int i = 0; i < ch.size; i++) {
-              int i_h = ch.idx + i;;
+              int i_h = ch.idx + i;
               miller::index<> const& h = reflections.index(i_h);
               const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
               if (f_mask_data.size()) {
