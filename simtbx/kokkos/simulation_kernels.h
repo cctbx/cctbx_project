@@ -647,13 +647,16 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
     int oversample=-1;                     //override features that usually slow things down,
                                            //like oversampling pixels & multiple sources
     int source_start = 0;
+    int orig_sources = sources;
     // allow user to override automated oversampling decision at call time with arguments
     if(oversample<=0) oversample = nanoBragg_oversample;
     if(oversample<=0) oversample = 1;
+    bool have_single_source = false;
     if(override_source>=0) {
         // user-specified source in the argument
         source_start = override_source;
         sources = source_start +1;
+        have_single_source = true;
     }
     // make sure we are normalizing with the right number of sub-steps
     int steps = oversample*oversample;
@@ -709,6 +712,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
 
                     // loop over sources now
                     for(int source=source_start; source<sources; ++source) {
+                        double n_source_scale = (have_single_source) ? orig_sources : source_I[source];
 
                         // retrieve stuff from cache
                         CUDAREAL incident[4];
@@ -762,7 +766,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                         }
 
                         // accumulate unscaled pixel intensity from this
-                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
+                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*n_source_scale;
                     } // end of source loop
                 } // end of detector thickness loop
             } // end of sub-pixel y loop
