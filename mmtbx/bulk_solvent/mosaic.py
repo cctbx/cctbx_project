@@ -812,9 +812,6 @@ def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
     if(use_curvatures):
       m = minimizer(max_iterations=100, calculator=calculator)
     else:
-      #upper = flex.double([1.1] + [1]*(x.size()-1))
-      #lower = flex.double([0.9] + [-1]*(x.size()-1))
-
       upper = flex.double([1.1] + [5]*(x.size()-1))
       lower = flex.double([0.9] + [-5]*(x.size()-1))
 
@@ -900,52 +897,66 @@ def algorithm_3(i_obs, fc, f_masks):
   return [math.exp(x) for x in lnK]
 
 def algorithm_4(f_obs, F, phase_source, max_cycles=100, auto_converge_eps=1.e-7,
-                use_cpp=True):
+                use_cpp=True, x_init=None):
   """
   Phased simultaneous search (alg4)
   """
   fc, f_masks = F[0], F[1:]
+  if(x_init is not None):
+    assert x_init.size() == len(f_masks)
+    # Apply scale
+    tmp = []
+    for fm, s in zip(f_masks, x_init):
+      fm = fm.array(data = fm.data()*s)
+      tmp.append(fm)
+    f_masks = tmp
+  #
   fc = fc.deep_copy()
-  F = [fc]+F[1:]
+  F = [fc]+f_masks
   # C++ version
   if(use_cpp):
-    return mosaic_ext.alg4(
+    result = mosaic_ext.alg4(
       [f.data() for f in F],
       f_obs.data(),
       phase_source.data(),
       max_cycles,
       auto_converge_eps)
-  # Python version (1.2-3 times slower, but much more readable!)
-  cntr = 0
-  x_prev = None
-  while True:
-    f_obs_cmpl = f_obs.phase_transfer(phase_source = phase_source)
-    A = []
-    b = []
-    for j, Fj in enumerate(F):
-      A_rows = []
-      for n, Fn in enumerate(F):
-        Gjn = flex.real( Fj.data()*flex.conj(Fn.data()) )
-        A_rows.append( flex.sum(Gjn) )
-      Hj = flex.real( Fj.data()*flex.conj(f_obs_cmpl.data()) )
-      b.append(flex.sum(Hj))
-      A.extend(A_rows)
-    A = matrix.sqr(A)
-    A_1 = A.inverse()
-    b = matrix.col(b)
-    x = A_1 * b
-    #
-    fc_d = flex.complex_double(phase_source.indices().size(), 0)
-    for i, f in enumerate(F):
-      fc_d += f.data()*x[i]
-    phase_source = phase_source.customized_copy(data = fc_d)
-    x_ = x[:]
-    #
-    cntr+=1
-    if(cntr>max_cycles): break
-    if(x_prev is None): x_prev = x_[:]
-    else:
-      max_diff = flex.max(flex.abs(flex.double(x_prev)-flex.double(x_)))
-      if(max_diff<=auto_converge_eps): break
-      x_prev = x_[:]
-  return x_
+  else:
+    # Python version (1.2-3 times slower, but much more readable!)
+    cntr = 0
+    x_prev = None
+    while True:
+      f_obs_cmpl = f_obs.phase_transfer(phase_source = phase_source)
+      A = []
+      b = []
+      for j, Fj in enumerate(F):
+        A_rows = []
+        for n, Fn in enumerate(F):
+          Gjn = flex.real( Fj.data()*flex.conj(Fn.data()) )
+          A_rows.append( flex.sum(Gjn) )
+        Hj = flex.real( Fj.data()*flex.conj(f_obs_cmpl.data()) )
+        b.append(flex.sum(Hj))
+        A.extend(A_rows)
+      A = matrix.sqr(A)
+      A_1 = A.inverse()
+      b = matrix.col(b)
+      x = A_1 * b
+      #
+      fc_d = flex.complex_double(phase_source.indices().size(), 0)
+      for i, f in enumerate(F):
+        fc_d += f.data()*x[i]
+      phase_source = phase_source.customized_copy(data = fc_d)
+      x_ = x[:]
+      #
+      cntr+=1
+      if(cntr>max_cycles): break
+      if(x_prev is None): x_prev = x_[:]
+      else:
+        max_diff = flex.max(flex.abs(flex.double(x_prev)-flex.double(x_)))
+        if(max_diff<=auto_converge_eps): break
+        x_prev = x_[:]
+    result = x_
+  if(x_init is not None):
+    for i,tmp in enumerate(x_init):
+      result[i+1] = result[i+1] * x_init[i]
+  return result
