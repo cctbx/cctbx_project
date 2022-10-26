@@ -10,7 +10,7 @@
  */
 #include <string>
 #include <scitbx/error.h>
-#include <ccomplex>
+#include <complex>
 #ifndef lapack_int
  // note: this can be long
 #define lapack_int int
