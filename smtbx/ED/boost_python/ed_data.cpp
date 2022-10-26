@@ -78,7 +78,7 @@ namespace boost_python {
   struct ed_utils_wrapper {
     static void wrap_excited_beam() {
       using namespace boost::python;
-      typedef utils<FloatType>::ExcitedBeam wt;
+      typedef typename utils<FloatType>::ExcitedBeam wt;
       class_<wt>("ExcitedBeam", no_init)
         .add_property("weight", &wt::w)
         .add_property("s", &wt::s)
@@ -92,10 +92,20 @@ namespace boost_python {
       using namespace boost::python;
       typedef utils<FloatType> wt;
       class_<wt>("utils", no_init)
-        .def("build_eigen_matrix", &wt::build_eigen_matrix)
-        .staticmethod("build_eigen_matrix")
-        .def("calc_I", &wt::calc_I)
-        .staticmethod("calc_I")
+        .def("build_eigen_matrix_2013", &wt::build_eigen_matrix_2013)
+        .staticmethod("build_eigen_matrix_2013")
+        .def("build_eigen_matrix_2015", &wt::build_eigen_matrix_2015)
+        .staticmethod("build_eigen_matrix_2015")
+        .def("build_eigen_matrix_recipro", &wt::build_eigen_matrix_recipro)
+        .staticmethod("build_eigen_matrix_recipro")
+
+        .def("calc_amps_2013", &wt::calc_amps_2013)
+        .staticmethod("calc_amps_2013")
+        .def("calc_amps_2015", &wt::calc_amps_2015)
+        .staticmethod("calc_amps_2015")
+        .def("calc_amps_recipro", &wt::calc_amps_recipro)
+        .staticmethod("calc_amps_recipro")
+
         .def("is_excited_g", &wt::is_excited_g)
         .staticmethod("is_excited_g")
         .def("is_excited_h", &wt::is_excited_h)

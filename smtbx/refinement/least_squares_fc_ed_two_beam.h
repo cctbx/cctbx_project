@@ -85,7 +85,7 @@ namespace least_squares {
         Fc = f_calc[index] * Fc2Ug;
         Fsq = observables[index] * Fc2Ug * Fc2Ug;
       }
-      std::map<int, const FrameInfo<FloatType>*>::const_iterator fi =
+      typename std::map<int, const FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
       SMTBX_ASSERT(fi != frames_map.end());
       frame = fi->second;

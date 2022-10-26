@@ -5,10 +5,6 @@
 namespace smtbx { namespace ED {
 using namespace cctbx;
 
-struct Fc_registry {
-
-};
-
 template <typename FloatType> struct BeamInfo;
 
 template <typename FloatType>
@@ -103,7 +99,7 @@ void FrameInfo<FloatType>::top_up(
   }
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
-  af::shared< utils<FloatType>::ExcitedBeam> ebeams =
+  af::shared<typename utils<FloatType>::ExcitedBeam> ebeams =
     utils<FloatType>::generate_index_set(RMf, Kl, min_d, unit_cell, space_group, anomalous);
 
   lookup_t existing = lookup_t(
