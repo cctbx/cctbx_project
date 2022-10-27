@@ -331,6 +331,7 @@ niter = 0
 exp_ref_spec_file = None
   .type = str
   .help = path to 3 col txt file containing file names for exper, refl, spectrum (.lam)
+  .help = Note: only single-image experiment lists are supported! Uses dials.split_experiments or diffBragg.make_input_file if necessary
   .expert_level=0
 method = None
   .type = str
@@ -932,9 +933,6 @@ refiner {
     .help = is comma-separated substrings, formatted according to "%f-%f,%f-%f" where the first float
     .help = in each substr specifies the high-resolution for the refinement trial, and the second float
     .help = specifies the low-resolution for the refinement trial. Should be same length as max_calls
-  mask = None
-    .type = str
-    .help = path to a dials mask flagging the trusted pixels
   force_symbol = None
     .type = str
     .help = a space group lookup symbol used to map input miller indices to ASU

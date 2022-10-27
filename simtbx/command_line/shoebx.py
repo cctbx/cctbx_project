@@ -8,8 +8,8 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("modeler_file", type=str, help="path to a diffBragg modeler file (output from hopper, see the imgs folder in the outdir)")
 parser.add_argument("--stacked", action="store_true")
-parser.add_argument("--model_clim", nargs=2, default=[0,10], type=float)
-parser.add_argument("--data_clim", nargs=2, default=[0,10], type=float)
+parser.add_argument("--model_clim", nargs=2, default=[0,None], type=float)
+parser.add_argument("--data_clim", nargs=2, default=[0,None], type=float)
 args = parser.parse_args()
 
 

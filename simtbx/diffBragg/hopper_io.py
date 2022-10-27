@@ -9,6 +9,36 @@ import os
 import numpy as np
 
 
+def save_expt_refl_file(filename, expts, refls, specs=None, check_exists=False):
+    """
+    Save an input file for bg_and_probOri (the EMC initializer script)
+    expt and refl names will be given absolute paths
+    :param filename: input expt_refl name to be written (passable to script bg_and_probOri.py)
+    :param expts: list of experiments
+    :param refls: list of reflection tables
+    :param specs: optional list of spectrum .lam files
+    :param check_exists: ensure files actually exist
+    :return:
+    """
+    if specs is None:
+        specs = [None]*len(expts)
+    with open(filename, "w") as o:
+        for expt, refl, spec in zip(expts, refls, specs):
+            expt = os.path.abspath(expt)
+            refl = os.path.abspath(refl)
+            if spec is not None:
+                spec = os.path.abspath(spec)
+            if check_exists:
+                assert os.path.exists(expt)
+                assert os.path.exists(refl)
+                if spec is not None:
+                    assert os.path.exists(spec)
+            if spec is not None:
+                o.write("%s %s %s\n" % (expt, refl, spec))
+            else:
+                o.write("%s %s\n" % (expt, refl))
+
+
 def make_rank_outdir(root, subfolder, rank=0):
     rank_imgs_outdir = os.path.join(root, subfolder, "rank%d" % rank)
     if not os.path.exists(rank_imgs_outdir):
