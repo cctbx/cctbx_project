@@ -23,7 +23,7 @@ While the server is running, the user can connect to with with the xfel gui by p
 
 """
 
-phil_scope = parse(phil_str)
+phil_scope = parse(db_phil_str)
 
 default_cnf = \
 """
@@ -51,12 +51,13 @@ def run(args):
     print(help_message)
     phil_scope.show()
     return
-
   for arg in args:
     try:
       user_phil.append(parse(arg))
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
+
+  print("Running ui_server.py")
 
   def _get_password(params):
     if params.db.server.root_password is None:
@@ -68,7 +69,6 @@ def run(args):
       if rootpw1 != rootpw2:
         raise Sorry("Passwords don't match")
       params.db.server.root_password = rootpw1
-          
   params = phil_scope.fetch(sources=user_phil).extract()
 
   cnf_path = os.path.join(params.db.server.basedir, 'my.cnf')
@@ -78,7 +78,7 @@ def run(args):
     assert params.db.user is not None and len(params.db.user) > 0 and \
            params.db.name is not None and len(params.db.name) > 0
     print("Initializing")
-    _get_password(params)       
+    _get_password(params)
 
     print ("Initializing database")
     os.makedirs(params.db.server.basedir)
@@ -87,7 +87,7 @@ def run(args):
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
-  elif params.db.server.prompt_for_root_password:
+  elif params.db.server.prompt_for_root_password and params.db.server.root_password is not None:
     import getpass
     print ("please enter root password to raise the connection")
     params.db.server.root_password = getpass.getpass()
@@ -102,11 +102,15 @@ def run(args):
   params.db.host = '127.0.0.1'
   if initialize:
     app = db_application(params)
+    print("attempting to change USER information for DB")
     app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(params.db.server.root_password))
+
     print ("Creating empty database %s"%params.db.name)
     app.execute_query("CREATE DATABASE %s"%params.db.name)
+
     print ("Creating new user %s"%params.db.user)
-    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(params.db.user, params.db.password))
+    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(params.db.user, params.db.password
+
     print ("Setting permissions")
     app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(params.db.name, params.db.user))
     rootpw = rootpw1
@@ -115,6 +119,7 @@ def run(args):
     app.execute_query("FLUSH PRIVILEGES")
     print ("Initialized")
   else:
+    print("instantiating existing DB")
     app = db_application(params)
 
   print ("Raising max connections")
