@@ -5,9 +5,6 @@ import numpy as np
 from dials.array_family import flex
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
-if not hasattr(COMM, "rank"):
-    COMM.rank =0
-    COMM.size=1
 
 import logging
 

@@ -19,9 +19,6 @@ from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 
 COMM = MPI.COMM_WORLD
-if not hasattr(COMM, "rank"):
-    COMM.rank=0
-    COMM.size=1
 
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
