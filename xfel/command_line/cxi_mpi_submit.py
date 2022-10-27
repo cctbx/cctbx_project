@@ -283,8 +283,15 @@ def get_submission_id(result, method):
     print('Submission', 'ID', 'is', submission_id)
     return submission_id
 
-def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=False):
-  submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, mp_params, job_name=job_name)
+def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", err_name="log.err", job_name=None, dry_run=False):
+  submit_command = get_submit_command_chooser(command,
+                                              submit_path,
+                                              stdoutdir,
+                                              mp_params,
+                                              log_name=log_name,
+                                              err_name=err_name,
+                                              job_name=job_name,
+                                              )
   if mp_params.method in ['lsf', 'sge', 'pbs']:
     parts = submit_command.split(" ")
     script = open(parts.pop(-1), "rb")
@@ -292,7 +299,6 @@ def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=Fals
     command = " ".join(parts + [run_command.decode()])
   else:
     command = submit_command
-  print(command)
   submit_command = str(submit_command) # unicode workaround
 
   if dry_run:
@@ -304,8 +310,8 @@ def do_submit(command, submit_path, stdoutdir, mp_params, job_name, dry_run=Fals
     if submission_id > 0:
       return submission_id
     else:
-      stdout = os.open(os.path.join(stdoutdir, 'log.out'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
-      stderr = os.open(os.path.join(stdoutdir, 'log.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
+      stdout = os.open(os.path.join(stdoutdir, 'submit.log'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stdout, 1)
+      stderr = os.open(os.path.join(stdoutdir, 'submit.err'), os.O_WRONLY|os.O_CREAT|os.O_TRUNC); os.dup2(stderr, 2)
       os.execv(command.split()[0], command.split())
   else:
     try:
@@ -468,7 +474,7 @@ class Script(object):
 
     job_name = "r%s"%params.input.run_num
 
-    submission_id = do_submit(command, submit_path, stdoutdir, params.mp, job_name=job_name, dry_run=params.dry_run)
+    submission_id = do_submit(command, submit_path, stdoutdir, params.mp, log_name="log.out", err_name="err.out", job_name=job_name, dry_run=params.dry_run)
     print("Job submitted.  Output in", trialdir)
     return submission_id
 
