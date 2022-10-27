@@ -297,11 +297,6 @@ print("For the dominant HKLs within each modeled shoebox (e.g. those with indexe
 print("initial R1 factor=%.2f%%" % (r1_nominal_init*100))
 print("optimized R1 factor=%.2f%%" % (r1_nominal*100))
 
-#print("\nFor the HKLs sampled by each shoebox that were not the dominant HKL (e.g. refls not indexed,mostly at the shoebox boundaries) ")
-#print("initial R1 factor=%.2f%%" % (r1_not_nominal_init*100))
-#print("optimized R1 factor=%.2f%%" % (r1_not_nominal*100))
-#print("These hkls are likely only sampled by background pixels, not enough signal to refine")
-
 diffs = []
 all_opts = []
 all_gts = []

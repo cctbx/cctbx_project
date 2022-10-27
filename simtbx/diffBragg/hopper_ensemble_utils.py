@@ -19,6 +19,10 @@ from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 
 COMM = MPI.COMM_WORLD
+if not hasattr(COMM, "rank"):
+    COMM.rank=0
+    COMM.size=1
+
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
 
@@ -580,7 +584,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
                 gather_dir=None):
 
     work_distribution = prep_dataframe(pandas_table, refls_key)
-    COMM.Barrier()
+    COMM.barrier()
     num_exp = len(pandas_table)
     first_exper_file = pandas_table[exper_key].values[0]
     detector = ExperimentList.from_file(first_exper_file, check_format=False)[0].detector
