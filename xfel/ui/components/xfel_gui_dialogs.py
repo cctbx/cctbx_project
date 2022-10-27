@@ -384,7 +384,7 @@ class DBCredentialsDialog(BaseDialog):
   def onStartDB(self, e):
     self.start_db_dialog = StartDBDialog(self, self.params)
     if (self.start_db_dialog.ShowModal() == wx.ID_OK):
-      print("Preparing to initialize DB")
+      print("Started DB")
 
 class StartDBDialog(BaseDialog):
   ''' Dialog to start DB '''
@@ -436,7 +436,9 @@ class StartDBDialog(BaseDialog):
     self.start_db_sizer3.Add(self.get_db_root_psswd)
     self.start_db_sizer3.Add(-1,-1,proportion=1)
     self.start_db_cancel_btn = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+    self.start_db_OK_btn = wx.Button(self, label="OK", id=wx.ID_OK)
     self.start_db_sizer3.Add(self.start_db_cancel_btn)
+    self.start_db_sizer3.Add(self.start_db_OK_btn)
     self.vsiz.Add(self.start_db_sizer3,0, wx.ALL, 60)
     self.main_sizer.Add(self.start_db_sizer,flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer2,flag=wx.EXPAND | wx.ALL, border=10)
@@ -483,15 +485,18 @@ class LaunchDBDialog(BaseDialog):
       assert self.params.db.server.basedir is not None, f"Base directory for DB not defined!"
       
       try:
-         print('basedir',params.db.server.basedir, os.path.exists(params.db.server.basedir)) 
-         if not os.path.exists(params.db.server.basedir):
-           import copy
-           new_params = copy.deepcopy(params)
-           new_params.mp.log_name = "mysql.log"
-           new_params.mp.err_name = "mysql.err"
-           params.mp.extra_args = "db.port=%d db.server.basedir=%s db.user=%s db.name=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.experiment_tag)
-           print("submitting job")
-           do_submit('cctbx.xfel.ui_server', new_params.output_folder, new_params.output_folder, new_params.mp, 'cctbxmysql')
+         print('basedir',params.db.server.basedir, os.path.exists(params.db.server.basedir))
+         print('out ',params.output_folder)
+         import copy
+         new_params = copy.deepcopy(params)
+         new_params.mp.use_mpi = False
+         db_exp_name = self.params.experiment_tag if len(self.params.experiment_tag)>0 else "standalone"
+         new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, db_exp_name, params.db.server.root_password)]
+         print(new_params.mp.extra_args)
+         submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
+         print("submitting job")
+         do_submit('cctbx.xfel.ui_server', submit_path, new_params.output_folder, new_params.mp, log_name="my_SQL.log", err_name="my_SQL.err", job_name='cctbxmysql')
+           
       except: 
          raise RuntimeError(f"Couldn\'t submit job to start MySql DB.\n Could MySql already be running?\n Check if {params.db.server.basedir} exists.")      
 
