@@ -43,6 +43,12 @@ class mpiCommEmulator(object):
   def Abort(self,error):
     import sys
     sys.exit()
+  @property
+  def rank(self):
+    return self.Get_rank()
+  @property
+  def size(self):
+    return self.Get_size()
 
 mpiEmulator.COMM_WORLD = mpiCommEmulator()
 
