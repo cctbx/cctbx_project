@@ -22,25 +22,25 @@ class mpiCommEmulator(object):
     return 1
   def barrier(self):
     pass
-  def bcast(self, transmitted, root=0):
-    return transmitted
-  def reduce(self, data, operation, root=0):
-    if operation == mpiEmulator.SUM or operation == mpiEmulator.MAX or operation == mpiEmulator.MIN:
-      return data
+  def bcast(self, obj, root=0):
+    return obj
+  def reduce(self, sendobj, op=mpiEmulator.SUM, root=0):
+    if op == mpiEmulator.SUM or op == mpiEmulator.MAX or op == mpiEmulator.MIN:
+      return sendobj
     else:
-      assert False, "Unsupported MPI reduce operation %s"%(operation)
-  def allreduce(self, data, operation=mpiEmulator.SUM):
-    return self.reduce(data, operation, 0)
-  def alltoall(self, items):
-    return items
-  def scatter(self, items, root):
-    assert root == 0 and len(items) == 1
-    return items[0]
-  def gather(self, item, root):
+      assert False, "Unsupported MPI reduce operation %s"%(op)
+  def allreduce(self, sendobj, op=mpiEmulator.SUM):
+    return self.reduce(sendobj, op, 0)
+  def alltoall(self, sendobj):
+    return sendobj
+  def scatter(self, sendobj, root=0):
+    assert root == 0 and len(sendobj) == 1
+    return sendobj[0]
+  def gather(self, sendobj, root=0):
     items = []
-    items.append(item)
+    items.append(sendobj)
     return items
-  def Abort(self,error):
+  def Abort(self,errorcode=0):
     import sys
     sys.exit()
   @property
