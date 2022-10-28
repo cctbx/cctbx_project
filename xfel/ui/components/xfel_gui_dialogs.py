@@ -398,15 +398,22 @@ class DBCredentialsDialog(BaseDialog):
           import copy
           new_params = copy.deepcopy(params)
           new_params.mp.use_mpi = False
-          db_exp_name = self.params.experiment_tag if len(self.params.experiment_tag) > 0 else "standalone"
-          new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, db_exp_name, params.db.server.root_password)]
+          new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.name, params.db.server.root_password)]
           submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
           print("submitting job")
           submission_id = do_submit('cctbx.xfel.ui_server', submit_path, new_params.output_folder, new_params.mp, log_name="my_SQL.log", err_name="my_SQL.err", job_name='cctbxmysql')
           #remove root password from params
           if submission_id:
             print('job was submitted')
-            params.db.server.root_password = ''
+            print('resetting params object')
+            self.params.db.host     = params.db.host
+            self.params.db.port     = int(params.db.port)
+            self.params.db.name     = params.db.name
+            self.params.db.user     = params.db.user
+            self.params.db.password = params.db.password
+            self.params.db.server.root_password = ''
+            self.params.db.server.basedir = params.db.server.basedir
+
           else:
             print('couldn\'t submit job')
         except:
@@ -420,7 +427,6 @@ class DBCredentialsDialog(BaseDialog):
       print("Started DB")
       os.remove(os.path.join(self.params.output_folder, "launch_server_submit.sh"))
       self.Close()
-
 
 class StartDBDialog(BaseDialog):
   ''' Dialog to start DB '''
