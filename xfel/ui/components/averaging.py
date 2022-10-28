@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui.db.job import AveragingJob
-import numpy as np
 
 
 def AveragingCommand(run, params, trial_num, skip_images, num_images, address, raw):
