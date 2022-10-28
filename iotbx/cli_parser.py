@@ -517,6 +517,45 @@ class CCTBXParser(ParserBase):
         if data_manager_processed_arg is not None:
           data_manager_sources.append(data_manager_processed_arg)
 
+      # collect multiple DataManager label specifications from command-line
+      #   data_manager.miller_array.labels.name
+      #   data_manager.miller_array.user_selected_labels
+      def _get_last_object(phil_scope):
+        if phil_scope.is_definition:
+          return phil_scope
+        return _get_last_object(phil_scope.objects[0])
+
+      label_objects = []
+      for source in data_manager_sources:
+        phil_object = _get_last_object(source)
+        if phil_object.full_path() in [
+          'data_manager.miller_array.labels.name',
+          'data_manager.miller_array.user_selected_labels']:
+          label_objects.append(source)
+
+      if len(label_objects) > 1:
+        print('  Found labels in command-line', file=self.logger)
+        print('  ----------------------------', file=self.logger)
+        # modify PHIL hierarchy
+        parent_object = _get_last_object(label_objects[0])  # name / user_selected_labels
+        pps = parent_object.primary_parent_scope  # miller_array
+        if parent_object.full_path() == 'data_manager.miller_array.labels.name':
+          pps = parent_object.primary_parent_scope.primary_parent_scope
+        for label_object in label_objects[1:]:
+          data_manager_sources.remove(label_object)
+          phil_object = _get_last_object(label_object)
+          if phil_object.full_path() == 'data_manager.miller_array.labels.name':
+            phil_object = phil_object.primary_parent_scope
+          pps.objects.append(phil_object)
+          phil_object.primary_parent_scope = pps
+        print('', file=self.logger)
+
+        print('  Combined labels PHIL', file=self.logger)
+        print('  --------------------', file=self.logger)
+        tmp_working_phil = self.data_manager.master_phil.fetch_diff(label_objects[0])
+        print(tmp_working_phil.as_str(prefix='    '), file=self.logger)
+        print('', file=self.logger)
+
     if self.namespace.overwrite:  # override overwrite if True
       sources.append(iotbx.phil.parse('output.overwrite=True'))
 
