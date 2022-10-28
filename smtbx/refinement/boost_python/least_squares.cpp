@@ -241,7 +241,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("space_group"), arg("anomalous_flag"),
                 arg("frames"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
-          //.add_property("ratio", &wt::get_ratio)
+          .def("build", &wt::build)
           ;
       }
 
