@@ -201,23 +201,26 @@ namespace least_squares {
       {
         Is.resize(beam_n);
         Fcs.resize(beam_n);
-        af::shared<complex_t> Fc_cur(indices.size()), dummy;
-        for (size_t ih = 0; ih < indices.size(); ih++) {
-          Fc_cur[ih] = calc_one_h(indices[ih]);
-        }
-        // expand uniq Fc to frame indices
-        size_t offset = 0;
-        for (size_t i = 0; i < frames.size();i++) {
-          const af::shared<miller::index<> >& fidx = frames[i].indices;
-          size_t measured = frames[i].beams.size();
-          for (size_t i = 0; i < measured; i++) {
-            long idx = mi_lookup.find_hkl(fidx[i]);
-            Fcs[offset + i] = Fc_cur[idx];
+        if (Fcs_k.size() != indices.size()) {
+          Fcs_k.resize(indices.size());
+          for (size_t ih = 0; ih < indices.size(); ih++) {
+            Fcs_k[ih] = calc_one_h(indices[ih]);
           }
-          offset += measured;
+          // expand uniq Fc to frame indices
+          size_t offset = 0;
+          for (size_t i = 0; i < frames.size(); i++) {
+            const af::shared<miller::index<> >& fidx = frames[i].indices;
+            size_t measured = frames[i].beams.size();
+            for (size_t i = 0; i < measured; i++) {
+              long idx = mi_lookup.find_hkl(fidx[i]);
+              Fcs[offset + i] = Fcs_k[idx];
+            }
+            offset += measured;
+          }
         }
         // replacing dummy with Fc will allow to collect complex amplitudes
-        process_frames_mt(Is, dummy, Fc_cur);
+        af::shared<complex_t> dummy;
+        process_frames_mt(Is, dummy, Fcs_k);
         if (!compute_grad) {
           return;
         }
@@ -304,7 +307,7 @@ namespace least_squares {
     cctbx::xray::thickness<FloatType> const& thickness;
     bool compute_grad;
     // newly-calculated, aligned by frames
-    af::shared<complex_t> Fcs;
+    af::shared<complex_t> Fcs, Fcs_k;
     af::shared<FloatType> Is;
     // 
     af::versa<FloatType, af::c_grid<2> > design_matrix;
