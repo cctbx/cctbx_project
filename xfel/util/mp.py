@@ -523,8 +523,16 @@ class get_slurm_submit_command(get_submit_command):
     if 'phenix' in self.command:
       self.source_env_scripts.append("cd %s\n"%os.path.dirname(self.submit_path))
 
+    if '<output_dir>' in self.command:
+      self.command = self.command.replace(
+        '<output_dir>',
+        '/'.join(self.stdoutdir.split('/')[:-1])
+      )
     # <args> (optional, following the command)
+    image_average_output_dir = '/'.join(self.stdoutdir.split('/')[:-1]) + '/out'
     for arg in self.params.extra_args:
+      if '<output_dir>' in arg:
+        arg = arg.replace('<output_dir>', image_average_output_dir)
       self.args.append(arg)
 
 

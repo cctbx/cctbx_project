@@ -221,18 +221,19 @@ def get_trialdir(output_dir, run_num, trial = None, rungroup = None, task = None
 
     # If a trial number wasn't included, find the next available, up to 999 trials
     if trial is None:
-      found_one = False
-      for i in range(1000):
-        trialdir = os.path.join(rundir, "%03d"%i)
-        if rungroup is not None:
-          trialdir += "_rg%03d"%rungroup
-        if not os.path.exists(trialdir):
-          found_one = True
-          break
-      if found_one:
-        trial = i
-      else:
-        raise Sorry("All trial numbers in use")
+      trial = 0
+      for direntry in os.scandir(output_dir):
+        if direntry.is_dir(follow_symlinks=False) and direntry.name.startswith('r'):
+          for trial_direntry in os.scandir(direntry.path):
+            if direntry.is_dir(follow_symlinks=False):
+              trial = max([
+                int(trial_direntry.name.split('_')[0]),
+                trial
+              ])
+      trial += 1
+      trialdir = os.path.join(rundir, "%03d" % trial)
+      if rungroup is not None:
+        trialdir += "_rg%03d" % rungroup
     else:
       trialdir = os.path.join(rundir, "%03d"%trial)
       if rungroup is not None:
@@ -360,7 +361,6 @@ class Script(object):
       print("Submitting run %d of experiment %s"%(int(params.input.run_num), params.input.experiment))
     else:
       print("Submitting run %s"%(params.input.run_num))
-
     trial, trialdir = get_trialdir(params.output.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
     params.input.trial = trial
     print("Using trial", params.input.trial)
@@ -457,7 +457,6 @@ class Script(object):
 
     for arg in dispatcher_args:
       extra_str += " %s" % arg
-
     if params.input.target is not None:
       extra_str += " %s" % params.input.target
 
