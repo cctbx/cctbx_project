@@ -51,24 +51,12 @@ def run(args):
     print(help_message)
     phil_scope.show()
     return
+
   for arg in args:
     try:
       user_phil.append(parse(arg))
     except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
-
-  print("Running ui_server.py")
-
-  def _get_password(params):
-    if params.db.server.root_password is None:
-      import getpass
-      print ("You must specify a root password")
-      rootpw1 = getpass.getpass()
-      print ("Re-enter password")
-      rootpw2 = getpass.getpass()
-      if rootpw1 != rootpw2:
-        raise Sorry("Passwords don't match")
-      params.db.server.root_password = rootpw1
   params = phil_scope.fetch(sources=user_phil).extract()
 
   cnf_path = os.path.join(params.db.server.basedir, 'my.cnf')
@@ -77,69 +65,89 @@ def run(args):
   if initialize:
     assert params.db.user is not None and len(params.db.user) > 0 and \
            params.db.name is not None and len(params.db.name) > 0
-    print("Initializing")
-    _get_password(params)
+    import getpass
+    if params.db.server.root_password:
+            rootw = params.db.server.root_password
+    else:
+      print("Initializing")
+      print("You must specify a root password")
+      rootpw1 = getpass.getpass()
+      print("Re-enter password")
+      rootpw2 = getpass.getpass()
+      if rootpw1 != rootpw2:
+        raise Sorry("Passwords don't match")
+      rootpw = rootpw1
 
-    print ("Initializing database")
+    print("Initializing database")
     os.makedirs(params.db.server.basedir)
     with open(cnf_path, 'w') as f:
-      f.write(default_cnf.format(basedir = params.db.server.basedir, sep = os.path.sep, port = params.db.port))
+      f.write(default_cnf.format(basedir=params.db.server.basedir, sep=os.path.sep, port=params.db.port))
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
-  elif params.db.server.prompt_for_root_password and params.db.server.root_password is not None:
-    import getpass
-    print ("please enter root password to raise the connection")
-    params.db.server.root_password = getpass.getpass()
+  elif params.db.server.prompt_for_root_password:
+    if params.db.server.root_password:
+      rootpw3 = params.db.server.root_password
+    else:
+      import getpass
+      print("please enter root password to raise the connection")
+      rootpw3 = getpass.getpass()
 
-  print ("Starting server")
+  print("Starting server")
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
 
-  print ("Sleeping a few seconds to let server start up...")
+  print("Sleeping a few seconds to let server start up...")
   time.sleep(5) # let server start up
 
   params.db.host = '127.0.0.1'
   if initialize:
+    new_user = params.db.user
+    new_password = params.db.password
+    new_db = params.db.name
+    params.db.user = 'root'
+    params.db.password = ''
+    params.db.name = ''
+    print("Changing password")
     app = db_application(params)
-    print("attempting to change USER information for DB")
-    app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(params.db.server.root_password))
-
-    print ("Creating empty database %s"%params.db.name)
-    app.execute_query("CREATE DATABASE %s"%params.db.name)
-
-    print ("Creating new user %s"%params.db.user)
-    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(params.db.user, params.db.password
-
-    print ("Setting permissions")
-    app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(params.db.name, params.db.user))
-    rootpw = rootpw1
+    rootpw = params.db.server.root_password
+    app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(rootpw))
+    params.db.password = rootpw
+    print("Creating empty database %s"%new_db)
+    app.execute_query("CREATE DATABASE %s"%new_db)
+    print("Creating new user %s"%new_user)
+    app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(new_user, new_password))
+    print("Setting permissions")
+    app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(new_db, new_user))
     app.execute_query("FLUSH PRIVILEGES")
-    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%params.db.user)
+    app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
     app.execute_query("FLUSH PRIVILEGES")
-    print ("Initialized")
+    print("Initialized")
   else:
-    print("instantiating existing DB")
+    print("Instantiating db query execution driver")
     app = db_application(params)
 
-  print ("Raising max connections")
+  if params.db.server.prompt_for_root_password:
+    params.db.user = 'root'
+    params.db.password = rootpw3
+
+  print("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")
 
-  # remove root password from params
-  params.db.server.root_password = None
   try:
     while True:
       if server_process.poll() is not None:
-        print ("Server exited")
+        print("Server exited")
         return
       time.sleep(1)
   except KeyboardInterrupt:
-    print ("Shutting down")
+    print("Shutting down")
   except Exception as e:
-    print ("Unhandled exception, shutting down")
-    print (str(e))
+    print("Unhandled exception, shutting down")
+    print(str(e))
 
   server_process.terminate()
+
 
 if __name__ == '__main__':
   run(sys.argv[1:])
