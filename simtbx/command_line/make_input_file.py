@@ -50,10 +50,11 @@ def split_stills_expts(expt_f, refl_f, split_dir):
             seen_isets[iset_id] = 0
         else:
             seen_isets[iset_id] += 1
-        tag = "%s-%d" % (path, idx)
-        new_expt_name = os.path.splitext(f)[0] + "_%s_xtal%d.expt" % (tag, seen_isets[iset_id])
+        tag = "%s-%d" % (os.path.basename(os.path.splitext(path)[0]), idx)
+        new_expt_name = os.path.splitext(expt_f)[0] + "_%s_xtal%d.expt" % (tag, seen_isets[iset_id])
         if split_dir is not None:
-            new_expt_name = os.path.join(split_dir, os.path.basename(new_expt_name))
+            unique_tag = "shot_%d" % hash(new_expt_name) + ".expt"
+            new_expt_name = os.path.join(split_dir, unique_tag)
         new_refl_name = new_expt_name.replace(".expt", ".refl")
         refls = R.select(R['id'] == i_expt)
 
