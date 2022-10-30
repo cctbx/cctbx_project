@@ -59,13 +59,14 @@ class load_balancer(worker):
       self.logger.log('Column reset done')
 
     if self.params.input.parallel_file_load.balance == "global2":
-      # Do we have any data?
-      data_counter(self.params).count(new_experiments, new_reflections)
-
       # get status again AFTER balancing and report back number of experiments on EACH RANK in the main_log if balance_verbose is set
       if self.params.input.parallel_file_load.balance_verbose and self.mpi_helper.rank == 0:
         self.logger.main_log("Data distribution after load balancing:")
         data_counter(self.params).count_each(experiments, reflections, verbose=True)
+
+    # Do we have any data?
+    from xfel.merging.application.utils.data_counter import data_counter
+    data_counter(self.params).count(new_experiments, new_reflections)
 
     return new_experiments, new_reflections
 
