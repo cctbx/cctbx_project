@@ -1105,7 +1105,9 @@ class ResidualsPlotter(object):
 
       if params.plots.delta_vs_azimuthal_angle:
         # Plot deltas (XY, radial, transverse) vs. azimuthal angle
-        xy = flex.vec3_double(*reflections["s1"].parts()[0:2], flex.double(len(reflections), 0))
+        xy = flex.vec3_double(reflections["s1"].parts()[0],
+                              reflections["s1"].parts()[1],
+                              flex.double(len(reflections), 0))
         angle = xy.angle((0, 1, 0), deg=True)
         sel = xy.parts()[0] >= 0
         subset = angle.select(sel)
