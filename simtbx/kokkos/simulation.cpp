@@ -267,6 +267,7 @@ namespace Kokkos {
 
     SCITBX_ASSERT(SIM.sources == ichannels.size()); /* For each nanoBragg source, this value instructs
     the simulation where to look for structure factors.  If -1, skip this source wavelength. */
+    SCITBX_ASSERT(SIM.sources == weight.size());
 
     for (int ictr = 0; ictr < SIM.sources; ++ictr){
       if (ichannels[ictr] < 0) continue; // the ichannel array
