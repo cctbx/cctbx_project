@@ -683,6 +683,9 @@ class CCTBXParser(ParserBase):
       or self.namespace.write_modified or self.namespace.write_all:
       print('Writing program PHIL file(s):', file=self.logger)
 
+    if self.data_manager.get_default_output_filename() is None:
+      self.data_manager.set_default_output_filename('cctbx_program')
+
     # write DataManager scope
     if self.namespace.write_data:
       if data_is_different:
