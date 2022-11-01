@@ -141,12 +141,11 @@ class PopUpCharts(object):
     #print "Rejecting", outliers.count(True), "out of", len(outliers)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None, hist_scale=None):
+  def plot_uc_histogram(self, info_list, legend_list, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None, hist_scale=None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
     of cells to be plotted in the same graph, where each dictionary describes one cell.
-    @param extra_title will be added to the title of the plot
     @param xsize if class initialized with not interacive, this is the x size of the
     plot to save in inches
     @param ysize as xsize
@@ -163,12 +162,8 @@ class PopUpCharts(object):
       alim = blim = clim = None
 
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
-    if high_vis:
-      text_ratio = plot_ratio*4
-      separator = "\n"
-    else:
-      text_ratio = plot_ratio*3
-      separator = "\n"
+    separator = "\n"
+    text_ratio = plot_ratio * (4 if high_vis else 3)
 
     # Initialize figure
     if self.figure:
