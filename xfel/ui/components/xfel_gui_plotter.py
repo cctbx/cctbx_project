@@ -182,9 +182,9 @@ class PopUpCharts(object):
     sub_ba = fig.add_subplot(gsp[0])
     sub_cb = fig.add_subplot(gsp[1])
     sub_ac = fig.add_subplot(gsp[2])
-    sub_a = fig.add_subplot(gsp[4])
-    sub_b = fig.add_subplot(gsp[5], sharey=sub_a)
-    sub_c = fig.add_subplot(gsp[6], sharey=sub_a)
+    sub_a = fig.add_subplot(gsp[4], sharex=sub_ba)
+    sub_b = fig.add_subplot(gsp[5], sharex=sub_cb, sharey=sub_a)
+    sub_c = fig.add_subplot(gsp[6], sharex=sub_ac, sharey=sub_a)
     sub_alpha = fig.add_subplot(gsp[8])
     sub_beta = fig.add_subplot(gsp[9], sharey=sub_alpha)
     sub_gamma = fig.add_subplot(gsp[10], sharey=sub_alpha)
@@ -287,7 +287,7 @@ class PopUpCharts(object):
         ax.set_yticklabels([])
       for ax in (sub_ba, sub_cb, sub_ac):
         ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
-        ax.set_xticklabels([])
+        plt.setp(ax.get_xticklabels(), visible=False)
         ax.set_yticklabels([])
 
       for (name, angle, sub) in \
