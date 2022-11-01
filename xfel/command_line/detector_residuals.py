@@ -549,7 +549,7 @@ class ResidualsPlotter(object):
         ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.delta_scalar],
                 [panel_center[1],panel_center[1]], 'k-')
       ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='b', s=self.params.dot_size)
-      if self.params.residuals.mcd_filter.enable:
+      if self.params.residuals.mcd_filter.enable and len(reflections)>5:
         ax.scatter(MCD.robust_model_XY.location_[0],
                    MCD.robust_model_XY.location_[1], c='r', s=self.params.dot_size)
       print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
