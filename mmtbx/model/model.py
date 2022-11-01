@@ -4126,24 +4126,28 @@ class manager(object):
     if not self._biomt_mtrix_container_is_good(self.biomt_operators):
       return
     # Check if BIOMT and MTRIX are identical and then do not apply BIOMT
-    br = self.biomt_operators.r
-    bt = self.biomt_operators.t
-    mr = self.mtrix_operators.r
-    mt = self.mtrix_operators.t
-    if(len(br)==len(mr) and len(bt)==len(mt)):
-      cntr1=0
-      for bri in br:
-        for mri in mr:
-          if((bri-mri).is_approx_zero(eps=1.e-4)):
-            cntr1+=1
-            break
-      cntr2=0
-      for bti in bt:
-        for mti in mt:
-          if((bti-mti).is_approx_zero(eps=1.e-4)):
-            cntr2+=1
-            break
-      if(cntr1==len(br) and cntr2==len(bt)): return
+    # Only if already expanded with MTRIX.
+    if self.mtrix_expanded():
+      br = self.biomt_operators.r
+      bt = self.biomt_operators.t
+      mr = self.mtrix_operators.r
+      mt = self.mtrix_operators.t
+      if(len(br)==len(mr) and len(bt)==len(mt)):
+        cntr1=0
+        for bri in br:
+          for mri in mr:
+            if((bri-mri).is_approx_zero(eps=1.e-4)):
+              cntr1+=1
+              break
+        cntr2=0
+        for bti in bt:
+          for mti in mt:
+            if((bti-mti).is_approx_zero(eps=1.e-4)):
+              cntr2+=1
+              break
+        if(cntr1==len(br) and cntr2==len(bt)):
+          # print("BIOMT and MTRIX are identical")
+          return
     #
     self._expand_symm_helper(self.biomt_operators)
     self._biomt_expanded = True
