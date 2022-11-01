@@ -497,6 +497,7 @@ newarray._sigmas = sigs
     self.matching_arrays = []
     self.bin_infotpls = None
     self.bin_opacities= None
+    self.nbins = 1
     self.lowerbinvals = []
     self.upperbinvals = []
     self.html_url = None
@@ -984,9 +985,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
 
-          if self.infodict.get("current_scene_id", None) is not None:
+          if self.infodict.get("current_labels", None) is not None:
             # needed in case we run xtriage on this miller array
-            self.current_labels = self.array_infotpls[self.infodict.get("current_scene_id")][1][0]
+            self.current_labels = self.infodict.get("current_labels")
 
           if self.infodict.get("colnames_select_lst"):
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])

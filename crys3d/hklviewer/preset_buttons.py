@@ -76,7 +76,7 @@ cctbx_buttonsdeflist = [
 
 ("IoverSigI", "I/SigI >= 2 ( from miller_array.data()/miller_array.sigmas() )",
  """
-        miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
+        miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
         binning {
           scene_bin_thresholds = -10000 1 2 3 4 5 460 793.55 2750
           binlabel = "IoverSigI"
