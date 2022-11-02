@@ -233,7 +233,7 @@ class PopUpCharts(object):
         varstr = "%.2f +/- %.2f" % (mean, stddev)
         legend_key = legend
         if len(info_list) > 1 and name == "a":
-          legend_key += (' ' if legend else '') + n_str 
+          legend_key += (' ' if legend else '') + n_str
         legend_key += separator + varstr if legend_key else varstr
         hist = sub.hist(dimension, nbins, alpha=0.75,
                         histtype='stepfilled', label=legend_key, range=lim)
