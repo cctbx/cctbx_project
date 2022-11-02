@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env, os.path, time
 from crys3d.hklviewer import hklview_frame
@@ -5,12 +6,13 @@ from crys3d.hklviewer import hklview_frame
 
 def exercise1():
   file_name = libtbx.env.find_in_repositories(
-  relative_path="phenix_regression/reflection_files/2caz.mtz",
-  test=os.path.isfile)
+    relative_path="phenix_regression/reflection_files/2caz.mtz",
+    test=os.path.isfile)
+
   myHKLview = hklview_frame.HKLViewFrame(verbose=0)
   myHKLview.LoadReflectionsFile(file_name)
   # slice expanded sphere of reflections with clip plane and translate to
-  # the 46st plane of reflections along the K axis
+  # the 46th plane of reflections along the K axis
   philstr = """
   clip_plane {
     normal_vector = "K-axis"
