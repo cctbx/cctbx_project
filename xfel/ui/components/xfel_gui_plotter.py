@@ -300,21 +300,6 @@ class PopUpCharts(object):
         else:
           self.plt.setp(sub.get_yticklabels(), visible=False)
 
-    sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_ba.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ba.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_cb.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_cb.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
     h, l = sub_a.get_legend_handles_labels()
     legend_sub_a.legend(h, l, fontsize=text_ratio)
     h, l = sub_b.get_legend_handles_labels()
@@ -333,7 +318,7 @@ class PopUpCharts(object):
     #   fig.legend(patches, 'upper right')
 
     gsp.update(wspace=0)
-    if title is None: title = "Unit cell distribution"
+    title = "Unit cell distribution" if title is None else title
     fig.suptitle(title + " (%d xtals)" % total)
 
     if not self.interactive:
