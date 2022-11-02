@@ -186,10 +186,6 @@ class PopUpCharts(object):
     total = 0
     abc_hist_ylim = 0
 
-    legend_sub_a.axis('off')
-    legend_sub_b.axis('off')
-    legend_sub_c.axis('off')
-
     for legend, info in zip(legend_list, info_list):
       if len(info) == 0:
         continue
@@ -294,12 +290,11 @@ class PopUpCharts(object):
         else:
           self.plt.setp(sub.get_yticklabels(), visible=False)
 
-    h, l = sub_a.get_legend_handles_labels()
-    legend_sub_a.legend(h, l, fontsize=text_ratio)
-    h, l = sub_b.get_legend_handles_labels()
-    legend_sub_b.legend(h, l, fontsize=text_ratio)
-    h, l = sub_c.get_legend_handles_labels()
-    legend_sub_c.legend(h, l, fontsize=text_ratio)
+    for sub, lsub in zip([sub_a, sub_b, sub_c],
+                         [legend_sub_a, legend_sub_b, legend_sub_c]):
+      h, l = sub.get_legend_handles_labels()
+      lsub.legend(h, l, fontsize=text_ratio)
+      lsub.axis('off')
 
     gsp.update(wspace=0)
     title = "Unit cell distribution" if title is None else title
