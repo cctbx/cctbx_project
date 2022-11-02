@@ -1,3 +1,16 @@
+2022.10
+=======
+
+* Added array selection via data labels to CCTBXParser
+
+  * Match partial labels to full labels in data file
+  * Combine multiple label selections via the command line
+
+* Allow mosaic buil solvent model to have initial values
+* Fix bug where atoms may be missing in a super-sphere
+* Bug fixes and improvements to cctbx.HKLviewer
+* Switch to using libsvm-official for Python interface to libsvm
+
 2022.9
 ======
 
