@@ -245,10 +245,8 @@ class PopUpCharts(object):
         hist = sub.hist(dimension, nbins, alpha=0.75,
                         histtype='stepfilled', label = dim_legend, range = lim)
         sub.set_xlabel("%s-edge (%s $\AA$)"%(name, varstr)).set_fontsize(text_ratio)
-        xloc = plt.MaxNLocator(5)
         if not high_vis:
-          sub.xaxis.set_major_locator(xloc)
-          sub.xaxis.set_major_formatter(FormatStrFormatter("%5.1f"))
+          sub.xaxis.set_major_locator(plt.MaxNLocator(4))
         if name == 'a':
           sub.set_ylabel('Number of images').set_fontsize(text_ratio)
         else:
@@ -295,10 +293,8 @@ class PopUpCharts(object):
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()
         sub.set_xlabel(r'%s (%.2f +/- %.2f$^\circ$)' % (name, mean, stddev)).set_fontsize(text_ratio)
-        xloc = plt.MaxNLocator(5)
         if not high_vis:
-          sub.xaxis.set_major_locator(xloc)
-          sub.xaxis.set_major_formatter(FormatStrFormatter("%5.1f"))
+          sub.xaxis.set_major_locator(plt.MaxNLocator(4))
         if name == '\alpha':
           sub.set_ylabel('Number of images').set_fontsize(text_ratio)
         else:
