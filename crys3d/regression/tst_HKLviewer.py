@@ -35,9 +35,13 @@ def exercise1():
   }
   """
   myHKLview.update_from_philstr(philstr)
+  # wait a little until NGLs autoView() has completed
   time.sleep(2)
-  myHKLview.__exit__()
+  # then copy indices of visible reflections
   refls = myHKLview.viewer.visible_hkls[:]
+  # Destroying HKLViewFrame releases javascipt objects from browser
+  myHKLview.__exit__()
+
   # check that only the following 108 reflections were visible
   assert set(refls) == set( [(-24, 46, 1), (-17, 46, 0), (-28, 46, 1), (-24, 46, 0), (-17, 46, 1),
                     (-28, 46, 0), (-24, 46, -2), (-29, 46, 0), (-22, 46, 2), (-18, 46, -1),
