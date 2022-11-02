@@ -61,7 +61,7 @@ def test_label_parsing():
 
     run_program(
       program_class=testProgram,
-      args=['--quiet', '--overwrite', data_mtz, '--write-all'] + combined_args)
+      args=['--quiet', '--overwrite', '--write-all', data_mtz] + combined_args)
 
     dm = DataManager()
     dm.process_phil_file(phil_filename)
