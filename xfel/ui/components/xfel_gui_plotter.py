@@ -221,7 +221,6 @@ class PopUpCharts(object):
       nbins = int(np.sqrt(len(a))) * 2
       n_str = "N: %d "%len(a)
 
-      from matplotlib.ticker import FormatStrFormatter
       hists = []
       for name, dimension, sub, lim in \
         [('a', a, sub_a, alim), ('b', b, sub_b, blim), ('c', c, sub_c, clim)]:
@@ -237,13 +236,6 @@ class PopUpCharts(object):
           dim_legend = n_str + dim_legend
         hist = sub.hist(dimension, nbins, alpha=0.75,
                         histtype='stepfilled', label = dim_legend, range = lim)
-        sub.set_xlabel("%s-edge (%s $\AA$)"%(name, varstr)).set_fontsize(text_ratio)
-        if not high_vis:
-          sub.xaxis.set_major_locator(plt.MaxNLocator(4))
-        if name == 'a':
-          sub.set_ylabel('Number of images').set_fontsize(text_ratio)
-        else:
-          self.plt.setp(sub.get_yticklabels(), visible=False)
         hists.append(hist)
 
       abc_hist_ylim = max(1.2*max([max(h[0]) for h in hists]), abc_hist_ylim)
@@ -266,14 +258,6 @@ class PopUpCharts(object):
         sub.set_xlabel("%s axis"%n1).set_fontsize(text_ratio)
         sub.set_ylabel("%s axis"%n2).set_fontsize(text_ratio)
 
-      for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
-        ax.tick_params(axis='both', which='both', left='off', right='off')
-        ax.set_yticklabels([])
-      for ax in (sub_ba, sub_cb, sub_ac):
-        ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
-        plt.setp(ax.get_xticklabels(), visible=False)
-        ax.set_yticklabels([])
-
       for (name, angle, sub) in \
         [(r'$\alpha$', alpha, sub_alpha),
          (r'$\beta$', beta, sub_beta),
@@ -283,18 +267,34 @@ class PopUpCharts(object):
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()
         sub.set_xlabel(r'%s (%.2f +/- %.2f$^\circ$)' % (name, mean, stddev)).set_fontsize(text_ratio)
-        if not high_vis:
-          sub.xaxis.set_major_locator(plt.MaxNLocator(4))
-        if name == '\alpha':
-          sub.set_ylabel('Number of images').set_fontsize(text_ratio)
-        else:
-          self.plt.setp(sub.get_yticklabels(), visible=False)
 
+    # set up general subplot and legend information
+    sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
+    self.plt.setp(sub_b.get_yticklabels(), visible=False)
+    self.plt.setp(sub_c.get_yticklabels(), visible=False)
     for sub, lsub in zip([sub_a, sub_b, sub_c],
                          [legend_sub_a, legend_sub_b, legend_sub_c]):
       h, l = sub.get_legend_handles_labels()
       lsub.legend(h, l, fontsize=text_ratio)
       lsub.axis('off')
+      if not high_vis:
+        sub.xaxis.set_major_locator(plt.MaxNLocator(4))
+
+    sub_alpha.set_ylabel('Number of images').set_fontsize(text_ratio)
+    self.plt.setp(sub_beta.get_yticklabels(), visible=False)
+    self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
+    for sub in [sub_alpha, sub_beta, sub_gamma]:
+      if not high_vis:
+        sub.xaxis.set_major_locator(plt.MaxNLocator(4))
+
+    for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
+      ax.tick_params(axis='both', which='both', left='off', right='off')
+      ax.set_yticklabels([])
+    for ax in (sub_ba, sub_cb, sub_ac):
+      ax.tick_params(axis='both', which='both', bottom='off', top='off',
+                     left='off', right='off')
+      plt.setp(ax.get_xticklabels(), visible=False)
+      ax.set_yticklabels([])
 
     gsp.update(wspace=0)
     title = "Unit cell distribution" if title is None else title
