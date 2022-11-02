@@ -219,7 +219,7 @@ class PopUpCharts(object):
 
       total += len(a)
       nbins = int(np.sqrt(len(a))) * 2
-      n_str = "N: %d "%len(a)
+      n_str = " (N: %d)" % len(a)
 
       hists = []
       for name, dimension, sub, lim in \
@@ -232,11 +232,13 @@ class PopUpCharts(object):
           raise Exception("Not enough data to produce a histogram")
         varstr = "%.2f +/- %.2f" % (mean, stddev)
         dim_legend = legend + separator + varstr if legend else varstr
-        if len(info_list) > 1 and name == "a":
-          dim_legend = n_str + dim_legend
+        dim_legend += n_str if len(info_list) > 1 and name == "a" else ''
         hist = sub.hist(dimension, nbins, alpha=0.75,
-                        histtype='stepfilled', label = dim_legend, range = lim)
+                        histtype='stepfilled', label=dim_legend, range=lim)
         hists.append(hist)
+        prefix = legend + ': ' if len(info_list) > 1 and name == "a" else ''
+        xlabel_text = r'%s%s-edge (%s $\AA$)' % (prefix, name, varstr)
+        sub.set_xlabel(xlabel_text).set_fontsize(text_ratio)
 
       abc_hist_ylim = max(1.2*max([max(h[0]) for h in hists]), abc_hist_ylim)
       sub_a.set_ylim([0, abc_hist_ylim])
@@ -266,7 +268,10 @@ class PopUpCharts(object):
         stats = flex.mean_and_variance(angle)
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()
-        sub.set_xlabel(r'%s (%.2f +/- %.2f$^\circ$)' % (name, mean, stddev)).set_fontsize(text_ratio)
+        varstr = "%.2f +/- %.2f" % (mean, stddev)
+        prefix = legend + ': ' if len(info_list) > 1 and name == "a" else ''
+        xlabel_text = r'%s%s (%s $^\circ$)' % (prefix, name, varstr)
+        sub.set_xlabel(xlabel_text).set_fontsize(text_ratio)
 
     # set up general subplot and legend information
     sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
