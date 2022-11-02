@@ -151,6 +151,8 @@ class HKLview_3d:
     self.realspace_scale = 1.0
     self.visual_symHKLs = []
     self.visual_symmxs= []
+    self.visible_hkls = [] # Populated when applying clip planes. To be examined in regression tests
+    self.outsideplane_hkls = []
     self.sceneisdirty = True
     self.imagename = None
     self.imgdatastr = ""
@@ -425,6 +427,14 @@ class HKLview_3d:
       if has_phil_path(diff_phil, "show_all_vectors"):
         self.show_all_vectors()
 
+      if has_phil_path(diff_phil, "normal_vector"):
+        found = False
+        for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
+          if self.params.clip_plane.normal_vector in label:
+            found=True
+        if not found:
+          raise Sorry("No vector present with substring: %s" %self.params.clip_plane.normal_vector)
+
       self.set_volatile_params()
 
     if has_phil_path(diff_phil, "fontsize"):
@@ -478,9 +488,6 @@ class HKLview_3d:
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
           self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
         clipwidth = self.params.clip_plane.clip_width
-        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-        self.mprint("clip plane distance from origin: %s" %hkldist)
-
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
@@ -495,6 +502,9 @@ class HKLview_3d:
         # Orient the clip plane perpendicular to real_space_vec while at the
         # same time slide clip plane along the cartvec (reciprocal vector) direction
         # in units of cartvec projected onto real_space_vec
+        self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+        self.mprint("clip plane distance from origin: %s" %hkldist)
         if self.params.clip_plane.is_assoc_real_space_vector:
           orientvector = real_space_vec
           self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec), verbose=1)
@@ -1561,17 +1571,19 @@ class HKLview_3d:
           if "InFrustum::" not in message:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
-            visiblehkls = []
-            outsideplanehkls = []
+            self.visible_hkls = []
+            self.outsideplane_hkls = []
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
-              visiblehkls.append(hkl)
+              self.visible_hkls.append(hkl)
               if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
                self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
-                outsideplanehkls.append(hkl)
-            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
-            if len(outsideplanehkls):
-              self.mprint("hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))))
+                self.outsideplane_hkls.append(hkl)
+            self.visible_hkls = list(set(self.visible_hkls))
+            self.outsideplane_hkls = list(set(self.outsideplane_hkls))
+            self.mprint( "visible hkls: " + str(self.visible_hkls), verbose="frustum")
+            if len(self.outsideplane_hkls):
+              self.mprint("hkls not satisfying plane equation: " + str(self.outsideplane_hkls))
               self.mprint("Consider reducing the clip plane width on the \"Slicing\" tab")
           self.mprint( message, verbose=3)
         elif "notify_cctbx_AfterRendering" in message:
@@ -2022,6 +2034,7 @@ in the space group %s\nwith unit cell %s""" \
           if not isvisible:
             self.params.viewer.show_all_vectors = 0
           return str([i, isvisible])
+    raise Sorry("No vector present with label or index: %s" %val)
 
 
   def show_vectors(self, philvectors, diff_phil):
