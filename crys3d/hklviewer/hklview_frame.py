@@ -382,6 +382,13 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
+  def update_from_philstr(self, philstr):
+    # Convenience function for scripting HKLviewer that mostly superseedes other functions for
+    # scripting such as ExpandAnomalous(True), SetScene(0) etc.
+    new_phil = libtbx.phil.parse(philstr)
+    self.update_settings(new_phil)
+
+
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       oldsceneid = self.params.viewer.scene_id
@@ -1417,7 +1424,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ExpandAnomalous(self, va):
+  def ExpandAnomalous(self, val):
     self.params.hkls.expand_anomalous = val
     self.update_settings()
 
@@ -1692,11 +1699,6 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ShowRotationAxes(self, val):
-    self.params.viewer.show_symmetry_rotation_axes = val
-    self.update_settings()
-
-
   def ShowVector(self, val, b=True):
     self.params.viewer.show_vector = [str([val, b])]
     self.update_settings()
@@ -1910,8 +1912,6 @@ master_phil_str = """
     ncolourlabels = 6
       .type = int
       .help = "internal"
-    #show_symmetry_rotation_axes = False
-    #  .type = bool
     show_vector = ''
       .type = str
       .multiple = True
