@@ -219,7 +219,7 @@ class PopUpCharts(object):
 
       total += len(a)
       nbins = int(np.sqrt(len(a))) * 2
-      n_str = " (N: %d)" % len(a)
+      n_str = "(N: %d)" % len(a)
 
       hists = []
       for name, dimension, sub, lim in \
@@ -231,10 +231,12 @@ class PopUpCharts(object):
         except RuntimeError:
           raise Exception("Not enough data to produce a histogram")
         varstr = "%.2f +/- %.2f" % (mean, stddev)
-        dim_legend = legend + separator + varstr if legend else varstr
-        dim_legend += n_str if len(info_list) > 1 and name == "a" else ''
+        legend_key = legend
+        if len(info_list) > 1 and name == "a":
+          legend_key += (' ' if legend else '') + n_str 
+        legend_key += separator + varstr if legend_key else varstr
         hist = sub.hist(dimension, nbins, alpha=0.75,
-                        histtype='stepfilled', label=dim_legend, range=lim)
+                        histtype='stepfilled', label=legend_key, range=lim)
         hists.append(hist)
         prefix = legend + ': ' if len(info_list) > 1 and name == "a" else ''
         xlabel_text = r'%s%s-edge (%s $\AA$)' % (prefix, name, varstr)
