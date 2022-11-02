@@ -235,11 +235,8 @@ class PopUpCharts(object):
           stddev = stats.unweighted_sample_standard_deviation()
         except RuntimeError:
           raise Exception("Not enough data to produce a histogram")
-        varstr = "%.2f +/- %.2f"%(mean, stddev)
-        if len(legend) > 0:
-          dim_legend = legend + separator + varstr
-        else:
-          dim_legend = varstr
+        varstr = "%.2f +/- %.2f" % (mean, stddev)
+        dim_legend = legend + separator + varstr if legend else varstr
         if len(info_list) > 1 and name == "a":
           dim_legend = n_str + dim_legend
         hist = sub.hist(dimension, nbins, alpha=0.75,
@@ -261,11 +258,10 @@ class PopUpCharts(object):
          ('b', 'c', b, c, blim, clim, sub_cb),
          ('c', 'a', c, a, clim, alim, sub_ac)]:
         if len(info_list) == 1:
-          if hist_scale=="log":
-            hist_kwargs = {'norm': mpl.colors.LogNorm()}
-          else:
-            hist_kwargs = {}
-          sub.hist2d(d1, d2, bins=100, range=[lim1, lim2] if ranges is not None else None, **hist_kwargs)
+          hist_kwargs = {
+            'norm': mpl.colors.LogNorm() if hist_scale == "log" else None,
+            'range': [lim1, lim2] if ranges is not None else None}
+          sub.hist2d(d1, d2, bins=100, **hist_kwargs)
         else:
           sub.plot(d1.as_numpy_array(), d2.as_numpy_array(), '.', alpha=0.1, markeredgewidth=0, markersize=2)
           if ranges is not None:
@@ -273,7 +269,6 @@ class PopUpCharts(object):
             sub.set_ylim(lim2)
         sub.set_xlabel("%s axis"%n1).set_fontsize(text_ratio)
         sub.set_ylabel("%s axis"%n2).set_fontsize(text_ratio)
-        # plt.setp(sub.get_yticklabels(), visible=False)
 
       for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
         ax.tick_params(axis='both', which='both', left='off', right='off')
@@ -287,8 +282,7 @@ class PopUpCharts(object):
         [(r'$\alpha$', alpha, sub_alpha),
          (r'$\beta$', beta, sub_beta),
          (r'$\gamma$', gamma, sub_gamma)]:
-        sub.hist(angle, nbins, alpha=0.75,
-                 histtype='stepfilled')
+        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled')
         stats = flex.mean_and_variance(angle)
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()
@@ -306,16 +300,6 @@ class PopUpCharts(object):
     legend_sub_b.legend(h, l, fontsize=text_ratio)
     h, l = sub_c.get_legend_handles_labels()
     legend_sub_c.legend(h, l, fontsize=text_ratio)
-
-    # if len(legend_list) > 0:
-    #   import matplotlib.patches as mpatches
-    #   rgb_alphas = [a_hist[2][i] for i in range(len(a_hist[2]))]
-    #   assert len(legend_list) == len(rgb_alphas)
-    #   patches = [mpatches.Patch(
-    #     color=rgb_alphas[i].get_facecolor(),
-    #     label=legend_list[i])
-    #   for i in range(len(rgb_alphas))]
-    #   fig.legend(patches, 'upper right')
 
     gsp.update(wspace=0)
     title = "Unit cell distribution" if title is None else title
