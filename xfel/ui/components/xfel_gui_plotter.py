@@ -135,7 +135,7 @@ class CommonUnitCellKey(object):
 
   @property
   def line_list(self):
-    return ['%s: %.2f +/- %.2f %s' % (d, m, s, u) for d, m, s, u
+    return ['%s: %.2f +/- %.2f%s' % (d, m, s, u) for d, m, s, u
             in zip(self.symbols, self.means, self.stds, self.units)]
 
   @property
@@ -256,7 +256,8 @@ class PopUpCharts(object):
           raise Exception("Not enough data to produce a histogram")
         legend_key.means.append(mean)
         legend_key.stds.append(stddev)
-        hist = sub.hist(d, nbins, alpha=0.75, histtype='stepfilled', range=lim)
+        hist = sub.hist(d, nbins, alpha=0.75, histtype='stepfilled',
+                        label='placeholder-label', range=lim)
         hists.append(hist)
         if len(info_list) == 1:
           sub.set_xlabel(legend_key.line_list[-1]).set_fontsize(text_ratio)
@@ -318,8 +319,12 @@ class PopUpCharts(object):
       ax.set_yticklabels([])
 
     key_handles, _ = sub_a.get_legend_handles_labels()
-    key_labels = [key.unique_lines for key in legend_keys]
-    sub_key.legend(key_handles, key_labels, fontsize=text_ratio)
+    if len(info_list) == 1:
+      key_labels = [k.unique_lines for k in legend_keys]
+    else:
+      key_labels = [k.prefix + k.sep + k.unique_lines for k in legend_keys]
+    sub_key.legend(key_handles, key_labels, fontsize=text_ratio,
+                   labelspacing=1, loc=6)
     sub_key.axis('off')
 
     gsp.update(wspace=0)
