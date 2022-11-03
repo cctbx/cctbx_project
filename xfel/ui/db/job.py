@@ -107,17 +107,16 @@ class AveragingJob(Job):
   def get_identifier_string(self):
     # Override this function because rungroups are not used for averaging
     if self.app.params.facility.name == 'lcls':
-      s =  "%s_%s_r%04d_t%03d"% \
+      s = "%s_%s_r%04d_t%03d"% \
         (self.app.params.facility.lcls.experiment, self.app.params.experiment_tag, int(self.run.run), self.trial.trial)
     else:
-      s =  "%s_%s_t%03d"% \
+      s = "%s_%s_t%03d"% \
         (self.app.params.experiment_tag, self.run.run, self.trial.trial)
     return s
 
   def submit(self, previous_job=None):
     from xfel.command_line.cxi_mpi_submit import Script as submit_script
     self.app.params.dispatcher = 'dxtbx.image_average'
-    dispatcher = self.app.params.dispatcher
     configs_dir = os.path.join(settings_dir, "cfgs")
     if not os.path.exists(configs_dir):
       os.makedirs(configs_dir)
@@ -134,7 +133,7 @@ class AveragingJob(Job):
       'input.run_num = %d' % int(self.run.run),
       'input.trial = %d' % int(self.trial.trial),
       'input.dispatcher = dxtbx.image_average',
-      'output.output_dir = %s' % self.app.params.output_folder,
+      'output.output_dir = %s' % self.app.params.output_folder + '/averages',
       'output.split_logs = False',
       'output.add_output_dir_option = False',
       'mp.add_mpi_option = False',

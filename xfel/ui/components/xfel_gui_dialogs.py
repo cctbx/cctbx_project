@@ -1506,6 +1506,7 @@ class AveragingDialog(BaseDialog):
       else:
         address = None
       AveragingCommand(self.run, self.params, self.trial_num, skip_images, num_images, address, raw)
+      self.Destroy()
 
 class TrialTagSelectionDialog(BaseDialog):
   def __init__(self, parent,
