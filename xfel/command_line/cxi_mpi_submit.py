@@ -221,19 +221,18 @@ def get_trialdir(output_dir, run_num, trial = None, rungroup = None, task = None
 
     # If a trial number wasn't included, find the next available, up to 999 trials
     if trial is None:
-      trial = 0
-      for direntry in os.scandir(output_dir):
-        if direntry.is_dir(follow_symlinks=False) and direntry.name.startswith('r'):
-          for trial_direntry in os.scandir(direntry.path):
-            if direntry.is_dir(follow_symlinks=False):
-              trial = max([
-                int(trial_direntry.name.split('_')[0]),
-                trial
-              ])
-      trial += 1
-      trialdir = os.path.join(rundir, "%03d" % trial)
-      if rungroup is not None:
-        trialdir += "_rg%03d" % rungroup
+      found_one = False
+      for i in range(1000):
+        trialdir = os.path.join(rundir, "%03d"%i)
+        if rungroup is not None:
+          trialdir += "_rg%03d"%rungroup
+        if not os.path.exists(trialdir):
+          found_one = True
+          break
+      if found_one:
+        trial = i
+      else:
+        raise Sorry("All trial numbers in use")
     else:
       trialdir = os.path.join(rundir, "%03d"%trial)
       if rungroup is not None:
@@ -463,16 +462,10 @@ class Script(object):
     if hasattr(dispatcher_params, 'input') and hasattr(dispatcher_params.input, 'rungroup') and params.input.rungroup is not None:
       data_str += " input.rungroup=%d" % params.input.rungroup
 
+    command = f"{params.input.dispatcher} {data_str} {logging_str} {extra_str}"
     if params.output.add_output_dir_option:
-      command = "%s %s output.output_dir=%s %s %s" % (
-        params.input.dispatcher, data_str, output_dir,
-        logging_str, extra_str
-      )
-    else:
-      command = "%s %s %s %s" % (
-        params.input.dispatcher, data_str,
-        logging_str, extra_str
-      )
+      command += f"output.output_dir={output_dir}"
+
     job_name = "r%s"%params.input.run_num
 
     submission_id = do_submit(command, submit_path, stdoutdir, params.mp, job_name=job_name, dry_run=params.dry_run)

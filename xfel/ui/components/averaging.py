@@ -11,4 +11,3 @@ def AveragingCommand(run, params, trial_num, skip_images, num_images, address, r
   job.skip_images = skip_images
   job.num_images = num_images
   job.submit()
-  print('DONE')

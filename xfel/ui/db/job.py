@@ -126,60 +126,57 @@ class AveragingJob(Job):
     # dxtbx.image_average does not use phil files.
     extra_args = "-a <output_dir>/avg.cbf -m <output_dir>/max.cbf -s <output_dir>/std.cbf --mpi=True"
     if self.skip_images > 0:
-      extra_args += ' --skip-images=%d' % self.skip_images
+      extra_args += f' --skip-images={self.skip_images}'
     if self.num_images > 0:
-      extra_args += ' --num-images=%d' % self.num_images
+      extra_args += f' --num-images={self.num_images}'
     self.args = [
-      'input.run_num = %d' % int(self.run.run),
-      'input.trial = %d' % int(self.trial.trial),
+      f'input.run_num = {self.run.run}',
+      f'input.trial = {self.trial.trial}',
       'input.dispatcher = dxtbx.image_average',
-      'output.output_dir = %s' % self.app.params.output_folder + '/averages',
+      'output.output_dir = {0}'.format(os.path.join(self.app.params.output_folder, 'averages')),
       'output.split_logs = False',
       'output.add_output_dir_option = False',
       'mp.add_mpi_option = False',
-      'mp.extra_args = %s' % extra_args,
-      'mp.method = %s' % self.app.params.mp.method,
+      f'mp.extra_args = {extra_args}',
+      f'mp.method = {self.app.params.mp.method}',
     ]
 
     if self.app.params.mp.method != 'local' or (self.app.params.mp.method == 'local' and self.app.params.facility.name == 'lcls'):
       mp_args = [
-        'mp.use_mpi =  %s' % self.app.params.mp.use_mpi,
-        'mp.mpi_command =  %s' % self.app.params.mp.mpi_command,
-        'mp.nnodes =  %d' % int(self.app.params.mp.nnodes),
-        'mp.nproc = %d' % int(self.app.params.mp.nproc),
-        'mp.nproc_per_node = %d' % int(self.app.params.mp.nproc_per_node),
-        'mp.queue = %s' % self.app.params.mp.queue,
-        'mp.env_script =  %s' % self.app.params.mp.env_script[0],
-        'mp.wall_time = %s' % self.app.params.mp.wall_time,
-        'mp.htcondor.executable_path = %s' % self.app.params.mp.htcondor.executable_path,
+        f'mp.use_mpi = {self.app.params.mp.use_mpi}',
+        f'mp.mpi_command = {self.app.params.mp.mpi_command}',
+        f'mp.nnodes = {self.app.params.mp.nnodes}',
+        f'mp.nproc = {self.app.params.mp.nproc}',
+        f'mp.nproc_per_node = {self.app.params.mp.nproc_per_node}',
+        f'mp.queue = {self.app.params.mp.queue}',
+        f'mp.env_script = {self.app.params.mp.env_script[0]}',
+        f'mp.wall_time = {self.app.params.mp.wall_time}',
+        f'mp.htcondor.executable_path = {self.app.params.mp.htcondor.executable_path}',
       ]
       for arg in mp_args:
         self.args.append(arg)
     if self.app.params.mp.shifter.shifter_image is not None:
-      ###!!! Don't know if this works. It gets added to dispatcher_args at ~350
-      ###!!! in cxi_mpi_submit.py
       shifter_args = [
-        'mp.shifter.nersc_shifter_image = %s' % self.app.params.mp.shifter.shifter_image,
-        'mp.shifter.sbatch_script_template = %s ' % self.app.params.mp.shifter.sbatch_script_template,
-        'mp.shifter.srun_script_template = %s ' % self.app.params.mp.shifter.srun_script_template,
-        'mp.shifter.nersc_partition = %s ' % self.app.params.mp.shifter.partition,
-        'mp.shifter.nersc_jobname = %s ' % self.app.params.mp.shifter.jobname,
-        'mp.shifter.nersc_project = %s ' % self.app.params.mp.shifter.project,
-        'mp.shifter.nersc_constraint = %s ' % self.app.params.mp.shifter.constraint,
-        'mp.shifter.nersc_reservation = %s ' % self.app.params.mp.shifter.reservation,
-        'mp.shifter.staging = %s ' % self.app.params.mp.shifter.staging,
+        f'mp.shifter.nersc_shifter_image = {self.app.params.mp.shifter.shifter_image}',
+        f'mp.shifter.sbatch_script_template = {self.app.params.mp.shifter.sbatch_script_template}',
+        f'mp.shifter.srun_script_template = {self.app.params.mp.shifter.srun_script_template}',
+        f'mp.shifter.nersc_partition = {self.app.params.mp.shifter.partition}',
+        f'mp.shifter.nersc_jobname = {self.app.params.mp.shifter.jobname}',
+        f'mp.shifter.nersc_project = {self.app.params.mp.shifter.project}',
+        f'mp.shifter.nersc_constraint = {self.app.params.mp.shifter.constraint}',
+        f'mp.shifter.nersc_reservation = {self.app.params.mp.shifter.reservation}',
+        f'mp.shifter.staging = {self.app.params.mp.shifter.staging}',
       ]
       for arg in shifter_args:
         self.args.append(arg)
 
     if self.app.params.facility.name == 'lcls':
       locator_path = os.path.join(configs_dir, identifier_string + ".loc")
-      self.args.append('input.locator = %s' % str(locator_path))
-      locator = open(locator_path, 'w')
-      locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
-      locator.write("run=%s\n"%self.run.run)
-      locator.write("detector_address=%s\n"%self.address)
-      locator.close()
+      self.args.append(f'input.locator = {locator_path}')
+      with open(locator_path, 'w') as locator:
+        locator.write(f'experiment={self.app.params.facility.lcls.experiment}\n')
+        locator.write(f'run={self.run.run}\n')
+        locator.write(f'detector_address={self.address}\n')
     return submit_script().run(self.args)
 
 class IndexingJob(Job):
