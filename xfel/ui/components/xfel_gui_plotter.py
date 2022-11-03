@@ -118,7 +118,7 @@ class NoBarPlot(gctr.CtrlBase):
 
 
 class CommonUnitCellKey(object):
-  sep = '\n'
+  """Handle unit cell parameters when setting a common legend for histograms"""
   symbols = ['a', 'b', 'c', r'$\alpha$', r'$\beta$', r'$\gamma$']
   units = 3 * [r'$\AA$'] + 3 * [r'$^\circ$']
 
@@ -138,12 +138,12 @@ class CommonUnitCellKey(object):
             in zip(self.symbols, self.means, self.stds, self.units)]
 
   def lines(self, mask=6*(True,)):
-    return self.sep.join(line for line, m in zip(self.line_list, mask) if m)
+    return '\n'.join(line for line, m in zip(self.line_list, mask) if m)
 
   @classmethod
-  def common_lines(cls, uc_keys):
+  def common_lines_of(cls, uc_keys):
     line_lists = zip(*[uc_key.line_list for uc_key in uc_keys])
-    return [ll.count(ll[0]) == len(ll) for ll in line_lists]
+    return [ll.count(ll[0]) == len(ll) for ll in line_lists] # true if all same
 
 
 class PopUpCharts(object):
@@ -297,7 +297,7 @@ class PopUpCharts(object):
           sub.set_xlabel(legend_key.line_list[-1]).set_fontsize(text_ratio)
       legend_keys.append(legend_key)
 
-    # set up general subplot and legend information
+    # Set up general subplot and legend information
     sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
     self.plt.setp(sub_b.get_yticklabels(), visible=False)
     self.plt.setp(sub_c.get_yticklabels(), visible=False)
@@ -321,8 +321,9 @@ class PopUpCharts(object):
       plt.setp(ax.get_xticklabels(), visible=False)
       ax.set_yticklabels([])
 
+    # Prepare common legend by using existing handles and CommonUnitCellKeys
     handles, _ = sub_a.get_legend_handles_labels()
-    common_key_lines = CommonUnitCellKey.common_lines(legend_keys)
+    common_key_lines = CommonUnitCellKey.common_lines_of(legend_keys)
     if len(info_list) == 1:
       labels = [k.lines() for k in legend_keys]
     else:
