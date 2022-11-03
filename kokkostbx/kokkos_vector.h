@@ -34,10 +34,34 @@ KOKKOS_FUNCTION typename std::enable_if<std::is_floating_point<T>::value, void>:
 
 namespace kokkostbx {
 
+template<typename Derived, typename NumType>
+struct stream_initializer {
+    Derived& vector;
+    int pointer;
+
+    KOKKOS_INLINE_FUNCTION stream_initializer(Derived& v, NumType val) : vector(v), pointer(0) {
+        vector[pointer] = val;
+    }
+
+    KOKKOS_INLINE_FUNCTION stream_initializer(stream_initializer&& other) = default;
+
+    KOKKOS_FUNCTION stream_initializer& operator,(NumType val) {
+        assert(pointer<(int)vector.get_size() &&
+               "Too many coefficients to initialize with '<<'-operator'!");
+        pointer += 1;
+        vector[pointer] = val;
+        return *this;
+    }
+
+    ~stream_initializer() {
+        assert((pointer+1)==vector.get_size() &&
+                "Too few coefficients to initialize with '<<'-operator!");
+    }
+};
+
 template <typename Derived, typename NumType, size_t size>
 struct vector_base {
     NumType data[size] = {};
-    int pointer = 0;
 
     // CONSTRUCTOR
     vector_base() = default;
@@ -75,18 +99,11 @@ struct vector_base {
     }
 
     // access
-    friend KOKKOS_FUNCTION Derived& operator<<(Derived& v, NumType val) {
-        v.pointer = 0;
-        v.data[v.pointer] = val;
-        return v;
+    friend KOKKOS_FUNCTION stream_initializer<Derived, NumType> operator<<(Derived& v, NumType val) {
+        return stream_initializer<Derived, NumType>(v, val);
     }
 
-    friend KOKKOS_FUNCTION Derived& operator,(Derived& v, NumType val) {
-        v.pointer += 1;
-        v.data[v.pointer] = val;
-        return v;
-    }
-    
+
     KOKKOS_FUNCTION NumType& operator[](const int index) { return data[index]; }
 
     KOKKOS_FUNCTION NumType operator[](const int index) const { return data[index]; }
