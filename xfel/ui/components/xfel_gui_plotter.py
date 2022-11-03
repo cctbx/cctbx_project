@@ -301,7 +301,9 @@ class PopUpCharts(object):
     sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
     self.plt.setp(sub_b.get_yticklabels(), visible=False)
     self.plt.setp(sub_c.get_yticklabels(), visible=False)
-    for sub in (sub_a, sub_b, sub_c):
+    sub_bca_tick_lists = []
+    for sub in (sub_b, sub_c, sub_a):
+      sub_bca_tick_lists.append(sub.get_xticks())
       if not high_vis:
         sub.xaxis.set_major_locator(plt.MaxNLocator(4))
 
@@ -316,6 +318,7 @@ class PopUpCharts(object):
       ax.tick_params(axis='both', which='both', left='off', right='off')
       ax.set_yticklabels([])
     for ax in (sub_ba, sub_cb, sub_ac):
+      ax.set_yticks(sub_bca_tick_lists.pop(0))
       ax.tick_params(axis='both', which='both', bottom='off', top='off',
                      left='off', right='off')
       plt.setp(ax.get_xticklabels(), visible=False)
