@@ -72,7 +72,7 @@ def exercise2():
              "philinput.txt",
              "verbose=frustum", # dump displayed hkls to stdout when clipplaning
              "output_filename=myoutput.log", # file with stdout, stderr from hklview_frame
-             "closingtime=10", # close HKLviewer after 10 seconds
+             "closingtime=30", # close HKLviewer after 30 seconds
             ]
 
   assert ( easy_run.call(command=" ".join(cmdargs))  == 0 )
