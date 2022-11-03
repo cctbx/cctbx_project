@@ -137,13 +137,13 @@ class CommonUnitCellKey(object):
     return ['%s: %.2f +/- %.2f%s' % (d, m, s, u) for d, m, s, u
             in zip(self.symbols, self.means, self.stds, self.units)]
 
-  def lines(self, index_mask=6*(True,)):
-    return self.sep.join(line for line in self.line_list if index_mask)
+  def lines(self, mask=6*(True,)):
+    return self.sep.join(line for line, m in zip(self.line_list, mask) if m)
 
   @classmethod
-  def common_lines(cls, *uc_keys):
-    line_lists = zip(uc_key.line_list for uc_key in uc_keys)
-    return [ll.count([ll[0]]) == len(ll) for ll in line_lists]
+  def common_lines(cls, uc_keys):
+    line_lists = zip(*[uc_key.line_list for uc_key in uc_keys])
+    return [ll.count(ll[0]) == len(ll) for ll in line_lists]
 
 
 class PopUpCharts(object):
@@ -322,14 +322,14 @@ class PopUpCharts(object):
       ax.set_yticklabels([])
 
     handles, _ = sub_a.get_legend_handles_labels()
-    common_key_lines = CommonUnitCellKey.common_lines(*legend_keys)
+    common_key_lines = CommonUnitCellKey.common_lines(legend_keys)
     if len(info_list) == 1:
       labels = [k.lines() for k in legend_keys]
     else:
       unique = [not common for common in common_key_lines]
       labels = [k.prefix + k.sep + k.lines(unique) for k in legend_keys]
       if any(common_key_lines):
-        handles.append(mpl.Line2D([0], [0], alpha=0))  # empty handle
+        handles.append(mpl.lines.Line2D([0], [0], alpha=0))  # empty handle
         labels.append(legend_keys[0].lines(common_key_lines))
     sub_key.legend(handles, labels, fontsize=text_ratio, labelspacing=1, loc=6)
     sub_key.axis('off')
