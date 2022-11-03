@@ -139,8 +139,19 @@ class CommonUnitCellKey(object):
             in zip(self.symbols, self.means, self.stds, self.units)]
 
   @property
+  def common_lines(self):
+    return self.sep.join(line for line in self.line_list if not self.unique)
+
+  @property
   def unique_lines(self):
     return self.sep.join(line for line in self.line_list if self.unique)
+
+  @classmethod
+  def assign_uniqueness(cls, *uc_keys):
+    line_lists = zip(uc_key.line_list for uc_key in uc_keys)
+    unique = [ll.count([ll[0]]) < len(ll) for ll in line_lists]
+    for uc_key in uc_keys:
+      uc_key.unique = unique
 
 
 class PopUpCharts(object):
@@ -323,6 +334,10 @@ class PopUpCharts(object):
       key_labels = [k.unique_lines for k in legend_keys]
     else:
       key_labels = [k.prefix + k.sep + k.unique_lines for k in legend_keys]
+    CommonUnitCellKey.assign_uniqueness(*legend_keys)
+    if legend_keys and not all(legend_keys[0].unique):
+      key_handles.append(mpl.Line2D([0], [0], alpha=0))  # empty handle
+      key_labels.append(legend_keys[0].common_lines)
     sub_key.legend(key_handles, key_labels, fontsize=text_ratio,
                    labelspacing=1, loc=6)
     sub_key.axis('off')
