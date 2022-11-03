@@ -41,6 +41,10 @@ class HKLViewFrame() :
       except Exception as e:
         self.verbose = kwds['verbose']
     self.guiSocketPort=None
+    self.output_file = None
+    if 'output_filename' in kwds:
+      fname = kwds.get('output_filename', None )
+      self.output_file = open(fname, "w", encoding="utf-8")
     kwds['mprint'] = self.mprint
     self.outputmsgtypes = []
     self.userpresetbuttonsfname = os.path.join( Path.home(), ".hkl_viewer_buttons.py")
@@ -136,17 +140,29 @@ class HKLViewFrame() :
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
+    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+      fname = kwds.get('phil_file', "" )
+      if os.path.isfile(fname):
+        self.mprint("Processing PHIL file: %s" %fname)
+        with open(fname, "r") as f:
+          philstr = f.read()
+          self.update_from_philstr(philstr)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
     self.viewer.__exit__(exc_type, exc_value, traceback)
     self.mprint("Destroying HKLViewFrame", verbose=0) # this string is expected by HKLviewer.py so don't change
     self.STOP = True
+    if self.output_file:
+      self.output_file.close()
+      self.output_file = None
     del self
     #sys.exit()
 
 
   def mprint(self, msg, verbose=0, end="\n"):
+    if self.output_file and self.output_file.closed==False :
+      self.output_file.write(msg + end)
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
@@ -1560,8 +1576,8 @@ class HKLViewFrame() :
   def set_action(self, val):
     if val == "reset_view":
       self.viewer.SetAutoView()
-    if val == "is_terminating":
-      self.__exit__()
+    if val == "is_terminating": # sent from NGL_HKLViewer.closeEvent()
+      self.__exit__() # releases javascript resources
       return False
     return True
 
