@@ -85,6 +85,8 @@ def exercise2():
     refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
+  os.remove("philinput.txt")
+  os.remove("myoutput.log")
 
 
 def run():
