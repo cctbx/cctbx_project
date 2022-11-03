@@ -604,6 +604,13 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 //                 float * max_I_x_reduction,
 //                 float * max_I_y_reduction, bool * rangemap);
 
+template <typename T, typename U>
+void add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
+  Kokkos::parallel_for("add_arrays", lhs.span(), KOKKOS_LAMBDA(const int& i) {
+    lhs( i ) = lhs( i ) + (T)rhs( i );
+    rhs( i ) = 0;
+  });
+}
 
 void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,

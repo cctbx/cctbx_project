@@ -300,8 +300,8 @@ void diffBragg_sum_over_steps(
         crystal& db_cryst,
         flags& db_flags){
 
-    MAT3 anisoG_local;
-    MAT3 anisoU_local;
+    Eigen::Matrix3d anisoG_local;
+    Eigen::Matrix3d anisoU_local;
     MAT3 laue_mats[24];
     MAT3 dG_dgam[3];
     int laue_group_num = db_cryst.laue_group_num;
@@ -488,7 +488,7 @@ void diffBragg_sum_over_steps(
             if (db_flags.use_diffuse && db_flags.gamma_miller_units){
               anisoG_local = anisoG_local * Bmat_realspace;
               for (int i_gam=0; i_gam<3; i_gam++){
-                dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
+                dG_dgam[i_gam] = dG_dgam[i_gam] * to_mat3(Bmat_realspace);
               }
             }
 
@@ -535,7 +535,23 @@ void diffBragg_sum_over_steps(
             double I0 = 0;
             double step_diffuse_param[6] = {0,0,0,0,0,0};
             if (db_flags.use_diffuse){
-              calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&db_cryst.FhklLinear[0],num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,db_flags.refine_diffuse,&I0,step_diffuse_param);
+              calc_diffuse_at_hkl(
+                to_vec3(H_vec),
+                to_vec3(H0),
+                to_vec3(dHH),
+                to_vec3(Hmin),
+                to_vec3(Hmax),
+                to_vec3(Hrange),
+                to_mat3(Ainv),
+                &db_cryst.FhklLinear[0],
+                num_laue_mats,
+                laue_mats,
+                to_mat3(anisoG_local),
+                to_mat3(anisoU_local),
+                dG_dgam,
+                db_flags.refine_diffuse,
+                &I0,
+                step_diffuse_param);
             }
 
             /* increment to intensity */

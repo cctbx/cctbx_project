@@ -30,16 +30,25 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         return diagonal;
     };
 
-    KOKKOS_FUNCTION NumType& operator()(size_t row, size_t col) {
+    // access
+    KOKKOS_FUNCTION NumType& get(size_t row, size_t col) {
         assert(row < rank);
         assert(col < rank);
-        return vector_base::data[row * rank + col];
+        return vector_base::data[row * rank + col]; 
+    }
+
+    KOKKOS_FUNCTION NumType get(size_t row, size_t col) const {
+        assert(row < rank);
+        assert(col < rank);
+        return vector_base::data[row * rank + col]; 
+    }
+
+    KOKKOS_FUNCTION NumType& operator()(size_t row, size_t col) {
+        return get(row, col);
     }
 
     KOKKOS_FUNCTION NumType operator()(size_t row, size_t col) const {
-        assert(row < rank);
-        assert(col < rank);
-        return vector_base::data[row * rank + col];
+        return get(row, col);
     }
 
     // Override multiplication
@@ -79,7 +88,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         VectorType result;
         for (size_t i = 0; i < rank; ++i) {
             for (size_t j = 0; j < rank; ++j) {
-                result[i] += vector_base::data[i * rank + j] * v.data[j];
+                result[i] += get(i, j) * v.data[j];
             }
         }
         return result;
@@ -90,7 +99,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         for (size_t i = 0; i < rank; ++i) {
             for (size_t j = 0; j < rank; ++j) {
                 for (size_t k = 0; k < rank; ++k) {
-                    result[i * rank + j] += vector_base::data[i * rank + k] * v.data[k * rank + j];
+                    result(i, j) += get(i, k) * v(k, j);
                 }
             }
         }
@@ -102,7 +111,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
     KOKKOS_FUNCTION NumType trace() const {
         NumType result = 0;
         for (size_t i = 0; i < rank; ++i) {
-            result += vector_base::data[i * rank + i];
+            result += get(i, i);
         }
         return result;
     }
@@ -122,7 +131,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
         Derived new_mat;
         for (size_t i = 0; i < rank; ++i) {
             for (size_t j = 0; j < rank; ++j) {
-                new_mat[j * rank + i] = vector_base::data[i * rank + j];
+                new_mat(j, i) = get(i, j);
             }
         }
         return new_mat;
@@ -141,4 +150,3 @@ struct matrix : public matrix_base<matrix<NumType, rank>, NumType, rank> {
 }  // namespace kokkostbx
 
 #endif
-

@@ -79,12 +79,18 @@ if (env_etc.enable_kokkos):
 
   diffBraggKokkos_env = diffBragg_env.Clone()
   
-  # remove DNANOBRAGG_HAVE_CUDA compile option
+  # remove NANOBRAGG_HAVE_CUDA and DIFFBRAGG_HAVE_CUDA compile option
   if 'CPPDEFINES' in diffBraggKokkos_env:
     ccflags = diffBraggKokkos_env['CPPDEFINES']
-    o = 'NANOBRAGG_HAVE_CUDA'
-    if o in ccflags:
-      ccflags.remove(o)
+    for o in ['NANOBRAGG_HAVE_CUDA', 'DIFFBRAGG_HAVE_CUDA']:
+      if o in ccflags:
+        ccflags.remove(o)
+  
+  if 'NVCCFLAGS' in diffBraggKokkos_env:
+    nvccflags = diffBraggKokkos_env['NVCCFLAGS']
+    o = '-DDIFFBRAGG_HAVE_CUDA'
+    if o in nvccflags:
+      nvccflags.remove(o)
 
   diffBraggKokkos_lib = diffBraggKokkos_env.SharedLibrary(
     target="#lib/libsimtbx_diffBraggKOKKOS",

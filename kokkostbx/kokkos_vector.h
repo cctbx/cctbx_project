@@ -37,6 +37,7 @@ namespace kokkostbx {
 template <typename Derived, typename NumType, size_t size>
 struct vector_base {
     NumType data[size] = {};
+    int pointer = 0;
 
     // CONSTRUCTOR
     vector_base() = default;
@@ -74,6 +75,18 @@ struct vector_base {
     }
 
     // access
+    friend KOKKOS_FUNCTION Derived& operator<<(Derived& v, NumType val) {
+        v.pointer = 0;
+        v.data[v.pointer] = val;
+        return v;
+    }
+
+    friend KOKKOS_FUNCTION Derived& operator,(Derived& v, NumType val) {
+        v.pointer += 1;
+        v.data[v.pointer] = val;
+        return v;
+    }
+    
     KOKKOS_FUNCTION NumType& operator[](const int index) { return data[index]; }
 
     KOKKOS_FUNCTION NumType operator[](const int index) const { return data[index]; }

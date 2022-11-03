@@ -284,11 +284,11 @@ namespace Kokkos {
       vector_cudareal_t c_source_I = vector_cudareal_t("c_source_I", 0);
       vector_cudareal_t c_source_lambda = vector_cudareal_t("c_source_lambda", 0);
       double weighted_I = SIM.source_I[ictr] * weight[ictr];
-      transfer_double2kokkos(c_source_X, &(SIM.source_X[ictr]), 1);
-      transfer_double2kokkos(c_source_Y, &(SIM.source_Y[ictr]), 1);
-      transfer_double2kokkos(c_source_Z, &(SIM.source_Z[ictr]), 1);
-      transfer_double2kokkos(c_source_I, &(weighted_I), 1);
-      transfer_double2kokkos(c_source_lambda, &(SIM.source_lambda[ictr]), 1);
+      kokkostbx::transfer_double2kokkos(c_source_X, &(SIM.source_X[ictr]), 1);
+      kokkostbx::transfer_double2kokkos(c_source_Y, &(SIM.source_Y[ictr]), 1);
+      kokkostbx::transfer_double2kokkos(c_source_Z, &(SIM.source_Z[ictr]), 1);
+      kokkostbx::transfer_double2kokkos(c_source_I, &(weighted_I), 1);
+      kokkostbx::transfer_double2kokkos(c_source_lambda, &(SIM.source_lambda[ictr]), 1);
 
       debranch_maskall_Kernel(
       kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
