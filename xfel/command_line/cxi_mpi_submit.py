@@ -464,7 +464,7 @@ class Script(object):
 
     command = f"{params.input.dispatcher} {data_str} {logging_str} {extra_str}"
     if params.output.add_output_dir_option:
-      command += f"output.output_dir={output_dir}"
+      command += f" output.output_dir={output_dir}"
 
     job_name = "r%s"%params.input.run_num
 
