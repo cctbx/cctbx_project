@@ -7,18 +7,17 @@ from crys3d.hklviewer import hklview_frame
 
 philstr = """
 clip_plane {
-  normal_vector = "K-axis"
+  normal_vector = "K-axis (0,1,0)"
   is_assoc_real_space_vector = True
-  clip_width = 1.184
-  hkldist = 46
-  normal_vector_length_scale = -1
+  clip_width = 2
+  hkldist = -9
 }
 viewer {
   data_array {
-    label = 'F,SIGF'
+    label = "FP,SIGFP"
     datatype = 'Amplitude'
   }
-  show_vector = "['K-axis', True]"
+  show_vector = "['K-axis (0,1,0)', True]"
   fixorientation = *vector None
 }
 hkls {
@@ -28,24 +27,25 @@ hkls {
 """
 
 file_name = libtbx.env.find_in_repositories(
-  relative_path="phenix_regression/reflection_files/2caz.mtz",
+  relative_path="iotbx/regression/data/phaser_1.mtz",
   test=os.path.isfile)
 
-reflections2match = set( [(-24, 46, 1), (-17, 46, 0), (-28, 46, 1), (-24, 46, 0), (-17, 46, 1),
-                    (-28, 46, 0), (-24, 46, -2), (-29, 46, 0), (-22, 46, 2), (-18, 46, -1),
-                    (-26, 46, 2), (-24, 46, 2), (-29, 46, 1), (-22, 46, 1), (-26, 46, 1),
-                    (-22, 46, 0), (-19, 46, -1), (-23, 46, 0), (-26, 46, 0), (-27, 46, 0),
-                    (-23, 46, 1), (-21, 46, 2), (-27, 46, 1), (-25, 46, 2), (-20, 46, 1),
-                    (-23, 46, 2), (-25, 46, -1), (-25, 46, -2), (-20, 46, 0), (-21, 46, -1),
-                    (-21, 46, -2), (-21, 46, 0), (-25, 46, 0), (-21, 46, 1), (-25, 46, 1),
-                    (-20, 46, 2), (-20, 46, -1), (-27, 46, -1), (-20, 46, -2), (-23, 46, -1),
-                    (-23, 46, -2), (-19, 46, 0), (-19, 46, 1), (-26, 46, -1), (-26, 46, -2),
-                    (-22, 46, -1), (-29, 46, -1), (-22, 46, -2), (-18, 46, 1), (-17, 46, -1),
-                    (-18, 46, 0), (-28, 46, -1), (-24, 46, -1)]
-              )
+# These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections 
+# have been sliced with a clip plane at  k= -9
+reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1), (4, -9, -2), 
+  (4, -9, -1), (1, -9, -2), (-1, -9, -4), (1, -9, -3), (-1, -9, -3), (-2, -9, -3), (1, -9, -4), 
+  (-1, -9, -1), (-1, -9, -2), (-2, -9, -1), (-2, -9, -2), (0, -9, 4), (1, -9, 4), (2, -9, -4),
+  (3, -9, 1), (2, -9, -3), (0, -9, 2), (3, -9, 0), (-4, -9, 2), (2, -9, -1), (2, -9, -2),
+  (0, -9, 3), (3, -9, 2), (-4, -9, 0), (0, -9, 1), (-4, -9, -1), (-4, -9, 1), (0, -9, -1),
+  (0, -9, -2), (-2, -9, 4), (-1, -9, 4), (3, -9, -3), (2, -9, 0), (0, -9, -4), (2, -9, 1), 
+  (0, -9, -3), (2, -9, 2), (-1, -9, 0), (3, -9, -1), (3, -9, -2), (-2, -9, 0), (2, -9, 3), 
+  (-2, -9, 1), (-1, -9, 1), (1, -9, 3), (-2, -9, 2), (-1, -9, 2), (-3, -9, 3), (4, -9, 0), 
+  (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
+ )
 
 
 def exercise1():
+  assert os.path.isfile(file_name)
   myHKLview = hklview_frame.HKLViewFrame(verbose=0)
   myHKLview.LoadReflectionsFile(file_name)
   # slice expanded sphere of reflections with clip plane and translate to
@@ -53,7 +53,7 @@ def exercise1():
 
   myHKLview.update_from_philstr(philstr)
   # wait a little until NGLs autoView() has completed
-  time.sleep(2)
+  time.sleep(30)
   # then copy indices of visible reflections
   refls = myHKLview.viewer.visible_hkls[:]
   # Destroying HKLViewFrame releases javascipt objects from browser
@@ -62,11 +62,12 @@ def exercise1():
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
 
+    
 def exercise2():
   import re
   with open("philinput.txt","w") as f:
     f.write(philstr)
-
+  assert os.path.isfile(file_name)
   cmdargs = ["cctbx.HKLviewer",
              file_name,
              "philinput.txt",
@@ -85,6 +86,7 @@ def exercise2():
     refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
+  # tidy up
   os.remove("philinput.txt")
   os.remove("myoutput.log")
 
