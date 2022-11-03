@@ -127,7 +127,6 @@ class CommonUnitCellKey(object):
     self.crystals = crystals
     self.means = []
     self.stds = []
-    self.unique = 6 * [True]
 
   @property
   def prefix(self):
@@ -138,20 +137,13 @@ class CommonUnitCellKey(object):
     return ['%s: %.2f +/- %.2f%s' % (d, m, s, u) for d, m, s, u
             in zip(self.symbols, self.means, self.stds, self.units)]
 
-  @property
-  def common_lines(self):
-    return self.sep.join(line for line in self.line_list if not self.unique)
-
-  @property
-  def unique_lines(self):
-    return self.sep.join(line for line in self.line_list if self.unique)
+  def lines(self, index_mask=6*(True,)):
+    return self.sep.join(line for line in self.line_list if index_mask)
 
   @classmethod
-  def assign_uniqueness(cls, *uc_keys):
+  def common_lines(cls, *uc_keys):
     line_lists = zip(uc_key.line_list for uc_key in uc_keys)
-    unique = [ll.count([ll[0]]) < len(ll) for ll in line_lists]
-    for uc_key in uc_keys:
-      uc_key.unique = unique
+    return [ll.count([ll[0]]) == len(ll) for ll in line_lists]
 
 
 class PopUpCharts(object):
@@ -329,17 +321,17 @@ class PopUpCharts(object):
       plt.setp(ax.get_xticklabels(), visible=False)
       ax.set_yticklabels([])
 
-    key_handles, _ = sub_a.get_legend_handles_labels()
+    handles, _ = sub_a.get_legend_handles_labels()
+    common_key_lines = CommonUnitCellKey.common_lines(*legend_keys)
     if len(info_list) == 1:
-      key_labels = [k.unique_lines for k in legend_keys]
+      labels = [k.lines() for k in legend_keys]
     else:
-      key_labels = [k.prefix + k.sep + k.unique_lines for k in legend_keys]
-    CommonUnitCellKey.assign_uniqueness(*legend_keys)
-    if legend_keys and not all(legend_keys[0].unique):
-      key_handles.append(mpl.Line2D([0], [0], alpha=0))  # empty handle
-      key_labels.append(legend_keys[0].common_lines)
-    sub_key.legend(key_handles, key_labels, fontsize=text_ratio,
-                   labelspacing=1, loc=6)
+      unique = [not common for common in common_key_lines]
+      labels = [k.prefix + k.sep + k.lines(unique) for k in legend_keys]
+      if any(common_key_lines):
+        handles.append(mpl.Line2D([0], [0], alpha=0))  # empty handle
+        labels.append(legend_keys[0].lines(common_key_lines))
+    sub_key.legend(handles, labels, fontsize=text_ratio, labelspacing=1, loc=6)
     sub_key.axis('off')
 
     gsp.update(wspace=0)
