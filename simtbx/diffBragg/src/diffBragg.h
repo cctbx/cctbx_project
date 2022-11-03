@@ -7,6 +7,7 @@
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
 #include <boost/python.hpp>
+#include <boost/python/numpy.hpp>
 #include<Eigen/StdVector>
 #include <boost/python/numpy.hpp>
 
@@ -15,6 +16,7 @@
 #endif
 
 //#include <boost/python/numpy.hpp>
+namespace np=boost::python::numpy;
 
 namespace simtbx {
 namespace nanoBragg {
@@ -165,6 +167,12 @@ class diffBragg: public nanoBragg{
   void rotate_fs_ss_vecs(double panel_rot_ang);
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
+  np::ndarray add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
+           np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
+           int num_Fhkl_channels, double Gscale, bool track, bool errors);
+  void update_Fhkl_channels(np::ndarray& channels);
+  boost::python::list get_Fhkl_channels();
+  void update_Fhkl_scale_factors(np::ndarray& scale_factors, int num_Fhkl_channels);
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows, boost::python::list per_pix_nominal_hkl);
   void add_diffBragg_spots();
   af::shared<double> add_diffBragg_spots_full();
@@ -270,7 +278,7 @@ class diffBragg: public nanoBragg{
   void show_fp_fdp();
   bool track_Fhkl;
   std::vector<int> nominal_hkl;
-  void linearize_Fhkl();
+  void linearize_Fhkl(bool compute_dists);
   void sanity_check_linear_Fhkl();
   void update_linear_Fhkl();
 
@@ -298,6 +306,7 @@ class diffBragg: public nanoBragg{
   bool update_step_positions_on_device=false;
   bool update_panel_deriv_vecs_on_device=false;
   bool use_cuda=false;
+  bool force_cpu=false;
   int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
 
   timer_variables TIMERS;
@@ -305,7 +314,22 @@ class diffBragg: public nanoBragg{
 
   void show_timing_stats(int MPI_RANK);
   bool last_kernel_on_GPU; // reveals whether the GPU kernel was run
+  boost::python::tuple get_ave_I_cell(bool use_Fhkl_scale, int i_channel, bool use_geometric_mean);
+  np::ndarray Fhkl_restraint_data(int i_channel, double Fhkl_beta, bool use_geometric_mean, int flag);
+  void set_Friedel_mate_inds(boost::python::list pos_inds, boost::python::list neg_inds);
 }; // end of diffBragg
+
+
+double diffBragg_cpu_kernel_polarization(
+    Eigen::Vector3d incident,
+    Eigen::Vector3d diffracted,
+    Eigen::Vector3d polarization_axis,
+    double kahn_factor);
+
+std::vector<double> I_cell_ave(crystal& db_cryst,bool use_Fhkl_scale, int i_channel, std::vector<double>& Fhkl_scale);
+void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
+void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
+void Finit_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out);
 
 void diffBragg_sum_over_steps(
       int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,

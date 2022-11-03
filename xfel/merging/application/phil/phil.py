@@ -16,6 +16,9 @@ dispatch {
 
 input_phil = """
 input {
+  override_identifiers = False
+    .type = bool
+    .help = override whatever identifiers may be present in experiments, replacing with auto-generated hash
   alist {
     file = None
       .type = str
@@ -212,6 +215,12 @@ filter
       }
   }
   outlier {
+    mad_thresh = None
+      .type = float
+      .help = If provided, during  the actual merge step, symmetrically equivalent reflecitons (same ASU) are filtered
+      .help = according to there median absolute deviation. mad_thresh=3 means a reflection is filtered
+      .help = if its deviation is greater than 3 standard deviations of the median amongst ASU samples,
+      .help = i.e. lower values of mad_thresh will filter more reflections.
     min_corr = 0.1
       .type = float
       .help = Correlation cutoff for rejecting individual experiments by comparing observed intensities to the model.

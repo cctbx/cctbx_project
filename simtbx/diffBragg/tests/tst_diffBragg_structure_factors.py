@@ -26,6 +26,7 @@ F = utils.get_complex_fcalc_from_pdb(PDB,
     dmin=2, dmax=20, k_sol=0.2, b_sol=20)
 F = F.as_amplitude_array()
 Fmap = {h: amp for h,amp in zip(F.indices(), F.data())}
+res_map = {h: res for h,res in zip(F.d_spacings().indices(), F.d_spacings().data())}
 
 # Create a sim_data class instance as would be done for hopper_utils.refine for example
 phil_scope = parse(hopper_phil+philz)
@@ -50,7 +51,16 @@ for h in Fmap:
 db_instance = SIM.D
 db_inds, db_amps = db_instance.Fhkl_tuple
 db_Fmap = {h: amp for h, amp in zip(db_inds, db_amps)}
+# note diffBragg only models refls out to a certain resolution(see sim_data, update Fhkl tuple method)
+# and values outside of this resolution shell will be 0 or not present
+dmin = SIM.get_detector_corner_res()
 for h in Fmap:
+    if h not in db_Fmap:
+        assert res_map[h] < dmin
+        continue
+    if db_Fmap[h] == 0:
+        assert res_map[h] < dmin
+        continue
     assert Fmap[h] == db_Fmap[h]
 
 
@@ -67,7 +77,7 @@ for hkl,amp in zip(inds, amps):
         assert amp==1234
 
 # save as F as an MTZ file
-MTZ="1234.mtz"
+MTZ="Ftester.mtz"
 col="Famp"
 F.as_mtz_dataset(column_root_label="Famp").mtz_object().write(MTZ)
 # create a sim data object with structure factors loaded from MTZ file
@@ -79,11 +89,18 @@ SIM_mtz = utils.simulator_from_expt_and_params(expt, params)
 F_from_SIM2 = SIM_mtz.crystal.miller_array
 F_from_SIM2_map = {h:amp for h,amp in zip(F_from_SIM2.indices(), F_from_SIM2.data())}
 
-avals = [Fmap[h] for h in Fmap]
-avals2 = [F_from_SIM2_map[h] for h in Fmap]
+avals,avals2 = [],[]
+for h in Fmap:
+    if h not in F_from_SIM2_map:
+        assert res_map[h] < dmin
+        continue
+    if F_from_SIM2_map[h] == 0:
+        assert res_map[h] < dmin
+        continue
+    avals.append(Fmap[h])
+    avals2.append(F_from_SIM2_map[h])
 assert np.allclose(avals, avals2)
 # with MTZ writing there is a loss in precision, hence equality only holds up to float32
 assert np.all(np.float32(avals)==np.float32(avals2))
-
 
 print("OK")
