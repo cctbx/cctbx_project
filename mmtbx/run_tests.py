@@ -79,6 +79,7 @@ general_tests = [
   "$D/regression/model/tst_model_ncs.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
+  "$D/regression/model/tst_model_biomt_mtrix_2.py",
   "$D/regression/model/tst_model_neutralize_scatterers.py",
   "$D/regression/model/tst_model_set_hydrogen_bond_length.py",
   "$D/regression/model/tst_model_cart_ref_restraints.py",

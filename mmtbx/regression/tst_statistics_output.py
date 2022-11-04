@@ -1170,12 +1170,20 @@ def test_1():
   model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
   model.process(make_restraints=True)
   model.get_restraints_manager()
-  stats = mmtbx.model.statistics.geometry(model=model)
-  out = StringIO()
-  stats.show(log=out)
-  val = out.getvalue()
-  # print (val)
-  assert not show_diff(val, """
+  for cp in [True, False]:
+    for fc in [True, False]:
+      if not cp and fc:
+        # incompatible parameters
+        continue
+      stats = mmtbx.model.statistics.geometry(
+          model=model,
+          condensed_probe=cp,
+          fast_clash=fc)
+      out = StringIO()
+      stats.show(log=out)
+      val = out.getvalue()
+      # print (val)
+      assert not show_diff(val, """
 GEOMETRY RESTRAINTS LIBRARY: GEOSTD + MONOMER LIBRARY + CDL V1.2
 DEVIATIONS FROM IDEAL VALUES - RMSD. RMSZ FOR BONDS AND ANGLES.
   BOND      :  0.004   0.020   1174  Z= 0.292
@@ -1186,7 +1194,7 @@ DEVIATIONS FROM IDEAL VALUES - RMSD. RMSZ FOR BONDS AND ANGLES.
   MIN NONBONDED DISTANCE : 2.457
 
 MOLPROBITY STATISTICS.
-  ALL-ATOM CLASHSCORE : 3.94
+  ALL-ATOM CLASHSCORE : 3.50
   RAMACHANDRAN PLOT:
     OUTLIERS :  0.00 %
     ALLOWED  :  2.68 %

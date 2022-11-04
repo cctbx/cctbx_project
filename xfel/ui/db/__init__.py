@@ -58,7 +58,7 @@ def write_xtc_locator(locator_path, params, run, rungroup):
 
   locator.close()
 
-def get_db_connection(params, block=True):
+def get_db_connection(params, block=True, autocommit=True):
   if params.db.password is None:
     password = ""
   else:
@@ -69,7 +69,14 @@ def get_db_connection(params, block=True):
   sleep_time = 0.1
   while retry_count < retry_max:
     try:
-      dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name,port=params.db.port)
+      dbobj=MySQLdb.connect(
+          passwd=password,
+          user=params.db.user,
+          host=params.db.host,
+          db=params.db.name,
+          port=params.db.port,
+          autocommit=autocommit
+      )
       return dbobj
     except Exception as e:
       retry_count += 1

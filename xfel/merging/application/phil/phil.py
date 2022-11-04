@@ -16,6 +16,9 @@ dispatch {
 
 input_phil = """
 input {
+  override_identifiers = False
+    .type = bool
+    .help = override whatever identifiers may be present in experiments, replacing with auto-generated hash
   alist {
     file = None
       .type = str
@@ -78,12 +81,13 @@ input {
     ranks_per_node = 68
         .type = int
         .help = number of MPI ranks per node
-    balance = *global per_node
+    balance = *global1 global2 per_node
       .type = choice
       .multiple = False
-      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global) or over the ranks on each node (per_node)
+      .help = Balance the input file load by distributing experiments uniformly over all available ranks (global1/2) or over the ranks on each node (per_node)
       .help = The idea behind the "per_node" method is that it doesn't require MPI communications across nodes. But if the input file load varies strongly
-      .help = between the nodes, "global" is a much better option.
+      .help = between the nodes, "global1/2" is a much better option. "global1" is accomplished by reshuffling all data across all ranks while "global2" is
+      .help = accomplished by sending the minimal necessary information between ranks to deterministically evenly balance the load.
     balance_verbose = False
       .type = bool
       .help = print load balancing details to the main log
@@ -211,6 +215,12 @@ filter
       }
   }
   outlier {
+    mad_thresh = None
+      .type = float
+      .help = If provided, during  the actual merge step, symmetrically equivalent reflecitons (same ASU) are filtered
+      .help = according to there median absolute deviation. mad_thresh=3 means a reflection is filtered
+      .help = if its deviation is greater than 3 standard deviations of the median amongst ASU samples,
+      .help = i.e. lower values of mad_thresh will filter more reflections.
     min_corr = 0.1
       .type = float
       .help = Correlation cutoff for rejecting individual experiments by comparing observed intensities to the model.

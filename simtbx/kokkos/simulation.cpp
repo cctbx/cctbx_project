@@ -97,14 +97,18 @@ namespace Kokkos {
   exascale_api::add_energy_channel_from_gpu_amplitudes(
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
-    simtbx::Kokkos::kokkos_detector & kdt
+    simtbx::Kokkos::kokkos_detector & kdt,
+    double const& weight
   ){
     // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
     int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
+    af::shared<double> weighted_sources_I = af::shared<double>(source_count);
+    double* wptr = weighted_sources_I.begin();
+    for (std::size_t iwt = 0; iwt < source_count; iwt++){wptr[iwt] = weight*(SIM.source_I[iwt]);}
+    transfer_double2kokkos(m_source_I, wptr, source_count);
     transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
@@ -171,7 +175,7 @@ namespace Kokkos {
   ){
     // here or there, need to convert the all_panel_mask (3D map) into a 1D list of accepted pixels
     // coordinates for the active pixel list are absolute offsets into the detector array
-    af::shared<int> active_pixel_list;
+    af::shared<std::size_t> active_pixel_list;
     const bool* jptr = all_panel_mask.begin();
     for (int j=0; j < all_panel_mask.size(); ++j){
       if (jptr[j]) {
@@ -186,7 +190,7 @@ namespace Kokkos {
     int const& ichannel,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
-    af::shared<int> const active_pixel_list
+    af::shared<std::size_t> const active_pixel_list
   ){
     kdt.set_active_pixels_on_GPU(active_pixel_list);
 
@@ -253,18 +257,17 @@ namespace Kokkos {
     af::shared<int> const ichannels,
     simtbx::Kokkos::kokkos_energy_channels & kec,
     simtbx::Kokkos::kokkos_detector & kdt,
-    af::shared<int> const active_pixel_list
+    af::shared<std::size_t> const active_pixel_list,
+    af::shared<double> const weight
   ){
     kdt.set_active_pixels_on_GPU(active_pixel_list);
 
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
-    int source_count = SIM.sources;
-    transfer_double2kokkos(m_source_I, SIM.source_I, source_count);
-    transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
 
     SCITBX_ASSERT(SIM.sources == ichannels.size()); /* For each nanoBragg source, this value instructs
     the simulation where to look for structure factors.  If -1, skip this source wavelength. */
+    SCITBX_ASSERT(SIM.sources == weight.size());
 
     for (int ictr = 0; ictr < SIM.sources; ++ictr){
       if (ichannels[ictr] < 0) continue; // the ichannel array
@@ -280,10 +283,11 @@ namespace Kokkos {
       vector_cudareal_t c_source_Z = vector_cudareal_t("c_source_Z", 0);
       vector_cudareal_t c_source_I = vector_cudareal_t("c_source_I", 0);
       vector_cudareal_t c_source_lambda = vector_cudareal_t("c_source_lambda", 0);
+      double weighted_I = SIM.source_I[ictr] * weight[ictr];
       transfer_double2kokkos(c_source_X, &(SIM.source_X[ictr]), 1);
       transfer_double2kokkos(c_source_Y, &(SIM.source_Y[ictr]), 1);
       transfer_double2kokkos(c_source_Z, &(SIM.source_Z[ictr]), 1);
-      transfer_double2kokkos(c_source_I, &(SIM.source_I[ictr]), 1);
+      transfer_double2kokkos(c_source_I, &(weighted_I), 1);
       transfer_double2kokkos(c_source_lambda, &(SIM.source_lambda[ictr]), 1);
 
       debranch_maskall_Kernel(
@@ -322,7 +326,7 @@ namespace Kokkos {
   }
 
   void
-  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt) {
+  exascale_api::add_background(simtbx::Kokkos::kokkos_detector & kdt, int const& override_source) {
         // cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         // transfer source_I, source_lambda
@@ -373,7 +377,7 @@ namespace Kokkos {
         // the for loop around panels.  Offsets given.
         for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++) {
           add_background_kokkos_kernel(SIM.sources,
-          SIM.oversample,
+          SIM.oversample, override_source,
           SIM.pixel_size, kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
           extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),

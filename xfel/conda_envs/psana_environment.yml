@@ -43,7 +43,7 @@ dependencies:
  - mpi4py
  - pandas
  - pybind11
- - setuptools<60 # https://github.com/cctbx/cctbx_project/issues/710
+ - setuptools
 
  # cctbx channel
  - libsvm_py

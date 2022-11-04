@@ -225,6 +225,9 @@ refinement.pdb_interpretation.secondary_structure.protein {
 """
 
   master_phil = runtime.master_phil()
+  for phil_object in master_phil.objects:
+    if phil_object.name == 'data_manager':
+      master_phil.objects.remove(phil_object)
   i = interface.index(master_phil=master_phil,
     parse=iotbx.phil.parse)
   t1 = time()

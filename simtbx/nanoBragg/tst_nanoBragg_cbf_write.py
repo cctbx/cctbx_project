@@ -113,10 +113,16 @@ SIM.oversample = oversmaple
 SIM.xtal_shape = shapetype.Gauss
 SIM.add_nanoBragg_spots()
 
+# Take note that the CBF writer and SMV writer handle spot scale differently
+output_scale=1.E9
+SIM.adc_offset_adu=0
+smv_filename = "test_full_100.img"
+SIM.to_smv_format(fileout=smv_filename, intfile_scale=output_scale)
+
 # write the simulation to disk using cbf writer
-cbf_filename = "test_full.cbf"
+cbf_filename = "test_full_100.cbf"
 print("write simulation to disk (%s)" % cbf_filename)
-SIM.to_cbf(cbf_filename)
+SIM.to_cbf(cbf_filename, intfile_scale=output_scale)
 
 # load the CBF from disk
 print("Open file %s using dxtbx" % cbf_filename)
@@ -137,4 +143,9 @@ test_cbf.add_nanoBragg_spots()
 # verify test_cbf and SIM produce the same Bragg spot image
 print("Check the intensities haven't changed, and that  cbf writing preserved geometry")
 assert np.allclose(SIM.raw_pixels.as_numpy_array(), test_cbf.raw_pixels.as_numpy_array())
+
+# verify cbf (double) and smv (int) produce the same image to within an ADU
+loader_smv = dxtbx.load(smv_filename)
+assert np.allclose(loader.get_raw_data().as_numpy_array(), loader_smv.get_raw_data().as_numpy_array(), atol=1.1)
+
 print("OK!")

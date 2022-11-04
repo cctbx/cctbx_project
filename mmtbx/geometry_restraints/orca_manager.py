@@ -131,7 +131,7 @@ class orca_manager(base_qm_manager.base_qm_manager):
     self.times.append(time.time()-t0)
 
   def _input_header(self):
-    standard_options = '''%scf
+    standard_options = '''%scf maxiter=500
 
 SOSCFStart 0.00033 # Default value of orbital gradient is 0.0033. Here reduced by a factor of 10.
 
@@ -175,7 +175,6 @@ end
       if 1:
         freeze_outl += '{C %d C} # Restraining %s\n' % (i, atom.id_str())
         added+=1
-      print(atom.quote(),sel,added)
     freeze_outl += 'end\nend\n'
     if added: outl+=freeze_outl
     assert outl.find('Opt')>-1

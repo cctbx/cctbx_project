@@ -14,7 +14,7 @@ jobs:
 - job: ${{ format('{0}_{1}', format('macOS_{0}', join('_', parameters.vmImage)), format('xcode_{0}', join('_', parameters.xcode_version)) ) }}
   pool:
     vmImage: ${{ format('macOS-{0}', join('.', parameters.vmImage)) }}
-  timeoutInMinutes: 120
+  timeoutInMinutes: 180
   strategy:
     maxParallel: 2
     matrix:
@@ -88,6 +88,7 @@ jobs:
              eq(variables['Build.DefinitionName'], 'CI'),
              eq(variables['Build.DefinitionName'], 'CI branch'),
              eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
              eq(variables['Build.DefinitionName'], 'Full')),
           ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true
@@ -102,6 +103,7 @@ jobs:
              eq(variables['Build.DefinitionName'], 'CI'),
              eq(variables['Build.DefinitionName'], 'CI branch'),
              eq(variables['Build.DefinitionName'], 'XFEL CI'),
+             eq(variables['Build.DefinitionName'], 'XFEL CI branch'),
              eq(variables['Build.DefinitionName'], 'Full')),
           ne(variables['SKIP_CACHED_BUILD'], 'true'))
     continueOnError: true

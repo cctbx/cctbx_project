@@ -20,6 +20,10 @@ def run(pdb_hierarchy,
   select_within_radius. New crystal_symmetry P1 box with dimensions bases on
   box_buffer_layer is also returned for the expanded hierarchy.
   """
+  #
+  def dist(r1,r2):
+    return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
+  #
   if(siiu is None):
     # This is equivalent to (but much faster):
     #
@@ -49,7 +53,7 @@ def run(pdb_hierarchy,
       rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
       rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
       rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-      if str(rt_mx_ji)=="x,y,z": continue
+      #if str(rt_mx_ji)=="x,y,z": continue REF1
       siiu.setdefault(pair.j_seq, []).append(rt_mx_ji)
     for k,v in zip(siiu.keys(), siiu.values()): # remove duplicates!
       siiu[k] = list(set(v))
@@ -76,7 +80,15 @@ def run(pdb_hierarchy,
           new_xyz.append(t3[0])
         rg_.atoms().set_xyz(new_xyz)
         rg_.link_to_previous=True
-        c.append_residue_group(rg_)
+        # REF1: have to do this if comment that line
+        overlap=False
+        for a1 in rg.atoms():
+          for a2 in rg_.atoms():
+            d = dist(a1.xyz, a2.xyz)
+            if(d<0.1): overlap=True
+        # END REF1
+        if(not overlap):
+          c.append_residue_group(rg_)
   resseq = 0
   for rg in c.residue_groups():
     rg.resseq = "%4d" % resseq
@@ -99,9 +111,6 @@ def run(pdb_hierarchy,
   residue_groups_i = list(c.residue_groups())
   residue_groups_j = list(c.residue_groups())
   residue_groups_k = list() # standard aa residues only
-  #
-  def dist(r1,r2):
-    return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
   #
   def grow_chain(residue_groups_j, chunk, ci):
     n_linked = 0
@@ -168,4 +177,5 @@ def run(pdb_hierarchy,
   cs_super_sphere = box.crystal_symmetry()
   return group_args(
     hierarchy        = super_sphere_hierarchy,
-    crystal_symmetry = cs_super_sphere)
+    crystal_symmetry = cs_super_sphere,
+    siiu             = siiu)

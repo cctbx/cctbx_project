@@ -78,6 +78,8 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     rm -rf modules/boost
+    export KOKKOS_ARCH=HSW
+    export KOKKOS_DEVICES=OpenMP
     python bootstrap.py \
       --builder=xfel \
       --use-conda $CONDA_PREFIX \
@@ -87,7 +89,6 @@ steps:
       --config-flags="--use_environment_flags" \
       --config-flags="--enable_cxx11" \
       --config-flags="--no_bin_python" \
-      --config-flags="--enable_kokkos" \
       --no-boost-src \
       build
     if [ "$(OS)" = "linux" ]; then

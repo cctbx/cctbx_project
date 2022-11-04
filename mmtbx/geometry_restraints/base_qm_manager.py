@@ -125,8 +125,13 @@ class base_manager():
       self.basis_set,
       self.solvent_model,
       )
+    residues = []
     for atom in self.atoms:
       outl += '  %s\n' % atom.quote()
+      if atom.parent().id_str() not in residues:
+        residues.append(atom.parent().id_str())
+    outl += '  residues\n'
+    outl += '\n  '.join(residues)
     return outl
 
   def get_charge(self): return self.charge
@@ -213,6 +218,9 @@ class base_qm_manager(base_manager):
         print(lines)
         print('filename',filename)
         print('='*80)
+        for i, (line1, line2) in enumerate(zip(outl.splitlines(),lines.splitlines())):
+          if line1!=line2: print(' ! %s "%s" <> "%s"' % (i+1, line1, line2))
+        print('='*80)
         raise Sorry('something has changed making the QM input files different')
     return outl==lines
 
@@ -225,6 +233,7 @@ class base_qm_manager(base_manager):
               optimise_h=True,
               cleanup=False,
               file_read=True,
+              check_file_read_safe=True,
               coordinate_filename_ext='.xyz',
               log_filename_ext='.log',
               redirect_output=True,
@@ -235,8 +244,11 @@ class base_qm_manager(base_manager):
     #   optimise_ligand=False
 
     coordinates = None
-    if file_read and self.check_file_read_safe(optimise_ligand=optimise_ligand,
-                                               optimise_h=optimise_h):
+    rc=True
+    if check_file_read_safe:
+      rc = self.check_file_read_safe(optimise_ligand=optimise_ligand,
+                                     optimise_h=optimise_h)
+    if file_read and rc:
       filename = self.get_coordinate_filename()
       if os.path.exists(filename):
         lf = self.get_log_filename()

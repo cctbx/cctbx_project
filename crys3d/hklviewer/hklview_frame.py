@@ -63,6 +63,7 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
+    buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
       self.context = zmq.Context()
@@ -381,6 +382,13 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
+  def update_from_philstr(self, philstr):
+    # Convenience function for scripting HKLviewer that mostly superseedes other functions for
+    # scripting such as ExpandAnomalous(True), SetScene(0) etc.
+    new_phil = libtbx.phil.parse(philstr)
+    self.update_settings(new_phil)
+
+
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       oldsceneid = self.params.viewer.scene_id
@@ -422,6 +430,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
+        self.set_scene(phl.viewer.scene_id)
         phl.hkls.sigma_color_radius = False
 
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
@@ -584,6 +593,7 @@ class HKLViewFrame() :
       array = array.customized_copy(data=(array.data() == test_flag_value))
       array.set_info(info)
       array._data = array.data().as_int()
+      self.mprint(array.info().label_string() +  " looks like R-free flags. Mapping to zeros and ones", verbose=1)
     return array
 
 
@@ -741,19 +751,29 @@ class HKLViewFrame() :
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
-    if arrid2 != -1:
-      millarr2 = deepcopy(self.procarrays[arrid2])
-      self.mprint("Creating %s data with array1 as %s and array2 as %s through the operation:\n\n%s" \
-                   %(label, millarr1.info().label_string(), millarr2.info().label_string(), operation))
-      newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
+    try:
+      if arrid2 != -1:
+        millarr2 = deepcopy(self.procarrays[arrid2])
+        self.mprint("Creating %s data with array1 as %s and array2 as %s through the operation:\n\n%s" \
+                     %(label, millarr1.info().label_string(), millarr2.info().label_string(), operation))
+        newarray = self.viewer.OperateOn2MillerArrays(millarr1, millarr2, operation)
+      else:
+        self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
+                     %(label, millarr1.info().label_string(), operation))
+        newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
+
+    if newarray is None:
+       # allow user to quickly amend his broken python code without having to enter a new column label
+      self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
+      # and update_settings() won't bail out with a "No change in PHIL parameters" message
     else:
-      self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
-                   %(label, millarr1.info().label_string(), operation))
-      newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
-    if newarray is not None:
       self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
       newarray._info.labels = [ label ]
+      if isinstance( newarray.sigmas(), flex.double):
+        newarray._info.labels = [ label, "Sig" +label ]
       procarray, procarray_info = self.process_miller_array(newarray)
       self.procarrays.append(procarray)
       self.viewer.proc_arrays = self.procarrays
@@ -765,14 +785,34 @@ class HKLViewFrame() :
       self.viewer.array_info_format_tpl.append( info_fmt )
       # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
       self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
-
+      # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
+      # First create a superset of HKLs existing miller arrays and the new procarray.
       hkls = self.origarrays["HKLs"]
-      nanarr = flex.double(len(hkls), float("nan"))
-      m = miller.match_indices(hkls, procarray.indices() )
-      indices_of_matched_hkls = m.pairs().column(0)
+      m = miller.match_indices(procarray.indices(), hkls )
+      # get subset of indices in hkls matching procarray.indices()
+      indices_of_matched_hkls = m.pairs().column(1)
+      # pad hkls with the indices only present in procarray.indices()
+      hkls.extend(  procarray.indices().select( m.singles(0)) )
+      # hkls is now a superset of indices.
+      # Make temporary data array the size of hkls. This will be filled with datavalues
+      # from procarray matching the order of indices in hkls
+      datarr = flex.double(len(hkls), float("nan"))
+      # assign data values corresponding to matching indices to datarr
+      m = miller.match_indices(procarray.indices(), hkls )
+      # get single indices in hkls matching procarray.indices()
+      indices_of_matched_hkls = m.pairs().column(1)
       for i,e in enumerate(indices_of_matched_hkls):
-        nanarr[e] = procarray.data()[i]
-      self.origarrays[label] = list(nanarr)
+        datarr[e] = procarray.data()[i]
+      # datarr is now a copy of data values in procarray but ordered to match the indices in hkls
+      # join datarr to dictionary so it can be tabulated together with other data sets
+      self.origarrays[newarray._info.labels[0]] = list(datarr)
+      # If we have Sigmas then also store values and label for these in origarrays
+      if isinstance( newarray.sigmas(), flex.double):
+        sigarr = flex.double(len(hkls), float("nan"))
+        for i,e in enumerate(indices_of_matched_hkls):
+          sigarr[e] = procarray.sigmas()[i]
+        self.origarrays[newarray._info.labels[1]] = list(sigarr)
+
       self.arrayinfos.append(arrayinfo)
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
@@ -782,6 +822,8 @@ class HKLViewFrame() :
                 }
       self.SendInfoToGUI(mydict)
       self.validated_preset_buttons = False
+      self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+      self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
     return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
 
 
@@ -910,7 +952,8 @@ class HKLViewFrame() :
                   "file_name": self.params.openfilename
                 }
       self.SendInfoToGUI(mydict)
-    #self.params.openfilename = None
+    self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+    self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
 
 
   def load_reflections_file(self, file_name):
@@ -991,7 +1034,9 @@ class HKLViewFrame() :
           from iotbx import mtz
           mtzobj = mtz.object(file_name)
           nanval = float("nan")
-          self.origarrays["HKLs"] = mtzobj.extract_miller_indices()
+          # deep copy to avoid out of range errors elsewhere if user merges reflections and
+          # we need to extend list of reflections
+          self.origarrays["HKLs"] = mtzobj.extract_miller_indices()[:]
           for mtzlbl in mtzobj.column_labels():
             col = mtzobj.get_column( mtzlbl )
             newarr = col.extract_values_and_selection_valid().values.deep_copy()
@@ -1001,7 +1046,7 @@ class HKLViewFrame() :
             self.origarrays[mtzlbl] = list(newarr)
 
         if len(self.origarrays.items()) == 0:
-          self.origarrays["HKLs"] = arrays[0].indices()
+          self.origarrays["HKLs"] = arrays[0].indices()[:]
           for arr in arrays:
             if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
               if arr.sigmas() == None:
@@ -1296,9 +1341,7 @@ class HKLViewFrame() :
 
   def tabulate_arrays(self, datalabels):
     if len(self.origarrays) == 0: # if not an mtz file then split columns
-      # SupersetMillerArrays may not be necessary if file formats except for cif and mtz can't store multiple data columns
-      #self.viewer.SupersetMillerArrays()
-      self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()
+      self.origarrays["HKLs"] = self.viewer.proc_arrays[0].indices()[:]
       for arr in self.viewer.proc_arrays:
         if arr.is_complex_array():
           ampls, phases = self.viewer.Complex2AmplitudesPhases(arr.data())
@@ -1351,7 +1394,14 @@ class HKLViewFrame() :
         if "crystal_id" in label or "wavelength_id" in label or "scale_group_code" in label:
           continue
         fulllabel = label + crystlbl + wavelbl + scalelbl
-        datalst.append( (label, list(self.origarrays[fulllabel])))
+        pydatlst = list(self.origarrays[fulllabel])
+        # If a merged array has been created by the user pydatlst could be shorter than len(hkls).
+        # pydatlst must have the same size as hkls when received by helpers.MillerArrayTableModel()
+        # If it is not, then pad nan values at the end to make up for it.
+        # Otherwise the tabulated reflection data won't display correctly
+        if len(pydatlst) < len(hkls):
+          pydatlst.extend( [float("nan")]*(len(hkls)-len(pydatlst) ))
+        datalst.append( (label, pydatlst))
     self.idx_data = hkllst + dreslst + datalst
     self.mprint("Sending table data...", verbose=0)
     mydict = { "tabulate_miller_array": self.idx_data }
@@ -1374,7 +1424,7 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ExpandAnomalous(self, va):
+  def ExpandAnomalous(self, val):
     self.params.hkls.expand_anomalous = val
     self.update_settings()
 
@@ -1649,11 +1699,6 @@ class HKLViewFrame() :
     self.update_settings()
 
 
-  def ShowRotationAxes(self, val):
-    self.params.viewer.show_symmetry_rotation_axes = val
-    self.update_settings()
-
-
   def ShowVector(self, val, b=True):
     self.params.viewer.show_vector = [str([val, b])]
     self.update_settings()
@@ -1867,8 +1912,6 @@ master_phil_str = """
     ncolourlabels = 6
       .type = int
       .help = "internal"
-    #show_symmetry_rotation_axes = False
-    #  .type = bool
     show_vector = ''
       .type = str
       .multiple = True
@@ -1929,6 +1972,8 @@ master_phil_str = """
   action = *is_running is_terminating reset_view
     .type = choice
   tabulate_miller_array_ids = "[]"
+    .type = str
+  tooltip_data = "[]"
     .type = str
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)

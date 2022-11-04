@@ -1970,8 +1970,19 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "apply specified Poisson, calibration, flicker and read-out noise to the pixels")
 
       .def("to_smv_format",&nanoBragg::to_smv_format,
-        (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
-        "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
+        (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg_("debug_y")=-1),
+        "write an SMV-format image file to disk from the raw pixel array\n"
+        "intfile_scale: multiplicative factor applied to raw pixels before rounding off to integral pixel values\n"
+        "     intfile_scale > 0 : specify a value for the multiplicative factor\n"
+        "     intfile_scale = 1 : do not apply a factor\n"
+        "     intfile_scale = 0 (default): compute a reasonable scale factor to set max pixel to 55000; same value given by get_intfile_scale()"
+        )
+      .def("get_intfile_scale",&nanoBragg::get_intfile_scale,
+        (arg_("intfile_scale")=0),
+        "expose the intfile_scale multiplier to raw pixels that is normally hidden within the to_smv_format interface.\n"
+        "user can apply the return value to the output pixels using to_smv_format(<value>) or to_cbf(<value>)\n"
+        "     intfile_scale = 0 (default): compute a reasonable scale factor to set max pixel to 55000"
+        )
       .def("raw_pixels_unsigned_short_as_python_bytes",&raw_pixels_unsigned_short_as_python_bytes,
         (arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "get the unsigned short raw pixels as a Python bytes object.  Intfile_scale is applied before rounding off to integral pixel values")

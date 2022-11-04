@@ -52,6 +52,7 @@ void
 add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
   Kokkos::parallel_for("add_arrays", lhs.span(), KOKKOS_LAMBDA(const int& i) {
     lhs( i ) = lhs( i ) + (T)rhs( i );
+    rhs( i ) = 0;
   });
 }
 

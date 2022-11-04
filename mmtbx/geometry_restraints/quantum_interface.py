@@ -48,6 +48,8 @@ def get_qm_restraints_scope(validate=True, verbose=False):
       .type = int
     read_output_to_skip_opt_if_available = False
       .type = bool
+    ignore_input_differences = False
+      .type = bool
     view_output = None
       .type = str
   }
@@ -139,6 +141,8 @@ def get_safe_filename(s):
   s=s.replace(' ','_')
   s=s.replace("'",'_prime_')
   s=s.replace('*','_star_')
+  s=s.replace('(','_lb_')
+  s=s.replace(')','_rb_')
   return s
 
 def get_preamble(macro_cycle, i, qmr, old_style=False):

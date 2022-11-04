@@ -219,10 +219,10 @@ namespace gpu {
   }
 
   void
-  gpu_detector::set_active_pixels_on_GPU(af::shared<int> active_pixel_list_value){
+  gpu_detector::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value){
     active_pixel_list = active_pixel_list_value;
     cudaSafeCall(cudaSetDevice(h_deviceID));
-    int * ptr_active_pixel_list = active_pixel_list.begin();
+    std::size_t * ptr_active_pixel_list = active_pixel_list.begin();
     cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_list, sizeof(*cu_active_pixel_list) * active_pixel_list.size() ));
     cudaSafeCall(cudaMemcpy(cu_active_pixel_list,
                             ptr_active_pixel_list,
@@ -234,16 +234,16 @@ namespace gpu {
   gpu_detector::get_whitelist_raw_pixels(af::shared<std::size_t> selection
   ){
     //return the data array for the multipanel detector case, but only for whitelist pixels
-    af::shared<double> z(active_pixel_list.size(), af::init_functor_null<double>());
+    af::shared<double> z(selection.size(), af::init_functor_null<double>());
     double* begin = z.begin();
     cudaSafeCall(cudaSetDevice(h_deviceID));
     CUDAREAL * cu_active_pixel_results;
     std::size_t * cu_active_pixel_selection;
 
-    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * active_pixel_list.size() ));
-    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * selection.size() ));
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_results, sizeof(*cu_active_pixel_results) * z.size() ));
+    cudaSafeCall(cudaMalloc((void ** )&cu_active_pixel_selection, sizeof(*cu_active_pixel_selection) * z.size() ));
     cudaSafeCall(cudaMemcpy(cu_active_pixel_selection,
-                 selection.begin(), sizeof(*cu_active_pixel_selection) * selection.size(),
+                 selection.begin(), sizeof(*cu_active_pixel_selection) * z.size(),
                  cudaMemcpyHostToDevice));
 
     cudaDeviceProp deviceProps = { 0 };
@@ -251,14 +251,14 @@ namespace gpu {
     int smCount = deviceProps.multiProcessorCount;
     dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
     dim3 numBlocks(smCount * 8, 1);
-    int total_pixels = active_pixel_list.size();
+    int total_pixels = z.size();
     get_active_pixel_selection_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
-      cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, total_pixels);
+      cu_active_pixel_results, cu_active_pixel_selection, cu_accumulate_floatimage, z.size());
 
     cudaSafeCall(cudaMemcpy(
       begin,
       cu_active_pixel_results,
-      sizeof(*cu_active_pixel_results) * active_pixel_list.size(),
+      sizeof(*cu_active_pixel_results) * z.size(),
       cudaMemcpyDeviceToHost));
     cudaSafeCall(cudaFree(cu_active_pixel_selection));
     cudaSafeCall(cudaFree(cu_active_pixel_results));

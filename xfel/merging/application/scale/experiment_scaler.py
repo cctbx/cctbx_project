@@ -126,7 +126,7 @@ class experiment_scaler(worker):
       if len(all_slopes) > 0:
         stats_slope = flex.mean_and_variance(flex.double(all_slopes))
         self.logger.main_log('Average experiment scale factor wrt reference: %f'%(stats_slope.mean()))
-      if len(all_correlations) > 0:
+      if len(all_correlations) > 1:
         stats_correlation = flex.mean_and_variance(flex.double(all_correlations))
         self.logger.main_log('Average experiment correlation with reference: %f +/- %f'%(
             stats_correlation.mean(), stats_correlation.unweighted_sample_standard_deviation()))

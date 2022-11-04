@@ -25,7 +25,7 @@ from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QCombo
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
 
-from .qt import QColor, QFont, QCursor, QDesktopServices
+from .qt import QColor, QFont, QIcon, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
 try: # if invoked by cctbx.python or some such
@@ -497,6 +497,7 @@ newarray._sigmas = sigs
     self.matching_arrays = []
     self.bin_infotpls = None
     self.bin_opacities= None
+    self.nbins = 1
     self.lowerbinvals = []
     self.upperbinvals = []
     self.html_url = None
@@ -512,6 +513,8 @@ newarray._sigmas = sigs
     self.NewHKLscenes = False
     self.binstableitemchanges = False
     self.canexit = False
+    self.filterlst = ["MTZ Files (*.mtz)", "CIF Files (*.cif)", "HKL Files (*.hkl)",
+                      "SCA Files (*.sca)", "All Files (*)"]
     self.ipresetbtn = -1
     self.isfirsttime = False
     self.closing = False
@@ -695,15 +698,22 @@ newarray._sigmas = sigs
     self.onlymissingcheckbox.setChecked(False)
 
 
-
   def onOpenReflectionFile(self):
     options = QFileDialog.Options()
     self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
-            "MTZ Files (*.mtz);;CIF Files (*.cif);;HKL Files (*.hkl);;SCA Files (*.sca);;All Files (*)", "", options)
+            ";;".join(self.filterlst), "", options)
     if self.currentfileName:
       self.setWindowFilenameTitles( self.currentfileName)
       self.send_message('openfilename = "%s"' %self.currentfileName )
+      # Rearrange filters to use the current filter as default for next time we open a file
+      # The default filter is the first one. So promote the one chosen to be first in the list for next time
+      idx = self.filterlst.index(filtr) # find its place in the list of filters
+      self.filterlst.pop(idx ) # remove it from the list
+      # make a new list with it as the first element
+      newfilterlst = [filtr]
+      newfilterlst.extend(self.filterlst)
+      self.filterlst = newfilterlst
 
 
   def onSaveReflectionFile(self):
@@ -975,9 +985,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             # needed for determining if expansion checkbox for P1 and friedel are enabled or disabled
             self.ano_spg_tpls = self.infodict.get("ano_spg_tpls",[])
 
-          if self.infodict.get("current_scene_id", None) is not None:
+          if self.infodict.get("current_labels", None) is not None:
             # needed in case we run xtriage on this miller array
-            self.current_labels = self.array_infotpls[self.infodict.get("current_scene_id")][1][0]
+            self.current_labels = self.infodict.get("current_labels")
 
           if self.infodict.get("colnames_select_lst"):
             self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
@@ -1169,6 +1179,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
 
           if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
+
+          if self.infodict.get("include_tooltip_lst"):
+            self.include_tooltip_lst = self.infodict.get("include_tooltip_lst", [])
 
           if self.infodict.get("clicked_HKL"):
             (h,k,l) = self.infodict.get("clicked_HKL", ( ) )
@@ -2221,6 +2234,35 @@ clip_plane {
                    self.window, triggered=self.testaction)
     myqa.setData(("make_newdata", row ))
     self.millertablemenu.addAction(myqa)
+    if len(self.millertable.selectedrows) ==1:
+      myqa = QAction("Display tooltips for %s" %self.millerarraylabels[row], self.window, triggered=self.testaction)
+      myqa.setCheckable(True)
+      myqa.setChecked(self.include_tooltip_lst[row] )
+      myqa.setData(("tooltip_data", row))
+      self.millertablemenu.addAction(myqa)
+
+    if len(self.millertable.selectedrows) > 1:
+      arraystr = ""
+      labels = []
+      sum = 0
+      for i,row in enumerate(self.millertable.selectedrows):
+        labels.append( self.millerarraylabels[row] )
+        sum += int(self.include_tooltip_lst[row])
+      myqa = QAction("Display tooltips for %s" %  " and ".join(labels),
+                     self.window, triggered=self.testaction)
+      myqa.setCheckable(True)
+      if len(self.millertable.selectedrows) == sum:
+        myqa.setChecked(True )
+      if sum == 0:
+        myqa.setChecked(False )
+      if len(self.millertable.selectedrows) > sum and sum > 0:
+        myqa = QAction(QIcon( os.path.join(os.path.dirname(os.path.abspath(__file__)), "partiallychecked.png")),
+                       "Display tooltips for %s" %  " and ".join(labels),
+                       self.window, triggered=self.testaction)
+        myqa.setCheckable(True)
+
+      myqa.setData(("tooltip_data", self.millertable.selectedrows))
+      self.millertablemenu.addAction(myqa)
 
     if len(self.millertable.selectedrows) > 0:
       arraystr = ""
@@ -2261,6 +2303,18 @@ clip_plane {
         self.makenewdataform.show()
       if strval=="tabulate_data":
         self.send_message('tabulate_miller_array_ids = "%s"' %str(val))
+      if strval=="tooltip_data":
+        if isinstance(val, list): # if we highlighted more rows then toggle tooltips on or off by
+          sum = 0   # taking the opposite of the rounded integer average of the tooltip visibility
+          for row in self.millertable.selectedrows:
+            sum += int(self.include_tooltip_lst[row])
+          bval = bool(round(float(sum)/len(self.millertable.selectedrows)))
+          for row in self.millertable.selectedrows:
+            self.include_tooltip_lst[row] = not bval
+            self.send_message('tooltip_data = "%s"' %str([row, self.include_tooltip_lst[row]]))
+        else: # only rightclicked one row so toggle its tooltip visibility
+          self.include_tooltip_lst[val] = not self.include_tooltip_lst[val]
+          self.send_message('tooltip_data = "%s"' %str([val, self.include_tooltip_lst[val]]))
 
 
   def DisplayData(self, idx, row):

@@ -172,7 +172,9 @@ class amplitudes:
     #f_model.show_summary()
     return f_model
 
-def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
+CPU_GPU_Lookup = dict(add_nanoBragg_spots="CPU", add_nanoBragg_spots_cuda="GPU")
+
+def simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
   Famp = SF_model.get_amplitudes(at_angstrom=BEAM.get_wavelength())
 
   # do the simulation
@@ -182,12 +184,15 @@ def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
   SIM.Amatrix = sqr(CRYSTAL.get_A()).transpose()
   SIM.oversample = 2
   if argchk:
-    print("\nmonochromatic case, CPU argchk")
+    print("\nmonochromatic case,",CPU_GPU_Lookup[bragg_engine.__name__],"argchk")
     SIM.xtal_shape = shapetype.Gauss_argchk
   else:
-    print("\nmonochromatic case, CPU no argchk")
+    print("\nmonochromatic case,",CPU_GPU_Lookup[bragg_engine.__name__],"no argchk")
     SIM.xtal_shape = shapetype.Gauss
-  SIM.add_nanoBragg_spots()
+  bragg_engine(SIM) # appropriate add_nanoBragg_spots, either CPU or GPU
+  domains_per_crystal = 5.E10 # put Bragg spots on larger scale relative to background
+  SIM.raw_pixels*=domains_per_crystal
+  ref_max_bragg = flex.max(SIM.raw_pixels) # get the maximum pixel value for a Bragg spot
 
   SIM.Fbg_vs_stol = water
   SIM.amorphous_sample_thick_mm = 0.02
@@ -198,34 +203,9 @@ def simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
   SIM.exposure_s=1.0 # multiplies flux x exposure
   SIM.progress_meter=False
   SIM.add_background()
-  return SIM
-
-def simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False):
-  Famp = SF_model.get_amplitudes(at_angstrom=BEAM.get_wavelength())
-
-  # do the simulation
-  SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
-  SIM.Ncells_abc = (20,20,20)
-  SIM.Fhkl = Famp
-  SIM.Amatrix = sqr(CRYSTAL.get_A()).transpose()
-  SIM.oversample = 2
-  if argchk:
-    print("\nmonochromatic case, GPU argchk")
-    SIM.xtal_shape = shapetype.Gauss_argchk
-  else:
-    print("\nmonochromatic case, GPU no argchk")
-    SIM.xtal_shape = shapetype.Gauss
-  SIM.add_nanoBragg_spots_cuda()
-
-  SIM.Fbg_vs_stol = water
-  SIM.amorphous_sample_thick_mm = 0.02
-  SIM.amorphous_density_gcm3 = 1
-  SIM.amorphous_molecular_weight_Da = 18
-  SIM.flux=1e12
-  SIM.beamsize_mm=0.003 # square (not user specified)
-  SIM.exposure_s=1.0 # multiplies flux x exposure
-  SIM.progress_meter=False
-  SIM.add_background()
+  ref_mean_with_background = flex.mean(SIM.raw_pixels)
+  print ("Ratio",ref_max_bragg/ref_mean_with_background)
+  assert ref_max_bragg > 10. * ref_mean_with_background # data must be sensible, Bragg >> solvent
   return SIM
 
 if __name__=="__main__":
@@ -242,16 +222,21 @@ if __name__=="__main__":
   assert runmode in ["CPU","GPU"]
 
   # Use case 1.  Simple monochromatic X-rays
-  SIM = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
-  SIM2 = simple_monochromatic_case(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
-  SIM.to_smv_format(fileout="test_full_001.img")
-  SIM.to_cbf("test_full_001.cbf")
+  bragg_engine = nanoBragg.add_nanoBragg_spots
+  SIM = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
+  SIM2 = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
+  output_scale = SIM.get_intfile_scale(intfile_scale=0)
+  #print("The output scale is",output_scale)
+  SIM.adc_offset_adu=0
+  SIM.to_smv_format(fileout="test_full_001.img", intfile_scale=output_scale)
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
+  SIM.to_cbf("test_full_001.cbf", intfile_scale=output_scale)
 
   if runmode=="GPU":
-    SIM3 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
-    SIM3.to_cbf("test_full_003.cbf")
-    SIM4 = simple_monochromatic_case_GPU(BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
+    bragg_engine = nanoBragg.add_nanoBragg_spots_cuda
+    SIM3 = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=False)
+    SIM3.to_cbf("test_full_003.cbf", intfile_scale=output_scale)
+    SIM4 = simple_monochromatic_case(bragg_engine, BEAM, DETECTOR, CRYSTAL, SF_model, argchk=True)
     assert approx_equal(SIM.raw_pixels, SIM3.raw_pixels)
     assert approx_equal(SIM.raw_pixels, SIM4.raw_pixels)
 

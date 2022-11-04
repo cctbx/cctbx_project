@@ -595,6 +595,7 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         qmm,
         cleanup=qmr.cleanup,
         file_read=qmr.package.read_output_to_skip_opt_if_available,
+        check_file_read_safe=not(qmr.package.ignore_input_differences),
         log=log,
         )
       print('  Time for calculation of "%s" using %s %s %s: %s' % (

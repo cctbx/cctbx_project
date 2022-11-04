@@ -14,7 +14,7 @@ from .qt import ( QAbstractItemView, QCheckBox, QTableWidget, QAction, QDoubleSp
       QScrollArea, QVBoxLayout, QHeaderView, QTableWidgetItem, QSizePolicy, QPlainTextEdit,
       QPushButton
      )
-import math, csv
+import math, csv, sys
 from io import StringIO
 
 
@@ -282,10 +282,6 @@ class MillerArrayTableModel(QAbstractTableModel):
     # [[list of H], [list of K], [list of L], [list of millerdata1], [list of millersigmas1], [list of millerdata2]... ]
     # Use zip to transpose it from a list of columns data to matching rows of data values for the table
     self._data = list(zip(*data))
-    # values strictly smaller than minima in case of any NaN present in the columns
-    # used for lambda function when sorting table and encountering NaN values in sorting column
-    if len(data[0]):
-      self.minvals = [ (min(col)-0.1) if type(col[0]).__name__ not in ["str","tuple"] else 1 for col in data ]
     self.columnheaderdata = headerdata
     self.precision = 4
   def rowCount(self, parent=None):
@@ -327,12 +323,13 @@ class MillerArrayTableModel(QAbstractTableModel):
     """Sort table by given column number.
     """
     self.layoutAboutToBeChanged.emit()
+    # when sorting the list list define any possible NaN values as -sys.maxsize so these will come last in the sorted list
     if order == Qt.AscendingOrder:
       #print(self.columnheaderdata[col] + " sort AscendingOrder")
-      self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col])
+      self._data = sorted(self._data, key= lambda data: -sys.maxsize if math.isnan(data[col]) else data[col])
     if order == Qt.DescendingOrder:
       #print(self.columnheaderdata[col] + " sort DescendingOrder")
-      self._data = sorted(self._data, key= lambda data: self.minvals[col] if math.isnan(data[col]) else data[col], reverse=True)
+      self._data = sorted(self._data, key= lambda data: -sys.maxsize if math.isnan(data[col]) else data[col], reverse=True)
     self.layoutChanged.emit()
 
 

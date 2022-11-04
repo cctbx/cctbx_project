@@ -94,9 +94,10 @@ namespace simtbx { namespace gpu {
              "Allocate and transfer input data on the GPU")
         .def("add_energy_channel_from_gpu_amplitudes",
              &simtbx::gpu::exascale_api::add_energy_channel_from_gpu_amplitudes,
+             (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("weight")=1.0),
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spot contributions to the detector's accumulator array")
         .def("add_energy_channel_mask_allpanel",
-             static_cast<void (exascale_api::*)(int const&, gpu_energy_channels&, gpu_detector&, af::shared<int> const) >
+             static_cast<void (exascale_api::*)(int const&, gpu_energy_channels&, gpu_detector&, af::shared<std::size_t> const) >
              (&exascale_api::add_energy_channel_mask_allpanel),
              (arg_("channel_number"), arg_("gpu_amplitudes"), arg_("gpu_detector"), arg_("pixel_active_list_ints")),
              "Point to Fhkl at a new energy channel on the GPU, and accumulate Bragg spots on mask==True pixels\n"

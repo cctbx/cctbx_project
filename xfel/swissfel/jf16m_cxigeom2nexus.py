@@ -38,6 +38,9 @@ phil_scope = parse("""
     .type = float
     .help = If set, add this offset (in eV) to the energy axis in the \
             spectra in the beam file and to the per-shot wavelength.
+  pulse_offset = 0
+    .type = int
+    .help = If set, index into beam pulse_ids with this offset.
   mask_file = None
     .type = str
     .help = Path to file with external bad pixel mask.
@@ -45,6 +48,11 @@ phil_scope = parse("""
     .type = bool
     .help = Whether to split the 4x2 modules into indivdual asics \
             accounting for borders and gaps.
+  include_separate_leaf_transformation = False
+    .type = bool
+    .expert_level = 2
+    .help = Whether to add an extra hierarchy level for the last level. \
+            Generally not needed.
   trusted_range = None
     .type = floats(size=2)
     .help = Set the trusted range
@@ -283,6 +291,7 @@ class jf16m_cxigeom2nexus(object):
         raise Sorry("couldn't find spectral data at the indicated address")
 
       beam_pulse_ids = beam_h5[spectral_data_key+':SPECTRUM_CENTER/pulse_id'][()]
+      beam_pulse_ids += self.params.pulse_offset
       beam_energies = beam_h5[spectral_data_key+':SPECTRUM_CENTER/data'][()]
       energies = np.ndarray((len(data_pulse_ids),), dtype='f8')
       if self.params.recalculate_wavelength:
@@ -294,20 +303,33 @@ class jf16m_cxigeom2nexus(object):
         spectra_y = np.ndarray((len(data_pulse_ids),beam_spectra_y.shape[1]), dtype='f8')
 
       for i, pulse_id in enumerate(data_pulse_ids):
-        where = np.where(beam_pulse_ids==pulse_id)[0][0]
-        if self.params.recalculate_wavelength:
-          assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
-          x = beam_spectra_x[where]
-          y = beam_spectra_y[where].astype(float)
-          ycorr = y - np.percentile(y, 10)
-          e = sum(x*ycorr) / sum(ycorr)
-          energies[i] = e
-          orig_energies[i] = beam_energies[where]
+        try:
+          where = np.where(beam_pulse_ids==pulse_id)[0][0]
+        except IndexError:
+          # No spectrum in file. Add bogus energy to fail in indexing
+          energies[i] = .00001
+          if self.params.recalculate_wavelength:
+            orig_energies[i] = .00001
+          if self.params.include_spectra:
+            spectra_x[i] = np.zeros(beam_spectra_x[0].size)+0.00001
+            spectra_y[i] = np.zeros(beam_spectra_y[0].size)+0.00001
+          print("filling zero spectrum for missing pulse id ", pulse_id)
         else:
-          energies[i] = beam_energies[where]
-        if self.params.include_spectra:
-          spectra_x[i] = beam_spectra_x[where]
-          spectra_y[i] = beam_spectra_y[where]
+          if self.params.recalculate_wavelength:
+            assert self.params.beam_file is not None, "Must provide beam file to recalculate wavelength"
+            x = beam_spectra_x[where]
+            y = beam_spectra_y[where].astype(float)
+            # super basic baseline subtraction
+            ycorr = y - np.percentile(y, 10)
+            # weighted mean
+            e = sum(x*ycorr) / sum(ycorr)
+            energies[i] = e
+            orig_energies[i] = beam_energies[where]
+          else:
+            energies[i] = beam_energies[where]
+          if self.params.include_spectra:
+            spectra_x[i] = beam_spectra_x[where]
+            spectra_y[i] = beam_spectra_y[where]
 
       if self.params.energy_offset:
         energies += self.params.energy_offset
@@ -448,8 +470,12 @@ class jf16m_cxigeom2nexus(object):
                 asic_vector = -offset + (fast * pixel_size * (asic_fast * asic_fast_number + border + (asic_fast_number * gap))) + \
                                         (slow * pixel_size * (asic_slow * asic_slow_number + border + (asic_slow_number * gap)))
 
-              self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
-                                 transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
+              if self.params.include_separate_leaf_transformation:
+                self.create_vector(transformations, a_name, 0.0, depends_on=m_name, equipment='detector', equipment_component='detector_asic',
+                                   transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = asic_vector.elems, offset_units = 'mm')
+                fs_depends_on = transformations.name+'/'+a_name
+              else:
+                fs_depends_on = transformations.name+'/'+m_name
 
               asicmodule = detector.create_group(array_name+'Q%dM%dA%d'%(quad,module_num,asic_num))
               asicmodule.attrs['NX_class'] = 'NXdetector_module'
@@ -462,17 +488,23 @@ class jf16m_cxigeom2nexus(object):
               asicmodule.create_dataset('data_size', (2,), data=[asic_slow - border*2, asic_fast - border*2], dtype='i')
 
               self.create_vector(asicmodule, 'fast_pixel_direction',pixel_size,
-                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
-                                 transformation_type='translation', units='mm', vector=fast.elems, offset=(0. ,0., 0.))
+                                 depends_on=fs_depends_on,
+                                 transformation_type='translation', units='mm', vector=fast.elems,
+                                 offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else asic_vector)
               self.create_vector(asicmodule, 'slow_pixel_direction',pixel_size,
-                                 depends_on=transformations.name+'/AXIS_D0Q%dM%dA%d'%(quad,module_num,asic_num),
-                                 transformation_type='translation', units='mm', vector=slow.elems, offset=(0., 0., 0.))
+                                 depends_on=fs_depends_on,
+                                 transformation_type='translation', units='mm', vector=slow.elems,
+                                 offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else asic_vector)
         else:
           module_vector = self.hierarchy[q_key][m_key]['local_origin'].elems
-          self.create_vector(transformations, m_name, 0.0, depends_on=q_name,
-                             equipment='detector', equipment_component='detector_module',
-                             transformation_type='rotation', units='degrees', vector=(0. ,0., -1.),
-                             offset = module_vector, offset_units = 'mm')
+          if self.params.include_separate_leaf_transformation:
+            self.create_vector(transformations, m_name, 0.0, depends_on=q_name,
+                               equipment='detector', equipment_component='detector_module',
+                               transformation_type='rotation', units='degrees', vector=(0. ,0., -1.),
+                               offset = module_vector, offset_units = 'mm')
+            fs_depends_on = transformations.name+'/'+m_name
+          else:
+            fs_depends_on = transformations.name+'/'+q_name
 
           modulemodule = detector.create_group(array_name+'Q%dM%d'%(quad,module_num))
           modulemodule.attrs['NX_class'] = 'NXdetector_module'
@@ -483,11 +515,13 @@ class jf16m_cxigeom2nexus(object):
           fast = self.hierarchy[q_key][m_key]['local_fast'].elems
           slow = self.hierarchy[q_key][m_key]['local_slow'].elems
           self.create_vector(modulemodule, 'fast_pixel_direction',pixel_size,
-                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
-                             transformation_type='translation', units='mm', vector=fast, offset=(0. ,0., 0.))
+                             depends_on=fs_depends_on,
+                             transformation_type='translation', units='mm', vector=fast,
+                             offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else module_vector)
           self.create_vector(modulemodule, 'slow_pixel_direction',pixel_size,
-                             depends_on=transformations.name+'/AXIS_D0Q%dM%d'%(quad,module_num),
-                             transformation_type='translation', units='mm', vector=slow, offset=(0., 0., 0.))
+                             depends_on=fs_depends_on,
+                             transformation_type='translation', units='mm', vector=slow,
+                             offset=(0.,0.,0.) if self.params.include_separate_leaf_transformation else module_vector)
     f.close()
 
 if __name__ == '__main__':

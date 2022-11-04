@@ -5,6 +5,9 @@
 #include <Eigen/Dense>
 #include<Eigen/StdVector>
 #include<vector>
+#include<unordered_map>
+#include<unordered_set>
+#include <string>
 
 typedef std::vector<double> image_type;
 typedef Eigen::Matrix<double,3,1> VEC3;
@@ -27,6 +30,13 @@ struct timer_variables{
 
 // CONTAINERS
 struct images{
+    image_type Fhkl_hessian;
+    image_type Fhkl_scale;
+    image_type Fhkl_scale_deriv;
+    std::vector<bool> trusted;
+    std::vector<int> freq;
+    image_type residual;
+    image_type variance;
     image_type wavelength; // image for storing mean wavelength of each pixel
     image_type Umat; // umatrix gradients
     image_type Bmat;  // Bmatrix gradients
@@ -71,6 +81,11 @@ struct cuda_flags{
 };
 
 struct flags{
+    bool Fhkl_errors_mode=false;
+    bool track_Fhkl_indices = false;
+    bool Fhkl_have_scale_factors = false;
+    bool using_trusted_mask=false;
+    bool Fhkl_gradient_mode=false;
     bool wavelength_img=false;
     bool track_Fhkl; // for CPU kernel only, track the HKLS evaluated in the inner most loop
     bool printout; // whether to printout debug info for a pixel
@@ -109,6 +124,14 @@ struct flags{
 };
 
 struct crystal{
+    double Friedel_beta = 1e10; // restraint factor for Friedel pairs
+    double Finit_beta = 1e10; // restraint factor for Friedel pairs
+    std::vector<int> pos_inds; // indices of the positive Friedel mate
+    std::vector<int> neg_inds; // indices of the negative Friedel mate
+    double Fhkl_beta=1e10;
+    bool use_geometric_mean=false;
+    std::unordered_set<int> Fhkl_grad_idx_tracker;
+    int num_Fhkl_channels=1;
     int laue_group_num=1;
     int stencil_size=0;
     Eigen::Matrix3d anisoG;
@@ -125,7 +148,13 @@ struct crystal{
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
     double dmin; //res
+    std::vector<double> dspace_bins;
     std::vector<double> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
+    std::vector<double> ASU_dspace, ASU_Fcell;
+    std::vector<int> FhklLinear_ASUid;
+    std::unordered_map<std::string, int> ASUid_map;
+    int Num_ASU;
+    std::string hall_symbol =" P 4nw 2abw";
     std::vector<double> fpfdp; // fprim fdblprime
     std::vector<double> fpfdp_derivs; // fprime fdblprime deriv
     std::vector<double> atom_data; // heavy atom data
@@ -156,6 +185,7 @@ struct crystal{
 
 struct beam{
     Eigen::Vector3d polarization_axis;
+    std::vector<int> Fhkl_channels; // if refining scale factors for wavelength dependent structure factor intensities
     double fluence; // total fluence
     double kahn_factor; // polarization factor
     double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;   // beam vectors, wavelenths, intensities

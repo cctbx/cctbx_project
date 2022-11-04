@@ -15,6 +15,7 @@ import platform
 import sys
 import time
 import zipfile
+import subprocess
 from optparse import OptionParser
 
 if __name__ == '__main__' and __package__ is None:
@@ -644,9 +645,9 @@ Installation of Python packages may fail.
     if extra_options:
       assert isinstance(extra_options, list), 'extra pip options must be passed as a list'
     if download_only:
-      try:
-        import pip
-      except ImportError:
+      pip_version_cmd = ['python', '-c', 'import pip; print(pip.__version__)']
+      pip_version_result = subprocess.run(pip_version_cmd, stdout=subprocess.PIPE)
+      if pip_version_result.returncode != 0:
         print("Skipping download of python package %s %s" % \
               (pkg_info['name'], pkg_info['version']))
         print("Your current python environment does not include 'pip',")
@@ -659,20 +660,15 @@ Installation of Python packages may fail.
              pkg_info=pkg_info['summary'],
              pkg_qualifier=' ' + (package_version or ''))
     if download_only:
-      pip_cmd = filter(None, ['download',
+      pip_cmd = filter(None, [sys.executable, '-m', 'pip', 'download',
                               pkg_info['package'] + pkg_info['version'],
                               '-d', pkg_info['cachedir'], pkg_info['debug']])
       if extra_options:
         pip_cmd.extend(extra_options)
-      if int(pip.__version__.split('.')[0]) > 9:
-        import pip._internal
-        pip_call = pip._internal.main
-        pip_cmd.append('--no-cache-dir')
-      else:
-        pip_call = pip.main
       os.environ['PIP_REQ_TRACKER'] = pkg_info['cachedir']
       print("  Running with pip:", pip_cmd)
-      assert pip_call(pip_cmd) == 0, 'pip download failed'
+
+      assert subprocess.run(pip_cmd).returncode == 0, 'pip download failed'
       return
     if extra_options:
       extra_options = ' '.join(extra_options)

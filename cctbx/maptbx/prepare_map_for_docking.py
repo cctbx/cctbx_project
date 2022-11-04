@@ -972,8 +972,7 @@ def add_ordered_volume_mask(
   assert mmm.map_manager().unit_cell_grid == mmm.map_manager().map_data().all()
 
   # Compute local average of squared density, using a sphere that will cover a
-  # sufficient number of independent points and extending at least 5 A to
-  # sample non-bonded contact distances. A rad_factor of 2 should yield
+  # sufficient number of independent points. A rad_factor of 2 should yield
   # 4*Pi/3 * (2*2)^3 or about 270 independent points for the average; fewer
   # if the higher resolution data barely contribute. Larger values give less
   # noise but lower resolution for producing a mask. A minimum radius of 5

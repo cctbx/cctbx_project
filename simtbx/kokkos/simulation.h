@@ -18,7 +18,8 @@ struct exascale_api {
   void show();
   void add_energy_channel_from_gpu_amplitudes(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
-    simtbx::Kokkos::kokkos_detector &
+    simtbx::Kokkos::kokkos_detector &,
+    double const&
   );
   void add_energy_channel_mask_allpanel(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
@@ -28,15 +29,16 @@ struct exascale_api {
   void add_energy_channel_mask_allpanel(int const&,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &,
-    af::shared<int> const
+    af::shared<std::size_t> const
   );
   void add_energy_multichannel_mask_allpanel(af::shared<int> const,
     simtbx::Kokkos::kokkos_energy_channels &,
     simtbx::Kokkos::kokkos_detector &,
-    af::shared<int> const
+    af::shared<std::size_t> const,
+    af::shared<double> const
   );
 
-  void add_background(simtbx::Kokkos::kokkos_detector &);
+  void add_background(simtbx::Kokkos::kokkos_detector &, int const&);
   void allocate();
   //~exascale_api();
 

@@ -151,6 +151,8 @@ class HKLview_3d:
     self.realspace_scale = 1.0
     self.visual_symHKLs = []
     self.visual_symmxs= []
+    self.visible_hkls = [] # Populated when applying clip planes. To be examined in regression tests
+    self.outsideplane_hkls = []
     self.sceneisdirty = True
     self.imagename = None
     self.imgdatastr = ""
@@ -239,6 +241,7 @@ class HKLview_3d:
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
+    self.include_tooltip_lst = []
     self.mouse_moved = False
     self.HKLsceneKey = None
     self.handshakewait = 5
@@ -332,13 +335,15 @@ class HKLview_3d:
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,
+            #"scene_id",
             "show_missing",
             "show_only_missing",
             "show_systematic_absences",
             "binner_idx",
             "binlabel",
             "nbins",
-        ) and not has_phil_path(diff_phil, "scene_bin_thresholds") :
+        ) and not has_phil_path(diff_phil, "scene_bin_thresholds"):
+      self.binvalsboundaries = []
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
@@ -364,6 +369,10 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "show_hkl"):
       self.show_hkl()
+
+    if has_phil_path(diff_phil, "tooltip_data"):
+      tablerow, binclude = eval(self.params.tooltip_data)
+      self.include_tooltip_lst[tablerow] = binclude
 
     if has_phil_path(diff_phil, "background_colour"):
       self.set_background_colour()
@@ -418,6 +427,14 @@ class HKLview_3d:
       if has_phil_path(diff_phil, "show_all_vectors"):
         self.show_all_vectors()
 
+      if has_phil_path(diff_phil, "normal_vector"):
+        found = False
+        for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
+          if self.params.clip_plane.normal_vector in label:
+            found=True
+        if not found:
+          raise Sorry("No vector present with substring: %s" %self.params.clip_plane.normal_vector)
+
       self.set_volatile_params()
 
     if has_phil_path(diff_phil, "fontsize"):
@@ -471,9 +488,6 @@ class HKLview_3d:
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
           self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
         clipwidth = self.params.clip_plane.clip_width
-        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
-        self.mprint("clip plane distance from origin: %s" %hkldist)
-
         # hklvec is reciprocal vector in reciprocal coordinates.
         # First try and see if they are stored in self.all_vectors[..][5].
         # If not then convert the cartesian representation cartvec of hklvec
@@ -488,6 +502,9 @@ class HKLview_3d:
         # Orient the clip plane perpendicular to real_space_vec while at the
         # same time slide clip plane along the cartvec (reciprocal vector) direction
         # in units of cartvec projected onto real_space_vec
+        self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
+        hkldist = -self.params.clip_plane.hkldist * self.L *self.cosine
+        self.mprint("clip plane distance from origin: %s" %hkldist)
         if self.params.clip_plane.is_assoc_real_space_vector:
           orientvector = real_space_vec
           self.mprint("clip plane perpendicular to realspace vector associated with hkl vector: %s" %str(hklvec), verbose=1)
@@ -665,7 +682,9 @@ class HKLview_3d:
     # resolution and Angstrom character for javascript
     spbufttip += '\\ndres: %s \'+ String.fromCharCode(197) +\'' \
       %str(roundoff(self.miller_array.unit_cell().d(hkl), 2) )
-    for proc_array in self.proc_arrays:
+    for tablerow,proc_array in enumerate(self.proc_arrays):
+      if not self.include_tooltip_lst[tablerow]:
+        continue
       sigvals = []
       datvals = []
       if proc_array.sigmas() is not None:
@@ -892,6 +911,8 @@ class HKLview_3d:
 
 
   def get_label_type_from_scene_id(self, sceneid):
+    if sceneid is None:
+      return None,None
     # Find data label and type for a particular sceneid
     assert sceneid < len(self.hkl_scenes_infos)
     datalabel = self.hkl_scenes_infos[sceneid][3]
@@ -952,12 +973,21 @@ class HKLview_3d:
       bindata, dummy = self.get_matched_binarray(binner_idx)
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
-      # get binvals by dividing bindata_sorted with nbins
+      # Get binvals by dividing bindata_sorted with nbins
+      # This yields approximately the same number of reflections in each bin
       binvals = [bindata_sorted[0]] * (nbins+1) #
       for i,e in enumerate(bindata_sorted):
-        idiv = int((nbins+1)*float(i)/len(bindata_sorted))
+        idiv = int( (nbins+1)*float(i)/len(bindata_sorted))
         binvals[idiv] = e
+      # If this didn't yield enough bins with different binvalues, say a multiplicity dataset
+      # with values between [1;6] but 95% reflections having multiplcity=2 then assign
+      # binvalues equidistantly between [1;6] even if some bins are empty
       nuniquevalues = len(set(list(bindata)))
+      if len(set(binvals)) < nbins:
+        binincr = (max(bindata) - min(bindata))/nbins
+        for i in range(nbins):
+          binvals[i] = i*binincr + min(bindata)
+
     binvals.sort()
     self.mprint("Bin thresholds are:\n" + str(binvals), verbose=1)
     return binvals, nuniquevalues
@@ -1010,22 +1040,16 @@ class HKLview_3d:
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
     scenearraydata = self.HKLscene_from_dict().data
     ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
-    matchindices = miller.match_indices(self.HKLscene_from_dict().indices,
-                                        self.HKLscene_from_dict(ibinarray).indices )
-    matched_binarray = binarraydata.select( matchindices.pairs().column(1) )
-    #valarray.sort(by_value="packed_indices")
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-    #missing = scenearraydata.lone_set( valarray )
-    # insert NAN values for reflections in self.miller_array not found in binarray
-    #valarray = display.ExtendMillerArray(valarray, missing.size(), missing.indices() )
-    #match_valindices = miller.match_indices(scenearray.indices(), valarray.indices() )
-    #match_valarray = valarray.select( match_valindices.pairs().column(1) )
-    #match_valarray.sort(by_value="packed_indices")
-    #match_valarray.set_info(binarraydata.info() )
+    if len(set(self.HKLscene_from_dict(ibinarray).indices)) < self.HKLscene_from_dict(ibinarray).indices.size():
+      raise Sorry("The indices in the array chosen for binning is not unique")
+
+    matchindices = miller.match_multi_indices(self.HKLscene_from_dict(ibinarray).indices,
+                               self.HKLscene_from_dict().indices )
+    matched_binarray = binarraydata.select( matchindices.pairs().column(0) )
     # patch the bin array so its sequence matches the scene array
     patched_binarraydata = []
     c = 0
-    for b in matchindices.pair_selection(0):
+    for b in matchindices.pair_selection(1):
       if b:
         patched_binarraydata.append(matched_binarray[c])
         c +=1
@@ -1250,7 +1274,6 @@ class HKLview_3d:
     self.radii2 = []
     self.spbufttips = []
 
-    self.binvalsboundaries = []
     if not blankscene:
       if bin_labels_type_idx[0] =="Resolution":
         self.binvalsboundaries = self.binvals
@@ -1260,25 +1283,28 @@ class HKLview_3d:
         self.bindata = self.scene.singletonsiness
       else:
         # get upper and lower bounds for the dataset used for binning
-        dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
-        # binvals derived from scene_bin_thresholds must be sorted
-        self.binvals.sort()
-        # if minimum or maximum of binvals are smaller or bigger than lower or
-        # upper bounds then use those values instead
-        vals = self.binvals[:]
-        if self.binvals[0] > self.binvalsboundaries[0]:
-          vals[0] = self.binvalsboundaries[0]
-        if self.binvals[-1] < self.binvalsboundaries[1]:
-          vals[-1] = self.binvalsboundaries[1]
-        self.binvalsboundaries = vals
-        self.binvalsboundaries = list(set(self.binvalsboundaries)) # skip repeated numbers if any
-        self.binvalsboundaries.sort()
         self.bindata = self.MatchBinArrayToSceneArray()
+        if len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0:
+          dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
+          # binvals derived from scene_bin_thresholds must be sorted
+          # if minimum or maximum of binvals are smaller or bigger than lower or
+          # upper bounds then use those values instead
+          self.binvals.sort()
+          vals = self.binvals[:]
+          # ignoring nan values add binvalsboundaries if these are smaller or bigger than values in binvals
+          nonanbinvals = [e for e in self.binvals if not math.isnan(e)]
+          if nonanbinvals[0] > self.binvalsboundaries[0]:
+            vals[0] = self.binvalsboundaries[0]
+          if nonanbinvals[-1] < self.binvalsboundaries[1]:
+            vals[-1] = self.binvalsboundaries[-1]
+          # if nan values are present then sort with nan being the last value
+          vals = list(set( vals)) # no duplicates
+          self.binvalsboundaries = sorted(vals, key= lambda e: sys.maxsize if math.isnan(e) else e)
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
     if self.oldnbinvalsboundaries != self.nbinvalsboundaries and not self.executing_preset_btn:
-      self.params.binning.bin_opacity = [ [1.0, e] for e in range(self.nbinvalsboundaries + 1) ]
+      self.params.binning.bin_opacity = [ [1.0, e] for e in range(self.nbinvalsboundaries ) ]
     self.oldnbinvalsboundaries = self.nbinvalsboundaries
     # Un-binnable data are scene data values where there are no matching reflections in the bin data
     # Put these in a separate bin and be diligent with the book keeping!
@@ -1291,7 +1317,7 @@ class HKLview_3d:
     def data2bin(d, binvalsboundaries, nbinvalsboundaries):
       for ibin, binval in enumerate(binvalsboundaries):
         if math.isnan(d): # NaN values are un-binnable. Tag them for an additional last bin
-          return nbinvalsboundaries
+          return nbinvalsboundaries-1
         if (ibin+1) == nbinvalsboundaries:
           return ibin
         if d > binval and d <= binvalsboundaries[ibin+1]:
@@ -1300,7 +1326,7 @@ class HKLview_3d:
 
     def getprecision(v1,v2):
       diff = abs(v1-v2); precision = 1; e = 1
-      while diff*e < 1.0:
+      while diff*e < 1.0 and diff > 0:
         e *= 10
         precision += 1
       return precision
@@ -1326,8 +1352,13 @@ class HKLview_3d:
       self.bin_infotpls = []
       if self.nuniqueval < self.params.binning.nbins:
         self.mprint("%d bins was requested but %s data has only %d unique value(s)!" %(self.params.binning.nbins, colstr, self.nuniqueval), 0)
-      for ibin in range(self.nbinvalsboundaries):
+      for ibin in range(self.nbinvalsboundaries+1):
+        mstr =""
         nreflsinbin = len(self.radii2[ibin])
+        bin2 = float("nan"); bin1= float("nan") # indicates un-binned data
+        if ibin == self.nbinvalsboundaries:
+          mstr= "bin[%d] has %d reflections with no %s values (assigned to %2.3f)" %(cntbin, nreflsinbin, \
+                  colstr, bin1)
         precision = 3
         if ibin < (self.nbinvalsboundaries-1):
           bin1 = self.binvalsboundaries[ibin]
@@ -1350,10 +1381,16 @@ class HKLview_3d:
           binformatstr = "]%2." + str(precision) + "f; %2." + str(precision) + "f]"
           mstr= "bin[%d] has %d reflections with %s in " %(cntbin, nreflsinbin, colstr)
           mstr += binformatstr %(bin1, bin2)
-          self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
-          self.binstrs.append(mstr)
-          self.mprint(mstr, verbose=1)
-          cntbin += 1
+        if len(self.bin_infotpls) > 0 \
+         and math.isnan(self.bin_infotpls[-1][1]) \
+         and math.isnan(self.bin_infotpls[-1][2])  \
+         and nreflsinbin == 0:
+          continue
+
+        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
+        self.binstrs.append(mstr)
+        self.mprint(mstr, verbose=1)
+        cntbin += 1
 
       if self.params.binning.bin_opacity != None:
         opqlist = self.params.binning.bin_opacity
@@ -1400,8 +1437,6 @@ class HKLview_3d:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
-        if nreflsinbin == 0:
-          continue
         if self.debug:
           self.SetBrowserDebug("true")
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
@@ -1422,7 +1457,7 @@ class HKLview_3d:
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
-                           "current_scene_id": self.params.viewer.scene_id } )
+         "current_labels": self.get_label_type_from_scene_id( self.params.viewer.scene_id)[0] } )
     self.mprint("\nDone rendering reflections ")
 
 
@@ -1536,17 +1571,19 @@ class HKLview_3d:
           if "InFrustum::" not in message:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
-            visiblehkls = []
-            outsideplanehkls = []
+            self.visible_hkls = []
+            self.outsideplane_hkls = []
             for i,hklid in enumerate(hklids):
               hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
-              visiblehkls.append(hkl)
+              self.visible_hkls.append(hkl)
               if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
                self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
-                outsideplanehkls.append(hkl)
-            self.mprint( "visible hkls: " + str(list(set(visiblehkls))), verbose="frustum")
-            if len(outsideplanehkls):
-              self.mprint("hkls not satisfying plane equation: " + str(list(set(outsideplanehkls))))
+                self.outsideplane_hkls.append(hkl)
+            self.visible_hkls = list(set(self.visible_hkls))
+            self.outsideplane_hkls = list(set(self.outsideplane_hkls))
+            self.mprint( "visible hkls: " + str(self.visible_hkls), verbose="frustum")
+            if len(self.outsideplane_hkls):
+              self.mprint("hkls not satisfying plane equation: " + str(self.outsideplane_hkls))
               self.mprint("Consider reducing the clip plane width on the \"Slicing\" tab")
           self.mprint( message, verbose=3)
         elif "notify_cctbx_AfterRendering" in message:
@@ -1997,6 +2034,7 @@ in the space group %s\nwith unit cell %s""" \
           if not isvisible:
             self.params.viewer.show_all_vectors = 0
           return str([i, isvisible])
+    raise Sorry("No vector present with label or index: %s" %val)
 
 
   def show_vectors(self, philvectors, diff_phil):

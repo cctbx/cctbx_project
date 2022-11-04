@@ -10,6 +10,7 @@ bohrang = 0.52918
 def qm_runner(qmm,
               cleanup=True,
               file_read=False,
+              check_file_read_safe=True,
               log=None,
               ):
   def get_func(manager, attr):
@@ -37,6 +38,7 @@ def qm_runner(qmm,
   ligand_xyz, buffer_xyz = func(qmm,
                                 cleanup=cleanup,
                                 file_read=file_read,
+                                check_file_read_safe=check_file_read_safe,
                                 coordinate_filename_ext=coordinate_filename_ext,
                                 log_filename_ext=log_filename_ext,
                                 redirect_output=redirect_output,

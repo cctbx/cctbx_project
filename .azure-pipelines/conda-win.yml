@@ -109,9 +109,14 @@ jobs:
 
   # call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
   - script: |
+      call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
+      if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
+      if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
+      if %errorlevel% neq 0 exit /b %errorlevel%
     displayName: Create conda environment
+    retryCountOnTaskFailure: 3
 
   - script: |
       rmdir /S /Q $(Pipeline.Workspace)\channel
@@ -183,6 +188,7 @@ jobs:
       call libtbx.scons -j 4
     displayName: Configure and Build
     condition: ne(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -215,6 +221,7 @@ jobs:
       call libtbx.scons -j 4
     displayName: Configure and Build (Python 3.10)
     condition: eq(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   # test
   - script: |
@@ -227,6 +234,7 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call .\build\setpaths.bat
+      rmdir /S /Q tests
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
@@ -249,6 +257,7 @@ jobs:
     failOnStderr: false
     displayName: Test
     condition: ne(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -260,6 +269,7 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call .\build\setpaths.bat
+      rmdir /S /Q tests
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
@@ -279,6 +289,7 @@ jobs:
     failOnStderr: false
     displayName: Test (Python 3.10)
     condition: eq(variables['PYTHON_VERSION'], 'py310')
+    retryCountOnTaskFailure: 3
 
   - task: PublishTestResults@2
     condition: succeededOrFailed()

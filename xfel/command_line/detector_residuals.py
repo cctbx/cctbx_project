@@ -25,6 +25,7 @@ from matplotlib.patches import Polygon
 from matplotlib.colors import Normalize
 from matplotlib import cm
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.colors import LogNorm
 import numpy as np
 from libtbx.phil import parse
 import math
@@ -204,6 +205,13 @@ plots {
     .help = For each panel, the radial displacements of each reflection are   \
             histogrammed.  The center is marked with a red line. Asymmetry    \
             indicates a panel not properly aligned in the radial direciton.
+  delta_vs_azimuthal_angle = False
+    .type = bool
+    .help = For each reflection, plot either overall, radial, or transverse   \
+            displacements vs. azimuthal angle, where the angle is between     \
+            (0,1,0), i.e. the vector pointing up in real space, and the XY    \
+            component of the vector from the sample to the observed spot      \
+            centroid. Plot is a 2D histogram on a log scale.
   intensity_vs_radials_2dhist = False
     .type = bool
     .help = 2D histogram of reflection intensities vs radial displacements.   \
@@ -541,7 +549,7 @@ class ResidualsPlotter(object):
         ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.delta_scalar],
                 [panel_center[1],panel_center[1]], 'k-')
       ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='b', s=self.params.dot_size)
-      if self.params.residuals.mcd_filter.enable:
+      if self.params.residuals.mcd_filter.enable and len(reflections)>5:
         ax.scatter(MCD.robust_model_XY.location_[0],
                    MCD.robust_model_XY.location_[1], c='r', s=self.params.dot_size)
       print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
@@ -1095,6 +1103,25 @@ class ResidualsPlotter(object):
       if params.plots.radial_difference_histograms:       self.detector_plot_refls(detector, reflections, r'%sRadial differences'%tag,
                                                                                    show=False, plot_callback=self.plot_radial_difference_histograms)
 
+      if params.plots.delta_vs_azimuthal_angle:
+        # Plot deltas (XY, radial, transverse) vs. azimuthal angle
+        xy = flex.vec3_double(reflections["s1"].parts()[0],
+                              reflections["s1"].parts()[1],
+                              flex.double(len(reflections), 0))
+        angle = xy.angle((0, 1, 0), deg=True)
+        sel = xy.parts()[0] >= 0
+        subset = angle.select(sel)
+        angle.set_selected(sel, 180 + (180 - subset))
+
+        for column_name, caption in zip(["difference_vector_norms", "radial_displacements", "transverse_displacements"],
+                                        ["XY", "radial", "transverse"]):
+          fig = plt.figure()
+          plt.hist2d(angle.as_numpy_array(), reflections[column_name].as_numpy_array() * 1000, bins=180, norm=LogNorm())
+          plt.title("2d histogram of $\Delta$ %s vs azimuthal angle"%caption)
+          plt.xlabel("Azimuthal angle (deg)")
+          plt.ylabel("$\Delta$ %s ($\mu$m)"%caption)
+          plt.colorbar()
+
       if params.plots.intensity_vs_radials_2dhist and 'intensity.sum.value' in reflections:
         # Plot intensity vs. radial_displacement
         fig = plt.figure()
@@ -1157,7 +1184,6 @@ class ResidualsPlotter(object):
 
       if params.plots.deltaPsi_vs_2theta_2dhist:
         # Plot delta psi vs. 2theta
-        from matplotlib.colors import LogNorm
         x = reflections['two_theta_obs'].as_numpy_array()
         y = (reflections['delpsical.rad']*180/math.pi).as_numpy_array()
         fig = plt.figure()

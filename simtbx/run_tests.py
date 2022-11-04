@@ -17,6 +17,7 @@ db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
 db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --cuda"]]
 
 db_tst_list = [
+    ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
@@ -65,20 +66,32 @@ db_tst_list = [
     ]
 
 OPT = libtbx.env.build_options
+tst_list_parallel = []
 
 tst_list = nb_tst_list
 if OPT.enable_cxx11 and sys.platform != 'win32':
     tst_list += db_tst_list+db_tst_list_nonCuda
 
 if OPT.enable_cuda:
-  tst_list_parallel = [
+  tst_list_parallel += [
     ["$D/nanoBragg/tst_gauss_argchk.py","GPU"], # tests CPU+GPU, argchk optimization
-    "$D/gpu/tst_exafel_api.py",                 # CPU / GPU, polychromatic beam, monolithic detector
-    "$D/gpu/tst_gpu_multisource_background.py", # CPU / GPU background comparison
-    "$D/kokkos/tst_kokkos_lib.py",              # GPU in kokkos
+    ["$D/gpu/tst_gpu_multisource_background.py","context=cuda"], # CPU / GPU background comparison
+    ["$D/gpu/tst_exafel_api.py","context=cuda"],# CPU / GPU, polychromatic beam, monolithic detector
+    ["$D/tests/tst_unified.py","context=cuda"],   # GPU, exaFEL full API
+    ["$D/gpu/tst_shoeboxes.py","context=cuda"],   # GPU, test whitelist API
   ]
-  if not OPT.enable_kokkos:
-    tst_list_parallel.pop(-1)    # remove kokkos test if kokkos is not available
+else:
+  tst_list.append(
+    ["$D/nanoBragg/tst_gauss_argchk.py","CPU"], # tests CPU argchk optimization
+  )
+if OPT.enable_kokkos and sys.platform.startswith('linux'):
+   tst_list_parallel += [
+     ["$D/gpu/tst_gpu_multisource_background.py","context=kokkos_gpu"],# CPU / GPU background comparison
+     ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
+     ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
+     ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
+   ]
+if OPT.enable_cuda:
   if OPT.enable_cxx11 and sys.platform != 'win32':
       for tst in db_tst_list:
           if isinstance(tst, str):
@@ -88,15 +101,6 @@ if OPT.enable_cuda:
           tst_list_parallel.append(par_tst)
 
       tst_list_parallel += db_tst_list_onlyCuda
-elif OPT.enable_kokkos and sys.platform.startswith('linux'):
-   tst_list_parallel = [
-     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"], # tests CPU argchk optimization
-     "$D/kokkos/tst_kokkos_lib.py",              # GPU in kokkos
-   ]
-else:
-  tst_list.append(
-    ["$D/nanoBragg/tst_gauss_argchk.py","CPU"]
-  )
 
 def run():
   build_dir = libtbx.env.under_build("simtbx")

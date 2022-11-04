@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.wwpdb import rcsb_web_services
+import requests
 
 def thorough_exercise():
   """
@@ -52,7 +53,7 @@ def exercise():
         'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N'],
     ['1MRU', 'B', 'AGS', 523.247, 'C10 H16 N5 O12 P3 S', 'PHOSPHOTHIOPHOSPHORIC ACID-ADENYLATE ESTER',
         'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N']
-  ]
+  ], ligand_info
 
 def exercise_2():
   fes_binding = rcsb_web_services.chemical_id_search(
@@ -72,6 +73,16 @@ def exercise_2():
 
 if (__name__ == "__main__"):
   # thorough_exercise()
-  exercise()
-  exercise_2()
-  print("OK")
+  # check if internet and rcsb are available
+  exception_occured = False
+  try:
+    r = requests.get('https://search.rcsb.org/')
+  except Exception:
+    print("OK but exception.")
+    exception_occured = True
+  if not exception_occured and r.ok and len(r.text) > 100:
+    exercise()
+    exercise_2()
+    print("OK")
+  else:
+    print("OK but skipped.")

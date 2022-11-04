@@ -45,8 +45,23 @@ def add_histidine_H_atoms(hierarchy):
       ag = _add_HIS_H_atom_to_atom_group(ag, name)
   return ag
 
-def generate_flipping_his(ag, return_hierarchy=False, chain_id=None, resseq=None):
+def assert_histidine_double_protonated(ag):
+  count = 0
+  for atom in ag.atoms():
+    if atom.name.strip() in ['HD1', 'HE2', 'DD1', 'DE2']:
+      count+=1
+  if count not in [1]:
+    raise Sorry('incorrect protonation of %s' % ag.id_str())
+
+def generate_flipping_his(ag,
+                          return_hierarchy=False,
+                          include_unprotonated=False,
+                          chain_id=None,
+                          resseq=None):
   # assume double protonated HIS
+  assert_histidine_double_protonated(ag)
+  booleans = [[1,1], [1,0], [0,1]]
+  if include_unprotonated: booleans = [[1,1], [1,0], [0,1], [0,0]]
   for flip in range(2):
     for i, (hd, he) in enumerate([[1,1], [1,0], [0,1], [0,0]]):
       if i==0 and flip:
@@ -160,6 +175,8 @@ Usage examples:
       .type = atom_selection
       .help = what to select
       .multiple = True
+    format = *phenix_refine quantum_interface
+      .type = choice
     write_qmr_phil = False
       .type = bool
     run_qmr = False
@@ -209,11 +226,11 @@ Usage examples:
     self.data_manager.add_model('ligand', selected_model)
 
     if self.params.qi.write_qmr_phil:
-      self.write_qmr_phil()
+      self.write_qmr_phil(self.params.qi.format)
 
     if self.params.qi.run_qmr:
       self.params.qi.qm_restraints.selection=self.params.qi.selection
-      self.run_qmr()
+      self.run_qmr(self.params.qi.format)
 
     if self.params.qi.iterate_histidine:
       self.iterate_histidine(self.params.qi.iterate_histidine)
@@ -252,7 +269,7 @@ Usage examples:
                         log=log)
       # run clashscore
 
-  def run_qmr(self, log=None):
+  def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
     rc = update_restraints( model,
                             self.params,
@@ -287,6 +304,9 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
+
+    if format=='quantum_inteface':
+      qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
 
     def safe_filename(s):
       s=s.replace('chain ','')

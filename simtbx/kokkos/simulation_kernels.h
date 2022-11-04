@@ -373,7 +373,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     const vector_cudareal_t Fhkl, const hklParams FhklParams,
     int nopolar, const vector_cudareal_t polar_vector,
     CUDAREAL polarization, CUDAREAL fudge,
-    const vector_int_t pixel_lookup,
+    const vector_size_t pixel_lookup,
     vector_float_t floatimage /*out*/, vector_float_t omega_reduction/*out*/,
     vector_float_t max_I_x_reduction/*out*/, vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap) {
 
@@ -629,7 +629,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 //                 float * max_I_y_reduction, bool * rangemap);
 
 
-void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
+void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,
     const vector_cudareal_t  sdet_vector, const vector_cudareal_t  fdet_vector,
@@ -644,17 +644,21 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
     vector_float_t floatimage)
 {
 
-    int oversample=-1, override_source=-1; //override features that usually slow things down,
+    int oversample=-1;                     //override features that usually slow things down,
                                            //like oversampling pixels & multiple sources
     int source_start = 0;
+    CUDAREAL n_source_scale = sources;
     // allow user to override automated oversampling decision at call time with arguments
     if(oversample<=0) oversample = nanoBragg_oversample;
     if(oversample<=0) oversample = 1;
+    bool full_spectrum = true;
     if(override_source>=0) {
         // user-specified source in the argument
         source_start = override_source;
         sources = source_start +1;
+        full_spectrum = false;
     }
+    n_source_scale *= !full_spectrum;
     // make sure we are normalizing with the right number of sub-steps
     int steps = oversample*oversample;
     CUDAREAL subpixel_size = pixel_size/oversample;
@@ -716,7 +720,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         incident[2] = -source_Y(source);
                         incident[3] = -source_Z(source);
                         CUDAREAL lambda = source_lambda(source);
-                        CUDAREAL source_fraction = source_I(source);
+                        CUDAREAL source_fraction = full_spectrum * source_I(source) + n_source_scale;
                         // construct the incident beam unit vector while recovering source distance
                         unitize(incident, incident);
 
@@ -762,7 +766,7 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample,
                         }
 
                         // accumulate unscaled pixel intensity from this
-                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_fraction*capture_fraction;
+                        Ibg += sign*Fbg*Fbg*polar*omega_pixel*capture_fraction*source_fraction;
                     } // end of source loop
                 } // end of detector thickness loop
             } // end of sub-pixel y loop

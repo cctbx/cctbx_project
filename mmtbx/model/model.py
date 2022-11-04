@@ -464,6 +464,7 @@ class manager(object):
       assert cs.space_group() is not None
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
+      cs = self.crystal_symmetry()
     return self._xray_structure
 
   def set_sites_cart(self, sites_cart, selection=None):
@@ -575,10 +576,17 @@ class manager(object):
     '''
 
     # Get a deep copy.  Need to have valid crystal symmetry to do this
+
     cs = self._crystal_symmetry # save original crystal symmetry
+    xrs = self._xray_structure # and xrs
+    self._xray_structure = None
+
     self.add_crystal_symmetry_if_necessary() # so that we can deep_copy
     self_dc = self.deep_copy() # Avoid changing the model itself
+
     self._crystal_symmetry = cs  # Restore original crystal symmetry
+    self._xray_structure = xrs  # Restore original xrs
+
     self_dc._crystal_symmetry = cs # Also restore in copy
 
     # Now work with the copy only
@@ -899,7 +907,7 @@ class manager(object):
     if(self._crystal_symmetry is None \
          or self._crystal_symmetry.unit_cell() is None):
       # Set self._crystal_symmetry.
-      assert self._xray_structure is None # can't have xrs without crystal sym
+      assert self._xray_structure is None  # not present if no crystal_symmetry
       self._crystal_symmetry = crystal_symmetry
 
     # Useable crystal symmetry and same as input
@@ -4118,24 +4126,28 @@ class manager(object):
     if not self._biomt_mtrix_container_is_good(self.biomt_operators):
       return
     # Check if BIOMT and MTRIX are identical and then do not apply BIOMT
-    br = self.biomt_operators.r
-    bt = self.biomt_operators.t
-    mr = self.mtrix_operators.r
-    mt = self.mtrix_operators.t
-    if(len(br)==len(mr) and len(bt)==len(mt)):
-      cntr1=0
-      for bri in br:
-        for mri in mr:
-          if((bri-mri).is_approx_zero(eps=1.e-4)):
-            cntr1+=1
-            break
-      cntr2=0
-      for bti in bt:
-        for mti in mt:
-          if((bti-mti).is_approx_zero(eps=1.e-4)):
-            cntr2+=1
-            break
-      if(cntr1==len(br) and cntr2==len(bt)): return
+    # Only if already expanded with MTRIX.
+    if self.mtrix_expanded():
+      br = self.biomt_operators.r
+      bt = self.biomt_operators.t
+      mr = self.mtrix_operators.r
+      mt = self.mtrix_operators.t
+      if(len(br)==len(mr) and len(bt)==len(mt)):
+        cntr1=0
+        for bri in br:
+          for mri in mr:
+            if((bri-mri).is_approx_zero(eps=1.e-4)):
+              cntr1+=1
+              break
+        cntr2=0
+        for bti in bt:
+          for mti in mt:
+            if((bti-mti).is_approx_zero(eps=1.e-4)):
+              cntr2+=1
+              break
+        if(cntr1==len(br) and cntr2==len(bt)):
+          # print("BIOMT and MTRIX are identical")
+          return
     #
     self._expand_symm_helper(self.biomt_operators)
     self._biomt_expanded = True

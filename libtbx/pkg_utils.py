@@ -8,11 +8,13 @@ import contextlib
 import itertools
 import os
 import sys
+import subprocess
 
 import libtbx.load_env
 
 try:
-  import pip
+  pip_version_cmd = [sys.executable, '-c', 'import pip; print(pip.__version__)']
+  pip_version_str = subprocess.check_output(pip_version_cmd).decode().strip()
   import pkg_resources
 
   # Don't run if pip version < 9.0.0.
@@ -20,35 +22,22 @@ try:
   # But in the interest of not upsetting legacy build systems let's be cautious.
   if not all(symbol in dir(pkg_resources) for symbol in
              ('parse_version', 'require', 'DistributionNotFound', 'VersionConflict')) \
-     or pkg_resources.parse_version(pip.__version__) < pkg_resources.parse_version('9.0.0'):
-    pip = None
+     or pkg_resources.parse_version(pip_version_str) < pkg_resources.parse_version('9.0.0'):
+    use_pip = False
     pkg_resources = None
-  if pip:
-    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('19.3.0'):
-      import pip._internal.main
-      pip_main = pip._internal.main.main
-    elif pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
-      import pip._internal
-      pip_main = pip._internal.main
-    else:
-      pip_main = pip.main
 except ImportError:
-  pip = None
+  use_pip = False
   pkg_resources = None
 
-# Try to find packaging. This is normally(?) installed by setuptools but
-# otherwise pip keeps a copy.
+# Try to find packaging. As of Oct 2022 this should be provided explicitly when
+# the conda env is created. Not safe to import the vendored version from pip;
+# see https://github.com/pypa/setuptools/issues/3297
 try:
   import packaging
   from packaging.requirements import Requirement
 except ImportError:
-  try:
-    import pip._vendor.packaging as packaging
-    from pip._vendor.packaging.requirements import Requirement
-  except ImportError:
-    # If all else fails then we need the symbol to check
-    Requirement = None
-    packaging = None
+  Requirement = None
+  packaging = None
 
 try:
   import setuptools
@@ -77,7 +66,7 @@ def require(pkgname, version=None):
                      eg. '<2', or both, eg. '>=4.5,<4.6'.
      :return: True when the requirement is met, False otherwise.'''
 
-  if not pip:
+  if not use_pip:
     _notice("  WARNING: Can not verify python package requirements - pip/setuptools out of date",
             "  Please update pip and setuptools by running:", "",
             "    libtbx.python -m pip install pip setuptools --upgrade", "",
@@ -157,7 +146,9 @@ def require(pkgname, version=None):
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   has_req_tracker = os.environ.get('PIP_REQ_TRACKER')
-  exit_code = pip_main(['install', requirestring])
+  pip_install_cmd = [sys.executable, '-m', 'pip', 'install', requirestring]
+  pip_install_result = subprocess.run(pip_install_cmd)
+  exit_code = pip_install_result.returncode
   if not has_req_tracker:
     # clean up environment after pip call for next invocation
     os.environ.pop('PIP_REQ_TRACKER', None)

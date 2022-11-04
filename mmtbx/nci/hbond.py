@@ -56,6 +56,7 @@ def make_atom_id(atom, index):
     altloc = atom.parent().altloc)
 
 def get_stats(data):
+  if(data.size()<10): return None
   mean=data.min_max_mean().mean
   sd=data.standard_deviation_of_the_sample()
   assert data.size(), 'no data - may mean no Hydrogen atoms'
@@ -525,10 +526,14 @@ class find(object):
       d_HA   .append(r.d_HA)
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
+    theta_1 = get_stats(theta_1)
+    theta_2 = get_stats(theta_2)
+    d_HA    = get_stats(d_HA)
+    if([theta_1, theta_2, d_HA].count(None)>0): return None
     return group_args(
-      theta_1 = get_stats(theta_1),
-      theta_2 = get_stats(theta_2),
-      d_HA    = get_stats(d_HA),
+      theta_1 = theta_1,
+      theta_2 = theta_2,
+      d_HA    = d_HA,
       n       = len(self.result),
       n_sym   = n_sym,
       bpr     = bpr)

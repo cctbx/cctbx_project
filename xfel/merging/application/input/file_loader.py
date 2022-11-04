@@ -171,7 +171,7 @@ class simple_file_loader(worker):
 
           if refls_sel.count(True) == 0: continue
 
-          if experiment.identifier is None or len(experiment.identifier) == 0:
+          if experiment.identifier is None or len(experiment.identifier) == 0 or self.params.input.override_identifiers:
             experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
 
           if not self.params.input.keep_imagesets:

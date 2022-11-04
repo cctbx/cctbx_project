@@ -59,7 +59,7 @@ __global__ void debranch_maskall_CUDAKernel(int npanels, int spixels, int fpixel
     const CUDAREAL * __restrict__ Fhkl, const hklParams * __restrict__ FhklParams,
     int nopolar, const CUDAREAL * __restrict__ polar_vector,
     CUDAREAL polarization, CUDAREAL fudge,
-    const int * __restrict__ pixel_lookup,
+    const std::size_t * __restrict__ pixel_lookup,
     float * floatimage /*out*/, float * omega_reduction/*out*/,
     float * max_I_x_reduction/*out*/, float * max_I_y_reduction /*out*/, bool * rangemap) {
         __shared__ int s_vec_len;
@@ -339,6 +339,7 @@ __global__ void add_array_CUDAKernel(double * lhs, float * rhs, int array_size){
       pixIdx < total_pixels; pixIdx += stride) {
     const int j = pixIdx; /* position in pixel array */
     lhs[j] = lhs[j] + (double)rhs[j]; // specifically add low precision to high precision array
+    rhs[j] = 0; // reset deepest array for next calculation
     }
   }
 

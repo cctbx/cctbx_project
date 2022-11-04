@@ -7,9 +7,14 @@ parser.add_argument("--readout", type=float, default=0)
 parser.add_argument("--perturb", choices=["G", "Nabc", "detz_shift", "crystal", "eta", "spec"], type=str, nargs="+", default=["crystal"] )
 parser.add_argument("--eta", type=float, nargs=3, default=[.2, .1, .4])
 parser.add_argument("--plot", action="store_true", help="shows the ground truth image")
+parser.add_argument("--typeG", choices=["ranged", "positive"], default="ranged", type=str,  help="shows the ground truth image")
+parser.add_argument("--typeNabc", choices=["ranged", "positive"], default="ranged", type=str,  help="shows the ground truth image")
+parser.add_argument("--cmdlineHopper", action="store_true", help="test the command line program simtbx/command_line/hopper.py")
 args = parser.parse_args()
+name = "hopper_refine_%s" % "-".join(args.perturb)
+import os
+
 if args.cuda:
-    import os
     os.environ["DIFFBRAGG_USE_CUDA"]="1"
 
 from dxtbx.model.crystal import Crystal
@@ -134,15 +139,26 @@ if args.plot:
     plt.imshow(img, vmax=100)
     plt.title("Ground truth image")
     plt.show()
+
+cbf_name = name + ".cbf"
+if args.cmdlineHopper:
+    from IPython import embed
+    embed()
+    SIM.D.to_cbf(cbf_name)
+
 SIM.D.raw_pixels *= 0
 
 P = phil_scope.extract()
 E = Experiment()
 
+GT_spot_scale = SIM.D.spot_scale
 if "G" in args.perturb:
-    P.init.G = SIM.D.spot_scale*10
+    P.init.G = GT_spot_scale*10
 else:
-    P.init.G = SIM.D.spot_scale
+    P.init.G = GT_spot_scale
+
+P.types.G = args.typeG
+P.types.Nabc = args.typeNabc
 
 if "crystal" in args.perturb:
     E.crystal = C2
@@ -195,9 +211,9 @@ P.simulator.init_scale = 1 #SIM.D.spot_scale
 P.simulator.beam.size_mm = SIM.beam.size_mm
 P.simulator.total_flux = SIM.D.flux
 P.use_restraints = False
-name = "hopper_refine_%s.mtz" % "-".join(args.perturb) # TODO interface for passing this directly to hopper_utils.refine
-SIM.crystal.miller_array.as_mtz_dataset(column_root_label="F").mtz_object().write(name)
-P.simulator.structure_factors.mtz_name = name
+mtz_name = name +".mtz"
+SIM.crystal.miller_array.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_name)
+P.simulator.structure_factors.mtz_name = mtz_name
 P.simulator.structure_factors.mtz_column = "F(+),F(-)"
 P.niter = 0
 P.logging.parameters=True
@@ -222,10 +238,37 @@ if "spec" in args.perturb:
     spec = "tst_hopper_refine_spec.lam"
     wave, wt = map(np.array, zip(*perturbed_spec))
     utils.save_spectra_file(spec, wave, wt)
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
 
-G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod.SIM)
-eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod.SIM)
+if args.cmdlineHopper:
+    from dxtbx.model import ExperimentList
+    el_name = "%s.expt" % name
+    import_cmd = "dials.import %s output.experiments=%s" % (cbf_name, el_name)
+    os.system(import_cmd)
+    # add the crystal to the imported expt
+    El = ExperimentList.from_file(el_name)
+    El[0].crystal = E.crystal
+    refl_name = "%s.refl" % name
+    El.as_file(el_name)
+    refls.as_file(refl_name)
+    hopper_input_lst = "%s.lst" % name
+    with open(hopper_input_lst, "w") as o:
+        o.write("%s %s\n" % (os.path.abspath(el_name), os.path.abspath(refl_name)))
+
+    # save the above modified phil params to a file to be read in by hopper
+    phil_file = name+ ".phil"
+    modified_phil = phil_scope.format(python_object=P)
+    with open(phil_file, 'w') as o:
+        modified_phil.show(o)
+    outdir = name + ".outdir"
+    cmd = "hopper %s exp_ref_spec_file=%s outdir=%s logging.rank0_level=high" % (phil_file, hopper_input_lst, outdir)
+    os.system(cmd)
+    # TODO open the pandas output file and optimized expt in outdir and verify the optimized parameters are similar to ground
+    exit()
+
+Eopt,_, Mod, SIM_used_by_hopper, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
+
+G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod)
+eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod, SIM_used_by_hopper)
 
 print("Na, Nb, Nc= %f %f %f" % (Na, Nb, Nc))
 print("eta_abc optimized:", eta_abc_opt)
@@ -241,11 +284,11 @@ else:
     assert misset < 0.005, misset
 
 # check mosaic domain
-assert all (np.subtract(NCELLS_GT, [Na,Nb,Nc]) < 0.2), "%d, %d, %d" % (Na,Nb,Nb)
+assert all(np.subtract(NCELLS_GT, [Na,Nb,Nc]) < 0.2), "%d, %d, %d" % (Na,Nb,Nb)
 
 # check spot scale
-perc_diff_G = abs(SIM.D.spot_scale - G)/ SIM.D.spot_scale * 100
-print("spot scale gt: %f; spot scale opt: %f; percent diff: %f %%" % (SIM.D.spot_scale, G, perc_diff_G))
+perc_diff_G = abs(GT_spot_scale - G)/ GT_spot_scale * 100
+print("spot scale gt: %f; spot scale opt: %f; percent diff: %f %%" % (GT_spot_scale, G, perc_diff_G))
 max_Gperc = 1
 if "eta" in args.perturb:
     max_Gperc = 2
@@ -275,8 +318,8 @@ if "eta" in args.perturb:
 print("OK")
 
 if "spec" in args.perturb:
-    p0 = Mod.SIM.P["lambda_offset"]
-    p1 = Mod.SIM.P["lambda_scale"]
+    p0 = Mod.P["lambda_offset"]
+    p1 = Mod.P["lambda_scale"]
     coef = p0.get_val(x[p0.xpos]), p1.get_val(x[p1.xpos])
     waves_refined = coef[0] + coef[1] * waves_perturbed
     fluxsum = sum(fluxes_gt)

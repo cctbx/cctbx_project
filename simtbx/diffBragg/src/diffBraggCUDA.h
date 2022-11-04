@@ -96,6 +96,20 @@ struct diffBragg_cudaPointers {
   bool* cu_refine_panel_origin;
   bool* cu_refine_panel_rot;
 
+  bool Fhkl_gradient_mode, using_trusted_mask, Fhkl_channels_empty, Fhkl_have_scale_factors;
+  // these are copied once at first iteration
+  bool Fhkl_grad_arrays_allocated=false;
+  CUDAREAL*  data_residual=NULL; // length is number of modeled pixels
+  CUDAREAL* data_variance=NULL; // length is number of modeled pixels
+  int* data_freq=NULL; // length is number of modeled pixels
+  bool*  data_trusted=NULL; // length is number of modeled pixels
+  int* FhklLinear_ASUid=NULL; // length is number of ASU in FhklLinear
+  CUDAREAL* Fhkl_channels=NULL;
+  // Fhkl_scale is dynamically copied each iteration
+  // Fhkl_scale_deriv is set to 0 each iteration
+  CUDAREAL* Fhkl_scale=NULL;  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
+  CUDAREAL* Fhkl_scale_deriv=NULL; // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
+
 };
 
 void diffBragg_sum_over_steps_cuda(

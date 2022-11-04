@@ -8,6 +8,8 @@ import copy
 from dials.array_family import flex
 from cctbx import uctbx
 from scitbx.math import five_number_summary
+from cctbx.crystal import symmetry
+import cctbx.miller
 
 class Spotfinder_radial_average:
 
@@ -114,15 +116,19 @@ class Spotfinder_radial_average:
     d_min_inv = 1/params.d_min
     xvalues = np.linspace(d_max_inv, d_min_inv, params.n_bins)
     fig, ax = plt.subplots()
+
+    ps_maxes = [max(ps) for ps in self.panelsums]
+    ps_max = max(ps_maxes)
+
     if params.split_panels:
-      maxes = [max(ps) for ps in self.panelsums]
-      offset = 0.5*max(maxes)
+      offset = 0.5*ps_max
       for i_sums, sums in enumerate(self.panelsums):
         yvalues = np.array(sums)
         plt.plot(xvalues, yvalues+0.5*i_sums*offset)
     else:
       yvalues = sum(self.panelsums)
       plt.plot(xvalues, yvalues)
+    ax.set_xlim(d_max_inv, d_min_inv)
     ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
       lambda x, _: "{:.3f}".format(1/x)))
 
@@ -131,7 +137,23 @@ class Spotfinder_radial_average:
         for x,y in zip(xvalues, yvalues):
           f.write("{:.6f}\t{}\n".format(1/x, y))
 
-    if params.output.peak_file:
+    # Now plot the predicted peak positions if requested
+    if params.unit_cell or params.space_group:
+      assert params.unit_cell and params.space_group
+      sym = symmetry(
+          unit_cell=params.unit_cell, space_group=params.space_group.group()
+      )
+      hkl_list = cctbx.miller.build_set(sym, False, d_min=params.d_min)
+      dspacings = params.unit_cell.d(hkl_list.indices())
+      dspacings_inv = 1/dspacings
+      pplot_min = -.05*ps_max
+      for d in dspacings_inv:
+        plt.plot((d,d),(pplot_min,0), 'r-', linewidth=1)
+
+    if params.output.plot_file:
+      plt.savefig(params.output.plot_file)
+
+    if params.plot.interactive and params.output.peak_file:
       backend_list = ["TkAgg","QtAgg"]
       assert (plt.get_backend() in backend_list), """Matplotlib backend not compatible with interactive peak picking.
 You can set the MPLBACKEND environment varibale to change this.
@@ -164,7 +186,7 @@ Currently supported options: %s""" %backend_list
 
         plt.show()
 
-    else:
+    elif params.plot.interactive:
       plt.show()
 
 
@@ -225,7 +247,7 @@ class Center_scan:
       print(f'width {result:.5f} from {sel.count(True)} dvals')
       return result
 
-  def search_step(self, step_px, nsteps=5, update=True):
+  def search_step(self, step_px, nsteps=3, update=True):
     step_size_mm = np.array(self.px_size + (0.,)) * step_px
     assert nsteps%2 == 1, "nsteps should be odd"
     step_min = -1 * (nsteps // 2)
@@ -242,7 +264,8 @@ class Center_scan:
 
     results = []
     self.update_dvals()
-    print(f'start: {self.width():.5f}')
+    width_start = self.width()
+    print(f'start: {width_start:.5f}')
 
     for step_mm in steps_mm:
       new_origin = step_mm + origin
@@ -251,7 +274,8 @@ class Center_scan:
       result = self.width()
       results.append(result)
 
-    i_best = results.index(min(results))
+    width_end = min(results)
+    i_best = results.index(width_end)
     origin_shift = steps_mm[i_best]
     if update:
       new_origin = origin + origin_shift
@@ -260,5 +284,6 @@ class Center_scan:
       new_origin = origin
     hierarchy.set_local_frame(fast, slow, new_origin)
     print(f'step: {origin_shift}')
-    print(f'end: {min(results):.5f}')
+    print(f'end: {width_end:.5f}')
     print(f'net shift: {self.net_origin_shift}')
+    return width_start, width_end, self.net_origin_shift
