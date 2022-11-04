@@ -2818,7 +2818,7 @@ def run(isembedded=False, chimeraxsession=None):
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
-    # For regressi0n testing close us after a specified time
+    # For regression tests close us after a specified time
     if closingtime:
       QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
 
