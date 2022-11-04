@@ -1433,6 +1433,10 @@ class HKLview_3d:
     self.mprint(".", end="")
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
+      # if sempahore is not available then we failed to connect to a browser. Critical error!
+      if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
+        raise Sorry("Failed connecting to a web browser!")
+      self.hkls_drawn_sem.release()
     if not blankscene:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
@@ -1711,6 +1715,8 @@ Distance: %s
   def OpenBrowser(self):
     if self.params.viewer.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
+      # don't block in case we're called again and first time failed conecting to a browser
+      self.hkls_drawn_sem.acquire(blocking = False)
       with open(self.hklfname, "w") as f:
         f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
@@ -1727,7 +1733,7 @@ Distance: %s
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
       self.WBmessenger.browserisopen = True
-      #self.isnewfile = False
+      self.hkls_drawn_sem.release() # only release if we succeeded
       return True
     return False
 
