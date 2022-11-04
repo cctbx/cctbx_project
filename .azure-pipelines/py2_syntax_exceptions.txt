@@ -5,3 +5,5 @@ xfel/euxfel/agipd_cxigeom2nexus.py
 xfel/euxfel/read_geom.py
 xfel/ui/db/cfgs/shifter_templates.py
 xfel/small_cell/powder_util.py
+xfel/ui/job.py
+xfel/command_line/cxi_mpi_submit.py
