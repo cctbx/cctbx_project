@@ -31,7 +31,7 @@ file_name = libtbx.env.find_in_repositories(
   test=os.path.isfile)
 
 # These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections 
-# have been sliced with a clip plane at  k= -9
+# have been sliced with a clip plane at k= -9
 reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1), (4, -9, -2), 
   (4, -9, -1), (1, -9, -2), (-1, -9, -4), (1, -9, -3), (-1, -9, -3), (-2, -9, -3), (1, -9, -4), 
   (-1, -9, -1), (-1, -9, -2), (-2, -9, -1), (-2, -9, -2), (0, -9, 4), (1, -9, 4), (2, -9, -4),
@@ -88,7 +88,7 @@ def exercise2():
   assert set(refls) == reflections2match
   # tidy up
   os.remove("philinput.txt")
-  os.remove("myoutput.log")
+  #os.remove("myoutput.log")
 
 
 def run():
