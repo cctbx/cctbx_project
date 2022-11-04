@@ -172,11 +172,12 @@ class PopUpCharts(object):
     #print "Rejecting", outliers.count(True), "out of", len(outliers)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None, hist_scale=None):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None, hist_scale=None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
     of cells to be plotted in the same graph, where each dictionary describes one cell.
+    @param extra_title if given will be appended to the title of the plot
     @param xsize if class initialized with not interacive, this is the x size of the
     plot to save in inches
     @param ysize as xsize
@@ -338,7 +339,9 @@ class PopUpCharts(object):
 
     gsp.update(wspace=0)
     title = "Unit cell distribution" if title is None else title
-    fig.suptitle(title + " (%d xtals)" % total)
+    title += " (%d xtals)" % total
+    title += " %s" % extra_title if extra_title else ""
+    fig.suptitle(title)
 
     if not self.interactive:
       image_fname = image_fname or "ucell_tmp.png"
