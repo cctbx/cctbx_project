@@ -14,6 +14,7 @@ import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
 from xfel.ui.db.task import task_types
+import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
 
@@ -1411,24 +1412,11 @@ class AveragingDialog(BaseDialog):
         template_rungroup_id = all_rungroups[np.argmin(distance)].rungroup_id
         self.template_rungroup = run.app.get_rungroup(rungroup_id=template_rungroup_id)
     else:
-      # If this run has been include in any rungroups - use that
-      self.template_rungroup = run_rungroups[0]
-
-    self.trial_num = run.app.get_all_trials()[-1].trial + 1
+      # If this run has been included in any rungroups - use that
+      self.template_rungroup = run_rungroups[-1]
 
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
-
-    # Raw image option
-    self.raw_toggle = gctr.RadioCtrl(self,
-                                     label='',
-                                     label_style='normal',
-                                     label_size=(-1, -1),
-                                     direction='horizontal',
-                                     items={'corrected':'corrected',
-                                            'raw':'raw'})
-    self.raw_toggle.corrected.SetValue(1)
-    self.main_sizer.Add(self.raw_toggle, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image Average Options
     self.skip_images = gctr.SpinCtrl(self,
@@ -1462,22 +1450,6 @@ class AveragingDialog(BaseDialog):
     self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyImages, self.num_images_type.specify)
     self.num_images.Disable()
 
-    # Data locator stuff for LCLS
-    if self.params.facility.name == 'lcls':
-      if self.template_rungroup is None:
-        default_address = None
-      else:
-        default_address = self.template_rungroup.detector_address
-      self.address = gctr.TextButtonCtrl(self,
-                                         name='rg_address',
-                                         label='Detector Address:',
-                                         label_style='bold',
-                                         label_size=(100, -1),
-                                         value=default_address)
-      self.main_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
-    else:
-      self.address = None
-
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
@@ -1490,8 +1462,10 @@ class AveragingDialog(BaseDialog):
     self.num_images.Enable()
 
   def onOK(self, e):
-    from xfel.ui.components.averaging import AveragingCommand
-    raw = self.raw_toggle.raw.GetValue() == 1
+    if self.template_rungroup is None:
+      wx.MessageBox('Add this run to a rungroup in the Trials tab first!', 'Warning', wx.ICON_EXCLAMATION)
+      return
+
     skip_images = self.skip_images.ctr.GetValue()
     if self.num_images_type.all.GetValue():
       num_images = 0
@@ -1499,13 +1473,15 @@ class AveragingDialog(BaseDialog):
       num_images = self.num_images.ctr.GetValue()
     if num_images == 1:
       print("Average Aborted.\nNeed more than one image to average.")
-      return None
+      return
     else:
-      if self.params.facility.name == 'lcls':
-        address = self.address.ctr.GetValue()
-      else:
-        address = None
-      AveragingCommand(self.run, self.params, self.trial_num, skip_images, num_images, address, raw)
+      from xfel.ui.db.job import AveragingJob
+      job = AveragingJob(self.run.app)
+      job.run = self.run
+      job.rungroup = self.template_rungroup
+      job.skip_images = skip_images
+      job.num_images = num_images
+      job.submit()
       self.Destroy()
 
 class TrialTagSelectionDialog(BaseDialog):
