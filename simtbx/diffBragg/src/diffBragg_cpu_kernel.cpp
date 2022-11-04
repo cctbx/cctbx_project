@@ -3,9 +3,291 @@
 #include <assert.h>
 #include <stdbool.h>
 #include<unordered_map>
+#include<unordered_set>
 #include<string>
 
+#if defined(_OPENMP)
+    #include<omp.h>
+#endif
+
 namespace simtbx { namespace nanoBragg { // BEGIN namespace simtbx::nanoBragg
+
+
+double diffBragg_cpu_kernel_polarization (Eigen::Vector3d incident, Eigen::Vector3d diffracted,
+                                        Eigen::Vector3d polarization_axis, double kahn_factor){
+    // component of diffracted unit vector along incident beam unit vector
+    double cos2theta = incident.dot(diffracted);
+    double cos2theta_sqr = cos2theta*cos2theta;
+    double sin2theta_sqr = 1-cos2theta_sqr;
+
+    double psi=0;
+    if(kahn_factor != 0.0){
+        // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+        Eigen::Vector3d B_in = polarization_axis.cross(incident);
+        // cross product with incident beam to get E-vector direction
+        Eigen::Vector3d E_in = incident.cross(B_in);
+        // get components of diffracted ray projected onto the E-B plane
+        double kEi = diffracted.dot(E_in);
+        double kBi = diffracted.dot(B_in);
+        // compute the angle of the diffracted ray projected onto the incident E-B plane
+        psi = -atan2(kBi,kEi);
+    }
+    // correction for polarized incident beam
+    double polar = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*psi)*sin2theta_sqr);
+    return polar;
+}
+
+int get_bin(std::vector<double> dspace_bins,  double dspace_sample){
+//  use binary search to find bin corresponding to dspace_sample as dspace_bins are unevenly sized
+    int start = 0;
+    int end = dspace_bins.size() - 1;
+    while (start <= end) {
+        int mid = (start + end) / 2;
+        if (dspace_bins[mid] == dspace_sample)
+            return mid;
+        else if (dspace_bins[mid] < dspace_sample)
+            start = mid + 1;
+        else
+            end = mid - 1;
+    }
+    return end + 1;
+}
+
+std::vector<double> I_cell_ave(crystal& db_cryst, bool use_Fhkl_scale, int i_channel,
+            std::vector<double>& Fhkl_scale){
+    std::vector<double> ave;
+    std::vector<double> count;
+    for (int i=0; i < db_cryst.dspace_bins.size(); i++){
+        ave.push_back(0);
+        count.push_back(0);
+    }
+    #pragma omp parallel for
+    for (int i=0; i < db_cryst.ASU_dspace.size(); i++){
+        double d = db_cryst.ASU_dspace[i];
+        double F_cell = db_cryst.ASU_Fcell[i];
+        if (F_cell==0){
+            continue;
+        }
+        int bin = get_bin(db_cryst.dspace_bins, d);
+        if (bin == 0 || bin >= db_cryst.dspace_bins.size() )
+            continue;
+        double scale = 1;
+        if (use_Fhkl_scale)
+            scale = Fhkl_scale[i + db_cryst.Num_ASU*i_channel];
+
+        double summand=scale*F_cell*F_cell;
+        if (db_cryst.use_geometric_mean)
+            summand = log(summand);
+        #pragma omp atomic
+        ave[bin] += summand;
+        #pragma omp atomic
+        count[bin] ++;
+    }
+    for (int i=0; i <ave.size(); i++){
+        if (count[i]>0){
+            if (db_cryst.use_geometric_mean)
+                ave[i] = exp(ave[i]/count[i]);
+            else
+                ave[i] = ave[i]/count[i];
+        }
+    }
+    for (int i=0; i < count.size(); i++)
+        ave.push_back(count[i]);
+    return ave;
+}
+
+void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+    std::vector<double> ave, count;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave.push_back(ave_and_count[i]);
+        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+    }
+
+    ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+    std::vector<double> ave_init;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave_init.push_back(ave_and_count[i]);
+    }
+
+
+    #pragma omp parallel for
+    for (int i=0; i < db_cryst.Num_ASU; i++){
+        double dsp = db_cryst.ASU_dspace[i];
+        int bin = get_bin(db_cryst.dspace_bins, dsp);
+        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+            continue;
+        if(count[bin]==0) continue;
+
+        double F_cell = db_cryst.ASU_Fcell[i];
+        int idx = i_chan*db_cryst.Num_ASU + i;
+        double scale_hkl = Fhkl_scale[idx];
+        double I_cell_init = F_cell*F_cell;
+        double I_cell = scale_hkl * I_cell_init;
+        double U = ave[bin] - ave_init[bin];
+        double grad_term;
+        if (db_cryst.use_geometric_mean){
+            double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+            grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+        }
+        else {
+            grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+        }
+        #pragma omp atomic
+        out[i] += grad_term;
+    }
+
+    double ftarget=0;
+    for (int i=0; i < ave.size(); i++){
+        double U = (ave[i] - ave_init[i]);
+        ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
+    }
+
+    out[db_cryst.Num_ASU] = ftarget; // this is an addition to the target function for this particular restraint, added on for convenience
+}
+
+
+//void Ih_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+//    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+//    std::vector<double> ave, count;
+//    for (int i=0; i < ave_and_count.size()/2; i++){
+//        ave.push_back(ave_and_count[i]);
+//        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+//    }
+//
+//    //ave_and_count = I_cell_ave(db_cryst, false, i_chan, Fhkl_scale);
+//    //std::vector<double> ave_init;
+//    //for (int i=0; i < ave_and_count.size()/2; i++){
+//    //    ave_init.push_back(ave_and_count[i]);
+//    //}
+//
+//    #pragma omp parallel for
+//    for (int i=0; i < db_cryst.Num_ASU; i++){
+//        double dsp = db_cryst.ASU_dspace[i];
+//        int bin = get_bin(db_cryst.dspace_bins, dsp);
+//        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+//            continue;
+//        if(count[bin]==0) continue;
+//
+//        double F_cell = db_cryst.ASU_Fcell[i];
+//        int idx = i_chan*db_cryst.Num_ASU + i;
+//        double scale_hkl = Fhkl_scale[idx];
+//        double I_cell_init = F_cell*F_cell;
+//        double I_cell = scale_hkl * I_cell_init;
+//
+//        double U;
+//        if (bin==1){
+//            U = ave[bin] - ave[bin+1];
+//        }
+//        else if (bin==db_cryst.dspace_bins.size()-1) {
+//            U = ave[bin] - ave[bin-1];
+//        }
+//        else {
+//            U = 2*ave[bin] - ave[bin+1] - ave[bin-1];
+//        }
+//        double grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+//
+//        //if (db_cryst.use_geometric_mean){
+//        //    double grad_term_right = 1/count[bin] * ave[bin] / scale_hkl;
+//        //    grad_term = U/db_cryst.Fhkl_beta *  grad_term_right;
+//        //}
+//        //else {
+//        //    grad_term = U/db_cryst.Fhkl_beta * I_cell_init/count[bin];
+//        //}
+//
+//        #pragma omp atomic
+//        out[i] += grad_term;
+//    }
+//
+//    double ftarget=0;
+//    for (int i=1; i < ave.size()-1; i++){
+//        double U = (ave[i] - ave[i+1]);
+//        ftarget += 0.5*( log(2*M_PI*db_cryst.Fhkl_beta) + U*U/db_cryst.Fhkl_beta);
+//    }
+//
+//    out[db_cryst.Num_ASU] = ftarget;
+//}
+
+void Finit_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+
+    std::vector<double> ave_and_count = I_cell_ave(db_cryst, true, i_chan, Fhkl_scale);
+    std::vector<double> ave, count;
+    for (int i=0; i < ave_and_count.size()/2; i++){
+        ave.push_back(ave_and_count[i]);
+        count.push_back(ave_and_count[i+ave_and_count.size()/2]);
+    }
+
+    double ftarget=0;
+    #pragma omp parallel for reduction(+:ftarget)
+    for (int i=0; i < db_cryst.Num_ASU; i++){
+        double dsp = db_cryst.ASU_dspace[i];
+        int bin = get_bin(db_cryst.dspace_bins, dsp);
+        if (bin==0 || bin>=db_cryst.dspace_bins.size())
+            continue;
+        double N = count[bin];
+        if(N==0) continue;
+        double F_cell = db_cryst.ASU_Fcell[i];
+        double I_cell_init = F_cell*F_cell;
+
+        int idx = i_chan*db_cryst.Num_ASU + i;
+        double scale_hkl = Fhkl_scale[idx];
+        double I_cell_current = scale_hkl * I_cell_init;
+
+        double I_ave = ave[bin];
+        double U = (I_cell_current - I_cell_init) / I_ave;
+
+        ftarget += U*U/2/db_cryst.Finit_beta;
+        double grad_term = U/db_cryst.Finit_beta * I_cell_init/I_ave *(1-U/N);
+        #pragma omp atomic
+        out[i] += grad_term;
+    }
+    out[db_cryst.Num_ASU] = ftarget;
+}
+
+void Friedel_grad_terms(crystal& db_cryst, int i_chan, std::vector<double>& Fhkl_scale, std::vector<double>& out){
+
+    SCITBX_ASSERT(db_cryst.neg_inds.size() == db_cryst.pos_inds.size()) ;
+
+
+    double log_beta = log(2*M_PI*db_cryst.Friedel_beta);
+    double ftarget = 0;
+    #pragma omp parallel for reduction(+:ftarget)
+    for (int i_pair=0; i_pair < db_cryst.neg_inds.size(); i_pair++){
+        int i_minus = db_cryst.neg_inds[i_pair];
+        int i_plus = db_cryst.pos_inds[i_pair] ;
+
+        int channel_offset = db_cryst.Num_ASU*i_chan;
+        double s_minus = Fhkl_scale[channel_offset + i_minus];
+        double s_plus = Fhkl_scale[channel_offset + i_plus];
+
+        double F_minus =  db_cryst.ASU_Fcell[i_minus];
+        double I_minus = F_minus*F_minus;
+        double F_plus = db_cryst.ASU_Fcell[i_plus];
+        double I_plus = F_plus*F_plus;
+
+        double sI_plus = s_plus*I_plus;
+        double sI_minus = s_minus*I_minus;
+        double S = sI_plus + sI_minus; // 'S' is for summed intensity
+        if (S==0) continue;
+        double D = sI_plus - sI_minus; // 'D' is for difference intensity
+
+        double friedel_diff = 0.5*D/S; // normalized difference intensity - we want to restrain this ...
+
+        ftarget += friedel_diff*friedel_diff / db_cryst.Friedel_beta + log_beta;
+
+        double D_by_S = D/S;
+        double friedel_diff_by_beta = .5* friedel_diff / db_cryst.Friedel_beta;
+        double grad_incr_s_plus =  friedel_diff_by_beta * I_plus/S *(1-D_by_S);
+        double grad_incr_s_minus =  -friedel_diff_by_beta * I_minus/S * (1+D_by_S);
+        #pragma omp atomic
+        out[i_plus] += grad_incr_s_plus;
+        #pragma omp atomic
+        out[i_minus] += grad_incr_s_minus;
+    }
+
+    out[db_cryst.Num_ASU] = ftarget*0.5;
+}
+
 
 void diffBragg_sum_over_steps(
         int Npix_to_model, std::vector<unsigned int>& panels_fasts_slows,
@@ -39,11 +321,44 @@ void diffBragg_sum_over_steps(
     VEC3 Hmax(db_cryst.h_max, db_cryst.k_max, db_cryst.l_max);
     VEC3 dHH(dhh,dkk,dll);
     VEC3 Hrange(db_cryst.h_range, db_cryst.k_range, db_cryst.l_range);
+    if (db_flags.track_Fhkl_indices)
+        db_cryst.Fhkl_grad_idx_tracker.clear();
+
+#if defined(_OPENMP)
+    int dyn_state = omp_get_dynamic();
+    int nthread_state = omp_get_max_threads();
+    if (db_flags.track_Fhkl_indices){
+        omp_set_dynamic(0);
+        omp_set_num_threads(1);
+    }
+#endif
     #pragma omp parallel for
     for (int i_pix=0; i_pix < Npix_to_model; i_pix++){
+
+
+#if defined(_OPENMP)
+        if (db_flags.track_Fhkl_indices)
+            SCITBX_ASSERT(omp_get_num_threads()==1);
+#endif
+
+        if (db_flags.using_trusted_mask){
+            if (! d_image.trusted[i_pix])
+                continue;
+        }
         int pid = panels_fasts_slows[i_pix*3];
         int fpixel = panels_fasts_slows[i_pix*3+1];
         int spixel = panels_fasts_slows[i_pix*3+2];
+        double Fhkl_deriv_coef=0;
+        double Fhkl_hessian_coef=0;
+        if (db_flags.Fhkl_gradient_mode){
+            double u = d_image.residual[i_pix];
+            double one_by_v = 1/d_image.variance[i_pix];
+            double Gterm = 1 - 2*u - u*u*one_by_v;
+            Fhkl_deriv_coef = 0.5 * Gterm*one_by_v / d_image.freq[i_pix];
+            if (db_flags.Fhkl_errors_mode){
+                Fhkl_hessian_coef = -0.5*one_by_v*(one_by_v*Gterm - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)/d_image.freq[i_pix];
+            }
+        }
         double close_distance = db_det.close_distances[pid];
         //std::unordered_map<int, int> Fhkl_tracker;
         std::unordered_map<std::string, int> Fhkl_tracker;
@@ -136,6 +451,12 @@ void diffBragg_sum_over_steps(
             /* sin(theta)/lambda is half the scattering vector length */
             double stol = 0.5*(scattering.norm()); //magnitude(scattering);
 
+            // polarization
+            double polar_for_Fhkl_grad=1;
+            if (!db_flags.nopolar && db_flags.Fhkl_gradient_mode)
+                polar_for_Fhkl_grad = diffBragg_cpu_kernel_polarization(incident, diffracted,
+                                    db_beam.polarization_axis, db_beam.kahn_factor);
+
             /* rough cut to speed things up when we aren't using whole detector */
             if(db_cryst.dmin > 0.0 && stol > 0.0)
             {
@@ -174,7 +495,7 @@ void diffBragg_sum_over_steps(
             Eigen::Matrix3d U = db_cryst.eig_U;
             Eigen::Matrix3d UBO = (db_cryst.UMATS_RXYZ[mos_tic] * U*Bmat_realspace*(db_cryst.eig_O.transpose())).transpose();
 
-            Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
+                Eigen::Matrix3d Ainv = U*(Bmat_realspace.transpose().inverse())* (db_cryst.eig_O.inverse());
             Eigen::Vector3d q_vec(scattering[0], scattering[1], scattering[2]);
             q_vec *= 1e-10;
             Eigen::Vector3d H_vec = UBO*q_vec;
@@ -207,7 +528,7 @@ void diffBragg_sum_over_steps(
                 F_latt = NABC_determ*exp(-( hrad_sqr / 0.63 * db_cryst.fudge ));
 
             /* convert amplitudes into intensity (photons per steradian) */
-            if (!db_flags.oversample_omega)
+            if (!db_flags.oversample_omega && !db_flags.Fhkl_gradient_mode)
                 omega_pixel = 1;
             double count_scale = db_beam.source_I[source]*capture_fraction*omega_pixel;
 
@@ -226,10 +547,11 @@ void diffBragg_sum_over_steps(
             /* structure factor of the unit cell */
             double F_cell = db_cryst.default_F;
             double F_cell2 = 0;
-
+            int i_hklasu=0;
+            int Fhkl_linear_index=-1;
             if ( (h0<=db_cryst.h_max) && (h0>=db_cryst.h_min) && (k0<=db_cryst.k_max) && (k0>=db_cryst.k_min) && (l0<=db_cryst.l_max) && (l0>=db_cryst.l_min)  ) {
                 /* just take nearest-neighbor */
-                int Fhkl_linear_index = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
+                Fhkl_linear_index = (h0-db_cryst.h_min) * db_cryst.k_range * db_cryst.l_range +
                                 (k0- db_cryst.k_min) * db_cryst.l_range +
                                 (l0-db_cryst.l_min);
                 F_cell = db_cryst.FhklLinear[Fhkl_linear_index];
@@ -243,6 +565,8 @@ void diffBragg_sum_over_steps(
                     continue;
                 }
                 if (db_flags.complex_miller) F_cell2 = db_cryst.Fhkl2Linear[Fhkl_linear_index];
+                if (db_flags.Fhkl_have_scale_factors)
+                    i_hklasu = db_cryst.FhklLinear_ASUid[Fhkl_linear_index];
             }
             //else{
             // F_cell = default_F;
@@ -365,7 +689,33 @@ void diffBragg_sum_over_steps(
             double I_cell = F_cell;
             if (! db_flags.refine_Icell)
                 I_cell *= F_cell;
-            double Iincrement = I_cell*I_noFcell;
+            double s_hkl = 1;
+            int Fhkl_channel = 0;
+            if (! db_beam.Fhkl_channels.empty())
+                Fhkl_channel = db_beam.Fhkl_channels[source];
+            if (db_flags.Fhkl_have_scale_factors)
+                s_hkl = d_image.Fhkl_scale[i_hklasu + Fhkl_channel*db_cryst.Num_ASU];
+
+            if (db_flags.Fhkl_gradient_mode){
+                double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
+                double dfhkl = I_noFcell*I_cell * Fhkl_deriv_scale;
+                double grad_incr = dfhkl*Fhkl_deriv_coef;
+                int fhkl_grad_idx=i_hklasu + Fhkl_channel*db_cryst.Num_ASU;
+                if (db_flags.track_Fhkl_indices)
+                    db_cryst.Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);
+                // omega pixel is correctly in count_scale, and spot_scale should have been set to its refined value
+                #pragma omp atomic
+                d_image.Fhkl_scale_deriv[fhkl_grad_idx] += grad_incr;
+
+                if (db_flags.Fhkl_errors_mode){
+                    double hessian_incr = Fhkl_hessian_coef*dfhkl*dfhkl;
+                    #pragma omp atomic
+                    d_image.Fhkl_hessian[fhkl_grad_idx] += hessian_incr;
+                }
+                continue; // move on to next diffraction step (note, thos will bypass the pintout_pixel settings)
+            }
+
+            double Iincrement = s_hkl*I_cell*I_noFcell;
             I += Iincrement;
             if(db_flags.wavelength_img)
                 Ilambda += Iincrement*lambda_ang;
@@ -662,6 +1012,10 @@ void diffBragg_sum_over_steps(
                     std::cout << db_cryst.UMATS_RXYZ[mos_tic] << std::endl;
                     printf("Bmat_realspace\n");
                     std::cout << Bmat_realspace << std::endl;
+                    printf("eig_U\n");
+                    std::cout << db_cryst.eig_U << std::endl;
+                    printf("eig_O\n");
+                    std::cout << db_cryst.eig_O << std::endl;
                     printf("UBO\n");
                     std::cout << UBO << std::endl;
                     printf("UBOt\n");
@@ -718,25 +1072,8 @@ void diffBragg_sum_over_steps(
             if (!db_flags.nopolar){
                 Eigen::Vector3d incident(-db_beam.source_X[0], -db_beam.source_Y[0], -db_beam.source_Z[0]);
                 incident = incident / incident.norm();
-                // component of diffracted unit vector along incident beam unit vector
-                double cos2theta = incident.dot(diffracted_ave);
-                double cos2theta_sqr = cos2theta*cos2theta;
-                double sin2theta_sqr = 1-cos2theta_sqr;
-
-                double psi=0;
-                if(db_beam.kahn_factor != 0.0){
-                    // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                    Eigen::Vector3d B_in = db_beam.polarization_axis.cross(incident);
-                    // cross product with incident beam to get E-vector direction
-                    Eigen::Vector3d E_in = incident.cross(B_in);
-                    // get components of diffracted ray projected onto the E-B plane
-                    double kEi = diffracted_ave.dot(E_in);
-                    double kBi = diffracted_ave.dot(B_in);
-                    // compute the angle of the diffracted ray projected onto the incident E-B plane
-                    psi = -atan2(kBi,kEi);
-                }
-                // correction for polarized incident beam
-                polar = 0.5*(1.0 + cos2theta_sqr - db_beam.kahn_factor*cos(2*psi)*sin2theta_sqr);
+                polar = diffBragg_cpu_kernel_polarization(incident, diffracted_ave,
+                                    db_beam.polarization_axis, db_beam.kahn_factor);
             }
 
             double om = 1;
@@ -746,11 +1083,13 @@ void diffBragg_sum_over_steps(
             // final scale term to being everything to photon number units
             scale_term = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar*om/db_steps.Nsteps;
 
+            if (db_flags.Fhkl_gradient_mode)
+                continue; // move on to next pixel (i_pix)
+
             floatimage[i_pix] = scale_term*I;
 
             if (db_flags.wavelength_img)
                 d_image.wavelength[i_pix] = Ilambda / I;
-
         }
         if (db_flags.refine_diffuse){
             for (int i_diff=0; i_diff < 6; i_diff++){
@@ -897,6 +1236,13 @@ void diffBragg_sum_over_steps(
                 printf("Pixel %d: Fhkl linear index %s came up %d times\n", i_pix, x.first.c_str(), x.second);
         }
     } // end i_pix loop
+
+#if defined(_OPENMP)
+    if (db_flags.track_Fhkl_indices){
+        omp_set_dynamic(dyn_state);
+        omp_set_num_threads(nthread_state);
+    }
+#endif
 } // END of CPU kernel
 
 }} // END namespace simtbx::nanoBragg

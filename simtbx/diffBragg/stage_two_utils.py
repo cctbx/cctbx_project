@@ -5,6 +5,7 @@ from simtbx.diffBragg import utils
 from scitbx.matrix import sqr
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 from simtbx.nanoBragg.utils import H5AttributeGeomWriter
+from simtbx.diffBragg import hopper_utils
 
 
 def create_gain_map(gain_map_file, expt=None, outname=None, convert_to_photons=True):
@@ -110,6 +111,7 @@ def PAR_from_params(params, experiment, best=None):
 
     PAR.Nabc = [None]*3
     PAR.Ndef = [None]*3
+    PAR.eta = [None]*3
     PAR.RotXYZ_params = [None]*3
 
     if not params.use_restraints or params.fix.ucell:
@@ -117,18 +119,35 @@ def PAR_from_params(params, experiment, best=None):
         params.centers.ucell = [1, 1, 1, 1, 1, 1]
         params.betas.ucell = [1,1,1,1,1,1]
 
+    eta_min = params.mins.eta_abc
+    init_eta = params.init.eta_abc if best is None else best.eta_abc.values[0]
+    if tuple(init_eta) == (0,0,0):
+        eta_min=-1e-10,-1e-10,-1e-10
+        if not params.simulator.crystal.num_mosaicity_samples == 1:
+            raise ValueError("if all eta_abc are 0,0,0, num_mosaicity_samples should be 1")
+
     for i in range(3):
         initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
         PAR.Nabc[i] = ParameterType(init=initN, minval=params.mins.Nabc[i],
-                                    maxval=params.maxs.Nabc[i], fix=not params.refiner.refine_Nabc, sigma=params.sigmas.Nabc[i],
+                                    maxval=params.maxs.Nabc[i], fix=params.fix.Nabc, sigma=params.sigmas.Nabc[i],
                                     center=params.centers.Nabc[i], beta=params.betas.Nabc[i])
+
+        initN = params.init.Ndef[i] if best is None else best.ncells_def.values[0][i]
+        PAR.Ndef[i] = ParameterType(init=initN, minval=params.mins.Ndef[i],
+                                    maxval=params.maxs.Ndef[i], fix=params.fix.Ndef, sigma=params.sigmas.Ndef[i],
+                                    center=params.centers.Ndef[i], beta=params.betas.Ndef[i])
 
         PAR.RotXYZ_params[i] = ParameterType(init=0, minval=params.mins.RotXYZ[i],
                                             maxval=params.maxs.RotXYZ[i], fix=params.fix.RotXYZ,
                                             sigma=params.sigmas.RotXYZ[i],
                                             center=0, beta=params.betas.RotXYZ)
 
-        # TODO: diffuse scattering terms, eta terms
+        PAR.eta[i] = ParameterType(init=init_eta[i], minval=eta_min[i],
+                                       maxval=params.maxs.eta_abc[i], fix=params.fix.eta_abc,
+                                       sigma=params.sigmas.eta_abc[i],
+                                       center=params.betas.eta_abc[i], beta=params.betas.eta_abc[i])
+
+        # TODO: diffuse scattering terms
 
     # unit cell parameters
     ucell_man = utils.manager_from_crystal(experiment.crystal)  # Note ucell man contains the best parameters (if best is not None)
@@ -155,6 +174,18 @@ def PAR_from_params(params, experiment, best=None):
 
     PAR.B = ParameterType(init=params.init.B, sigma=params.sigmas.B, minval=params.mins.B, maxval=params.maxs.B, fix=True,
                           center=0, beta=1e8)
+
+    lam0, lam1 = params.init.spec
+    if best is not None:
+        lam0, lam1 = hopper_utils.get_lam0_lam1_from_pandas(best)
+    PAR.spec_coef = []
+    for i_p, init_val in enumerate((lam0, lam1)):
+        p = ParameterType(init=init_val, sigma=params.sigmas.spec[i_p],
+                          center=params.centers.spec[i_p],
+                          beta=params.betas.spec[i_p],
+                          fix=params.fix.spec,
+                          minval=params.mins.spec[i_p], maxval=params.maxs.spec[i_p])
+        PAR.spec_coef.append(p)
 
     return PAR
 

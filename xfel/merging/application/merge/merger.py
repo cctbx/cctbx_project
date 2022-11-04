@@ -20,16 +20,18 @@ class merger(worker):
 
     # select, merge and output odd reflections
     odd_reflections = reflection_table_utils.select_odd_experiment_reflections(reflections)
-    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity)
+    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outlier.mad_thresh)
     self.gather_and_output_reflections(odd_reflections_merged, 'odd')
 
     # select, merge and output even reflections
     even_reflections = reflection_table_utils.select_even_experiment_reflections(reflections)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity)
+    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outlier.mad_thresh)
     self.gather_and_output_reflections(even_reflections_merged, 'even')
 
     # merge and output all reflections
-    all_reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity)
+    name = "merged_good_refls2/rank%d" % self.mpi_helper.comm.rank
+    all_reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity,
+                                nameprefix=name, thresh=self.params.filter.outlier.mad_thresh)
     self.gather_and_output_reflections(all_reflections_merged, 'all')
 
     return None, reflections

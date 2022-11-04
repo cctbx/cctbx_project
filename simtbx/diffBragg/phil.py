@@ -6,6 +6,30 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+use_geometric_mean_Fhkl = False
+  .type = bool
+  .help = whether to use the geometric mean for Fhkl restraint (when betasFhkl is not None, restratin Fhkl to the mean in each res bin)
+Fhkl_channel_bounds = None
+  .type = floats
+  .help = Energy bounds for energy-dependent structure factors. Units are eV.
+  .help = If provided refine a unique structure factor correction for each bin defined by Fhkl_channel_bins
+  .help = 0 and infinity are implicit. Providing a single number, e.g. 8950, will refine two sets of structure
+  .help = factors: one for energies [0-8950), and another for energies [8950-infinity]
+Fhkl_dspace_bins = 10
+  .type = int
+  .help = number of resolution bins (out to corner of detector) for computing the average structure factor intensity
+  .help = One can then restrain to these values when fix.Fhkl=False by using the restraint strength betas.Fhkl (default is None in which case no restraints are applied)
+try_strong_mask_only = False
+  .type = bool
+  .help = if strong spot masks are present in the input refls, then use them
+  .help = as the trusted-flags, i.e. only run strong spot pixels through diffBragg
+dilate_strong_mask = None
+  .type = int
+  .help = if using strong mask only for refinement, then dilate it this many iterations using
+  .help = scipy.ndimage method binary_dilation (has to be >= 1)
+hopper_save_freq = None
+  .type = int
+  .help = save the output files when the iteration number is a multiple of this argument
 terminate_after_n_converged_iter = None
   .type = int
   .help = optionally converge if all parameters seem converged for this many iterations. See
@@ -141,6 +165,12 @@ betas
   .help = variances for the restraint targets
   .expert_level=0
 {
+  Finit = None
+    .type = float
+  Friedel = None
+    .type = float
+    .help = set this to some value to restraint Friedel mates during refinement (ensemble mode) . Lower values are
+    .help = tightly restrained . (Exploratory, experimental phil param)
   ucell_a = None
     .type = float
     .help = restraint variance for unit cell a
@@ -193,6 +223,12 @@ betas
   eta_abc = [1e8,1e8,1e8]
     .type = floats(size=3)
     .help = restrain factor for mosaic spread angles
+  spec = [1e8,1e8]
+    .type = floats(size=2)
+    .help = restraint factor for spectrum coefs
+  Fhkl = None
+    .type = float
+    .help = restraint factor for structure factor intensity scales
 }
 dual
   .help = configuration parameters for dual annealing
@@ -268,6 +304,9 @@ centers
   eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = restraint target for mosaic spread angles in degrees
+  spec = [0,1]
+    .type = floats(size=2)
+    .help = restraint target for specturm correction (0 + 1*Lambda )
 }
 skip = None
   .type = int
@@ -292,6 +331,7 @@ niter = 0
 exp_ref_spec_file = None
   .type = str
   .help = path to 3 col txt file containing file names for exper, refl, spectrum (.lam)
+  .help = Note: only single-image experiment lists are supported! Uses dials.split_experiments or diffBragg.make_input_file if necessary
   .expert_level=0
 method = None
   .type = str
@@ -322,6 +362,19 @@ max_process = -1
   .type = int
   .help = max exp to process
   .expert_level=0
+types
+  .help = type of target to parameter (see diffBragg.refiners.parameters.py)
+  .expert_level=10
+{
+  G = *ranged positive
+    .type = choice
+  Nabc = *ranged positive
+    .type = choice
+  diffuse_sigma = *ranged positive
+    .type = choice
+  diffuse_gamma = *ranged positive
+    .type = choice
+}
 sigmas
   .help = sensitivity of target to parameter (experimental)
   .expert_level=10
@@ -402,10 +455,10 @@ init
   B = 0
     .type = float
     .help = init for B factor
-  eta_abc = [1e-6,1e-6,1e-6]
+  eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = initial values (in degrees) for anisotropic mosaic spread about the 3 crystal axes a,b,c
-    .help = Note, these can never be exactly 0 (TODO address this)
+    .help = Note, these can never be exactly 0 if fix.eta_abc=False
 }
 mins
   .help = min value allowed for parameter
@@ -438,9 +491,12 @@ mins
   Fhkl = 0
     .type = float
     .help = min for structure factors
-  eta_abc = [1e-10,1e-10,1e-10]
+  eta_abc = [0,0,0]
     .type = floats(size=3)
     .help = min value (in degrees) for mosaic spread angles
+  spec = [-0.01, 0.95]
+    .type = floats(size=2)
+    .help = min value for spectrum correction (-0.01 + Lambda *1.05)
 }
 maxs
   .help = max value allowed for parameter
@@ -479,11 +535,17 @@ maxs
   Fhkl = 1e6
     .type = float
     .help = max for structure factors
+  spec = [0.01, 1.05]
+    .type = floats(size=2)
+    .help = max value for spectrum correction (0.01 + Lambda *1.05)
 }
 fix
   .help = flags for fixing parameters during refinement
   .expert_level = 0
 {
+  Fhkl = True
+    .type = bool
+    .help = fix the structure factors scales during refinement
   spec = True
     .type = bool
     .help = fix the spectrum. If False, a spectrum correction is refined (wavelength shift and scale)
@@ -505,7 +567,7 @@ fix
   Nabc = False
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
-  Ndef = False
+  Ndef = True
     .type = bool
     .help = fix the diagonal mosaic domain size parameters during refinement
   diffuse_sigma = True
@@ -578,6 +640,9 @@ percentile_cut = None
   .type = float
   .help = percentile below which pixels are masked
   .expert_level = 10
+remove_duplicate_hkl = False
+  .type = bool
+  .help = for hopper, remove duplicate HKLs in input refl files
 space_group = None
   .type = str
   .help = space group to refine structure factors in
@@ -646,7 +711,7 @@ logging
   overwrite = True
     .type = bool
     .help = overwrite the existing logfiles
-  logname = None
+  logname = mainLog
     .type = str
     .help = if logfiles=True, then write the log to this file, stored in the folder specified by outdir
     .help = if None, then defaults to main_stage1.log for hopper, main_pred.log for prediction, main_stage2.log for stage_two
@@ -655,7 +720,7 @@ profile = False
   .type = bool
   .help = profile the workhorse functions
   .expert_level = 0
-profile_name = None
+profile_name = lineProf
   .type = str
   .help = name of the output file that stores the line-by-line profile (written to folder specified by outdir)
   .help = if None, defaults to prof_stage1.log, prof_pred.log, prof_stage2.log for hopper, prediction, stage_two respectively
@@ -794,6 +859,17 @@ simulator {
       .help = number of layers within sensor where scattering
       .help = will be averaged over (evenly divided). This is a nanoBragg attribute
   }
+  psf {
+    use = False
+      .type = bool
+      .help = optionally apply a point-spread-function to the model
+    fwhm = 100
+      .type = float
+      .help = PSF full width half max in microns
+    radius = 7
+      .type = int
+      .help = PSF kernel radius (in pixels)
+  }
 }
 """
 
@@ -857,9 +933,6 @@ refiner {
     .help = is comma-separated substrings, formatted according to "%f-%f,%f-%f" where the first float
     .help = in each substr specifies the high-resolution for the refinement trial, and the second float
     .help = specifies the low-resolution for the refinement trial. Should be same length as max_calls
-  mask = None
-    .type = str
-    .help = path to a dials mask flagging the trusted pixels
   force_symbol = None
     .type = str
     .help = a space group lookup symbol used to map input miller indices to ASU
@@ -979,6 +1052,9 @@ roi {
     .help = Shoeboxes are drawn around the centroids, and refinement uses pixels
     .help = within those shoeboxes.
     .help = obs: xyz.px.value  cal: xyzcal.px
+  trusted_range = None
+    .type = floats(size=2)
+    .help = optional override for detector trusted range, should be (min,max)
   mask_all_if_any_outside_trusted_range = True
     .type = bool
     .help = If a reflection has any pixels which are outside the detectors
@@ -1048,7 +1124,7 @@ roi {
 }
 
 geometry {
-  save_state_freq = 500
+  save_state_freq = 50
     .type = int
     .help = how often to save all model parameters
   save_state_overwrite = True
@@ -1148,6 +1224,8 @@ predictions {
     .type = float
     .help = Label predicted reflection as a strong reflection if its within this
     .help = many inverse Angstromg (q=2/Lambda sin(theta)) of an observed strong spot
+  label_weak_col = "xyzobs.px.value"
+    .type = str
   weak_fraction = 0.5
     .type = float
     .help = fraction of weak predictions to integrate

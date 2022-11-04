@@ -28,9 +28,45 @@ from iotbx import file_reader
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
+from simtbx.diffBragg import psf
+from dials.algorithms.shoebox import MaskCode
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
+
+
+def strong_spot_mask(refl_tbl, detector, as_composite=True):
+    """
+    Form an image of the strong spot masks (True indicates strong spot)
+    :param refl_tbl: dials reflection table with shoeboxes
+    :param detector: dxtbx detecto model
+    :param as_composite: return a single mask same shape as detector, else return shoebox masks as a lst
+    """
+    Nrefl = len( refl_tbl)
+    masks = [ refl_tbl[i]['shoebox'].mask.as_numpy_array()
+              for i in range(Nrefl)]
+    pids = refl_tbl['panel']
+    nfast, nslow = detector[0].get_image_size()
+    npan = len(detector)
+    code = MaskCode.Foreground.real
+
+    x1, x2, y1, y2, z1, z2 = zip(*[refl_tbl[i]['shoebox'].bbox
+                                   for i in range(Nrefl)])
+    if not as_composite:
+        spot_masks = []
+    spot_mask = np.zeros((npan, nslow, nfast), bool)
+    for i_ref, (i1, i2, j1, j2, M) in enumerate(zip(x1, x2, y1, y2, masks)):
+
+        slcX = slice(i1, i2, 1)
+        slcY = slice(j1, j2, 1)
+        spot_mask[pids[i_ref],slcY, slcX] = M & code == code
+        if not as_composite:
+            spot_masks.append(spot_mask.copy())
+            spot_mask *= False
+    if as_composite:
+        return spot_mask
+    else:
+        return spot_masks
 
 
 def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):
@@ -70,6 +106,8 @@ def is_outlier(points, thresh=3.5):
     diff = np.sum((points - median) ** 2, axis=-1)
     diff = np.sqrt(diff)
     med_abs_deviation = np.median(diff)
+    if med_abs_deviation == 0:
+        return np.zeros(points.shape[0], bool)
 
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
@@ -147,6 +185,8 @@ def get_diffBragg_instance():
     braggC.miller_array = Fhkl
     idx = braggC.miller_array.indices()
     amps = braggC.miller_array.data()
+    D.Bmatrix = crystal.get_B()
+    D.Umatrix = crystal.get_U()
     D.Fhkl_tuple = idx, amps, None
     D.Bmatrix = crystal.get_B()
     D.Umatrix = crystal.get_U()
@@ -419,8 +459,9 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         roi = rois[i_roi]
         i1, i2, j1, j2 = roi
         is_selected = True
+        MAIN_LOGGER.debug("Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d" % (i_roi, i1,i2,j1,j2))
         if is_on_edge[i_roi] and reject_edge_reflections:
-            MAIN_LOGGER.debug("Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d is on edge" % (i_roi, i1,i1,j2,j2))
+            MAIN_LOGGER.debug("Reflection %d is on edge" % i_roi)
             is_selected = False
         pid = refls[i_roi]['panel']
 
@@ -484,6 +525,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 MAIN_LOGGER.debug("tilt fit failed for reflection %d, probably too few pixels" % i_roi)
                 tilt_plane = np.zeros_like(Xcoords)
             else:
+                MAIN_LOGGER.debug("successfully fit tilt plane")
                 (tilt_a, tilt_b, tilt_c), covariance = fit_results
                 tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
                 if np.any(np.isnan(tilt_plane)) and is_selected:
@@ -496,6 +538,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     is_selected = False
 
         is_overlapping = not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1)
+
         if not allow_overlaps and is_overlapping:
             # NOTE : move away from this option, it potentially moves the pixel centroid outside of the ROI (in very rare instances)
             MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
@@ -523,6 +566,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
     MAIN_LOGGER.debug("Number of skipped ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
     MAIN_LOGGER.debug("Number of skipped ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
+    MAIN_LOGGER.info("Number of ROIS that will proceed to refinement: %d/%d" % (np.sum(selection_flags), len(rois)))
     if ret_cov:
         return kept_rois, panel_ids, tilt_abc, selection_flags, background, all_cov
     else:
@@ -685,6 +729,37 @@ def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flu
     #return simulator_from_expt_and_params(expt, params)
 
 
+def simulator_for_refinement(expt, params):
+    # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
+    MAIN_LOGGER.info(
+        "Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
+    if params.simulator.crystal.has_isotropic_mosaicity:
+        params.simulator.crystal.anisotropic_mosaicity = None
+    else:
+        params.simulator.crystal.anisotropic_mosaicity = params.init.eta_abc
+    MAIN_LOGGER.info("Number of mosaic domains from params: %d" % params.simulator.crystal.num_mosaicity_samples)
+
+    #  GET SIMULATOR #
+    SIM = simulator_from_expt_and_params(expt, params)
+
+    if SIM.D.mosaic_domains > 1:
+        MAIN_LOGGER.info("Will use mosaic models: %d domains" % SIM.D.mosaic_domains)
+    else:
+        MAIN_LOGGER.info("Will not use mosaic models, as simulator.crystal.num_mosaicity_samples=1")
+
+    if not params.fix.diffuse_gamma or not params.fix.diffuse_sigma:
+        assert params.use_diffuse_models
+    SIM.D.use_diffuse = params.use_diffuse_models
+    SIM.D.gamma_miller_units = params.gamma_miller_units
+    SIM.isotropic_diffuse_gamma = params.isotropic.diffuse_gamma
+    SIM.isotropic_diffuse_sigma = params.isotropic.diffuse_sigma
+
+    SIM.D.no_Nabc_scale = params.no_Nabc_scale  # TODO check gradients for this setting
+    SIM.D.update_oversample_during_refinement = False
+
+    return SIM
+
+
 def simulator_from_expt_and_params(expt, params=None):
     """
     :param expt:  dxtbx experiment
@@ -771,7 +846,6 @@ def simulator_from_expt_and_params(expt, params=None):
                 defaultF=default_F)
     else:
         miller_data = open_mtz(mtz_name, mtz_column)
-
     crystal.miller_array = miller_data
     if params.refiner.force_symbol is not None:
         crystal.symbol = params.refiner.force_symbol
@@ -805,6 +879,15 @@ def simulator_from_expt_and_params(expt, params=None):
     MAIN_LOGGER.debug("Detector thicksteps = %d" % SIM.D.detector_thicksteps )
     MAIN_LOGGER.debug("Detector thick = %f mm" % SIM.D.detector_thick_mm )
     MAIN_LOGGER.debug("Detector atten len = %f mm" % SIM.D.detector_attenuation_length_mm )
+    if params.simulator.psf.use:
+        SIM.use_psf = True
+        SIM.psf_args = {'pixel_size': SIM.detector[0].get_pixel_size()[0]*1e3,
+                'fwhm': params.simulator.psf.fwhm,
+                'psf_radius': params.simulator.psf.radius}
+        fwhm_pix = SIM.psf_args["fwhm"] / SIM.psf_args["pixel_size"]
+        kern_size = SIM.psf_args["psf_radius"]*2 + 1
+        SIM.PSF = psf.makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
+
     return SIM
 
 
@@ -1551,3 +1634,76 @@ def get_laue_group_number(sg_symbol=None):
                   'P6/mmm', 'Pm-3', 'Pm-3m']
     lgs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     return lgs[hm_symbols.index(laue_sym)]
+
+
+def track_fhkl(Modeler):
+    try:
+        from stream_redirect import Redirect
+    except ImportError:
+        print("Cannot use track_fhkl unless module stream_redirect is installed: pip install stream-redirect")
+        return
+    SIM = Modeler.SIM
+    SIM.D.track_Fhkl = True
+    npix = int( len(Modeler.pan_fast_slow)/ 3)
+    PFS = np.reshape(Modeler.pan_fast_slow, (npix, 3))
+    uroi = set(Modeler.roi_id)
+    all_good_count_stats = []
+    all_bad_count_stats = []
+    all_count_stats = {}
+    for ii, i_roi in enumerate(uroi):
+        output = Redirect(stdout=True)
+        i_roi_sel = Modeler.roi_id == i_roi
+        with output:
+            sel = np.logical_and(i_roi_sel, Modeler.all_trusted)
+            pfs_roi = PFS[sel]
+            pfs_roi = np.ascontiguousarray(pfs_roi.ravel())
+            pfs_roi = flex.size_t(pfs_roi)
+            SIM.D.add_diffBragg_spots(pfs_roi)
+        #i_fcell = Modeler.all_fcell_global_idx[i_roi_sel][0]
+        #shoebox_hkl = SIM.asu_from_i_fcell[i_fcell]
+        lines = output.stdout.split("\n")
+        count_stats = {}
+        for l in lines:
+            if l.startswith("Pixel"):
+                hkl = l.split()[5]
+                hkl = tuple(map(int, hkl.split(",")))
+                hkl = map_hkl_list([hkl], True, SIM.crystal.space_group_info.type().lookup_symbol())[0]
+                count = int(l.split()[8])
+                if hkl in count_stats:
+                    count_stats[hkl] += count
+                else:
+                    count_stats[hkl] = count
+        ntot = sum(count_stats.values())
+        #assert shoebox_hkl in count_stats
+        #print("Shoebox hkl", shoebox_hkl)
+        for hkl in count_stats:
+            frac = 0 if ntot ==0 else count_stats[hkl] / float(ntot)
+            h, k, l = hkl
+            print("\tstep hkl %d,%d,%d : frac=%.1f%%" % (h, k, l, frac * 100))
+            count_stats[hkl] = frac
+
+        all_count_stats[i_roi] = count_stats
+    return all_count_stats
+
+#
+#        if len(count_stats) == 1:
+#            all_good_count_stats.append([shoebox_hkl, count_stats])
+#        else:
+#            all_bad_count_stats.append([shoebox_hkl, count_stats])
+#    if all_bad_count_stats:
+#        print("Shot %s had %d /  %d rois with HKL variation" % (Modeler.exp_name, len(all_bad_count_stats), len(uroi)))
+#        percs = [stats[sb_hkl] * 100 for sb_hkl, stats in all_bad_count_stats]
+#        ave_perc = sum(percs) / len(percs)
+#        min_perc = min(percs)
+#        nmax = max(len(stats) for _, stats in all_bad_count_stats)
+#        print("\tMin %.1f%%, Mean=%.1f%%, most variation: %d hkls in a shoebox" % (min_perc, ave_perc, nmax))
+#
+#        for sb_h, stats in all_bad_count_stats:
+#            h, k, l = zip(*stats.keys())
+#            if len(set(h)) > 1 or len(set(k)) > 1:
+#                print("Weird HK vary: shot %s" % Modeler.exp_name, sb_h)
+#            if not np.all(np.sort(l) == np.arange(min(l), min(l) + len(l))):
+#                print("Weird L sort: shot %s" % Modeler.exp_name, sb_h)
+#            if len(stats) > 3:
+#                print("Weird Nmax: shot %s" % Modeler.exp_name, sb_h)
+
