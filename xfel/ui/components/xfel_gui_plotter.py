@@ -119,6 +119,7 @@ class NoBarPlot(gctr.CtrlBase):
 
 class CommonUnitCellKey(object):
   """Handle unit cell parameters when setting a common legend for histograms"""
+  sep = '\n'
   symbols = ['a', 'b', 'c', r'$\alpha$', r'$\beta$', r'$\gamma$']
   units = 3 * [r'$\AA$'] + 3 * [r'$^\circ$']
 
@@ -138,7 +139,7 @@ class CommonUnitCellKey(object):
             in zip(self.symbols, self.means, self.stds, self.units)]
 
   def lines(self, mask=6*(True,)):
-    return '\n'.join(line for line, m in zip(self.line_list, mask) if m)
+    return self.sep.join(line for line, m in zip(self.line_list, mask) if m)
 
   @classmethod
   def common_lines_of(cls, uc_keys):
