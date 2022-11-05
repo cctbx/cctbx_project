@@ -486,13 +486,21 @@ class HKLViewFrame() :
                                             "show_missing",
                                             "show_only_missing",
                                             "show_systematic_absences",
-                                            "binning",
                                             "data_array"):
-        if self.set_scene(phl.viewer.scene_id):
+        if self.set_scene(phl.viewer.scene_id) and not jsview_3d.has_phil_path(diff_phil, "binning"):
+          phl.binning.scene_bin_thresholds = []
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(phl.binning.scene_bin_thresholds,
                                          binner_idx=phl.binning.binner_idx,
                                          nbins=phl.binning.nbins )
+
+      if jsview_3d.has_phil_path(diff_phil, "binning"):
+        if jsview_3d.has_phil_path(diff_phil, "nbins") and \
+         not jsview_3d.has_phil_path(diff_phil, "scene_bin_thresholds"):
+          phl.binning.scene_bin_thresholds = []
+        self.set_scene_bin_thresholds(phl.binning.scene_bin_thresholds,
+                                        binner_idx=phl.binning.binner_idx,
+                                        nbins=phl.binning.nbins )
 
       if jsview_3d.has_phil_path(diff_phil, "spacegroup_choice"):
         self.set_spacegroup_choice(phl.spacegroup_choice)
