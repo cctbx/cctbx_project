@@ -5,7 +5,7 @@ import libtbx.load_env
 
 tst_list = [
 "$D/regression/tst_hklinfo.py",
-#"$D/regression/tst_HKLviewer.py",
+"$D/regression/tst_HKLviewer.py",
 ]
 
 # expected failure for Python 2
