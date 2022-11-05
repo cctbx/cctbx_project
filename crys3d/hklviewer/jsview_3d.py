@@ -1039,10 +1039,9 @@ class HKLview_3d:
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
     scenearraydata = self.HKLscene_from_dict().data
-    ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
+    binlabel, _, ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx]
     if len(set(self.HKLscene_from_dict(ibinarray).indices)) < self.HKLscene_from_dict(ibinarray).indices.size():
-      raise Sorry("The indices in the array chosen for binning is not unique")
-
+      raise Sorry("Error: The HKL indices in %s are not unique. Use a merged dataset instead!" %binlabel)
     matchindices = miller.match_multi_indices(self.HKLscene_from_dict(ibinarray).indices,
                                self.HKLscene_from_dict().indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(0) )
@@ -1284,7 +1283,7 @@ class HKLview_3d:
       else:
         # get upper and lower bounds for the dataset used for binning
         self.bindata = self.MatchBinArrayToSceneArray()
-        if len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0:
+        if ( len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0):
           dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
           # binvals derived from scene_bin_thresholds must be sorted
           # if minimum or maximum of binvals are smaller or bigger than lower or
