@@ -1039,10 +1039,9 @@ class HKLview_3d:
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
     scenearraydata = self.HKLscene_from_dict().data
-    ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx][2]
+    binlabel, _, ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx]
     if len(set(self.HKLscene_from_dict(ibinarray).indices)) < self.HKLscene_from_dict(ibinarray).indices.size():
-      raise Sorry("The indices in the array chosen for binning is not unique")
-
+      raise Sorry("Error: The HKL indices in %s are not unique. Use a merged dataset instead!" %binlabel)
     matchindices = miller.match_multi_indices(self.HKLscene_from_dict(ibinarray).indices,
                                self.HKLscene_from_dict().indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(0) )
@@ -1284,7 +1283,7 @@ class HKLview_3d:
       else:
         # get upper and lower bounds for the dataset used for binning
         self.bindata = self.MatchBinArrayToSceneArray()
-        if len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0:
+        if ( len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0):
           dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
           # binvals derived from scene_bin_thresholds must be sorted
           # if minimum or maximum of binvals are smaller or bigger than lower or
@@ -1433,6 +1432,10 @@ class HKLview_3d:
     self.mprint(".", end="")
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
+      # if sempahore is not available then we failed to connect to a browser. Critical error!
+      if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
+        raise Sorry("Failed connecting to a web browser!")
+      self.hkls_drawn_sem.release()
     if not blankscene:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
@@ -1711,6 +1714,8 @@ Distance: %s
   def OpenBrowser(self):
     if self.params.viewer.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
+      # don't block in case we're called again and first time failed conecting to a browser
+      self.hkls_drawn_sem.acquire(blocking = False)
       with open(self.hklfname, "w") as f:
         f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
@@ -1727,7 +1732,7 @@ Distance: %s
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
       self.WBmessenger.browserisopen = True
-      #self.isnewfile = False
+      self.hkls_drawn_sem.release() # only release if we succeeded
       return True
     return False
 

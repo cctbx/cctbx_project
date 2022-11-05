@@ -13,7 +13,7 @@ if 'PyQt5' in sys.modules:
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextDocument, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
-  from PyQt5.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
+  from PyQt5.QtGui import ( QBrush, QCloseEvent, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
                            QKeySequence, QPalette, QTextDocument )
   from PyQt5.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )   # special import
 
@@ -29,6 +29,6 @@ else:
         QProgressBar, QPushButton, QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
         QSlider, QSplitter, QSpinBox, QStatusBar, QStyleFactory, QTableView, QTableWidget,
         QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget, QVBoxLayout )
-  from PySide2.QtGui import ( QBrush, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
+  from PySide2.QtGui import ( QBrush, QCloseEvent, QColor, QFont, QCursor, QDesktopServices, QIcon,    # special import
                              QKeySequence, QPalette, QTextDocument )
   from PySide2.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )   # special import

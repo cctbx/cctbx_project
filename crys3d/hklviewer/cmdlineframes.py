@@ -34,7 +34,10 @@ def run():
       if '=' not in arg:
       # if so add it as a keyword argument
         if os.path.isfile(arg):
-          kwargs['hklin'] = arg
+          if not kwargs.get('hklin', False):
+            kwargs['hklin'] = arg
+          else: # a philfile
+            kwargs['phil_file'] = arg
         else:
           sysargs.append(arg)
 

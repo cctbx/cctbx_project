@@ -20,7 +20,7 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
-    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit,
+    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit, QCloseEvent,
     QMainWindow, QMenu, QMenuBar, QMessageBox, QPalette, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
@@ -598,7 +598,7 @@ newarray._sigmas = sigs
     self.onPresetbtn_click()
 
 
-  def closeEvent(self, event):
+  def closeEvent(self, event=QCloseEvent()): # provide default value for QTimer.singleShot below
     self.send_message('action = is_terminating')
     self.closing = True
     self.finddlg.setVisible(False)
@@ -2775,6 +2775,8 @@ def run(isembedded=False, chimeraxsession=None):
   #time.sleep(15) # enough time for attaching debugger
   try:
     debugtrue = False
+    closingtime = 0
+    kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
@@ -2785,6 +2787,8 @@ def run(isembedded=False, chimeraxsession=None):
         if "devmode" in e: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+    if kwargs.get('closingtime', False): # close when time is up during regression tests
+      closingtime = int(kwargs['closingtime']) * 1000 # miliseconds
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
@@ -2814,6 +2818,9 @@ def run(isembedded=False, chimeraxsession=None):
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
+    # For regression tests close us after a specified time
+    if closingtime:
+      QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
 
     if isembedded:
       return HKLguiobj
