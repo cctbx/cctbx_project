@@ -26,7 +26,7 @@ hkls {
 }
 """
 
-file_name = libtbx.env.find_in_repositories(
+datafname = libtbx.env.find_in_repositories(
   relative_path="iotbx/regression/data/phaser_1.mtz",
   test=os.path.isfile)
 
@@ -47,7 +47,7 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
 def exercise1():
   assert os.path.isfile(file_name)
   myHKLview = hklview_frame.HKLViewFrame(verbose=0)
-  myHKLview.LoadReflectionsFile(file_name)
+  myHKLview.LoadReflectionsFile(datafname)
   # slice expanded sphere of reflections with clip plane and translate to
   # the 46th plane of reflections along the K axis
 
@@ -65,20 +65,38 @@ def exercise1():
 
 def exercise2():
   import re
-  with open("philinput.txt","w") as f:
+  with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
-  assert os.path.isfile(file_name)
+  assert os.path.isfile(datafname)
+
+  outputfname = "myoutput.log"
+
   cmdargs = ["cctbx.HKLviewer",
-             file_name,
-             "philinput.txt",
-             "verbose=frustum", # dump displayed hkls to stdout when clipplaning
-             "output_filename=myoutput.log", # file with stdout, stderr from hklview_frame
-             "closingtime=30", # close HKLviewer after 30 seconds
+             datafname,
+             "HKLviewer_philinput.txt",
+             "verbose=2frustum", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "image_file=HKLviewer_testimage.png",
+             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
+             "closingtime=20", # close HKLviewer after 50 seconds
             ]
 
-  assert ( easy_run.call(command=" ".join(cmdargs))  == 0 )
-  with open("myoutput.log", "r") as f:
+  #assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
+  result = easy_run.fully_buffered(" ".join(cmdargs))
+  assert os.path.isfile(outputfname)
+  # write terminal output to our log file
+  with open(outputfname, "a") as f:
+    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
+    for line in result.stdout_lines:
+      f.write(line + "\n")
+    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
+    for line in result.stderr_lines:
+      f.write(line + "\n")
+  assert result.return_code == 0
+
+  with open(outputfname, "r") as f:
     mstr = f.read()
+  # check output file that reflections are reported to have been drawn
+  assert re.findall("RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
   # peruse output file for the list of displayed reflections
   match = re.findall("visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
   refls = []
@@ -87,8 +105,8 @@ def exercise2():
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
   # tidy up
-  os.remove("philinput.txt")
-  #os.remove("myoutput.log")
+  #os.remove("HKLviewer_philinput.txt")
+  #os.remove(outputfname)
 
 
 def run():
