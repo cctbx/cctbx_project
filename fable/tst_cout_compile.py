@@ -330,7 +330,7 @@ class process_file_info(object):
     return n_failures[0]
 
 def exercise_end_of_line(exe_name, verbose):
-  lines = """\
+  lines = b"""\
 a
 bc
 def
@@ -338,22 +338,22 @@ ghij
 klmno
 """.splitlines()
   with open("unix.txt", "wb") as f:
-    f.write("\n".join(lines)+"\n")
+    f.write(b"\n".join(lines)+b"\n")
   with open("dos.txt", "wb") as f:
-    f.write("\r\n".join(lines)+"\r\n")
+    f.write(b"\r\n".join(lines)+b"\r\n")
   with open("dos2.txt", "wb") as f:
-    f.write("\r\r\n".join(lines)+"\r\n")
+    f.write(b"\r\r\n".join(lines)+b"\r\n")
   with open("mac.txt", "wb") as f:
-    f.write("\r".join(lines)+"\r")
+    f.write(b"\r".join(lines)+b"\r")
   from libtbx import easy_run
   from libtbx.utils import remove_files
   import os
   op = os.path
   expected_outputs = [
-    "a   \nbc  \ndef \nghij\nklmn\n",
-    "a   \nbc  \ndef \nghij\nklmn\n",
-    "a\r  \nbc\r \ndef\r\nghij\nklmn\n",
-    "a\rbc\n"]
+    b"a   \nbc  \ndef \nghij\nklmn\n",
+    b"a   \nbc  \ndef \nghij\nklmn\n",
+    b"a\r  \nbc\r \ndef\r\nghij\nklmn\n",
+    b"a\rbc\n"]
   for vers,expected in zip(["unix", "dos", "dos2", "mac"], expected_outputs):
     remove_files(paths=["read_lines_out"])
     cmd = "%s < %s.txt > read_lines_out" % (op.join(".", exe_name), vers)
@@ -362,10 +362,9 @@ klmno
     assert op.isfile("read_lines_out")
     with open("read_lines_out", "rb") as f:
       result = f.read()
-    assert result == expected.replace("\n", os.linesep)
+    assert result == expected.replace(b"\n", os.linesep.encode('utf8')), result
 
 def exercise_compile_valid(regex_patterns, opts):
-  from fable import cout
   from fable import simple_compilation
   comp_env = simple_compilation.environment()
   if (comp_env.compiler_path is None):
