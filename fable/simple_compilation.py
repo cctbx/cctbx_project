@@ -91,7 +91,7 @@ class environment(object):
       if (disable_warnings or O.gcc_version < 30400):
         opt_w = "-w"
       else:
-        opt_w = "-Wall -Wno-sign-compare -Winvalid-pch"
+        opt_w = "-Wall -Wno-sign-compare -Winvalid-pch -Wno-deprecated-declarations"
       if (out_name.endswith(O.pch_suffix)):
         assert not O.__have_pch
         opt_x = " -x c++-header"
