@@ -141,7 +141,8 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
     if (set_changes_flag):
       self._changes_made = True
     self._i_state = len(self._hierarchy_stack) - 1
-    self.frame.EnableUndo(True)
+    if wx.VERSION < (4,0):
+      self.frame.EnableUndo(True)
     #print self._hierarchy_stack
     #print self._hierarchy_actions
     #print self._i_state
@@ -1702,9 +1703,9 @@ class PDBTree(customtreectrl.CustomTreeCtrl):
 
 ########################################################################
 # AUXILARY GUI CLASSES
-class PDBTreeDropTarget(wx.PyDropTarget):
+class PDBTreeDropTarget(wx.DropTarget):
   def __init__(self, tree):
-    wx.PyDropTarget.__init__(self)
+    wx.DropTarget.__init__(self)
     self.tree = tree
     #self.df = wx.CustomDataFormat("pdb_object")
     #self.cdo = wx.CustomDataObject(self.df)
@@ -1903,25 +1904,27 @@ class PDBTreeFrame(wx.Frame):
     pszr.Add(self._tree, 1, wx.EXPAND, 2)
     # toolbar setup
     self.toolbar = self.CreateToolBar(style=wx.TB_TEXT)
+    if wx.VERSION < (4,0):
+      self.toolbar.AddTool = self.toolbar.AddLabelTool
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("phenix.pdbtools")
-    btn = self.toolbar.AddLabelTool(-1, "Load file", bmp,
+    btn = self.toolbar.AddTool(-1, "Load file", bmp,
       shortHelp="Load file", kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnOpen, btn)
     bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "save_all")
-    btn = self.toolbar.AddLabelTool(-1, "Save file", bmp,
+    btn = self.toolbar.AddTool(-1, "Save file", bmp,
       shortHelp="Save file", kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnSave, btn)
     self.toolbar.AddSeparator()
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("tools")
-    btn = self.toolbar.AddLabelTool(-1, "Edit...", bmp, shortHelp="Edit...",
+    btn = self.toolbar.AddTool(-1, "Edit...", bmp, shortHelp="Edit...",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnEditModel, btn)
     bmp = wxtbx.bitmaps.fetch_custom_icon_bitmap("symmetry")
-    btn = self.toolbar.AddLabelTool(-1, "Symmetry", bmp, shortHelp="Symmetry",
+    btn = self.toolbar.AddTool(-1, "Symmetry", bmp, shortHelp="Symmetry",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self.OnEditSymmetry, btn)
     bmp = wxtbx.bitmaps.fetch_icon_bitmap("actions", "editdelete")
-    btn = self.toolbar.AddLabelTool(-1, "Delete", bmp, shortHelp="Delete",
+    btn = self.toolbar.AddTool(-1, "Delete", bmp, shortHelp="Delete",
       kind=wx.ITEM_NORMAL)
     self.Bind(wx.EVT_MENU, self._tree.OnDeleteObject, btn)
     self.toolbar.Realize()
