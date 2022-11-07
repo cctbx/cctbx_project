@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.ui import settings_dir
-from xfel.ui.db import db_proxy, get_run_path
+from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
 import os, shutil, copy
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD"]
@@ -103,6 +103,80 @@ class Job(db_proxy):
       s += "_task%03d"%self.task.id
     return s
 
+class AveragingJob(Job):
+  def get_identifier_string(self):
+    # Override this function because rungroups are not used for averaging
+    if self.app.params.facility.name == 'lcls':
+      s = "%s_%s_r%04d"% \
+        (self.app.params.facility.lcls.experiment, self.app.params.experiment_tag, int(self.run.run))
+    else:
+      s = "%s_%s"% \
+        (self.app.params.experiment_tag, self.run.run)
+    return s
+
+  def submit(self, previous_job=None):
+    from xfel.command_line.cxi_mpi_submit import Script as submit_script
+    params = copy.deepcopy(self.app.params)
+    params.dispatcher = 'dxtbx.image_average'
+    configs_dir = os.path.join(settings_dir, "cfgs")
+    if not os.path.exists(configs_dir):
+      os.makedirs(configs_dir)
+    identifier_string = self.get_identifier_string()
+
+    # Make an argument list that can be submitted to cxi_mpi_submit.
+    # dxtbx.image_average does not use phil files.
+    extra_args = "-a <output_dir>/avg.cbf -m <output_dir>/max.cbf -s <output_dir>/std.cbf"
+    if self.skip_images > 0:
+      extra_args += f' --skip-images={self.skip_images}'
+    if self.num_images > 0:
+      extra_args += f' --num-images={self.num_images}'
+    self.args = [
+      f'input.run_num = {self.run.run}',
+      'input.dispatcher = dxtbx.image_average',
+      'output.output_dir = {0}'.format(os.path.join(params.output_folder, 'averages')),
+      'output.split_logs = False',
+      'output.add_output_dir_option = False',
+      f'mp.extra_args = {extra_args}',
+      f'mp.method = {params.mp.method}',
+    ]
+
+    if params.mp.method != 'local' or (params.mp.method == 'local' and params.facility.name == 'lcls'):
+      mp_args = [
+        f'mp.use_mpi = {params.mp.use_mpi}',
+        f'mp.mpi_command = {params.mp.mpi_command}',
+        f'mp.mpi_option = "--mpi=True"',
+        f'mp.nnodes = {params.mp.nnodes}',
+        f'mp.nproc = {params.mp.nproc}',
+        f'mp.nproc_per_node = {params.mp.nproc_per_node}',
+        f'mp.queue = {params.mp.queue}',
+        f'mp.env_script = {params.mp.env_script[0]}',
+        f'mp.wall_time = {params.mp.wall_time}',
+        f'mp.htcondor.executable_path = {params.mp.htcondor.executable_path}',
+      ]
+      for arg in mp_args:
+        self.args.append(arg)
+    if params.mp.shifter.shifter_image is not None:
+      shifter_args = [
+        f'mp.shifter.nersc_shifter_image = {params.mp.shifter.shifter_image}',
+        f'mp.shifter.sbatch_script_template = {params.mp.shifter.sbatch_script_template}',
+        f'mp.shifter.srun_script_template = {params.mp.shifter.srun_script_template}',
+        f'mp.shifter.nersc_partition = {params.mp.shifter.partition}',
+        f'mp.shifter.nersc_jobname = {params.mp.shifter.jobname}',
+        f'mp.shifter.nersc_project = {params.mp.shifter.project}',
+        f'mp.shifter.nersc_constraint = {params.mp.shifter.constraint}',
+        f'mp.shifter.nersc_reservation = {params.mp.shifter.reservation}',
+        f'mp.shifter.staging = {params.mp.shifter.staging}',
+      ]
+      for arg in shifter_args:
+        self.args.append(arg)
+
+    if params.facility.name == 'lcls':
+      locator_path = os.path.join(configs_dir, identifier_string + ".loc")
+      self.args.append(f'input.locator = {locator_path}')
+      write_xtc_locator(locator_path, params, self.run, self.rungroup)
+    result = submit_script().run(self.args)
+    return result
+
 class IndexingJob(Job):
   def get_output_files(self):
     run_path = str(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run))
@@ -147,14 +221,7 @@ class IndexingJob(Job):
       trial_params = phil_scope.fetch(parse(phil_str)).extract()
 
       image_format = self.rungroup.format
-      mode = "other"
-      if self.app.params.facility.name == 'lcls':
-        if "rayonix" in self.rungroup.detector_address.lower():
-          mode = "rayonix"
-        elif "cspad" in self.rungroup.detector_address.lower():
-          mode = "cspad"
-        elif "jungfrau" in self.rungroup.detector_address.lower():
-          mode = "jungfrau"
+      mode = get_image_mode(self.rungroup)
 
       if hasattr(trial_params, 'format'):
         trial_params.format.file_format = image_format
@@ -275,35 +342,11 @@ class IndexingJob(Job):
 
         if self.app.params.facility.name == 'lcls':
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
-          locator = open(locator_path, 'w')
-          locator.write("experiment=%s\n"%self.app.params.facility.lcls.experiment) # LCLS specific parameter
-          locator.write("run=%s\n"%self.run.run)
-          locator.write("detector_address=%s\n"%self.rungroup.detector_address)
-          if self.rungroup.wavelength_offset:
-            locator.write("wavelength_offset=%s\n"%self.rungroup.wavelength_offset)
-          if self.rungroup.spectrum_eV_per_pixel:
-            locator.write("spectrum_eV_per_pixel=%s\n"%self.rungroup.spectrum_eV_per_pixel)
-          if self.rungroup.spectrum_eV_offset:
-            locator.write("spectrum_eV_offset=%s\n"%self.rungroup.spectrum_eV_offset)
-          if self.app.params.facility.lcls.use_ffb:
-            locator.write("use_ffb=True\n")
-
+          write_xtc_locator(locator_path, self.app.params, self.run, self.rungroup)
           if mode == 'rayonix':
-            from xfel.cxi.cspad_ana import rayonix_tbx
-            pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
-            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
-                                                                                              self.rungroup.beamy * pixel_size,
-                                                                                             -self.rungroup.detz_parameter))
-            locator.write("rayonix.bin_size=%s\n"%self.rungroup.binning)
-          elif mode == 'cspad':
-            locator.write("cspad.detz_offset=%s\n"%self.rungroup.detz_parameter)
-          elif mode == 'jungfrau':
-            locator.write("jungfrau.detz_offset=%s\n"%self.rungroup.detz_parameter)
-
-          if self.rungroup.extra_format_str:
-            locator.write(self.rungroup.extra_format_str)
-
-          locator.close()
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-rungroup.beamx * pixel_size,
+                                                                                              rungroup.beamy * pixel_size,
+                                                                                             -rungroup.detz_parameter))
           d['locator'] = locator_path
         else:
           d['locator'] = None

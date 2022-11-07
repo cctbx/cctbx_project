@@ -14,6 +14,7 @@ import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
 from wx.lib.scrolledpanel import ScrolledPanel
 from xfel.ui.db.task import task_types
+import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
 
@@ -1388,40 +1389,100 @@ class AveragingDialog(BaseDialog):
                label_style='bold',
                content_style='normal',
                *args, **kwargs):
-
     self.run = run
     self.params = params
+
+    # Looks for a rungroup to use as a template
+    # The averaging job is not assigned a rungroup
+    run_rungroups = run.get_rungroups()
+    if len(run_rungroups) == 0:
+      # If this run has not been included in any rungroups try to use the rungroup
+      # with the closest run
+      all_rungroups = run.app.get_all_rungroups()
+      if len(all_rungroups) == 0:
+        self.template_rungroup = None
+      else:
+        distance = np.zeros(len(all_rungroups))
+        for index, rungroup in enumerate(all_rungroups):
+          first_run, last_run = rungroup.get_first_and_last_runs()
+          distance[index] = min([
+            abs(int(first_run.run) - int(run.run)),
+            abs(int(last_run.run) - int(run.run))
+          ])
+        template_rungroup_id = all_rungroups[np.argmin(distance)].rungroup_id
+        self.template_rungroup = run.app.get_rungroup(rungroup_id=template_rungroup_id)
+    else:
+      # If this run has been included in any rungroups - use that
+      self.template_rungroup = run_rungroups[-1]
 
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
 
-    # Raw image option
-    self.raw_toggle = gctr.RadioCtrl(self,
-                                     label='',
-                                     label_style='normal',
-                                     label_size=(-1, -1),
-                                     direction='horizontal',
-                                     items={'corrected':'corrected',
-                                            'raw':'raw'})
-    self.raw_toggle.corrected.SetValue(1)
-    self.main_sizer.Add(self.raw_toggle, flag=wx.EXPAND | wx.ALL, border=10)
+    # Image Average Options
+    self.skip_images = gctr.SpinCtrl(self,
+                                   label='Skip Images:',
+                                   label_style='bold',
+                                   label_size=(150, -1),
+                                   ctrl_value=0,
+                                   ctrl_min=0,
+                                   ctrl_max=None)
+    self.num_images_type = gctr.RadioCtrl(self,
+                                   name='Use All Images',
+                                   label='',
+                                   label_style='normal',
+                                   label_size=(100, -1),
+                                   direction='vertical',
+                                   items={'all': 'Use all images',
+                                          'specify': 'Specify total images'})
+    self.num_images = gctr.SpinCtrl(self,
+                                   label='Number Images:',
+                                   label_style='bold',
+                                   label_size=(150, -1),
+                                   ctrl_value=0,
+                                   ctrl_min=0,
+                                   ctrl_max=None)
+    self.main_sizer.Add(self.skip_images, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.num_images_type, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.num_images, flag=wx.EXPAND | wx.ALL, border=10)
+    self.skip_images.SetToolTip('Number of images to skip at the start of the dataset')
+    self.num_images.SetToolTip('Maximum number of frames to average.')
+    self.Bind(wx.EVT_RADIOBUTTON, self.onAllImages, self.num_images_type.all)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyImages, self.num_images_type.specify)
+    self.num_images.Disable()
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALL, border=10)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
+  def onAllImages(self, e):
+    self.num_images.Disable()
+
+  def onSpecifyImages(self, e):
+    self.num_images.Enable()
+
   def onOK(self, e):
-    from xfel.ui.components.averaging import AveragingCommand
-    from libtbx import easy_run
-    raw = self.raw_toggle.raw.GetValue() == 1
-    average_command = AveragingCommand(self.run, self.params, raw)()
-    print("executing", average_command)
-    result = easy_run.fully_buffered(command=average_command)
-    result.show_stdout()
-    e.Skip()
+    if self.template_rungroup is None:
+      wx.MessageBox('Add this run to a rungroup in the Trials tab first!', 'Warning', wx.ICON_EXCLAMATION)
+      return
+
+    skip_images = self.skip_images.ctr.GetValue()
+    if self.num_images_type.all.GetValue():
+      num_images = 0
+    else:
+      num_images = self.num_images.ctr.GetValue()
+    if num_images == 1:
+      print("Average Aborted.\nNeed more than one image to average.")
+      return
+    else:
+      from xfel.ui.db.job import AveragingJob
+      job = AveragingJob(self.run.app)
+      job.run = self.run
+      job.rungroup = self.template_rungroup
+      job.skip_images = skip_images
+      job.num_images = num_images
+      job.submit()
+      self.Destroy()
 
 class TrialTagSelectionDialog(BaseDialog):
   def __init__(self, parent,

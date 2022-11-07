@@ -19,6 +19,10 @@ mp_phil_str = '''
       .type = str
       .help = Command to invoke MPI processing. Include extra arguments to \
               this command here.
+    mpi_option = "mp.method=mpi"
+      .type = str
+      .expert_level = 2
+      .help = Parameter to turn on MPI in the dispatcher program
     nproc = 1
       .type = int
       .help = Number of processes total (== nnodes x nproc_per_node). \
@@ -241,7 +245,8 @@ class get_local_submit_command(get_submit_command):
   def customize_for_method(self):
     if self.params.local.include_mp_in_command:
       if self.params.use_mpi:
-        self.command = "%s -n %d %s mp.method=mpi" % (self.params.mpi_command, self.params.nproc, self.command)
+        self.command = "%s -n %d %s" % (self.params.mpi_command, self.params.nproc, self.command)
+        self.command += " %s"%self.params.mpi_option
       elif self.params.nproc > 1:
         self.command += " mp.nproc=%d" % self.params.nproc
 
@@ -253,8 +258,8 @@ class get_lsf_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "bsub"
     if self.params.use_mpi:
-      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
-
+      self.command = "%s %s" % (self.params.mpi_command, self.command)
+      self.command += " %s"%self.params.mpi_option
   def eval_params(self):
     # -n <nproc>
     nproc_str = "-n %d" % self.params.nproc
@@ -306,7 +311,8 @@ class get_sge_submit_command(get_submit_command):
     self.options.append("-cwd")
 #    self.options.append("mp.method=sge")
     if self.params.use_mpi:
-      self.command = "%s -n ${NSLOTS} %s mp.method=mpi"%(self.params.mpi_command, self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+      self.command = "%s -n ${NSLOTS} %s"%(self.params.mpi_command, self.command) #This command currently (14/10/2020) has problems at Diamond as it will randomly use incorrect number of cores
+      self.command += " %s"%self.params.mpi_option
     else:
       self.command = "%s mp.nproc=${NSLOTS}"%(self.command)
 
@@ -369,8 +375,8 @@ class get_pbs_submit_command(get_submit_command):
     if (self.params.nnodes > 1) or (self.params.nproc_per_node > 1):
       self.params.nproc = self.params.nnodes * self.params.nproc_per_node
     if self.params.use_mpi:
-      self.command = "mpiexec --hostfile $PBS_NODEFILE %s mp.method=mpi" % (self.command)
-
+      self.command = "mpiexec --hostfile $PBS_NODEFILE %s" % (self.command)
+      self.command += " %s"%self.params.mpi_option
   def eval_params(self):
 
     # # -t 1-<nproc> # deprecated
@@ -459,7 +465,8 @@ class get_slurm_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "sbatch"
     if self.params.use_mpi:
-      self.command = "%s %s mp.method=mpi" % (self.params.mpi_command, self.command)
+      self.command = "%s %s" % (self.params.mpi_command, self.command)
+      self.command += " %s"%self.params.mpi_option
 
   def eval_params(self):
     nproc_str = "#SBATCH --nodes %d" % self.params.nnodes
@@ -511,8 +518,16 @@ class get_slurm_submit_command(get_submit_command):
     if 'phenix' in self.command:
       self.source_env_scripts.append("cd %s\n"%os.path.dirname(self.submit_path))
 
+    if '<output_dir>' in self.command:
+      self.command = self.command.replace(
+        '<output_dir>',
+        os.path.split(self.stdoutdir[0])
+      )
     # <args> (optional, following the command)
+    image_average_output_dir = os.path.join(os.path.split(self.stdoutdir)[0], 'out')
     for arg in self.params.extra_args:
+      if '<output_dir>' in arg:
+        arg = arg.replace('<output_dir>', image_average_output_dir)
       self.args.append(arg)
 
 
@@ -543,7 +558,8 @@ class get_shifter_submit_command(get_submit_command):
       with open(self.srun_template, "r") as sr:
         self.srun_contents = sr.read()
     if self.params.use_mpi:
-      self.command = "%s mp.method=mpi" % (self.command)
+      self.command = "%s" % (self.command)
+      self.command += " %s"%self.params.mpi_option
     self.srun_path = os.path.join(self.destination, self.prefix + "srun.sh")
 
 
@@ -667,7 +683,8 @@ class get_htcondor_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "condor_submit"
     if self.params.use_mpi:
-      self.command = "%s mp.method=mpi" % (self.command)
+      self.command = "%s" % (self.command)
+      self.command += " %s"%self.params.mpi_option
 
   def generate_submit_command(self):
     return "condor_submit " + os.path.join(self.destination, self.basename + "_condorparams")

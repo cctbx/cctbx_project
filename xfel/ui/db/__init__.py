@@ -18,6 +18,46 @@ def get_run_path(rootpath, trial, rungroup, run, task=None):
     p = os.path.join(p, "task%03d"%task.id)
   return p
 
+def get_image_mode(rungroup):
+  mode = "other"
+  if rungroup.app.params.facility.name == 'lcls':
+    if "rayonix" in rungroup.detector_address.lower():
+      mode = "rayonix"
+    elif "cspad" in rungroup.detector_address.lower():
+      mode = "cspad"
+    elif "jungfrau" in rungroup.detector_address.lower():
+      mode = "jungfrau"
+  return mode
+
+def write_xtc_locator(locator_path, params, run, rungroup):
+  locator = open(locator_path, 'w')
+  locator.write("experiment=%s\n"%params.facility.lcls.experiment) # LCLS specific parameter
+  locator.write("run=%s\n"%run.run)
+  locator.write("detector_address=%s\n"%rungroup.detector_address)
+  if rungroup.wavelength_offset:
+    locator.write("wavelength_offset=%s\n"%rungroup.wavelength_offset)
+  if rungroup.spectrum_eV_per_pixel:
+    locator.write("spectrum_eV_per_pixel=%s\n"%rungroup.spectrum_eV_per_pixel)
+  if rungroup.spectrum_eV_offset:
+    locator.write("spectrum_eV_offset=%s\n"%rungroup.spectrum_eV_offset)
+  if params.facility.lcls.use_ffb:
+    locator.write("use_ffb=True\n")
+
+  mode = get_image_mode(rungroup)
+  if mode == 'rayonix':
+    from xfel.cxi.cspad_ana import rayonix_tbx
+    pixel_size = rayonix_tbx.get_rayonix_pixel_size(rungroup.binning)
+    locator.write("rayonix.bin_size=%s\n"%rungroup.binning)
+  elif mode == 'cspad':
+    locator.write("cspad.detz_offset=%s\n"%rungroup.detz_parameter)
+  elif mode == 'jungfrau':
+    locator.write("jungfrau.detz_offset=%s\n"%rungroup.detz_parameter)
+
+  if rungroup.extra_format_str:
+    locator.write(rungroup.extra_format_str)
+
+  locator.close()
+
 def get_db_connection(params, block=True, autocommit=True):
   if params.db.password is None:
     password = ""
