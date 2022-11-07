@@ -882,6 +882,54 @@ std::string DotScorer::test()
     }
   }
 
+  // Test a Hydrogen that is a donor overlapping with a target that is not an
+  // acceptor to ensure we get a net negative result.
+  {
+      double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
+      DotSphere ds(sourceRad, 200);
+      unsigned int atomSeq = 0;
+
+      // Construct and fill the SpatialQuery information
+      // with a vector of a single target atom, including its extra info looked up by
+      // its i_seq value.
+      iotbx::pdb::hierarchy::atom a;
+      a.set_xyz(vec3(0, 0, 0));
+      a.set_occ(1);
+      a.data->i_seq = atomSeq++;
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+      atoms.push_back(a);
+      SpatialQuery sq(atoms);
+      ExtraAtomInfo e(targetRad);
+      scitbx::af::shared<ExtraAtomInfo> infos;
+      infos.push_back(e);
+
+      // Construct the source atom, including its extra info.
+      iotbx::pdb::hierarchy::atom source;
+      source.set_occ(1);
+      source.data->i_seq = atomSeq++;
+      ExtraAtomInfo se(sourceRad, false, true);
+      atoms.push_back(source);
+      infos.push_back(se);
+
+      // Construct an empty exclusion list.
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+
+      // Construct the scorer to be used.
+      DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+      // Test the source atom with an overlap of magnitude 0.3.
+      double gap = -0.3;
+      source.set_xyz(vec3(targetRad + sourceRad + gap, 0, 0));
+      ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+          probeRad, exclude, ds.dots(), ds.density(), false);
+      if (!res.valid) {
+          return "DotScorer::test(): Could not score dots for hydrogen bumping case";
+      }
+      if ((res.bumpSubScore >= 0) || (res.totalScore() >= 0) || (res.attractSubScore <= 0)) {
+          return "DotScorer::test(): Unexpected scores for hydrogen bumping case";
+      }
+  }
+
   // Sweep an atom from just touching to far away and make sure the attract
   // curve is monotonically decreasing to 0.
   {
@@ -1069,7 +1117,7 @@ std::string DotScorer::test()
     // Construct an empty exclusion list.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
 
-    // Construct a source atom, including its extra info .
+    // Construct a source atom, including its extra info.
     // This will be a hydrogen but not a donor to check
     // for the standard bad-bump result.
     // Test it against both sides of the bad-bump line to see if it responds correctly.
@@ -1143,7 +1191,7 @@ std::string DotScorer::test()
       if (!res.valid) {
         return "DotScorer::test(): Could not score dots for maxRegularHydrogenOverlap bump setting case";
       }
-      if (res.bumpSubScore == 0) {
+      if (res.bumpSubScore >= 0) {
         return "DotScorer::test(): Bump not found when expected for maxRegularHydrogenOverlap setting case";
       }
 
