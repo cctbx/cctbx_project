@@ -46,6 +46,13 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/cctbx_project/scitbx
+    sed -i .bak 's/"$D\/suffixtree/#"$D\/suffixtree/g' run_tests.py
+  displayName: Skip scitbx/suffixtree/test/tst_single.py for -O1 on macOS
+  condition: and(eq(variables['MODULES'], 'modules1'), eq(variables['OS'], 'osx-64'))
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -131,7 +138,7 @@ steps:
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
-  condition: ne(variables['PYTHON_VERSION'], 'py310')
+  condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
 
 - script: |
     set -xe
@@ -154,16 +161,9 @@ steps:
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
-  condition: eq(variables['PYTHON_VERSION'], 'py310')
+  condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
 
 # test
-- script: |
-    set -xe
-    cd $(Pipeline.Workspace)/modules/cctbx_project/scitbx
-    sed -i .bak 's/"$D\/suffixtree/#"$D\/suffixtree/g' run_tests.py
-  displayName: Skip scitbx/suffixtree/test/tst_single.py for -O1 on macOS
-  condition: and(eq(variables['MODULES'], 'modules1'), eq(variables['OS'], 'osx-64'))
-
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
@@ -194,7 +194,7 @@ steps:
       nproc=4
   failOnStderr: false
   displayName: Test
-  condition: ne(variables['PYTHON_VERSION'], 'py310')
+  condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
   retryCountOnTaskFailure: 3
 
 - script: |
@@ -224,7 +224,7 @@ steps:
       nproc=4
   failOnStderr: false
   displayName: Test
-  condition: eq(variables['PYTHON_VERSION'], 'py310')
+  condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
   retryCountOnTaskFailure: 3
 
 - task: PublishTestResults@2

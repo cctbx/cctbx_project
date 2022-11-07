@@ -114,7 +114,10 @@ jobs:
     failOnStderr: false
 
   - script: |
-      rm -f $(Pipeline.Workspace)/build/lib/scitbx_array_family_flex_ext.so
+      set -xe
+      for f in cctbx_geometry_restraints_ext.so scitbx_array_family_flex_ext.so ; do
+        rm -f $(Pipeline.Workspace)/build/lib/${f}
+      done
     displayName: Fix broken cache on macOS
     continueOnError: true
     failOnStderr: false
