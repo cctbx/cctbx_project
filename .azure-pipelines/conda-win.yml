@@ -42,12 +42,19 @@ jobs:
 
   steps:
   - powershell: |
+      $job_name = "$(Agent.JobName)" -replace ' ', '_'
+      Write-Host "##vso[task.setvariable variable=job_name]$job_name"
+    displayName: Set job_name
+
+  - powershell: |
       Write-Host $(day)
       Write-Host "##vso[task.setVariable variable=day]$(day)"
     displayName: Get day of week
 
-  - powershell: Write-Host $(day)
-    displayName: Check day of week
+  - powershell: |
+      Write-Host $(job_name)
+      Write-Host $(day)
+    displayName: Check variables
 
   # download components
   - checkout: none
@@ -291,6 +298,18 @@ jobs:
     condition: eq(variables['PYTHON_VERSION'], 'py310')
     retryCountOnTaskFailure: 3
 
+  # store tests directory as an artifact
+  - script: |
+      cd $(Pipeline.Workspace)
+      tar -zcf tests_$(job_name).tar.gz ./tests
+    displayName: Save test directory
+    continueOnError: true
+
+  - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.gz
+    artifact: tests_$(job_name).tar.gz
+    continueOnError: true
+
+  # publish test results
   - task: PublishTestResults@2
     condition: succeededOrFailed()
     inputs:

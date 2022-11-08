@@ -227,6 +227,19 @@ steps:
   condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
   retryCountOnTaskFailure: 3
 
+# store tests directory as an artifact
+- script: |
+    set -xe
+    cd $(Pipeline.Workspace)
+    tar -Jcf tests_$(job_name).tar.xz ./tests
+  displayName: Save test directory
+  continueOnError: true
+
+- publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
+  artifact: tests_$(job_name).tar.xz
+  continueOnError: true
+
+# publish test results
 - task: PublishTestResults@2
   condition: succeededOrFailed()
   inputs:
