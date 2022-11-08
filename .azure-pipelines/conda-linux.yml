@@ -56,13 +56,20 @@ jobs:
 
   steps:
   - script: |
+      job_name=`echo $(Agent.JobName) | sed s/" "/"_"/g`
+      echo "##vso[task.setvariable variable=job_name]$job_name"
+    displayName: Set job_name
+
+  - script: |
       day=`date +%A`
       echo $(day)
       echo "##vso[task.setVariable variable=day]$day"
     displayName: Get day of week
 
-  - script: echo $(day)
-    displayName: Check day of week
+  - script: |
+      echo $(job_name)
+      echo $(day)
+    displayName: Check variables
 
   # https://github.com/ApexAI/performance_test/blob/master/azure-pipelines.yml#L9-L17
 
