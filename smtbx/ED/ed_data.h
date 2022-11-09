@@ -31,7 +31,7 @@ public:
       rzo(co, -so, 0, so, co, 0, 0, 0, 1);
     RM = rzo * rxa * ryb;
     RMf = RM * UB;
-    normal = RMf * f_normal;
+    normal = RM * f_normal;
     normal /= normal.length();
   }
   bool is_excited(const BeamInfo<FloatType> &beam,
