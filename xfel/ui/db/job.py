@@ -3,8 +3,8 @@ from xfel.ui import settings_dir
 from xfel.ui.db import db_proxy, get_run_path, write_xtc_locator, get_image_mode
 import os, shutil, copy
 
-known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD"]
-finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL"]
+known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED", "HOLD", "TIMEOUT"]
+finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL", "TIMEOUT"]
 
 class JobFactory(object):
   @staticmethod
