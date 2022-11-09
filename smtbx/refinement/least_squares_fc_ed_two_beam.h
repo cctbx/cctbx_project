@@ -82,7 +82,7 @@ namespace least_squares {
       }
       else {
         observable_updated = false;
-        Fc = f_calc[index] * Fc2Ug;
+        Fc = f_calc[index];
         Fsq = observables[index] * Fc2Ug * Fc2Ug;
       }
       typename std::map<int, const FrameInfo<FloatType>*>::const_iterator fi =
@@ -116,14 +116,14 @@ namespace least_squares {
       return Fsq * sin_part / X;
     }
 
-    FloatType calc_test(FloatType U, cart_t const& K, FloatType t,
-      FloatType Sg, cart_t const& n) const
-    {
-      FloatType delta_k = U / scitbx::fn::pow2(K * n);
+    /* IT Vol C, Chapter 4.3 */
+    FloatType calc_test(FloatType U, FloatType t, FloatType Sg) const {
+      FloatType sig = 0.0007289;
+      FloatType delta_k = U * sig / scitbx::constants::pi;
       FloatType s_eff = std::sqrt(Sg * Sg + delta_k * delta_k);
-      FloatType x1 = scitbx::fn::pow2(sin(scitbx::constants::pi * t * s_eff));
-      x1 /= scitbx::fn::pow2(s_eff);
-      return U * x1;
+      FloatType x1 = scitbx::fn::pow2(sig * U * sin(scitbx::constants::pi * t * s_eff));
+      x1 /= scitbx::fn::pow2(scitbx::constants::pi * s_eff);
+      return x1;
     }
 
     virtual FloatType get_observable() const {
@@ -173,35 +173,7 @@ namespace least_squares {
         }
       }
       observable_updated = true;
-      
-      //// TESTING 
-      //{
-      //  double I = calc_test(Fsq, K, Sg, t, frame->normal);
-      //  if (grads.size() > 0 && index >= 0) {
-      //    FloatType eps = 1e-6;
-      //    FloatType U = std::sqrt(Fsq);
-      //    FloatType v1 = calc_test(U - eps, K, t, Sg, frame->normal);
-      //    FloatType v2 = calc_test(U + eps, K, t, Sg, frame->normal);
-      //    FloatType diff = (v2 - v1) / (2 * eps);
-      //    for (int i = 0; i < coln; i++) {
-      //        grads[i] = design_matrix(index, i) * diff;
-      //      }
-      //      if (thickness.grad) {
-      //        int grad_index = thickness.grad_index;
-      //        SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-      //        v1 = calc_test(U, K, t - eps, Sg, frame->normal);
-      //        v2 = calc_test(U, K, t + eps, Sg, frame->normal);
-      //        diff = (v2 - v1) / (2 * eps);
-      //        grads[grad_index] = diff;
-      //      }
-      //    }
-
-      //  ratio = Fsq / I;
-      //  Fc *= std::sqrt(std::abs(ratio));
-      //  return (Fsq = I);
-      //}
       ratio = sin_part / X;
-      Fc *= std::sqrt(std::abs(ratio));
       return (Fsq = I);
     }
     virtual std::complex<FloatType> get_f_calc() const {
