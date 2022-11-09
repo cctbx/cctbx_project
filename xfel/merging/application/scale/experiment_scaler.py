@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-import math
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from cctbx import miller
 from cctbx.crystal import symmetry
-import sys
 from scipy.optimize import curve_fit
 from scipy.stats import pearsonr
 import numpy as np
@@ -153,12 +151,11 @@ class experiment_scaler(worker):
       weights='unit'
   ):
     'Scale the observed intensities to the reference, or model, using a linear least squares fit.'
-    assert weights in ['unit', 'icalc']
      # Y = offset + slope * X, where Y is I_r and X is I_o
 
+    assert weights in ['unit', 'icalc']
     result = scaling_result()
     result.data_count = matching_indices.pairs().size()
-
     if result.data_count < 3:
       result.error = scaling_result.err_low_signal
       return result
@@ -173,12 +170,13 @@ class experiment_scaler(worker):
     model_subset = np.array(model_subset)
     exp_subset = np.array(exp_subset)
 
-    def linfunc(x, m): return x*m
     correlation = pearsonr(exp_subset, model_subset)[0]
     if correlation < self.params.filter.outlier.min_corr:
       result.error = scaling_result.err_low_correlation
       return result
     result.correlation = correlation
+
+    def linfunc(x, m): return x*m
     slope_unwt = curve_fit(linfunc, exp_subset, model_subset)[0][0]
     if weights == 'unit':
       slope = slope_unwt
