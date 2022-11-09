@@ -66,7 +66,8 @@ class experiment_scaler(worker):
       matching_indices = miller.match_multi_indices(miller_indices_unique = model_intensities.indices(), miller_indices = exp_intensities.indices())
 
       # Least squares
-      result = self.fit_experiment_to_reference(model_intensities, exp_intensities, matching_indices)
+      weights = self.params.scaling.weights
+      result = self.fit_experiment_to_reference(model_intensities, exp_intensities, matching_indices, weights)
 
       if result.error == scaling_result.err_low_signal:
         experiments_rejected_because_of_low_signal += 1
@@ -145,8 +146,14 @@ class experiment_scaler(worker):
 
     return new_experiments, new_reflections
 
-  def fit_experiment_to_reference(self, model_intensities, experiment_intensities, matching_indices):
+  def fit_experiment_to_reference(self,
+      model_intensities,
+      experiment_intensities,
+      matching_indices,
+      weights='unit'
+  ):
     'Scale the observed intensities to the reference, or model, using a linear least squares fit.'
+    assert weights in ['unit', 'icalc']
      # Y = offset + slope * X, where Y is I_r and X is I_o
 
     result = scaling_result()
@@ -172,7 +179,13 @@ class experiment_scaler(worker):
       result.error = scaling_result.err_low_correlation
       return result
     result.correlation = correlation
-    slope = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    slope_unwt = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    if weights == 'unit':
+      slope = slope_unwt
+    elif weights == 'icalc':
+      sigma = (model_subset / slope_unwt)**.5
+      slope = curve_fit(linfunc, exp_subset, model_subset, sigma=sigma)[0][0]
+
     result.slope = slope
     return result
 

@@ -398,6 +398,8 @@ scaling {
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
+  weights = *unit icalc
+    .type = choice
 }
 """
 
