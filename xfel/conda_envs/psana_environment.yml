@@ -34,6 +34,8 @@ dependencies:
  - pyopengl
 
  # HDF5 (main libraries come with psana)
+ # 11/08/22: pin h5py, see h5py/h5py#1880 and conda-forge/h5py-feedstock#92
+ - h5py<3.2
  - hdf5plugin  # [unix]
 
  # other
