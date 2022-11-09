@@ -101,6 +101,7 @@ class QueueInterrogator(object):
                   'SUSPENDED': 'SUSP',
                   'STOPPED': 'SUSP',
                   'CANCELLED': 'EXIT',
+                  'TIMEOUT': 'TIMEOUT',
                  }
       return statuses[status] if status in statuses else 'UNKWN'
     elif self.queueing_system == 'htcondor':
