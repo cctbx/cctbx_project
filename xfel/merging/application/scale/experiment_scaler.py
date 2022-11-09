@@ -6,6 +6,9 @@ from dxtbx.model.experiment_list import ExperimentList
 from cctbx import miller
 from cctbx.crystal import symmetry
 import sys
+from scipy.optimize import curve_fit
+from scipy.stats import pearsonr
+import numpy as np
 
 class scaling_result(object):
   '''Stores results of scaling of an experiment'''
@@ -149,46 +152,28 @@ class experiment_scaler(worker):
     result = scaling_result()
     result.data_count = matching_indices.pairs().size()
 
-    if result.data_count == 0:
+    if result.data_count < 3:
       result.error = scaling_result.err_low_signal
       return result
 
-    # Do various auxilliary summations
-    sum_xx = 0.
-    sum_xy = 0.
-    sum_yy = 0.
-    sum_x = 0.
-    sum_y = 0.
-    sum_w = 0.
+    model_subset = []
+    exp_subset = []
+    exp_sigmas = []
     for pair in matching_indices.pairs():
-      I_w = 1. # Use unit weights for starters
-      I_r = model_intensities.data()[pair[0]]
-      I_o = experiment_intensities.data()[pair[1]]
+      model_subset.append(model_intensities.data()[pair[0]])
+      exp_subset.append(experiment_intensities.data()[pair[1]])
+      exp_sigmas.append(experiment_intensities.sigmas()[pair[1]])
+    model_subset = np.array(model_subset)
+    exp_subset = np.array(exp_subset)
 
-      sum_xx += I_w * I_o**2
-      sum_yy += I_w * I_r**2
-      sum_xy += I_w * I_o * I_r
-      sum_x += I_w * I_o
-      sum_y += I_w * I_r
-      sum_w += I_w
-
-    # calculate Pearson correlation coefficient between X and Y and test it
-    DELTA_1 = result.data_count * sum_xx - sum_x**2
-    DELTA_2 = result.data_count * sum_yy - sum_y**2
-    if (abs(DELTA_1) < sys.float_info.epsilon) or (abs(DELTA_2) < sys.float_info.epsilon):
-      result.error = scaling_result.err_low_signal
-      return result
-    result.correlation = (result.data_count * sum_xy - sum_x * sum_y) / (math.sqrt(DELTA_1) * math.sqrt(DELTA_2))
-    if result.correlation < self.params.filter.outlier.min_corr:
+    def linfunc(x, m): return x*m
+    correlation = pearsonr(exp_subset, model_subset)[0]
+    if correlation < self.params.filter.outlier.min_corr:
       result.error = scaling_result.err_low_correlation
       return result
-
-    DELTA = sum_w * sum_xx
-    if abs(DELTA) < sys.float_info.epsilon:
-      result.error = scaling_result.err_low_signal
-      return result
-    result.slope = sum_w * sum_xy / DELTA
-
+    result.correlation = correlation
+    slope = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    result.slope = slope
     return result
 
 if __name__ == '__main__':
