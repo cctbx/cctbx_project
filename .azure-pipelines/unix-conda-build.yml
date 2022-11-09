@@ -233,6 +233,7 @@ steps:
     cd $(Pipeline.Workspace)
     tar -Jcf tests_$(job_name).tar.xz ./tests
   displayName: Save test directory
+  condition: succeededOrFailed()
   continueOnError: true
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz

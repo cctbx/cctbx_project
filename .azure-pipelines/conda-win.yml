@@ -303,6 +303,7 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -zcf tests_$(job_name).tar.gz ./tests
     displayName: Save test directory
+    condition: succeededOrFailed()
     continueOnError: true
 
   - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.gz
