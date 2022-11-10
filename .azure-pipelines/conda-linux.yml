@@ -93,7 +93,26 @@ jobs:
 
   - script: |
       sudo yum groupinstall -y 'Development Tools'
-      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel tcsh
+      sudo yum install -y mesa-libGLU-devel mesa-libGL-devel tcsh \
+        libX11 \
+        libXext \
+        libXrender \
+        libXau \
+        alsa-lib \
+        gtk2 \
+        gtkmm24 \
+        libXcomposite \
+        libXcursor \
+        libXi \
+        libXrandr \
+        pciutils \
+        libXScrnSaver \
+        libXtst \
+        libXdamage \
+        libXfixes \
+        libXxf86vm \
+        xorg-x11-server-Xvfb
+
     displayName: Install dependencies for CentOS
     condition: or(eq('${{ parameters.distribution }}', 'centos'),
                   eq('${{ parameters.distribution }}', 'rockylinux'))
@@ -116,7 +135,7 @@ jobs:
     condition: eq('${{ parameters.distribution }}', 'ubuntu')
 
   - script: |
-      sudo apt-get install -y build-essential curl git libgl1-mesa-dev libglu1-mesa-dev locales subversion
+      sudo apt-get install -y build-essential curl git libgl1-mesa-dev libglu1-mesa-dev libxcomposite-dev libxss1 locales pciutils subversion
       sudo locale-gen en_US.UTF-8
       sudo update-locale
     displayName: Install dependencies for Ubuntu
