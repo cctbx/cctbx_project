@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from libtbx.program_template import ProgramTemplate
 
+from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
 
@@ -226,7 +227,7 @@ Usage examples:
     self.data_manager.add_model('ligand', selected_model)
 
     if self.params.qi.write_qmr_phil:
-      self.write_qmr_phil(self.params.qi.format)
+      self.write_qmr_phil(output_format=self.params.qi.format)
 
     if self.params.qi.run_qmr:
       self.params.qi.qm_restraints.selection=self.params.qi.selection
@@ -271,12 +272,28 @@ Usage examples:
 
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
+    print(dir(self.params.qi.qm_restraints[0]))
+    qmr = self.params.qi.qm_restraints[0]
+    if qmr.calculate_starting_strain:
+      rc = run_energies(
+        model,
+        self.params,
+        # macro_cycle=self.macro_cycle,
+        pre_refinement=True,
+        # nproc=self.params.main.nproc,
+        log=log,
+        )
+    #
+    # minimise ligands geometry
+    #
     rc = update_restraints( model,
                             self.params,
                             log=log,
                             )
+    if qmr.calculate_final_strain:
+      assert 0
 
-  def write_qmr_phil(self, iterate_histidine=False, log=None):
+  def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
     qi_phil_string = get_qm_restraints_scope()
     qi_phil_string = qi_phil_string.replace('selection = None',
                                             'selection = "%s"' % self.params.qi.selection[0])
@@ -305,7 +322,7 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
 
-    if format=='quantum_inteface':
+    if output_format=='quantum_inteface':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
 
     def safe_filename(s):

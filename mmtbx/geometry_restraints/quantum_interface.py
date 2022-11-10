@@ -2,6 +2,8 @@ from __future__ import absolute_import,division, print_function
 import os
 from libtbx import Auto
 
+from mmtbx.geometry_restraints import mopac_manager
+
 def env_exists_exists(env, var, check=True):
   if check:
     orca_env = env.get(var, False)
@@ -17,7 +19,10 @@ def is_orca_installed(env, var):
   return env_exists_exists(env, var)
 
 def is_mopac_installed(env, var):
-  return env_exists_exists(env, var)
+  if mopac_manager.get_exe():
+    return True
+  else:
+    return env_exists_exists(env, var)
 
 def is_qm_test_installed(env, var):
   return env_exists_exists(env, var, check=False)
@@ -283,7 +288,10 @@ class unique_item_list(list):
 
 def get_qi_macro_cycle_array(params, verbose=False, log=None):
   qi = is_quantum_interface_active(params)
-  number_of_macro_cycles = params.main.number_of_macro_cycles
+  if hasattr(params, 'main'):
+    number_of_macro_cycles = params.main.number_of_macro_cycles
+  else:
+    number_of_macro_cycles = 1
   tmp=[]
   for i in range(number_of_macro_cycles+1):
     tmp.append(unique_item_list())

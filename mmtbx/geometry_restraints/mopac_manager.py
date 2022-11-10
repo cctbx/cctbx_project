@@ -5,6 +5,18 @@ import time
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import base_qm_manager
 
+import libtbx.load_env
+
+def get_exe():
+  bin_dir = libtbx.env.under_base('bin')
+  exe_path = os.path.join(bin_dir, 'mopac')
+  print(os.environ.get('PHENIX_MOPAC', None))
+  if os.environ.get('PHENIX_MOPAC', False):
+    return os.environ['PHENIX_MOPAC']
+  elif os.path.exists(exe_path):
+    return exe_path
+  return False
+
 class mopac_manager(base_qm_manager.base_qm_manager):
   def get_coordinate_filename(self):
     return 'mopac_%s.arc' % self.preamble
@@ -83,7 +95,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
 
   def get_cmd(self):
     cmd = '%s mopac_%s' % (
-      os.environ['PHENIX_MOPAC'],
+      get_exe(),
       self.preamble,
       )
     return cmd
@@ -122,3 +134,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     if level=='all':
       assert 0
 
+if __name__ == '__main__':
+  exe = get_exe()
+  print('mopac executable',exe)

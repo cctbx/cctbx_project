@@ -26,16 +26,18 @@ dna_types = [
   ]
 rna_dna_types = rna_types + dna_types
 
+l_sugar_types = ["L-SACCHARIDE",
+                 'L-SACCHARIDE, ALPHA LINKING',
+                 'L-SACCHARIDE, BETA LINKING',
+                 'L-SACCHARIDE 1,4 AND 1,4 LINKING',
+                 ]
+d_sugar_types = ["D-SACCHARIDE",
+                 'D-SACCHARIDE, ALPHA LINKING',
+                 'D-SACCHARIDE, BETA LINKING',
+                 'D-SACCHARIDE 1,4 AND 1,4 LINKING',
+                 ]
 sugar_types = ["SACCHARIDE",
-               "L-SACCHARIDE",
-               "D-SACCHARIDE",
-               'D-SACCHARIDE, ALPHA LINKING',
-               'D-SACCHARIDE, BETA LINKING',
-               'L-SACCHARIDE, ALPHA LINKING',
-               'L-SACCHARIDE, BETA LINKING',
-               'D-SACCHARIDE 1,4 AND 1,4 LINKING',
-               'L-SACCHARIDE 1,4 AND 1,4 LINKING',
-               ]
+              ] + l_sugar_types + d_sugar_types
 terminii = [
   'L-PEPTIDE NH3 AMINO TERMINUS',
   'L-PEPTIDE COOH CARBOXY TERMINUS',
@@ -273,8 +275,12 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
   t = get_type(code)
   t=t.replace('"','').upper()
   if t in sugar_types:
-    assert not split_l_d
-    return 'sugar'
+    if split_l_d:
+      if t in l_sugar_types:
+        return 'L-saccharide'
+      elif t in d_sugar_types:
+        return 'D-saccharide'
+    return 'saccharide'
   elif t in amino_types:
     if split_l_d:
       if t in l_amino_types:
@@ -311,11 +317,13 @@ def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
   g = get_group(code, split_rna_dna, split_l_d)
   print(g)
   if g in ['L-peptide', 'D-peptide', 'peptide',
+            'L-saccharide', 'D-saccharide', 'saccharide',
            # 'non-polymer',
           ]:
     return g
   return {'amino_acid' : 'peptide',
           'non-polymer': 'ligand',
+          # 'saccharide' : 'pyranose',
           }[g]
   assert 0
 
