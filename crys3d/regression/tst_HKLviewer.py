@@ -76,7 +76,7 @@ def exercise2():
              "HKLviewer_philinput.txt",
              "verbose=5frustum", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             #"closingtime=10", # close HKLviewer after 25 seconds
+             "closingtime=25", # close HKLviewer after 25 seconds
             ]
 
   assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
