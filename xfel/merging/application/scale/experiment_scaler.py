@@ -177,6 +177,8 @@ class experiment_scaler(worker):
     result.correlation = correlation
 
     def linfunc(x, m): return x*m
+    # For weighting, we need to put the Icalc values on the scale of Iobs, so
+    # we do a first-pass scale with unit weights and apply it to model_subset.
     slope_unwt = curve_fit(linfunc, exp_subset, model_subset)[0][0]
     model_subset_scaled = model_subset / slope_unwt
     if weights == 'unit':
