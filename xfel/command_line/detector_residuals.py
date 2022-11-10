@@ -82,6 +82,11 @@ residuals {
   recompute_outliers = False
     .type = bool
     .help = If True, use sauter_poon to recompute outliers and remove them
+  delta_scalar = 50
+    .type = float
+    .help = For deltaXY and similar plots that show for each reflection the offset \
+            between the observed and predicted spot in mm, scale that offset by this \
+            value
   mcd_filter {
     enable = False
       .type = bool
@@ -480,7 +485,7 @@ class ResidualsPlotter(object):
 
     data = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
     norm, cmap, color_vals, sm = self.get_normalized_colors(data)
-    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
+    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.params.residuals.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y, 0))/2
@@ -519,7 +524,7 @@ class ResidualsPlotter(object):
     assert panel is not None and ax is not None and bounds is not None
     data = reflections['delpsical.rad'] * (180/math.pi)
     norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
-    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
+    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.params.residuals.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y, 0))/2
@@ -532,7 +537,7 @@ class ResidualsPlotter(object):
     if self.params.residuals.mcd_filter.enable and len(reflections)>5:
       from xfel.metrology.panel_fitting import Panel_MCD_Filter
       MCD = Panel_MCD_Filter(lab_coords_x, lab_coords_y, data, i_panel = reflections["panel"][0],
-                      delta_scalar = self.delta_scalar, params = self.params)
+                      delta_scalar = self.params.residuals.delta_scalar, params = self.params)
       sX,sY,sPsi = MCD.scatter_coords()
       MCD.plot_contours(ax,show=False) # run this to pre-compute the center position
       ax.scatter(sX, sY, c = sPsi, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
@@ -545,14 +550,14 @@ class ResidualsPlotter(object):
       if self.params.plots.include_scale_bar_in_pixels > 0:
         pxlsz0,pxlsz1 = panel.get_pixel_size()
         ax.plot([panel_center[0],panel_center[0]],
-                [panel_center[1],panel_center[1]+self.params.plots.include_scale_bar_in_pixels*pxlsz1*self.delta_scalar], 'k-')
-        ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.delta_scalar],
+                [panel_center[1],panel_center[1]+self.params.plots.include_scale_bar_in_pixels*pxlsz1*self.params.residuals.delta_scalar], 'k-')
+        ax.plot([panel_center[0],panel_center[0]+self.params.plots.include_scale_bar_in_pixels*pxlsz0*self.params.residuals.delta_scalar],
                 [panel_center[1],panel_center[1]], 'k-')
       ax.scatter(flex.mean(lab_coords_x), flex.mean(lab_coords_y), c='b', s=self.params.dot_size)
       if self.params.residuals.mcd_filter.enable and len(reflections)>5:
         ax.scatter(MCD.robust_model_XY.location_[0],
                    MCD.robust_model_XY.location_[1], c='r', s=self.params.dot_size)
-      print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.delta_scalar)
+      print(panel.get_name(), (flex.mean(lab_coords_x) - panel_center[0])/self.params.residuals.delta_scalar, (flex.mean(lab_coords_y) - panel_center[0])/self.params.residuals.delta_scalar)
 
     return sm, color_vals
 
@@ -564,7 +569,7 @@ class ResidualsPlotter(object):
     assert panel is not None and ax is not None and bounds is not None
     data = reflections['delpsical.rad.pxlambda'] * (180/math.pi)
     norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
-    deltas = (reflections['xyzcal.mm.pxlambda']-reflections['xyzobs.mm.value'])*self.delta_scalar
+    deltas = (reflections['xyzcal.mm.pxlambda']-reflections['xyzobs.mm.value'])*self.params.residuals.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y, 0))/2
@@ -583,7 +588,7 @@ class ResidualsPlotter(object):
     assert panel is not None and ax is not None and bounds is not None
     data = 12398.4/reflections['reflection_wavelength_from_pixels']
     norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=self.min_energy, vmax=self.max_energy)
-    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
+    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.params.residuals.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y, 0))/2
@@ -606,7 +611,7 @@ class ResidualsPlotter(object):
     a = reflections['delpsical.rad']*180/math.pi
     b = reflections['radial_displacements']
 
-    fake_coords = flex.vec2_double(a, b) * self.delta_scalar
+    fake_coords = flex.vec2_double(a, b) * self.params.residuals.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y))/2
@@ -910,8 +915,6 @@ class ResidualsPlotter(object):
       plt.xlabel(r"N reflections with $\Delta\Psi$ > 0")
       plt.ylabel(r"N reflections with $\Delta\Psi$ < 0")
 
-    self.delta_scalar = 50
-
     # Iterate through the detectors, computing detector statistics at the per-panel level (IE one statistic per panel)
     # Per panel dictionaries
     rmsds = {}
@@ -1091,7 +1094,7 @@ class ResidualsPlotter(object):
       if params.plots.repredict_from_reflection_energies: self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$ from mean pixel energies'%tag,
                                                                                    show=False, plot_callback=self.plot_obs_colored_by_deltapsi_pxlambda, colorbar_units=r"$\circ$")
       if params.plots.deltaXY_by_deltaXY:                 self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY*%s'%(tag,
-                                                                                   self.delta_scalar), show=False, plot_callback=self.plot_deltas)
+                                                                                   self.params.residuals.delta_scalar), show=False, plot_callback=self.plot_deltas)
       if params.plots.manual_cdf:                         self.detector_plot_refls(detector, reflections, '%sSP Manual CDF'%tag,
                                                                                    show=False, plot_callback=self.plot_cdf_manually)
       if params.plots.deltaXY_histogram:                  self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY Histograms'%tag,
