@@ -65,12 +65,12 @@ def exercise1():
 
 def exercise2():
   import re
-  with open("philinput.txt","w") as f:
+  with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
   assert os.path.isfile(file_name)
   cmdargs = ["cctbx.HKLviewer",
              file_name,
-             "philinput.txt",
+             "HKLviewer_philinput.txt",
              "verbose=frustum", # dump displayed hkls to stdout when clipplaning
              "output_filename=myoutput.log", # file with stdout, stderr from hklview_frame
              "closingtime=25", # close HKLviewer after 25 seconds
@@ -87,7 +87,7 @@ def exercise2():
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
   # tidy up
-  os.remove("philinput.txt")
+  #os.remove("HKLviewer_philinput.txt")
   #os.remove("myoutput.log")
 
 
