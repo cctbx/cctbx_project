@@ -238,6 +238,7 @@ steps:
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
   artifact: tests_$(job_name).tar.xz
+  condition: succeededOrFailed()
   continueOnError: true
 
 # publish test results
