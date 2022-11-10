@@ -344,7 +344,16 @@ class db_application(object):
             print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
       except OperationalError as e:
-        if "Can't connect to MySQL server" not in str(e) and "Lost connection to MySQL server" not in str(e):
+        reconnect_strings = [
+            "MySQL server has gone away",
+        ]
+        retry_strings = [
+            "Can't connect to MySQL server",
+            "Lost connection to MySQL server",
+        ]
+        if any([s in str(e) for s in reconnect_strings]):
+          self.dbobj = None
+        elif all([s not in str(e) for s in retry_strings]):
           print(query)
           raise e
         retry_count += 1
