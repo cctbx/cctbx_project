@@ -252,6 +252,7 @@ class HKLview_3d:
     self.mousespeed_msg_sem = threading.Semaphore()
     self.hkls_drawn_sem = threading.Semaphore()
     self.autoview_sem = threading.Semaphore()
+    self.browser_connect_sem = threading.Semaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     # Don't overwhelm ProcessBrowserMessage() with the flurry of tooltips that can get emitted by javascript
@@ -1433,9 +1434,9 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
-      if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
+      if not self.browser_connect_sem.acquire(timeout=lock_timeout):
         raise Sorry("Failed connecting to a web browser!")
-      self.hkls_drawn_sem.release()
+      self.browser_connect_sem.release()
     if not blankscene:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
@@ -1461,7 +1462,7 @@ class HKLview_3d:
     self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
          "current_labels": self.get_label_type_from_scene_id( self.params.viewer.scene_id)[0] } )
-    self.mprint("\nDone rendering reflections ")
+    self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
 
 
 
@@ -1485,6 +1486,7 @@ class HKLview_3d:
           self.autoview_sem.release()
           self.mousespeed_msg_sem.release()
           self.hkls_drawn_sem.release()
+          self.browser_connect_sem.release()
           self.mprint( "All sempahores released", verbose="threadingmsg")
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
@@ -1600,6 +1602,9 @@ class HKLview_3d:
           self.params.clip_plane.hkldist -= 1
           self.set_volatile_params()
           philchanged = True
+        elif "RenderStageObjects" in message: # reflections have been drawn
+          self.hkls_drawn_sem.release()
+          self.mprint("RenderStageObjects() has drawn reflections in the browser", verbose=1)
         else:
           if "Ready " in message:
             self.mprint( message, verbose=5)
@@ -1715,7 +1720,7 @@ Distance: %s
     if self.params.viewer.scene_id is not None and not self.WBmessenger.websockclient \
        and not self.WBmessenger.browserisopen or self.isnewfile:
       # don't block in case we're called again and first time failed conecting to a browser
-      self.hkls_drawn_sem.acquire(blocking = False)
+      self.browser_connect_sem.acquire(blocking = False)
       with open(self.hklfname, "w") as f:
         f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
@@ -1731,10 +1736,25 @@ Distance: %s
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
-      self.WBmessenger.browserisopen = True
-      self.hkls_drawn_sem.release() # only release if we succeeded
+      #self.browser_connect_sem.release() # only release if we succeeded
       return True
     return False
+
+
+  def on_browser_connection(self):
+    self.browser_connect_sem.release()
+    self.WBmessenger.browserisopen = True
+    self.mprint("Successfully connected to browser", verbose=1)
+
+
+  def RedrawNGL(self):
+    self.AddToBrowserMsgQueue("Redraw")
+
+
+  def ReloadNGL(self): # expensive as javascript may be several Mbytes large
+    self.mprint("Rendering JavaScript...", verbose=1)
+    if not self.OpenBrowser():
+      self.AddToBrowserMsgQueue("Reload")
 
 
   def set_show_tooltips(self):
@@ -1758,16 +1778,6 @@ Distance: %s
     msg = "%d, %f" %(bin, alpha)
     self.AddToBrowserMsgQueue("alpha", msg)
     return "Opacity %s set on bin[%d]\n" %(alpha, bin)
-
-
-  def RedrawNGL(self):
-    self.AddToBrowserMsgQueue("Redraw")
-
-
-  def ReloadNGL(self): # expensive as javascript may be several Mbytes large
-    self.mprint("Rendering JavaScript...", verbose=1)
-    if not self.OpenBrowser():
-      self.AddToBrowserMsgQueue("Reload")
 
 
   def JavaScriptCleanUp(self, ):
@@ -2647,9 +2657,9 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def RenderStageObjects(self):
-    self.mprint("RenderStageObjects waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
+    self.mprint("RenderStageObjects() waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     self.hkls_drawn_sem.acquire(timeout=lock_timeout)
-    self.mprint("RenderStageObjects got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
+    self.mprint("RenderStageObjects() got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
 
