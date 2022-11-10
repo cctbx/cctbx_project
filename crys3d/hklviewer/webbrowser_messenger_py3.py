@@ -47,6 +47,7 @@ class WBmessenger(object):
     try:
       self.parent = viewerparent
       self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
+      self.on_browser_connection = self.parent.on_browser_connection
       self.websockport = self.parent.websockport
       self.sleeptime = self.parent.sleeptime
       self.mprint = self.parent.mprint
@@ -68,7 +69,7 @@ class WBmessenger(object):
 
 
   def start_server_loop(self):
-    #time.sleep(20)
+    #time.sleep(10)
     self.websockeventloop.run_until_complete(self.server)
     self.websockeventloop.run_forever()
 
@@ -229,6 +230,7 @@ class WBmessenger(object):
   def OnConnectWebsocketClient(self, client):
     self.websockclient = client
     self.mprint( "Browser connected " + str( self.websockclient ), verbose=1 )
+    self.on_browser_connection()
     self.was_disconnected = None
     if self.parent.lastviewmtrx and self.parent.viewerparams.scene_id is not None:
       self.parent.set_volatile_params()
