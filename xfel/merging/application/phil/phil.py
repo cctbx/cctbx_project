@@ -398,8 +398,14 @@ scaling {
     .help = "mark0: original per-image scaling by reference to isomorphous PDB model"
     .help = "mark1: no scaling, just averaging (i.e. Monte Carlo
              algorithm).  Individual image scale factors are set to 1."
-  weights = *unit icalc
+  weights = *unit icalc icalc_sigma
     .type = choice
+    .help = "Sigmas applied in the linear fit of Iobs vs Icalc. unit: sigmas"
+            "equal to 1. icalc: Sigmas are proportional to the square root of"
+            "Icalc (this relation is totally empirical). icalc_sigma: Error"
+            "due to partiality is proportional to Icalc; this term is added to"
+            "the sigma(Iobs) determined in integration so that sigma ="
+            "sqrt(Icalc**2 + sigma(Iobs)**2)."
 }
 """
 

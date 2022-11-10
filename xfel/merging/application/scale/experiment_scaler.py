@@ -153,7 +153,6 @@ class experiment_scaler(worker):
     'Scale the observed intensities to the reference, or model, using a linear least squares fit.'
      # Y = offset + slope * X, where Y is I_r and X is I_o
 
-    assert weights in ['unit', 'icalc']
     result = scaling_result()
     result.data_count = matching_indices.pairs().size()
     if result.data_count < 3:
@@ -169,6 +168,7 @@ class experiment_scaler(worker):
       exp_sigmas.append(experiment_intensities.sigmas()[pair[1]])
     model_subset = np.array(model_subset)
     exp_subset = np.array(exp_subset)
+    exp_sigmas = np.array(exp_sigmas)
 
     correlation = pearsonr(exp_subset, model_subset)[0]
     if correlation < self.params.filter.outlier.min_corr:
@@ -178,10 +178,14 @@ class experiment_scaler(worker):
 
     def linfunc(x, m): return x*m
     slope_unwt = curve_fit(linfunc, exp_subset, model_subset)[0][0]
+    model_subset_scaled = model_subset / slope_unwt
     if weights == 'unit':
       slope = slope_unwt
+    elif weights == 'icalc_sigma':
+      sigma = (model_subset_scaled**2 + exp_sigmas**2)**.5
+      slope = curve_fit(linfunc, exp_subset, model_subset, sigma=sigma)[0][0]
     elif weights == 'icalc':
-      sigma = (model_subset / slope_unwt)**.5
+      sigma = model_subset_scaled**.5
       slope = curve_fit(linfunc, exp_subset, model_subset, sigma=sigma)[0][0]
 
     result.slope = slope
