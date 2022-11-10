@@ -152,7 +152,7 @@ def chiral_outlier_as_kinemage(self):
   leg_ends[3] = legs[3] - leg_vs[3].normalize()*shorten_by
   kin_text = ""
   #tetrahedron is drawn for all markups
-  kin_text += "@vectorlist {%s %s} color= yellow width= 4\n" %(chiral_center.id_str(), "lines")
+  kin_text += "@vectorlist {%s %s} color= yellow width= 4 master={chiral dev}\n" %(chiral_center.id_str(), "lines")
   #draw legs from chiral center
   kin_text += "{%s %s: %.3f sigma} P %.3f %.3f %.3f\n" % (chiral_center.id_str(),outlier_type,self.score,chiral_coords[0],chiral_coords[1],chiral_coords[2])
   kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[1].id_str(),outlier_type,self.score,leg_ends[1][0],leg_ends[1][1],leg_ends[1][2])
@@ -198,7 +198,7 @@ def chiral_outlier_as_kinemage(self):
     kin_text += kin_vec(arrow_text, p, outlier_type, arrow_end_4)
 
   #draw balls onto atoms of greatest interest
-  kin_text += "@balllist {%s %s} color= yellow radius= 0.15\n" %(chiral_center.id_str(), "balls")
+  kin_text += "@balllist {%s %s} color= yellow radius= 0.15 master={chiral dev}\n" %(chiral_center.id_str(), "balls")
   if outlier_type != 'Pseudochiral naming error':
     #"Chiral handedness swap" or "Tetrahedral geometry outlier"
     #error is located at chiral center, draw ball at chiral center of interest
@@ -211,7 +211,7 @@ def chiral_outlier_as_kinemage(self):
     while i <= 3:
       kin_text += "{%s %s: %.3f sigma} %.3f %.3f %.3f\n" % (atoms[i].id_str(),outlier_type,self.score,leg_ends[i][0],leg_ends[i][1],leg_ends[i][2])
       i+=1
-    kin_text += "@labellist {%s %s} color= white\n" % (chiral_center.id_str(), "labels")
+    kin_text += "@labellist {%s %s} color= white master={chiral dev}\n" % (chiral_center.id_str(), "labels")
     #needs to be a different color than balls for readability during overlap
     #atomnames go on atoms rather than balls to reduce overlap and increase clarity
     kin_text += "{  %s} %.3f %.3f %.3f\n" % (chiral_center.name.strip(),chiral_center.xyz[0],chiral_center.xyz[1],chiral_center.xyz[2])
