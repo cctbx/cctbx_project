@@ -49,6 +49,7 @@ class binner(ext.binner):
 
   def __init__(self, binning, miller_set):
     ext.binner.__init__(self, binning, miller_set.indices())
+    self.__getstate_manages_dict__ = True
     self.space_group_info = miller_set.space_group_info()
     self.anomalous_flag = miller_set.anomalous_flag()
     if (miller_set.indices().size() == 0):
