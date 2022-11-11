@@ -17,6 +17,7 @@ from xfel.ui.db.task import task_types
 import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
+from xfel.ui.components.submission_tracker import QueueInterrogator
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
@@ -351,7 +352,7 @@ class DBCredentialsDialog(BaseDialog):
       self.main_sizer.Add(self.web_location, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
-    
+
     self.btn_db_start = gctr.Button(self, name='start_db', label='Start DB Server')
     self.db_btn_OK = wx.Button(self, name='db_OK', label="OK", id=wx.ID_OK)
     self.db_btn_OK.SetDefault()
@@ -386,6 +387,11 @@ class DBCredentialsDialog(BaseDialog):
     if (self.start_db_dialog.ShowModal() == wx.ID_OK):
       self.params.db.server.root_password = self.start_db_dialog.get_db_root_psswd.ctr.GetValue()
       self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
+      if self.params.mp.method:
+        self.start_db_dialog.get_queueing_system.Hide()
+        self.queueing_system = self.params.mp.method
+      else:
+        self.queueing_system = self.start_db_dialog.get_queueing_system.ctr.GetStringSelection()
 
       def _submit_start_server_job(params):
         from xfel.command_line.cxi_mpi_submit import do_submit
@@ -401,31 +407,45 @@ class DBCredentialsDialog(BaseDialog):
           new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.name, params.db.server.root_password)]
           submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
           print("submitting job")
-          submission_id = do_submit('cctbx.xfel.ui_server', submit_path, new_params.output_folder, new_params.mp, log_name="my_SQL.log", err_name="my_SQL.err", job_name='cctbxmysql')
+          submission_id = do_submit('cctbx.xfel.ui_server', submit_path, new_params.output_folder, new_params.mp, log_name="my_SQL.log", err_name="my_SQL.err", job_name='cctbx_start_mysql')
           #remove root password from params
           if submission_id:
             print('job was submitted')
             print('resetting params object')
-            self.params.db.host     = params.db.host
-            self.params.db.port     = int(params.db.port)
-            self.params.db.name     = params.db.name
-            self.params.db.user     = params.db.user
+            if (self.queueing_system == 'slurm') or (self.queueing_sytem == 'shifter'):
+              try:
+                q = QueueInterrogator(self.queueing_system)
+                hostname = q.get_mysql_server_hostname(submission_id)
+                self.params.db.host = hostname
+              except:
+                print(f"Unable to find hostname running MySQL server from SLURM. Submission ID: {submission_id}")
+                pass
+            elif mp.option == 'local':
+              self.params.db.host = params.db.host
+            else:
+              print(f"Unable to find hostname running MySQL server on {self.mp_option}")
+              print(f"Submission ID: {submission_id}")
+
+            self.params.db.port = int(params.db.port)
+            self.params.db.name = params.db.name
+            self.params.db.user = params.db.user
             self.params.db.password = params.db.password
             self.params.db.server.root_password = ''
             self.params.db.server.basedir = params.db.server.basedir
 
+            os.remove(os.path.join(self.params.output_folder, "launch_server_submit.sh"))
+            os.remove(os.path.join(self.params.output_folder, "launch_server_submit_submit.sh"))
           else:
             print('couldn\'t submit job')
         except:
           raise RuntimeError(f"Couldn\'t submit job to start MySql DB.\n Could MySql already be running?\n Check if {params.db.server.basedir} exists.")
 
-      _submit_start_server_job(self.params)  
+      _submit_start_server_job(self.params)
       db_file_location = self.params.db.server.basedir
       self.launch_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
       msg_text = "DB will be located in\n" + str(db_file_location)
       self.db_start_box = wx.MessageBox(msg_text,"DB Info", wx.OK | wx.ICON_INFORMATION)
       print("Started DB")
-      os.remove(os.path.join(self.params.output_folder, "launch_server_submit.sh"))
       self.Close()
 
 class StartDBDialog(BaseDialog):
@@ -440,6 +460,7 @@ class StartDBDialog(BaseDialog):
     self.start_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.start_db_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
     self.start_db_sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer4 = wx.BoxSizer(wx.HORIZONTAL)
     self.vsiz = wx.BoxSizer(wx.VERTICAL)
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
@@ -479,15 +500,29 @@ class StartDBDialog(BaseDialog):
     self.start_db_OK_btn = wx.Button(self, label="OK", id=wx.ID_OK)
     self.start_db_sizer3.Add(self.start_db_cancel_btn)
     self.start_db_sizer3.Add(self.start_db_OK_btn)
+
+    qchoices = ['local', 'lsf', 'slurm', 'shifter', 'sge', 'pbs', 'htcondor', 'custom']
+    self.get_queueing_system = gctr.ChoiceCtrl(self,
+                                           name='get_queueing_system',
+                                           label='Queueing System:',
+                                           label_size=(200, -1),
+                                           label_style='bold',
+                                           choices=qchoices)
     self.vsiz.Add(self.start_db_sizer3, 0, wx.ALL, 60)
+    self.start_db_sizer4.Add(self.get_queueing_system)
+    self.vsiz.Add(self.start_db_sizer4, 0, wx.ALL, 90)
+    try:
+      self.get_queueing_system.ctr.SetSelection(qchoices.index(params.mp.method))
+    except ValueError:
+      pass
     self.main_sizer.Add(self.start_db_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer2, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer3, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.start_db_sizer4, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.Fit()
     self.Center()
     self.SetTitle('Start Database')
-
 
 class LCLSFacilityOptions(BaseDialog):
   ''' Options settings specific to LCLS'''
@@ -1371,6 +1406,7 @@ class CalibrationDialog(BaseDialog):
     self.chk_split_dataset = wx.CheckBox(self,
                                          label='Split dataset into 2 halves (outputs statistics, double runtime, uses 2x number of images')
     self.chk_split_dataset.SetValue(True)
+
     self.main_sizer.Add(self.chk_split_dataset, flag=wx.ALL, border=10)
 
     # Dialog control
