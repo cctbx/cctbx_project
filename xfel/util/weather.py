@@ -77,7 +77,6 @@ def run(params):
     good_timepoints = []
     rank = int(filename.split('_')[1].split('.')[0])
     print(filename)
-    run_timepoints = []
     for line in open(os.path.join(root, filename)):
       try:
         hostname, psanats, ts, status, result = line.strip().split(',')
@@ -85,26 +84,24 @@ def run(params):
         continue
       if reference is None:
         reference = timestamp_to_seconds(ts)
-        run_timepoints.append(0)
         assert status not in ['stop', 'done', 'fail']
 
       if status in ['stop', 'done', 'fail']:
         timepoint = timestamp_to_seconds(ts) - reference
-        run_timepoints.append(timepoint)
         if status == 'done':
           good_timepoints.append(timepoint)
-          good_deltas.append(good_timepoints[-1] - run_timepoints[-2])
         else:
           fail_timepoints.append(timepoint)
-          fail_deltas.append(fail_timepoints[-1] - run_timepoints[-2])
-        ok = True
+        processing_of_most_recent_still_terminated = True
       else:
-        ok = False
+        processing_of_most_recent_still_terminated = False
+    fail_deltas += [j-i for i, j in zip(fail_timepoints[:-1], fail_timepoints[1:])]
+    good_deltas += [j-i for i, j in zip(good_timepoints[:-1], good_timepoints[1:])]
     plt.plot(fail_timepoints, [rank]*len(fail_timepoints), 'b.')
     plt.plot(good_timepoints, [rank]*len(good_timepoints), 'g.')
     fail_total += len(fail_timepoints)
     good_total += len(good_timepoints)
-    if not ok:
+    if not processing_of_most_recent_still_terminated:
       plt.plot([timestamp_to_seconds(ts) - reference], [rank], 'rx')
 
   if fail_deltas:
