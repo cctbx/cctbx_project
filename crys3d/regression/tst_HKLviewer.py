@@ -45,7 +45,7 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
 
 
 def exercise1():
-  assert os.path.isfile(datafname)
+  assert os.path.isfile(file_name)
   myHKLview = hklview_frame.HKLViewFrame(verbose=0)
   myHKLview.LoadReflectionsFile(datafname)
   # slice expanded sphere of reflections with clip plane and translate to
@@ -74,9 +74,9 @@ def exercise2():
   cmdargs = ["cctbx.HKLviewer",
              datafname,
              "HKLviewer_philinput.txt",
-             "verbose=5frustum", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "verbose=2,frustum", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closingtime=20", # close HKLviewer after 20 seconds. Otherwise GUI remains open and finishes
+             "closingtime=15", # close HKLviewer after 25 seconds
             ]
 
   assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
