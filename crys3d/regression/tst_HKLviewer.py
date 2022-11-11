@@ -79,8 +79,19 @@ def exercise2():
              "closingtime=15", # close HKLviewer after 25 seconds
             ]
 
-  assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
+  #assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
+  result = easy_run.fully_buffered(" ".join(cmdargs))
   assert os.path.isfile(outputfname)
+  # write terminal output to our log file
+  with open(outputfname, "a") as f:
+    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
+    for line in result.stdout_lines:
+      f.write(line + "\n")
+    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
+    for line in result.stderr_lines:
+      f.write(line + "\n")
+  assert result.return_code == 0
+
   with open(outputfname, "r") as f:
     mstr = f.read()
   # check output file that reflections are reported to have been drawn
