@@ -2761,6 +2761,9 @@ clip_plane {
     if self.make_new_factory_default_settings:
       # Create a new Factory default settings .ini file to be stored alongside this source file.
       self.PersistQsettings(True)
+    # Notify CCTBX that GUI has been initiated and it can now process messages.
+    # This is critical as it releases a waiting semaphore in CCTBX
+    self.send_message("", msgtype="initiated_gui")
 
 
   def RemoveQsettings(self, all=False):
@@ -2817,7 +2820,7 @@ def run(isembedded=False, chimeraxsession=None):
     # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
-    QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
+    QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
     # For regression tests close us after a specified time
     if closingtime:
       QTimer.singleShot(closingtime, HKLguiobj.closeEvent)

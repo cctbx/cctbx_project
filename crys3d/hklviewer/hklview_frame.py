@@ -67,6 +67,8 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
+    self.update_handler_sem = threading.Semaphore()
+    self.initiated_gui_sem = threading.Semaphore()
     buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -74,6 +76,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
+      self.initiated_gui_sem.acquire(timeout=20)
       self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
@@ -143,10 +146,13 @@ class HKLViewFrame() :
     if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
+        if not self.initiated_gui_sem.acquire(timeout=300):
+          self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
+        self.initiated_gui_sem.release()
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -195,6 +201,9 @@ class HKLViewFrame() :
           continue
         self.mprint("Received message string:\n" + msgstr, verbose=2)
         msgtype, mstr = eval(msgstr)
+        if msgtype == "initiated_gui":
+          self.mprint("GUI has been initialised.\n", verbose=1)
+          self.initiated_gui_sem.release()
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
@@ -202,15 +211,14 @@ class HKLViewFrame() :
         if msgtype=="clipper_crystdict":
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
-        if msgtype=="philstr" or msgtype=="preset_philstr":
+        if msgtype in ["philstr", "preset_philstr"]:
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
-          self.update_settings(new_phil, msgtype, lastmsgtype)
+          self.guarded_update_settings(new_phil, msgtype, lastmsgtype)
         if msgtype=="external_cmd":
           self.external_cmd = mstr
           self.mprint("Received python command string:\n" + mstr, verbose=1)
           self.run_external_cmd()
-
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -402,7 +410,15 @@ class HKLViewFrame() :
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.update_settings(new_phil)
+    self.guarded_update_settings(new_phil, msgtype="preset_philstr")
+
+
+  def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+    if not self.update_handler_sem.acquire(timeout=10):
+      self.mprint("failed acquiring update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+    self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+    self.update_handler_sem.release()
+
 
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
@@ -737,12 +753,12 @@ class HKLViewFrame() :
 
   def SetSpaceGroupChoice(self, n):
     self.params.spacegroup_choice = n
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetDefaultSpaceGroup(self):
     self.params.using_space_subgroup = False
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_default_spacegroup(self):
@@ -755,7 +771,7 @@ class HKLViewFrame() :
     # get list of existing new miller arrays and operations if present
     miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
     self.params.miller_array_operations = str( miller_array_operations_lst )
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def make_new_miller_array(self, is_preset_philstr=False):
@@ -1090,7 +1106,7 @@ class HKLViewFrame() :
 
   def LoadReflectionsFile(self, openfilename):
     self.params.openfilename = openfilename
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def load_miller_arrays(self):
@@ -1113,7 +1129,7 @@ class HKLViewFrame() :
 
   def LoadMillerArrays(self, marrays):
     self.provided_miller_arrays = marrays
-    self.update_settings()
+    self.guarded_update_settings()
     self.params.use_provided_miller_arrays = True
 
 
@@ -1435,42 +1451,42 @@ class HKLViewFrame() :
 
   def TabulateMillerArray(self, ids):
     self.params.tabulate_miller_array_ids = str(ids)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetCameraType(self, camtype):
     self.params.NGL.camera_type = camtype
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ExpandToP1(self, val):
     self.params.hkls.expand_to_p1 = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ExpandAnomalous(self, val):
     self.params.hkls.expand_anomalous = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowOnlyMissing(self, val):
     self.params.hkls.show_only_missing = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowMissing(self, val):
     self.params.hkls.show_missing = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowDataOverSigma(self, val):
     self.params.hkls.show_data_over_sigma = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowSystematicAbsences(self, val):
     self.params.hkls.show_systematic_absences = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
@@ -1478,7 +1494,7 @@ class HKLViewFrame() :
     self.params.hkls.slice_mode = val
     self.params.hkls.slice_axis = axisstr
     self.params.hkls.slice_index = index
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_scene_bin_thresholds(self, thresholds = None, binner_idx = 0,  nbins = 6):
@@ -1496,7 +1512,7 @@ class HKLViewFrame() :
     self.params.nbins = nbins
     self.params.binning.binner_idx = binner_idx
     self.params.binning.bin_opacity = [ [1.0, e] for e in range(nbins) ]
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def GetNumberingOfBinners(self):
@@ -1509,23 +1525,23 @@ class HKLViewFrame() :
     else:
       self.params.scene_bin_thresholds = thresholds[:]
     self.params.nbins = len(binvals)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetOpacities(self, bin_opacities):
     #self.params.bin_opacities = str(bin_opacities)
     self.params.bin_opacities = bin_opacity
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetToolTipOpacity(self, val):
     self.params.NGL.tooltip_alpha = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetShowToolTips(self, val):
     self.params.NGL.show_tooltips = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_scene(self, scene_id):
@@ -1545,12 +1561,12 @@ class HKLViewFrame() :
 
   def SetScene(self, scene_id):
     self.params.viewer.scene_id = scene_id
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetMergeData(self, val):
     self.params.merge_data = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetRadiiScale(self, scale=1.0, nth_power_scale = float("nan")):
@@ -1562,23 +1578,23 @@ class HKLViewFrame() :
     """
     self.params.hkls.scale = scale
     self.params.hkls.nth_power_scale_radii = nth_power_scale
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetColourRadiusToSigmas(self, val):
     self.params.hkls.sigma_color_radius = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetColourScheme(self, color_scheme, color_powscale=1.0):
     self.params.hkls.color_scheme = color_scheme
     self.params.hkls.color_powscale = color_powscale
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetAction(self, val):
     self.params.action = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_action(self, val):
@@ -1720,22 +1736,22 @@ class HKLViewFrame() :
     self.params.viewer.add_user_vector_hkl_op = str(hkl_op)
     self.params.viewer.add_user_vector_abc = str(abc)
     self.params.viewer.add_user_vector_hkl = str(hkl)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowVector(self, val, b=True):
     self.params.viewer.show_vector = [str([val, b])]
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowUnitCell(self, val):
     self.params.show_real_space_unit_cell = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowReciprocalUnitCell(self, val):
     self.params.show_reciprocal_unit_cell = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
@@ -1745,27 +1761,27 @@ class HKLViewFrame() :
       self.params.hkls.slice_mode = False
     else:
       self.params.clip_plane.clip_width = None
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):
     self.params.viewer.animate_rotation_around_vector = str([vecnr, speed])
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def RotateAroundVector(self, vecnr, dgr):
     self.params.viewer.angle_around_vector = str([vecnr, dgr])
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowHKL(self, hkl):
     self.params.viewer.show_hkl = str(hkl)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetMouseSpeed(self, trackspeed):
     self.params.NGL.mouse_sensitivity = trackspeed
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def GetMouseSpeed(self):
