@@ -1,6 +1,7 @@
-from __future__ import absolute_import,print_function, division
+from __future__ import absolute_import, print_function, division
 import matplotlib.pyplot as plt
-import sys,os
+import sys
+import os
 from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -69,6 +70,7 @@ def run(params):
   good_total = fail_total = 0
   fail_deltas = []
   good_deltas = []
+  rank_walltimes = []
   for filename in os.listdir(root):
     if os.path.splitext(filename)[1] != '.txt': continue
     if 'debug' not in filename: continue
@@ -97,21 +99,26 @@ def run(params):
         processing_of_most_recent_still_terminated = False
     fail_deltas += [j-i for i, j in zip(fail_timepoints[:-1], fail_timepoints[1:])]
     good_deltas += [j-i for i, j in zip(good_timepoints[:-1], good_timepoints[1:])]
+    rank_walltimes.append(timestamp_to_seconds(ts) - reference)
     plt.plot(fail_timepoints, [rank]*len(fail_timepoints), 'b.')
     plt.plot(good_timepoints, [rank]*len(good_timepoints), 'g.')
     fail_total += len(fail_timepoints)
     good_total += len(good_timepoints)
     if not processing_of_most_recent_still_terminated:
-      plt.plot([timestamp_to_seconds(ts) - reference], [rank], 'rx')
+      plt.plot([rank_walltimes[-1]], [rank], 'rx')
 
+  msg = "Five number summary of {}: {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}"
   if fail_deltas:
-    fail_five_numbers = five_number_summary(flex.double(fail_deltas))
-    print("Five number summary of {} fail image processing times: {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(fail_total, *fail_five_numbers))
+    process = '{} fail image processing times'.format(fail_total)
+    print(msg.format(process, *five_number_summary(flex.double(fail_deltas))))
   if good_deltas:
-    good_five_numbers = five_number_summary(flex.double(good_deltas))
-    print("Five number summary of {} good image processing times: {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(good_total, *good_five_numbers))
+    process = '{} good image processing times'.format(fail_total)
+    print(msg.format(process, *five_number_summary(flex.double(good_deltas))))
+  if rank_walltimes:
+    process = "{} individual ranks' walltimes".format(len(rank_walltimes))
+    print(msg.format(process, *five_number_summary(flex.double(rank_walltimes))))
 
-  if params.wall_time and params.num_nodes and params.num_cores_per_node-0.5:
+  if params.wall_time and params.num_nodes and params.num_cores_per_node:
     for i in range(params.num_nodes):
       plt.plot([0, params.wall_time], [i*params.num_cores_per_node-0.5, i*params.num_cores_per_node-0.5], 'r-')
   plt.xlabel('Wall time (sec)')
