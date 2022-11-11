@@ -10,7 +10,6 @@ import libtbx.load_env
 def get_exe():
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
-  print(os.environ.get('PHENIX_MOPAC', None))
   if os.environ.get('PHENIX_MOPAC', False):
     return os.environ['PHENIX_MOPAC']
   elif os.path.exists(exe_path):
