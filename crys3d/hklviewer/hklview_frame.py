@@ -169,6 +169,7 @@ class HKLViewFrame() :
   def mprint(self, msg, verbose=0, end="\n"):
     if self.output_file and self.output_file.closed==False :
       self.output_file.write(msg + end)
+      self.output_file.flush()
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
@@ -414,7 +415,7 @@ class HKLViewFrame() :
 
 
   def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
-    if not self.update_handler_sem.acquire(timeout=10):
+    if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
       self.mprint("failed acquiring update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
     self.update_handler_sem.release()
