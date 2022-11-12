@@ -101,8 +101,6 @@ def run(params):
         processing_of_most_recent_still_terminated = True
       else:
         processing_of_most_recent_still_terminated = False
-    fail_deltas += [j-i for i, j in zip(fail_timepoints[:-1], fail_timepoints[1:])]
-    good_deltas += [j-i for i, j in zip(good_timepoints[:-1], good_timepoints[1:])]
     rank_walltimes.append(timestamp_to_seconds(ts) - reference)
     plt.plot(fail_timepoints, [rank]*len(fail_timepoints), 'b.')
     plt.plot(good_timepoints, [rank]*len(good_timepoints), 'g.')
@@ -113,13 +111,13 @@ def run(params):
 
   msg = "Five number summary of {}: {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}"
   if fail_deltas:
-    process = '{} fail image processing times'.format(fail_total)
+    process = '{:4d} fail image processing times'.format(fail_total)
     print(msg.format(process, *five_number_summary(flex.double(fail_deltas))))
   if good_deltas:
-    process = '{} good image processing times'.format(fail_total)
+    process = '{:4d} good image processing times'.format(good_total)
     print(msg.format(process, *five_number_summary(flex.double(good_deltas))))
   if rank_walltimes:
-    process = "{} individual ranks' walltimes".format(len(rank_walltimes))
+    process = "{:4d} individual ranks' walltimes".format(len(rank_walltimes))
     print(msg.format(process, *five_number_summary(flex.double(rank_walltimes))))
 
   if params.wall_time and params.num_nodes and params.num_cores_per_node:
