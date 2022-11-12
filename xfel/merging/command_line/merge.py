@@ -198,7 +198,7 @@ class Script(object):
         filename_suffix = "_%06d"%self.mpi_helper.rank
 
       if len(reflections):
-        reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
+        reflections.as_file(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
       if experiments:
         experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
