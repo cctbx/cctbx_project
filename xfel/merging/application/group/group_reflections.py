@@ -27,7 +27,7 @@ class hkl_group(worker):
 
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
                         keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index_asymmetric', \
-                                      'exp_id', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'],
+                                      'id', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified'],
                         keys_to_ignore=self.params.input.persistent_refl_cols)
 
     # set up hkl chunks to be used for all-to-all; every avialable rank participates in all-to-all, even a rank that doesn't load any data
@@ -88,6 +88,12 @@ class hkl_group(worker):
       for chunk in self.hkl_chunks:
         total_distributed_reflection_count += len(chunk)
 
+        # identifiers are dropped so re-add them
+        for expt_id in set(chunk['id']):
+          chunk.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
+          self.logger.log("debuguphere %d %d %s"%(self.mpi_helper.rank, expt_id, chunk.experiment_identifiers()[expt_id]))
+        #chunk.reset_ids() # don't reset them, from this point on, ids are not guaranteed to be contiguous
+
     self.logger.log("Distributed %d out of %d reflections"%(total_distributed_reflection_count, total_reflection_count))
     self.logger.log("Memory usage: %d MB"%get_memory_usage())
 
@@ -106,9 +112,7 @@ class hkl_group(worker):
     self.logger.log_step_time("CONSOLIDATE")
     self.logger.log("Consolidating reflection tables...")
 
-    result_reflections = flex.reflection_table()
-    for chunk in received_hkl_chunks:
-      result_reflections.extend(chunk)
+    result_reflections = flex.reflection_table.concat(received_hkl_chunks)
 
     self.logger.log_step_time("CONSOLIDATE", True)
 

@@ -158,7 +158,6 @@ class simple_file_loader(worker):
           reflections['intensity.sum.variance.unmodified'] = reflections['intensity.sum.variance'] * 1
 
         new_ids = flex.int(len(reflections), -1)
-        new_identifiers = flex.std_string(len(reflections))
         eid = reflections.experiment_identifiers()
         for k in eid.keys():
           del eid[k]
@@ -178,15 +177,12 @@ class simple_file_loader(worker):
             experiment.imageset = None
           all_experiments.append(experiment)
 
-          # Reflection experiment 'id' is unique within this rank; 'exp_id' (i.e. experiment identifier) is unique globally
-          new_identifiers.set_selected(refls_sel, experiment.identifier)
-
+          # Reflection 'id' is unique within this rank; experiment.identifier is unique globally
           new_id = len(all_experiments)-1
           eid[new_id] = experiment.identifier
           new_ids.set_selected(refls_sel, new_id)
         assert (new_ids < 0).count(True) == 0, "Not all reflections accounted for"
         reflections['id'] = new_ids
-        reflections['exp_id'] = new_identifiers
         all_reflections.extend(reflections)
     else:
       self.logger.log("Received a list of 0 json/pickle file pairs")
@@ -205,8 +201,8 @@ class simple_file_loader(worker):
   def prune_reflection_table_keys(self, reflections):
     from xfel.merging.application.reflection_table_utils import reflection_table_utils
     reflections = reflection_table_utils.prune_reflection_table_keys(reflections=reflections,
-                    keys_to_keep=['intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', \
-                                  'exp_id', 's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified',
+                    keys_to_keep=['id', 'intensity.sum.value', 'intensity.sum.variance', 'miller_index', 'miller_index_asymmetric', \
+                                  's1', 'intensity.sum.value.unmodified', 'intensity.sum.variance.unmodified',
                                   'kapton_absorption_correction', 'flags'],
                     keys_to_ignore=self.params.input.persistent_refl_cols)
     self.logger.log("Pruned reflection table")

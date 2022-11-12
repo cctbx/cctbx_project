@@ -37,7 +37,7 @@ class integrate(worker):
     for expt_id, expt in enumerate(experiments):
       assert len(expt.imageset.paths()) == 1 and len(expt.imageset) == 1
       self.logger.log("Starting integration experiment %d"%expt_id)
-      refls = reflections.select(reflections['exp_id'] == expt.identifier)
+      refls = reflections.select(reflections['id'] == expt_id)
       if expt.imageset.paths()[0] != current_imageset_path:
         current_imageset_path = expt.imageset.paths()[0]
         current_imageset = ImageSetFactory.make_imageset(expt.imageset.paths())
@@ -55,11 +55,7 @@ class integrate(worker):
         continue
 
       all_integrated_expts.append(expt)
-      idents = integrated.experiment_identifiers()
-      del idents[0]
-      idents[expt_id] = expt.identifier
-      integrated['id'] = flex.int(len(integrated), len(all_integrated_expts)-1)
-      all_integrated_refls.extend(integrated)
+      flex.reflection_table.concat([all_integrated, integrated])
 
     self.logger.log("Integration done, %d experiments, %d reflections"%(len(all_integrated_expts), len(all_integrated_refls)))
     return all_integrated_expts, all_integrated_refls

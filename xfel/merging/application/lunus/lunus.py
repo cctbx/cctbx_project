@@ -61,9 +61,11 @@ class lunus(worker):
       index = expt.imageset.indices()[0]
       if image_list[path][index] == n:
         filtered_expts.append(expt)
-        refls_sel |= reflections['exp_id'] == expt.identifier
+        refls_sel |= reflections['id'] == expt_id
+    filtered_refls = reflections.select(refls_sel)
+    filtered_refls.reset_ids()
     self.logger.log("Filtered out %d experiments with more than %d lattices out of %d"%((len(experiments)-len(filtered_expts), n, len(experiments))))
-    return filtered_expts, reflections.select(refls_sel)
+    return filtered_expts, filtered_refls
 
   def run(self, experiments, reflections):
 

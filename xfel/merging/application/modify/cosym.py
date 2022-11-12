@@ -75,11 +75,11 @@ class cosym(worker):
       uuid_cache = uuid_starting
 
       for tranch_experiments, tranch_reflections in tokens:
-          for experiment in tranch_experiments:
+          for expt_id, experiment in enumerate(tranch_experiments):
             sampling_experiments_for_cosym.append(experiment)
             uuid_cache.append(experiment.identifier)
 
-            exp_reflections = tranch_reflections.select(tranch_reflections['exp_id'] == experiment.identifier)
+            exp_reflections = tranch_reflections.select(tranch_reflections['id'] == expt_id)
             # prepare individual reflection tables for each experiment
 
             cosym.experiment_id_detail(sampling_experiments_for_cosym, sampling_reflections_for_cosym, exp_reflections)
@@ -303,8 +303,9 @@ class cosym(worker):
             accepted_expt.crystal = MosaicCrystalSauter2014( accepted_expt.crystal.change_basis(this_cb_op) )
                                     # need to use wrapper because of cctbx/dxtbx#5
           result_experiments_for_cosym.append(accepted_expt)
-          good_refls |= input_reflections["exp_id"] == iexpt_id
-    selected_reflections = input_reflections.select(good_refls) # XXX is this in place (double check)
+          good_refls |= input_reflections["id"] == iexpt
+    selected_reflections = input_reflections.select(good_refls)
+    selected_reflections.reset_ids()
     self.mpi_helper.comm.barrier()
 
     # still have to reindex the reflection table, but try to do it efficiently

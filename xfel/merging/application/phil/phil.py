@@ -97,9 +97,6 @@ input {
       .help = memory reduction factor for MPI alltoall.
       .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
-    reset_experiment_id_column = False
-      .type = bool
-      .expert_level = 3
   }
 }
 

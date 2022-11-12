@@ -8,6 +8,14 @@ from simtbx.diffBragg.utils import is_outlier
 class reflection_table_utils(object):
 
   @staticmethod
+  def slice_table(reflections, start, stop):
+    ''' Slice a table, preserving experiment identifiers '''
+    subset = reflections[start:stop] # drops identifier map
+    for expt_id in set(subset['id']):
+      subset.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
+    return subset
+
+  @staticmethod
   def get_next_hkl_reflection_table(reflections):
     '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
     if reflections.size() == 0:
@@ -20,27 +28,23 @@ class reflection_table_utils(object):
       if hkl == hkl_ref:
         continue
       else:
-        yield reflections[i_begin:i]
+        yield reflection_table_utils.slice_table(reflections, i_begin, i)
         i_begin = i
         hkl_ref = hkl
 
-    yield reflections[i_begin:i+1]
+    yield reflection_table_utils.slice_table(reflections, i_begin, i+1)
 
   @staticmethod
   def select_odd_experiment_reflections(reflections):
-    'Select reflections from experiments with odd ids. An experiment id must be a string representing a hexadecimal number'
-    exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
-    sel = [exp_index_map[exp_id] % 2 == 1 for exp_id in reflections["exp_id"]]
-    sel = flex.bool(sel)
+    'Select reflections from experiments with odd ids.'
+    sel = reflections['id'] % 2 == 1
     reflections["is_odd_experiment"] = sel  # store this for later use, NOTE this is un-prunable if expanded_bookkeeping=True
     return reflections.select(sel)
 
   @staticmethod
   def select_even_experiment_reflections(reflections):
-    'Select reflections from experiments with even ids. An experiment id must be a string representing a hexadecimal number'
-    exp_index_map = {exp_uid: i for i, exp_uid in enumerate(set(reflections["exp_id"]))}
-    sel = [exp_index_map[exp_id] % 2 == 0 for exp_id in reflections["exp_id"]]
-    sel = flex.bool(sel)
+    'Select reflections from experiments with even ids'
+    sel = reflections['id'] % 2 == 0
     return reflections.select(sel)
 
   @staticmethod
@@ -76,14 +80,8 @@ class reflection_table_utils(object):
 
         if thresh is not None:
           vals = refls["intensity.sum.value"].as_numpy_array()
-          #good = ~is_outlier(vals, 4.5)
           good = ~is_outlier(vals, thresh)
           good_vals = vals[good]
-          #if nameprefix is not None:
-          #    name = nameprefix + "_%d.refl" % i_refls
-          #    good_refls = refls.select(flex.bool(good))
-          #    del good_refls["exp_id"]
-          #    good_refls.as_file(name)
           weighted_mean_intensity = np.mean(good_vals)
           vals_var = refls["intensity.sum.variance"].as_numpy_array()
           num_good = good.sum()
@@ -143,7 +141,7 @@ class reflection_table_utils(object):
           i2 = i + stride
           if generated_slices == nonempty_slices:
             i2 = count
-          yield reflections[i:i2]
+          yield reflection_table_utils.slice_table(reflections, i, i2)
 
       # generate some empty slices if necessary
       empty_slices = max(0, n_slices - generated_slices)

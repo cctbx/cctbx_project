@@ -48,7 +48,7 @@ class reflection_filter(worker):
     kap = 'kapton_absorption_correction' in reflections
 
     for expt_id, experiment in enumerate(experiments):
-      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+      exp_reflections = reflections.select(reflections['id'] == expt_id)
       if not len(exp_reflections): continue
 
       N_obs_pre_filter = exp_reflections.size()

@@ -174,6 +174,7 @@ class intensity_resolution_statistics(worker):
       self.logger.main_log(title)
     reflections_even = reflection_table_utils.select_even_experiment_reflections(reflections)
     self.run_detail(reflections_even)
+    assert len(reflections_even) + len(reflections_odd) == len(reflections)
 
     title = "\n                     Intensity Statistics (all accepted experiments)\n"
     self.logger.log(title, rank_prepend=False)

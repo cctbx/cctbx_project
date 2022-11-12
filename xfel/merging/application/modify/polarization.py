@@ -21,8 +21,8 @@ class polarization(worker):
 
     result = flex.reflection_table()
 
-    for experiment in experiments:
-      refls = reflections.select(reflections['exp_id'] == experiment.identifier)
+    for expt_id, experiment in enumerate(experiments):
+      refls = reflections.select(reflections['id'] == expt_id)
       if len(refls) == 0: continue
       beam = experiment.beam
       # Remove the need for pixel size within cxi.merge.  Allows multipanel detector with dissimilar panels.
