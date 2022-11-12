@@ -148,6 +148,8 @@ class HKLViewFrame() :
       if os.path.isfile(fname):
         if not self.initiated_gui_sem.acquire(timeout=300):
           self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+        self.SetScene(0)
+        time.sleep(1)
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
