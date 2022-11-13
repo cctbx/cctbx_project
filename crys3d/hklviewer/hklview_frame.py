@@ -69,6 +69,7 @@ class HKLViewFrame() :
     self.zmqsleeptime = 0.1
     self.update_handler_sem = threading.Semaphore()
     self.initiated_gui_sem = threading.Semaphore()
+    self.start_time = time.time()
     buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -134,29 +135,29 @@ class HKLViewFrame() :
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
-    self.hklin = None
-    if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    self.LoadReflectionsFile(self.hklin)
+    #self.hklin = None
+    #if 'hklin' in kwds or 'HKLIN' in kwds:
+    #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    #self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+    if 0: #'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
-        if not self.initiated_gui_sem.acquire(timeout=300):
+        if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
           self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+        self.initiated_gui_sem.release()
         self.SetScene(0) # crude initialisation of browser
         time.sleep(1)
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
-        self.initiated_gui_sem.release()
-    if 'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(1)
+    if 0: #'image_file' in kwds: # save displayed reflections to an image file
+      time.sleep(15)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
 
@@ -173,17 +174,19 @@ class HKLViewFrame() :
 
 
   def mprint(self, msg, verbose=0, end="\n"):
+    elapsed = time.time() - self.start_time
+    tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
     if self.output_file and self.output_file.closed==False :
-      self.output_file.write(msg + end)
+      self.output_file.write(tmsg)
       self.output_file.flush()
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "info": msg + end } )
+        self.SendInfoToGUI( { "info": tmsg } )
       if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "alert": msg + end } )
+        self.SendInfoToGUI( { "alert": tmsg } )
     else:
       print(msg)
 

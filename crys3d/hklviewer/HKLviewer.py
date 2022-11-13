@@ -235,6 +235,8 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.browserfontsize = None
     self.mousespeedscale = 2000
     self.isembedded = isembedded
+    self.philfname = "" # for regression tests
+    self.image_fname = "testimage.png"
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
@@ -289,7 +291,8 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
       if isinstance( self.__getattribute__(a), QTabWidget):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
-    self.ReadPersistedQsettings()
+    if not self.ReadPersistedQsettings():
+      sys.exit()
     self.buttonsdeflist =[]
     self.app = thisapp
     self.cctbxversion = "unversioned"
@@ -703,9 +706,7 @@ newarray._sigmas = sigs
     self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
             ";;".join(self.filterlst), "", options)
-    if self.currentfileName:
-      self.setWindowFilenameTitles( self.currentfileName)
-      self.send_message('openfilename = "%s"' %self.currentfileName )
+    if self.openReflectionFile():
       # Rearrange filters to use the current filter as default for next time we open a file
       # The default filter is the first one. So promote the one chosen to be first in the list for next time
       idx = self.filterlst.index(filtr) # find its place in the list of filters
@@ -714,6 +715,14 @@ newarray._sigmas = sigs
       newfilterlst = [filtr]
       newfilterlst.extend(self.filterlst)
       self.filterlst = newfilterlst
+
+
+  def openReflectionFile(self):
+    if self.currentfileName:
+      self.setWindowFilenameTitles( self.currentfileName)
+      self.send_message('openfilename = "%s"' %self.currentfileName )
+      return True
+    return False
 
 
   def onSaveReflectionFile(self):
@@ -754,6 +763,21 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     self.select_millertable_column_dlg.show()
     self.select_millertable_column_dlg.activateWindow()
+
+
+  def SaveImage(self):
+    self.send_message('save_image_name = "%s"' %self.image_fname)
+
+
+  def SetFirstScene(self):
+    self.send_message("viewer.scene_id = 0")
+
+
+  def SetStateFromPHILfile(self):
+    with open(self.philfname, "r") as f:
+      self.AddAlertsText("Processing PHIL file: %s\n" %self.philfname)
+      PHILstr = f.read()
+      self.send_message(PHILstr, msgtype = "preset_philstr")
 
 
   def onXtricorderRun(self):
@@ -1588,7 +1612,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                               buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
     if ret == QMessageBox.Yes:
       self.RemoveQsettings()
-      self.reset_to_factorydefaults = True
       msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
       self.AddInfoText(msg)
       self.resetFactoryDefaultbtn.setEnabled(False)
@@ -2703,23 +2726,31 @@ clip_plane {
       # Windows: HKEY_CURRENT_USER\Software\ , Linux: $HOME/.config/ or MacOS: $HOME/Library/Preferences/
       # Do this by constructing a Qsettings object with our program scope
       self.settings = QSettings("CCTBX", "HKLviewer" )
-
-    # test for any necessary flags for WebGL to work on this platform
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
       if not self.isembedded:
-        print("Testing if WebGL works in QWebEngineView....")
-        QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
-        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procout, procerr = webglproc.communicate()
-        if not "WebGL works" in procout.decode():
+        print("Testing if WebGL works in QWebEngineView....", end="")
+        if not self.TestWebGL():
           self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+          if not self.TestWebGL():
+            print("\nFATAL ERROR: WebGL appears not to work work in QWebEngineView on this system!")
+            return False
+        print(" It does. Phew!")
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
     return True
+
+  # test for any necessary flags for WebGL to work on this platform
+  def TestWebGL(self):
+    QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
+    cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procout, procerr = webglproc.communicate()
+    if "WebGL works" in procout.decode():
+      return True
+    return False
 
 
   def UsePersistedQsettings(self):
@@ -2771,6 +2802,8 @@ clip_plane {
     if all:
       mstr = ""
     self.settings.remove(mstr)
+    print("HKLviewer settings removed. Program exits")
+    self.reset_to_factorydefaults = True
 
 
 def run(isembedded=False, chimeraxsession=None):
@@ -2780,6 +2813,16 @@ def run(isembedded=False, chimeraxsession=None):
     debugtrue = False
     closingtime = 0
     kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
+
+    sysargs = []
+    # if an argument is a filename then have it as a keyword argument and assume it's a reflection file
+    for arg in sys.argv[1:]:
+      if '=' not in arg:
+      # if so add it as a keyword argument
+        if os.path.isfile(arg):
+          if not kwargs.get('hklin', False):
+            kwargs['hklin'] = arg
+
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
@@ -2800,33 +2843,55 @@ def run(isembedded=False, chimeraxsession=None):
     app = QApplication(sys.argv)
 
     HKLguiobj = NGL_HKLViewer(app, isembedded)
-
-    if not isembedded:
-      #timer = QTimer()
-      timer.setInterval(20)
-      timer.timeout.connect(HKLguiobj.ProcessMessages)
-      timer.start()
+    if "remove_settings" == e:
+      HKLguiobj.RemoveQsettings()
+      HKLguiobj.closeEvent()
+      sys.exit()
     else:
-      start_time = [time.time()]
+      if not isembedded:
+        #timer = QTimer()
+        timer.setInterval(20)
+        timer.timeout.connect(HKLguiobj.ProcessMessages)
+        timer.start()
 
-      def ChXTimer(trigger, trigger_data):
-        elapsed_time = time.time()-start_time[0]
-        if elapsed_time > 0.02:
-          start_time[0] = time.time()
-          HKLguiobj.ProcessMessages()
+        if kwargs.get('hklin', ""):
+          HKLguiobj.currentfileName = kwargs.get('hklin', "" )
+          QTimer.singleShot(3000, HKLguiobj.openReflectionFile )
 
-      HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-      HKLguiobj.chimeraxsession = chimeraxsession
-    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
-    # the QApplication eventloop has started as to ensure resizing according to persisted
-    # font size is done properly
-    QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
-    # For regression tests close us after a specified time
-    if closingtime:
-      QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
+        if kwargs.get('phil_file', False):
+          # enact settings in a phil file for displaying a specific configuration
+          HKLguiobj.philfname = kwargs.get('phil_file', "" )
+          if os.path.isfile(HKLguiobj.philfname):
+            QTimer.singleShot(5000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
+            QTimer.singleShot(10000, HKLguiobj.SetStateFromPHILfile )
 
-    if isembedded:
-      return HKLguiobj
+        if kwargs.get('image_file', False):
+          # enact settings in a phil file for displaying a specific configuration
+          HKLguiobj.image_fname = kwargs.get('image_file', "testimage.png" )
+          if os.path.isfile(HKLguiobj.philfname):
+            QTimer.singleShot(12000, HKLguiobj.SaveImage )
+
+      else:
+        start_time = [time.time()]
+
+        def ChXTimer(trigger, trigger_data):
+          elapsed_time = time.time()-start_time[0]
+          if elapsed_time > 0.02:
+            start_time[0] = time.time()
+            HKLguiobj.ProcessMessages()
+
+        HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+        HKLguiobj.chimeraxsession = chimeraxsession
+      # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
+      # the QApplication eventloop has started as to ensure resizing according to persisted
+      # font size is done properly
+      QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
+      # For regression tests close us after a specified time
+      if closingtime:
+        QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
+
+      if isembedded:
+        return HKLguiobj
 
     ret = app.exec_()
 

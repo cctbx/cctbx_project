@@ -64,25 +64,31 @@ def exercise1():
 
 
 def exercise2():
+  # First delete any settings from previous HKLviewer runs that might be present on this platform
+  print("Removing any previous Qsettings...")
+  assert ( easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings").return_code == 0 )
+
+  print("Starting the real HKLviewer test...")
+
   import re
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
   assert os.path.isfile(datafname)
 
   outputfname = "myoutput.log"
+  if os.path.isfile(outputfname):
+    os.remove(outputfname)
 
   cmdargs = ["cctbx.HKLviewer",
              datafname,
-             "HKLviewer_philinput.txt",
-             "verbose=2frustum", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "phil_file=HKLviewer_philinput.txt",
+             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closingtime=20", # close HKLviewer after 50 seconds
             ]
 
-  #assert ( easy_run.call(command=" ".join(cmdargs)) == 0 )
   result = easy_run.fully_buffered(" ".join(cmdargs))
-  assert os.path.isfile(outputfname)
   # write terminal output to our log file
   with open(outputfname, "a") as f:
     f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
@@ -104,9 +110,6 @@ def exercise2():
     refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
-  # tidy up
-  #os.remove("HKLviewer_philinput.txt")
-  #os.remove(outputfname)
 
 
 def run():
