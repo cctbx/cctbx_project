@@ -170,7 +170,7 @@ class WBmessenger(object):
       # present in clientmsgqueue, then replace it with message rather than appending it to clientmsgqueue.
       notfound = True
       for rmsg in self.replace_msg_lst:
-        if rmsg in message:
+        if isinstance(message, str) and rmsg in message:
           for msg in self.clientmsgqueue:
             if rmsg in msg:
               msg = message

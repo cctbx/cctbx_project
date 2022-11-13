@@ -76,7 +76,7 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
-      self.initiated_gui_sem.acquire(timeout=20)
+      self.initiated_gui_sem.acquire(timeout=20) # released once HKLviewer sends a message of type "initiated_gui"
       self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
@@ -148,13 +148,17 @@ class HKLViewFrame() :
       if os.path.isfile(fname):
         if not self.initiated_gui_sem.acquire(timeout=300):
           self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
-        self.SetScene(0)
+        self.SetScene(0) # crude initialisation of browser
         time.sleep(1)
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
         self.initiated_gui_sem.release()
+    if 'image_file' in kwds: # save displayed reflections to an image file
+      time.sleep(1)
+      fname = kwds.get('image_file', "testimage.png" )
+      self.update_from_philstr('save_image_name = "%s"' %fname)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
