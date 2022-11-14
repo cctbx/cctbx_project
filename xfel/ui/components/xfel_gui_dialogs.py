@@ -398,25 +398,30 @@ class DBCredentialsDialog(BaseDialog):
           new_params.mp.use_mpi = False
           new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.name, params.db.server.root_password)]
           submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
-          print("submitting job")
-          submission_id = do_submit('cctbx.xfel.ui_server', submit_path, new_params.output_folder, new_params.mp, log_name="my_SQL.log", err_name="my_SQL.err", job_name='cctbx_start_mysql')
+          submission_id = do_submit('cctbx.xfel.ui_server',
+                                    submit_path,
+                                    new_params.output_folder,
+                                    new_params.mp,
+                                    log_name="my_SQL.log",
+                                    err_name="my_SQL.err",
+                                    job_name='cctbx_start_mysql'
+                                   )
           #remove root password from params
           if submission_id:
-            print('job was submitted')
-            print('resetting params object')
             if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
               try:
                 q = QueueInterrogator(self.params.mp.method)
                 hostname = q.get_mysql_server_hostname(submission_id)
-                self.params.db.host = hostname
+                if hostname:
+                  self.params.db.host = hostname
               except ValueError:
-                print(f"Unable to find hostname running MySQL server from SLURM. Submission ID: {submission_id}")
+                print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
                 pass
             elif self.params.mp.method == 'local':
               self.params.db.host = params.db.host
             else:
-              print(f"Unable to find hostname running MySQL server on {self.params.mp.method}")
-              print(f"Submission ID: {submission_id}")
+              print("Unable to find hostname running MySQL server on ", self.params.mp.method)
+              print("Submission ID: ", submission_id)
 
             self.params.db.port = int(params.db.port)
             self.params.db.name = params.db.name
