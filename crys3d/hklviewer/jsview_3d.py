@@ -1527,6 +1527,8 @@ class HKLview_3d:
           self.mprint( "Image to be received", verbose=1)
         elif "ImageWritten" in message:
           self.mprint( "Image saved to file", verbose=0)
+          self.hkls_drawn_sem.release()
+          self.mprint("ProcessBrowserMessage release self.hkls_drawn_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -2492,6 +2494,8 @@ in the space group %s\nwith unit cell %s""" \
 
   def MakeImage(self, filename):
     self.imagename = filename
+    if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("MakeImage failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.AddToBrowserMsgQueue("MakeImage2", "HKLviewer.png,"+ str(sys.version_info[0]) )
 
 
