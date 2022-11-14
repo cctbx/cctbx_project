@@ -289,7 +289,8 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
       if isinstance( self.__getattribute__(a), QTabWidget):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
-    self.ReadPersistedQsettings()
+    if not self.ReadPersistedQsettings():
+      sys.exit()
     self.buttonsdeflist =[]
     self.app = thisapp
     self.cctbxversion = "unversioned"
@@ -1588,7 +1589,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                               buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
     if ret == QMessageBox.Yes:
       self.RemoveQsettings()
-      self.reset_to_factorydefaults = True
       msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
       self.AddInfoText(msg)
       self.resetFactoryDefaultbtn.setEnabled(False)
@@ -2703,23 +2703,30 @@ clip_plane {
       # Windows: HKEY_CURRENT_USER\Software\ , Linux: $HOME/.config/ or MacOS: $HOME/Library/Preferences/
       # Do this by constructing a Qsettings object with our program scope
       self.settings = QSettings("CCTBX", "HKLviewer" )
-
-    # test for any necessary flags for WebGL to work on this platform
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
       if not self.isembedded:
         print("Testing if WebGL works in QWebEngineView....")
-        QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
-        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procout, procerr = webglproc.communicate()
-        if not "WebGL works" in procout.decode():
+        if not self.TestWebGL():
           self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+          if not self.TestWebGL():
+            print("FATAL ERROR: WebGL appears not to work work on this PC!")
+            return False
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
     return True
+
+  # test for any necessary flags for WebGL to work on this platform
+  def TestWebGL(self):
+    QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
+    cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    procout, procerr = webglproc.communicate()
+    if "WebGL works" in procout.decode():
+      return True
+    return False
 
 
   def UsePersistedQsettings(self):
@@ -2771,6 +2778,8 @@ clip_plane {
     if all:
       mstr = ""
     self.settings.remove(mstr)
+    print("HKLviewer settings removed. Program exits")
+    self.reset_to_factorydefaults = True
 
 
 def run(isembedded=False, chimeraxsession=None):
@@ -2800,33 +2809,37 @@ def run(isembedded=False, chimeraxsession=None):
     app = QApplication(sys.argv)
 
     HKLguiobj = NGL_HKLViewer(app, isembedded)
-
-    if not isembedded:
-      #timer = QTimer()
-      timer.setInterval(20)
-      timer.timeout.connect(HKLguiobj.ProcessMessages)
-      timer.start()
+    if "remove_settings" == e:
+      HKLguiobj.RemoveQsettings()
+      HKLguiobj.closeEvent()
+      sys.exit()
     else:
-      start_time = [time.time()]
+      if not isembedded:
+        #timer = QTimer()
+        timer.setInterval(20)
+        timer.timeout.connect(HKLguiobj.ProcessMessages)
+        timer.start()
+      else:
+        start_time = [time.time()]
 
-      def ChXTimer(trigger, trigger_data):
-        elapsed_time = time.time()-start_time[0]
-        if elapsed_time > 0.02:
-          start_time[0] = time.time()
-          HKLguiobj.ProcessMessages()
+        def ChXTimer(trigger, trigger_data):
+          elapsed_time = time.time()-start_time[0]
+          if elapsed_time > 0.02:
+            start_time[0] = time.time()
+            HKLguiobj.ProcessMessages()
 
-      HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-      HKLguiobj.chimeraxsession = chimeraxsession
-    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
-    # the QApplication eventloop has started as to ensure resizing according to persisted
-    # font size is done properly
-    QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
-    # For regression tests close us after a specified time
-    if closingtime:
-      QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
+        HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+        HKLguiobj.chimeraxsession = chimeraxsession
+      # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
+      # the QApplication eventloop has started as to ensure resizing according to persisted
+      # font size is done properly
+      QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
+      # For regression tests close us after a specified time
+      if closingtime:
+        QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
 
-    if isembedded:
-      return HKLguiobj
+      if isembedded:
+        return HKLguiobj
 
     ret = app.exec_()
 
