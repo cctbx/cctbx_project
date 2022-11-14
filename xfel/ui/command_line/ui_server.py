@@ -94,7 +94,6 @@ def run(args):
       rootpw3 = getpass.getpass()
 
   print("Starting server")
-  print(f'cnf_path {cnf_path}')
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
 
@@ -151,6 +150,6 @@ def run(args):
 
 
 if __name__ == '__main__':
-  print(sys.argv)      
+  print(sys.argv)
   run(sys.argv[1:])
 

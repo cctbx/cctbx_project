@@ -132,7 +132,7 @@ db {
       .type = bool
       .help = Whether to always ask for the root password. Note, root password is always \
               needed when the database is initialized.
-    
+
     root_user = 'root'
       .type = str
       .help = username for root

@@ -135,13 +135,13 @@ class QueueInterrogator(object):
 
   def get_mysql_server_hostname(self, submission_id):
     if self.queueing_system in ["mpi", "lsf"]:
-      print(f"method to obtain hostname running MySQL server not implemented for {self.queueing_system}")
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
       pass
     elif self.queueing_system == 'pbs':
-      print(f"method to obtain hostname running MySQL server not implemented for {self.queueing_system}")
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
       pass
     elif self.queueing_system == 'sge':
-      print(f"method to obtain hostname running MySQL server not implemented for {self.queueing_system}")
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
       pass
     elif self.queueing_system == 'slurm' or self.queueing_system == "shifter":
       hostname_command = "sacct --job %s -o NODELIST --noheader | tail -n 1"
@@ -151,7 +151,7 @@ class QueueInterrogator(object):
       elif result.show_stderr():
         print(result.show_stderr())
     elif self.queueing_system == 'htcondor':
-      print(f"method to obtain hostname running MySQL server not implemented for {self.queueing_system}")
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
       pass
 
 class LogReader(object):

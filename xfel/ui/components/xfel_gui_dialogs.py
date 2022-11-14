@@ -387,10 +387,10 @@ class DBCredentialsDialog(BaseDialog):
 
       def _submit_start_server_job(params):
         from xfel.command_line.cxi_mpi_submit import do_submit
-        assert self.params.db.user is not None, f"DB User not defined!"
-        assert self.params.db.password is not None, f"Password for DB User not defined!"
-        assert self.params.db.server.root_password is not None, f"Root password for DB not defined!"
-        assert self.params.db.server.basedir is not None, f"Base directory for DB not defined!"
+        assert self.params.db.user is not None, "DB User not defined!"
+        assert self.params.db.password is not None, "Password for DB User not defined!"
+        assert self.params.db.server.root_password is not None, "Root password for DB not defined!"
+        assert self.params.db.server.basedir is not None, "Base directory for DB not defined!"
 
         try:
           import copy
@@ -406,11 +406,10 @@ class DBCredentialsDialog(BaseDialog):
             print('resetting params object')
             if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
               try:
-                print("getting slurm stuff")  
                 q = QueueInterrogator(self.params.mp.method)
                 hostname = q.get_mysql_server_hostname(submission_id)
                 self.params.db.host = hostname
-              except:
+              except ValueError:
                 print(f"Unable to find hostname running MySQL server from SLURM. Submission ID: {submission_id}")
                 pass
             elif self.params.mp.method == 'local':
@@ -430,8 +429,9 @@ class DBCredentialsDialog(BaseDialog):
             os.remove(os.path.join(self.params.output_folder, "launch_server_submit_submit.sh"))
           else:
             print('couldn\'t submit job')
-        except:
-          raise RuntimeError(f"Couldn\'t submit job to start MySql DB.\n Could MySql already be running?\n Check if {params.db.server.basedir} exists.")
+        except RuntimeError:
+          print("Couldn\'t submit job to start MySql DB.")
+          print("Check if all phil parameters required to launch jobs exists.")
 
       _submit_start_server_job(self.params)
       db_file_location = self.params.db.server.basedir
