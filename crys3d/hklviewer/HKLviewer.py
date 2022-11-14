@@ -235,6 +235,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.browserfontsize = None
     self.mousespeedscale = 2000
     self.isembedded = isembedded
+    self.philfname = "" # for regression tests
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
@@ -755,6 +756,13 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     self.select_millertable_column_dlg.show()
     self.select_millertable_column_dlg.activateWindow()
+
+
+  def SetStateFromPHILfile(self):
+    with open(self.philfname, "r") as f:
+      self.AddAlertsText("Processing PHIL file: %s\n" %self.philfname)
+      PHILstr = f.read()
+      self.send_message(PHILstr, msgtype = "preset_philstr")
 
 
   def onXtricorderRun(self):
@@ -2819,6 +2827,14 @@ def run(isembedded=False, chimeraxsession=None):
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
+
+
+        if kwargs.get('phil_file', False):
+          # enact settings in a phil file for displaying a specific configuration
+          HKLguiobj.philfname = kwargs.get('phil_file', "" )
+          if os.path.isfile(HKLguiobj.philfname):
+            QTimer.singleShot(5000, HKLguiobj.SetStateFromPHILfile )
+
       else:
         start_time = [time.time()]
 

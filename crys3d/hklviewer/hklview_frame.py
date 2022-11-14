@@ -143,7 +143,7 @@ class HKLViewFrame() :
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+    if 0: #'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
         if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
@@ -156,7 +156,7 @@ class HKLViewFrame() :
           philstr = f.read()
           self.update_from_philstr(philstr)
     if 'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(3)
+      time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
 
