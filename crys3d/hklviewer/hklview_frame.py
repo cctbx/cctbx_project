@@ -155,8 +155,8 @@ class HKLViewFrame() :
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
-    if 'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(10)
+    if 0: #'image_file' in kwds: # save displayed reflections to an image file
+      time.sleep(15)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
 

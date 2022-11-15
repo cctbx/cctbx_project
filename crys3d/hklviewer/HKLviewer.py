@@ -236,6 +236,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.mousespeedscale = 2000
     self.isembedded = isembedded
     self.philfname = "" # for regression tests
+    self.image_fname = "testimage.png"
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
@@ -756,6 +757,14 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     """
     self.select_millertable_column_dlg.show()
     self.select_millertable_column_dlg.activateWindow()
+
+
+  def SaveImage(self):
+    self.send_message('save_image_name = "%s"' %self.image_fname)
+
+
+  def SetFirstScene(self):
+    self.send_message("viewer.scene_id = 0")
 
 
   def SetStateFromPHILfile(self):
@@ -2834,7 +2843,14 @@ def run(isembedded=False, chimeraxsession=None):
           # enact settings in a phil file for displaying a specific configuration
           HKLguiobj.philfname = kwargs.get('phil_file', "" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(5000, HKLguiobj.SetStateFromPHILfile )
+            QTimer.singleShot(3000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
+            QTimer.singleShot(10000, HKLguiobj.SetStateFromPHILfile )
+
+        if kwargs.get('image_file', False):
+          # enact settings in a phil file for displaying a specific configuration
+          HKLguiobj.image_fname = kwargs.get('phil_file', "testimage.png" )
+          if os.path.isfile(HKLguiobj.philfname):
+            QTimer.singleShot(12000, HKLguiobj.SaveImage )
 
       else:
         start_time = [time.time()]
