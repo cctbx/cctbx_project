@@ -79,7 +79,7 @@ def exercise2():
   cmdargs = ["cctbx.HKLviewer",
              datafname,
              "phil_file=HKLviewer_philinput.txt",
-             "verbose=2_frustum_threading", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closingtime=20", # close HKLviewer after 50 seconds

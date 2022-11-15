@@ -2714,13 +2714,14 @@ clip_plane {
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
       if not self.isembedded:
-        print("Testing if WebGL works in QWebEngineView....")
+        print("Testing if WebGL works in QWebEngineView....", end="")
         if not self.TestWebGL():
           self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
           if not self.TestWebGL():
-            print("FATAL ERROR: WebGL appears not to work work on this PC!")
+            print("\nFATAL ERROR: WebGL appears not to work work in QWebEngineView on this system!")
             return False
+        print(" It does. Phew!")
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
     return True
