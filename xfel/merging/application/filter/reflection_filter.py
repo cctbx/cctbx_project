@@ -146,6 +146,7 @@ class reflection_filter(worker):
 
     self.logger.log_step_time("SIGNIFICANCE_FILTER", True)
 
+    new_reflections.reset_ids()
     return new_experiments, new_reflections
 
 if __name__ == '__main__':
