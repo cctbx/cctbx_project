@@ -111,13 +111,13 @@ def run(params):
 
   msg = "Five number summary of {} (s): {:7.2f}, {:7.2f}, {:7.2f}, {:7.2f}, {:7.2f}"
   if fail_deltas:
-    process = '{:4d} fail image processing times'.format(fail_total)
+    process = '{:5d} fail image processing times'.format(fail_total)
     print(msg.format(process, *five_number_summary(flex.double(fail_deltas))))
   if good_deltas:
-    process = '{:4d} good image processing times'.format(good_total)
+    process = '{:5d} good image processing times'.format(good_total)
     print(msg.format(process, *five_number_summary(flex.double(good_deltas))))
   if rank_walltimes:
-    process = "{:4d} individual ranks' walltimes".format(len(rank_walltimes))
+    process = "{:5d} individual ranks' walltimes".format(len(rank_walltimes))
     print(msg.format(process, *five_number_summary(flex.double(rank_walltimes))))
 
   if params.wall_time and params.num_nodes and params.num_cores_per_node:
