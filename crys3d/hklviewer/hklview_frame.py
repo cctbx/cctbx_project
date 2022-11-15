@@ -69,6 +69,7 @@ class HKLViewFrame() :
     self.zmqsleeptime = 0.1
     self.update_handler_sem = threading.Semaphore()
     self.initiated_gui_sem = threading.Semaphore()
+    self.start_time = time.time()
     buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -173,17 +174,19 @@ class HKLViewFrame() :
 
 
   def mprint(self, msg, verbose=0, end="\n"):
+    elapsed = time.time() - self.start_time
+    tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
     if self.output_file and self.output_file.closed==False :
-      self.output_file.write(msg + end)
+      self.output_file.write(tmsg)
       self.output_file.flush()
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "info": msg + end } )
+        self.SendInfoToGUI( { "info": tmsg } )
       if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "alert": msg + end } )
+        self.SendInfoToGUI( { "alert": tmsg } )
     else:
       print(msg)
 

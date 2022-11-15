@@ -2848,7 +2848,7 @@ def run(isembedded=False, chimeraxsession=None):
 
         if kwargs.get('image_file', False):
           # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.image_fname = kwargs.get('phil_file', "testimage.png" )
+          HKLguiobj.image_fname = kwargs.get('image_file', "testimage.png" )
           if os.path.isfile(HKLguiobj.philfname):
             QTimer.singleShot(12000, HKLguiobj.SaveImage )
 
