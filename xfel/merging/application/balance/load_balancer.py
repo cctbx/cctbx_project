@@ -168,7 +168,6 @@ class load_balancer(worker):
       for expt_id, experiment in enumerate(self.split_experiments[i]):
         sel |= reflections['id'] == expt_id
       self.split_reflections.append(reflections.select(sel))
-      #self.split_reflections[i].reset_ids()
 
   def distribute_reflections_over_experiment_chunks_cpp(self, reflections):
     '''Distribute reflections over experiment chunks according to experiment identifiers, '''
@@ -197,9 +196,6 @@ class load_balancer(worker):
 
         for expt_id in set(ref_table['id']):
           ref_table.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
-        #ref_table.reset_ids()
-
-        #print(self.mpi_helper.rank, set(ref_table['id']), list(ref_table.experiment_identifiers().keys()))
 
     self.logger.log("Distributed %d out of %d reflections"%(distributed_reflection_count, reflection_count))
 
