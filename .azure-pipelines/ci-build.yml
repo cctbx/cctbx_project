@@ -10,7 +10,7 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
-      version: [6]
+      version: [7]
       modules: modules
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
