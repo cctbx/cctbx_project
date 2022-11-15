@@ -109,7 +109,7 @@ def run(params):
     if not processing_of_most_recent_still_terminated:
       plt.plot([rank_walltimes[-1]], [rank], 'rx')
 
-  msg = "Five number summary of {}: {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}, {:7.3f}"
+  msg = "Five number summary of {} (s): {:7.2f}, {:7.2f}, {:7.2f}, {:7.2f}, {:7.2f}"
   if fail_deltas:
     process = '{:4d} fail image processing times'.format(fail_total)
     print(msg.format(process, *five_number_summary(flex.double(fail_deltas))))
