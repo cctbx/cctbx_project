@@ -1609,7 +1609,7 @@ class HKLview_3d:
           self.mprint("RenderStageObjects() has drawn reflections in the browser", verbose=1)
         else:
           if "Ready " in message:
-            self.mprint( message, verbose=5)
+            self.mprint( message, verbose=4)
         if philchanged:
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
