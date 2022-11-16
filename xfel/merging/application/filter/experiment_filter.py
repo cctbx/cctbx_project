@@ -48,8 +48,7 @@ class experiment_filter(worker):
     '''Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table'''
     experiments.select_on_experiment_identifiers([i for i in experiments.identifiers() if i not in experiment_ids_to_remove])
     reflections.remove_on_experiment_identifiers(experiment_ids_to_remove)
-    if reflections:
-      reflections.reset_ids()
+    reflections.reset_ids()
 
     return experiments, reflections
 
