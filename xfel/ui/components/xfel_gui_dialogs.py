@@ -240,9 +240,6 @@ class SettingsDialog(BaseDialog):
 
     adv.ShowModal()
 
-
-## check for configure multiprocessinig parameters statement
-
   def onDBCredentialsButton(self, e):
     creds = DBCredentialsDialog(self, self.params)
     creds.Center()
@@ -387,11 +384,6 @@ class DBCredentialsDialog(BaseDialog):
     if (self.start_db_dialog.ShowModal() == wx.ID_OK):
       self.params.db.server.root_password = self.start_db_dialog.get_db_root_psswd.ctr.GetValue()
       self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
-      if self.params.mp.method:
-        self.start_db_dialog.get_queueing_system.Hide()
-        self.queueing_system = self.params.mp.method
-      else:
-        self.queueing_system = self.start_db_dialog.get_queueing_system.ctr.GetStringSelection()
 
       def _submit_start_server_job(params):
         from xfel.command_line.cxi_mpi_submit import do_submit
@@ -412,18 +404,19 @@ class DBCredentialsDialog(BaseDialog):
           if submission_id:
             print('job was submitted')
             print('resetting params object')
-            if (self.queueing_system == 'slurm') or (self.queueing_sytem == 'shifter'):
+            if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
               try:
-                q = QueueInterrogator(self.queueing_system)
+                print("getting slurm stuff")  
+                q = QueueInterrogator(self.params.mp.method)
                 hostname = q.get_mysql_server_hostname(submission_id)
                 self.params.db.host = hostname
               except:
                 print(f"Unable to find hostname running MySQL server from SLURM. Submission ID: {submission_id}")
                 pass
-            elif mp.option == 'local':
+            elif self.params.mp.method == 'local':
               self.params.db.host = params.db.host
             else:
-              print(f"Unable to find hostname running MySQL server on {self.mp_option}")
+              print(f"Unable to find hostname running MySQL server on {self.params.mp.method}")
               print(f"Submission ID: {submission_id}")
 
             self.params.db.port = int(params.db.port)
@@ -500,25 +493,10 @@ class StartDBDialog(BaseDialog):
     self.start_db_OK_btn = wx.Button(self, label="OK", id=wx.ID_OK)
     self.start_db_sizer3.Add(self.start_db_cancel_btn)
     self.start_db_sizer3.Add(self.start_db_OK_btn)
-
-    qchoices = ['local', 'lsf', 'slurm', 'shifter', 'sge', 'pbs', 'htcondor', 'custom']
-    self.get_queueing_system = gctr.ChoiceCtrl(self,
-                                           name='get_queueing_system',
-                                           label='Queueing System:',
-                                           label_size=(200, -1),
-                                           label_style='bold',
-                                           choices=qchoices)
     self.vsiz.Add(self.start_db_sizer3, 0, wx.ALL, 60)
-    self.start_db_sizer4.Add(self.get_queueing_system)
-    self.vsiz.Add(self.start_db_sizer4, 0, wx.ALL, 90)
-    try:
-      self.get_queueing_system.ctr.SetSelection(qchoices.index(params.mp.method))
-    except ValueError:
-      pass
     self.main_sizer.Add(self.start_db_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer2, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.start_db_sizer3, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.start_db_sizer4, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.Fit()
     self.Center()
