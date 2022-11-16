@@ -145,11 +145,11 @@ class QueueInterrogator(object):
       pass
     elif self.queueing_system == 'slurm' or self.queueing_system == "shifter":
       hostname_command = "sacct --job %s -o NODELIST --noheader | tail -n 1"
-      result = easy_run.fully_buffered(command=hostname_command%submission_id)
-      if result.show_stdout():
-        return result.show_stdout().strip()
-      elif result.show_stderr():
-        print(result.show_stderr())
+      result = easy_run.fully_buffered(command=hostname_command%submission_id).raise_if_errors()
+      if result.stdout_lines:
+        return result.stdout_lines[0].strip()
+      else:
+        return ""
     elif self.queueing_system == 'htcondor':
       print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
       pass

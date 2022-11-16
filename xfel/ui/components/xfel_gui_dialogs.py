@@ -9,6 +9,7 @@ Last Changed: 06/04/2016
 Description : XFEL UI Custom Dialogs
 '''
 
+import time
 import os
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
@@ -241,6 +242,7 @@ class SettingsDialog(BaseDialog):
     adv.ShowModal()
 
   def onDBCredentialsButton(self, e):
+    self.update_settings()
     creds = DBCredentialsDialog(self, self.params)
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
@@ -254,12 +256,15 @@ class SettingsDialog(BaseDialog):
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
-  def onOK(self, e):
+  def update_settings(self):
     self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
     if self.params.facility.name == 'lcls':
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
+
+  def onOK(self, e):
+    self.update_settings()
     e.Skip()
 
 
@@ -409,14 +414,19 @@ class DBCredentialsDialog(BaseDialog):
           #remove root password from params
           if submission_id:
             if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
-              try:
-                q = QueueInterrogator(self.params.mp.method)
-                hostname = q.get_mysql_server_hostname(submission_id)
-                if hostname:
-                  self.params.db.host = hostname
-              except ValueError:
-                print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
-                pass
+              attempts = 10
+              q = QueueInterrogator(self.params.mp.method)
+              for i in range(attempts):
+                status = q.query(submission_id)
+                if status == 'RUN':
+                  hostname = q.get_mysql_server_hostname(submission_id)
+                  if hostname:
+                    self.params.db.host = hostname
+                  else:
+                    print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
+                else:
+                  print("Waiting for job to start. Submission ID: %s, status: %s"%(submission_id, status))
+                  time.sleep(1)
             elif self.params.mp.method == 'local':
               self.params.db.host = params.db.host
             else:
