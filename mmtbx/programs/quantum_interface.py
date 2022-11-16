@@ -272,7 +272,6 @@ Usage examples:
 
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
-    print(dir(self.params.qi.qm_restraints[0]))
     qmr = self.params.qi.qm_restraints[0]
     if qmr.calculate_starting_strain:
       rc = run_energies(
