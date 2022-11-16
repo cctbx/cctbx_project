@@ -344,9 +344,11 @@ class IndexingJob(Job):
           locator_path = os.path.join(configs_dir, identifier_string + ".loc")
           write_xtc_locator(locator_path, self.app.params, self.run, self.rungroup)
           if mode == 'rayonix':
-            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-rungroup.beamx * pixel_size,
-                                                                                              rungroup.beamy * pixel_size,
-                                                                                             -rungroup.detz_parameter))
+            from xfel.cxi.cspad_ana import rayonix_tbx
+            pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.rungroup.binning)
+            extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-self.rungroup.beamx * pixel_size,
+                                                                                              self.rungroup.beamy * pixel_size,
+                                                                                             -self.rungroup.detz_parameter))
           d['locator'] = locator_path
         else:
           d['locator'] = None

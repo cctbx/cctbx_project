@@ -62,8 +62,10 @@ class DialsProcessorWithLogging(Processor):
     for q in self.queries:
       experiments, reflections, run, n_strong, timestamp, two_theta_low, two_theta_high, db_event = q
       if run != current_run:
+        self.db_app.mode = "execute"
         current_run = run
         current_dbrun = self.db_app.get_run(run_number=run)
+        self.db_app.mode = "cache_commits"
 
       inserts += log_frame(experiments, reflections, self.params, current_dbrun, n_strong, timestamp = timestamp,
                            two_theta_low = two_theta_low, two_theta_high = two_theta_high,
@@ -105,7 +107,7 @@ class DialsProcessorWithLogging(Processor):
     assert len(imageset) == 1
     format_obj = imageset.data().reader().format_class._current_instance_ # XXX
     try: # XTC specific version
-      run = format_obj.get_run_from_index(imageset.indices()[0])
+      run = str(format_obj.get_run_from_index(imageset.indices()[0]))
       timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
       return run.run(), timestamp
     except AttributeError: # General version
