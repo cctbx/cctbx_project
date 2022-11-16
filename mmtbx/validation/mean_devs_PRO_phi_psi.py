@@ -1,4 +1,3 @@
-
 from __future__ import division
 # Phi/Psi corrections in Angstrom and Radials
 mean_devs = {
@@ -122,4 +121,4 @@ if __name__ == '__main__':
   from mmtbx.validation.mean_devs_others_phi_psi import mean_devs as others_phi_psi
   for phi_psi in [(0,0), (-60,-60)]:
     print(phi_psi, mean_devs.get(phi_psi, None), others_phi_psi.get(phi_psi, None))
-    
+
