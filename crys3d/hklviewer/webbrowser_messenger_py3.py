@@ -70,6 +70,7 @@ class WBmessenger(object):
 
   def start_server_loop(self):
     #time.sleep(10)
+    self.mprint("HKLviewerWebSockServerThread started", verbose=1)
     self.websockeventloop.run_until_complete(self.server)
     self.websockeventloop.run_forever()
 
@@ -97,7 +98,6 @@ class WBmessenger(object):
       self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )
       self.wst.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.wst.start()
-
       self.websocketclientmsgthrd = threading.Thread(target = self.ProcessClientMessageLoop,
                                                      name="WebsocketClientMessageThread")
       self.websocketclientmsgthrd.daemon = True # ensure thread dies whenever program terminates through sys.exit()

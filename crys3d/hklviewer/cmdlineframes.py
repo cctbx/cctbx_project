@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import sys, os, traceback
 
-def run():
+def run(args=""):
   try:
     """
     utility function for passing keyword arguments more directly to hklview_frame.HKLViewFrame()
@@ -10,7 +10,8 @@ def run():
     from crys3d.hklviewer import hklview_frame
     #import time; time.sleep(15) # enough for attaching debugger
     # dirty hack for parsing a file path with spaces of a browser if not using default
-    args = sys.argv[1:]
+    if args == "":
+      args = sys.argv[1:]
     sargs = " ".join(args)
     qchar = "'"
     if sargs.find("'") > -1:
