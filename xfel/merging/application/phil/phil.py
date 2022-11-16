@@ -523,7 +523,7 @@ output {
   expanded_bookkeeping = False
     .type = bool
     .help = if True, and if save_experiments_and_reflections=True, then include in the saved refl tabls:
-    .help = 1- modified exp_id column that contains the image number and lattice number
+    .help = 1- modified experiment identifier that contains the image number and lattice number
     .help = 2- index corresponding to the particular reflection in the input file (usually something_integrated.refl)
     .help = 3- the is_odd flag
     .help = 4- the original exp id for the reflection

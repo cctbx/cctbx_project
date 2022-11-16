@@ -145,7 +145,7 @@ class simple_file_loader(worker):
           # NOTE: these are un-prunable
           reflections["input_refl_index"] = flex.int(
             list(range(len(reflections))))
-          reflections["orig_exp_id"] = reflections['id']
+          reflections["original_id"] = reflections['id']
           assert file_names_mapping is not None
           exp_ref_pair = os.path.abspath(experiments_filename), os.path.abspath(reflections_filename)
           this_refl_fileMappings = [file_names_mapping[exp_ref_pair]]*len(reflections)

@@ -212,7 +212,7 @@ class Script(object):
     if self.params.output.expanded_bookkeeping:
       if self.params.input.persistent_refl_cols is None:
         self.params.input.persistent_refl_cols = []
-      keysCreatedByMerge = ["file_list_mapping", "is_odd_experiment"]
+      keysCreatedByMerge = ["input_refl_index", "original_id", "file_list_mapping", "is_odd_experiment"]
       for key in keysCreatedByMerge:
         if key not in self.params.input.persistent_refl_cols:
           self.params.input.persistent_refl_cols.append(key)
