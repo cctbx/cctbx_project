@@ -31,6 +31,10 @@ def run():
   if (args.quiet < 0):
     args.quiet = 0
 
+  if args.ignore_errors:
+    import warnings
+    warnings.simplefilter('ignore')
+
   output = list()
   for dest in args.compile_dest:
     output.append(compileall.compile_dir(dest, 100, force=args.force,
