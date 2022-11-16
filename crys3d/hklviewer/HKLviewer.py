@@ -1071,6 +1071,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
               self.BrowserBox.setAutoFillBackground(True)
               pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
               self.BrowserBox.setPalette(pal)
+              self.send_message("Loading %s in QwebEngine" %self.html_url, msgtype="debug_info")
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
@@ -1193,6 +1194,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
             self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
+            self.send_message("", msgtype="initiated_gui")
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -2728,30 +2730,20 @@ clip_plane {
       self.settings = QSettings("CCTBX", "HKLviewer" )
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
       if not self.isembedded:
-        print("Testing if WebGL works in QWebEngineView....", end="")
-        if not self.TestWebGL():
-          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+        print("Testing if WebGL works in QWebEngineView....")
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        if not TestWebGL():
+          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
-          if not self.TestWebGL():
-            print("\nFATAL ERROR: WebGL appears not to work work in QWebEngineView on this system!")
+          if not TestWebGL():
+            print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
             return False
-        print(" It does. Phew!")
+        print(" It does!")
     if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
+      print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
-
-  # test for any necessary flags for WebGL to work on this platform
-  def TestWebGL(self):
-    QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
-    cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procout, procerr = webglproc.communicate()
-    if "WebGL works" in procout.decode():
-      return True
-    return False
-
 
   def UsePersistedQsettings(self):
     # Now assign the users persisted settings to the GUI
@@ -2794,7 +2786,7 @@ clip_plane {
       self.PersistQsettings(True)
     # Notify CCTBX that GUI has been initiated and it can now process messages.
     # This is critical as it releases a waiting semaphore in CCTBX
-    self.send_message("", msgtype="initiated_gui")
+    #self.send_message("", msgtype="initiated_gui")
 
 
   def RemoveQsettings(self, all=False):
@@ -2804,6 +2796,20 @@ clip_plane {
     self.settings.remove(mstr)
     print("HKLviewer settings removed. Program exits")
     self.reset_to_factorydefaults = True
+
+
+# test for any necessary flags for WebGL to work on this platform
+def TestWebGL():
+  #print("QTWEBENGINE_CHROMIUM_FLAGS = %s" %os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
+  QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
+  cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+  webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  procout, procerr = webglproc.communicate()
+  if "WebGL works" in procout.decode():
+    return True
+  print(procout.decode())
+  return False
 
 
 def run(isembedded=False, chimeraxsession=None):
@@ -2853,24 +2859,24 @@ def run(isembedded=False, chimeraxsession=None):
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
-
+        """
         if kwargs.get('hklin', ""):
           HKLguiobj.currentfileName = kwargs.get('hklin', "" )
-          QTimer.singleShot(3000, HKLguiobj.openReflectionFile )
+          QTimer.singleShot(1000, HKLguiobj.openReflectionFile )
 
         if kwargs.get('phil_file', False):
           # enact settings in a phil file for displaying a specific configuration
           HKLguiobj.philfname = kwargs.get('phil_file', "" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(5000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
-            QTimer.singleShot(10000, HKLguiobj.SetStateFromPHILfile )
+            QTimer.singleShot(2000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
+            QTimer.singleShot(5000, HKLguiobj.SetStateFromPHILfile ) # time enough to load reflection file
 
         if kwargs.get('image_file', False):
           # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.image_fname = kwargs.get('image_file', "testimage.png" )
+          HKLguiobj.image_fname = kwargs.get('image_file', "HKLviewer_image.png" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(12000, HKLguiobj.SaveImage )
-
+            QTimer.singleShot(15000, HKLguiobj.SaveImage )
+        """
       else:
         start_time = [time.time()]
 

@@ -78,6 +78,8 @@ class HKLViewFrame() :
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
       self.initiated_gui_sem.acquire(timeout=20) # released once HKLviewer sends a message of type "initiated_gui"
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
       self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
@@ -135,7 +137,7 @@ class HKLViewFrame() :
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
-    #self.hklin = None
+    self.hklin = None
     #if 'hklin' in kwds or 'HKLIN' in kwds:
     #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
     #self.LoadReflectionsFile(self.hklin)
@@ -144,7 +146,21 @@ class HKLViewFrame() :
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    if 0: #'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+
+    thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
+    thrd2.daemon = True
+    thrd2.start()
+    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
+      thrd2.join()
+      self.__exit__()
+
+
+  def thread_process_arguments(self, **kwds):
+    if 'hklin' in kwds or 'HKLIN' in kwds:
+      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    self.LoadReflectionsFile(self.hklin)
+    self.validate_preset_buttons()
+    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
         if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
@@ -156,10 +172,15 @@ class HKLViewFrame() :
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
-    if 0: #'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(15)
+    if 'image_file' in kwds: # save displayed reflections to an image file
+      time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
+# if we are invoked from commandline not using Qtgui close us gracefully if requested
+    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
+      t = kwds.get('closingtime', -1 )
+      time.sleep(int(t))
+    self.mprint("Done thread_process_arguments()")
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -170,25 +191,31 @@ class HKLViewFrame() :
       self.output_file.close()
       self.output_file = None
     del self
-    #sys.exit()
 
 
-  def mprint(self, msg, verbose=0, end="\n"):
+  def mprint(self, msg, verbose=0, end="\n", with_elapsed_secs=True):
     elapsed = time.time() - self.start_time
-    tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
+    tmsg = "%s%s" %(msg, end)
+    if with_elapsed_secs:
+      tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
     if self.output_file and self.output_file.closed==False :
       self.output_file.write(tmsg)
       self.output_file.flush()
+    intverbose =1
+    if isinstance(self.verbose,str):
+      m = re.findall("(\d)", self.verbose)
+      if len(m) >0:
+        intverbose = int(m[0])
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": tmsg } )
-      if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
+      if  (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
     else:
-      print(msg)
+      print(msg.encode("utf-8"))
 
 
   def find_free_port(self):
@@ -209,11 +236,13 @@ class HKLViewFrame() :
         msgstr = self.guisocket.recv().decode("utf-8")
         if msgstr == "":
           continue
-        self.mprint("Received message string:\n" + msgstr, verbose=2)
+        self.mprint("Received message string:\n" + msgstr, verbose=3)
         msgtype, mstr = eval(msgstr)
         if msgtype == "initiated_gui":
           self.mprint("GUI has been initialised.\n", verbose=1)
           self.initiated_gui_sem.release()
+        if msgtype=="debug_info":
+          self.mprint(mstr, verbose=2 )
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
@@ -424,10 +453,13 @@ class HKLViewFrame() :
 
 
   def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+    self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
-      self.mprint("failed acquiring update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+      self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+    self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
     self.update_handler_sem.release()
+    self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
 
 
