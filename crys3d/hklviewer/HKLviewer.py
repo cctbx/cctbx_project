@@ -706,9 +706,7 @@ newarray._sigmas = sigs
     self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
             ";;".join(self.filterlst), "", options)
-    if self.currentfileName:
-      self.setWindowFilenameTitles( self.currentfileName)
-      self.send_message('openfilename = "%s"' %self.currentfileName )
+    if self.openReflectionFile():
       # Rearrange filters to use the current filter as default for next time we open a file
       # The default filter is the first one. So promote the one chosen to be first in the list for next time
       idx = self.filterlst.index(filtr) # find its place in the list of filters
@@ -717,6 +715,14 @@ newarray._sigmas = sigs
       newfilterlst = [filtr]
       newfilterlst.extend(self.filterlst)
       self.filterlst = newfilterlst
+
+
+  def openReflectionFile(self):
+    if self.currentfileName:
+      self.setWindowFilenameTitles( self.currentfileName)
+      self.send_message('openfilename = "%s"' %self.currentfileName )
+      return True
+    return False
 
 
   def onSaveReflectionFile(self):
@@ -2807,6 +2813,16 @@ def run(isembedded=False, chimeraxsession=None):
     debugtrue = False
     closingtime = 0
     kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
+
+    sysargs = []
+    # if an argument is a filename then have it as a keyword argument and assume it's a reflection file
+    for arg in sys.argv[1:]:
+      if '=' not in arg:
+      # if so add it as a keyword argument
+        if os.path.isfile(arg):
+          if not kwargs.get('hklin', False):
+            kwargs['hklin'] = arg
+
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     for e in sys.argv:
       if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
@@ -2838,12 +2854,15 @@ def run(isembedded=False, chimeraxsession=None):
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
 
+        if kwargs.get('hklin', ""):
+          HKLguiobj.currentfileName = kwargs.get('hklin', "" )
+          QTimer.singleShot(3000, HKLguiobj.openReflectionFile )
 
         if kwargs.get('phil_file', False):
           # enact settings in a phil file for displaying a specific configuration
           HKLguiobj.philfname = kwargs.get('phil_file', "" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(3000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
+            QTimer.singleShot(5000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
             QTimer.singleShot(10000, HKLguiobj.SetStateFromPHILfile )
 
         if kwargs.get('image_file', False):

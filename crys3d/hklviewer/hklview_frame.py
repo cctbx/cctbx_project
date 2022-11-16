@@ -135,10 +135,10 @@ class HKLViewFrame() :
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
-    self.hklin = None
-    if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    self.LoadReflectionsFile(self.hklin)
+    #self.hklin = None
+    #if 'hklin' in kwds or 'HKLIN' in kwds:
+    #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    #self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
