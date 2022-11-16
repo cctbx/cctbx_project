@@ -85,7 +85,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closingtime=30", # close HKLviewer after 50 seconds
+             "closingtime=25", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))

@@ -2857,18 +2857,18 @@ def run(isembedded=False, chimeraxsession=None):
 
         if kwargs.get('hklin', ""):
           HKLguiobj.currentfileName = kwargs.get('hklin', "" )
-          QTimer.singleShot(3000, HKLguiobj.openReflectionFile )
+          QTimer.singleShot(1000, HKLguiobj.openReflectionFile )
 
         if kwargs.get('phil_file', False):
           # enact settings in a phil file for displaying a specific configuration
           HKLguiobj.philfname = kwargs.get('phil_file', "" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(5000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
-            QTimer.singleShot(10000, HKLguiobj.SetStateFromPHILfile )
+            #QTimer.singleShot(5000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
+            QTimer.singleShot(2000, HKLguiobj.SetStateFromPHILfile ) # time enough to load reflection file
 
         if kwargs.get('image_file', False):
           # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.image_fname = kwargs.get('image_file', "testimage.png" )
+          HKLguiobj.image_fname = kwargs.get('image_file', "HKLviewer_image.png" )
           if os.path.isfile(HKLguiobj.philfname):
             QTimer.singleShot(15000, HKLguiobj.SaveImage )
 

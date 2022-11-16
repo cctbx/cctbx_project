@@ -2349,14 +2349,14 @@ in the space group %s\nwith unit cell %s""" \
       #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
       self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
       if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
-        self.mprint("Failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+        self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
       self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
       self.GetClipPlaneDistances()
       self.hkls_drawn_sem.release()
       self.mprint("make_clip_plane released hkls_drawn_sem", verbose="threadingmsg")
     self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
@@ -2445,7 +2445,7 @@ in the space group %s\nwith unit cell %s""" \
   def GetMouseSpeed(self):
     self.mprint("GetMouseSpeed waiting for mousespeed_msg_sem.acquire", verbose="threadingmsg")
     if not self.mousespeed_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring mousespeed_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for mousespeed_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetMouseSpeed got mousespeed_msg_sem", verbose="threadingmsg")
     self.params.NGL.mouse_sensitivity = None
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
@@ -2461,16 +2461,17 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def GetClipPlaneDistances(self):
-    self.mprint("GetClipPlaneDistances waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
+    self.mprint("GetClipPlaneDistances waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
     if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
-      self.mprint("Failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("GetClipPlaneDistances got hkls_drawn_sem", verbose="threadingmsg")
     self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
     self.mprint("GetClipPlaneDistances waiting for autoview_sem.acquire", verbose="threadingmsg")
     if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetClipPlaneDistances got autoview_sem", verbose="threadingmsg")
     self.clipNear = None
     self.clipFar = None
@@ -2489,7 +2490,7 @@ in the space group %s\nwith unit cell %s""" \
     self.RotateMxStage(rotmx)
     self.mprint("SetAutoView waiting for autoview_sem.acquire", verbose="threadingmsg")
     if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
 
@@ -2537,7 +2538,7 @@ in the space group %s\nwith unit cell %s""" \
       return
     self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
     if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetDefaultOrientation")
 
@@ -2557,7 +2558,7 @@ in the space group %s\nwith unit cell %s""" \
       self.GetClipPlaneDistances()
     self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Failed acquiring clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
     if self.cameraPosZ is not None:
       scaleRot = rotmx * self.cameraPosZ
@@ -2680,7 +2681,7 @@ in the space group %s\nwith unit cell %s""" \
   def RenderStageObjects(self):
     self.mprint("RenderStageObjects() waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
-      self.mprint("Failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("RenderStageObjects() got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("RenderStageObjects")
 
