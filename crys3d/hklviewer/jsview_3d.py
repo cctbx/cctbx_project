@@ -77,7 +77,7 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
 
 
-lock_timeout=20 # for the sempahores. Rendering could take a while for very large file. Until that
+lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
 # has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
 # are undefined.
 
@@ -1540,6 +1540,8 @@ class HKLview_3d:
           self.zoom = flst[3]
           onrequest = flst[4]
           if onrequest: # only unlock if requested by GetClipPlaneDistances()
+            self.hkls_drawn_sem.release()
+            self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released hkls_drawn_sem", verbose="threadingmsg")
             self.clipplane_msg_sem.release()
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
             self.autoview_sem.release()
@@ -2459,6 +2461,9 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def GetClipPlaneDistances(self):
+    self.mprint("GetClipPlaneDistances waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
+    if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
+      self.mprint("Failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
       self.mprint("Failed acquiring clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
