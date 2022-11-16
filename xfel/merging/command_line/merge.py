@@ -190,14 +190,13 @@ class Script(object):
         self.mpi_logger.log("Ending step with %d experiments"%len(experiments))
 
     if self.params.output.save_experiments_and_reflections:
-      assert 'id' in reflections
-
       if self.mpi_helper.size == 1:
         filename_suffix = ""
       else:
         filename_suffix = "_%06d"%self.mpi_helper.rank
 
       if len(reflections):
+        assert 'id' in reflections
         reflections.as_file(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
       if experiments:
         experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))

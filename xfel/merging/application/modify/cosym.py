@@ -305,7 +305,8 @@ class cosym(worker):
           result_experiments_for_cosym.append(accepted_expt)
           good_refls |= input_reflections["id"] == iexpt
     selected_reflections = input_reflections.select(good_refls)
-    selected_reflections.reset_ids()
+    if selected_reflections:
+      selected_reflections.reset_ids()
     self.mpi_helper.comm.barrier()
 
     # still have to reindex the reflection table, but try to do it efficiently

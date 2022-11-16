@@ -63,7 +63,8 @@ class lunus(worker):
         filtered_expts.append(expt)
         refls_sel |= reflections['id'] == expt_id
     filtered_refls = reflections.select(refls_sel)
-    filtered_refls.reset_ids()
+    if filtered_refls:
+      filtered_refls.reset_ids()
     self.logger.log("Filtered out %d experiments with more than %d lattices out of %d"%((len(experiments)-len(filtered_expts), n, len(experiments))))
     return filtered_expts, filtered_refls
 

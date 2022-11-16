@@ -270,7 +270,8 @@ class load_balancer(worker):
         r = reflections.select(reflections['id'] == e_id) # select matching reflections to send
         send_refl_j.extend(r)
         reflections = reflections.select(reflections['id'] != e_id) # remove from this rank's reflections
-      send_refl_j.reset_ids()
+      if send_refl_j:
+        send_refl_j.reset_ids()
       send_data[j] = (send_expt_j, send_refl_j)
     recv_data = mpi_communicator.alltoall(send_data)
 

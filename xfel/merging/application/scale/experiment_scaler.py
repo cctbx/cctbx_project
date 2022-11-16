@@ -93,7 +93,8 @@ class experiment_scaler(worker):
       new_experiments.append(experiment)
       new_reflections.extend(exp_reflections)
 
-    new_reflections.reset_ids()
+    if new_reflections:
+      new_reflections.reset_ids()
     rejected_experiments = len(experiments) - len(new_experiments)
     assert rejected_experiments == experiments_rejected_because_of_low_signal + \
                                     experiments_rejected_because_of_low_correlation_with_reference
