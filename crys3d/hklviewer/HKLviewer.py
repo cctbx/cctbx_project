@@ -2734,9 +2734,10 @@ clip_plane {
           self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
           if not self.TestWebGL():
-            print("\nFATAL ERROR: WebGL appears not to work work in QWebEngineView on this system!")
+            print("\nFATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
+            print("Tried as a last resort with QTWEBENGINE_CHROMIUM_FLAGS = %s" %self.QWebEngineViewFlags)
             return False
-        print(" It does. Phew!")
+        print(" It does!")
     if "verbose" in sys.argv[1:]:
       print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
     return True
@@ -2869,7 +2870,7 @@ def run(isembedded=False, chimeraxsession=None):
           # enact settings in a phil file for displaying a specific configuration
           HKLguiobj.image_fname = kwargs.get('image_file', "testimage.png" )
           if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(12000, HKLguiobj.SaveImage )
+            QTimer.singleShot(60000, HKLguiobj.SaveImage )
 
       else:
         start_time = [time.time()]

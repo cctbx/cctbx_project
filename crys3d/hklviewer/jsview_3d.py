@@ -1437,6 +1437,7 @@ class HKLview_3d:
       if not self.browser_connect_sem.acquire(timeout=lock_timeout):
         raise Sorry("Failed connecting to a web browser!")
       self.browser_connect_sem.release()
+      self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
     if not blankscene:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
@@ -1503,7 +1504,7 @@ class HKLview_3d:
           self.set_volatile_params()
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
-          self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -1528,7 +1529,7 @@ class HKLview_3d:
         elif "ImageWritten" in message:
           self.mprint( "Image saved to file", verbose=0)
           self.hkls_drawn_sem.release()
-          self.mprint("ProcessBrowserMessage release self.hkls_drawn_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1540,9 +1541,9 @@ class HKLview_3d:
           onrequest = flst[4]
           if onrequest: # only unlock if requested by GetClipPlaneDistances()
             self.clipplane_msg_sem.release()
-            self.mprint("ProcessBrowserMessage release clipplane_msg_sem", verbose="threadingmsg")
+            self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
             self.autoview_sem.release()
-            self.mprint("ProcessBrowserMessage release autoview_sem", verbose="threadingmsg")
+            self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released autoview_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1550,7 +1551,7 @@ class HKLview_3d:
           if flst[0] is not None and not cmath.isnan(flst[0]):
             self.params.NGL.mouse_sensitivity = flst[0]
           self.mousespeed_msg_sem.release()
-          self.mprint("ProcessBrowserMessage release mousespeed_msg_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, ReturnMouseSpeed released mousespeed_msg_sem", verbose="threadingmsg")
         elif "tooltip_id:" in message:
           ttipids = message.split("tooltip_id:")[1]
           hklid = eval(message.split("tooltip_id:")[1])[0]
@@ -1595,7 +1596,7 @@ class HKLview_3d:
           self.mprint( message, verbose=3)
         elif "notify_cctbx_AfterRendering" in message:
           self.hkls_drawn_sem.release()
-          self.mprint("ProcessBrowserMessage release self.hkls_drawn_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, notify_cctbx_AfterRendering released self.hkls_drawn_sem", verbose="threadingmsg")
         elif "MoveClipPlanesUp" in message:
           self.params.clip_plane.hkldist += 1
           self.set_volatile_params()
@@ -1745,6 +1746,7 @@ Distance: %s
 
   def on_browser_connection(self):
     self.browser_connect_sem.release()
+    self.mprint("on_browser_connection released browser_connect_sem", verbose="threadingmsg")
     self.WBmessenger.browserisopen = True
     self.mprint("Successfully connected to browser", verbose=1)
 
@@ -2349,7 +2351,7 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
       self.GetClipPlaneDistances()
       self.hkls_drawn_sem.release()
-      self.mprint("make_clip_plane release hkls_drawn_sem", verbose="threadingmsg")
+      self.mprint("make_clip_plane released hkls_drawn_sem", verbose="threadingmsg")
     self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
       self.mprint("Failed acquiring clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
@@ -2359,7 +2361,7 @@ in the space group %s\nwith unit cell %s""" \
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
     self.clipplane_msg_sem.release()
-    self.mprint("make_clip_plane release clipplane_msg_sem", verbose="threadingmsg")
+    self.mprint("make_clip_plane released clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 
@@ -2494,8 +2496,10 @@ in the space group %s\nwith unit cell %s""" \
 
   def MakeImage(self, filename):
     self.imagename = filename
+    self.mprint("MakeImage waiting for hkls_drawn_sem semaphore", verbose="threadingmsg")
     if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
       self.mprint("MakeImage failed acquiring hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("MakeImage got hkls_drawn_sem semaphore", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("MakeImage2", "HKLviewer.png,"+ str(sys.version_info[0]) )
 
 
@@ -2561,7 +2565,7 @@ in the space group %s\nwith unit cell %s""" \
         msg = str_rot + ", verbose\n"
       self.AddToBrowserMsgQueue("RotateStage", msg)
     self.clipplane_msg_sem.release()
-    self.mprint("RotateMxStage release clipplane_msg_sem", verbose="threadingmsg")
+    self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
