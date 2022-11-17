@@ -237,7 +237,7 @@ jobs:
         nproc=4
     failOnStderr: false
     displayName: Test
-    retryCountOnTaskFailure: 3
+    # retryCountOnTaskFailure: 3
 
   # store tests directory as an artifact
   - script: |
