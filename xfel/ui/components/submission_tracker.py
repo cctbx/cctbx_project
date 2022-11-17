@@ -133,6 +133,27 @@ class QueueInterrogator(object):
     else:
       return status
 
+  def get_mysql_server_hostname(self, submission_id):
+    if self.queueing_system in ["mpi", "lsf"]:
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
+      pass
+    elif self.queueing_system == 'pbs':
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
+      pass
+    elif self.queueing_system == 'sge':
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
+      pass
+    elif self.queueing_system == 'slurm' or self.queueing_system == "shifter":
+      hostname_command = "sacct --job %s -o NODELIST --noheader | tail -n 1"
+      result = easy_run.fully_buffered(command=hostname_command%submission_id).raise_if_errors()
+      if result.stdout_lines:
+        return result.stdout_lines[0].strip()
+      else:
+        return ""
+    elif self.queueing_system == 'htcondor':
+      print("method to obtain hostname running MySQL server not implemented for ", self.queueing_system)
+      pass
+
 class LogReader(object):
   """A log reader that distinguishes between expected results of successful and unsuccessful
   log file termination, and returns an error message if the log file cannot be found or read."""

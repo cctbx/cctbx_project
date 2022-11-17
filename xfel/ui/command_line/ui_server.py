@@ -23,21 +23,7 @@ While the server is running, the user can connect to with with the xfel gui by p
 
 """
 
-phil_str = """
-db {
-  server {
-    basedir = None
-      .type = path
-      .help = Root folder for mysql database
-
-    prompt_for_root_password = False
-      .type = bool
-      .help = Whether to always ask for the root password. Note, root password is always \
-              needed when the database is initialized.
-  }
-}
-"""
-phil_scope = parse(phil_str + db_phil_str)
+phil_scope = parse(db_phil_str)
 
 default_cnf = \
 """
@@ -80,32 +66,38 @@ def run(args):
     assert params.db.user is not None and len(params.db.user) > 0 and \
            params.db.name is not None and len(params.db.name) > 0
     import getpass
-    print("Initializing")
-    print ("You must specify a root password")
-    rootpw1 = getpass.getpass()
-    print ("Re-enter password")
-    rootpw2 = getpass.getpass()
-    if rootpw1 != rootpw2:
-      raise Sorry("Passwords don't match")
-    rootpw = rootpw1
+    if params.db.server.root_password:
+            rootw = params.db.server.root_password
+    else:
+      print("Initializing")
+      print("You must specify a root password")
+      rootpw1 = getpass.getpass()
+      print("Re-enter password")
+      rootpw2 = getpass.getpass()
+      if rootpw1 != rootpw2:
+        raise Sorry("Passwords don't match")
+      rootpw = rootpw1
 
-    print ("Initializing database")
+    print("Initializing database")
     os.makedirs(params.db.server.basedir)
     with open(cnf_path, 'w') as f:
-      f.write(default_cnf.format(basedir = params.db.server.basedir, sep = os.path.sep, port = params.db.port))
+      f.write(default_cnf.format(basedir=params.db.server.basedir, sep=os.path.sep, port=params.db.port))
 
     assert easy_run.call("mysqld --defaults-file=%s --initialize-insecure"%(cnf_path)) == 0
 
   elif params.db.server.prompt_for_root_password:
-    import getpass
-    print ("please enter root password to raise the connection")
-    rootpw3 = getpass.getpass()
+    if params.db.server.root_password:
+      rootpw3 = params.db.server.root_password
+    else:
+      import getpass
+      print("please enter root password to raise the connection")
+      rootpw3 = getpass.getpass()
 
-  print ("Starting server")
+  print("Starting server")
   assert os.path.exists(cnf_path)
   server_process = easy_run.subprocess.Popen(["mysqld", "--defaults-file=%s"%(cnf_path)])
 
-  print ("Sleeping a few seconds to let server start up...")
+  print("Sleeping a few seconds to let server start up...")
   time.sleep(5) # let server start up
 
   params.db.host = '127.0.0.1'
@@ -116,43 +108,48 @@ def run(args):
     params.db.user = 'root'
     params.db.password = ''
     params.db.name = ''
-    print ("Changing password")
+    print("Changing password")
     app = db_application(params)
+    rootpw = params.db.server.root_password
     app.execute_query("ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'"%(rootpw))
     params.db.password = rootpw
-    print ("Creating empty database %s"%new_db)
+    print("Creating empty database %s"%new_db)
     app.execute_query("CREATE DATABASE %s"%new_db)
-    print ("Creating new user %s"%new_user)
+    print("Creating new user %s"%new_user)
     app.execute_query("CREATE USER '%s'@'%%' IDENTIFIED BY '%s'"%(new_user, new_password))
-    print ("Setting permissions")
+    print("Setting permissions")
     app.execute_query("GRANT ALL PRIVILEGES ON %s . * TO '%s'@'%%'"%(new_db, new_user))
     app.execute_query("FLUSH PRIVILEGES")
     app.execute_query("UPDATE mysql.user SET Super_Priv='Y' WHERE user='%s' AND host='%%'"%new_user)
     app.execute_query("FLUSH PRIVILEGES")
-    print ("Initialized")
+    print("Initialized")
   else:
+    print("Instantiating db query execution driver")
     app = db_application(params)
 
   if params.db.server.prompt_for_root_password:
     params.db.user = 'root'
     params.db.password = rootpw3
 
-  print ("Raising max connections")
+  print("Raising max connections")
   app.execute_query("SET GLOBAL max_connections=50000")
 
   try:
     while True:
       if server_process.poll() is not None:
-        print ("Server exited")
+        print("Server exited")
         return
       time.sleep(1)
   except KeyboardInterrupt:
-    print ("Shutting down")
+    print("Shutting down")
   except Exception as e:
-    print ("Unhandled exception, shutting down")
-    print (str(e))
+    print("Unhandled exception, shutting down")
+    print(str(e))
 
   server_process.terminate()
 
+
 if __name__ == '__main__':
+  print(sys.argv)
   run(sys.argv[1:])
+
