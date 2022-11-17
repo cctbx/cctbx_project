@@ -107,7 +107,8 @@ namespace sx_merging {
     dials::af::reflection_table::key_type key;
     const std::map<std::string, size_t> chunk_lookup;
     const std::vector<dials::af::reflection_table> tables;
-    dials::af::shared<std::string> expt_ids;
+    dials::af::shared<int> expt_ids;
+    boost::shared_ptr<dials::af::reflection_table::experiment_map_type> expt_map;
 
     experiment_id_splitter_visitor(dials::af::reflection_table &src_,
                                    dials::af::reflection_table::key_type key_,
@@ -115,7 +116,8 @@ namespace sx_merging {
                                    const std::vector<dials::af::reflection_table> &tables_)
 
         : src(src_), key(key_), chunk_lookup(chunk_lookup_), tables(tables_) {
-          expt_ids = src.get<std::string>("exp_id");
+          expt_ids = src.get<int>("id");
+          expt_map = src.experiment_identifiers();
         }
 
     template <typename U>
@@ -128,8 +130,11 @@ namespace sx_merging {
         all_columns.push_back(col);
       }
 
+      typedef dials::af::reflection_table::experiment_map_type::const_iterator const_iterator;
       for (size_t i = 0; i < src.size(); ++i) {
-        std::string experiment_id = expt_ids[i];
+        const_iterator found = expt_map->find(expt_ids[i]);
+        DIALS_ASSERT(found != expt_map->end());
+        std::string experiment_id = found->second;
         std::map<std::string, size_t>::const_iterator it = chunk_lookup.find(experiment_id);
         DIALS_ASSERT(it != chunk_lookup.end());
         size_t table_idx = it->second;

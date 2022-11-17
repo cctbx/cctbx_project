@@ -118,7 +118,7 @@ class reindex_to_reference(worker):
 
     # Test each experiment to see if an operator gives a better CC to the reference, and if it does, apply it
     for expt_id, experiment in enumerate(experiments):
-      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+      exp_reflections = reflections.select(reflections['id'] == expt_id)
       all_correlations = []
       best_correlation = get_correlation()
       all_correlations.append(best_correlation)

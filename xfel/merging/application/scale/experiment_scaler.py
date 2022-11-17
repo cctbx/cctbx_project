@@ -51,8 +51,8 @@ class experiment_scaler(worker):
     experiments_rejected_because_of_low_correlation_with_reference = 0
 
     target_symm = symmetry(unit_cell = self.params.scaling.unit_cell, space_group_info = self.params.scaling.space_group)
-    for experiment in experiments:
-      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+    for expt_id, experiment in enumerate(experiments):
+      exp_reflections = reflections.select(reflections['id'] == expt_id)
 
       # Build a miller array for the experiment reflections
       exp_miller_indices = miller.set(target_symm, exp_reflections['miller_index_asymmetric'], True)
@@ -95,6 +95,7 @@ class experiment_scaler(worker):
       new_experiments.append(experiment)
       new_reflections.extend(exp_reflections)
 
+    new_reflections.reset_ids()
     rejected_experiments = len(experiments) - len(new_experiments)
     assert rejected_experiments == experiments_rejected_because_of_low_signal + \
                                     experiments_rejected_because_of_low_correlation_with_reference

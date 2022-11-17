@@ -19,8 +19,8 @@ class error_modifier_ha14(worker):
     self.logger.log_step_time("ERROR_MODIFIER_HA14")
     if len(reflections) > 0:
       self.logger.log("Modifying intensity errors -- ha14 method...")
-      for experiment in experiments:
-        refls = reflections.select(reflections['exp_id'] == experiment.identifier)
+      for expt_id in range(len(experiments)):
+        refls = reflections.select(reflections['id'] == expt_id)
         refls = self.modify_errors(refls)
         new_reflections.extend(refls)
     self.logger.log_step_time("ERROR_MODIFIER_HA14", True)

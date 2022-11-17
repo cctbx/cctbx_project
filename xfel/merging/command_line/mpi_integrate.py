@@ -82,7 +82,6 @@ integrate_phil_str = '''
 
 program_defaults_phil_str = """
 input.keep_imagesets=True
-input.parallel_file_load.reset_experiment_id_column = True
 """
 
 from dials.command_line.stills_process import program_defaults_phil_str as dials_program_defaults_phil_str
