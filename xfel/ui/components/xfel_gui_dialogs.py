@@ -9,6 +9,7 @@ Last Changed: 06/04/2016
 Description : XFEL UI Custom Dialogs
 '''
 
+import time
 import os
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, getListCtrlSelection
@@ -17,6 +18,7 @@ from xfel.ui.db.task import task_types
 import numpy as np
 
 import xfel.ui.components.xfel_gui_controls as gctr
+from xfel.ui.components.submission_tracker import QueueInterrogator
 
 icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
@@ -175,7 +177,6 @@ class SettingsDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALL,
                         border=10)
 
-    #self.btn_mp = wx.Button(self, label='Multiprocessing...')
     self.btn_op = gctr.Button(self, name='advanced', label='Advanced Settings...')
     self.btn_OK = wx.Button(self, label="OK", id=wx.ID_OK)
     self.btn_OK.SetDefault()
@@ -241,6 +242,7 @@ class SettingsDialog(BaseDialog):
     adv.ShowModal()
 
   def onDBCredentialsButton(self, e):
+    self.update_settings()
     creds = DBCredentialsDialog(self, self.params)
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
@@ -254,12 +256,15 @@ class SettingsDialog(BaseDialog):
 
       self.drop_tables = creds.chk_drop_tables.GetValue()
 
-  def onOK(self, e):
+  def update_settings(self):
     self.params.facility.name = self.facility.ctr.GetStringSelection().lower()
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
     if self.params.facility.name == 'lcls':
       self.params.facility.lcls.experiment = self.experiment.ctr.GetValue()
+
+  def onOK(self, e):
+    self.update_settings()
     e.Skip()
 
 
@@ -329,6 +334,8 @@ class DBCredentialsDialog(BaseDialog):
                                            value=params.db.password)
     self.main_sizer.Add(self.db_password, flag=wx.EXPAND | wx.ALL, border=10)
 
+
+
     # Drop tables button
     self.chk_drop_tables = wx.CheckBox(self,
                                        label='Delete and regenerate all tables')
@@ -347,12 +354,21 @@ class DBCredentialsDialog(BaseDialog):
       self.main_sizer.Add(self.web_location, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    self.main_sizer.Add(dialog_box,
-                        flag=wx.EXPAND | wx.ALL,
-                        border=10)
+
+    self.btn_db_start = gctr.Button(self, name='start_db', label='Start DB Server')
+    self.db_btn_OK = wx.Button(self, name='db_OK', label="OK", id=wx.ID_OK)
+    self.db_btn_OK.SetDefault()
+    self.db_btn_cancel = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+    self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.button_sizer.Add(self.btn_db_start)
+    self.button_sizer.Add(-1,-1, proportion=1)
+    self.button_sizer.Add(self.db_btn_OK)
+    self.button_sizer.Add(self.db_btn_cancel)
+    self.main_sizer.Add(self.button_sizer,flag=wx.EXPAND | wx.ALL, border=10)
+
 
     self.Bind(wx.EVT_CHECKBOX, self.onDropTables, self.chk_drop_tables)
+    self.Bind(wx.EVT_BUTTON, self.onStartDB, self.btn_db_start)
 
     self.Fit()
     self.SetTitle('Database Credentials')
@@ -367,6 +383,139 @@ class DBCredentialsDialog(BaseDialog):
       if (msg.ShowModal() == wx.ID_NO):
         self.chk_drop_tables.SetValue(False)
     e.Skip()
+
+  def onStartDB(self, e):
+    self.start_db_dialog = StartDBDialog(self, self.params)
+    if (self.start_db_dialog.ShowModal() == wx.ID_OK):
+      self.params.db.server.root_password = self.start_db_dialog.get_db_root_psswd.ctr.GetValue()
+      self.params.db.server.basedir = self.start_db_dialog.get_db_basedir.ctr.GetValue()
+
+      def _submit_start_server_job(params):
+        from xfel.command_line.cxi_mpi_submit import do_submit
+        assert self.params.db.user is not None, "DB User not defined!"
+        assert self.params.db.password is not None, "Password for DB User not defined!"
+        assert self.params.db.server.root_password is not None, "Root password for DB not defined!"
+        assert self.params.db.server.basedir is not None, "Base directory for DB not defined!"
+
+        try:
+          import copy
+          new_params = copy.deepcopy(params)
+          new_params.mp.use_mpi = False
+          new_params.mp.extra_args = ["db.port=%d db.server.basedir=%s db.user=%s db.name=%s db.server.root_password=%s" %(params.db.port, params.db.server.basedir, params.db.user, params.db.name, params.db.server.root_password)]
+          submit_path = os.path.join(params.output_folder, "launch_server_submit.sh")
+          submission_id = do_submit('cctbx.xfel.ui_server',
+                                    submit_path,
+                                    new_params.output_folder,
+                                    new_params.mp,
+                                    log_name="my_SQL.log",
+                                    err_name="my_SQL.err",
+                                    job_name='cctbx_start_mysql'
+                                   )
+          #remove root password from params
+          if submission_id:
+            if (self.params.mp.method == 'slurm') or (self.params.mp.method == 'shifter'):
+              attempts = 10
+              q = QueueInterrogator(self.params.mp.method)
+              for i in range(attempts):
+                status = q.query(submission_id)
+                if status == 'RUN':
+                  hostname = q.get_mysql_server_hostname(submission_id)
+                  if hostname:
+                    self.params.db.host = hostname
+                  else:
+                    print("Unable to find hostname running MySQL server from SLURM. Submission ID: ", submission_id)
+                else:
+                  print("Waiting for job to start. Submission ID: %s, status: %s"%(submission_id, status))
+                  time.sleep(1)
+            elif self.params.mp.method == 'local':
+              self.params.db.host = params.db.host
+            else:
+              print("Unable to find hostname running MySQL server on ", self.params.mp.method)
+              print("Submission ID: ", submission_id)
+
+            self.params.db.port = int(params.db.port)
+            self.params.db.name = params.db.name
+            self.params.db.user = params.db.user
+            self.params.db.password = params.db.password
+            self.params.db.server.root_password = ''
+            self.params.db.server.basedir = params.db.server.basedir
+
+            os.remove(os.path.join(self.params.output_folder, "launch_server_submit.sh"))
+            os.remove(os.path.join(self.params.output_folder, "launch_server_submit_submit.sh"))
+          else:
+            print('couldn\'t submit job')
+        except RuntimeError:
+          print("Couldn\'t submit job to start MySql DB.")
+          print("Check if all phil parameters required to launch jobs exists.")
+
+      _submit_start_server_job(self.params)
+      db_file_location = self.params.db.server.basedir
+      self.launch_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      msg_text = "DB will be located in\n" + str(db_file_location)
+      self.db_start_box = wx.MessageBox(msg_text,"DB Info", wx.OK | wx.ICON_INFORMATION)
+      print("Started DB")
+      self.Close()
+
+class StartDBDialog(BaseDialog):
+  ''' Dialog to start DB '''
+
+  def __init__(self, parent, params,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    self.params = params
+    self.start_db_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+    self.start_db_sizer4 = wx.BoxSizer(wx.HORIZONTAL)
+    self.vsiz = wx.BoxSizer(wx.VERTICAL)
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        style=wx.DEFAULT_FRAME_STYLE,
+                        *args, **kwargs)
+    warn_icon = wx.ArtProvider.GetBitmap(wx.ART_WARNING, wx.ART_OTHER, (50, 50))
+    self.staticbmp = wx.StaticBitmap(self, -1, warn_icon, pos=(1, 1))
+    self.start_db_sizer.Add(self.staticbmp, flag=wx.ALL)
+    self.vsiz.Add(self.start_db_sizer, 0)
+    font = wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.FONTWEIGHT_NORMAL, False)
+    warning_label1 = wx.StaticText(self, wx.ID_STATIC, 'This will start the server! Make sure the server is not already running!')
+    warning_label1.SetFont(font)
+    self.start_db_sizer.Add(warning_label1, 0, wx.ALL | wx.RIGHT)
+    self.vsiz.Add(self.start_db_sizer, 0, wx.ALL, 20)
+    self.get_db_basedir = gctr.TextButtonCtrl(self,
+                                              name='basedir',
+                                              label='DB Base Directory',
+                                              label_style='bold',
+                                              label_size=(150, -1),
+                                              big_button_size=(130, -1),
+                                              value=os.path.join(self.params.output_folder, 'MySql')
+                                              )
+    self.start_db_sizer2.Add(self.get_db_basedir)
+    self.vsiz.Add(self.start_db_sizer2, 0, wx.ALL, 40)
+    self.get_db_root_psswd = gctr.TextButtonCtrl(self,
+                                                 name='db_root_password',
+                                                 label='DB Root Password',
+                                                 label_style='bold',
+                                                 label_size=(150, -1),
+                                                 text_style=wx.TE_PASSWORD,
+                                                )
+
+    self.start_db_sizer3.Add(self.get_db_root_psswd)
+    self.start_db_sizer3.Add(-1, -1, proportion=1)
+    self.start_db_cancel_btn = wx.Button(self, label="Cancel", id=wx.ID_CANCEL)
+    self.start_db_OK_btn = wx.Button(self, label="OK", id=wx.ID_OK)
+    self.start_db_sizer3.Add(self.start_db_cancel_btn)
+    self.start_db_sizer3.Add(self.start_db_OK_btn)
+    self.vsiz.Add(self.start_db_sizer3, 0, wx.ALL, 60)
+    self.main_sizer.Add(self.start_db_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.start_db_sizer2, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.start_db_sizer3, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.Fit()
+    self.Center()
+    self.SetTitle('Start Database')
 
 class LCLSFacilityOptions(BaseDialog):
   ''' Options settings specific to LCLS'''
@@ -1250,6 +1399,7 @@ class CalibrationDialog(BaseDialog):
     self.chk_split_dataset = wx.CheckBox(self,
                                          label='Split dataset into 2 halves (outputs statistics, double runtime, uses 2x number of images')
     self.chk_split_dataset.SetValue(True)
+
     self.main_sizer.Add(self.chk_split_dataset, flag=wx.ALL, border=10)
 
     # Dialog control

@@ -848,7 +848,7 @@ class MergingJob(Job):
       params = copy.deepcopy(params)
       params.nnodes = params.nnodes_merge
 
-    return do_submit(command, submit_path, output_path, params, identifier_string)
+    return do_submit(command, submit_path, output_path, params, log_name="log.out", err_name="err.out", job_name=identifier_string)
 
 class PhenixJob(Job):
   def get_global_path(self):
@@ -915,7 +915,7 @@ class PhenixJob(Job):
        params.shifter.srun_script_template = os.path.join( \
          libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "phenix_srun.sh")
 
-    return do_submit(command, submit_path, output_path, params, identifier_string)
+    return do_submit(command, submit_path, output_path, params, log_name="log.out", err_name="err.out", job_name=identifier_string)
 
 # Support classes and functions for job submission
 

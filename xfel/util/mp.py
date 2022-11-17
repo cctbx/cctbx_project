@@ -250,6 +250,11 @@ class get_local_submit_command(get_submit_command):
       elif self.params.nproc > 1:
         self.command += " mp.nproc=%d" % self.params.nproc
 
+  def eval_params(self):
+    # <args> (optional, following the command)
+    for arg in self.params.extra_args:
+      self.args.append(arg)
+
   def generate_submit_command(self):
     return self.submit_path
 
