@@ -452,8 +452,12 @@ if __name__=="__main__":
             spec_name = ""
         exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, int_refl_name, spec_name))
 
-    all_dfs = pandas.concat(all_dfs)
-    all_dfs["predicted_refls"] = all_pred_names
+    if all_dfs:
+        all_dfs = pandas.concat(all_dfs)
+        all_dfs["predicted_refls"] = all_pred_names
+    else:
+        all_dfs = None
+
     all_dfs = COMM.gather(all_dfs)
     exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
     print0("\nReflections written to folder %s.\n" % args.outdir)
@@ -463,7 +467,11 @@ if __name__=="__main__":
         for l in exp_ref_spec_lines:
             o.write(l)
         o.close()
-        all_dfs = pandas.concat(all_dfs)
+        all_dfs = [df for df in all_dfs if df is not None]
+        if not all_dfs:
+            raise ValueError("No dataframes to concat: prediction/integration failed for all shots..")
+
+        all_dfs = pandas.concat([df for df in all_dfs if df is not None])
         all_dfs.reset_index(inplace=True, drop=True)
         best_pkl_name = os.path.abspath(os.path.join(args.outdir , "%s.pkl" % args.hopInputName))
         all_dfs.to_pickle(best_pkl_name)
