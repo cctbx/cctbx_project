@@ -195,7 +195,7 @@ steps:
   failOnStderr: false
   displayName: Test
   condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
-  retryCountOnTaskFailure: 3
+#  retryCountOnTaskFailure: 3
 
 - script: |
     set -xe
@@ -225,7 +225,7 @@ steps:
   failOnStderr: false
   displayName: Test
   condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
-  retryCountOnTaskFailure: 3
+#  retryCountOnTaskFailure: 3
 
 # store tests directory as an artifact
 - script: |

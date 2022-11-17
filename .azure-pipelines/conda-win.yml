@@ -264,7 +264,7 @@ jobs:
     failOnStderr: false
     displayName: Test
     condition: ne(variables['PYTHON_VERSION'], 'py310')
-    retryCountOnTaskFailure: 3
+#    retryCountOnTaskFailure: 3
 
   - script: |
       SET PYTHONLEGACYWINDOWSSTDIO=1
@@ -296,7 +296,7 @@ jobs:
     failOnStderr: false
     displayName: Test (Python 3.10)
     condition: eq(variables['PYTHON_VERSION'], 'py310')
-    retryCountOnTaskFailure: 3
+#    retryCountOnTaskFailure: 3
 
   # store tests directory as an artifact
   - script: |
