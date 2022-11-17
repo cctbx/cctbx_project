@@ -206,6 +206,7 @@ steps:
 - script: |
     set -xe
     cd $(Pipeline.Workspace)
+    rm tests_$(job_name).tar.xz
     tar -Jcf tests_$(job_name).tar.xz ./tests
   displayName: Save test directory
   condition: succeededOrFailed()
