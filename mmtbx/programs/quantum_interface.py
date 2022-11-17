@@ -321,7 +321,7 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
 
-    if output_format=='quantum_inteface':
+    if output_format=='quantum_interface':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
 
     def safe_filename(s):
