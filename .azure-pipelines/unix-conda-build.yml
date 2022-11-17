@@ -208,6 +208,7 @@ steps:
     set -xe
     cd $(Pipeline.Workspace)
     mkdir -p tests
+    rm -f tests_$(job_name).tar.xz
     tar -Jcf tests_$(job_name).tar.xz ./tests
     touch ./tests/output.xml
   displayName: Save test directory
