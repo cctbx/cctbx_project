@@ -182,10 +182,11 @@ class HKLViewFrame() :
     if self.output_file and self.output_file.closed==False :
       self.output_file.write(tmsg)
       self.output_file.flush()
-    intverbose =0
-    m = re.findall("(\d)", self.verbose)
-    if len(m) >0:
-      intverbose = int(m[0])
+    intverbose =1
+    if isinstance(self.verbose,str):
+      m = re.findall("(\d)", self.verbose)
+      if len(m) >0:
+        intverbose = int(m[0])
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
