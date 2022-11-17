@@ -58,9 +58,9 @@ class postrefinement_rs2(postrefinement_rs):
 
     experiments_rejected_by_reason = {} # reason:how_many_rejected
 
-    for experiment in experiments:
+    for expt_id, experiment in enumerate(experiments):
 
-      exp_reflections = reflections.select(reflections['exp_id'] == experiment.identifier)
+      exp_reflections = reflections.select(reflections['id'] == expt_id)
 
       # Build a miller array with _original_ miller indices of the experiment reflections
       exp_miller_indices_original = miller.set(target_symm, exp_reflections['miller_index'], not self.params.merging.merge_anomalous)
@@ -191,7 +191,8 @@ class postrefinement_rs2(postrefinement_rs):
         new_exp_reflections['miller_index_asymmetric']  = result_observations.indices()
         new_exp_reflections['intensity.sum.value']      = result_observations.data()
         new_exp_reflections['intensity.sum.variance']   = flex.pow(result_observations.sigmas(),2)
-        new_exp_reflections['exp_id']                   = flex.std_string(len(new_exp_reflections), experiment.identifier)
+        new_exp_reflections['id']                       = flex.int(len(new_exp_reflections), len(new_experiments)-1)
+        new_exp_reflections.experiment_identifiers()[len(new_experiments)-1] = experiment.identifier
 
         # The original reflection table, i.e. the input to this run() method, has more columns than those used
         # for the postrefinement ("data" and "sigma" in the miller arrays). The problems is: some of the input reflections may have been rejected by now.

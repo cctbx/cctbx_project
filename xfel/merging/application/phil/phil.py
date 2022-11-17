@@ -97,9 +97,6 @@ input {
       .help = memory reduction factor for MPI alltoall.
       .help = Use mpi_alltoall_slices > 1, when available RAM is insufficient for doing MPI alltoall on all data at once.
       .help = The data will then be split into mpi_alltoall_slices parts and, correspondingly, alltoall will be performed in mpi_alltoall_slices iterations.
-    reset_experiment_id_column = False
-      .type = bool
-      .expert_level = 3
   }
 }
 
@@ -534,7 +531,7 @@ output {
   expanded_bookkeeping = False
     .type = bool
     .help = if True, and if save_experiments_and_reflections=True, then include in the saved refl tabls:
-    .help = 1- modified exp_id column that contains the image number and lattice number
+    .help = 1- modified experiment identifier that contains the image number and lattice number
     .help = 2- index corresponding to the particular reflection in the input file (usually something_integrated.refl)
     .help = 3- the is_odd flag
     .help = 4- the original exp id for the reflection

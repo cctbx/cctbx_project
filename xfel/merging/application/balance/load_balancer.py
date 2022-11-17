@@ -45,19 +45,6 @@ class load_balancer(worker):
       mpi_split_comm = self.mpi_helper.comm.Split(mpi_color, mpi_new_rank)
       new_experiments, new_reflections = self.distribute_over_ranks(experiments, reflections, mpi_split_comm, self.params.input.parallel_file_load.ranks_per_node)
 
-    if self.params.input.parallel_file_load.reset_experiment_id_column:
-      self.logger.log('Starting id column reset')
-      id_map = new_reflections.experiment_identifiers()
-      reverse_map = {}
-      for expt_id, experiment in enumerate(new_experiments):
-        id_map[expt_id] = experiment.identifier
-        reverse_map[experiment.identifier] = expt_id
-      id_col = new_reflections['id']
-      ident_col = new_reflections['exp_id']
-      for i in range(len(new_reflections)):
-        id_col[i] = reverse_map[ident_col[i]]
-      self.logger.log('Column reset done')
-
     if self.params.input.parallel_file_load.balance == "global2":
       # get status again AFTER balancing and report back number of experiments on EACH RANK in the main_log if balance_verbose is set
       if self.params.input.parallel_file_load.balance_verbose and self.mpi_helper.rank == 0:
@@ -134,9 +121,7 @@ class load_balancer(worker):
 
     self.logger.log_step_time("LB_REFLS_CONSOLIDATE")
     self.logger.log("Consolidating reflections after all-to-all...")
-    new_reflections = flex.reflection_table()
-    for entry in new_split_reflections:
-      new_reflections.extend(entry)
+    new_reflections = flex.reflection_table.concat(new_split_reflections)
     del new_split_reflections
     self.logger.log_step_time("LB_REFLS_CONSOLIDATE", True)
 
@@ -144,7 +129,6 @@ class load_balancer(worker):
 
   def exchange_reflections_by_alltoall_sliced(self, mpi_communicator, number_of_slices):
     '''Split each hkl chunk into N slices. This is needed to address the MPI alltoall memory problem'''
-    result_reflections = flex.reflection_table() # the total reflection table, which this rank will receive after running all slices of alltoall
     list_of_sliced_reflection_chunks = [] # if the self.split_reflections list contains chunks: [A,B,C...], it will be sliced like: [[A1,A2,...,An], [B1,B2,...,Bn], [C1,C2,...,Cn], ...], where n is the number of chunk slices
     for i in range(len(self.split_reflections)):
       reflection_chunk_slices = []
@@ -164,22 +148,26 @@ class load_balancer(worker):
 
       self.logger.log_step_time("CONSOLIDATE")
       self.logger.log("Consolidating reflection tables...")
-      for chunk in received_reflection_chunks:
-        result_reflections.extend(chunk)
+      if j == 0:
+        all_received = received_reflection_chunks
+      else:
+        for i in range(len(self.split_reflections)):
+          # extend here because we are working within a chunk, and the ids are consistent within that chunk
+          all_received[i].extend(received_reflection_chunks[i])
       self.logger.log_step_time("CONSOLIDATE", True)
+    # now concatenate all the chunks, resetting the ids to be contiguous
+    result_reflections = flex.reflection_table.concat(all_received)
 
     return result_reflections
 
   def distribute_reflections_over_experiment_chunks_python(self, reflections):
     self.split_reflections = []
-    for i in range(len(self.split_experiments)):
-      self.split_reflections.append(self.reflection_table_stub(reflections))
 
     for i in range(len(self.split_experiments)):
-      for expt_idx, experiment in enumerate(self.split_experiments[i]):
-        refls = reflections.select(reflections['exp_id'] == experiment.identifier)
-        refls['id'] = flex.int(len(refls), expt_idx)
-        self.split_reflections[i].extend(refls)
+      sel = flex.bool(len(reflections), False)
+      for expt_id, experiment in enumerate(self.split_experiments[i]):
+        sel |= reflections['id'] == expt_id
+      self.split_reflections.append(reflections.select(sel))
 
   def distribute_reflections_over_experiment_chunks_cpp(self, reflections):
     '''Distribute reflections over experiment chunks according to experiment identifiers, '''
@@ -205,6 +193,9 @@ class load_balancer(worker):
 
       for ref_table in self.split_reflections:
         distributed_reflection_count += ref_table.size()
+
+        for expt_id in set(ref_table['id']):
+          ref_table.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
 
     self.logger.log("Distributed %d out of %d reflections"%(distributed_reflection_count, reflection_count))
 
@@ -267,15 +258,19 @@ class load_balancer(worker):
     # pare down balanced_experiments and balanced_reflections as we separate off what to send out
     send_data = [(None, None) for j in range(len(send_tuples))]
     recv_data = [(None, None) for j in range(len(send_tuples))]
+    emap = reflections.experiment_identifiers()
     for (j, count) in send_instructions:
       send_expt_j = experiments[-count:]
       experiments = experiments[:-count]
       send_refl_j = self.reflection_table_stub(reflections)
       for k, e in enumerate(send_expt_j):
-        r = reflections.select(reflections['exp_id'] == e.identifier) # select matching reflections to send
-        r['id'] = flex.int(len(r), k)
+        sel = emap.values() == e.identifier
+        assert sel.count(True) == 1
+        e_id = emap.keys().select(sel)[0]
+        r = reflections.select(reflections['id'] == e_id) # select matching reflections to send
         send_refl_j.extend(r)
-        reflections = reflections.select(reflections['exp_id'] != e.identifier) # remove from this rank's reflections
+        reflections = reflections.select(reflections['id'] != e_id) # remove from this rank's reflections
+      send_refl_j.reset_ids()
       send_data[j] = (send_expt_j, send_refl_j)
     recv_data = mpi_communicator.alltoall(send_data)
 
@@ -286,7 +281,7 @@ class load_balancer(worker):
       recv_ids = set([e.identifier for e in received_expt_i])
       assert current_ids.isdisjoint(recv_ids)
       experiments.extend(received_expt_i)
-      reflections.extend(received_refl_i)
+      flex.reflection_table.concat([reflections, received_refl_i])
 
     self.logger.log_step_time("LB_EXPTS_AND_REFLS_ALLTOALL", True)
 

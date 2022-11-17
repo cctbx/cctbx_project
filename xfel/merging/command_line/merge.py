@@ -190,28 +190,14 @@ class Script(object):
         self.mpi_logger.log("Ending step with %d experiments"%len(experiments))
 
     if self.params.output.save_experiments_and_reflections:
-      if len(reflections) and 'id' not in reflections:
-        from dials.array_family import flex
-        id_ = flex.int(len(reflections), -1)
-        if experiments:
-          for expt_number, expt in enumerate(experiments):
-            sel = reflections['exp_id'] == expt.identifier
-            id_.set_selected(sel, expt_number)
-        else:
-          for expt_number, exp_id in enumerate(set(reflections['exp_id'])):
-            sel = reflections['exp_id'] == exp_id
-            id_.set_selected(sel, expt_number)
-        reflections['id'] = id_
-
-        assert (reflections['id'] == -1).count(True) == 0, ((reflections['id'] == -1).count(True), len(reflections))
-
       if self.mpi_helper.size == 1:
         filename_suffix = ""
       else:
         filename_suffix = "_%06d"%self.mpi_helper.rank
 
       if len(reflections):
-        reflections.as_pickle(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
+        assert 'id' in reflections
+        reflections.as_file(os.path.join(self.params.output.output_dir, "%s%s.refl"%(self.params.output.prefix, filename_suffix)))
       if experiments:
         experiments.as_file(os.path.join(self.params.output.output_dir, "%s%s.expt"%(self.params.output.prefix, filename_suffix)))
 
@@ -225,7 +211,7 @@ class Script(object):
     if self.params.output.expanded_bookkeeping:
       if self.params.input.persistent_refl_cols is None:
         self.params.input.persistent_refl_cols = []
-      keysCreatedByMerge = ["input_refl_index", "orig_exp_id", "file_list_mapping", "is_odd_experiment"]
+      keysCreatedByMerge = ["input_refl_index", "original_id", "file_list_mapping", "is_odd_experiment"]
       for key in keysCreatedByMerge:
         if key not in self.params.input.persistent_refl_cols:
           self.params.input.persistent_refl_cols.append(key)

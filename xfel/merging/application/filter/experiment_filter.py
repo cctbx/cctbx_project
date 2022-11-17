@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-from dials.array_family import flex
-from dxtbx.model.experiment_list import ExperimentList
 from cctbx.crystal import symmetry
 from libtbx import Auto
 
@@ -48,18 +46,11 @@ class experiment_filter(worker):
   @staticmethod
   def remove_experiments(experiments, reflections, experiment_ids_to_remove):
     '''Remove specified experiments from the experiment list. Remove corresponding reflections from the reflection table'''
+    experiments.select_on_experiment_identifiers([i for i in experiments.identifiers() if i not in experiment_ids_to_remove])
+    reflections.remove_on_experiment_identifiers(experiment_ids_to_remove)
+    reflections.reset_ids()
 
-    new_experiments = ExperimentList()
-    new_reflections = flex.reflection_table()
-
-    for experiment in experiments:
-      if experiment.identifier in experiment_ids_to_remove:
-        continue
-      new_experiments.append(experiment)
-      refls = reflections.select(reflections['exp_id'] == experiment.identifier)
-      new_reflections.extend(refls)
-
-    return new_experiments, new_reflections
+    return experiments, reflections
 
   def check_cluster(self, experiment):
     import numpy as np
@@ -141,10 +132,12 @@ class experiment_filter(worker):
           experiment_ids_to_remove.append(experiment.identifier)
           removed_for_unit_cell += 1
 # END OF COVARIANCE FILTER
+    input_len_expts = len(experiments)
+    input_len_refls = len(reflections)
     new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
 
-    removed_reflections = len(reflections) - len(new_reflections)
-    assert removed_for_space_group + removed_for_unit_cell == len(experiments) - len(new_experiments)
+    removed_reflections = input_len_refls - len(new_reflections)
+    assert removed_for_space_group + removed_for_unit_cell == input_len_expts - len(new_experiments)
 
     self.logger.log("Experiments rejected because of unit cell dimensions: %d"%removed_for_unit_cell)
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)

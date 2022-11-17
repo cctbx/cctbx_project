@@ -27,7 +27,7 @@ def reindex_refl_by_coset(refl,data,symms,uuids,co,anomalous_flag = False, verbo
         iexpt_id = uuids[iexpt]
         this_coset = all_coset[ all_expt_id.index(iexpt_id) ]
         if this_coset == icoset:
-          good_refls |= refl["exp_id"] == iexpt_id
+          good_refls |= refl["id"] == iexpt
 
     re_millers = mi_new.select(good_refls)
     re_asu = mi_asu_new.select(good_refls)
@@ -35,10 +35,11 @@ def reindex_refl_by_coset(refl,data,symms,uuids,co,anomalous_flag = False, verbo
     refl["miller_index"].set_selected(good_refls, re_millers)
     refl["miller_index_asymmetric"].set_selected(good_refls, re_asu)
   if verbose:
+    id_map = refl.experiment_identifiers()
     for x in range(len(refl)):
-      print ("%3d"%x,refl["exp_id"][x],
-             all_coset[ all_expt_id.index(refl["exp_id"][x]) ],
-             "%10s"%(change_of_basis_op(co.partitions[   all_coset[ all_expt_id.index(refl["exp_id"][x]) ]   ][0]).as_hkl()),
+      print ("%3d"%x,id_map[refl["id"][x]],
+             all_coset[ all_expt_id.index(id_map[refl["id"][x]]) ],
+             "%10s"%(change_of_basis_op(co.partitions[   all_coset[ all_expt_id.index(id_map[refl["id"][x]]) ]   ][0]).as_hkl()),
              "(%4d%4d%4d)"%(cache_miller[x]), "(%4d%4d%4d)"%(cache_asu[x]),
              "(%4d%4d%4d)"%(refl["miller_index"][x]), "(%4d%4d%4d)"%(refl["miller_index_asymmetric"][x]))
 
