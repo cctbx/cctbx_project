@@ -56,9 +56,6 @@ jobs:
       git lfs install --local
       git pull --rebase
       git lfs pull
-      git checkout xfel_exp_id
-      cd ../dials
-      git checkout empty_tables
     displayName: Update xfel_regression
 
   # preserve permissions and delete extra files
