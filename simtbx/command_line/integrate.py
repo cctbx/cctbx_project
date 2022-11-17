@@ -370,8 +370,6 @@ if __name__=="__main__":
 
     print0("Found %d input files" % Nf)
 
-    all_wave = []
-    npred_per_shot = []
     all_dfs = []
     all_pred_names = []
     exp_ref_spec_lines = []
@@ -427,9 +425,7 @@ if __name__=="__main__":
         #printR("Sum keeps=%d; num_strong=%d, num_kept_weak=%d" % (sum(keeps), sum(strong_sel), sum(weak_sel)))
         pred = pred.select(flex.bool(keeps))
         nstrong = np.sum(strong_sel)
-        all_wave += list(pred["ave_wavelen"])
         printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
-        npred_per_shot.append(len(pred))
         pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( args.outdir, tag, i_f))
         pred.as_file(pred_file)
 
@@ -478,5 +474,3 @@ if __name__=="__main__":
             o.write("The command line input was:\n")
             o.write(" ".join(sys.argv))
             #TODO: write the diff phils here:
-    npred_per_shot = COMM.reduce(npred_per_shot)
-    all_wave = COMM.reduce(all_wave)
