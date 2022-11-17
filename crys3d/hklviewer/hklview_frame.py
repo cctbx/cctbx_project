@@ -78,6 +78,8 @@ class HKLViewFrame() :
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
       self.initiated_gui_sem.acquire(timeout=20) # released once HKLviewer sends a message of type "initiated_gui"
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
       self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
@@ -170,20 +172,25 @@ class HKLViewFrame() :
       self.output_file.close()
       self.output_file = None
     del self
-    #sys.exit()
 
 
-  def mprint(self, msg, verbose=0, end="\n"):
+  def mprint(self, msg, verbose=0, end="\n", with_elapsed_secs=True):
     elapsed = time.time() - self.start_time
-    tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
+    tmsg = "%s%s" %(msg, end)
+    if with_elapsed_secs:
+      tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
     if self.output_file and self.output_file.closed==False :
       self.output_file.write(tmsg)
       self.output_file.flush()
+    intverbose =0
+    m = re.findall("(\d)", self.verbose)
+    if len(m) >0:
+      intverbose = int(m[0])
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": tmsg } )
-      if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
+      if  (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
