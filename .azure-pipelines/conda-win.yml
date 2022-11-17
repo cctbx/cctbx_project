@@ -245,20 +245,6 @@ jobs:
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
-        module=boost_adaptbx ^
-        module=cctbx ^
-        module=cctbx_website ^
-        module=cma_es ^
-        module=fable ^
-        module=gltbx ^
-        module=iotbx ^
-        module=libtbx ^
-        module=rstbx ^
-        module=scitbx ^
-        module=smtbx ^
-        module=spotfinder ^
-        module=annlib_adaptbx ^
-        module=cbflib_adaptbx ^
         module=crys3d ^
         nproc=4
     failOnStderr: false
@@ -280,17 +266,6 @@ jobs:
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
-        module=boost_adaptbx ^
-        module=cctbx ^
-        module=cctbx_website ^
-        module=cma_es ^
-        module=fable ^
-        module=gltbx ^
-        module=iotbx ^
-        module=libtbx ^
-        module=scitbx ^
-        module=smtbx ^
-        module=annlib_adaptbx ^
         module=crys3d ^
         nproc=4
     failOnStderr: false
