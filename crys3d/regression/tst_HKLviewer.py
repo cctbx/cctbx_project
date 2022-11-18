@@ -75,7 +75,7 @@ def exercise2():
     f.write(philstr)
   assert os.path.isfile(datafname)
 
-  outputfname = "myoutput.log"
+  outputfname = "HKLviewer_test.log"
   if os.path.isfile(outputfname):
     os.remove(outputfname)
 
