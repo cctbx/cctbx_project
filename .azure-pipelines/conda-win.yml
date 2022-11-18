@@ -276,7 +276,7 @@ jobs:
   # store tests directory as an artifact
   - script: |
       cd $(Pipeline.Workspace)
-      rm tests_$(job_name).tar.gz
+      rm -f tests_$(job_name).tar.gz
       tar -zcf tests_$(job_name).tar.gz ./tests
     displayName: Save test directory
     condition: succeededOrFailed()
