@@ -137,16 +137,16 @@ class HKLViewFrame() :
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
-    #self.hklin = None
-    #if 'hklin' in kwds or 'HKLIN' in kwds:
-    #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    #self.LoadReflectionsFile(self.hklin)
+    self.hklin = None
+    if 'hklin' in kwds or 'HKLIN' in kwds:
+      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    if 0: #'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
         if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
@@ -158,8 +158,8 @@ class HKLViewFrame() :
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
-    if 0: #'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(15)
+    if 'image_file' in kwds: # save displayed reflections to an image file
+      time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
 

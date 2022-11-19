@@ -2854,7 +2854,7 @@ def run(isembedded=False, chimeraxsession=None):
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
-
+        """
         if kwargs.get('hklin', ""):
           HKLguiobj.currentfileName = kwargs.get('hklin', "" )
           QTimer.singleShot(1000, HKLguiobj.openReflectionFile )
@@ -2871,7 +2871,7 @@ def run(isembedded=False, chimeraxsession=None):
           HKLguiobj.image_fname = kwargs.get('image_file', "HKLviewer_image.png" )
           if os.path.isfile(HKLguiobj.philfname):
             QTimer.singleShot(15000, HKLguiobj.SaveImage )
-
+        """
       else:
         start_time = [time.time()]
 
