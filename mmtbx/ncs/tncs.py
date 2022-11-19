@@ -218,6 +218,7 @@ class minimizer(object):
                use_bounds,
                lower_bound,
                upper_bound,
+               max_iterations,
                initial_values):
     adopt_init_args(self, locals())
     self.x = initial_values
@@ -228,7 +229,8 @@ class minimizer(object):
       target_evaluator=self,
       use_bounds=self.use_bounds,
       lower_bound = self.lower_bound,
-      upper_bound = self.upper_bound)
+      upper_bound = self.upper_bound,
+      max_iterations = self.max_iterations)
     self()
     return self
 
