@@ -69,13 +69,13 @@ class minimizer2(object):
     self.n = self.x.size()
     self.cntr=0
 
-  def run(self, use_curvatures=0):
+  def run(self, use_curvatures):
     self.minimizer = kbu_refinery.lbfgs_run(
       target_evaluator=self,
       min_iterations=self.min_iterations,
       max_iterations=self.max_iterations,
       use_curvatures=use_curvatures)
-    self(requests_f_and_g=True, requests_diag=False)
+    self(requests_f_and_g=True, requests_diag=use_curvatures)
     return self
 
   def __call__(self, requests_f_and_g, requests_diag):
@@ -803,40 +803,73 @@ def algorithm_0(f_obs, F, kt):
   r = [1,]+r
   return r
 
-def algorithm_2(i_obs, F, x, use_curvatures=True, macro_cycles=10):
+def algorithm_2(i_obs, F, x, use_curvatures, use_lbfgsb, macro_cycles=10,
+                max_iterations=100):
   """
   Unphased one-step search
   """
-  calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=use_curvatures)
+  assert use_curvatures in [True, False, None]
+  assert use_lbfgsb in [True, False]
+  upper = flex.double([1.1] + [12]*(x.size()-1))
+  lower = flex.double([0.9] + [0]*(x.size()-1))
   for it in range(macro_cycles):
-    if(use_curvatures):
-      m = minimizer(max_iterations=100, calculator=calculator)
-    else:
-      upper = flex.double([1.1] + [5]*(x.size()-1))
-      lower = flex.double([0.9] + [-5]*(x.size()-1))
+    if(use_curvatures is True):
+      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=True)
+      m = minimizer2(
+        max_iterations=max_iterations, calculator=calculator).run(use_curvatures=True)
+      x = m.x
+      x = x.set_selected(m.x<0,1.e-3)
+    elif(use_curvatures is False):
+      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False)
+      if(use_lbfgsb):
+        m = tncs.minimizer(
+          potential       = calculator,
+          use_bounds      = 2,
+          lower_bound     = lower,
+          upper_bound     = upper,
+          max_iterations  = max_iterations,
+          initial_values  = x).run()
+      else:
+        m = minimizer(max_iterations=max_iterations, calculator=calculator)
+      x = m.x
+    elif(use_curvatures is None):
+      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=True)
+      m = minimizer2(
+        max_iterations=max_iterations, calculator=calculator).run(use_curvatures=True)
+      x = m.x
+      x = x.set_selected(m.x<0,1.e-3)
+      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False)
+      if(use_lbfgsb):
+        m = tncs.minimizer(
+          potential       = calculator,
+          use_bounds      = 2,
+          lower_bound     = lower,
+          upper_bound     = upper,
+          max_iterations  = max_iterations,
+          initial_values  = x).run()
+      else:
+        m = minimizer(max_iterations=max_iterations, calculator=calculator)
+      x = m.x
 
-      #upper = flex.double([10] + [5]*(x.size()-1))
-      #lower = flex.double([0.1] + [-5]*(x.size()-1))
-      #upper = flex.double([10] + [0.65]*(x.size()-1))
-      #lower = flex.double([0.1] + [0]*(x.size()-1))
+#  calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=True)
+#  m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
+#
+#  calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=False)
+#  m = tncs.minimizer(
+#        potential       = calculator,
+#        use_bounds      = 2,
+#        lower_bound     = lower,
+#        upper_bound     = upper,
+#        max_iterations  = 100,
+#        initial_values  = calculator.x).run()
 
-      #upper = flex.double([1] + [0.65]*(x.size()-1))
-      #lower = flex.double([1] + [0]*(x.size()-1))
-      #upper = flex.double([1] + [5.65]*(x.size()-1))
-      #lower = flex.double([1] + [-5]*(x.size()-1))
-      m = tncs.minimizer(
-        potential       = calculator,
-        use_bounds      = 2,
-        lower_bound     = lower,
-        upper_bound     = upper,
-        initial_values  = x).run()
-    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
-  if(use_curvatures):
-    for it in range(10):
-      m = minimizer(max_iterations=100, calculator=calculator)
-      calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
-      m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-      calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
+  #if(use_curvatures):
+  #  for it in range(10):
+  #    m = minimizer(max_iterations=100, calculator=calculator)
+  #    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
+  #    m.x = m.x.set_selected(m.x<0,1.e-3)
+  #    m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
+  #    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
   return m.x
 
 def algorithm_3(i_obs, fc, f_masks):
