@@ -222,7 +222,7 @@ class HKLViewFrame() :
         if msgtype == "initiated_gui":
           self.mprint("GUI has been initialised.\n", verbose=1)
           self.initiated_gui_sem.release()
-        if msgtype=="debug_info": 
+        if msgtype=="debug_info":
           self.mprint(mstr, verbose=2 )
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
