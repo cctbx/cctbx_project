@@ -270,6 +270,7 @@ class ncs_aware_refinement(object):
             use_bounds     = 2,
             lower_bound    = lower,
             upper_bound    = upper,
+            max_iterations = 100,
             initial_values = x).run()
           b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           model.set_b_iso(values = b_isos)
