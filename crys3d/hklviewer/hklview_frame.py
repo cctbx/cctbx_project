@@ -217,11 +217,13 @@ class HKLViewFrame() :
         msgstr = self.guisocket.recv().decode("utf-8")
         if msgstr == "":
           continue
-        self.mprint("Received message string:\n" + msgstr, verbose=2)
+        self.mprint("Received message string:\n" + msgstr, verbose=3)
         msgtype, mstr = eval(msgstr)
         if msgtype == "initiated_gui":
           self.mprint("GUI has been initialised.\n", verbose=1)
           self.initiated_gui_sem.release()
+        if msgtype=="debug_info": 
+          self.mprint(mstr, verbose=2 )
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
@@ -432,10 +434,13 @@ class HKLViewFrame() :
 
 
   def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+    self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
-      self.mprint("failed acquiring update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+      self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+    self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
     self.update_handler_sem.release()
+    self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
 
 
