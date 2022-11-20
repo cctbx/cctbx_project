@@ -1071,6 +1071,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
               self.BrowserBox.setAutoFillBackground(True)
               pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
               self.BrowserBox.setPalette(pal)
+              self.send_message("Loading %s in QwebEngine" %self.html_url, msgtype="debug_info")
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
