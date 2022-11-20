@@ -138,14 +138,24 @@ class HKLViewFrame() :
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
     self.hklin = None
-    if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    self.LoadReflectionsFile(self.hklin)
+    #if 'hklin' in kwds or 'HKLIN' in kwds:
+    #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    #self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
+
+    thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
+    thrd2.daemon = True
+    thrd2.start()
+
+  def thread_process_arguments(self, **kwds):
+    if 'hklin' in kwds or 'HKLIN' in kwds:
+      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+    self.LoadReflectionsFile(self.hklin)
+    self.validate_preset_buttons()
     if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
       fname = kwds.get('phil_file', "" )
       if os.path.isfile(fname):
@@ -162,6 +172,7 @@ class HKLViewFrame() :
       time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
+    self.mprint("Done thread_process_arguments()")
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
