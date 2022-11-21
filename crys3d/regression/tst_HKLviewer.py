@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, time
+import libtbx.load_env, os.path, time, re
 from libtbx import easy_run
-from crys3d.hklviewer import hklview_frame
+from crys3d.hklviewer import cmdlineframes
 
 
 philstr = """
@@ -43,24 +43,33 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
   (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
  )
 
-
-def exercise1():
-  assert os.path.isfile(file_name)
-  myHKLview = hklview_frame.HKLViewFrame(verbose=0)
-  myHKLview.LoadReflectionsFile(datafname)
-  # slice expanded sphere of reflections with clip plane and translate to
-  # the 46th plane of reflections along the K axis
-
-  myHKLview.update_from_philstr(philstr)
-  # wait a little until NGLs autoView() has completed
-  time.sleep(30)
-  # then copy indices of visible reflections
-  refls = myHKLview.viewer.visible_hkls[:]
-  # Destroying HKLViewFrame releases javascipt objects from browser
-  myHKLview.__exit__()
-
+def check_log_file(fname):
+  with open(fname, "r") as f:
+    mstr = f.read()
+  # check output file that reflections are reported to have been drawn
+  assert re.findall("RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
+  # peruse output file for the list of displayed reflections
+  match = re.findall("visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
+  refls = []
+  if match:
+    refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
   assert set(refls) == reflections2match
+
+
+def exercise1():
+  assert os.path.isfile(datafname)
+  outputfname = "HKLviewer1_test.log"
+
+  cmdargs = [datafname,
+            "phil_file=HKLviewer_philinput.txt",
+            "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+            "image_file=HKLviewer1_testimage.png",
+            "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
+            "closingtime=30", #
+          ]
+  myHKLview = cmdlineframes.run(cmdargs)
+  check_log_file(outputfname)
 
 
 def exercise2():
@@ -70,12 +79,11 @@ def exercise2():
 
   print("Starting the real HKLviewer test...")
 
-  import re
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
   assert os.path.isfile(datafname)
 
-  outputfname = "HKLviewer_test.log"
+  outputfname = "HKLviewer2_test.log"
   if os.path.isfile(outputfname):
     os.remove(outputfname)
 
@@ -83,7 +91,7 @@ def exercise2():
              datafname,
              "phil_file=HKLviewer_philinput.txt",
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
-             "image_file=HKLviewer_testimage.png",
+             "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closingtime=30", # close HKLviewer after 25 seconds
              "debug" # Qwebengine as a single process
@@ -99,23 +107,12 @@ def exercise2():
     for line in result.stderr_lines:
       f.write(line + "\n")
   #assert result.return_code == 0
-
-  with open(outputfname, "r") as f:
-    mstr = f.read()
-  # check output file that reflections are reported to have been drawn
-  assert re.findall("RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
-  # peruse output file for the list of displayed reflections
-  match = re.findall("visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
-  refls = []
-  if match:
-    refls = eval(match[0])
-  # check that only the following 108 reflections in reflections2match were visible
-  assert set(refls) == reflections2match
+  check_log_file(outputfname)
 
 
 def run():
   #exercise1()
-  exercise2()
+  #exercise2()
   print("OK")
 
 if __name__ == '__main__':

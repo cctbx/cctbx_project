@@ -150,6 +150,10 @@ class HKLViewFrame() :
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
+    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
+      thrd2.join()
+      self.__exit__()
+
 
   def thread_process_arguments(self, **kwds):
     if 'hklin' in kwds or 'HKLIN' in kwds:
@@ -172,6 +176,10 @@ class HKLViewFrame() :
       time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
+# if we are invoked from commandline not using Qtgui close us gracefully if requested
+    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
+      t = kwds.get('closingtime', -1 )
+      time.sleep(int(t))
     self.mprint("Done thread_process_arguments()")
 
 
