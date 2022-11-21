@@ -2043,10 +2043,10 @@ class manager(manager_mixin):
     if([d_min, d_max].count(None) < 2):
       assert selection is None and d_spacings is not None
     timer = user_plus_sys_time()
-    if([d_min, d_max].count(None) == 0):
+    if(d_min is not None or d_max is not None):
       keep = flex.bool(d_spacings.size(), True)
-      if (d_max): keep &= d_spacings <= d_max
-      if (d_min): keep &= d_spacings >= d_min
+      if (d_max is not None): keep &= d_spacings <= d_max
+      if (d_min is not None): keep &= d_spacings >= d_min
       f_obs   = f_obs.select(keep)
       f_model = f_model.select(keep)
     if(selection is not None):
