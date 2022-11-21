@@ -464,6 +464,7 @@ class compute_eps_factor(object):
           use_bounds     = 2,
           lower_bound    = flex.double(rho_mn.size(), 0.),
           upper_bound    = flex.double(rho_mn.size(), 1.),
+          max_iterations = 100,
           initial_values = rho_mn).run()
         # refine radius
         radii = flex.double()
@@ -474,6 +475,7 @@ class compute_eps_factor(object):
           use_bounds     = 2,
           lower_bound    = rad_lower_bound,
           upper_bound    = rad_upper_bound,
+          max_iterations = 100,
           initial_values = radii).run()
       self.epsfac = pot.target_and_grads.tncs_epsfac()
 

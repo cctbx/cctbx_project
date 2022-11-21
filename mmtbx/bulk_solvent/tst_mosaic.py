@@ -1117,7 +1117,9 @@ def run():
   r = mosaic.algorithm_2(
     i_obs = i_obs,
     F = [fc]+list(inp.mm.FV.keys()),
-    x = flex.double(x))
+    x = flex.double(x),
+    use_curvatures=True,
+    use_lbfgsb=False)
   assert approx_equal(r, [1,]+k_sols)
   #
   r = mosaic.algorithm_2(
@@ -1125,6 +1127,7 @@ def run():
     F = [fc]+list(inp.mm.FV.keys()),
     x = flex.double(x),
     use_curvatures = False,
+    use_lbfgsb=False,
     macro_cycles=100)
   assert approx_equal(r, [1,]+k_sols, 1.e-3)
 
