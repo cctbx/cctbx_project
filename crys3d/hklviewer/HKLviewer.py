@@ -1194,6 +1194,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
             self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
+            self.send_message("", msgtype="initiated_gui")
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -2796,7 +2797,7 @@ clip_plane {
       self.PersistQsettings(True)
     # Notify CCTBX that GUI has been initiated and it can now process messages.
     # This is critical as it releases a waiting semaphore in CCTBX
-    self.send_message("", msgtype="initiated_gui")
+    #self.send_message("", msgtype="initiated_gui")
 
 
   def RemoveQsettings(self, all=False):
