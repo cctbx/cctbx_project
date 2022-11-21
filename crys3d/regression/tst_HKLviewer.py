@@ -60,6 +60,8 @@ def check_log_file(fname):
 def exercise1():
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
+  with open("HKLviewer_philinput.txt","w") as f:
+    f.write(philstr)
 
   cmdargs = [datafname,
             "phil_file=HKLviewer_philinput.txt",
