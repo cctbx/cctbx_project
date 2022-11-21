@@ -111,7 +111,7 @@ def exercise2():
 
 
 def run():
-  #exercise1()
+  exercise1()
   #exercise2()
   print("OK")
 
