@@ -882,10 +882,10 @@ std::string DotScorer::test()
     }
   }
 
-  // Test a Hydrogen that is a donor overlapping with a target that is not an
-  // acceptor to ensure we get a net negative result.
+  // Test a polar hydrogen that is a donor overlapping with a target that is not an
+  // acceptor (another polar hydrogen) to ensure we get a net negative result.
   {
-      double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
+      double targetRad = 1.05, sourceRad = 1.005, probeRad = 0.25;
       DotSphere ds(sourceRad, 200);
       unsigned int atomSeq = 0;
 
@@ -899,7 +899,7 @@ std::string DotScorer::test()
       scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
       atoms.push_back(a);
       SpatialQuery sq(atoms);
-      ExtraAtomInfo e(targetRad);
+      ExtraAtomInfo e(targetRad, false, true);
       scitbx::af::shared<ExtraAtomInfo> infos;
       infos.push_back(e);
 
