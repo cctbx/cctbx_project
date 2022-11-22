@@ -91,7 +91,6 @@ class hkl_group(worker):
         # identifiers are dropped so re-add them
         for expt_id in set(chunk['id']):
           chunk.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
-          self.logger.log("debuguphere %d %d %s"%(self.mpi_helper.rank, expt_id, chunk.experiment_identifiers()[expt_id]))
         #chunk.reset_ids() # don't reset them, from this point on, ids are not guaranteed to be contiguous
 
     self.logger.log("Distributed %d out of %d reflections"%(total_distributed_reflection_count, total_reflection_count))
