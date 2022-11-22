@@ -151,7 +151,7 @@ NOTES:
 
   def validate(self):
     # Set the default output file name if one has not been given.
-    if self.params.output.file_name is None:
+    if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
       suffix = os.path.splitext(os.path.basename(inName))[1]
       if self.params.add_flip_movers:
@@ -159,8 +159,8 @@ NOTES:
       else:
         pad = 'H'
       base = os.path.splitext(os.path.basename(inName))[0] + pad
-      self.params.output.file_name = base + suffix
-      print('Writing model output to', self.params.output.file_name)
+      self.params.output.filename = base + suffix
+      print('Writing model output to', self.params.output.filename)
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
