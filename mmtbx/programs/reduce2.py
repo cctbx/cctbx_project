@@ -77,6 +77,10 @@ output
     .type = str
     .short_caption = Description output file name
     .help = Description output file name
+  print_atom_info = False
+    .type = bool
+    .short_caption = Print extra atom info
+    .help = Print extra atom info
 }
 ''' + Helpers.probe_phil_parameters
 
@@ -243,7 +247,9 @@ NOTES:
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
       outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
-      print(opt.getAtomDump())
+      if self.params.output.print_atom_info:
+        print('Atom information used during calculations:')
+        print(opt.getAtomDump())
 
     else: # Removing Hydrogens from the model rather than adding them.
       make_sub_header('Removing Hydrogens', out=self.logger)
