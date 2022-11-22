@@ -1754,7 +1754,7 @@ Note:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
-    if self.params.output.file_name is None:
+    if self.params.output.filename is None:
       # If the output file name is not specified, use the same root as the
       # input file and replace the suffix with .kin for Kinemage output or
       # .txt for others.
@@ -1763,8 +1763,8 @@ Note:
         suffix = '.txt'
       inName = self.data_manager.get_default_model_name()
       p = Path(inName)
-      self.params.output.file_name = str(p.with_suffix(suffix))
-      print('Setting output.file_name Phil parameter to',self.params.output.file_name)
+      self.params.output.filename = str(p.with_suffix(suffix))
+      print('Setting output.filename Phil parameter to',self.params.output.filename)
     if self.params.source_selection is None:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
