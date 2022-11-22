@@ -103,9 +103,9 @@ Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
 Output:
-  PDB or mmCIF file with added hydrogens.  If output.file_name is specified, then the
+  PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
-  If output.file_name is not specified, the output file will be
+  If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
   1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
@@ -265,14 +265,14 @@ NOTES:
       self.params.output.description_file_name)
 
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    suffix = os.path.splitext(self.params.output.file_name)[1]
+    suffix = os.path.splitext(self.params.output.filename)[1]
     if suffix.lower() == ".pdb":
       txt = self.model.model_as_pdb()
     else:
       txt = self.model.model_as_mmcif()
-    self.data_manager._write_text("model", txt, self.params.output.file_name)
+    self.data_manager._write_text("model", txt, self.params.output.filename)
 
-    print('Wrote', self.params.output.file_name,'and',
+    print('Wrote', self.params.output.filename,'and',
       self.params.output.description_file_name, file = self.logger)
 
     # Report profiling info if we've been asked to in the Phil parameters

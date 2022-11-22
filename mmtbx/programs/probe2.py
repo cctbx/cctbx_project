@@ -2397,7 +2397,7 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    self.data_manager._write_text("Text", outString, self.params.output.file_name)
+    self.data_manager._write_text("Text", outString, self.params.output.filename)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
