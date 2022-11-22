@@ -46,14 +46,15 @@ def exercise():
   # print (report)
   ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
   # print (ligand_info)
-  assert ligand_info == [
+  reference_ligand_info = [
     ['1MRU', 'A', 'MG', 24.305, 'Mg', 'MAGNESIUM ION', '[Mg+2]'],
     ['1MRU', 'B', 'MG', 24.305, 'Mg', 'MAGNESIUM ION', '[Mg+2]'],
     ['1MRU', 'A', 'AGS', 523.247, 'C10 H16 N5 O12 P3 S', 'PHOSPHOTHIOPHOSPHORIC ACID-ADENYLATE ESTER',
         'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N'],
     ['1MRU', 'B', 'AGS', 523.247, 'C10 H16 N5 O12 P3 S', 'PHOSPHOTHIOPHOSPHORIC ACID-ADENYLATE ESTER',
-        'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N']
-  ], ligand_info
+        'c1nc(c2c(n1)n(cn2)C3C(C(C(O3)COP(=O)(O)OP(=O)(O)OP(=S)(O)O)O)O)N']]
+  for answer in reference_ligand_info:
+    assert answer in ligand_info, "%s\n%s" % (answer, ligand_info)
 
 def exercise_2():
   fes_binding = rcsb_web_services.chemical_id_search(
