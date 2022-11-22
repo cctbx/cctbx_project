@@ -215,7 +215,7 @@ class HKLViewFrame() :
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
     else:
-      print(msg.encode("utf-8").decode())
+      print(msg.encode("utf-8"))
 
 
   def find_free_port(self):
