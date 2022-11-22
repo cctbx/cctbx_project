@@ -2730,31 +2730,20 @@ clip_plane {
       self.settings = QSettings("CCTBX", "HKLviewer" )
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       self.QWebEngineViewFlags = " --disable-web-security" # for chromium
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
       if not self.isembedded:
-        print("Testing if WebGL works in QWebEngineView....", end="")
-        if not self.TestWebGL():
-          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
+        print("Testing if WebGL works in QWebEngineView....")
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        if not TestWebGL():
+          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
-          if not self.TestWebGL():
-            print("\nFATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
-            print("Tried as a last resort with QTWEBENGINE_CHROMIUM_FLAGS = %s" %self.QWebEngineViewFlags)
+          if not TestWebGL():
+            print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
             return False
         print(" It does!")
     if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
+      print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
-
-  # test for any necessary flags for WebGL to work on this platform
-  def TestWebGL(self):
-    QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
-    cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-    webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    procout, procerr = webglproc.communicate()
-    if "WebGL works" in procout.decode():
-      return True
-    return False
-
 
   def UsePersistedQsettings(self):
     # Now assign the users persisted settings to the GUI
@@ -2807,6 +2796,20 @@ clip_plane {
     self.settings.remove(mstr)
     print("HKLviewer settings removed. Program exits")
     self.reset_to_factorydefaults = True
+
+
+# test for any necessary flags for WebGL to work on this platform
+def TestWebGL():
+  #print("QTWEBENGINE_CHROMIUM_FLAGS = %s" %os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
+  QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
+  cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+  webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  procout, procerr = webglproc.communicate()
+  if "WebGL works" in procout.decode():
+    return True
+  print(procout.decode())
+  return False
 
 
 def run(isembedded=False, chimeraxsession=None):
