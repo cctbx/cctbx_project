@@ -68,10 +68,9 @@ def exercise1():
             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=HKLviewer1_testimage.png",
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "--enable-webgl-software-rendering",
-            "--ignore-gpu-blacklist ",
             "closingtime=20", #
           ]
+
   myHKLview = cmdlineframes.run(cmdargs)
   check_log_file(outputfname)
 
