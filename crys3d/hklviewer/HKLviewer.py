@@ -601,7 +601,7 @@ newarray._sigmas = sigs
     self.onPresetbtn_click()
 
 
-  def closeEvent(self, event=QCloseEvent()): # provide default value for QTimer.singleShot below
+  def closeEvent(self, event=QCloseEvent()): # provide default value when called explicitly below
     self.send_message('action = is_terminating')
     self.closing = True
     self.finddlg.setVisible(False)
@@ -945,10 +945,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.XtricorderBtn.setVisible(True)
             self.XtriageBtn.setVisible(True)
 
-          if self.infodict.get("WebGL_error"):
-            self.BrowserBox.close()
-            sys.argv.append("--enable-webgl-software-rendering")
-            self.InitBrowser()
+          if self.infodict.get("closing_time"): # notified by cctbx in regression tests
+            self.closeEvent()
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
@@ -2894,9 +2892,6 @@ def run(isembedded=False, chimeraxsession=None):
       # the QApplication eventloop has started as to ensure resizing according to persisted
       # font size is done properly
       QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
-      # For regression tests close us after a specified time
-      if closingtime:
-        QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
 
       if isembedded:
         return HKLguiobj

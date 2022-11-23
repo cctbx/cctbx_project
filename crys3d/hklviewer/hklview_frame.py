@@ -153,9 +153,8 @@ class HKLViewFrame() :
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
-    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
+    if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
       thrd2.join()
-      self.__exit__()
 
 
   def thread_process_arguments(self, **kwds):
@@ -180,9 +179,10 @@ class HKLViewFrame() :
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
 # if we are invoked from commandline not using Qtgui close us gracefully if requested
-    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
-      t = kwds.get('closingtime', -1 )
+    if 'closing_time' in kwds:
+      t = kwds.get('closing_time', -1 )
       time.sleep(int(t))
+      self.SendInfoToGUI( { "closing_time": True } )
     self.mprint("Done thread_process_arguments()")
 
 
@@ -213,12 +213,12 @@ class HKLViewFrame() :
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": tmsg } )
-      if  (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
+      if (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
     else:
-      print(msg.encode("utf-8"))
+      print(str(msg)) # avoiding UnicodeEncodeError: 'charmap' codec can't encode character '\u03bb'
 
 
   def find_free_port(self):
