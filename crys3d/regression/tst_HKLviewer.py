@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, time, re
+import libtbx.load_env, os.path, re, sys
 from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes
 
@@ -63,10 +63,16 @@ def exercise1():
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
+  if sys.platform == "win32":
+    browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+  else:
+    browser = "default"
+
   cmdargs = [datafname,
             "phil_file=HKLviewer_philinput.txt",
             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=HKLviewer1_testimage.png",
+            "UseOSBrowser='%s'" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
             "closingtime=20", #
           ]

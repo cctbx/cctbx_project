@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtCore import QTimer, Qt
-from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings
+from PySide2.QtCore import QTimer
+from PySide2.QtWebEngineWidgets import QWebEngineView
 import sys, os
 
 jsstr = """
