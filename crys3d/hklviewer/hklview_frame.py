@@ -153,6 +153,7 @@ class HKLViewFrame() :
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
+    # if we are invoked from command line not using Qtgui close us by waiting for thread to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
       thrd2.join()
 
@@ -178,12 +179,12 @@ class HKLViewFrame() :
       time.sleep(10)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
-# if we are invoked from commandline not using Qtgui close us gracefully if requested
+# if we are invoked using Qtgui close us gracefully if requested
     if 'closing_time' in kwds:
       t = kwds.get('closing_time', -1 )
       time.sleep(int(t))
       self.SendInfoToGUI( { "closing_time": True } )
-    self.mprint("Done thread_process_arguments()")
+    self.mprint("Done thread_process_arguments()", verbose=2)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -218,7 +219,8 @@ class HKLViewFrame() :
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
     else:
-      print(str(msg)) # avoiding UnicodeEncodeError: 'charmap' codec can't encode character '\u03bb'
+      #print(str(msg)) # avoiding UnicodeEncodeError: 'charmap' codec can't encode character '\u03bb'
+      print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
 
 
   def find_free_port(self):
