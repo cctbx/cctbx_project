@@ -238,6 +238,9 @@ class HKLview_3d:
       exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
       self.UseOSBrowser = ldic["UseOSBrowser"]
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
+      if not os.path.isfile(self.UseOSBrowser):
+        raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
