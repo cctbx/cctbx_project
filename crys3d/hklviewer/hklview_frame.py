@@ -104,6 +104,9 @@ class HKLViewFrame() :
         buttonsdeflist = []
       if "phenix_buttonsdeflist" in dir():
         self.SendInfoToGUI({"AddPhenixButtons": True})
+    else:
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
     self.mprint("kwds= " +str(kwds), verbose=1)
     self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()
@@ -150,9 +153,12 @@ class HKLViewFrame() :
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
-    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
-      thrd2.join()
-      self.__exit__()
+    self.closingtime = int(kwds.get('closing_time', -1 ))
+    # if we are invoked from command line not using Qtgui close us by waiting for thread to finish
+    if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
+      thrd2.join(timeout = self.closingtime + 20)
+      if thrd2.is_alive():
+        self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
 
 
   def thread_process_arguments(self, **kwds):
@@ -173,14 +179,14 @@ class HKLViewFrame() :
           philstr = f.read()
           self.update_from_philstr(philstr)
     if 'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(10)
+      time.sleep(5)
       fname = kwds.get('image_file', "testimage.png" )
       self.update_from_philstr('save_image_name = "%s"' %fname)
-# if we are invoked from commandline not using Qtgui close us gracefully if requested
-    if 'closingtime' in kwds and not 'useGuiSocket' in kwds:
-      t = kwds.get('closingtime', -1 )
-      time.sleep(int(t))
-    self.mprint("Done thread_process_arguments()")
+# if we are invoked using Qtgui close us gracefully if requested
+    if 'closing_time' in kwds:
+      time.sleep(self.closingtime)
+      self.SendInfoToGUI( { "closing_time": True } )
+    self.mprint("Done thread_process_arguments()", verbose=2)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -210,12 +216,13 @@ class HKLViewFrame() :
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": tmsg } )
-      if  (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
+      if (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
     else:
-      print(msg.encode("utf-8"))
+      #print(str(msg)) # avoiding UnicodeEncodeError: 'charmap' codec can't encode character '\u03bb'
+      print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
 
 
   def find_free_port(self):

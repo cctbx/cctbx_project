@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, time, re
+import libtbx.load_env, os.path, re, sys, os, webbrowser, time
 from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes
 
@@ -43,36 +43,68 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
   (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
  )
 
+def get_browser_ctrl(using=None):
+  if using is None:
+    return "default", webbrowser.get()
+
+  if using=="firefox":
+    if sys.platform == "win32":
+      browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+      assert os.path.isfile(browser)
+
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+      assert os.path.isfile(browser)
+
+  webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
+  return browser, webctrl
+
+
 def check_log_file(fname):
   with open(fname, "r") as f:
     mstr = f.read()
   # check output file that reflections are reported to have been drawn
-  assert re.findall("RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
+  assert re.findall(r"RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
   # peruse output file for the list of displayed reflections
-  match = re.findall("visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
+  match = re.findall(r"visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
   refls = []
   if match:
     refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
-  assert set(refls) == reflections2match
+  return set(refls) == reflections2match
 
 
 def exercise1():
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
+  browser = "default"
+
+  with open("environ.txt","w") as mfile:
+    # print environment variables to log file
+    for k,v in os.environ.items():
+      mfile.write( k + "=" + v + "\n")
+
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
+
+  # check we can actually open a browser
+  browser, webctrl = get_browser_ctrl()
+  assert webctrl.open("https://get.webgl.org/")
+  time.sleep(10)
 
   cmdargs = [datafname,
             "phil_file=HKLviewer_philinput.txt",
             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=HKLviewer1_testimage.png",
+            "UseOSBrowser='%s'" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closingtime=20", #
+            "closing_time=90",
           ]
 
-  myHKLview = cmdlineframes.run(cmdargs)
-  check_log_file(outputfname)
+  assert cmdlineframes.run(cmdargs)
+  assert check_log_file(outputfname)
 
 
 def exercise2():
@@ -96,8 +128,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closingtime=30", # close HKLviewer after 25 seconds
-             "debug" # Qwebengine as a single process
+             "closing_time=90", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))
@@ -110,13 +141,12 @@ def exercise2():
     for line in result.stderr_lines:
       f.write(line + "\n")
   #assert result.return_code == 0
-  check_log_file(outputfname)
+  assert check_log_file(outputfname)
 
 
-def run():
-  exercise1()
-  #exercise2()
-  print("OK")
+
 
 if __name__ == '__main__':
-  run()
+  exercise1()
+  exercise2()
+  print("OK")

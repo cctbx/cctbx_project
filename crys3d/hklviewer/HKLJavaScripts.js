@@ -1,3 +1,5 @@
+// HKLviewer driver file leveraging NGL.js accessed from python via a websocket 
+
 'use strict';
 
 // Microsoft Edge users follow instructions on
@@ -34,8 +36,8 @@ var stage = new NGL.Stage('viewport', {  backgroundColor: "rgb(128, 128, 128)",
 var shapeComp = null;
 var vectorshape = null;
 var repr = null;
-var AA = String.fromCharCode(197); // short for angstrom
-var DGR = String.fromCharCode(176); // short for degree symbol
+const AA = String.fromCharCode(197); // short for angstrom
+const DGR = String.fromCharCode(176); // short for degree symbol
 var current_ttip = "";
 var ttips = [];
 var filename = ""
@@ -524,6 +526,7 @@ async function RenderRequest(note = "")
     WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
   if (note != "") {
+    await sleep(100);
     GetReflectionsInFrustum();
     WebsockSendMsg(note + '_AfterRendering');
   }
@@ -2241,8 +2244,15 @@ function PageLoad()
 {
   try
   {
+    let ret = MyWebGL_Detect();
+    let msg = String(ret[1]);
+    if (ret[0] == false)
+      throw new Error("Critical WebGL problem! " + msg);
+    WebsockSendMsg('WebGL: ' + msg);
     //alert('In PageLoad');
-    document.addEventListener('DOMContentLoaded', function () { HKLscene(); }, false );
+    document.addEventListener('DOMContentLoaded', function () { 
+      HKLscene(); 
+    }, false );
     document.addEventListener('mouseup', function () {
       OnUpdateOrientation();
       GetReflectionsInFrustum();
