@@ -217,17 +217,20 @@ class HKLview_3d:
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
+<script src="%s" type="text/javascript"></script>
 <div id="viewport" style="width:100%%; height:100%%;"></div>
 </body></html>
 
     """
+    WeblglChecklibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webgl_check.js")
     Html2Canvaslibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html2canvas.min.js")
     NGLlibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ngl.js")
     HKLjscriptpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLJavaScripts.js")
+    WeblglCheckliburl = "file:///" + WeblglChecklibpath.replace("\\","/")
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl,
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
                                   NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
@@ -238,6 +241,9 @@ class HKLview_3d:
       exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
       self.UseOSBrowser = ldic["UseOSBrowser"]
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
+      if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
+        raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
@@ -1434,8 +1440,8 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
-      if not self.browser_connect_sem.acquire(timeout=lock_timeout):
-        raise Sorry("Failed connecting to a web browser!")
+      if not self.browser_connect_sem.acquire(timeout= 2*lock_timeout):
+        raise Sorry("Timed out connecting to a web browser!")
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
     if not blankscene:
@@ -1475,7 +1481,7 @@ class HKLview_3d:
       else:
         ustr = unicode
       if isinstance(message, bytes) and isinstance(self.lastmsg, ustr) and "Imageblob" in self.lastmsg:
-        self.mprint( "Saving image to file", verbose=1)
+        self.mprint( "Saving image to %s" %self.imagename, verbose=1)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
       philchanged = False
@@ -1493,6 +1499,11 @@ class HKLview_3d:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=3)
+        elif 'Critical WebGL:' in message:
+          self.mprint( message, verbose=1)
+          self.SendInfoToGUI( { "closing_time": True } )
+        elif 'WebGL:' in message:
+          self.mprint( message, verbose=1)
         elif 'Browser: Got' in message:
           self.mprint( message, verbose=3)
         elif "websocket" in message:
@@ -1525,9 +1536,9 @@ class HKLview_3d:
           philchanged = True
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
-          self.mprint( "Image to be received", verbose=1)
+          self.mprint( "Image blob to be received", verbose=1)
         elif "ImageWritten" in message:
-          self.mprint( "Image saved to file", verbose=0)
+          self.mprint( "Image blob sent to CCTBX", verbose=1)
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
@@ -1736,7 +1747,7 @@ Distance: %s
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        browserpath = self.UseOSBrowser + " %s"
+        browserpath = self.UseOSBrowser + " %s &" # add & to ensure browser doesn't hang python process on unix
         if not webbrowser.get(browserpath).open(self.url, new=0):
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
