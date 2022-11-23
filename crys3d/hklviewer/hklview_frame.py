@@ -104,6 +104,9 @@ class HKLViewFrame() :
         buttonsdeflist = []
       if "phenix_buttonsdeflist" in dir():
         self.SendInfoToGUI({"AddPhenixButtons": True})
+    else:
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
     self.mprint("kwds= " +str(kwds), verbose=1)
     self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()

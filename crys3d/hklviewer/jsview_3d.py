@@ -238,7 +238,7 @@ class HKLview_3d:
       exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
       self.UseOSBrowser = ldic["UseOSBrowser"]
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
-      if not os.path.isfile(self.UseOSBrowser):
+      if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
         raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
 
     self.viewmtrx = None
@@ -1437,8 +1437,8 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
-      if not self.browser_connect_sem.acquire(timeout=lock_timeout):
-        raise Sorry("Failed connecting to a web browser!")
+      if not self.browser_connect_sem.acquire(timeout= 2*lock_timeout):
+        raise Sorry("Timed out connecting to a web browser!")
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
     if not blankscene:
