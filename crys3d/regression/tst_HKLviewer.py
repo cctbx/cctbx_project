@@ -64,7 +64,7 @@ def exercise1():
     f.write(philstr)
 
   if sys.platform == "win32":
-    browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+    browser = "firefox.exe"
   else:
     browser = "default"
 
