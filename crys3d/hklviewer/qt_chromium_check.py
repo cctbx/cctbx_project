@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from PySide2.QtCore import QTimer
-from PySide2.QtWebEngineWidgets import QWebEngineView
+from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 import sys, os
 
 jsstr = """
@@ -62,7 +62,8 @@ htmlstr1 = """
 # some documentation for chromium flags
 # https://peter.sh/experiments/chromium-command-line-switches
 
-os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --single-process" # necessary for detecting webgl abilities on Mac
+flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = flgs + " --single-process" # necessary for detecting webgl abilities on Mac
 
 class MyQWebEnginePage(QWebEnginePage):
   def __init__(self, *args, **kwargs):

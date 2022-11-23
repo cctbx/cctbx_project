@@ -64,7 +64,7 @@ def exercise1():
     f.write(philstr)
 
   if sys.platform == "win32":
-    browser = "firefox.exe"
+    browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
   else:
     browser = "default"
 
@@ -119,10 +119,7 @@ def exercise2():
   check_log_file(outputfname)
 
 
-def run():
-  exercise1()
-  #exercise2()
-  print("OK")
-
 if __name__ == '__main__':
-  run()
+  exercise1()
+  exercise2()
+  print("OK")

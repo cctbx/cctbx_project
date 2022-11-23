@@ -2729,8 +2729,10 @@ clip_plane {
       # Do this by constructing a Qsettings object with our program scope
       self.settings = QSettings("CCTBX", "HKLviewer" )
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      self.QWebEngineViewFlags = " --disable-web-security" # for chromium
-      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+      flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+
+      self.QWebEngineViewFlags = flgs + " --disable-web-security" # for chromium
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
       if not self.isembedded:
         print("Testing if WebGL works in QWebEngineView....")
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
