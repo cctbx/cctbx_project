@@ -54,7 +54,7 @@ def check_log_file(fname):
   if match:
     refls = eval(match[0])
   # check that only the following 108 reflections in reflections2match were visible
-  assert set(refls) == reflections2match
+  return set(refls) == reflections2match
 
 
 def exercise1():
@@ -74,11 +74,11 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser='%s'" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=10", #
+            "closing_time=20", #
           ]
 
   myHKLview = cmdlineframes.run(cmdargs)
-  check_log_file(outputfname)
+  assert check_log_file(outputfname)
 
 
 def exercise2():
@@ -102,7 +102,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=10", # close HKLviewer after 25 seconds
+             "closing_time=20", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))
@@ -115,7 +115,7 @@ def exercise2():
     for line in result.stderr_lines:
       f.write(line + "\n")
   #assert result.return_code == 0
-  check_log_file(outputfname)
+  assert check_log_file(outputfname)
 
 
 if __name__ == '__main__':
