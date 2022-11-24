@@ -2,9 +2,9 @@ from __future__ import absolute_import, print_function, division
 import glob
 import sys
 import os
+from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from libtbx.phil import parse
-from scitbx.array_family import flex
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
@@ -41,7 +41,57 @@ phil_scope = parse('''
 ''')
 
 
-class DriftRegistry(object):
+def get_input_paths_from_phils(phil_paths):
+  """Return reminder of lines which start with 'input.path=' in all phils"""
+  input_list = []
+  for phil_path in phil_paths:
+    with open(phil_path, "r") as phil_file:
+      for line in phil_file:
+        if line.startswith('input.path='):
+          input_list.append(line[11:].strip())
+  return sorted(list(set(input_list)))
+
+
+def get_origin_from_expt(expt_path):
+  """Read origin from lines 14-16 after 'hierarchy' text in expt file"""
+  origin = []
+  line_counter = 0
+  with open(expt_path, 'r') as expt_file:
+    for line in expt_file:
+      if 'hierarchy' in line:
+        line_counter = 1
+      elif line_counter:
+        line_counter += 1
+      if 15 <= line_counter <= 17:
+        origin.append(float(line.replace(',', '').strip()))
+      elif line_counter > 17:
+        break
+  return origin
+
+
+def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
+  """Estimate origin deltas from individual reflection position deviations"""
+  deltas = flex.vec3_double()
+  for expt_path, refl_path in zip(expt_paths, refl_paths):
+    reflections = flex.reflection_table.from_file(refl_path)
+    experiments = ExperimentList.from_file(expt_path, check_format=False)
+    detector = experiments[0].detector                 # pr:  panel reflections
+    for panel in detector:                             # observed / calculated
+      pr = reflections.select(reflections['panel'] == panel.index())
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(pr_cal_det))
+      deltas.extend(pr_obs_lab - pr_cal_lab)
+  return [deltas.parts()[i].sample_standard_deviation() for i in (0, 1, 2)]
+
+
+def split_path(path):
+  """Split path into directories and file basename using os separator"""
+  return os.path.normpath(path).split(os.sep)
+
+
+class DetectorDriftRegistry(object):
   """Object responsible for storing information about all detector positions"""
   REQUIRED_KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z']
   EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z']
@@ -54,9 +104,9 @@ class DriftRegistry(object):
     return len(self.data[self.REQUIRED_KEYS[0]])
 
   def __str__(self):
-    lines = ['\t'.join(k.upper() for k in self.active_keys)]
+    lines = [' '.join('{:9!s}'.format(k.upper()) for k in self.active_keys)]
     for row in self.rows:
-      lines.append('\t'.join(row))
+      lines.append('\t'.join('{:9!s}'.format(cell) for cell in row))
     return '\n'.join(lines)
 
   def add(self, **kwargs):
@@ -66,6 +116,7 @@ class DriftRegistry(object):
       self.data[k].append(v)
 
   def sort(self, by_key=REQUIRED_KEYS[0]):
+    self.assert_all_active_keys_have_same_length()
     reference = self.data[by_key]
     for key in self.active_keys:
       sortee = self.data[key]
@@ -73,7 +124,9 @@ class DriftRegistry(object):
                                              key=lambda pair: pair[0])]
 
   def assert_all_active_keys_have_same_length(self):
-    assert len(list({len(self.data[k]) for k in self.active_keys})) == 1
+    if len(list({len(self.data[k]) for k in self.active_keys})) > 1:
+      raise IndexError('Registry items have different lengths: ' +
+                       str({k, len(self.data[k])} for k in self.active_keys))
 
   @property
   def active_keys(self):
@@ -81,13 +134,47 @@ class DriftRegistry(object):
 
   @property
   def rows(self):
+    self.assert_all_active_keys_have_same_length()
     columns = [self.data.get(k) for k in self.active_keys]
     return zip(*[column for column in columns])
 
+  @classmethod
+  def from_merging_job(cls, tag_pattern='*/'):
+    new = cls()
+    tag_list = glob.glob(tag_pattern)
+    for tag in tag_list:
+      version_last = sorted(glob.glob(os.path.join(tag, 'v*/')))[-1]
+      merging_phils = glob.glob(os.path.join(version_last, '*_params.phil'))
+      merging_input_list = get_input_paths_from_phils(merging_phils)
+      for input_path in merging_input_list:
+        scaling_expts = glob.glob(os.path.join(input_path, 'scaling_*.expt'))
+        try:
+          first_scaling_expt_path = sorted(scaling_expts)[0]
+        except IndexError:
+          continue
+        task_dir = os.path.join(*split_path(first_scaling_expt_path)[:-2])
+        trial_dir = os.path.join(*split_path(task_dir)[:-1])
+        task = int(os.path.split(task_dir)[-1][-3:])
+        trial = int(trial_dir[-9:-6])
+        rungroup = int(trial_dir[-3:])
+        run_name = split_path(trial_dir)[-2]
+        origin = get_origin_from_expt(first_scaling_expt_path)
+        scaling_phils = glob.glob(os.path.join(task_dir, 'params_1.phil'))
+        scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
+        tder_expts, tder_refls = [], []
+        for input_path2 in scaling_input_list:
+          tder_expts.append(sorted(glob.glob(input_path2 + '.expt')))
+          tder_refls.append(sorted(glob.glob(input_path2 + '.refl')))
+        deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
+        new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
+                task=task, x=origin[0], y=origin[1], z=origin[2],
+                delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
+    return new
 
-class DriftArtist(object):
+
+class DetectorDriftArtist(object):
   """Object responsible for plotting an instance of `DriftRegistry`."""
-  def __init__(self, registry=DriftRegistry()):
+  def __init__(self, registry=DetectorDriftRegistry()):
     self.colormap = plt.get_cmap("tab10")
     self.colormap_period = 10
     self.color_by = 'tag'
@@ -149,77 +236,16 @@ class DriftArtist(object):
     self._plot_legend()
 
 
-def extract_origin_from_expt_file(expt_path):
-  """Read origin from lines 14-16 after 'hierarchy' text in expt file"""
-  origin = []
-  line_counter = 0
-  with open(expt_path, 'r') as expt_file:
-    for line in expt_file:
-      if 'hierarchy' in line:
-        line_counter = 1
-      elif line_counter:
-        line_counter += 1
-      if 15 <= line_counter <= 17:
-        origin.append(float(line.replace(',', '').strip()))
-      elif line_counter > 17:
-        break
-  return origin
-
-
-def extract_deltas_from_expt_and_refl_files(expt_path, refl_path):
-  """Estimate origin deltas from individual reflection position deviations"""
-  reflections = flex.reflection_table.from_file(refl_path)
-  experiments = ExperimentList.from_file(expt_path, check_format=False)
-  detector = experiments[0].detector
-  for panel_index, panel in enumerate(detector):
-    pr = reflections.select(reflections['panel'] == 0)  # panel reflections
-    pr_obs = panel.get_lab_coord(flex.vec2_double(*pr['xyzobs.mm.value'].parts()[0:2]))
-    pr_cal = panel.get_lab_coord(flex.vec2_double(*pr['xyzcal.mm'].parts()[0:2]))
-  # get deltas for all 128 panels; calculate std dev for a list of all deltas
-  # code below will fail; only rough idea
-  # pr_deltas2 = abs(pr_obs**2 - pr_cal**2)
-  # stddev = (sum(pr_deltas2) / (len(pr_deltas2) - 1)) ** 0.5
-  return 0.1, 0.2, 0.3
-
-
 def run(params):
-  dr = DriftRegistry()
-  da = DriftArtist(registry=dr)
   tag_pattern = 'batch*_TDER/'
-  tag_list = glob.glob(tag_pattern)
-  for tag in tag_list:
-    version_list = glob.glob(os.path.join(tag, 'v*/'))
-    version_last = sorted(version_list)[-1]
-    phil_list = glob.glob(os.path.join(version_last, '*_params.phil'))
-    input_list = []
-    for phil_path in phil_list:
-      with open(phil_path, "r") as phil_file:
-        for line in phil_file:
-          if line[:11] == 'input.path=':
-            input_list.append(line[11:].strip())
-    input_list = list(set(input_list))
-    for input_path in input_list:
-      expt_list = glob.glob(os.path.join(input_path, 'scaling_*.expt'))
-      try:
-        expt_first = sorted(expt_list)[0]
-      except IndexError:
-        continue
-      task_dir = os.path.join(*os.path.normpath(expt_first).split(os.sep)[:-2])
-      task = int(os.path.split(task_dir)[-1][-3:])
-      trial_dir = os.path.join(*os.path.normpath(task_dir).split(os.sep)[:-1])
-      trial = int(trial_dir[-9:-6])
-      rungroup = int(trial_dir[-3:])
-      run_name = os.path.normpath(trial_dir).split(os.sep)[-2]
-      origin = extract_origin_from_expt_file(expt_first)
-      dr.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial, task=task,
-             x=origin[0], y=origin[1], z=origin[2])
-
-  dr.sort(by_key='run')
-  print(dr)
-  da.plot()
+  ddr = DetectorDriftRegistry.from_merging_job(tag_pattern)
+  dda = DetectorDriftArtist(registry=ddr)
+  ddr.sort(by_key='run')
+  print(ddr)
+  dda.plot()
   if params.pickle_plot:
     from libtbx.easy_pickle import dump
-    dump('%s' % params.pickle_filename, da.fig)
+    dump('%s' % params.pickle_filename, dda.fig)
   if params.show_plot:
     plt.show()
 
