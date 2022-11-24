@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, sys, os
+import libtbx.load_env, os.path, re, sys, os, webbrowser, time
 from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes
 
@@ -43,6 +43,22 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
   (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
  )
 
+def FindFireFox():
+  browser = "default"
+  if sys.platform == "win32":
+    browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+    if not os.path.isfile(browser):
+      browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+    assert os.path.isfile(browser)
+
+  if sys.platform.startswith("darwin"):
+    browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+    assert os.path.isfile(browser)
+
+  webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
+  return browser, webctrl
+
+
 def check_log_file(fname):
   with open(fname, "r") as f:
     mstr = f.read()
@@ -58,9 +74,9 @@ def check_log_file(fname):
 
 
 def exercise1():
-  import time, webbrowser
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
+  browser = "default"
 
   with open("environ.txt","w") as mfile:
     # print environment variables to log file
@@ -70,14 +86,9 @@ def exercise1():
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
-  browser = "default"
-  if sys.platform == "win32":
-    easy_run.fully_buffered("CheckNetIsolation LoopbackExempt -a -n=Microsoft.MicrosoftEdge_8wekyb3d8bbwe")
-    #browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
-
   # check we can actually open a browser
-  #webbrowser.get(browser + ' %s')
-  assert webbrowser.open("https://get.webgl.org/")
+  browser, webctrl = FindFireFox()
+  assert webctrl.open("https://get.webgl.org/")
   time.sleep(10)
 
   cmdargs = [datafname,
@@ -86,7 +97,7 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser='%s'" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=20", #
+            "closing_time=90",
           ]
 
   myHKLview = cmdlineframes.run(cmdargs)
@@ -128,6 +139,8 @@ def exercise2():
       f.write(line + "\n")
   #assert result.return_code == 0
   assert check_log_file(outputfname)
+
+
 
 
 if __name__ == '__main__':

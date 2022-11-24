@@ -1739,7 +1739,7 @@ Distance: %s
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        browserpath = self.UseOSBrowser + " %s"
+        browserpath = self.UseOSBrowser + " %s &" # add & to ensure browser doesn't hang python process on unix
         if not webbrowser.get(browserpath).open(self.url, new=0):
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
