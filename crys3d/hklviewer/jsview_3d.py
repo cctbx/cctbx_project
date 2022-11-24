@@ -1478,7 +1478,7 @@ class HKLview_3d:
       else:
         ustr = unicode
       if isinstance(message, bytes) and isinstance(self.lastmsg, ustr) and "Imageblob" in self.lastmsg:
-        self.mprint( "Saving image to file", verbose=1)
+        self.mprint( "Saving image to %s" %self.imagename, verbose=1)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
       philchanged = False
