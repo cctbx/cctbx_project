@@ -70,12 +70,14 @@ def exercise1():
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
+  browser = "default"
   if sys.platform == "win32":
-    browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
-  else:
-    browser = "default"
+    easy_run.fully_buffered("CheckNetIsolation LoopbackExempt -a -n=Microsoft.MicrosoftEdge_8wekyb3d8bbwe")
+    #browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+
   # check we can actually open a browser
-  assert webbrowser.get(browser + ' %s').open("https://get.webgl.org/")
+  #webbrowser.get(browser + ' %s')
+  assert webbrowser.open("https://get.webgl.org/")
   time.sleep(10)
 
   cmdargs = [datafname,
