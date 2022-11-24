@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, sys
+import libtbx.load_env, os.path, re, sys, os
 from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes
 
@@ -61,6 +61,12 @@ def exercise1():
   import time, webbrowser
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
+
+  with open("environ.txt","w") as mfile:
+    # print environment variables to log file
+    for k,v in os.environ.items():
+      mfile.write( k + "=" + v + "\n")
+
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 

@@ -1528,9 +1528,9 @@ class HKLview_3d:
           philchanged = True
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
         elif "Imageblob" in message:
-          self.mprint( "Image to be received", verbose=1)
+          self.mprint( "Image blob to be received", verbose=1)
         elif "ImageWritten" in message:
-          self.mprint( "Image saved to file", verbose=0)
+          self.mprint( "Image blob sent to CCTBX", verbose=1)
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
