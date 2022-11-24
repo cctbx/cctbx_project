@@ -58,6 +58,7 @@ def check_log_file(fname):
 
 
 def exercise1():
+  import time, webbrowser
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
   with open("HKLviewer_philinput.txt","w") as f:
@@ -67,6 +68,9 @@ def exercise1():
     browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
   else:
     browser = "default"
+  # check we can actually open a browser
+  assert webbrowser.get(browser + ' %s').open("https://get.webgl.org/")
+  time.sleep(10)
 
   cmdargs = [datafname,
             "phil_file=HKLviewer_philinput.txt",
