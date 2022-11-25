@@ -822,7 +822,7 @@ class _SingletonOptimizer(object):
     :side effect: Changes the value of self._highScores[mover] to the score at the fine position
     selected if one is selected.
     """
-    maxScore = 0.0
+    maxScore = self._highScores[mover]
     coarse = mover.CoarsePositions()  # Record in case we need to put it back
     fine = mover.FinePositions(self._coarseLocations[mover])
     if len(fine.positions) > 0:
