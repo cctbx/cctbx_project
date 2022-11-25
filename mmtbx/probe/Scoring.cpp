@@ -922,6 +922,9 @@ std::string DotScorer::test()
       source.set_xyz(vec3(targetRad + sourceRad + gap, 0, 0));
       ScoreDotsResult res = as.score_dots(source, 1, sq, sourceRad + targetRad,
           probeRad, exclude, ds.dots(), ds.density(), false);
+      std::cout << "XXX bump: " << res.bumpSubScore
+        << ", attract: " << res.attractSubScore
+        << ", total: " << res.totalScore() << std::endl;
       if (!res.valid) {
           return "DotScorer::test(): Could not score dots for hydrogen bumping case";
       }
