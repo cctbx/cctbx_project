@@ -614,7 +614,7 @@ class _SingletonOptimizer(object):
             description += " ."
 
           self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], self._highScores[m], description ))
+            self._moverInfo[m], self._highScores[m], description))
 
         self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
