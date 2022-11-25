@@ -769,7 +769,6 @@ class _SingletonOptimizer(object):
       scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
       self._setMoverState(coarse, i)
-      self._coarseLocations[mover] = i
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
@@ -847,11 +846,11 @@ class _SingletonOptimizer(object):
 
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
+      self._fineLocations[mover] = maxIndex
       if maxScore > self._highScores[mover]:
         self._infoString += _VerboseCheck(3,"Setting single Mover to fine orientation {}".format(maxIndex)+
           ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
-        self._fineLocations[mover] = maxIndex
 
         # Record the best score for this Mover.
         self._highScores[mover] = maxScore
@@ -859,7 +858,6 @@ class _SingletonOptimizer(object):
         # Put us back to the initial coarse location and don't change the high score.
         self._infoString += _VerboseCheck(3,"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
-        self._fineLocations[mover] = 0
     return maxScore
 
 class _BruteForceOptimizer(_SingletonOptimizer):
