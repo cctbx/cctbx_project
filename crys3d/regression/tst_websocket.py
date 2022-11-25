@@ -2,8 +2,9 @@ from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 import asyncio, os.path, websockets, socket
 
-#async def run():
-#  await tests_HKLviewer.exercise_websocket()
+
+global socket_connected
+socket_connected = False
 
 def find_free_port():
   import socket
@@ -23,32 +24,28 @@ async def handler(websocket, path):
     await websocket.send(greeting)
     print(greeting)
     if name=="Goodbye":
-      asyncio.get_event_loop().stop()
+      global socket_connected
+      await websocket.close()
+      socket_connected = True
       return
     await asyncio.sleep(0.2)
-
-
-async def waithandler(websocket, path):
-  # Wait for at most 5 second
-  try:
-    await asyncio.wait_for(handler(websocket, path), timeout=5.0)
-  except asyncio.TimeoutError:
-    print('Timed out trying to connect to webbrowser')
-    asyncio.get_event_loop().stop()
-
 
 
 
 websock_htmlstr = """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html><head><meta charset="utf-8" /></head>
-<body><script>
-
+<body>
+<div id='mytext'></div>
+<script>
+document.getElementById('mytext').innerHTML = "Hoping to connect to localhost via websocket..."
 var portnumber = %s;
+//const mysocket = new WebSocket('ws://localhost:424242'); // testing connection failure
 const mysocket = new WebSocket('ws://localhost:' + String(portnumber));
 mysocket.addEventListener('open', function (event) {
   mysocket.send('Connection Established');
   mysocket.send('Goodbye');
+  document.getElementById('mytext').innerHTML = "Websocket connection established to localhost:" + String(portnumber)
 });
 mysocket.onmessage = function(e) { console.log(e)};
 mysocket.onopen = function(e) { console.log(e)  };
@@ -67,17 +64,32 @@ def write_websocktest_html(port):
   assert webctrl.open(myurl)
 
 
-def main():
-  port = find_free_port()
-  write_websocktest_html(port)
-  print("Websockets server on localhost port %s waiting for browser connection." %port)
-  start_server = websockets.serve(waithandler, "localhost", port)
-  asyncio.get_event_loop().run_until_complete(start_server)
-  asyncio.get_event_loop().run_forever()
+async def closing_time():
+  dt = 0.2; t=0
+  while t < 5:
+    await asyncio.sleep(dt)
+    t += dt
+    global socket_connected
+    if socket_connected:
+      print("OK")
+      asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
+      return
 
-
+  print('Timed out trying to connect to webbrowser')
+  asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
 
 
 if __name__ == '__main__':
-  main()
-  print("OK")
+  port = find_free_port()
+  write_websocktest_html(port)
+  print("Websockets server on localhost port %s waiting for browser connection." %port)
+
+  tasks = asyncio.gather(
+    websockets.serve(handler, "localhost", port),
+    closing_time()
+  )
+
+  evl = asyncio.get_event_loop()
+  evl.run_until_complete(tasks)
+  evl.run_forever()
+  assert socket_connected
