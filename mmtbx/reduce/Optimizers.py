@@ -707,7 +707,8 @@ class _SingletonOptimizer(object):
     """
     for i, a in enumerate(positionReturn.atoms):
       self._spatialQuery.remove(a)
-      a.xyz = positionReturn.positions[index][i]
+      # Make a slice here so that we get a copy of the location rather than a reference to it
+      a.xyz = positionReturn.positions[index][i][:]
       self._spatialQuery.add(a)
     # Update the extra atom information associated with the atom.
     for i, e in enumerate(positionReturn.extraInfos[index]):
