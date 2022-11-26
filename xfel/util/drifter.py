@@ -93,15 +93,15 @@ def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
       pr = reflections.select(reflections['panel'] == panel.index())
       pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
       pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
-      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(pr_obs_det))
-      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(pr_cal_det))
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
       deltas.extend(pr_obs_lab - pr_cal_lab)
   return [deltas.parts()[i].sample_standard_deviation() for i in (0, 1, 2)]
 
 
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
-  path_elements = [os.pardir if p is '..' else p for p in path_elements]
+  path_elements = [os.pardir if p=='..' else p for p in path_elements]
   return os.path.normpath(os.path.join(*path_elements))
 
 
@@ -177,14 +177,14 @@ class DetectorDriftRegistry(object):
         trial = int(trial_dir[-9:-6])
         rungroup = int(trial_dir[-3:])
         run_name = path_split(trial_dir)[-2]
+        print('Processing run {} in tag {}'.format(run_name, tag))
         origin = get_origin_from_expt(first_scaling_expt_path)
         scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
-        print(path_join(task_dir, 'params_1.phil'))
         scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
         tder_expts, tder_refls = [], []
         for input_path2 in scaling_input_list:
-          tder_expts.append(sorted(glob.glob(input_path2 + '.expt')))
-          tder_refls.append(sorted(glob.glob(input_path2 + '.refl')))
+          tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
+          tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
         deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
         new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
                 task=task, x=origin[0], y=origin[1], z=origin[2],
@@ -234,7 +234,7 @@ class DetectorDriftArtist(object):
     y = self.registry.data[values_key]
     y_err = self.registry.data.get(deltas_key, [])
     try:
-      axes.errorbar(x, y, yerr=y_err, ecolor='gray')
+      axes.errorbar(x, y, yerr=y_err, ecolor='gray', ls='')
     except IndexError:
       pass
     axes.scatter(x, y, c=self.color_array)
