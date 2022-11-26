@@ -26,8 +26,8 @@ phil_scope = parse('''
     .help = glob which matches all directories after TDER to be investigated.
   pickle_plot = False
     .type = bool
-    .help = If True, will pickle matplotlib session so that it can be opened later for analysis/viewing \
-            https://stackoverflow.com/questions/29160177/matplotlib-save-file-to-be-reedited-later-in-ipython
+    .help = If True, matplotlib session will be pickled so that it can be
+            opened later for viewing: https://www.stackoverflow.com/q/29160177/
   pickle_filename = fig_object.pickle
     .type = str
     .help = Default name of pickled matplotlib plot saved to disk
@@ -124,18 +124,18 @@ class DetectorDriftRegistry(object):
                                              key=lambda pair: pair[0])]
 
   def assert_all_active_keys_have_same_length(self):
-    if len(list({len(self.data[k]) for k in self.active_keys})) > 1:
+    if len({len(self.data[k]) for k in self.active_keys}) > 1:
       raise IndexError('Registry items have different lengths: ' +
                        str({k, len(self.data[k])} for k in self.active_keys))
 
   @property
   def active_keys(self):
-    return self.REQUIRED_KEYS + [k for k in self.REQUIRED_KEYS if self.data[k]]
+    return self.REQUIRED_KEYS + [k for k in self.EXTRA_KEYS if self.data[k]]
 
   @property
   def rows(self):
     self.assert_all_active_keys_have_same_length()
-    columns = [self.data.get(k) for k in self.active_keys]
+    columns = [self.data[k] for k in self.active_keys]
     return zip(*[column for column in columns])
 
   @classmethod
@@ -236,17 +236,17 @@ class DetectorDriftArtist(object):
     self._plot_legend()
 
 
-def run(params):
+def run(params_):
   tag_pattern = 'batch*_TDER/'
   ddr = DetectorDriftRegistry.from_merging_job(tag_pattern)
   dda = DetectorDriftArtist(registry=ddr)
   ddr.sort(by_key='run')
   print(ddr)
   dda.plot()
-  if params.pickle_plot:
+  if params_.pickle_plot:
     from libtbx.easy_pickle import dump
-    dump('%s' % params.pickle_filename, dda.fig)
-  if params.show_plot:
+    dump('%s' % params_.pickle_filename, dda.fig)
+  if params_.show_plot:
     plt.show()
 
 
