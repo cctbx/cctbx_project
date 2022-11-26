@@ -8,7 +8,6 @@ from libtbx.phil import parse
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
-from .weather import params_from_phil
 
 message = ''' This script aims to investigate the spatial drift of a detector
               as a function of experimental progress. It requires the directory
@@ -26,7 +25,7 @@ phil_scope = parse('''
     .help = glob which matches all directories after TDER to be investigated.
   pickle_plot = False
     .type = bool
-    .help = If True, matplotlib session will be pickled so that it can be
+    .help = If True, matplotlib session will be pickled so that it can be \
             opened later for viewing: https://www.stackoverflow.com/q/29160177/
   pickle_filename = fig_object.pickle
     .type = str
@@ -36,9 +35,23 @@ phil_scope = parse('''
     .help = If True, resulting plot will be displayed on screen
   uncertainties = True
     .type = bool
-    .help = If True, origin uncertainties will be estimated using differences
+    .help = If True, origin uncertainties will be estimated using differences \
             between predicted and observed positions of all reflections.
 ''')
+
+
+def params_from_phil(args):
+  user_phil = []
+  for arg in args:
+    if os.path.isfile(arg):
+      user_phil.append(parse(file_name=arg))
+    else:
+      try:
+        user_phil.append(parse(arg))
+      except Exception as e:
+        raise Sorry("Unrecognized argument: %s" % arg)
+  params = phil_scope.fetch(sources=user_phil).extract()
+  return params
 
 
 def get_input_paths_from_phils(phil_paths):
@@ -104,9 +117,9 @@ class DetectorDriftRegistry(object):
     return len(self.data[self.REQUIRED_KEYS[0]])
 
   def __str__(self):
-    lines = [' '.join('{:9!s}'.format(k.upper()) for k in self.active_keys)]
+    lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
     for row in self.rows:
-      lines.append('\t'.join('{:9!s}'.format(cell) for cell in row))
+      lines.append(' '.join('{!s:9.9}'.format(cell) for cell in row))
     return '\n'.join(lines)
 
   def add(self, **kwargs):
@@ -160,6 +173,7 @@ class DetectorDriftRegistry(object):
         run_name = split_path(trial_dir)[-2]
         origin = get_origin_from_expt(first_scaling_expt_path)
         scaling_phils = glob.glob(os.path.join(task_dir, 'params_1.phil'))
+        print(os.path.join(task_dir, 'params_1.phil'))
         scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
         tder_expts, tder_refls = [], []
         for input_path2 in scaling_input_list:
@@ -237,7 +251,7 @@ class DetectorDriftArtist(object):
 
 
 def run(params_):
-  tag_pattern = 'batch*_TDER/'
+  tag_pattern = params_.input_glob
   ddr = DetectorDriftRegistry.from_merging_job(tag_pattern)
   dda = DetectorDriftArtist(registry=ddr)
   ddr.sort(by_key='run')
