@@ -99,7 +99,13 @@ def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
   return [deltas.parts()[i].sample_standard_deviation() for i in (0, 1, 2)]
 
 
-def split_path(path):
+def path_join(*path_elements):
+  """Join path from elements, resolving all redundant or relative calls"""
+  path_elements = [os.pardir if p is '..' else p for p in path_elements]
+  return os.path.normpath(os.path.join(*path_elements))
+
+
+def path_split(path):
   """Split path into directories and file basename using os separator"""
   return os.path.normpath(path).split(os.sep)
 
@@ -156,8 +162,8 @@ class DetectorDriftRegistry(object):
     new = cls()
     tag_list = glob.glob(tag_pattern)
     for tag in tag_list:
-      version_last = sorted(glob.glob(os.path.join(tag, 'v*/')))[-1]
-      merging_phils = glob.glob(os.path.join(version_last, '*_params.phil'))
+      version_last = sorted(glob.glob(path_join(tag, 'v*/')))[-1]
+      merging_phils = glob.glob(path_join(version_last, '*_params.phil'))
       merging_input_list = get_input_paths_from_phils(merging_phils)
       for input_path in merging_input_list:
         scaling_expts = glob.glob(os.path.join(input_path, 'scaling_*.expt'))
@@ -165,15 +171,15 @@ class DetectorDriftRegistry(object):
           first_scaling_expt_path = sorted(scaling_expts)[0]
         except IndexError:
           continue
-        task_dir = os.path.join(*split_path(first_scaling_expt_path)[:-2])
-        trial_dir = os.path.join(*split_path(task_dir)[:-1])
-        task = int(os.path.split(task_dir)[-1][-3:])
+        task_dir = path_join(first_scaling_expt_path, '..', '..')
+        trial_dir = path_join(task_dir, '..')
+        task = int(path_split(task_dir)[-1][-3:])
         trial = int(trial_dir[-9:-6])
         rungroup = int(trial_dir[-3:])
-        run_name = split_path(trial_dir)[-2]
+        run_name = path_split(trial_dir)[-2]
         origin = get_origin_from_expt(first_scaling_expt_path)
-        scaling_phils = glob.glob(os.path.join(task_dir, 'params_1.phil'))
-        print(os.path.join(task_dir, 'params_1.phil'))
+        scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
+        print(path_join(task_dir, 'params_1.phil'))
         scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
         tder_expts, tder_refls = [], []
         for input_path2 in scaling_input_list:
