@@ -65,8 +65,8 @@ def write_websocktest_html(port):
 
 
 async def closing_time():
-  dt = 0.2; t=0
-  while t < 5:
+  dt = 0.2; t=0; maxtime = 60
+  while t < maxtime:
     await asyncio.sleep(dt)
     t += dt
     global socket_connected

@@ -46,7 +46,7 @@ def run(args=""):
     return myHKLview # only necessary for aiding debugging or line profiling
   except Exception as e:
     print( str(e) + "\n" + traceback.format_exc(limit=10))
-    exit(-42)
+    return 0
 
 
 if __name__ == '__main__':

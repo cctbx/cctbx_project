@@ -153,9 +153,12 @@ class HKLViewFrame() :
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
+    self.closingtime = int(kwds.get('closing_time', -1 ))
     # if we are invoked from command line not using Qtgui close us by waiting for thread to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
-      thrd2.join()
+      thrd2.join(timeout = self.closingtime + 20)
+      if thrd2.is_alive():
+        self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
 
 
   def thread_process_arguments(self, **kwds):
@@ -181,8 +184,7 @@ class HKLViewFrame() :
       self.update_from_philstr('save_image_name = "%s"' %fname)
 # if we are invoked using Qtgui close us gracefully if requested
     if 'closing_time' in kwds:
-      t = kwds.get('closing_time', -1 )
-      time.sleep(int(t))
+      time.sleep(self.closingtime)
       self.SendInfoToGUI( { "closing_time": True } )
     self.mprint("Done thread_process_arguments()", verbose=2)
 
