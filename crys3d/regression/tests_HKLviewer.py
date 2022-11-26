@@ -100,7 +100,7 @@ def exercise1():
             "closing_time=90",
           ]
 
-  myHKLview = cmdlineframes.run(cmdargs)
+  assert cmdlineframes.run(cmdargs)
   assert check_log_file(outputfname)
 
 
