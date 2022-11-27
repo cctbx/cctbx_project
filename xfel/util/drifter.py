@@ -34,6 +34,9 @@ phil_scope = parse('''
   show_plot = True
     .type = bool
     .help = If True, resulting plot will be displayed on screen
+  sizes = True
+    .type = bool
+    .help = If True, the size of points will depend on number of experiments
   uncertainties = True
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
@@ -100,6 +103,11 @@ def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
   return [deltas.parts()[i].sample_standard_deviation() for i in (0, 1, 2)]
 
 
+def get_size_from_refls(refl_paths):
+  """Retrieve a total number of indexed reflections from list of refl files"""
+  return sum(len(flex.reflection_table.from_file(r)) for r in refl_paths)
+
+
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
   path_elements = [os.pardir if p == '..' else p for p in path_elements]
@@ -114,10 +122,11 @@ def path_split(path):
 class DetectorDriftRegistry(object):
   """Object responsible for storing information about all detector positions"""
   REQUIRED_KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z']
-  EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z']
+  EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z', 'size']
 
-  def __init__(self):
+  def __init__(self, parameters):
     self.data = {k: [] for k in self.REQUIRED_KEYS + self.EXTRA_KEYS}
+    self.parameters = parameters
 
   def __len__(self):
     self.assert_all_active_keys_have_same_length()
@@ -158,9 +167,7 @@ class DetectorDriftRegistry(object):
     columns = [self.data[k] for k in self.active_keys]
     return zip(*[column for column in columns])
 
-  @classmethod
-  def from_merging_job(cls, tag_pattern='*/', uncertainties=False):
-    new = cls()
+  def populate_from_merging_job(self, tag_pattern='*/'):
     tag_list = glob.glob(tag_pattern)
     for tag in tag_list:
       version_last = sorted(glob.glob(path_join(tag, 'v*/')))[-1]
@@ -180,32 +187,31 @@ class DetectorDriftRegistry(object):
         run_name = path_split(trial_dir)[-2]
         print('Processing run {} in tag {}'.format(run_name, tag))
         origin = get_origin_from_expt(first_scaling_expt_path)
-        if not uncertainties:
-          new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
-                  task=task, x=origin[0], y=origin[1], z=origin[2])
-        else:
+        self.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
+                 task=task, x=origin[0], y=origin[1], z=origin[2])
+        if self.parameters.uncertainties or self.parameters.sizes:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
           scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
           tder_expts, tder_refls = [], []
           for input_path2 in scaling_input_list:
             tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
             tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
-          deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
-          new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
-                  task=task, x=origin[0], y=origin[1], z=origin[2],
-                  delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
-    return new
+          if self.parameters.sizes:
+            self.add(size=get_size_from_refls(tder_refls))
+          if self.parameters.uncertainties:
+            deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
+            self.add(delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
 
 
 class DetectorDriftArtist(object):
   """Object responsible for plotting an instance of `DriftRegistry`."""
-  def __init__(self, registry=DetectorDriftRegistry(), uncertainties=False):
+  def __init__(self, registry, parameters):
     self.colormap = plt.get_cmap("tab10")
     self.colormap_period = 10
     self.color_by = 'tag'
     self.order_by = 'run'
     self.registry = registry
-    self.uncertainties = uncertainties
+    self.parameters = parameters
     self._init_figure()
     self._setup_figure()
 
@@ -235,22 +241,49 @@ class DetectorDriftArtist(object):
       color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
     return [self.colormap(i % self.colormap_period) for i in color_i]
 
-  def _plot_axes(self, axes, values_key, deltas_key=None):
-    x = self.registry.data[self.order_by]
-    y = self.registry.data[values_key]
-    y_err = self.registry.data.get(deltas_key, [])
-    axes.scatter(x, y, c=self.color_array)
-    if self.uncertainties:
-      axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
+  @property
+  def size_array(self):
+    """Registry-length size list with sizes corr. to number of experiments"""
+    return [0.1 * s for s in self.registry.data['size']] \
+      if self.parameters.sizes else [36] * len(self.registry)
 
-  def _plot_legend(self):
+  def _get_all_handles_and_labels(self):
+    handles1, labels1 = self._get_standard_handles_and_labels()
+    handles2, labels2 = self._get_size_handles_and_labels()
+    return handles1 + handles2, labels1 + labels2
+
+  def _get_standard_handles_and_labels(self):
     unique_keys = []
     for key in self.registry.data[self.color_by]:
       if key not in unique_keys:
         unique_keys.append(key)
     handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.')
                for i in range(len(unique_keys))]
-    self.axl.legend(handles, unique_keys, loc=7)
+    return handles, unique_keys
+
+  def _get_size_handles_and_labels(self):
+    handles, labels = [], []
+    if self.parameters.sizes:
+      handles.append(Line2D([0], [0], alpha=0))
+      labels.append('')
+      size_min, size_max = min(self.size_array), max(self.size_array)
+      for n in range(20):
+        if size_min / 3.2 <= 10**n <= size_max * 3.2:
+          handles.append(Line2D([], [], c='black', ls='', s=10**n, marker='.'))
+          labels.append('{} reflections'.format(10**n))
+    return handles, labels
+
+  def _plot_axes(self, axes, values_key, deltas_key=None):
+    x = self.registry.data[self.order_by]
+    y = self.registry.data[values_key]
+    y_err = self.registry.data.get(deltas_key, [])
+    axes.scatter(x, y, c=self.color_array, s=self.size_array)
+    if self.parameters.uncertainties:
+      axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
+
+  def _plot_legend(self):
+    handles, labels = self._get_all_handles_and_labels()
+    self.axl.legend(handles, labels, loc=7)
     self.axl.axis('off')
 
   def plot(self):
@@ -261,12 +294,11 @@ class DetectorDriftArtist(object):
 
 
 def run(params_):
-  tag_pattern = params_.input_glob
-  ddr = DetectorDriftRegistry.from_merging_job(
-    tag_pattern=tag_pattern, uncertainties=params_.uncertainties)
-  dda = DetectorDriftArtist(registry=ddr, uncertainties=params_.uncertainties)
+  ddr = DetectorDriftRegistry(parameters=params_)
+  ddr.populate_from_merging_job(tag_pattern=params_.input_glob)
   ddr.sort(by_key='run')
   print(ddr)
+  dda = DetectorDriftArtist(registry=ddr, parameters=params_)
   dda.plot()
   if params_.pickle_plot:
     from libtbx.easy_pickle import dump
