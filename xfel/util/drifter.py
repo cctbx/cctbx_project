@@ -5,6 +5,7 @@ import os
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from libtbx.phil import parse
+from libtbx.utils import Sorry
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
@@ -48,10 +49,10 @@ def params_from_phil(args):
     else:
       try:
         user_phil.append(parse(arg))
-      except Exception as e:
+      except Exception:
         raise Sorry("Unrecognized argument: %s" % arg)
-  params = phil_scope.fetch(sources=user_phil).extract()
-  return params
+  params_ = phil_scope.fetch(sources=user_phil).extract()
+  return params_
 
 
 def get_input_paths_from_phils(phil_paths):
@@ -101,7 +102,7 @@ def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
 
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
-  path_elements = [os.pardir if p=='..' else p for p in path_elements]
+  path_elements = [os.pardir if p == '..' else p for p in path_elements]
   return os.path.normpath(os.path.join(*path_elements))
 
 
@@ -158,7 +159,7 @@ class DetectorDriftRegistry(object):
     return zip(*[column for column in columns])
 
   @classmethod
-  def from_merging_job(cls, tag_pattern='*/'):
+  def from_merging_job(cls, tag_pattern='*/', uncertainties=False):
     new = cls()
     tag_list = glob.glob(tag_pattern)
     for tag in tag_list:
@@ -179,27 +180,32 @@ class DetectorDriftRegistry(object):
         run_name = path_split(trial_dir)[-2]
         print('Processing run {} in tag {}'.format(run_name, tag))
         origin = get_origin_from_expt(first_scaling_expt_path)
-        scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
-        scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
-        tder_expts, tder_refls = [], []
-        for input_path2 in scaling_input_list:
-          tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
-          tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
-        deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
-        new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
-                task=task, x=origin[0], y=origin[1], z=origin[2],
-                delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
+        if not uncertainties:
+          new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
+                  task=task, x=origin[0], y=origin[1], z=origin[2])
+        else:
+          scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
+          scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
+          tder_expts, tder_refls = [], []
+          for input_path2 in scaling_input_list:
+            tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
+            tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
+          deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
+          new.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
+                  task=task, x=origin[0], y=origin[1], z=origin[2],
+                  delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
     return new
 
 
 class DetectorDriftArtist(object):
   """Object responsible for plotting an instance of `DriftRegistry`."""
-  def __init__(self, registry=DetectorDriftRegistry()):
+  def __init__(self, registry=DetectorDriftRegistry(), uncertainties=False):
     self.colormap = plt.get_cmap("tab10")
     self.colormap_period = 10
     self.color_by = 'tag'
     self.order_by = 'run'
     self.registry = registry
+    self.uncertainties = uncertainties
     self._init_figure()
     self._setup_figure()
 
@@ -233,11 +239,9 @@ class DetectorDriftArtist(object):
     x = self.registry.data[self.order_by]
     y = self.registry.data[values_key]
     y_err = self.registry.data.get(deltas_key, [])
-    try:
-      axes.errorbar(x, y, yerr=y_err, ecolor='gray', ls='')
-    except IndexError:
-      pass
     axes.scatter(x, y, c=self.color_array)
+    if self.uncertainties:
+      axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_legend(self):
     unique_keys = []
@@ -258,14 +262,15 @@ class DetectorDriftArtist(object):
 
 def run(params_):
   tag_pattern = params_.input_glob
-  ddr = DetectorDriftRegistry.from_merging_job(tag_pattern)
-  dda = DetectorDriftArtist(registry=ddr)
+  ddr = DetectorDriftRegistry.from_merging_job(
+    tag_pattern=tag_pattern, uncertainties=params_.uncertainties)
+  dda = DetectorDriftArtist(registry=ddr, uncertainties=params_.uncertainties)
   ddr.sort(by_key='run')
   print(ddr)
   dda.plot()
   if params_.pickle_plot:
     from libtbx.easy_pickle import dump
-    dump('%s' % params_.pickle_filename, dda.fig)
+    dump(str(params_.pickle_filename), dda.fig)
   if params_.show_plot:
     plt.show()
 
