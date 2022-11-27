@@ -244,7 +244,7 @@ class DetectorDriftArtist(object):
   @property
   def size_array(self):
     """Registry-length size list with sizes corr. to number of experiments"""
-    return [0.1 * s for s in self.registry.data['size']] \
+    return [0.0001 * s for s in self.registry.data['size']] \
       if self.parameters.sizes else [36] * len(self.registry)
 
   def _get_all_handles_and_labels(self):
@@ -269,7 +269,7 @@ class DetectorDriftArtist(object):
       size_min, size_max = min(self.size_array), max(self.size_array)
       for n in range(10):
         if size_min / 3.2 <= 10**n <= size_max * 3.2:
-          handles.append(Line2D([], [], c='black', ls='', ms=10**n, marker='.'))
+          handles.append(Line2D([], [], c='black', ls='', ms=(10**n)**0.5, marker='.'))
           labels.append('{} reflections'.format(10**n))
     return handles, labels
 
