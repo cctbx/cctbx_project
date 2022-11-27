@@ -36,7 +36,7 @@ phil_scope = parse('''
     .help = If True, resulting plot will be displayed on screen
   sizes = True
     .type = bool
-    .help = If True, the size of points will depend on number of experiments
+    .help = If True, write number of reflections in each run atop the plot
   uncertainties = True
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
@@ -86,11 +86,17 @@ def get_origin_from_expt(expt_path):
   return origin
 
 
-def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
-  """Estimate origin deltas from individual reflection position deviations"""
+def get_size_and_uncertainties_from_expts_and_refls(expt_paths, refl_paths,
+                                                    uncertainties=True):
+  """Retrieve total number of indexed reflections as well as uncertainties
+  of origin positions from individual reflection position deviations"""
+  s = 0
   deltas = flex.vec3_double()
   for expt_path, refl_path in zip(expt_paths, refl_paths):
     reflections = flex.reflection_table.from_file(refl_path)
+    s += len(reflections)
+    if not uncertainties:
+      continue
     experiments = ExperimentList.from_file(expt_path, check_format=False)
     detector = experiments[0].detector                 # pr:  panel reflections
     for panel in detector:                             # observed / calculated
@@ -100,12 +106,9 @@ def get_deltas_from_expts_and_refls(expt_paths, refl_paths):
       pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
       pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
       deltas.extend(pr_obs_lab - pr_cal_lab)
-  return [deltas.parts()[i].sample_standard_deviation() for i in (0, 1, 2)]
-
-
-def get_size_from_refls(refl_paths):
-  """Retrieve a total number of indexed reflections from list of refl files"""
-  return sum(len(flex.reflection_table.from_file(r)) for r in refl_paths)
+  d = [deltas.parts()[i].sample_standard_deviation() for i in range(2)] \
+    if uncertainties else [[]] * 3
+  return s, d[0], d[1], d[2]
 
 
 def path_join(*path_elements):
@@ -196,11 +199,9 @@ class DetectorDriftRegistry(object):
           for input_path2 in scaling_input_list:
             tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
             tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
-          if self.parameters.sizes:
-            self.add(size=get_size_from_refls(tder_refls))
-          if self.parameters.uncertainties:
-            deltas = get_deltas_from_expts_and_refls(tder_expts, tder_refls)
-            self.add(delta_x=deltas[0], delta_y=deltas[1], delta_z=deltas[2])
+          s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
+            tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
+          self.add(size=s, delta_x=dx, delta_y=dy, delta_z=dz)
 
 
 class DetectorDriftArtist(object):
@@ -242,52 +243,37 @@ class DetectorDriftArtist(object):
     return [self.colormap(i % self.colormap_period) for i in color_i]
 
   @property
-  def size_array(self):
+  def top_tick_labels(self):
     """Registry-length size list with sizes corr. to number of experiments"""
-    return [0.0001 * s for s in self.registry.data['size']] \
-      if self.parameters.sizes else [36] * len(self.registry)
+    return ['{}'.format(s) for s in self.registry.data['size']]
 
-  def _get_all_handles_and_labels(self):
-    handles1, labels1 = self._get_standard_handles_and_labels()
-    handles2, labels2 = self._get_size_handles_and_labels()
-    return handles1 + handles2, labels1 + labels2
-
-  def _get_standard_handles_and_labels(self):
+  def _get_handles_and_labels(self):
     unique_keys = []
     for key in self.registry.data[self.color_by]:
       if key not in unique_keys:
         unique_keys.append(key)
-    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.', ms=36)
+    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.')
                for i in range(len(unique_keys))]
     return handles, unique_keys
 
-  def _get_size_handles_and_labels(self):
-    handles, labels = [], []
-    if self.parameters.sizes:
-      handles.append(Line2D([0], [0], alpha=0))
-      labels.append('')
-      size_min, size_max = min(self.size_array), max(self.size_array)
-      for n in range(10):
-        if size_min / 3.2 <= 10**n <= size_max * 3.2:
-          handles.append(Line2D([], [], c='black', ls='', ms=(10**n)**0.5, marker='.'))
-          labels.append('{} reflections'.format(10**n))
-    return handles, labels
-
-  def _plot_axes(self, axes, values_key, deltas_key=None):
+  def _plot_axes(self, axes, values_key, deltas_key=None, top=False):
     x = self.registry.data[self.order_by]
     y = self.registry.data[values_key]
     y_err = self.registry.data.get(deltas_key, [])
-    axes.scatter(x, y, c=self.color_array, s=self.size_array)
+    axes.scatter(x, y, c=self.color_array)
+    if self.parameters.sizes and top:
+      axes.tick_params(labeltop=True, rotation=90)
+      axes.set_xticklabels(self.top_tick_labels)
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_legend(self):
-    handles, labels = self._get_all_handles_and_labels()
+    handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
     self.axl.axis('off')
 
   def plot(self):
-    self._plot_axes(self.axx, 'x', 'delta_x')
+    self._plot_axes(self.axx, 'x', 'delta_x', top=True)
     self._plot_axes(self.axy, 'y', 'delta_y')
     self._plot_axes(self.axz, 'z', 'delta_z')
     self._plot_legend()
