@@ -20,7 +20,7 @@ async def handler(websocket, path):
   while True:
     name = await websocket.recv()
     print(f"{name}")
-    greeting = f"Hello {name}!"
+    greeting = f"Server got: {name}!"
     await websocket.send(greeting)
     print(greeting)
     if name=="Goodbye":
@@ -37,6 +37,7 @@ websock_htmlstr = """
 <html><head><meta charset="utf-8" /></head>
 <body>
 <div id='mytext'></div>
+<div id='myservertext'></div>
 <script>
 document.getElementById('mytext').innerHTML = "Hoping to connect to localhost via websocket..."
 var portnumber = %s;
@@ -47,7 +48,9 @@ mysocket.addEventListener('open', function (event) {
   mysocket.send('Goodbye');
   document.getElementById('mytext').innerHTML = "Websocket connection established to localhost:" + String(portnumber)
 });
-mysocket.onmessage = function(e) { console.log(e)};
+mysocket.onmessage = function(e) { 
+  document.getElementById('myservertext').innerHTML = e.data;
+};
 mysocket.onopen = function(e) { console.log(e)  };
 
 </script></body></html>
@@ -59,13 +62,13 @@ def write_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  _, webctrl = tests_HKLviewer.FindFireFox()
+  _, webctrl = tests_HKLviewer.get_browser_ctrl()
   #import webbrowser
   assert webctrl.open(myurl)
 
 
 async def closing_time():
-  dt = 0.2; t=0; maxtime = 60
+  dt = 0.2; t=0; maxtime = 30
   while t < maxtime:
     await asyncio.sleep(dt)
     t += dt
