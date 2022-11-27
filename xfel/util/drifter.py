@@ -257,7 +257,7 @@ class DetectorDriftArtist(object):
     for key in self.registry.data[self.color_by]:
       if key not in unique_keys:
         unique_keys.append(key)
-    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.')
+    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.', ms=36)
                for i in range(len(unique_keys))]
     return handles, unique_keys
 
@@ -267,9 +267,9 @@ class DetectorDriftArtist(object):
       handles.append(Line2D([0], [0], alpha=0))
       labels.append('')
       size_min, size_max = min(self.size_array), max(self.size_array)
-      for n in range(20):
+      for n in range(10):
         if size_min / 3.2 <= 10**n <= size_max * 3.2:
-          handles.append(Line2D([], [], c='black', ls='', s=10**n, marker='.'))
+          handles.append(Line2D([], [], c='black', ls='', ms=10**n, marker='.'))
           labels.append('{} reflections'.format(10**n))
     return handles, labels
 
