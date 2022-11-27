@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021  Richardson Lab at Duke University
+#                Copyright 2021-2022 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,6 +56,17 @@ verbosity = 3
 # classes.
 # @todo Consider making this a constructor parameter rather than a global.
 probePhil = None
+
+# Preference for not flipping Movers that are flips.  This keeps them from being flipped
+# unless their score is significantly better than in the original position.
+# @todo Move this parameter into a reducePhil struct
+nonFlipPreference = 0.5
+
+# Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
+# removal and fixup for Histidines that are not placed as Movers, but for flips that
+# are Movers we don't adjust the bond angles.
+# @todo Move this parameter into a reducePhil struct
+skipBondFixup = False
 
 ##################################################################################
 # Helper functions
@@ -251,7 +262,13 @@ class _SingletonOptimizer(object):
     # empty cases, then we run just once.  We run the models in order, all of them when
     # None is specified and the specified one if it is specified.
 
-    model.setup_riding_h_manager()
+    try:
+      model.setup_riding_h_manager()
+    except Exception:
+      # If an optimized has already been run on the model, our riding H manager will
+      # have already been set up.  When one has already been set up, this causes
+      # an exception and it doesn't make a new one.
+      pass
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
     allRotatableHydrogens = model.rotatable_hd_selection(iselection=True)
@@ -578,6 +595,7 @@ class _SingletonOptimizer(object):
           # We add the same number of words to the output string in all cases to make things
           # easier for a program to parse.
           if "lipped" in description:
+            global nonFlipPreference
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
             final = self._coarseLocations[m]
@@ -588,7 +606,7 @@ class _SingletonOptimizer(object):
             finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
-            elif abs(finalScore - otherScore) <= 0.5:
+            elif abs(finalScore - otherScore) <= nonFlipPreference:
               description += " Uncertain"
             else:
               description += " ."
@@ -596,7 +614,7 @@ class _SingletonOptimizer(object):
             description += " ."
 
           self._infoString += _VerboseCheck(1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], self._highScores[m], description ))
+            self._moverInfo[m], self._highScores[m], description))
 
         self._infoString += _VerboseCheck(1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
@@ -624,13 +642,15 @@ class _SingletonOptimizer(object):
         # and deletion status for all atoms that have entries for each.
         # This must be done after we print the scores because the print methods move the
         # coarse state to see how much it changed.
-        self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
-        for m in self._movers:
-          loc = self._coarseLocations[m]
-          self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
-          self._moverInfo[m],loc))
-          self._doFixup(m.FixUp(loc))
-        self._infoString += _ReportTiming("fix up Movers")
+        global skipBondFixup
+        if not skipBondFixup:
+          self._infoString += _VerboseCheck(1,"FixUp on all Movers\n")
+          for m in self._movers:
+            loc = self._coarseLocations[m]
+            self._infoString += _VerboseCheck(3,"FixUp on {} coarse location {}\n".format(
+            self._moverInfo[m],loc))
+            self._doFixup(m.FixUp(loc))
+          self._infoString += _ReportTiming("fix up Movers")
 
       ################################################################################
       # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
@@ -687,7 +707,8 @@ class _SingletonOptimizer(object):
     """
     for i, a in enumerate(positionReturn.atoms):
       self._spatialQuery.remove(a)
-      a.xyz = positionReturn.positions[index][i]
+      # Make a slice here so that we get a copy of the location rather than a reference to it
+      a.xyz = positionReturn.positions[index][i][:]
       self._spatialQuery.add(a)
     # Update the extra atom information associated with the atom.
     for i, e in enumerate(positionReturn.extraInfos[index]):
@@ -748,7 +769,6 @@ class _SingletonOptimizer(object):
       scores[i] *= self._preferenceMagnitude
     for i in range(len(coarse.positions)):
       self._setMoverState(coarse, i)
-      self._coarseLocations[mover] = i
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
@@ -802,7 +822,7 @@ class _SingletonOptimizer(object):
     :side effect: Changes the value of self._highScores[mover] to the score at the fine position
     selected if one is selected.
     """
-    maxScore = 0.0
+    maxScore = self._highScores[mover]
     coarse = mover.CoarsePositions()  # Record in case we need to put it back
     fine = mover.FinePositions(self._coarseLocations[mover])
     if len(fine.positions) > 0:
@@ -826,11 +846,11 @@ class _SingletonOptimizer(object):
 
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
+      self._fineLocations[mover] = maxIndex
       if maxScore > self._highScores[mover]:
         self._infoString += _VerboseCheck(3,"Setting single Mover to fine orientation {}".format(maxIndex)+
           ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
-        self._fineLocations[mover] = maxIndex
 
         # Record the best score for this Mover.
         self._highScores[mover] = maxScore
@@ -838,7 +858,6 @@ class _SingletonOptimizer(object):
         # Put us back to the initial coarse location and don't change the high score.
         self._infoString += _VerboseCheck(3,"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
-        self._fineLocations[mover] = 0
     return maxScore
 
 class _BruteForceOptimizer(_SingletonOptimizer):
@@ -925,6 +944,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       # update the best.
       score = 0
       for i in range(len(movers)):
+        score += states[i].preferenceEnergies[curStateValues[i]]
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -939,8 +959,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     ret = 0.0
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
-      self._coarseLocations[movers[i]] = bestState[i]
-      self._highScores[m] = 0
+      self._coarseLocations[m] = bestState[i]
+      self._highScores[m] = states[i].preferenceEnergies[curStateValues[i]]
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
       self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1062,7 +1082,8 @@ class _CliqueOptimizer(_BruteForceOptimizer):
 
         # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
         # update the best.
-        for m in cutMovers:
+        for i, m in enumerate(cutMovers):
+          score += states[m].preferenceEnergies[curStateValues[i]]
           for a in states[m].atoms:
             score += self._scoreAtom(a)
         self._infoString += _VerboseCheck(5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1079,7 +1100,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       for i,m in enumerate(movers):
         self._setMoverState(states[m], bestState[i])
         self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = 0
+        self._highScores[m] = states[m].preferenceEnergies[bestState[i]]
         for a in states[m].atoms:
           self._highScores[m] += self._scoreAtom(a)
         self._infoString += _VerboseCheck(3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1240,6 +1261,8 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
   """
+
+  global nonFlipPreference
 
   # List of Movers to return
   movers = []
@@ -1405,9 +1428,9 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
 
       if not foundIon:
         try:
-          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists))
+          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference))
           infoString += _VerboseCheck(1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
-          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName;
+          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
         except Exception as e:
           infoString += _VerboseCheck(0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
@@ -1420,7 +1443,7 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
         # ion, then we remove the Hydrogen(s) and lock the Histidine at that orientation
         # rather than inserting the Mover into the list of those to be optimized.
         # @todo Consider checking both configurations to see if either one has two bonds.
-        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo)
+        hist = Movers.MoverHisFlip(a, bondedNeighborLists, extraAtomInfo, nonFlipPreference)
 
         # Find the four positions to check for Nitrogen ionic bonds
         # The two atoms are NE2 (0th atom with its Hydrogen at atom 1) and
@@ -1841,7 +1864,22 @@ END
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
-  # Run a fast optimizer on the model.
+  # Run each type of optimizer on the model.
+  # @todo Verify that they all get equivalent results
+  print('Testing _BruteForceOptimizer')
+  opt = _BruteForceOptimizer(True, model,probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0)
+  print('Testing _CliqueOptimizer')
+  opt = _CliqueOptimizer(True, model,probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 3,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0)
   print('Testing FastOptimizer')
   opt = FastOptimizer(True, model,probeRadius=0.25)
 

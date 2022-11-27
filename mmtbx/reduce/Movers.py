@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021  Richardson Lab at Duke University
+#                Copyright 2021-2022 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -147,9 +147,7 @@ class MoverNull(object):
     # Make a copy of the extra information so that we can be sure it is not modified
     # elsewhere before we return it.
     self._extraAtomInfo = probe.ExtraAtomInfo(extraAtomInfoMap.getMappingFor(self._atom))
-  def CoarsePositions(self):
-    # returns: The original atom at its original position.
-    return PositionReturn(
+    self._coarsePositions = PositionReturn(
         # Single array of atoms
         [ self._atom ],
         # List of lists of positions.  Must be a list rather than a tuple
@@ -162,6 +160,10 @@ class MoverNull(object):
         # Single array of preference energies
         [ 0.0 ]
     )
+
+  def CoarsePositions(self):
+    # returns: The original atom at its original position.
+    return self._coarsePositions
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
     return PositionReturn([], [], [], [], [])
@@ -274,6 +276,12 @@ class _MoverRotator(object):
         self._fineAngles.append(curStep)
       curStep += self._fineStepDegrees
 
+    # Coarse positions
+    self._coarsePositions = self._computeCoarsePositions()
+
+    # Fine positions, one list per coarse index
+    self._finePositions = self._computeFinePositions()
+
   def _preferencesFor(self, angles, scale):
     """Return the preference energies for the specified angles, scaled by the scale.
        :param angles: List of angles to compute the preferences at.
@@ -304,37 +312,51 @@ class _MoverRotator(object):
       poses.append(atoms)
     return poses;
 
-  def CoarsePositions(self):
-
-    # Return the atoms, coarse-angle poses, and coarse-angle preferences
+  def _computeCoarsePositions(self):
     return PositionReturn(self._atoms,
       self._posesFor(self._coarseAngles),
       [ [] ]  * len(self._coarseAngles),
       [ [] ]  * len(self._coarseAngles),
       self._preferencesFor(self._coarseAngles, self._preferredOrientationScale))
 
+  def CoarsePositions(self):
+
+    # Return the atoms, coarse-angle poses, and coarse-angle preferences
+    return self._coarsePositions
+
+  def _computeFinePositions(self):
+    ret = []
+    for coarseIndex in range(len(self._coarsePositions.positions)):
+
+      if not self._doFineRotations:
+        # No fine positions for any coarse position.
+        ret.append(PositionReturn([], [], [], [], []))
+        continue
+
+      # We add the range of values to the coarse angle we're starting with to provide
+      # the list of fine angles to try.
+      angles = []
+      try:
+        ca = self._coarseAngles[coarseIndex]
+      except Exception as e:
+        raise ValueError("MoverRotator.FinePositions(): Bad coarseIndex: "+str(e))
+      for fa in self._fineAngles:
+        angle = fa + ca
+        angles.append(angle)
+
+      # Return the atoms and poses along with the preferences.
+      ret.append(PositionReturn(self._atoms,
+        self._posesFor(angles),
+        [ [] ] * len(angles),
+        [ [] ] * len(angles),
+        self._preferencesFor(angles, self._preferredOrientationScale))
+        )
+      continue
+
+    return ret
+
   def FinePositions(self, coarseIndex):
-    if not self._doFineRotations:
-      # No fine positions for any coarse position.
-      return PositionReturn([], [], [], [], [])
-
-    # We add the range of values to the coarse angle we're starting with to provide
-    # the list of fine angles to try.
-    angles = []
-    try:
-      ca = self._coarseAngles[coarseIndex]
-    except Exception as e:
-      raise ValueError("MoverRotator.FinePositions(): Bad coarseIndex: "+str(e))
-    for fa in self._fineAngles:
-      angle = fa + ca
-      angles.append(angle)
-
-    # Return the atoms and poses along with the preferences.
-    return PositionReturn(self._atoms,
-      self._posesFor(angles),
-      [ [] ] * len(angles),
-      [ [] ] * len(angles),
-      self._preferencesFor(angles, self._preferredOrientationScale))
+    return self._finePositions[coarseIndex]
 
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
@@ -418,8 +440,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Make a list that contains just the single atom.
-    atoms = [ atom ]
+    # Make a list that contains the hydrogen and its bonded neighbor so that its neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ atom, neighbor ]
 
     # Move the atom so that it is in one of the preferred locations.  The preferred location depends on
     # whether there are two or three friends, it wants to be in the plane if there are two of them and it
@@ -453,6 +477,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       # This means that we merely have to add the degrees offset to its current rotation.
       if degrees is not None:
         self._coarseAngles.append(degrees)
+        # Recompute the coarse and fine positions given the new angle we want to test
+        self._coarsePositions = self._computeCoarsePositions()
+        self._finePositions = self._computeFinePositions()
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
@@ -527,8 +554,14 @@ class MoverNH3Rotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180
 
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
+    atoms.extend(hydrogens)
+
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
@@ -596,10 +629,16 @@ class MoverAromaticMethylRotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180 + 90
 
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
+    atoms.extend(hydrogens)
+
     # Construct our parent class, which will do all of the actual work based on our inputs.
     # We have a coarse step size of 180 degrees and a range of 180 degrees and do not
     # allow fine rotations.
-    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, 180, doFineRotations = False)
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, 180, doFineRotations = False)
 
 ##################################################################################
 class MoverTetrahedralMethylRotator(_MoverRotator):
@@ -678,14 +717,20 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180
 
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
+    atoms.extend(hydrogens)
+
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, hydrogens, axis, dihedral, offset, 180, fineStepDegrees = fineStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, fineStepDegrees = fineStepDegrees,
       preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
 ##################################################################################
 class MoverAmideFlip(object):
-  def __init__(self, nh2Atom, caAtomName, bondedNeighborLists):
+  def __init__(self, nh2Atom, caAtomName, bondedNeighborLists, nonFlipPreference):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
        This Mover uses a simple swap of the center positions of the heavy atoms (with
@@ -701,7 +746,13 @@ class MoverAmideFlip(object):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
+       :param nonFlipPreference: Score amount by which the original orientation is preferred
+       over the flipped orientation.  This will bias things so that the flipped orientation
+       is not chosen unless it is this much better than the original.
     """
+
+    # Store away our constructor arguments that we need for later.
+    self._nonFlipPreference = nonFlipPreference
 
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
@@ -815,8 +866,13 @@ class MoverAmideFlip(object):
     self._fixUpPositions = [ [], movable ]
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -0.5 for the flipped.
-    return PositionReturn(self._atoms, self._coarsePositions, [ [], [] ], [ [], [] ], [0.0, -0.5])
+    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference for the flipped.
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
+    return PositionReturn(self._atoms, self._coarsePositions,
+      [ [], [] ],
+      [ [], [] ],
+      [0.0, -self._nonFlipPreference])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -837,7 +893,7 @@ class MoverAmideFlip(object):
 
 ##################################################################################
 class MoverHisFlip(object):
-  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap):
+  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap, nonFlipPreference):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
@@ -850,7 +906,13 @@ class MoverHisFlip(object):
        :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
        up the information for atoms whose values need to be changed.  Can be
        obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+       :param nonFlipPreference: Score amount by which the original orientation is preferred
+       over the flipped orientation.  This will bias things so that the flipped orientation
+       is not chosen unless it is this much better than the original.
     """
+
+    # Store away our constructor arguments that we need for later.
+    self._nonFlipPreference = nonFlipPreference
 
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
@@ -1063,13 +1125,18 @@ class MoverHisFlip(object):
       self._deleteMes.append(deleteMes)
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -0.5
+    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference
     # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
     # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes,
       [ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0,
-       -0.5 - 0.05, -0.5, -0.5, -0.5 - 1.0])
+       -self._nonFlipPreference - 0.05,
+       -self._nonFlipPreference,
+       -self._nonFlipPreference,
+       -self._nonFlipPreference - 1.0])
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -1266,8 +1333,7 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
     axis = flex.vec3_double([alphaCarbon.xyz, normal])
     degrees = 180/math.pi * math.acos((lvec3(aToOldN.normalize())*rvec3(aToNewO.normalize()))[0])
     for i in range(len(movable)):
-      # Rotate in the opposite direction, taking the new back to the old.
-      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, -degrees)
+      movable[i] = _rotateAroundAxis(rvec3(movable[i]), axis, degrees)
 
   #  2) firstDockIndex to the proper plane.
   sites = flex.vec3_double([ movable[secondDockIndex], alphaCarbon.xyz, second.xyz, first.xyz ])
@@ -1283,7 +1349,23 @@ def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, 
   return movable
 
 ##################################################################################
-# Test function to verify that all Movers behave properly.
+# Test function and its helpers to verify that all Movers behave properly.
+
+def _StableUnderAtomMotion(mover, atom):
+  cI = mover.CoarsePositions().positions
+  fI = mover.FinePositions(0).positions
+  atom.xyz = ( atom.xyz[0]+10, atom.xyz[1], atom.xyz[2] )
+  cC = mover.CoarsePositions().positions
+  fC = mover.FinePositions(0).positions
+  for i,p in enumerate(cI):
+    for j, atom in enumerate(p):
+      if cI[i][j] != cC[i][j]:
+        return False
+  for i,p in enumerate(fI):
+    for j, atom in enumerate(p):
+      if fI[i][j] != fC[i][j]:
+        return False
+  return True
 
 def Test():
   """Test function for all classes provided above.
@@ -1322,6 +1404,11 @@ def Test():
       return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(1,0)
     if m.PoseDescription(0,1) != "Unrecognized state .":
       return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,1)
+
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(m, atom):
+      return "Movers.Test() MoverNull: Positions not stable when atom moved"
 
   except Exception as e:
     return "Movers.Test() MoverNull: Exception during test of MoverNull: "+str(e)+"\n"+traceback.format_exc()
@@ -1429,6 +1516,11 @@ def Test():
     if rot.PoseDescription(1,1) != "Angle -18.0 deg":
       return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1)
 
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(rot, atoms[0]):
+      return "Movers.Test() _MoverRotator: Positions not stable when atom moved"
+
   except Exception as e:
     return "Movers.Test() _MoverRotator basic: Exception during test of _MoverRotator: "+str(e)+"\n"+traceback.format_exc()
 
@@ -1525,6 +1617,11 @@ def Test():
         break
     if not found:
       return "Movers.Test() MoverSingleHydrogenRotator pair: no orientation towards acceptor"
+
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, h):
+      return "Movers.Test() MoverSingleHydrogenRotator: Positions not stable when atom moved"
 
   except Exception as e:
     return "Movers.Test() MoverSingleHydrogenRotator pair: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -1719,6 +1816,11 @@ def Test():
     if zero - oneEighty < 1e-5:
       return "Movers.Test() MoverNH3Rotator basic: bad preference function"
 
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, h1):
+      return "Movers.Test() MoverNH3Rotator: Positions not stable when atom moved"
+
   except Exception as e:
     return "Movers.Test() MoverNH3Rotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -1811,6 +1913,11 @@ def Test():
     fine = mover.FinePositions(0).positions
     if len(fine) != 0:
       return "Movers.Test() MoverAromaticMethylRotator basic: bad fine count: "+str(len(fine))
+
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, h1):
+      return "Movers.Test() MoverNH3Rotator: Positions not stable when atom moved"
 
   except Exception as e:
     return "Movers.Test() MoverAromaticMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -1915,6 +2022,11 @@ def Test():
     if zero - oneEighty < 1e-5:
       return "Movers.Test() MoverTetrahedralMethylRotator: bad preference function"
 
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, h1):
+      return "Movers.Test() MoverTetrahedralMethylRotator: Positions not stable when atom moved"
+
   except Exception as e:
     return "Movers.Test() MoverTetrahedralMethylRotator basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
@@ -2004,7 +2116,7 @@ def Test():
     bondedNeighborLists[fh2] = [ f ]
     bondedNeighborLists[ca] = [ f ]
 
-    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists, 0.5)
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and O are flipped in position
@@ -2071,6 +2183,11 @@ def Test():
     # Test the PoseDescription
     if mover.PoseDescription(1,0) != "Flipped . .":
       return "Movers.Test() MoverAmideFlip basic: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,1)
+
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, n):
+      return "Movers.Test() MoverAmideFlip: Positions not stable when atom moved"
 
   except Exception as e:
     return "Movers.Test() MoverAmideFlip basic: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -2172,7 +2289,7 @@ def Test():
     bondedNeighborLists[lnh2] = [ ln ]
     bondedNeighborLists[ca] = [ ln ]
 
-    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists)
+    mover = MoverAmideFlip(n, ca.name, bondedNeighborLists, 0.5)
     fixedUp = mover.FixUp(1).positions
 
     # Ensure that the results meet the specifications:
@@ -2279,7 +2396,7 @@ def Test():
 
     ce1 = pdb.hierarchy.atom()
     ce1.element = "C"
-    ce1.xyz = lvec3([ 1.0, 0.0, 2.0]) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
+    ce1.xyz = lvec3([ 1.0, 0.0, 2.1]) + lvec3([0,0.01,0]) + lvec3([-0.008, 0.001, 0.008])
 
     ce1h = pdb.hierarchy.atom()
     ce1h.element = "H"
@@ -2347,7 +2464,7 @@ def Test():
       extras.append(probe.ExtraAtomInfo())
     extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
 
-    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap)
+    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5)
 
     # Ensure that the coarse-flip results meet the expections (spot check 4th position):
     # 1) N and C atoms are flipped in pairs
@@ -2398,8 +2515,10 @@ def Test():
 
     # Ensure that the FixUp results meet the specifications (spot check 4th position):
     # 1) New CE1 on the line from the alpha carbon to the old NE2
-    # 2) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
-    # 3) Carbons and pivot Hydrogens move slightly due to rigid-body motion
+    # 2) The line from the new NE2 to the alpha carbon lies on the
+    #    line from the original CE1 to the alpha carbon
+    # 3) New plane of CE1, NE2, Alpha Carbon matches old plane, but flipped
+    # 4) Carbons and pivot Hydrogens move slightly due to rigid-body motion
 
     fixedUp = mover.FixUp(4).positions
     newCE1Dir = (fixedUp[2] - lvec3(ca.xyz)).normalize()
@@ -2409,6 +2528,9 @@ def Test():
 
     newNE2Dir = (fixedUp[0] - lvec3(ca.xyz)).normalize()
     oldCE1Dir = (rvec3(ce1.xyz) - rvec3(ca.xyz)).normalize()
+    if (newNE2Dir * oldCE1Dir)[0] < 0.9999:
+      return "Movers.Test() MoverHisFlip: Bad NE2 alignment: "+str((newNE2Dir * oldCE1Dir)[0])
+
     newNormal = (scitbx.matrix.cross_product_matrix(lvec3(newNE2Dir)) * rvec3(newCE1Dir)).normalize()
     oldNormal = (scitbx.matrix.cross_product_matrix(lvec3(oldNE2Dir)) * rvec3(oldCE1Dir)).normalize()
     dot = (lvec3(newNormal) * rvec3(oldNormal))[0]
@@ -2503,13 +2625,18 @@ def Test():
 
     # Test the PoseDescription
     if mover.PoseDescription(1,0) != "Unflipped HD1Placed HE2NotPlaced":
-      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
     if mover.PoseDescription(2,0) != "Unflipped HD1NotPlaced HE2Placed":
-      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
     if mover.PoseDescription(3,0) != "Unflipped HD1NotPlaced HE2NotPlaced":
-      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
     if mover.PoseDescription(4,0) != "Flipped HD1Placed HE2Placed":
-      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
+
+    # Verify that the coarse and fine results don't change when the atom position is moved after
+    # the Mover has been constructed.
+    if not _StableUnderAtomMotion(mover, ne2):
+      return "Movers.Test() MoverHisFlip: Positions not stable when atom moved"
 
   except Exception as e:
     return "Movers.Test() MoverHisFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()

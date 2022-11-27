@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.2.0"
+version = "2.3.0"
 
 master_phil_str = '''
 profile = False
@@ -394,23 +394,7 @@ def _condense(dotInfoList, condense):
     # Sort the dots for the same source atom based on characteristics of their target atom.
     # We include the XYZ position in the sort so that we get the same order and grouping each
     # time even though the phantom H? atoms are otherwise identical.
-    # There may be no target atoms specified (may be Python None value), which will
-    # cause an attribute error.  If that happens, we don't sort.
-    try:
-      thisAtom = sorted(
-        dotInfoList[curAtomIndex:curAtomEndIndex+1],
-        key=lambda dot: "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
-          dot.target.parent().parent().parent().id, # chain
-          str(dot.target.parent().parent().resseq_as_int()), # residue number
-          dot.target.parent().parent().icode, # insertion code
-          dot.target.parent().resname, # residue name
-          dot.target.name, # atom name
-          dot.target.parent().altloc, # alternate location
-          dot.target.xyz[0], dot.target.xyz[1], dot.target.xyz[2]
-        )
-      )
-    except AttributeError:
-      thisAtom = dotInfoList[curAtomIndex:curAtomEndIndex+1]
+    thisAtom = sorted(dotInfoList[curAtomIndex:curAtomEndIndex+1])
 
     # Remove duplicates (same target atom) if we've been asked to.
     # We do this by scanning through and accumulating counts as long as the target
@@ -466,6 +450,36 @@ class DotInfo:
     self.angle = angle              # Angle associated with the bump
     self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
 
+  def _makeName(self, atom):
+      # Make the name for an atom, which includes its chain and residue information
+      # along with other atom data, and also includes its location to distinguish
+      # among H? atoms that are otherwise identical.
+      return "{}{:4.4s}{}{} {}{:1s} {:.3f} {:.3f} {:.3f}".format(
+        atom.parent().parent().parent().id, # chain
+        str(atom.parent().parent().resseq_as_int()), # residue number
+        atom.parent().parent().icode, # insertion code
+        atom.parent().resname, # residue name
+        atom.name, # atom name
+        atom.parent().altloc, # alternate location
+        atom.xyz[0], atom.xyz[1], atom.xyz[2])
+
+  def __lt__(self, other):
+      # Sort dots based on characteristics of their source and target atoms, then their gap.
+      # We include the XYZ position in the sort so that we get the same order and grouping each
+      # time even though the phantom H? atoms are otherwise identical.
+      # There may be no target atoms specified (may be Python None value), which will
+      # be treated as the empty string.
+
+      selfName = self._makeName(self.src)
+      if self.target is not None:
+        selfName += self._makeName(self.target)
+      otherName = other._makeName(other.src)
+      if other.target is not None:
+        otherName += other._makeName(other.target)
+
+      return (selfName < otherName) or (
+        (selfName == otherName) and (self.gap < other.gap)
+      )
 
 # ------------------------------------------------------------------------------
 
@@ -1740,7 +1754,7 @@ Note:
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
-    if self.params.output.file_name is None:
+    if self.params.output.filename is None:
       # If the output file name is not specified, use the same root as the
       # input file and replace the suffix with .kin for Kinemage output or
       # .txt for others.
@@ -1749,8 +1763,8 @@ Note:
         suffix = '.txt'
       inName = self.data_manager.get_default_model_name()
       p = Path(inName)
-      self.params.output.file_name = str(p.with_suffix(suffix))
-      print('Setting output.file_name Phil parameter to',self.params.output.file_name)
+      self.params.output.filename = str(p.with_suffix(suffix))
+      print('Setting output.filename Phil parameter to',self.params.output.filename)
     if self.params.source_selection is None:
       raise Sorry("Must specify a source parameter for approach "+self.params.approach)
     if self.params.approach in ['once','both'] and self.params.target_selection is None:
@@ -2383,7 +2397,7 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    self.data_manager._write_text("Text", outString, self.params.output.file_name)
+    self.data_manager._write_text("Text", outString, self.params.output.filename)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted

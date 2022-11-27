@@ -30,7 +30,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 
-version = "0.3.0"
+version = "0.5.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -57,6 +57,14 @@ add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
   .help = Insert flip movers (-flip, -build, -noflip, -demandflipallnhqs in reduce)
+non_flip_preference = 0.5
+  .type = float
+  .short_caption = Preference to not flip
+  .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
+skip_bond_fix_up = False
+  .type = bool
+  .short_caption = Skip fixup step for Movers
+  .help = For debugging purposes, it can be useful to only do flips with no bond fix-up to compare scores.
 profile = False
   .type = bool
   .short_caption = Profile the entire run
@@ -69,6 +77,10 @@ output
     .type = str
     .short_caption = Description output file name
     .help = Description output file name
+  print_atom_info = False
+    .type = bool
+    .short_caption = Print extra atom info
+    .help = Print extra atom info
 }
 ''' + Helpers.probe_phil_parameters
 
@@ -95,9 +107,9 @@ Inputs:
   PDB or mmCIF file containing atomic model
   Ligand CIF file, if needed
 Output:
-  PDB or mmCIF file with added hydrogens.  If output.file_name is specified, then the
+  PDB or mmCIF file with added hydrogens.  If output.filename is specified, then the
   type of file to write will be determined by its suffix (.pdb or .cif).
-  If output.file_name is not specified, the output file will be
+  If output.filename is not specified, the output file will be
   written into the current working directory with the same base name and type as the
   original file and with FH or H added to the base name (FH when flips are requested);
   1xs0.pdb would be written to ./1xsoH.pdb and 1xso.cif to ./1xsoH.cif by default.
@@ -143,7 +155,7 @@ NOTES:
 
   def validate(self):
     # Set the default output file name if one has not been given.
-    if self.params.output.file_name is None:
+    if self.params.output.filename is None:
       inName = self.data_manager.get_default_model_name()
       suffix = os.path.splitext(os.path.basename(inName))[1]
       if self.params.add_flip_movers:
@@ -151,8 +163,8 @@ NOTES:
       else:
         pad = 'H'
       base = os.path.splitext(os.path.basename(inName))[0] + pad
-      self.params.output.file_name = base + suffix
-      print('Writing model output to', self.params.output.file_name)
+      self.params.output.filename = base + suffix
+      print('Writing model output to', self.params.output.filename)
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -226,6 +238,8 @@ NOTES:
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
       Optimizers.probePhil = self.params.probe
+      Optimizers.nonFlipPreference = self.params.non_flip_preference
+      Optimizers.skipBondFixup = self.params.skip_bond_fix_up
       opt = Optimizers.FastOptimizer(self.params.add_flip_movers, self.model, probeRadius=0.25,
         altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
       doneOpt = work_clock()
@@ -233,6 +247,9 @@ NOTES:
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
       outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      if self.params.output.print_atom_info:
+        print('Atom information used during calculations:')
+        print(opt.getAtomDump())
 
     else: # Removing Hydrogens from the model rather than adding them.
       make_sub_header('Removing Hydrogens', out=self.logger)
@@ -254,14 +271,14 @@ NOTES:
       self.params.output.description_file_name)
 
     # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    suffix = os.path.splitext(self.params.output.file_name)[1]
+    suffix = os.path.splitext(self.params.output.filename)[1]
     if suffix.lower() == ".pdb":
       txt = self.model.model_as_pdb()
     else:
       txt = self.model.model_as_mmcif()
-    self.data_manager._write_text("model", txt, self.params.output.file_name)
+    self.data_manager._write_text("model", txt, self.params.output.filename)
 
-    print('Wrote', self.params.output.file_name,'and',
+    print('Wrote', self.params.output.filename,'and',
       self.params.output.description_file_name, file = self.logger)
 
     # Report profiling info if we've been asked to in the Phil parameters
