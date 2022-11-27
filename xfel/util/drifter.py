@@ -34,10 +34,10 @@ phil_scope = parse('''
   show_plot = True
     .type = bool
     .help = If True, resulting plot will be displayed on screen
-  sizes = True
+  sizes = False
     .type = bool
     .help = If True, write number of reflections in each run atop the plot
-  uncertainties = True
+  uncertainties = False
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
             between predicted and observed positions of all reflections.
@@ -106,8 +106,8 @@ def get_size_and_uncertainties_from_expts_and_refls(expt_paths, refl_paths,
       pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
       pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
       deltas.extend(pr_obs_lab - pr_cal_lab)
-  d = [deltas.parts()[i].sample_standard_deviation() for i in range(2)] \
-    if uncertainties else [[]] * 3
+  d = [deltas.parts()[i].sample_standard_deviation() for i in range(3)] \
+    if uncertainties else [None, None, None]
   return s, d[0], d[1], d[2]
 
 
@@ -201,7 +201,10 @@ class DetectorDriftRegistry(object):
             tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
           s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
             tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
-          self.add(size=s, delta_x=dx, delta_y=dy, delta_z=dz)
+          if self.parameters.sizes:
+            self.add(size=s)
+          if self.parameters.uncertainties:
+            self.add(delta_x=dx, delta_y=dy, delta_z=dz)
 
 
 class DetectorDriftArtist(object):
@@ -244,15 +247,15 @@ class DetectorDriftArtist(object):
 
   @property
   def top_tick_labels(self):
-    """Registry-length size list with sizes corr. to number of experiments"""
-    return ['{}'.format(s) for s in self.registry.data['size']]
+    """Registry-length list of additional labels placed atop the figure"""
+    return ['{}k'.format(s // 1000) for s in self.registry.data['size']]
 
   def _get_handles_and_labels(self):
     unique_keys = []
     for key in self.registry.data[self.color_by]:
       if key not in unique_keys:
         unique_keys.append(key)
-    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', marker='.')
+    handles = [Line2D([], [], c=self.colormap(i % 10), ls='', ms=12, marker='.')
                for i in range(len(unique_keys))]
     return handles, unique_keys
 
@@ -262,8 +265,10 @@ class DetectorDriftArtist(object):
     y_err = self.registry.data.get(deltas_key, [])
     axes.scatter(x, y, c=self.color_array)
     if self.parameters.sizes and top:
-      axes.tick_params(labeltop=True, rotation=90)
-      axes.set_xticklabels(self.top_tick_labels)
+      ax_t = axes.secondary_xaxis('top')
+      ax_t.tick_params(rotation=90)
+      ax_t.set_xticks(axes.get_xticks())
+      ax_t.set_xticklabels([] + self.top_tick_labels)
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
