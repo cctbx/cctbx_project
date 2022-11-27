@@ -43,17 +43,20 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
   (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
  )
 
-def FindFireFox():
-  browser = "default"
-  if sys.platform == "win32":
-    browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
-    if not os.path.isfile(browser):
-      browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
-    assert os.path.isfile(browser)
+def get_browser_ctrl(using=None):
+  if using is None:
+    return "default", webbrowser.get()
 
-  if sys.platform.startswith("darwin"):
-    browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
-    assert os.path.isfile(browser)
+  if using=="firefox":
+    if sys.platform == "win32":
+      browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+      assert os.path.isfile(browser)
+
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+      assert os.path.isfile(browser)
 
   webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
   return browser, webctrl
@@ -87,7 +90,7 @@ def exercise1():
     f.write(philstr)
 
   # check we can actually open a browser
-  browser, webctrl = FindFireFox()
+  browser, webctrl = get_browser_ctrl()
   assert webctrl.open("https://get.webgl.org/")
   time.sleep(10)
 
