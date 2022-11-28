@@ -1,3 +1,5 @@
+// HKLviewer driver file leveraging NGL.js accessed from python via a websocket 
+
 'use strict';
 
 // Microsoft Edge users follow instructions on
@@ -524,6 +526,7 @@ async function RenderRequest(note = "")
     WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
   if (note != "") {
+    await sleep(100);
     GetReflectionsInFrustum();
     WebsockSendMsg(note + '_AfterRendering');
   }
