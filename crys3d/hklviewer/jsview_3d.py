@@ -11,10 +11,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
-if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
-  from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
-else: # using websocket_server
-  from crys3d.hklviewer.webbrowser_messenger_py2 import WBmessenger
+from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
 
 import os.path, time, copy, re, io
 import libtbx
@@ -75,6 +72,38 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
     (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
     scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
+
+
+def get_browser_ctrl(using=None):
+  if using is None or using=="default":
+    return "default", webbrowser.get()
+
+  if using=="firefox":
+    if sys.platform == "win32":
+      browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+      assert os.path.isfile(browser)
+
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+      assert os.path.isfile(browser)
+
+  if using=="chrome":
+    if sys.platform == "win32":
+      browser = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+      assert os.path.isfile(browser)
+
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      assert os.path.isfile(browser)
+
+  #webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
+  webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
+  webctrl = webbrowser.get(using) # add & to ensure browser doesn't hang python process on unix
+  return browser, webctrl
 
 
 lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
@@ -233,6 +262,7 @@ class HKLview_3d:
     self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
                                   NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
+    _, self.webctrl = get_browser_ctrl()
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
       self.UseOSBrowser = "default"
@@ -241,8 +271,9 @@ class HKLview_3d:
       exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
       self.UseOSBrowser = ldic["UseOSBrowser"]
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
-      if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
-        raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+      #if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
+      #  raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+      _, self.webctrl = get_browser_ctrl(self.UseOSBrowser)
 
     self.viewmtrx = None
     self.lastviewmtrx = None
@@ -1743,12 +1774,11 @@ Distance: %s
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser=="default":
-        if not webbrowser.open(self.url, new=0):
+        if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        browserpath = self.UseOSBrowser + " %s &" # add & to ensure browser doesn't hang python process on unix
-        if not webbrowser.get(browserpath).open(self.url, new=0):
+        if not self.webctrl.open(self.url):
           self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
           return False
       self.SendInfoToGUI({ "html_url": self.url } )
