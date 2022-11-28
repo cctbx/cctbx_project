@@ -27,7 +27,6 @@ stages:
   displayName: Download
   jobs:
     - template: ./download-source.yml
-    - template: ./xfel/download-source.yml
     - template: ./download-conda.yml
 
 - stage: Build
@@ -38,8 +37,3 @@ stages:
       parameters:
         modules: modules
 
-- stage: Build_xfel
-  displayName: Build and test XFEL
-  dependsOn: Preparation
-  jobs:
-    - template: ./xfel/xfel-ci-build.yml

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
-from crys3d.regression import tests_HKLviewer
-import asyncio, os.path, websockets, socket
+from crys3d.hklviewer import jsview_3d
+import asyncio, os.path, websockets, socket, subprocess
 
 
 global socket_connected
@@ -34,10 +34,13 @@ async def handler(websocket, path):
 
 websock_htmlstr = """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><meta charset="utf-8" /></head>
+<html>
+<head><meta charset="utf-8" /></head>
 <body>
+
 <div id='mytext'></div>
 <div id='myservertext'></div>
+
 <script>
 document.getElementById('mytext').innerHTML = "Hoping to connect to localhost via websocket..."
 var portnumber = %s;
@@ -53,7 +56,9 @@ mysocket.onmessage = function(e) {
 };
 mysocket.onopen = function(e) { console.log(e)  };
 
-</script></body></html>
+</script>
+</body>
+</html>
 
 """
 
@@ -62,9 +67,11 @@ def write_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  _, webctrl = tests_HKLviewer.get_browser_ctrl()
-  #import webbrowser
-  assert webctrl.open(myurl)
+  browserpath, webctrl = jsview_3d.get_browser_ctrl("firefox")
+  #assert webctrl.open(myurl)
+  #os.system('"' + browserpath + '" ' + myurl + ' &')
+  subprocess.run('"' + browserpath + '" ' + myurl + ' &', shell=True,
+                 capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 async def closing_time():
@@ -74,7 +81,6 @@ async def closing_time():
     t += dt
     global socket_connected
     if socket_connected:
-      print("OK")
       asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
       return
 
@@ -96,3 +102,4 @@ if __name__ == '__main__':
   evl.run_until_complete(tasks)
   evl.run_forever()
   assert socket_connected
+  print("OK")

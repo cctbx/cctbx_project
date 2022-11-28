@@ -11,15 +11,19 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
-if sys.version_info[0] > 2: # using websockets which is superior to websocket_server
-  from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
-else: # using websocket_server
-  from crys3d.hklviewer.webbrowser_messenger_py2 import WBmessenger
+from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
 
-import os.path, time, copy, re, io
+import os.path, time, copy, re, io, subprocess
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
+
+
+class HKLviewerError(Exception):
+  def __init__(self, value):
+    self.value = value
+  def __str__(self):
+    return(repr(self.value))
 
 
 def has_phil_path(philobj, *paths): # variable number of arguments
@@ -75,6 +79,40 @@ def MakeHKLscene( proc_array, foms_array, pidx, fidx, renderscale, hkls, mprint=
     (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
     scenearrayinfos.append([infolst, pidx, fidx, lbl, infolst[1], hassigmas])
   return (hklscenes, scenemaxdata, scenemindata, scenemaxsigmas, sceneminsigmas, scenearrayinfos)
+
+
+def get_browser_ctrl(using=None):
+  if using is None or using=="default":
+    return "default", webbrowser.get()
+
+  if using=="firefox":
+    if sys.platform == "win32":
+      browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
+      assert os.path.isfile(browser)
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+      assert os.path.isfile(browser)
+    if sys.platform.startswith("darwin"):
+      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+      assert os.path.isfile(browser)
+
+  if using=="chrome":
+    if sys.platform == "win32":
+      browser = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+      if not os.path.isfile(browser):
+        browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+      assert os.path.isfile(browser)
+
+  if sys.platform == "linux":
+    browser = "/usr/bin/firefox"
+    assert os.path.isfile(browser)
+
+  webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
+  webctrl = webbrowser.get(using)
+  #os.system('"' + browser + '" &')
+  return browser, webctrl
 
 
 lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
@@ -233,6 +271,7 @@ class HKLview_3d:
     self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
                                   NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
+    self.browserpath, self.webctrl = get_browser_ctrl()
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
       self.UseOSBrowser = "default"
@@ -241,14 +280,16 @@ class HKLview_3d:
       exec("UseOSBrowser = kwds['UseOSBrowser']", globals(), ldic)
       self.UseOSBrowser = ldic["UseOSBrowser"]
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
-      if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
-        raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+      #if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
+      #  raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
+      self.browserpath, self.webctrl = get_browser_ctrl(self.UseOSBrowser)
 
     self.viewmtrx = None
     self.lastviewmtrx = None
     self.currentRotmx = matrix.identity(3)
     self.include_tooltip_lst = []
     self.mouse_moved = False
+    self.webgl_OK = True
     self.HKLsceneKey = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
@@ -1440,11 +1481,12 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
-      if not self.browser_connect_sem.acquire(timeout= 2*lock_timeout):
-        raise Sorry("Timed out connecting to a web browser!")
+      if not self.browser_connect_sem.acquire(timeout= lock_timeout):
+        raise HKLviewerError("Timed out connecting to a web browser! ")
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
-    if not blankscene:
+
+    if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
@@ -1472,6 +1514,15 @@ class HKLview_3d:
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
 
 
+  def release_all_semaphores(self):
+    # avoid potential deadlock by releasing any pending sempahores
+    self.clipplane_msg_sem.release()
+    self.autoview_sem.release()
+    self.mousespeed_msg_sem.release()
+    self.hkls_drawn_sem.release()
+    self.browser_connect_sem.release()
+    self.mprint( "All sempahores released", verbose="threadingmsg")
+
 
   def ProcessBrowserMessage(self, message):
     # method runs in a separate thread handling messages from the browser displaying our reflections
@@ -1486,23 +1537,19 @@ class HKLview_3d:
           imgfile.write( message)
       philchanged = False
       if isinstance(message, ustr) and message != "":
-        if "JavaScriptError" in message:
+        if 'Critical WebGL problem' in message:
+          self.mprint(message + "\n\nCommencing initiation of protocols for invoking program termination procedures...\n", verbose=0)
+          #self.release_all_semaphores()
+          self.webgl_OK = False
+          self.SendInfoToGUI( { "closing_time": True } )
+        elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
-          # avoid potential deadlock by releasing any pending sempahores
-          self.clipplane_msg_sem.release()
-          self.autoview_sem.release()
-          self.mousespeed_msg_sem.release()
-          self.hkls_drawn_sem.release()
-          self.browser_connect_sem.release()
-          self.mprint( "All sempahores released", verbose="threadingmsg")
+          self.release_all_semaphores()
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=3)
-        elif 'Critical WebGL:' in message:
-          self.mprint( message, verbose=1)
-          self.SendInfoToGUI( { "closing_time": True } )
-        elif 'WebGL:' in message:
+        elif 'WebGL' in message:
           self.mprint( message, verbose=1)
         elif 'Browser: Got' in message:
           self.mprint( message, verbose=3)
@@ -1743,14 +1790,16 @@ Distance: %s
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
       if self.UseOSBrowser=="default":
-        if not webbrowser.open(self.url, new=0):
+        if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        browserpath = self.UseOSBrowser + " %s &" # add & to ensure browser doesn't hang python process on unix
-        if not webbrowser.get(browserpath).open(self.url, new=0):
-          self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
-          return False
+        #os.system('"' + self.browserpath + '" ' + self.url + ' &')
+        subprocess.run('"' + self.browserpath + '" ' + self.url + ' &', shell=True,
+                       capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #if not self.webctrl.open(self.url):
+        #  self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
+        #  return False
       self.SendInfoToGUI({ "html_url": self.url } )
       #self.browser_connect_sem.release() # only release if we succeeded
       return True
@@ -1842,7 +1891,6 @@ Distance: %s
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
-    #self.SetAutoView()
 
 
   def draw_sphere(self, s1, s2, s3, isreciprocal=True,
@@ -2504,7 +2552,6 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
-
 
 
   def TestNewFunction(self):

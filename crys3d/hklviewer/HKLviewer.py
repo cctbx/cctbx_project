@@ -946,7 +946,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.XtriageBtn.setVisible(True)
 
           if self.infodict.get("closing_time"): # notified by cctbx in regression tests
-            self.closeEvent()
+            QTimer.singleShot(10000, self.closeEvent )
+            #self.closeEvent()
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
@@ -2741,8 +2742,9 @@ clip_plane {
             print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
             return False
         print(" It does!")
-    if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
+    for arg in sys.argv[1:]:
+      if "verbose" in arg:
+         print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
 
   def UsePersistedQsettings(self):
@@ -2817,7 +2819,6 @@ def run(isembedded=False, chimeraxsession=None):
   #time.sleep(15) # enough time for attaching debugger
   try:
     debugtrue = False
-    closingtime = 0
     kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
 
     sysargs = []
@@ -2839,8 +2840,6 @@ def run(isembedded=False, chimeraxsession=None):
         if "devmode" in e: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
-    if kwargs.get('closingtime', False): # close when time is up during regression tests
-      closingtime = int(kwargs['closingtime']) * 1000 # miliseconds
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
@@ -2859,24 +2858,6 @@ def run(isembedded=False, chimeraxsession=None):
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
-        """
-        if kwargs.get('hklin', ""):
-          HKLguiobj.currentfileName = kwargs.get('hklin', "" )
-          QTimer.singleShot(1000, HKLguiobj.openReflectionFile )
-
-        if kwargs.get('phil_file', False):
-          # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.philfname = kwargs.get('phil_file', "" )
-          if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(2000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
-            QTimer.singleShot(5000, HKLguiobj.SetStateFromPHILfile ) # time enough to load reflection file
-
-        if kwargs.get('image_file', False):
-          # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.image_fname = kwargs.get('image_file', "HKLviewer_image.png" )
-          if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(15000, HKLguiobj.SaveImage )
-        """
       else:
         start_time = [time.time()]
 
