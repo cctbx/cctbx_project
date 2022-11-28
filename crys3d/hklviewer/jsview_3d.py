@@ -217,17 +217,20 @@ class HKLview_3d:
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
 <script src="%s" type="text/javascript"></script>
+<script src="%s" type="text/javascript"></script>
 <div id="viewport" style="width:100%%; height:100%%;"></div>
 </body></html>
 
     """
+    WeblglChecklibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webgl_check.js")
     Html2Canvaslibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "html2canvas.min.js")
     NGLlibpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ngl.js")
     HKLjscriptpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLJavaScripts.js")
+    WeblglCheckliburl = "file:///" + WeblglChecklibpath.replace("\\","/")
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, Html2Canvasliburl,
+    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
                                   NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
     self.UseOSBrowser = ""
@@ -1496,6 +1499,11 @@ class HKLview_3d:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=3)
+        elif 'Critical WebGL:' in message:
+          self.mprint( message, verbose=1)
+          self.SendInfoToGUI( { "closing_time": True } )
+        elif 'WebGL:' in message:
+          self.mprint( message, verbose=1)
         elif 'Browser: Got' in message:
           self.mprint( message, verbose=3)
         elif "websocket" in message:
