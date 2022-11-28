@@ -1429,6 +1429,9 @@ def assess_cryoem_errors(
   shift_map_origin: should map coefficients be shifted to correspond to
     original origin, rather than the origin being the corner of the box,
     default True
+  define_ordered_volume: should ordered volume over full map be evaluated, to
+    compare with cutout volume,
+    default True
   keep_full_map: don't mask or box the input map
     default False, use with caution
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
@@ -1454,6 +1457,11 @@ def assess_cryoem_errors(
   else:
     assert radius is not None
     sphere_cent = flex.double(sphere_cent)
+  # Force sphere center to be on a map grid point for easier comparison of different spheres
+  sphere_cent_frac = unit_cell.fractionalize(tuple(sphere_cent))
+  sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
+  sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
+  sphere_cent = flex.double(sphere_cent)
 
   if determine_ordered_volume:
     ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
@@ -1858,8 +1866,10 @@ def run():
   --radius: radius of sphere (1 float)
           must be given if sphere_cent defined, otherwise
           defaults to narrowest extent of input map divided by 4
-  --shift_map_origin: shift output mtz file to match input map on its origin?
-          default True
+  --no_shift_map_origin: don't shift output mtz file to match input map on its origin
+          default False
+  --no_define_ordered_volume: don't define ordered volume for comparison with cutout volume
+          default False
   --file_root: root name for output files
   --mute (or -m): mute output
   --verbose (or -v): verbose output
@@ -1898,21 +1908,20 @@ def run():
   parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
-  parser.add_argument('--shift_map_origin', dest='shift_map_origin', type=bool)
-  parser.set_defaults(shift_map_origin=True)
-  parser.add_argument('-m', '--mute', dest = 'mute',
-                      help = 'Mute output', action = 'store_true')
-  parser.add_argument('-v', '--verbose', dest = 'verbose',
-                      help = 'Set output as verbose', action = 'store_true')
-  parser.add_argument('--testing', dest = 'testing',
-                      help='Set output as testing', action='store_true')
+  parser.add_argument('--no_shift_map_origin', action='store_true')
+  parser.add_argument('--no_determine_ordered_volume', action='store_true')
+  parser.add_argument('-m', '--mute', help = 'Mute output', action = 'store_true')
+  parser.add_argument('-v', '--verbose', help = 'Set output as verbose',
+                      action = 'store_true')
+  parser.add_argument('--testing', help='Set output as testing', action='store_true')
   args = parser.parse_args()
   d_min = args.d_min
   verbosity = 1
   if args.mute: verbosity = 0
   if args.verbose: verbosity = 2
   if args.testing: verbosity = 4
-  shift_map_origin = args.shift_map_origin
+  shift_map_origin = not(args.no_shift_map_origin)
+  determine_ordered_volume = not(args.no_determine_ordered_volume)
 
   cutout_specified = False
   sphere_cent = None
@@ -1954,6 +1963,10 @@ def run():
     sphere_cent, radius = sphere_enclosing_model(model)
     radius = radius + d_min # Expand to allow width for density
     cutout_specified = True
+  if (not determine_ordered_volume and not cutout_specified):
+    print("Must determine ordered volume if cutout not specified")
+    sys.stdout.flush()
+    exit
 
   # Create map_model_manager containing half-maps
   map1_filename = args.map1
@@ -1967,17 +1980,18 @@ def run():
     assert args.model is not None
     flatten_model_region(mmm, d_min)
 
-  mask_id = 'ordered_volume_mask'
-  add_ordered_volume_mask(mmm, d_min,
-      protein_mw=protein_mw, nucleic_mw=nucleic_mw,
-      map_id_out=mask_id)
-  if verbosity>1:
-    ordered_mm = mmm.get_map_manager_by_id(map_id=mask_id)
-    if args.file_root is not None:
-      map_file_name = args.file_root + "_ordered_volume_mask.map"
-    else:
-      map_file_name = "ordered_volume_mask.map"
-    ordered_mm.write_map(map_file_name)
+  if determine_ordered_volume:
+    mask_id = 'ordered_volume_mask'
+    add_ordered_volume_mask(mmm, d_min,
+        protein_mw=protein_mw, nucleic_mw=nucleic_mw,
+        map_id_out=mask_id)
+    if verbosity>1:
+      ordered_mm = mmm.get_map_manager_by_id(map_id=mask_id)
+      if args.file_root is not None:
+        map_file_name = args.file_root + "_ordered_volume_mask.map"
+      else:
+        map_file_name = "ordered_volume_mask.map"
+      ordered_mm.write_map(map_file_name)
 
   # Default to sphere containing most of ordered volume
   if not cutout_specified:
@@ -1988,8 +2002,8 @@ def run():
 
   # Refine to get scale and error parameters for docking region
   results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
-    verbosity=verbosity, sphere_cent=sphere_cent, radius=radius,
-    shift_map_origin=shift_map_origin)
+    determine_ordered_volume=determine_ordered_volume, verbosity=verbosity,
+    sphere_cent=sphere_cent, radius=radius, shift_map_origin=shift_map_origin)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
