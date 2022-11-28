@@ -62,7 +62,7 @@ def write_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  _, webctrl = jsview_3d.get_browser_ctrl("chrome")
+  _, webctrl = jsview_3d.get_browser_ctrl("default")
   assert webctrl.open(myurl)
 
 

@@ -2741,8 +2741,9 @@ clip_plane {
             print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
             return False
         print(" It does!")
-    if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
+    for arg in sys.argv[1:]:
+      if "verbose" in arg:
+         print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
 
   def UsePersistedQsettings(self):
@@ -2817,7 +2818,6 @@ def run(isembedded=False, chimeraxsession=None):
   #time.sleep(15) # enough time for attaching debugger
   try:
     debugtrue = False
-    closingtime = 0
     kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
 
     sysargs = []
@@ -2839,8 +2839,6 @@ def run(isembedded=False, chimeraxsession=None):
         if "devmode" in e: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
-    if kwargs.get('closingtime', False): # close when time is up during regression tests
-      closingtime = int(kwargs['closingtime']) * 1000 # miliseconds
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
