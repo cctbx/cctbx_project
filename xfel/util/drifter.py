@@ -105,8 +105,8 @@ def get_size_and_uncertainties_from_expts_and_refls(expt_paths, refl_paths,
       pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
       pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
       pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-      deltas.extend(pr_obs_lab - pr_cal_lab)
-  d = [deltas.parts()[i].sample_standard_deviation() for i in range(3)] \
+      deltas.extend(flex.abs(pr_obs_lab - pr_cal_lab))
+  d = [flex.mean(deltas.parts()[i]) for i in range(3)] \
     if uncertainties else [None, None, None]
   return s, d[0], d[1], d[2]
 
