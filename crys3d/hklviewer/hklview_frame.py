@@ -209,7 +209,7 @@ class HKLViewFrame() :
       self.output_file.flush()
     intverbose =1
     if isinstance(self.verbose,str):
-      m = re.findall("(\d)", self.verbose)
+      m = re.findall(r"(\d)", self.verbose)
       if len(m) >0:
         intverbose = int(m[0])
     if self.guiSocketPort:
@@ -1248,7 +1248,7 @@ class HKLViewFrame() :
     label = ""
     for e in self.hklfile_history:
       for tngcolumn_tag in tngcolumn_tags.split(","):
-        m =  re.findall(tngcolumn_tag + '/(\S*)/', e, re.VERBOSE)
+        m =  re.findall(tngcolumn_tag + r'/(\S*)/', e, re.VERBOSE)
         if len(m) > 0:
           tngcols.append(m[0])
     if len(tngcols):
