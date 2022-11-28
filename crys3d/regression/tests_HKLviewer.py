@@ -66,9 +66,9 @@ def check_log_file(fname):
   with open(fname, "r") as f:
     mstr = f.read()
   # check output file that reflections are reported to have been drawn
-  assert re.findall("RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
+  assert re.findall(r"RenderStageObjects\(\) has drawn reflections in the browser", mstr) != []
   # peruse output file for the list of displayed reflections
-  match = re.findall("visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
+  match = re.findall(r"visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
   refls = []
   if match:
     refls = eval(match[0])
@@ -128,7 +128,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=20", # close HKLviewer after 25 seconds
+             "closing_time=90", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))

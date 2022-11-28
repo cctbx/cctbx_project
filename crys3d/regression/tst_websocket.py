@@ -48,7 +48,7 @@ mysocket.addEventListener('open', function (event) {
   mysocket.send('Goodbye');
   document.getElementById('mytext').innerHTML = "Websocket connection established to localhost:" + String(portnumber)
 });
-mysocket.onmessage = function(e) { 
+mysocket.onmessage = function(e) {
   document.getElementById('myservertext').innerHTML = e.data;
 };
 mysocket.onopen = function(e) { console.log(e)  };
