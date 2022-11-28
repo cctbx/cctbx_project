@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, sys, os, webbrowser, time
+import libtbx.load_env, os.path, re, os, time
 from libtbx import easy_run
-from crys3d.hklviewer import cmdlineframes
+from crys3d.hklviewer import cmdlineframes, jsview_3d
 
 
 philstr = """
@@ -43,24 +43,6 @@ reflections2match = set(  [(-3, -9, -1), (-3, -9, -2), (-3, -9, 0), (1, -9, -1),
   (1, -9, 2), (-2, -9, 3), (-1, -9, 3), (-3, -9, 2), (4, -9, 1), (1, -9, 1), (-3, -9, 1), (1, -9, 0)]
  )
 
-def get_browser_ctrl(using=None):
-  if using is None:
-    return "default", webbrowser.get()
-
-  if using=="firefox":
-    if sys.platform == "win32":
-      browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
-      if not os.path.isfile(browser):
-        browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
-      assert os.path.isfile(browser)
-
-    if sys.platform.startswith("darwin"):
-      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
-      assert os.path.isfile(browser)
-
-  webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
-  return browser, webctrl
-
 
 def check_log_file(fname):
   with open(fname, "r") as f:
@@ -79,7 +61,6 @@ def check_log_file(fname):
 def exercise1():
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
-  browser = "default"
 
   with open("environ.txt","w") as mfile:
     # print environment variables to log file
@@ -90,7 +71,10 @@ def exercise1():
     f.write(philstr)
 
   # check we can actually open a browser
-  browser, webctrl = get_browser_ctrl()
+  browser = "chrome"
+  #browser = "firefox"
+  #browser = "default"
+  _, webctrl = jsview_3d.get_browser_ctrl(browser)
   assert webctrl.open("https://get.webgl.org/")
   time.sleep(10)
 
@@ -98,9 +82,9 @@ def exercise1():
             "phil_file=HKLviewer_philinput.txt",
             "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=HKLviewer1_testimage.png",
-            "UseOSBrowser='%s'" %browser,
+            "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=90",
+            "closing_time=40",
           ]
 
   assert cmdlineframes.run(cmdargs)

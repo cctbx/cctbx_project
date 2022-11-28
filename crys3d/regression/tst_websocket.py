@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from crys3d.regression import tests_HKLviewer
+from crys3d.hklviewer import jsview_3d
 import asyncio, os.path, websockets, socket
 
 
@@ -62,8 +62,7 @@ def write_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  _, webctrl = tests_HKLviewer.get_browser_ctrl()
-  #import webbrowser
+  _, webctrl = jsview_3d.get_browser_ctrl("chrome")
   assert webctrl.open(myurl)
 
 
