@@ -64,7 +64,9 @@ DEFAULT_INPUT_SCOPE = parse("""
       .multiple = True
       .type = str
     experiments_suffix = .expt
+      .type = str
     reflections_suffix = .refl
+      .type = str
     experiments = None
       .multiple = True
       .type = str
@@ -75,22 +77,24 @@ DEFAULT_INPUT_SCOPE = parse("""
 """)
 
 
-def get_scaling_directories(merging_phils):
-  phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parse(mp) for mp in merging_phils])
-  return sorted(set(phil.extract().input.path))
+def get_scaling_directories(merging_phil_paths):
+  """Return paths to all directories specified as input.path in phil file"""
+  merging_phils = [parse(file_name=mpp) for mpp in merging_phil_paths]
+  phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
+  return sorted(set(phil.input.path))
 
 
-def get_tder_expts_and_refls(scaling_phils):
+def get_tder_expts_and_refls(scaling_phil_paths):
   """Return paths to all expt and refl files mentioned in phil files"""
   expt_paths = []
   refl_paths = []
-  for phil_path in scaling_phils:
-    phil = DEFAULT_INPUT_SCOPE.fetch(parse(phil_path)).extract()
-    for ip in phil.input.path:
-      expt_glob = os.path.join(ip + '*' + phil.input.experiments_suffix)
-      refl_glob = os.path.join(ip + '*' + phil.input.reflections_suffix)
-      expt_paths.extend(glob.glob(expt_glob))
-      refl_paths.extend(glob.glob(refl_glob))
+  scaling_phils = [parse(file_name=spp) for spp in scaling_phil_paths]
+  phil = DEFAULT_INPUT_SCOPE.fetch(sources=scaling_phils).extract()
+  for ip in phil.input.path:
+    expt_glob = os.path.join(ip + '*' + phil.input.experiments_suffix)
+    refl_glob = os.path.join(ip + '*' + phil.input.reflections_suffix)
+    expt_paths.extend(glob.glob(expt_glob))
+    refl_paths.extend(glob.glob(refl_glob))
   return sorted(set(expt_paths)), sorted(set(refl_paths))
 
 
