@@ -58,15 +58,40 @@ def params_from_phil(args):
   return params_
 
 
-def get_input_paths_from_phils(phil_paths):
-  """Return reminder of lines which start with 'input.path=' in all phils"""
-  input_list = []
-  for phil_path in phil_paths:
-    with open(phil_path, "r") as phil_file:
-      for line in phil_file:
-        if line.startswith('input.path='):
-          input_list.append(line[11:].strip())
-  return sorted(list(set(input_list)))
+DEFAULT_INPUT_SCOPE = parse("""
+  input {
+    path = None
+      .multiple = True
+      .type = str
+    experiments_suffix = .expt
+    reflections_suffix = .refl
+    experiments = None
+      .multiple = True
+      .type = str
+    reflections = None
+      .multiple = True
+      .type = str
+}
+""")
+
+
+def get_scaling_directories(merging_phils):
+  phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parse(mp) for mp in merging_phils])
+  return sorted(set(phil.extract().input.path))
+
+
+def get_tder_expts_and_refls(scaling_phils):
+  """Return paths to all expt and refl files mentioned in phil files"""
+  expt_paths = []
+  refl_paths = []
+  for phil_path in scaling_phils:
+    phil = DEFAULT_INPUT_SCOPE.fetch(parse(phil_path)).extract()
+    for ip in phil.input.path:
+      expt_glob = os.path.join(ip + '*' + phil.input.experiments_suffix)
+      refl_glob = os.path.join(ip + '*' + phil.input.reflections_suffix)
+      expt_paths.extend(glob.glob(expt_glob))
+      refl_paths.extend(glob.glob(refl_glob))
+  return sorted(set(expt_paths)), sorted(set(refl_paths))
 
 
 def get_origin_from_expt(expt_path):
@@ -175,9 +200,8 @@ class DetectorDriftRegistry(object):
     for tag in tag_list:
       version_last = sorted(glob.glob(path_join(tag, 'v*/')))[-1]
       merging_phils = glob.glob(path_join(version_last, '*_params.phil'))
-      merging_input_list = get_input_paths_from_phils(merging_phils)
-      for input_path in merging_input_list:
-        scaling_expts = glob.glob(os.path.join(input_path, 'scaling_*.expt'))
+      for scaling_dir in get_scaling_directories(merging_phils):
+        scaling_expts = glob.glob(os.path.join(scaling_dir, 'scaling_*.expt'))
         try:
           first_scaling_expt_path = sorted(scaling_expts)[0]
         except IndexError:
@@ -194,11 +218,7 @@ class DetectorDriftRegistry(object):
                  task=task, x=origin[0], y=origin[1], z=origin[2])
         if self.parameters.uncertainties or self.parameters.sizes:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
-          scaling_input_list = get_input_paths_from_phils(scaling_phils[-1:])
-          tder_expts, tder_refls = [], []
-          for input_path2 in scaling_input_list:
-            tder_expts.extend(sorted(glob.glob(input_path2 + '.expt')))
-            tder_refls.extend(sorted(glob.glob(input_path2 + '.refl')))
+          tder_expts, tder_refls = get_tder_expts_and_refls(scaling_phils)
           s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
             tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
           if self.parameters.sizes:
