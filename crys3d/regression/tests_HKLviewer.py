@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, os, time
+import libtbx.load_env, os.path, re, os, time, subprocess
 from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 
@@ -74,9 +74,11 @@ def exercise1():
   #browser = "chrome"
   browser = "firefox"
   #browser = "default"
-  _, webctrl = jsview_3d.get_browser_ctrl(browser)
-  assert webctrl.open("https://get.webgl.org/")
-  time.sleep(10)
+  browserpath, webctrl = jsview_3d.get_browser_ctrl(browser)
+  #assert webctrl.open("https://get.webgl.org/")
+  #subprocess.run('"' + browserpath + '"  https://get.webgl.org/ &', shell=True,
+  #               capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  #time.sleep(10)
 
   cmdargs = [datafname,
             "phil_file=HKLviewer_philinput.txt",
@@ -84,11 +86,12 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=40",
+            "closing_time=20",
           ]
 
   assert cmdlineframes.run(cmdargs)
   assert check_log_file(outputfname)
+  print("OK")
 
 
 def exercise2():

@@ -13,7 +13,7 @@ from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
 from crys3d.hklviewer.webbrowser_messenger_py3 import WBmessenger
 
-import os.path, time, copy, re, io
+import os.path, time, copy, re, io, subprocess
 import libtbx
 import webbrowser, tempfile
 from six.moves import range
@@ -104,7 +104,7 @@ def get_browser_ctrl(using=None):
 
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
   webctrl = webbrowser.get(using)
-  os.system('"' + browser + '" &')
+  #os.system('"' + browser + '" &')
   return browser, webctrl
 
 
@@ -264,7 +264,7 @@ class HKLview_3d:
     self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
                                   NGLliburl, HKLjscripturl)
     self.colourgradientvalues = []
-    _, self.webctrl = get_browser_ctrl()
+    self.browserpath, self.webctrl = get_browser_ctrl()
     self.UseOSBrowser = ""
     if 'useGuiSocket' not in kwds:
       self.UseOSBrowser = "default"
@@ -275,7 +275,7 @@ class HKLview_3d:
       self.UseOSBrowser = self.UseOSBrowser.replace("\\","/")
       #if self.UseOSBrowser != "default" and not os.path.isfile(self.UseOSBrowser):
       #  raise Sorry("Error: %s does not exist" %self.UseOSBrowser)
-      _, self.webctrl = get_browser_ctrl(self.UseOSBrowser)
+      self.browserpath, self.webctrl = get_browser_ctrl(self.UseOSBrowser)
 
     self.viewmtrx = None
     self.lastviewmtrx = None
@@ -1781,9 +1781,12 @@ Distance: %s
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        if not self.webctrl.open(self.url):
-          self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
-          return False
+        #os.system('"' + self.browserpath + '" ' + self.url + ' &')
+        subprocess.run('"' + self.browserpath + '" ' + self.url + ' &', shell=True,
+                       capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #if not self.webctrl.open(self.url):
+        #  self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
+        #  return False
       self.SendInfoToGUI({ "html_url": self.url } )
       #self.browser_connect_sem.release() # only release if we succeeded
       return True
