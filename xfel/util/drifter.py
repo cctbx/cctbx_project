@@ -106,8 +106,9 @@ def get_spotfinding_expts_and_refls(tder_expts):
   for td in tder_directories:
     tder_combining_phil_paths.extend(
       glob.glob(path_join(td, '*combine_experiments.phil')))
-  tder_combining_phil_paths = sorted(set(tder_combining_phil_paths))
-  phil = DEFAULT_INPUT_SCOPE.fetch(sources=tder_combining_phil_paths).extract()
+  tder_combining_phils = [parse(file_name=tcp) for tcp
+                          in sorted(set(tder_combining_phil_paths))]
+  phil = DEFAULT_INPUT_SCOPE.fetch(sources=tder_combining_phils).extract()
   refined_expts = sorted(set(phil.input.experiments))
   indexed_refls = sorted(set(phil.input.reflections))
   return refined_expts, indexed_refls
