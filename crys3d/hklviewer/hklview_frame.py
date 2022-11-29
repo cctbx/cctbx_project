@@ -141,20 +141,16 @@ class HKLViewFrame() :
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
     self.hklin = None
-    #if 'hklin' in kwds or 'HKLIN' in kwds:
-    #  self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    #self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-
     thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
     thrd2.daemon = True
     thrd2.start()
     self.closingtime = int(kwds.get('closing_time', -1 ))
-    # if we are invoked from command line not using Qtgui close us by waiting for thread to finish
+    # if invoked from command line not using Qt close us by waiting for thread processing cmdline kwargs to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
       thrd2.join(timeout = self.closingtime + 20)
       if thrd2.is_alive():
@@ -216,7 +212,7 @@ class HKLViewFrame() :
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "info": tmsg } )
-      if (intverbose and isinstance(verbose,int) and verbose >= 1 and verbose <= intverbose) \
+      if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )

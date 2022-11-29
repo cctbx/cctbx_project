@@ -5,7 +5,7 @@ import libtbx.load_env
 
 tst_list = [
 "$D/regression/tst_hklinfo.py",
-"$D/regression/tst_websocket.py",
+#"$D/regression/tst_websocket.py",
 "$D/regression/tst_HKLviewer1.py",
 "$D/regression/tst_HKLviewer2.py",
 ]

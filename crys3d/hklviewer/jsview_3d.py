@@ -100,9 +100,8 @@ def get_browser_ctrl(using=None):
       browser = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       assert os.path.isfile(browser)
 
-  #webctrl = webbrowser.get(browser + ' %s &') # add & to ensure browser doesn't hang python process on unix
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
-  webctrl = webbrowser.get(using) # add & to ensure browser doesn't hang python process on unix
+  webctrl = webbrowser.get(using)
   return browser, webctrl
 
 
@@ -1517,7 +1516,11 @@ class HKLview_3d:
           imgfile.write( message)
       philchanged = False
       if isinstance(message, ustr) and message != "":
-        if "JavaScriptError" in message:
+        if 'Critical WebGL problem' in message:
+          self.mprint(message + "\n\nCommencing initiation of program termination procedure...\n", verbose=0)
+          time.sleep(3)
+          self.SendInfoToGUI( { "closing_time": True } )
+        elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
           # avoid potential deadlock by releasing any pending sempahores
           self.clipplane_msg_sem.release()
@@ -1530,10 +1533,7 @@ class HKLview_3d:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
           self.mprint( message, verbose=3)
-        elif 'Critical WebGL:' in message:
-          self.mprint( message, verbose=1)
-          self.SendInfoToGUI( { "closing_time": True } )
-        elif 'WebGL:' in message:
+        elif 'WebGL' in message:
           self.mprint( message, verbose=1)
         elif 'Browser: Got' in message:
           self.mprint( message, verbose=3)
@@ -2534,7 +2534,6 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
-
 
 
   def TestNewFunction(self):
