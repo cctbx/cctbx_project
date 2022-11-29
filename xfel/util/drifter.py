@@ -161,7 +161,11 @@ def get_size_and_uncertainties_from_expts_and_refls(
   tder_refls = load_reflections(*tder_refl_paths)
   for spot_expt in spot_expts:
     expt_id = spot_expt.identifier
-    tder_expt = [e for e in tder_expts if e.identifier == expt_id][0]
+    try:
+      tder_expt = [e for e in tder_expts if e.identifier == expt_id][0]
+    except IndexError:
+      print('empty tder: ', tder_expt_paths, expt_id)
+      continue
     spot_refl = spot_refls.select_on_experiment_identifiers([expt_id])
     tder_refl = tder_refls.select_on_experiment_identifiers([expt_id])
     m_ind = match_indices(spot_refl['miller_index'], tder_refl['miller_index'])
