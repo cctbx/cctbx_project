@@ -71,8 +71,8 @@ def exercise1():
     f.write(philstr)
 
   # check we can actually open a browser
-  browser = "chrome"
-  #browser = "firefox"
+  #browser = "chrome"
+  browser = "firefox"
   #browser = "default"
   _, webctrl = jsview_3d.get_browser_ctrl(browser)
   assert webctrl.open("https://get.webgl.org/")
