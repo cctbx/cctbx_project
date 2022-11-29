@@ -25,7 +25,7 @@ function MyWebGL_Detect(return_context)
     console.log('WebGL is supported, but disabled')
     return [false, 'WebGL is supported, but disabled'];
   }
-  console.log('WebGL not supported')
+  console.log('WebGL is not supported')
   return [false, 'WebGL is not supported'];
 }
 

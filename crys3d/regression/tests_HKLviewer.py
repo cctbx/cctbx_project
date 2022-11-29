@@ -71,9 +71,9 @@ def exercise1():
     f.write(philstr)
 
   # check we can actually open a browser
-  #browser = "chrome"
+  browser = "chrome"
   #browser = "firefox"
-  browser = "default"
+  #browser = "default"
   _, webctrl = jsview_3d.get_browser_ctrl(browser)
   assert webctrl.open("https://get.webgl.org/")
   time.sleep(10)
@@ -112,7 +112,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=90", # close HKLviewer after 25 seconds
+             "closing_time=20", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))

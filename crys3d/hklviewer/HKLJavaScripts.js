@@ -2248,7 +2248,7 @@ function PageLoad()
     let msg = String(ret[1]);
     if (ret[0] == false)
       throw new Error("Critical WebGL problem! " + msg);
-    WebsockSendMsg('WebGL: ' + msg);
+    WebsockSendMsg(msg);
     //alert('In PageLoad');
     document.addEventListener('DOMContentLoaded', function () { 
       HKLscene(); 
