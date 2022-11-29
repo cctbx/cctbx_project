@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.hklviewer import jsview_3d
-import asyncio, os.path, websockets, socket
+import asyncio, os.path, websockets, socket, subprocess
 
 
 global socket_connected
@@ -62,8 +62,11 @@ def write_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  _, webctrl = jsview_3d.get_browser_ctrl("firefox")
-  assert webctrl.open(myurl)
+  browserpath, webctrl = jsview_3d.get_browser_ctrl("firefox")
+  #assert webctrl.open(myurl)
+  #os.system('"' + browserpath + '" ' + myurl + ' &')
+  subprocess.run('"' + browserpath + '" ' + myurl + ' &', shell=True,
+                 capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 async def closing_time():
@@ -95,3 +98,4 @@ if __name__ == '__main__':
   evl.run_until_complete(tasks)
   evl.run_forever()
   assert socket_connected
+  print("OK")
