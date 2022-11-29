@@ -164,7 +164,6 @@ def get_size_and_uncertainties_from_expts_and_refls(
     try:
       tder_expt = [e for e in tder_expts if e.identifier == expt_id][0]
     except IndexError:
-      print('empty tder: ', tder_expt_paths, expt_id)
       continue
     spot_refl = spot_refls.select_on_experiment_identifiers([expt_id])
     tder_refl = tder_refls.select_on_experiment_identifiers([expt_id])
@@ -173,7 +172,7 @@ def get_size_and_uncertainties_from_expts_and_refls(
     s += len(matching_refl)
     if not uncertainties:
       continue
-    for panel in tder_expt.detector:                # pr:  panel reflections
+    for panel in tder_expt.detector:                   # pr:  panel reflections
       pr = matching_refl.select(matching_refl['panel'] == panel.index())
       pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
       pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
@@ -212,7 +211,8 @@ class DetectorDriftRegistry(object):
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
     for row in self.rows:
-      lines.append(' '.join('{!s:9.9}'.format(cell) for cell in row))
+      cells = ['{:.20f}'.format(c) if isinstance(c, float) else c for c in row]
+      lines.append(' '.join('{!s:9.9}'.format(cell) for cell in cells))
     return '\n'.join(lines)
 
   def add(self, **kwargs):
