@@ -104,7 +104,7 @@ def get_browser_ctrl(using=None):
 
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
   webctrl = webbrowser.get(using)
-  os.spawnl(os.P_NOWAIT, browser, '"'+browser+'"')
+  os.system('"' + browser + '" &')
   return browser, webctrl
 
 
