@@ -12,8 +12,8 @@
 jobs:
 - job: ${{ format('{0}_{1}', parameters.distribution, join('_', parameters.version) ) }}
   pool:
-    vmImage: ubuntu-20.04
-  timeoutInMinutes: 180
+    vmImage: ubuntu-latest
+  timeoutInMinutes: 40
   strategy:
     maxParallel: 2
     matrix:
