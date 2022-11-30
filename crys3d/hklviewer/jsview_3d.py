@@ -1551,8 +1551,8 @@ class HKLview_3d:
         elif "Refreshing" in message or "disconnecting" in message:
           self.mprint( message, verbose=1)
           time.sleep(self.sleeptime)
-        elif "AutoViewSet" in message:
-          self.set_volatile_params()
+        #elif "AutoViewSet" in message:
+        #  self.set_volatile_params()
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")
@@ -1884,7 +1884,6 @@ Distance: %s
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
     self.AddToBrowserMsgQueue(msgtype, msg)
-    #self.SetAutoView()
 
 
   def draw_sphere(self, s1, s2, s3, isreciprocal=True,
