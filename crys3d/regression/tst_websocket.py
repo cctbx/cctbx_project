@@ -34,10 +34,13 @@ async def handler(websocket, path):
 
 websock_htmlstr = """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><meta charset="utf-8" /></head>
+<html>
+<head><meta charset="utf-8" /></head>
 <body>
+
 <div id='mytext'></div>
 <div id='myservertext'></div>
+
 <script>
 document.getElementById('mytext').innerHTML = "Hoping to connect to localhost via websocket..."
 var portnumber = %s;
@@ -53,7 +56,9 @@ mysocket.onmessage = function(e) {
 };
 mysocket.onopen = function(e) { console.log(e)  };
 
-</script></body></html>
+</script>
+</body>
+</html>
 
 """
 
