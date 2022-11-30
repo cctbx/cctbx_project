@@ -1312,7 +1312,7 @@ function onMessage(e)
     if (msgtype === "PrintInformation") {
       hklequationmsg = datval[1];
       let infofsize = fontsize + 1; // slightly bigger font of infobanner to make it more prominent
-      let wp = getTextWidth(hklequationmsg, infofsize);
+      let wp = getTextWidth(hklequationmsg, infofsize)+3;
       if (infobanner != null) {
         infobanner.remove(); // delete previous infobanner if any
         infobanner = null;
@@ -1321,7 +1321,7 @@ function onMessage(e)
       MakePlusMinusButtons();
       if (hklequationmsg == "")
         return;
-      infobanner = addBottomDivBox(hklequationmsg, pmbottom, 65, wp + 2, 3 + infofsize, 
+      infobanner = addBottomDivBox(hklequationmsg, pmbottom+3, 65, wp + 2, 5 + infofsize, 
                                     "rgba(255, 255, 255, 1.0)", infofsize);
     }
 
@@ -2246,8 +2246,11 @@ function PageLoad()
   {
     let ret = MyWebGL_Detect();
     let msg = String(ret[1]);
-    if (ret[0] == false)
-      throw new Error("Critical WebGL problem! " + msg);
+    if (ret[0] == false) {
+      let errmsg = "Critical WebGL problem! " + msg; 
+      WebsockSendMsg(errmsg);
+      throw new Error(errmsg, {cause: msg});
+    }
     WebsockSendMsg(msg);
     //alert('In PageLoad');
     document.addEventListener('DOMContentLoaded', function () { 

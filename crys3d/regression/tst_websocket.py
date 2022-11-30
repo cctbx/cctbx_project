@@ -76,7 +76,6 @@ async def closing_time():
     t += dt
     global socket_connected
     if socket_connected:
-      print("OK")
       asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
       return
 

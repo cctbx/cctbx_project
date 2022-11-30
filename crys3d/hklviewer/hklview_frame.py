@@ -70,6 +70,7 @@ class HKLViewFrame() :
     self.update_handler_sem = threading.Semaphore()
     self.initiated_gui_sem = threading.Semaphore()
     self.start_time = time.time()
+    kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
     buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -84,7 +85,7 @@ class HKLViewFrame() :
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
-      kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
+      #kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
       self.SendInfoToGUI(pyversion )
@@ -146,43 +147,49 @@ class HKLViewFrame() :
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
-    thrd2.daemon = True
-    thrd2.start()
+    self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
+    self.thrd2.daemon = True
+    self.thrd2.start()
     self.closingtime = int(kwds.get('closing_time', -1 ))
     # if invoked from command line not using Qt close us by waiting for thread processing cmdline kwargs to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
-      thrd2.join(timeout = self.closingtime + 20)
-      if thrd2.is_alive():
+      self.thrd2.join(timeout = self.closingtime + 20)
+      if self.thrd2.is_alive():
         self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
 
 
   def thread_process_arguments(self, **kwds):
-    if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    self.LoadReflectionsFile(self.hklin)
-    self.validate_preset_buttons()
-    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
-      fname = kwds.get('phil_file', "" )
-      if os.path.isfile(fname):
-        if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
-          self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
-        self.initiated_gui_sem.release()
-        self.SetScene(0) # crude initialisation of browser
-        time.sleep(1)
-        self.mprint("Processing PHIL file: %s" %fname)
-        with open(fname, "r") as f:
-          philstr = f.read()
-          self.update_from_philstr(philstr)
-    if 'image_file' in kwds: # save displayed reflections to an image file
-      time.sleep(5)
-      fname = kwds.get('image_file', "testimage.png" )
-      self.update_from_philstr('save_image_name = "%s"' %fname)
-# if we are invoked using Qtgui close us gracefully if requested
-    if 'closing_time' in kwds:
-      time.sleep(self.closingtime)
+    try:
+      if 'hklin' in kwds or 'HKLIN' in kwds:
+        self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+      self.LoadReflectionsFile(self.hklin)
+      self.validate_preset_buttons()
+      if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+        fname = kwds.get('phil_file', "" )
+        if os.path.isfile(fname):
+          if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
+            self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+          self.initiated_gui_sem.release()
+          #self.SetScene(0) # crude initialisation of browser
+          self.update_from_philstr("viewer.scene_id = 0")
+          time.sleep(1)
+          self.mprint("Processing PHIL file: %s" %fname)
+          with open(fname, "r") as f:
+            philstr = f.read()
+            self.update_from_philstr(philstr)
+      if 'image_file' in kwds: # save displayed reflections to an image file
+        time.sleep(5)
+        fname = kwds.get('image_file', "testimage.png" )
+        self.update_from_philstr('save_image_name = "%s"' %fname)
+  # if we are invoked using Qtgui close us gracefully if requested
+      if 'closing_time' in kwds:
+        time.sleep(self.closingtime)
+        self.SendInfoToGUI( { "closing_time": True } )
+      self.mprint("Done thread_process_arguments()", verbose=2)
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
+      self.mprint("Closing due to above exception")
       self.SendInfoToGUI( { "closing_time": True } )
-    self.mprint("Done thread_process_arguments()", verbose=2)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -231,7 +238,6 @@ class HKLViewFrame() :
 
 
   def zmq_listen(self):
-    #time.sleep(5)
     nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
     lastmsgtype = ""
     while not self.STOP:
@@ -468,6 +474,8 @@ class HKLViewFrame() :
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
+      if not self.viewer.webgl_OK:
+        raise RuntimeError("Critical WebGL problem!\n")
       oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
       currentSelectInfoscope = None
@@ -640,6 +648,8 @@ class HKLViewFrame() :
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, verbose=1)
       self.mprint( "Ready")
+    except RuntimeError as e: # raised in DrawNGLJavaScript() if WebGL error flag was set
+      raise e
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc())
 
@@ -1895,6 +1905,13 @@ class HKLViewFrame() :
           m = bytes(m)
         bindict = zlib.compress( m )
         self.guisocket.send( bindict )
+    else:
+      if infodict.get("closing_time", False):
+        self.viewer.release_all_semaphores()
+        self.__exit__()
+        sys.exit(-42)
+
+
 
 
 master_phil_str = """
