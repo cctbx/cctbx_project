@@ -302,10 +302,11 @@ class DetectorDriftArtist(object):
     self.axh.spines['bottom'].set_visible(False)
     self.axh.set_zorder(self.axx.get_zorder() - 1.0)
     common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
+    self.axh.ticklabel_format(useOffset=False)
     self.axx.tick_params(axis='x', labelbottom=False, **common)
     self.axy.tick_params(axis='x', labelbottom=False, **common)
     self.axz.tick_params(axis='x', rotation=90, **common)
-    self.axh.set_ylabel('# of refls')
+    self.axh.set_ylabel('# refls')
     self.axx.set_ylabel('Detector X')
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
@@ -323,7 +324,7 @@ class DetectorDriftArtist(object):
   @property
   def top_tick_labels(self):
     """Registry-length list of additional labels placed atop the figure"""
-    return ['{}k'.format(s // 1000) for s in self.registry.data['size']]
+    return self.registry.data['size']
 
   def _get_handles_and_labels(self):
     unique_keys = []
@@ -343,7 +344,7 @@ class DetectorDriftArtist(object):
       ax_t = axes.secondary_xaxis('top')
       ax_t.tick_params(rotation=90)
       ax_t.set_xticks(axes.get_xticks())
-      ax_t.set_xticklabels([] + self.top_tick_labels)
+      ax_t.set_xticklabels(self.top_tick_labels)
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
