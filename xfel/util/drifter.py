@@ -381,8 +381,11 @@ def run(params_):
   dda = DetectorDriftArtist(registry=ddr, parameters=params_)
   dda.plot()
   if params_.pickle_plot:
-    from libtbx.easy_pickle import dump
-    dump(str(params_.pickle_filename), dda.fig)
+    try:
+      from libtbx.easy_pickle import dump
+      dump(str(params_.pickle_filename), dda.fig)
+    except TypeError as e:
+      print(e)
   if params_.show_plot:
     plt.show()
 
