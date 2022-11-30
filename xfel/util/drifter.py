@@ -313,7 +313,7 @@ class DetectorDriftArtist(object):
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
     self.axz.set_xlabel(self.order_by.title())
-    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{:,}k'))
+    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{x:,}k'))
 
   @property
   def color_array(self):
