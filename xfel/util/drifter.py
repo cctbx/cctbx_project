@@ -304,16 +304,18 @@ class DetectorDriftArtist(object):
     self.axh.spines['bottom'].set_visible(False)
     self.axh.set_zorder(self.axx.get_zorder() - 1.0)
     common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
-    self.axh.ticklabel_format(useOffset=False)
     self.axx.tick_params(axis='x', labelbottom=False, **common)
     self.axy.tick_params(axis='x', labelbottom=False, **common)
     self.axz.tick_params(axis='x', rotation=90, **common)
+    self.axx.ticklabel_format(useOffset=False)
+    self.axy.ticklabel_format(useOffset=False)
+    self.axz.ticklabel_format(useOffset=False)
     self.axh.set_ylabel('# refls')
     self.axx.set_ylabel('Detector X')
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
     self.axz.set_xlabel(self.order_by.title())
-    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{x:,}k'))
+    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}k'))
 
   @property
   def color_array(self):
