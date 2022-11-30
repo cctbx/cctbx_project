@@ -10,6 +10,8 @@ from libtbx.utils import Sorry
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
+from matplotlib.ticker import StrMethodFormatter
+
 
 message = ''' This script aims to investigate the spatial drift of a detector
               as a function of experimental progress. It requires the directory
@@ -311,6 +313,7 @@ class DetectorDriftArtist(object):
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
     self.axz.set_xlabel(self.order_by.title())
+    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{:,}k'))
 
   @property
   def color_array(self):
@@ -324,7 +327,8 @@ class DetectorDriftArtist(object):
   @property
   def top_tick_labels(self):
     """Registry-length list of additional labels placed atop the figure"""
-    return self.registry.data['size']
+    size_k = [int(round(s / 1000)) for s in self.registry.data['size']]
+    return ['{:,}k'.format(s) for s in size_k]
 
   def _get_handles_and_labels(self):
     unique_keys = []
@@ -350,7 +354,7 @@ class DetectorDriftArtist(object):
 
   def _plot_histogram(self, axes):
     x = self.registry.data[self.order_by]
-    y = self.registry.data['size']
+    y = [s / 1000 for s in self.registry.data['size']]
     axes.bar(x, y, color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
