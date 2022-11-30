@@ -288,16 +288,20 @@ class DetectorDriftArtist(object):
 
   def _init_figure(self):
     self.fig = plt.figure(tight_layout=True)
-    gs = GridSpec(3, 5)
-    self.axx = self.fig.add_subplot(gs[0, :4])
-    self.axy = self.fig.add_subplot(gs[1, :4], sharex=self.axx)
-    self.axz = self.fig.add_subplot(gs[2, :4], sharex=self.axx)
-    self.axl = self.fig.add_subplot(gs[:, 4])
+    gs = GridSpec(4, 2, hspace=0, wspace=0, height_ratios=[1, 2, 2, 2],
+                  width_ratios=[4, 1])
+    self.axh = self.fig.add_subplot(gs[0, 0])
+    self.axx = self.fig.add_subplot(gs[1, 0], sharex=self.axh)
+    self.axy = self.fig.add_subplot(gs[2, 0], sharex=self.axh)
+    self.axz = self.fig.add_subplot(gs[3, 0], sharex=self.axh)
+    self.axl = self.fig.add_subplot(gs[:, 1])
 
   def _setup_figure(self):
-    self.axx.tick_params(axis='x', which='both', labelbottom=False)
-    self.axy.tick_params(axis='x', which='both', labelbottom=False)
-    self.axz.tick_params(axis='x', which='both', rotation=90)
+    self.axh.axis('off')
+    self.axh.set_zorder(self.axx.get_zorder() - 1.0)
+    self.axx.tick_params(axis='x', direction='inout', labelbottom=False)
+    self.axy.tick_params(axis='x', direction='inout', labelbottom=False)
+    self.axz.tick_params(axis='x', direction='inout', rotation=90)
     self.axx.set_ylabel('Detector X')
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
@@ -326,7 +330,7 @@ class DetectorDriftArtist(object):
                for i in range(len(unique_keys))]
     return handles, unique_keys
 
-  def _plot_axes(self, axes, values_key, deltas_key=None, top=False):
+  def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     x = self.registry.data[self.order_by]
     y = self.registry.data[values_key]
     y_err = self.registry.data.get(deltas_key, [])
@@ -339,15 +343,21 @@ class DetectorDriftArtist(object):
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
+  def _plot_histogram(self, axes):
+    x = self.registry.data[self.order_by]
+    y = self.registry.data['size']
+    axes.bar(x, y, color=self.color_array, alpha=0.5)
+
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
     self.axl.axis('off')
 
   def plot(self):
-    self._plot_axes(self.axx, 'x', 'delta_x', top=True)
-    self._plot_axes(self.axy, 'y', 'delta_y')
-    self._plot_axes(self.axz, 'z', 'delta_z')
+    self._plot_histogram(self.axh)
+    self._plot_drift(self.axx, 'x', 'delta_x', top=True)
+    self._plot_drift(self.axy, 'y', 'delta_y')
+    self._plot_drift(self.axz, 'z', 'delta_z')
     self._plot_legend()
 
 
