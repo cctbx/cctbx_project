@@ -35,9 +35,6 @@ phil_scope = parse('''
   show_plot = True
     .type = bool
     .help = If True, resulting plot will be displayed on screen
-  sizes = False
-    .type = bool
-    .help = If True, write number of reflections in each run atop the plot
   uncertainties = False
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
@@ -265,15 +262,14 @@ class DetectorDriftRegistry(object):
         origin = get_origin_from_expt(first_scaling_expt_path)
         self.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
                  task=task, x=origin[0], y=origin[1], z=origin[2])
-        if self.parameters.uncertainties or self.parameters.sizes:
+        if self.parameters.uncertainties:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
           tder_expts, tder_refls = get_tder_expts_and_refls(scaling_phils)
           spot_expts, spot_refls = get_spotfinding_expts_and_refls(tder_expts)
           s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
             tder_expts, tder_refls, spot_expts, spot_refls,
             uncertainties=self.parameters.uncertainties)
-          if self.parameters.sizes:
-            self.add(size=s)
+          self.add(size=s)
           if self.parameters.uncertainties:
             self.add(delta_x=dx, delta_y=dy, delta_z=dz)
 
@@ -335,7 +331,7 @@ class DetectorDriftArtist(object):
     y = self.registry.data[values_key]
     y_err = self.registry.data.get(deltas_key, [])
     axes.scatter(x, y, c=self.color_array)
-    if self.parameters.sizes and top:
+    if top:
       ax_t = axes.secondary_xaxis('top')
       ax_t.tick_params(rotation=90)
       ax_t.set_xticks(axes.get_xticks())
