@@ -946,7 +946,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.XtriageBtn.setVisible(True)
 
           if self.infodict.get("closing_time"): # notified by cctbx in regression tests
-            self.closeEvent()
+            QTimer.singleShot(10000, self.closeEvent )
+            #self.closeEvent()
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
@@ -2857,24 +2858,6 @@ def run(isembedded=False, chimeraxsession=None):
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
-        """
-        if kwargs.get('hklin', ""):
-          HKLguiobj.currentfileName = kwargs.get('hklin', "" )
-          QTimer.singleShot(1000, HKLguiobj.openReflectionFile )
-
-        if kwargs.get('phil_file', False):
-          # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.philfname = kwargs.get('phil_file', "" )
-          if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(2000, HKLguiobj.SetFirstScene ) # see if this works around deadlocks
-            QTimer.singleShot(5000, HKLguiobj.SetStateFromPHILfile ) # time enough to load reflection file
-
-        if kwargs.get('image_file', False):
-          # enact settings in a phil file for displaying a specific configuration
-          HKLguiobj.image_fname = kwargs.get('image_file', "HKLviewer_image.png" )
-          if os.path.isfile(HKLguiobj.philfname):
-            QTimer.singleShot(15000, HKLguiobj.SaveImage )
-        """
       else:
         start_time = [time.time()]
 

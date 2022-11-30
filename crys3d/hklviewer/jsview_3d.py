@@ -282,6 +282,7 @@ class HKLview_3d:
     self.currentRotmx = matrix.identity(3)
     self.include_tooltip_lst = []
     self.mouse_moved = False
+    self.webgl_OK = True
     self.HKLsceneKey = None
     self.handshakewait = 5
     if 'handshakewait' in kwds:
@@ -1477,7 +1478,8 @@ class HKLview_3d:
         raise Sorry("Timed out connecting to a web browser!")
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
-    if not blankscene:
+
+    if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
@@ -1505,6 +1507,15 @@ class HKLview_3d:
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
 
 
+  def release_all_semaphores(self):
+    # avoid potential deadlock by releasing any pending sempahores
+    self.clipplane_msg_sem.release()
+    self.autoview_sem.release()
+    self.mousespeed_msg_sem.release()
+    self.hkls_drawn_sem.release()
+    self.browser_connect_sem.release()
+    self.mprint( "All sempahores released", verbose="threadingmsg")
+
 
   def ProcessBrowserMessage(self, message):
     # method runs in a separate thread handling messages from the browser displaying our reflections
@@ -1520,18 +1531,13 @@ class HKLview_3d:
       philchanged = False
       if isinstance(message, ustr) and message != "":
         if 'Critical WebGL problem' in message:
-          self.mprint(message + "\n\nCommencing initiation of program termination procedure...\n", verbose=0)
-          time.sleep(3)
+          self.mprint(message + "\n\nCommencing initiation of protocols for invoking program termination procedures...\n", verbose=0)
+          #self.release_all_semaphores()
+          self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
         elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
-          # avoid potential deadlock by releasing any pending sempahores
-          self.clipplane_msg_sem.release()
-          self.autoview_sem.release()
-          self.mousespeed_msg_sem.release()
-          self.hkls_drawn_sem.release()
-          self.browser_connect_sem.release()
-          self.mprint( "All sempahores released", verbose="threadingmsg")
+          self.release_all_semaphores()
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
         elif 'Received message:' in message:
