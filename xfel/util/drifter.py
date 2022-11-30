@@ -297,11 +297,15 @@ class DetectorDriftArtist(object):
     self.axl = self.fig.add_subplot(gs[:, 1])
 
   def _setup_figure(self):
-    self.axh.axis('off')
+    self.axh.spines['top'].set_visible(False)
+    self.axh.spines['right'].set_visible(False)
+    self.axh.spines['bottom'].set_visible(False)
     self.axh.set_zorder(self.axx.get_zorder() - 1.0)
-    self.axx.tick_params(axis='x', direction='inout', labelbottom=False)
-    self.axy.tick_params(axis='x', direction='inout', labelbottom=False)
-    self.axz.tick_params(axis='x', direction='inout', rotation=90)
+    common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
+    self.axx.tick_params(axis='x', labelbottom=False, **common)
+    self.axy.tick_params(axis='x', labelbottom=False, **common)
+    self.axz.tick_params(axis='x', rotation=90, **common)
+    self.axh.set_ylabel('# of refls')
     self.axx.set_ylabel('Detector X')
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
@@ -359,6 +363,7 @@ class DetectorDriftArtist(object):
     self._plot_drift(self.axy, 'y', 'delta_y')
     self._plot_drift(self.axz, 'z', 'delta_z')
     self._plot_legend()
+    self.fig.align_labels()
 
 
 def run(params_):
