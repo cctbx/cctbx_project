@@ -86,7 +86,7 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=60",
+            "closing_time=10",
           ]
 
   assert cmdlineframes.run(cmdargs)
@@ -115,7 +115,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=60", # close HKLviewer after 25 seconds
+             "closing_time=10", # close HKLviewer after 25 seconds
             ]
 
   result = easy_run.fully_buffered(" ".join(cmdargs))
