@@ -171,20 +171,26 @@ class HKLViewFrame() :
           if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
             self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
           self.initiated_gui_sem.release()
-          #self.SetScene(0) # crude initialisation of browser
           self.update_from_philstr("viewer.scene_id = 0")
           time.sleep(1)
           self.mprint("Processing PHIL file: %s" %fname)
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
+            #time.sleep(1)
+            #self.update_from_philstr("viewer.angle_around_YHKL_vector = -1.0")
+            #time.sleep(1)
+            #self.update_from_philstr("viewer.angle_around_YHKL_vector = 1.0")
+            self.viewer.RedrawNGL()
+            self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
         self.update_from_philstr('save_image_name = "%s"' %fname)
-  # if we are invoked using Qtgui close us gracefully if requested
+      # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
+        self.mprint("Closing time reached", verbose=1)
         self.SendInfoToGUI( { "closing_time": True } )
       self.mprint("Done thread_process_arguments()", verbose=2)
     except HKLviewerError as e:
@@ -217,6 +223,8 @@ class HKLViewFrame() :
       m = re.findall(r"(\d)", self.verbose)
       if len(m) >0:
         intverbose = int(m[0])
+    else:
+      intverbose = self.verbose
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading

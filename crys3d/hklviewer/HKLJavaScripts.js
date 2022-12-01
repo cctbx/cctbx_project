@@ -527,7 +527,6 @@ async function RenderRequest(note = "")
   stage.viewer.requestRender();
   if (note != "") {
     await sleep(100);
-    GetReflectionsInFrustum();
     WebsockSendMsg(note + '_AfterRendering');
   }
   if (isdebug)
@@ -553,7 +552,7 @@ async function SetAutoview(mycomponent, t)
       WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
       return;
     }
-    await sleep(200);
+    await sleep(2);
   }
 };
 
@@ -569,8 +568,9 @@ async function SendComponentRotationMatrixMsg() {
   }
 };
 
-async function SendOrientationMsg() {
-  await sleep(100);
+//async 
+function SendOrientationMsg() {
+  //await sleep(100);
   try {
     let msg = getOrientMsg();
     WebsockSendMsg('CurrentViewOrientation:\n' + msg);
@@ -626,8 +626,6 @@ function onMessage(e)
       let showdata = e.data;
       if (showdata.length > 400)
         showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-      if (isdebug)
-        WebsockSendMsg('Browser: Got ' + showdata); // tell server what it sent us
 
       datval = e.data.split(":\n");
       msgtype = datval[0];
@@ -650,6 +648,8 @@ function onMessage(e)
       // previous message which is the message type so it can be processed
       msgtype = binmsgtype;
     }
+    if (isdebug)
+      WebsockSendMsg('Browser.JavaScript Got: ' + msgtype); // tell server what it sent us
 
     if (msgtype === "Reload")
     {
@@ -743,8 +743,12 @@ function onMessage(e)
 
     if (msgtype === "Redraw")
     {
-      RenderRequest();
-      WebsockSendMsg( 'Redrawing ' + pagename );
+      RenderRequest("notify_cctbx").then(()=> {
+          SendOrientationMsg();
+          GetReflectionsInFrustum();
+          WebsockSendMsg( 'Redrawn ' + pagename );
+        }
+      );
     }
 
     if (msgtype === "ReOrient")
@@ -763,8 +767,10 @@ function onMessage(e)
       stage.viewerControls.orient(m);
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype.includes("Expand") && shapeComp != null)
@@ -1006,8 +1012,10 @@ function onMessage(e)
       if (val[9] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "RotateAxisStage")
@@ -1026,8 +1034,10 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "RotateComponents" && shapeComp != null)
@@ -1051,8 +1061,10 @@ function onMessage(e)
       shapeComp.setTransform(m4);
       if (val[9] == "verbose")
         postrotmxflag = true;
-      RenderRequest();
-      SendComponentRotationMatrixMsg();
+      RenderRequest().then(()=> {
+          SendComponentRotationMatrixMsg();
+        }
+      );      
     }
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null)
@@ -1068,8 +1080,10 @@ function onMessage(e)
 
       if (val[4] == "verbose")
         postrotmxflag = true;
-      RenderRequest();
-      SendComponentRotationMatrixMsg();
+      RenderRequest().then(()=> {
+          SendComponentRotationMatrixMsg();
+        }
+      );      
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
@@ -1093,8 +1107,10 @@ function onMessage(e)
       for (let j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "DrawSphere") {
@@ -1242,6 +1258,11 @@ function onMessage(e)
       MakeXYZ_Axis();
     }
 
+    if (msgtype === "GetReflectionsInFrustum")
+    {
+      GetReflectionsInFrustum();
+    }
+
     if (msgtype === "SetMouseSpeed")
     {
       stage.trackballControls.rotateSpeed = parseFloat(val[0]);
@@ -1290,7 +1311,11 @@ function onMessage(e)
       if (Number.isNaN(zoom) == false)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
-      RenderRequest("getfrustum");
+      RenderRequest("getfrustum").then(()=> {
+          SendOrientationMsg();
+          GetReflectionsInFrustum();
+        }
+      );
     }
 
     if (msgtype === "GetClipPlaneDistances")
@@ -1373,8 +1398,12 @@ function onMessage(e)
         MakeHKL_Axis();
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer');
-        RenderRequest("notify_cctbx");
-        WebsockSendMsg('RenderStageObjects');
+        RenderRequest("notify_cctbx").then(()=> {
+            SendOrientationMsg();
+            GetReflectionsInFrustum();
+            WebsockSendMsg('RenderStageObjects');
+          }
+        );
       }
     }
 
@@ -1481,11 +1510,6 @@ function onMessage(e)
       // test something new
       /*
       */
-    }
-    if (isdebug)
-    {
-      WebsockSendMsg('Received message: ' + msgtype);
-      debugmessage.innerText = dbgmsg;
     }
   }
 
@@ -2095,8 +2119,10 @@ function MakeButtons() {
     type: "button",
     onclick: function () {
       SetDefaultOrientation();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     },
   }, { bottom: "10px", left: "10px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
   addElement(ResetViewBtn);
