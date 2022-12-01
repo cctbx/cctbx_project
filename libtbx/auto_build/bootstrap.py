@@ -2688,11 +2688,6 @@ class PhenixExternalRegression(PhenixBuilder):
       self.add_test_command('afitt.run_tests',
                             env = self.get_environment()
                            )
-    # erraser
-    if self.subcategory in [None, "rosetta"]:
-      self.add_test_command('erraser.run_tests',
-                            env = self.get_environment()
-                           )
     # GLR
     if self.subcategory in [None, "glr"]:
       self.add_test_command('elbow.run_glr_tests',
