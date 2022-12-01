@@ -333,7 +333,7 @@ class DetectorDriftArtist(object):
     self.axw.bar([0], [max(self.registry.data['expts'])], width=[1],
                  color='black', alpha=0.5)
     s = '100% width:\n{:.2f} refl/expt'.format(max(self._refl_to_expt_ratios))
-    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes_fraction',
+    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes fraction',
                       ha='center', va='center')
 
   def plot(self):
