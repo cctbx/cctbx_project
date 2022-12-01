@@ -20,6 +20,7 @@ from six.moves import range
 
 
 class HKLviewerError(Exception):
+  # Unrecoverable errors we detect such as failure to connect via websocket or no WebGL
   def __init__(self, value):
     self.value = value
   def __str__(self):

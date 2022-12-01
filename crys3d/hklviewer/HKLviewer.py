@@ -2817,11 +2817,10 @@ def TestWebGL():
 def run(isembedded=False, chimeraxsession=None):
   import time
   #time.sleep(15) # enough time for attaching debugger
-  try:
-    debugtrue = False
-    kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
 
-    sysargs = []
+  # TODO: rewrite this function at some point to use python's argparse module
+  try:
+    kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
     # if an argument is a filename then have it as a keyword argument and assume it's a reflection file
     for arg in sys.argv[1:]:
       if '=' not in arg:
@@ -2831,15 +2830,16 @@ def run(isembedded=False, chimeraxsession=None):
             kwargs['hklin'] = arg
 
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
-    for e in sys.argv:
-      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
-        debugtrue = True
-        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        if "debug" in e:
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
-        if "devmode" in e: # Also start our WebEngineDebugForm
+    argstr = " ".join(sys.argv[1:])
+    if "devmode" in argstr or "debug" in argstr:
+      os.environ["PYTHONASYNCIODEBUG"] = "1" # print debug output from asyncio used in webbrowser_messenger_py3
+    if "devmode" in argstr or "debug" in argstr and not "UseOSBrowser" in argstr:
+      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+      if "debug" in argstr:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+      if "devmode" in argstr: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
@@ -2848,13 +2848,12 @@ def run(isembedded=False, chimeraxsession=None):
     app = QApplication(sys.argv)
 
     HKLguiobj = NGL_HKLViewer(app, isembedded)
-    if "remove_settings" == e:
+    if "remove_settings" in argstr:
       HKLguiobj.RemoveQsettings()
       HKLguiobj.closeEvent()
       sys.exit()
     else:
       if not isembedded:
-        #timer = QTimer()
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
         timer.start()
