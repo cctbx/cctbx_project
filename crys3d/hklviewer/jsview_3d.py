@@ -149,8 +149,6 @@ class HKLview_3d:
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.OrigClipNear = None
-    self.OrigClipFar = None
     self.cameratranslation = ( 0,0,0 )
     self.planescalarvalue =0
     self.planenormalhklvec =None
@@ -1504,9 +1502,7 @@ class HKLview_3d:
       self.mprint(".", end="")
       self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
-      self.GetClipPlaneDistances()
-      self.OrigClipFar = self.clipFar
-      self.OrigClipNear = self.clipNear
+      #self.GetClipPlaneDistances()
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
