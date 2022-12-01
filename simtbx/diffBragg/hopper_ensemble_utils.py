@@ -10,7 +10,7 @@ from scipy.optimize import basinhopping
 
 
 from libtbx.mpi4py import MPI
-from simtbx.diffBragg import hopper_ensemble_utils, hopper_utils
+from simtbx.diffBragg import hopper_ensemble_utils, hopper_utils, utils
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 from cctbx import miller, crystal, sgtbx
 from dials.array_family import flex
@@ -584,7 +584,8 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
     COMM.barrier()
     num_exp = len(pandas_table)
     first_exper_file = pandas_table[exper_key].values[0]
-    detector = ExperimentList.from_file(first_exper_file, check_format=False)[0].detector
+    first_exper = ExperimentList.from_file(first_exper_file, check_format=False)[0]
+    detector = first_exper.detector
     if detector is None and params.refiner.reference_geom is None:
         raise RuntimeError("No detector in experiment, must provide a reference geom.")
     # TODO verify all shots have the same detector ?
@@ -602,6 +603,10 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
     worklist = work_distribution[COMM.rank]
     MAIN_LOGGER.info("EVENT: begin loading inputs")
 
+    Fhkl_model = utils.load_Fhkl_model_from_params_and_expt(params, first_exper)
+
+    Fhkl_model = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
+    Fhkl_model_indices = set(Fhkl_model.indices())
     shot_modelers = hopper_ensemble_utils.DataModelers()
     for ii, i_exp in enumerate(worklist):
         exper_name = exper_names[i_exp]
@@ -618,8 +623,12 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         refl_name = exper_dataframe[refls_key].values[0]
         refls = flex.reflection_table.from_file(refl_name)
 
-        good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
-        refls = refls.select(good_sel)
+        miller_inds = list( refls['miller_index'])
+        is_not_000 = [h != (0, 0, 0) for h in miller_inds]
+        is_in_Fhkl_model = [h in Fhkl_model_indices for h in miller_inds]
+        MAIN_LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" %(np.sum(is_in_Fhkl_model), len(refls)))
+        refl_sel = flex.bool(np.logical_and(is_not_000, is_in_Fhkl_model))
+        refls = refls.select(refl_sel)
 
         exp_cry_sym = expt.crystal.get_space_group().type().lookup_symbol()
         if exp_cry_sym.replace(" ", "") != params.space_group:

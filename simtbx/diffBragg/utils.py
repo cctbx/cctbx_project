@@ -778,17 +778,11 @@ def simulator_from_expt_and_params(expt, params=None):
     mosaicity = params.simulator.crystal.mosaicity
     num_mosaicity_samples = params.simulator.crystal.num_mosaicity_samples
 
-    mtz_name = params.simulator.structure_factors.mtz_name
-    mtz_column = params.simulator.structure_factors.mtz_column
     default_F = params.simulator.structure_factors.default_F
-    dmin = params.simulator.structure_factors.dmin
-    dmax = params.simulator.structure_factors.dmax
 
     spectra_file = params.simulator.spectrum.filename
     spectra_stride = params.simulator.spectrum.stride
     aniso_mos_spread = params.simulator.crystal.anisotropic_mosaicity
-
-    pdb_name = params.simulator.structure_factors.from_pdb.name
 
     if has_isotropic_ncells:
         if len(set(ncells_abc)) != 1 :
@@ -822,30 +816,9 @@ def simulator_from_expt_and_params(expt, params=None):
     crystal.anisotropic_mos_spread_deg = aniso_mos_spread
     crystal.n_mos_domains = num_mosaicity_samples
     crystal.mos_spread_deg = mosaicity
-    #crystal.mos_angles_per_axis = params.simulator.crystal.mos_angles_per_axis
-    #crystal.num_mos_axes = params.simulator.crystal.num_mos_axes
 
     # load the structure factors
-    if mtz_name is None:
-        if pdb_name is not None:
-            wavelength=None
-            if params.simulator.structure_factors.from_pdb.add_anom:
-                wavelength = expt.beam.get_wavelength()
-            miller_data = get_complex_fcalc_from_pdb(pdb_name,
-                dmin=params.simulator.structure_factors.dmin,
-                dmax=params.simulator.structure_factors.dmax,
-                wavelength=wavelength,
-                k_sol=params.simulator.structure_factors.from_pdb.k_sol,
-                b_sol=params.simulator.structure_factors.from_pdb.b_sol)
-            miller_data = miller_data.as_amplitude_array()
-
-        else:
-            miller_data = make_miller_array(
-                symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
-                unit_cell=expt.crystal.get_unit_cell(), d_min=dmin, d_max=dmax,
-                defaultF=default_F)
-    else:
-        miller_data = open_mtz(mtz_name, mtz_column)
+    miller_data = load_Fhkl_model_from_params_and_expt(params, expt)
     crystal.miller_array = miller_data
     if params.refiner.force_symbol is not None:
         crystal.symbol = params.refiner.force_symbol
@@ -867,7 +840,7 @@ def simulator_from_expt_and_params(expt, params=None):
 
     # create the diffbragg object, which is the D attribute of SIM
     SIM.panel_id = 0
-    SIM.instantiate_diffBragg(oversample=oversample, device_Id=device_id, default_F=default_F)
+    SIM.instantiate_diffBragg(oversample=oversample, device_Id=device_id, default_F=default_F, verbose=params.refiner.verbose)
     if init_scale is not None:
         #TODO phase this parameter out since its redundant?
         SIM.update_nanoBragg_instance("spot_scale", init_scale)
@@ -1685,25 +1658,35 @@ def track_fhkl(Modeler):
         all_count_stats[i_roi] = count_stats
     return all_count_stats
 
-#
-#        if len(count_stats) == 1:
-#            all_good_count_stats.append([shoebox_hkl, count_stats])
-#        else:
-#            all_bad_count_stats.append([shoebox_hkl, count_stats])
-#    if all_bad_count_stats:
-#        print("Shot %s had %d /  %d rois with HKL variation" % (Modeler.exp_name, len(all_bad_count_stats), len(uroi)))
-#        percs = [stats[sb_hkl] * 100 for sb_hkl, stats in all_bad_count_stats]
-#        ave_perc = sum(percs) / len(percs)
-#        min_perc = min(percs)
-#        nmax = max(len(stats) for _, stats in all_bad_count_stats)
-#        print("\tMin %.1f%%, Mean=%.1f%%, most variation: %d hkls in a shoebox" % (min_perc, ave_perc, nmax))
-#
-#        for sb_h, stats in all_bad_count_stats:
-#            h, k, l = zip(*stats.keys())
-#            if len(set(h)) > 1 or len(set(k)) > 1:
-#                print("Weird HK vary: shot %s" % Modeler.exp_name, sb_h)
-#            if not np.all(np.sort(l) == np.arange(min(l), min(l) + len(l))):
-#                print("Weird L sort: shot %s" % Modeler.exp_name, sb_h)
-#            if len(stats) > 3:
-#                print("Weird Nmax: shot %s" % Modeler.exp_name, sb_h)
 
+def load_Fhkl_model_from_params_and_expt(params, expt):
+    """
+
+    :param params:  diffBragg params instance (diffBragg/phil.py)
+    :param expt: dxtbx experiment with crystal
+    :return:
+    """
+    sf = params.simulator.structure_factors
+    if sf.mtz_name is None:
+        if sf.from_pdb.name is not None:
+            wavelength=None
+            if sf.from_pdb.add_anom:
+                wavelength = expt.beam.get_wavelength()
+            miller_data = get_complex_fcalc_from_pdb(sf.from_pdb.name,
+                dmin=params.simulator.structure_factors.dmin,
+                dmax=params.simulator.structure_factors.dmax,
+                wavelength=wavelength,
+                k_sol=params.simulator.structure_factors.from_pdb.k_sol,
+                b_sol=params.simulator.structure_factors.from_pdb.b_sol)
+            miller_data = miller_data.as_amplitude_array()
+
+        else:
+            miller_data = make_miller_array(
+                symbol=expt.crystal.get_space_group().info().type().lookup_symbol(),
+                unit_cell=expt.crystal.get_unit_cell(), d_min=sf.dmin,
+                d_max=sf.dmax,
+                defaultF=sf.default_F)
+    else:
+        miller_data = open_mtz(sf.mtz_name, sf.mtz_column)
+
+    return miller_data
