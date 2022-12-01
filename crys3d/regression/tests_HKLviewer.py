@@ -86,7 +86,7 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=20",
+            "closing_time=21",
           ]
 
   assert cmdlineframes.run(cmdargs)
