@@ -346,6 +346,7 @@ def run(params_):
   print(ddr)
   dda = DetectorDriftArtist(registry=ddr, parameters=params_)
   dda.plot()
+  plt.show()
 
 
 if __name__ == '__main__':
