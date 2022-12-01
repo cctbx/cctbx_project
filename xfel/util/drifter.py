@@ -25,17 +25,7 @@ phil_scope = parse('''
   input_glob = batch*TDER/
     .type = str
     .help = glob which matches all directories after TDER to be investigated.
-  pickle_plot = False
-    .type = bool
-    .help = If True, matplotlib session will be pickled so that it can be \
-            opened later for viewing: https://www.stackoverflow.com/q/29160177/
-  pickle_filename = fig_object.pickle
-    .type = str
-    .help = Default name of pickled matplotlib plot saved to disk
-  show_plot = True
-    .type = bool
-    .help = If True, resulting plot will be displayed on screen
-  uncertainties = False
+  uncertainties = True
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
             between predicted and observed positions of all reflections.
@@ -336,8 +326,8 @@ class DetectorDriftArtist(object):
     s = "height: # expts ({} to {})\n" \
         "width: refl per expt ({:.0f} to {:.0f})\n" \
         "area: # refls ({} to {})".format(*ex)
-    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes fraction',
-                      ha='center', ma='center', va='center')
+    self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
+                      ha='right', ma='right', va='center')
 
   def plot(self):
     self._plot_bars()
@@ -356,14 +346,6 @@ def run(params_):
   print(ddr)
   dda = DetectorDriftArtist(registry=ddr, parameters=params_)
   dda.plot()
-  if params_.pickle_plot:
-    try:
-      from libtbx.easy_pickle import dump
-      dump(str(params_.pickle_filename), dda.fig)
-    except TypeError as e:
-      print(e)
-  if params_.show_plot:
-    plt.show()
 
 
 if __name__ == '__main__':
