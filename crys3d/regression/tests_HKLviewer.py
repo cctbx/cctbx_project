@@ -58,6 +58,17 @@ def check_log_file(fname):
   return set(refls) == reflections2match
 
 
+def Append2LogFile(fname, res):
+  # write terminal output to our log file
+  with open(fname, "a") as f:
+    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
+    for line in res.stdout_lines:
+      f.write(line + "\n")
+    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
+    for line in res.stderr_lines:
+      f.write(line + "\n")
+
+
 def exercise1():
   assert os.path.isfile(datafname)
   outputfname = "HKLviewer1_test.log"
@@ -91,19 +102,18 @@ def exercise1():
 
   assert cmdlineframes.run(cmdargs)
   assert check_log_file(outputfname)
-  print("OK")
 
 
 def exercise2():
+  assert os.path.isfile(datafname)
   # First delete any settings from previous HKLviewer runs that might be present on this platform
   print("Removing any previous Qsettings...")
-  assert ( easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings").return_code == 0 )
+  remove_settings_result = easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings")
 
   print("Starting the real HKLviewer test...")
 
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
-  assert os.path.isfile(datafname)
 
   outputfname = "HKLviewer2_test.log"
   if os.path.isfile(outputfname):
@@ -118,16 +128,13 @@ def exercise2():
              "closing_time=20", # close HKLviewer after 25 seconds
             ]
 
-  result = easy_run.fully_buffered(" ".join(cmdargs))
-  # write terminal output to our log file
-  with open(outputfname, "a") as f:
-    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
-    for line in result.stdout_lines:
-      f.write(line + "\n")
-    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
-    for line in result.stderr_lines:
-      f.write(line + "\n")
-  #assert result.return_code == 0
+  HKLviewer_result = easy_run.fully_buffered(" ".join(cmdargs))
+  # append terminal output to log file
+  Append2LogFile(outputfname, remove_settings_result)
+  Append2LogFile(outputfname, HKLviewer_result)
+
+  assert HKLviewer_result.return_code == 0
+  assert remove_settings_result.return_code == 0
   assert check_log_file(outputfname)
 
 
