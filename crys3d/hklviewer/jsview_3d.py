@@ -95,8 +95,8 @@ def get_browser_ctrl(using=None):
     if sys.platform.startswith("darwin"):
       browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
       assert os.path.isfile(browser)
-    if sys.platform.startswith("darwin"):
-      browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
+    if sys.platform == "linux":
+      browser = "/usr/bin/firefox"
       assert os.path.isfile(browser)
 
   if using=="chrome":
@@ -105,10 +105,6 @@ def get_browser_ctrl(using=None):
       if not os.path.isfile(browser):
         browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
       assert os.path.isfile(browser)
-
-  if sys.platform == "linux":
-    browser = "/usr/bin/firefox"
-    assert os.path.isfile(browser)
 
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
   webctrl = webbrowser.get(using)
