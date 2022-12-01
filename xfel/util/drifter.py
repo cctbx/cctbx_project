@@ -327,7 +327,7 @@ class DetectorDriftArtist(object):
         "width: refl per expt ({:.0f} to {:.0f})\n" \
         "area: # refls ({} to {})".format(*ex)
     self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
-                      ha='right', ma='right', va='center')
+                      ha='left', ma='left', va='center')
 
   def plot(self):
     self._plot_bars()
