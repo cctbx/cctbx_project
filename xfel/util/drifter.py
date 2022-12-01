@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 import glob
 import sys
 import os
-from cctbx.miller import match_indices
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from libtbx.phil import parse
@@ -84,33 +83,20 @@ def get_scaling_directories(merging_phil_paths):
   return sorted(set(phil.input.path))
 
 
-def get_tder_expts_and_refls(scaling_phil_paths):
+def get_tder_refined_expts_and_refls(scaling_phil_paths):
   """Return paths to all expt and refl files mentioned in phil files"""
   expt_paths = []
   refl_paths = []
   scaling_phils = [parse(file_name=spp) for spp in scaling_phil_paths]
   phil = DEFAULT_INPUT_SCOPE.fetch(sources=scaling_phils).extract()
-  for ip in phil.input.path:
-    expt_glob = os.path.join(ip + '*' + phil.input.experiments_suffix)
-    refl_glob = os.path.join(ip + '*' + phil.input.reflections_suffix)
+  refined_tder_input_paths = [ip.replace('*reintegrated*', '*refined*')
+                              for ip in phil.input.path]
+  for rip in refined_tder_input_paths:
+    expt_glob = os.path.join(rip + phil.input.experiments_suffix)
+    refl_glob = os.path.join(rip + phil.input.reflections_suffix)
     expt_paths.extend(glob.glob(expt_glob))
     refl_paths.extend(glob.glob(refl_glob))
   return sorted(set(expt_paths)), sorted(set(refl_paths))
-
-
-def get_spotfinding_expts_and_refls(tder_expts):
-  """Return paths to indexing expt and refl files combined into tder inputs"""
-  tder_directories = sorted(set([os.path.dirname(te) for te in tder_expts]))
-  tder_combining_phil_paths = []
-  for td in tder_directories:
-    tder_combining_phil_paths.extend(
-      glob.glob(path_join(td, '*combine_experiments.phil')))
-  tder_combining_phils = [parse(file_name=tcp) for tcp
-                          in sorted(set(tder_combining_phil_paths))]
-  phil = DEFAULT_INPUT_SCOPE.fetch(sources=tder_combining_phils).extract()
-  refined_expts = sorted(set(phil.input.experiments))
-  indexed_refls = sorted(set(phil.input.reflections))
-  return refined_expts, indexed_refls
 
 
 def get_origin_from_expt(expt_path):
@@ -145,34 +131,15 @@ def load_reflections(*refl_paths):
 
 
 def get_size_and_uncertainties_from_expts_and_refls(
-        tder_expt_paths,
-        tder_refl_paths,
-        spotfinding_expt_paths,
-        spotfinding_refl_paths,
-        uncertainties=True):
+        tder_expt_paths, tder_refl_paths, uncertainties=True):
   """Retrieve total number of spot-finding reflections as well as uncertainties
-  of origin positions from spot-finding reflection position deviations"""
-  s = 0
-  deltas = flex.vec3_double()
-  spot_expts = load_experiments(*spotfinding_expt_paths)
-  spot_refls = load_reflections(*spotfinding_refl_paths)
+  of origin positions from refined TDER reflection position deviations"""
   tder_expts = load_experiments(*tder_expt_paths)
   tder_refls = load_reflections(*tder_refl_paths)
-  for spot_expt in spot_expts:
-    expt_id = spot_expt.identifier
-    try:
-      tder_expt = [e for e in tder_expts if e.identifier == expt_id][0]
-    except IndexError:
-      continue
-    spot_refl = spot_refls.select_on_experiment_identifiers([expt_id])
-    tder_refl = tder_refls.select_on_experiment_identifiers([expt_id])
-    m_ind = match_indices(spot_refl['miller_index'], tder_refl['miller_index'])
-    matching_refl = tder_refl.select(m_ind.pairs().column(1))
-    s += len(matching_refl)
-    if not uncertainties:
-      continue
-    for panel in tder_expt.detector:                   # pr:  panel reflections
-      pr = matching_refl.select(matching_refl['panel'] == panel.index())
+  deltas = flex.vec3_double()
+  if uncertainties:
+    for panel in tder_expts[0].detector:               # pr:  panel reflections
+      pr = tder_refls.select(tder_refls['panel'] == panel.index())
       pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
       pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
       pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
@@ -180,7 +147,7 @@ def get_size_and_uncertainties_from_expts_and_refls(
       deltas.extend(pr_obs_lab - pr_cal_lab)
   d = [flex.mean(flex.abs(deltas.parts()[i])) for i in range(3)] \
     if uncertainties else [None, None, None]
-  return s, d[0], d[1], d[2]
+  return len(tder_refls), d[0], d[1], d[2]
 
 
 def path_join(*path_elements):
@@ -266,11 +233,9 @@ class DetectorDriftRegistry(object):
                  task=task, x=origin[0], y=origin[1], z=origin[2])
         if self.parameters.uncertainties:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
-          tder_expts, tder_refls = get_tder_expts_and_refls(scaling_phils)
-          spot_expts, spot_refls = get_spotfinding_expts_and_refls(tder_expts)
+          tder_expts, tder_refls = get_tder_refined_expts_and_refls(scaling_phils)
           s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
-            tder_expts, tder_refls, spot_expts, spot_refls,
-            uncertainties=self.parameters.uncertainties)
+            tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
           self.add(size=s)
           if self.parameters.uncertainties:
             self.add(delta_x=dx, delta_y=dy, delta_z=dz)
