@@ -259,13 +259,15 @@ class DetectorDriftArtist(object):
     self.axx = self.fig.add_subplot(gs[1, 0], sharex=self.axh)
     self.axy = self.fig.add_subplot(gs[2, 0], sharex=self.axh)
     self.axz = self.fig.add_subplot(gs[3, 0], sharex=self.axh)
-    self.axl = self.fig.add_subplot(gs[:, 1])
+    self.axw = self.fig.add_subplot(gs[0, 1], sharey=self.axh)
+    self.axl = self.fig.add_subplot(gs[1:, 1])
 
   def _setup_figure(self):
     self.axh.spines['top'].set_visible(False)
     self.axh.spines['right'].set_visible(False)
     self.axh.spines['bottom'].set_visible(False)
     self.axh.set_zorder(self.axx.get_zorder() - 1.0)
+    self.axw.axis('off')
     common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
     self.axx.tick_params(axis='x', labelbottom=False, **common)
     self.axy.tick_params(axis='x', labelbottom=False, **common)
@@ -280,10 +282,9 @@ class DetectorDriftArtist(object):
     self.axz.set_xlabel(self.order_by.title())
 
   @property
-  def _bar_widths(self):
+  def _refl_to_expt_ratios(self):
     expts, refls = self.registry.data['expts'], self.registry.data['refls']
-    ratios = [e / r for e, r in zip(expts, refls)]
-    return [ratio / max(ratios) for ratio in ratios]
+    return [e / r for e, r in zip(expts, refls)]
 
   @property
   def color_array(self):
@@ -316,18 +317,28 @@ class DetectorDriftArtist(object):
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
-  def _plot_bars(self, axes):
+  def _plot_bars(self):
     x = self.registry.data[self.order_by]
     y = self.registry.data['expts']
-    axes.bar(x, y, width=self._bar_widths, color=self.color_array, alpha=0.5)
+    ratios = self._refl_to_expt_ratios
+    self.axh.bar(x, y, width=[ratio / max(ratios) for ratio in ratios],
+                 color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
     self.axl.axis('off')
 
+  def _plot_width_info(self):
+    self.axw.bar([0], [max(self.registry.data['expts'])], width=[1],
+                 color='black', alpha=0.5)
+    s = '100% width:\n{:.2f} refl/expt'.format(max(self._refl_to_expt_ratios))
+    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes_fraction',
+                      ha='center', va='center')
+
   def plot(self):
-    self._plot_bars(self.axh)
+    self._plot_bars()
+    self._plot_width_info()
     self._plot_drift(self.axx, 'x', 'delta_x', top=True)
     self._plot_drift(self.axy, 'y', 'delta_y')
     self._plot_drift(self.axz, 'z', 'delta_z')
