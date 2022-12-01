@@ -188,8 +188,7 @@ class HKLViewFrame() :
         self.SendInfoToGUI( { "closing_time": True } )
       self.mprint("Done thread_process_arguments()", verbose=2)
     except HKLviewerError as e:
-      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
-      self.mprint("Closing due to above exception")
+      self.mprint("\nClosing due to:\n" + str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
       self.SendInfoToGUI( { "closing_time": True } )
     except Exception as e:
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
