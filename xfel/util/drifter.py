@@ -333,11 +333,11 @@ class DetectorDriftArtist(object):
     ex = [min(self.registry.data['expts']), max(self.registry.data['expts']),
           min(self._refl_to_expt_ratios), max(self._refl_to_expt_ratios),
           min(self.registry.data['refls']), max(self.registry.data['refls'])]
-    s = "bar heights: # of expts ({} to {})\n" \
-        "bar widths: # refl / expt ({:.2f} to {:.2f})\n" \
-        "bar areas: # of refls ({} to {})".format(*ex)
-    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes fraction',
-                      ha='center', ma='center', va='center')
+    s = "height: # expts ({} to {})\n" \
+        "width: refl/expt ({:.0f} to {:.0f})\n" \
+        "area: # refls ({} to {})".format(*ex)
+    self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
+                      ha='left', ma='left', va='center')
 
   def plot(self):
     self._plot_bars()
