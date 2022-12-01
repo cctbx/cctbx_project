@@ -53,9 +53,24 @@ def check_log_file(fname):
   match = re.findall(r"visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
   refls = []
   if match:
-    refls = eval(match[0])
+    refls = eval(match[-1]) # use the last match of reflections in the log file
   # check that only the following 108 reflections in reflections2match were visible
-  return set(refls) == reflections2match
+  setrefls = set(refls)
+  if setrefls != reflections2match:
+    print("Indices of visible reflections:\n%s" %str(setrefls))
+    print("Do not match the expected indices:\n%s" %str(reflections2match))
+  assert setrefls == reflections2match
+
+
+def Append2LogFile(fname, res):
+  # write terminal output to our log file
+  with open(fname, "a") as f:
+    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
+    for line in res.stdout_lines:
+      f.write(line + "\n")
+    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
+    for line in res.stderr_lines:
+      f.write(line + "\n")
 
 
 def exercise1():
@@ -86,24 +101,24 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=20",
+            "closing_time=30",
+            "debug=True"
           ]
 
   assert cmdlineframes.run(cmdargs)
-  assert check_log_file(outputfname)
-  print("OK")
+  check_log_file(outputfname)
 
 
 def exercise2():
+  assert os.path.isfile(datafname)
   # First delete any settings from previous HKLviewer runs that might be present on this platform
   print("Removing any previous Qsettings...")
-  assert ( easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings").return_code == 0 )
+  remove_settings_result = easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings")
 
   print("Starting the real HKLviewer test...")
 
   with open("HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
-  assert os.path.isfile(datafname)
 
   outputfname = "HKLviewer2_test.log"
   if os.path.isfile(outputfname):
@@ -115,20 +130,18 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=20", # close HKLviewer after 25 seconds
+             "closing_time=30", # close HKLviewer after 25 seconds
+             "debug=True"
             ]
 
-  result = easy_run.fully_buffered(" ".join(cmdargs))
-  # write terminal output to our log file
-  with open(outputfname, "a") as f:
-    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
-    for line in result.stdout_lines:
-      f.write(line + "\n")
-    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
-    for line in result.stderr_lines:
-      f.write(line + "\n")
-  #assert result.return_code == 0
-  assert check_log_file(outputfname)
+  HKLviewer_result = easy_run.fully_buffered(" ".join(cmdargs))
+  # append terminal output to log file
+  Append2LogFile(outputfname, remove_settings_result)
+  Append2LogFile(outputfname, HKLviewer_result)
+
+  assert HKLviewer_result.return_code == 0
+  assert remove_settings_result.return_code == 0
+  check_log_file(outputfname)
 
 
 
