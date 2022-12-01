@@ -267,6 +267,7 @@ class DetectorDriftArtist(object):
     self.axh.spines['right'].set_visible(False)
     self.axh.spines['bottom'].set_visible(False)
     self.axh.set_zorder(self.axx.get_zorder() - 1.0)
+    self.axl.axis('off')
     self.axw.axis('off')
     common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
     self.axx.tick_params(axis='x', labelbottom=False, **common)
@@ -327,17 +328,16 @@ class DetectorDriftArtist(object):
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
-    self.axl.axis('off')
 
   def _plot_width_info(self):
     ex = [min(self.registry.data['expts']), max(self.registry.data['expts']),
           min(self._refl_to_expt_ratios), max(self._refl_to_expt_ratios),
           min(self.registry.data['refls']), max(self.registry.data['refls'])]
     s = "height: # expts ({} to {})\n" \
-        "width: refl/expt ({:.0f} to {:.0f})\n" \
+        "width: refl per expt ({:.0f} to {:.0f})\n" \
         "area: # refls ({} to {})".format(*ex)
-    self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
-                      ha='left', ma='left', va='center')
+    self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes fraction',
+                      ha='center', ma='center', va='center')
 
   def plot(self):
     self._plot_bars()
