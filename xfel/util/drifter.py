@@ -284,7 +284,7 @@ class DetectorDriftArtist(object):
   @property
   def _refl_to_expt_ratios(self):
     expts, refls = self.registry.data['expts'], self.registry.data['refls']
-    return [e / r for e, r in zip(expts, refls)]
+    return [r / e for e, r in zip(expts, refls)]
 
   @property
   def color_array(self):
@@ -330,11 +330,14 @@ class DetectorDriftArtist(object):
     self.axl.axis('off')
 
   def _plot_width_info(self):
-    self.axw.bar([0], [max(self.registry.data['expts'])], width=[1],
-                 color='black', alpha=0.5)
-    s = '100% width:\n{:.2f} refl/expt'.format(max(self._refl_to_expt_ratios))
+    ex = [min(self.registry.data['expts']), max(self.registry.data['expts']),
+          min(self._refl_to_expt_ratios), max(self._refl_to_expt_ratios),
+          min(self.registry.data['refls']), max(self.registry.data['refls'])]
+    s = "bar heights: # of expts ({} to {})\n" \
+        "bar widths: # refl / expt ({:.2f} to {:.2f})\n" \
+        "bar areas: # of refls ({} to {})".format(*ex)
     self.axw.annotate(text=s, xy=(0.5, 0.5), xycoords='axes fraction',
-                      ha='center', va='center')
+                      ha='center', ma='center', va='center')
 
   def plot(self):
     self._plot_bars()
