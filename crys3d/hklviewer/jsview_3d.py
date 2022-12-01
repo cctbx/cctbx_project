@@ -621,7 +621,6 @@ class HKLview_3d:
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
       if self.isnewfile:
-        #time.sleep(25)
         self.SetDefaultOrientation()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
@@ -2545,6 +2544,7 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
+    time.sleep(2)
 
 
   def TestNewFunction(self):
@@ -2592,6 +2592,7 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetDefaultOrientation")
+    time.sleep(2)
 
 
   def Euler2RotMatrix(self, eulerangles):
