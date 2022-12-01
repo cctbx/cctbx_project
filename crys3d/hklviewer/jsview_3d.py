@@ -19,6 +19,13 @@ import webbrowser, tempfile
 from six.moves import range
 
 
+class HKLviewerError(Exception):
+  def __init__(self, value):
+    self.value = value
+  def __str__(self):
+    return(repr(self.value))
+
+
 def has_phil_path(philobj, *paths): # variable number of arguments
   for path in paths:
     if len([ e.path for e in philobj.all_definitions() if path in e.path.split(".") ]):
@@ -1474,8 +1481,8 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
-      if not self.browser_connect_sem.acquire(timeout= 2*lock_timeout):
-        raise Sorry("Timed out connecting to a web browser!")
+      if not self.browser_connect_sem.acquire(timeout= lock_timeout):
+        raise HKLviewerError("Timed out connecting to a web browser! ")
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
 
@@ -1551,8 +1558,8 @@ class HKLview_3d:
         elif "Refreshing" in message or "disconnecting" in message:
           self.mprint( message, verbose=1)
           time.sleep(self.sleeptime)
-        #elif "AutoViewSet" in message:
-        #  self.set_volatile_params()
+        elif "AutoViewSet" in message:
+          self.set_volatile_params()
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")

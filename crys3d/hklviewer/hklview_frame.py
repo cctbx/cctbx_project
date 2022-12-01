@@ -6,6 +6,7 @@ from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
 from crys3d.hklviewer import display2 as display
 from crys3d.hklviewer import jsview_3d
+from crys3d.hklviewer.jsview_3d import HKLviewerError as HKLviewerError
 from cctbx import miller
 from cctbx import crystal
 from libtbx.math_utils import roundoff
@@ -186,10 +187,12 @@ class HKLViewFrame() :
         time.sleep(self.closingtime)
         self.SendInfoToGUI( { "closing_time": True } )
       self.mprint("Done thread_process_arguments()", verbose=2)
-    except Exception as e:
+    except HKLviewerError as e:
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
       self.mprint("Closing due to above exception")
       self.SendInfoToGUI( { "closing_time": True } )
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -475,7 +478,7 @@ class HKLViewFrame() :
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       if not self.viewer.webgl_OK:
-        raise RuntimeError("Critical WebGL problem!\n")
+        raise HKLviewerError("Critical WebGL problem! ")
       oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
       currentSelectInfoscope = None
@@ -648,7 +651,8 @@ class HKLViewFrame() :
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, verbose=1)
       self.mprint( "Ready")
-    except RuntimeError as e: # raised in DrawNGLJavaScript() if WebGL error flag was set
+    except HKLviewerError as e:
+      # raised in DrawNGLJavaScript() if WebGL error flag was set or failing to connect to webbrowser
       raise e
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc())
