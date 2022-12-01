@@ -9,7 +9,6 @@ from libtbx.utils import Sorry
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
-from matplotlib.ticker import StrMethodFormatter
 
 
 message = ''' This script aims to investigate the spatial drift of a detector
@@ -130,13 +129,14 @@ def load_reflections(*refl_paths):
   return flex.reflection_table.concat(refls_list)
 
 
-def get_size_and_uncertainties_from_expts_and_refls(
+def get_extra_info_dict_from_refinement_expts_and_refls(
         tder_expt_paths, tder_refl_paths, uncertainties=True):
   """Retrieve total number of spot-finding reflections as well as uncertainties
   of origin positions from refined TDER reflection position deviations"""
   tder_expts = load_experiments(*tder_expt_paths)
   tder_refls = load_reflections(*tder_refl_paths)
-  deltas = flex.vec3_double()
+  return_dict = {'expts': len(tder_expts), 'refls': len(tder_refls)}
+  deltas_flex = flex.vec3_double()
   if uncertainties:
     for panel in tder_expts[0].detector:               # pr:  panel reflections
       pr = tder_refls.select(tder_refls['panel'] == panel.index())
@@ -144,10 +144,10 @@ def get_size_and_uncertainties_from_expts_and_refls(
       pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
       pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
       pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-      deltas.extend(pr_obs_lab - pr_cal_lab)
-  d = [flex.mean(flex.abs(deltas.parts()[i])) for i in range(3)] \
-    if uncertainties else [None, None, None]
-  return len(tder_refls), d[0], d[1], d[2]
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return_dict.update({'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]})
+  return return_dict
 
 
 def path_join(*path_elements):
@@ -164,7 +164,7 @@ def path_split(path):
 class DetectorDriftRegistry(object):
   """Object responsible for storing information about all detector positions"""
   REQUIRED_KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z']
-  EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z', 'size']
+  EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z', 'expts', 'refls']
 
   def __init__(self, parameters):
     self.data = {k: [] for k in self.REQUIRED_KEYS + self.EXTRA_KEYS}
@@ -234,11 +234,9 @@ class DetectorDriftRegistry(object):
         if self.parameters.uncertainties:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
           tder_expts, tder_refls = get_tder_refined_expts_and_refls(scaling_phils)
-          s, dx, dy, dz = get_size_and_uncertainties_from_expts_and_refls(
+          extra_info_dict = get_extra_info_dict_from_refinement_expts_and_refls(
             tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
-          self.add(size=s)
-          if self.parameters.uncertainties:
-            self.add(delta_x=dx, delta_y=dy, delta_z=dz)
+          self.add(**extra_info_dict)
 
 
 class DetectorDriftArtist(object):
@@ -275,12 +273,17 @@ class DetectorDriftArtist(object):
     self.axx.ticklabel_format(useOffset=False)
     self.axy.ticklabel_format(useOffset=False)
     self.axz.ticklabel_format(useOffset=False)
-    self.axh.set_ylabel('# refls')
+    self.axh.set_ylabel('# expts')
     self.axx.set_ylabel('Detector X')
     self.axy.set_ylabel('Detector Y')
     self.axz.set_ylabel('Detector Z')
     self.axz.set_xlabel(self.order_by.title())
-    self.axh.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}k'))
+
+  @property
+  def _bar_widths(self):
+    expts, refls = self.registry.data['expts'], self.registry.data['refls']
+    ratios = [e / r for e, r in zip(expts, refls)]
+    return [ratio / max(ratios) for ratio in ratios]
 
   @property
   def color_array(self):
@@ -290,12 +293,6 @@ class DetectorDriftArtist(object):
     for i, cat in enumerate(color_by[1:], 1):
       color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
     return [self.colormap(i % self.colormap_period) for i in color_i]
-
-  @property
-  def top_tick_labels(self):
-    """Registry-length list of additional labels placed atop the figure"""
-    size_k = [int(round(s / 1000)) for s in self.registry.data['size']]
-    return ['{:,}k'.format(s) for s in size_k]
 
   def _get_handles_and_labels(self):
     unique_keys = []
@@ -315,14 +312,14 @@ class DetectorDriftArtist(object):
       ax_t = axes.secondary_xaxis('top')
       ax_t.tick_params(rotation=90)
       ax_t.set_xticks(axes.get_xticks())
-      ax_t.set_xticklabels(self.top_tick_labels)
+      ax_t.set_xticklabels(self.registry.data['expts'])
     if self.parameters.uncertainties:
       axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
 
-  def _plot_histogram(self, axes):
+  def _plot_bars(self, axes):
     x = self.registry.data[self.order_by]
-    y = [s / 1000 for s in self.registry.data['size']]
-    axes.bar(x, y, color=self.color_array, alpha=0.5)
+    y = self.registry.data['expts']
+    axes.bar(x, y, width=self._bar_widths, color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
@@ -330,7 +327,7 @@ class DetectorDriftArtist(object):
     self.axl.axis('off')
 
   def plot(self):
-    self._plot_histogram(self.axh)
+    self._plot_bars(self.axh)
     self._plot_drift(self.axx, 'x', 'delta_x', top=True)
     self._plot_drift(self.axy, 'y', 'delta_y')
     self._plot_drift(self.axz, 'z', 'delta_z')
