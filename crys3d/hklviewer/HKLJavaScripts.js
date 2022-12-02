@@ -569,8 +569,9 @@ async function SendComponentRotationMatrixMsg() {
   }
 };
 
-async function SendOrientationMsg() {
-  await sleep(100);
+//async 
+function SendOrientationMsg() {
+  //await sleep(100);
   try {
     let msg = getOrientMsg();
     WebsockSendMsg('CurrentViewOrientation:\n' + msg);
@@ -763,8 +764,10 @@ function onMessage(e)
       stage.viewerControls.orient(m);
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype.includes("Expand") && shapeComp != null)
@@ -1026,8 +1029,10 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "RotateComponents" && shapeComp != null)
@@ -1093,8 +1098,10 @@ function onMessage(e)
       for (let j=0; j<3; j++)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "DrawSphere") {
@@ -2100,8 +2107,10 @@ function MakeButtons() {
     type: "button",
     onclick: function () {
       SetDefaultOrientation();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     },
   }, { bottom: "10px", left: "10px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
   addElement(ResetViewBtn);
