@@ -177,10 +177,10 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            time.sleep(1)
-            self.update_from_philstr("viewer.angle_around_YHKL_vector = -1.0")
-            time.sleep(1)
-            self.update_from_philstr("viewer.angle_around_YHKL_vector = 1.0")
+            #time.sleep(1)
+            #self.update_from_philstr("viewer.angle_around_YHKL_vector = -1.0")
+            #time.sleep(1)
+            #self.update_from_philstr("viewer.angle_around_YHKL_vector = 1.0")
             self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
