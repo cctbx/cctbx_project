@@ -200,7 +200,7 @@ class DriftTable(object):
     return '\n'.join(lines)
 
   def add(self, **kwargs):
-    self.data.append(**kwargs)
+    self.data.append(kwargs)
 
   def get(self, key, default=None):
     return self[key] if key in self.active_keys else default
