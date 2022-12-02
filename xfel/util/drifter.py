@@ -331,7 +331,7 @@ class DriftArtist(object):
 
   def _plot_bars(self):
     y = self.table['expts']
-    w = [d / max(d) for d in self.table.density]
+    w = [d / max(self.table.density) for d in self.table.density]
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
