@@ -145,13 +145,11 @@ def get_extra_info_dict_from_tdata(tdata_path):
   """Retrieve average a, b, c and their deltas from tdata path"""
   af, bf, cf = flex.double(), flex.double(), flex.double()
   with open(tdata_path, 'r') as tdata:
-    for line in tdata.readlines():
+    for line in tdata.read().splitlines():
       a, b, c = line.strip().split(' ')[:3]
       af.append(float(a))
       bf.append(float(b))
       cf.append(float(c))
-  print(list(af))
-  print(af.standard_deviation_of_the_sample())
   return {'a': flex.mean(af), 'delta_a': af.standard_deviation_of_the_sample(),
           'b': flex.mean(bf), 'delta_b': bf.standard_deviation_of_the_sample(),
           'c': flex.mean(cf), 'delta_c': cf.standard_deviation_of_the_sample()}
@@ -177,7 +175,7 @@ def write_tdata(expt_paths, tdata_path):
     sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
     tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
   with open(tdata_path, 'w') as tdata_file:
-    tdata_file.writelines(tdata_lines)
+    tdata_file.write('\n'.join(tdata_lines))
 
 
 class DriftTable(object):
