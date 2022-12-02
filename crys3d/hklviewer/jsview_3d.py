@@ -91,24 +91,20 @@ def get_browser_ctrl(using=None):
       browser = "C:/Program Files/Mozilla Firefox/firefox.exe"
       if not os.path.isfile(browser):
         browser = "C:/Program Files (x86)/Mozilla Firefox/firefox.exe"
-      assert os.path.isfile(browser)
     if sys.platform.startswith("darwin"):
       browser = "/Applications/Firefox.app/Contents/MacOS/firefox"
-      assert os.path.isfile(browser)
     if sys.platform == "linux":
       browser = "/usr/bin/firefox"
-      assert os.path.isfile(browser)
 
   if using=="chrome":
     if sys.platform == "win32":
       browser = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
       if not os.path.isfile(browser):
         browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
-      assert os.path.isfile(browser)
 
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
   webctrl = webbrowser.get(using)
-  #os.system('"' + browser + '" &')
+  assert os.path.isfile(browser)
   return browser, webctrl
 
 
@@ -506,6 +502,8 @@ class HKLview_3d:
       hkldist = -1
       clipwidth = None
       self.fix_orientation()
+      self.ExpandInBrowser()
+
       uc = self.miller_array.unit_cell()
       if self.params.clip_plane.clip_width: # then we are clipping
         self.UseCameraZoom()
@@ -597,7 +595,7 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      self.ExpandInBrowser()
+      #self.ExpandInBrowser()
 
       retstr = ""
       if self.miller_array and self.params.binning.bin_opacity:
@@ -1497,7 +1495,7 @@ class HKLview_3d:
       self.mprint(".", end="")
       self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
-      #self.GetClipPlaneDistances()
+      self.GetClipPlaneDistances()
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
