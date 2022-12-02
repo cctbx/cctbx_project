@@ -76,3 +76,7 @@ dependencies:
  # Avoid numpy 1.21.[01234]
  # See https://github.com/cctbx/cctbx_project/issues/627
  - numpy=1.20|>=1.21.5
+
+ # Temporarily pin boost due to it now requiring C++14
+ - boost<=1.74
+ - boost-cpp<=1.74
