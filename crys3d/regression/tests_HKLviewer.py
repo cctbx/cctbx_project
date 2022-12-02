@@ -53,7 +53,7 @@ def check_log_file(fname):
   match = re.findall(r"visible \s+ hkls\: \s* (\[ .+ \])", mstr, re.VERBOSE)
   refls = []
   if match:
-    refls = eval(match[0])
+    refls = eval(match[-1]) # use the last match of reflections in the log file
   # check that only the following 108 reflections in reflections2match were visible
   return set(refls) == reflections2match
 

@@ -502,8 +502,6 @@ class HKLview_3d:
       hkldist = -1
       clipwidth = None
       self.fix_orientation()
-      self.ExpandInBrowser()
-
       uc = self.miller_array.unit_cell()
       if self.params.clip_plane.clip_width: # then we are clipping
         self.UseCameraZoom()
@@ -595,7 +593,7 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      #self.ExpandInBrowser()
+      self.ExpandInBrowser()
 
       retstr = ""
       if self.miller_array and self.params.binning.bin_opacity:
@@ -1801,6 +1799,10 @@ Distance: %s
     self.mprint("on_browser_connection released browser_connect_sem", verbose="threadingmsg")
     self.WBmessenger.browserisopen = True
     self.mprint("Successfully connected to browser", verbose=1)
+
+
+  def GetReflectionsInFrustum(self):
+    self.AddToBrowserMsgQueue("GetReflectionsInFrustum")
 
 
   def RedrawNGL(self):
