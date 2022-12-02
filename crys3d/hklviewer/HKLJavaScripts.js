@@ -453,7 +453,7 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 1000);
+  SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -627,8 +627,6 @@ function onMessage(e)
       let showdata = e.data;
       if (showdata.length > 400)
         showdata = e.data.slice(0, 200) + '\n...\n' + e.data.slice(e.data.length - 200, -1);
-      if (isdebug)
-        WebsockSendMsg('Browser: Got ' + showdata); // tell server what it sent us
 
       datval = e.data.split(":\n");
       msgtype = datval[0];
@@ -651,6 +649,8 @@ function onMessage(e)
       // previous message which is the message type so it can be processed
       msgtype = binmsgtype;
     }
+    if (isdebug)
+      WebsockSendMsg('Browser.JavaScript Got: ' + msgtype); // tell server what it sent us
 
     if (msgtype === "Reload")
     {
@@ -1009,8 +1009,10 @@ function onMessage(e)
       if (val[9] == "verbose")
         postrotmxflag = true;
       ReturnClipPlaneDistances();
-      RenderRequest();
-      SendOrientationMsg();
+      RenderRequest().then(()=> {
+          SendOrientationMsg();
+        }
+      );
     }
 
     if (msgtype === "RotateAxisStage")
@@ -1056,8 +1058,10 @@ function onMessage(e)
       shapeComp.setTransform(m4);
       if (val[9] == "verbose")
         postrotmxflag = true;
-      RenderRequest();
-      SendComponentRotationMatrixMsg();
+      RenderRequest().then(()=> {
+          SendComponentRotationMatrixMsg();
+        }
+      );      
     }
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null)
@@ -1073,8 +1077,10 @@ function onMessage(e)
 
       if (val[4] == "verbose")
         postrotmxflag = true;
-      RenderRequest();
-      SendComponentRotationMatrixMsg();
+      RenderRequest().then(()=> {
+          SendComponentRotationMatrixMsg();
+        }
+      );      
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
@@ -1398,7 +1404,7 @@ function onMessage(e)
 
     if (msgtype === "SetAutoView")
     {
-      SetAutoview(shapeComp, 1000);
+      SetAutoview(shapeComp, 500);
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
@@ -1493,11 +1499,6 @@ function onMessage(e)
       // test something new
       /*
       */
-    }
-    if (isdebug)
-    {
-      WebsockSendMsg('Received message: ' + msgtype);
-      debugmessage.innerText = dbgmsg;
     }
   }
 

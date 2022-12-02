@@ -57,8 +57,8 @@ def check_log_file(fname):
   # check that only the following 108 reflections in reflections2match were visible
   setrefls = set(refls)
   if setrefls != reflections2match:
-    print("refls = \n%s" %str(setrefls))
-    print("expected:\n%s" %str(reflections2match))
+    print("Indices of visible reflection:\n%s" %str(setrefls))
+    print("Do not match the expected ones:\n%s" %str(reflections2match))
   assert setrefls == reflections2match
 
 

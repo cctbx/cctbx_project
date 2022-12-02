@@ -2833,7 +2833,6 @@ def run(isembedded=False, chimeraxsession=None):
     argstr = " ".join(sys.argv[1:])
     if "devmode" in argstr or "debug" in argstr:
       os.environ["PYTHONASYNCIODEBUG"] = "1" # print debug output from asyncio used in webbrowser_messenger_py3
-      print("oink")
     if "devmode" in argstr or "debug" in argstr and not "UseOSBrowser" in argstr:
       # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
       if "debug" in argstr:
