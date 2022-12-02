@@ -173,7 +173,7 @@ def write_tdata(expt_paths, tdata_path):
   for expt in load_experiments(*expt_paths):
     uc_params = expt.crystal.get_unit_cell().parameters()
     sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
-    tdata_lines = tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
+    tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
   with open(tdata_path, 'w') as tdata_file:
     tdata_file.writelines(tdata_lines)
 
