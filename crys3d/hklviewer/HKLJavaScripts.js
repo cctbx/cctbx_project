@@ -553,7 +553,7 @@ async function SetAutoview(mycomponent, t)
       WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
       return;
     }
-    await sleep(200);
+    await sleep(2000);
   }
 };
 
