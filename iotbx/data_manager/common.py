@@ -19,6 +19,31 @@ class fmodel_mixins(object):
   and "miller_array" data types.
   '''
 
+  def update_all_defaults(self, data_type):
+    '''
+    Convenience function for setting the data_type of all models and
+    Miller arrays. This sets the default as well as the type for all
+    currently loaded files.
+
+    Parameters
+    ----------
+    data_type : str
+        The type to set (e.g. 'x_ray', 'neutron', or 'electron')
+    '''
+    # model
+    model_type = [data_type]
+    self._is_valid_model_type(model_type)
+    self.set_default_model_type(model_type)
+    for filename in self.get_model_names():
+      self.set_model_type(filename, model_type)
+
+    # miller_array
+    array_type = data_type
+    self.set_default_miller_array_type(array_type)
+    for filename in self.get_miller_array_names():
+      for label in self.get_miller_array_labels(filename):
+        self.set_miller_array_type(filename, label, array_type)
+
   def get_fmodel_params(self):
     '''
     Return the fmodel parameters as a libtbx.phil.extract object

@@ -863,6 +863,35 @@ def test_fmodel_params():
   params = dm.get_fmodel_params()
   assert params.xray_data.french_wilson.max_bins == 1
 
+  # test updated defaults
+  dm = DataManager(['model', 'miller_array'])
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_pdb = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_pdb2 = os.path.join(data_dir, 'data', '2ERL.pdb')
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+  data_mtz2 = os.path.join(data_dir, 'data',
+                           'phaser_1.mtz')
+  dm.process_model_file(data_pdb)
+  dm.process_miller_array_file(data_mtz)
+
+  assert dm.get_default_model_type() == ['x_ray']
+  for filename in dm.get_model_names():
+    assert dm.get_model_type(filename) == ['x_ray']
+  assert dm.get_default_miller_array_type() == 'x_ray'
+  for filename in dm.get_miller_array_names():
+    for label in dm.get_miller_array_labels(filename):
+      assert dm.get_miller_array_type(filename, label) == 'x_ray'
+
+  dm.update_all_defaults('electron')
+  assert dm.get_default_model_type() == ['electron']
+  for filename in dm.get_model_names():
+    assert dm.get_model_type(filename) == ['electron']
+  assert dm.get_default_miller_array_type() == 'electron'
+  for filename in dm.get_miller_array_names():
+    for label in dm.get_miller_array_labels(filename):
+      assert dm.get_miller_array_type(filename, label) == 'electron'
+
 # -----------------------------------------------------------------------------
 def test_user_selected_labels():
   dm = DataManager(['miller_array', 'phil'])
