@@ -163,7 +163,7 @@ class HKLview_3d:
     self.normal_vecnr = -1
     self.isnewfile = False
     self.has_new_miller_array = False
-    self.sleeptime = 0.01 # 0.025
+    self.sleeptime = 0.002 # 0.025 # used in sleep() for ProcessBrowserMessage and elsewhere in WBmessenger
     self.binvals = []
     self.binvalsboundaries = []
     self.oldnbinvalsboundaries = None
@@ -1535,11 +1535,9 @@ class HKLview_3d:
           self.release_all_semaphores()
         elif "Orientation" in message:
           self.ProcessOrientationMessage(message)
-        elif 'Received message:' in message:
-          self.mprint( message, verbose=3)
         elif 'WebGL' in message:
           self.mprint( message, verbose=1)
-        elif 'Browser: Got' in message:
+        elif 'Browser.JavaScript Got:' in message:
           self.mprint( message, verbose=3)
         elif "websocket" in message:
           self.mprint( message, verbose=1)
@@ -1702,7 +1700,7 @@ Distance: %s
   def ProcessOrientationMessage(self, message):
     if self.params.viewer.scene_id is None or self.miller_array is None:
       return
-    if message.find("NaN")>=0 or message.find("undefined")>=0:
+    if message.find("NaN")>=0 or message.find("undefined")>=0 or message.find("Browser.JavaScript Got:")>=0:
       return
     if "OrientationBeforeReload:" in message:
       if not self.isnewfile:
