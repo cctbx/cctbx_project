@@ -1242,6 +1242,11 @@ function onMessage(e)
       MakeXYZ_Axis();
     }
 
+    if (msgtype === "GetReflectionsInFrustum")
+    {
+      GetReflectionsInFrustum();
+    }
+
     if (msgtype === "SetMouseSpeed")
     {
       stage.trackballControls.rotateSpeed = parseFloat(val[0]);
