@@ -1,3 +1,11 @@
+
+2022.11
+=======
+
+* Improved occupancy handling of multiple conformations so that the sum does
+  not exceed 1
+* Improvements to reduce2 and probe2 tools for MolProbity
+
 2022.10
 =======
 
