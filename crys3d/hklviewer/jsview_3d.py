@@ -163,7 +163,7 @@ class HKLview_3d:
     self.normal_vecnr = -1
     self.isnewfile = False
     self.has_new_miller_array = False
-    self.sleeptime = 0.002 # 0.025 # used in sleep() for ProcessBrowserMessage and elsewhere in WBmessenger
+    self.sleeptime = 0.01 # 0.025 # used in sleep() for ProcessBrowserMessage and elsewhere in WBmessenger
     self.binvals = []
     self.binvalsboundaries = []
     self.oldnbinvalsboundaries = None

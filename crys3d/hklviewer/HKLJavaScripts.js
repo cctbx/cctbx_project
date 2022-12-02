@@ -527,7 +527,6 @@ async function RenderRequest(note = "")
   stage.viewer.requestRender();
   if (note != "") {
     await sleep(100);
-    GetReflectionsInFrustum();
     WebsockSendMsg(note + '_AfterRendering');
   }
   if (isdebug)
@@ -744,8 +743,12 @@ function onMessage(e)
 
     if (msgtype === "Redraw")
     {
-      RenderRequest();
-      WebsockSendMsg( 'Redrawing ' + pagename );
+      RenderRequest("notify_cctbx").then(()=> {
+          SendOrientationMsg();
+          GetReflectionsInFrustum();
+          WebsockSendMsg( 'Redrawn ' + pagename );
+        }
+      );
     }
 
     if (msgtype === "ReOrient")
@@ -1308,7 +1311,11 @@ function onMessage(e)
       if (Number.isNaN(zoom) == false)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
-      RenderRequest("getfrustum");
+      RenderRequest("getfrustum").then(()=> {
+          SendOrientationMsg();
+          GetReflectionsInFrustum();
+        }
+      );
     }
 
     if (msgtype === "GetClipPlaneDistances")
@@ -1391,8 +1398,12 @@ function onMessage(e)
         MakeHKL_Axis();
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer');
-        RenderRequest("notify_cctbx");
-        WebsockSendMsg('RenderStageObjects');
+        RenderRequest("notify_cctbx").then(()=> {
+            SendOrientationMsg();
+            GetReflectionsInFrustum();
+            WebsockSendMsg('RenderStageObjects');
+          }
+        );
       }
     }
 
