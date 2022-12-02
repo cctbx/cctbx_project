@@ -1,7 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import glob
-import sys
 import os
+import sys
+import tempfile
 from dials.array_family import flex
 from dxtbx.model.experiment_list import ExperimentList
 from libtbx.phil import parse
@@ -140,6 +141,20 @@ def get_extra_info_dict_from_refinement_expts_and_refls(
   return return_dict
 
 
+def get_extra_info_dict_from_tdata(tdata_path):
+  """Retrieve average a, b, c and their deltas from tdata path"""
+  af, bf, cf = flex.double(), flex.double(), flex.double()
+  with open(tdata_path, 'r') as tdata:
+    for line in tdata.readlines():
+      a, b, c = line.strip().split(' ')[:3]
+      af.append(float(a))
+      bf.append(float(b))
+      cf.append(float(c))
+  return {'a': flex.mean(af), 'a_delta': af.standard_deviation_of_the_sample(),
+          'b': flex.mean(bf), 'b_delta': bf.standard_deviation_of_the_sample(),
+          'c': flex.mean(cf), 'c_delta': cf.standard_deviation_of_the_sample()}
+
+
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
   path_elements = [os.pardir if p == '..' else p for p in path_elements]
@@ -151,10 +166,23 @@ def path_split(path):
   return os.path.normpath(path).split(os.sep)
 
 
+def write_tdata(expt_paths, tdata_path):
+  """Read all expt_paths and write a tdata file with unit cells in lines"""
+  s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
+  tdata_lines = []
+  for expt in load_experiments(expt_paths):
+    uc_params = expt.crystal.get_unit_cell().parameters()
+    sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
+    tdata_lines = tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
+  with open(tdata_path, 'w') as tdata_file:
+    tdata_file.writelines(tdata_lines)
+
+
 class DriftTable(object):
   """Class responsible for storing info about all DriftDataclass instances"""
   KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z',
-          'delta_x', 'delta_y', 'delta_z', 'expts', 'refls', 'a', 'b', 'c']
+          'delta_x', 'delta_y', 'delta_z', 'expts', 'refls',
+          'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
 
   def __init__(self, parameters):
     self.data = []
@@ -213,6 +241,9 @@ class DriftTable(object):
           tder_expts, tder_refls = get_tder_refined_expts_and_refls(scaling_phils)
           extra_dict = get_extra_info_dict_from_refinement_expts_and_refls(
             tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
+          with tempfile.NamedTemporaryFile() as tdata_file:
+            write_tdata(scaling_expts, tdata_file.name)
+            extra_dict.update(get_extra_info_dict_from_tdata(tdata_file.name))
         self.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
                  task=task, x=origin[0], y=origin[1], z=origin[2], **extra_dict)
 
