@@ -151,54 +151,42 @@ def path_split(path):
   return os.path.normpath(path).split(os.sep)
 
 
-class DetectorDriftRegistry(object):
-  """Object responsible for storing information about all detector positions"""
-  REQUIRED_KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z']
-  EXTRA_KEYS = ['delta_x', 'delta_y', 'delta_z', 'expts', 'refls']
+class DriftTable(object):
+  """Class responsible for storing info about all DriftDataclass instances"""
+  KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z',
+          'delta_x', 'delta_y', 'delta_z', 'expts', 'refls', 'a', 'b', 'c']
 
   def __init__(self, parameters):
-    self.data = {k: [] for k in self.REQUIRED_KEYS + self.EXTRA_KEYS}
+    self.data = []
     self.parameters = parameters
 
-  def __len__(self):
-    self.assert_all_active_keys_have_same_length()
-    return len(self.data[self.REQUIRED_KEYS[0]])
+  def __getitem__(self, key):
+    return [d.get(key) for d in self.data]
 
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
-    for row in self.rows:
-      cells = ['{:.20f}'.format(c) if isinstance(c, float) else c for c in row]
+    for d in self.data:
+      cells = ['{:.20f}'.format(d[k]) if isinstance(d[k], float) else d[k]
+               for k in self.active_keys]
       lines.append(' '.join('{!s:9.9}'.format(cell) for cell in cells))
     return '\n'.join(lines)
 
   def add(self, **kwargs):
-    for k, v in kwargs.items():
-      if k not in self.data.keys():
-        raise KeyError('Attempt to add unknown key to DriftRegistry: ' + k)
-      self.data[k].append(v)
+    self.data.append(**kwargs)
 
-  def sort(self, by_key=REQUIRED_KEYS[0]):
-    self.assert_all_active_keys_have_same_length()
-    reference = self.data[by_key]
-    for key in self.active_keys:
-      sortee = self.data[key]
-      self.data[key] = [x for _, x in sorted(zip(reference, sortee),
-                                             key=lambda pair: pair[0])]
+  def get(self, key, default=None):
+    return self[key] if key in self.active_keys else default
 
-  def assert_all_active_keys_have_same_length(self):
-    if len({len(self.data[k]) for k in self.active_keys}) > 1:
-      raise IndexError('Registry items have different lengths: ' +
-                       str({k, len(self.data[k])} for k in self.active_keys))
+  def sort(self, by_key=KEYS[0]):
+    self.data = sorted(self.data, key=lambda d: d[by_key])
 
   @property
   def active_keys(self):
-    return self.REQUIRED_KEYS + [k for k in self.EXTRA_KEYS if self.data[k]]
+    return [key for key in self.KEYS if not all(v is None for v in self[key])]
 
   @property
-  def rows(self):
-    self.assert_all_active_keys_have_same_length()
-    columns = [self.data[k] for k in self.active_keys]
-    return zip(*[column for column in columns])
+  def density(self):
+    return [d['refls'] / d['expts'] if d['expts'] else 0.0 for d in self.data]
 
   def populate_from_merging_job(self, tag_pattern='*/'):
     tag_list = glob.glob(tag_pattern)
@@ -219,24 +207,24 @@ class DetectorDriftRegistry(object):
         run_name = path_split(trial_dir)[-2]
         print('Processing run {} in tag {}'.format(run_name, tag))
         origin = get_origin_from_expt(first_scaling_expt_path)
-        self.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
-                 task=task, x=origin[0], y=origin[1], z=origin[2])
+        extra_dict = {}
         if self.parameters.uncertainties:
           scaling_phils = glob.glob(path_join(task_dir, 'params_1.phil'))
           tder_expts, tder_refls = get_tder_refined_expts_and_refls(scaling_phils)
-          extra_info_dict = get_extra_info_dict_from_refinement_expts_and_refls(
+          extra_dict = get_extra_info_dict_from_refinement_expts_and_refls(
             tder_expts, tder_refls, uncertainties=self.parameters.uncertainties)
-          self.add(**extra_info_dict)
+        self.add(tag=tag, run=run_name, rungroup=rungroup, trial=trial,
+                 task=task, x=origin[0], y=origin[1], z=origin[2], **extra_dict)
 
 
-class DetectorDriftArtist(object):
-  """Object responsible for plotting an instance of `DriftRegistry`."""
-  def __init__(self, registry, parameters):
+class DriftArtist(object):
+  """Object responsible for plotting an instance of `DriftTable`."""
+  def __init__(self, table, parameters):
     self.colormap = plt.get_cmap("tab10")
     self.colormap_period = 10
     self.color_by = 'tag'
     self.order_by = 'run'
-    self.registry = registry
+    self.table = table
     self.parameters = parameters
     self._init_figure()
     self._setup_figure()
@@ -274,21 +262,24 @@ class DetectorDriftArtist(object):
 
   @property
   def _refl_to_expt_ratios(self):
-    expts, refls = self.registry.data['expts'], self.registry.data['refls']
-    return [r / e for e, r in zip(expts, refls)]
+    return [r / e for e, r in zip(self.table['expts'], self.table['refls'])]
 
   @property
   def color_array(self):
     """Registry-length color list with colors corresponding to self.color_by"""
-    color_i = [0, ] * len(self.registry)
-    color_by = self.registry.data[self.color_by]
+    color_i = [0, ] * len(self.table.data)
+    color_by = self.table[self.color_by]
     for i, cat in enumerate(color_by[1:], 1):
       color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
     return [self.colormap(i % self.colormap_period) for i in color_i]
 
+  @property
+  def x(self):
+    return self.table[self.order_by]
+
   def _get_handles_and_labels(self):
     unique_keys = []
-    for key in self.registry.data[self.color_by]:
+    for key in self.table[self.color_by]:
       if key not in unique_keys:
         unique_keys.append(key)
     handles = [Line2D([], [], c=self.colormap(i % 10), ls='', ms=12, marker='.')
@@ -296,36 +287,33 @@ class DetectorDriftArtist(object):
     return handles, unique_keys
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
-    x = self.registry.data[self.order_by]
-    y = self.registry.data[values_key]
-    y_err = self.registry.data.get(deltas_key, [])
-    axes.scatter(x, y, c=self.color_array)
+    y = self.table[values_key]
+    y_err = self.table.get(deltas_key, [])
+    axes.scatter(self.x, y, c=self.color_array)
     if top:
       ax_t = axes.secondary_xaxis('top')
       ax_t.tick_params(rotation=90)
       ax_t.set_xticks(axes.get_xticks())
-      ax_t.set_xticklabels(self.registry.data['expts'])
+      ax_t.set_xticklabels(self.table['expts'])
     if self.parameters.uncertainties:
-      axes.errorbar(x, y, yerr=y_err, ecolor='black', ls='')
+      axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_bars(self):
-    x = self.registry.data[self.order_by]
-    y = self.registry.data['expts']
-    ratios = self._refl_to_expt_ratios
-    self.axh.bar(x, y, width=[ratio / max(ratios) for ratio in ratios],
-                 color=self.color_array, alpha=0.5)
+    y = self.table['expts']
+    w = [d / max(d) for d in self.table.density]
+    self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
 
   def _plot_width_info(self):
-    ex = [min(self.registry.data['expts']), max(self.registry.data['expts']),
-          min(self._refl_to_expt_ratios), max(self._refl_to_expt_ratios),
-          min(self.registry.data['refls']), max(self.registry.data['refls'])]
+    extrema = [min(self.table['expts']), max(self.table['expts']),
+               min(self.table.density), max(self.table.density),
+               min(self.table['refls']), max(self.table['refls'])]
     s = "height: # expts ({} to {})\n" \
         "width: refl per expt ({:.0f} to {:.0f})\n" \
-        "area: # refls ({} to {})".format(*ex)
+        "area: # refls ({} to {})".format(*extrema)
     self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
                       ha='left', ma='left', va='center')
 
@@ -340,12 +328,12 @@ class DetectorDriftArtist(object):
 
 
 def run(params_):
-  ddr = DetectorDriftRegistry(parameters=params_)
-  ddr.populate_from_merging_job(tag_pattern=params_.input_glob)
-  ddr.sort(by_key='run')
-  print(ddr)
-  dda = DetectorDriftArtist(registry=ddr, parameters=params_)
-  dda.plot()
+  dt = DriftTable(parameters=params_)
+  dt.populate_from_merging_job(tag_pattern=params_.input_glob)
+  dt.sort(by_key='run')
+  print(dt)
+  da = DriftArtist(table=dt, parameters=params_)
+  da.plot()
   plt.show()
 
 
