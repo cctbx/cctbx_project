@@ -170,7 +170,7 @@ def write_tdata(expt_paths, tdata_path):
   """Read all expt_paths and write a tdata file with unit cells in lines"""
   s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
   tdata_lines = []
-  for expt in load_experiments(expt_paths):
+  for expt in load_experiments(*expt_paths):
     uc_params = expt.crystal.get_unit_cell().parameters()
     sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
     tdata_lines = tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
