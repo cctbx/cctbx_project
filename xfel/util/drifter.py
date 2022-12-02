@@ -262,12 +262,15 @@ class DriftArtist(object):
 
   def _init_figure(self):
     self.fig = plt.figure(tight_layout=True)
-    gs = GridSpec(4, 2, hspace=0, wspace=0, height_ratios=[1, 2, 2, 2],
-                  width_ratios=[4, 1])
+    gs = GridSpec(7, 2, hspace=0, wspace=0, width_ratios=[4, 1],
+                  height_ratios=[2, 3, 3, 3, 3, 3, 3])
     self.axh = self.fig.add_subplot(gs[0, 0])
     self.axx = self.fig.add_subplot(gs[1, 0], sharex=self.axh)
     self.axy = self.fig.add_subplot(gs[2, 0], sharex=self.axh)
     self.axz = self.fig.add_subplot(gs[3, 0], sharex=self.axh)
+    self.axa = self.fig.add_subplot(gs[4, 0], sharex=self.axh)
+    self.axb = self.fig.add_subplot(gs[5, 0], sharex=self.axh)
+    self.axc = self.fig.add_subplot(gs[6, 0], sharex=self.axh)
     self.axw = self.fig.add_subplot(gs[0, 1], sharey=self.axh)
     self.axl = self.fig.add_subplot(gs[1:, 1])
 
@@ -279,17 +282,14 @@ class DriftArtist(object):
     self.axl.axis('off')
     self.axw.axis('off')
     common = {'direction': 'inout', 'top': True, 'bottom': True, 'length': 6}
-    self.axx.tick_params(axis='x', labelbottom=False, **common)
-    self.axy.tick_params(axis='x', labelbottom=False, **common)
-    self.axz.tick_params(axis='x', rotation=90, **common)
-    self.axx.ticklabel_format(useOffset=False)
-    self.axy.ticklabel_format(useOffset=False)
-    self.axz.ticklabel_format(useOffset=False)
+    main_axes = self.axx, self.axy, self.axz, self.axa, self.axb, self.axc
+    for ax, label in zip(main_axes, ['X', 'Y', 'Z', 'a', 'b', 'c']):
+      ax.set_ylabel(label)
+      ax.tick_params(axis='x', labelbottom=False, **common)
+      ax.ticklabel_format(useOffset=False)
+    self.axz.tick_params(labelbottom=True, rotation=90)
     self.axh.set_ylabel('# expts')
-    self.axx.set_ylabel('Detector X')
-    self.axy.set_ylabel('Detector Y')
-    self.axz.set_ylabel('Detector Z')
-    self.axz.set_xlabel(self.order_by.title())
+    self.axc.set_xlabel(self.order_by.title())
 
   @property
   def _refl_to_expt_ratios(self):
@@ -354,6 +354,9 @@ class DriftArtist(object):
     self._plot_drift(self.axx, 'x', 'delta_x', top=True)
     self._plot_drift(self.axy, 'y', 'delta_y')
     self._plot_drift(self.axz, 'z', 'delta_z')
+    self._plot_drift(self.axa, 'a', 'delta_a')
+    self._plot_drift(self.axb, 'b', 'delta_b')
+    self._plot_drift(self.axc, 'c', 'delta_c')
     self._plot_legend()
     self.fig.align_labels()
 
