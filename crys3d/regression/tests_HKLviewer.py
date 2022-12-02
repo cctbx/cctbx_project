@@ -55,7 +55,11 @@ def check_log_file(fname):
   if match:
     refls = eval(match[-1]) # use the last match of reflections in the log file
   # check that only the following 108 reflections in reflections2match were visible
-  return set(refls) == reflections2match
+  setrefls = set(refls)
+  if setrefls != reflections2match:
+    print("refls = \n%s" %str(setrefls))
+    print("expected:\n%s" %str(reflections2match))
+  assert setrefls == reflections2match
 
 
 def Append2LogFile(fname, res):
@@ -101,7 +105,7 @@ def exercise1():
           ]
 
   assert cmdlineframes.run(cmdargs)
-  assert check_log_file(outputfname)
+  check_log_file(outputfname)
 
 
 def exercise2():
@@ -135,7 +139,7 @@ def exercise2():
 
   assert HKLviewer_result.return_code == 0
   assert remove_settings_result.return_code == 0
-  assert check_log_file(outputfname)
+  check_log_file(outputfname)
 
 
 

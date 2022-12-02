@@ -453,7 +453,7 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 500);
+  SetAutoview(shapeComp, 1000);
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -553,7 +553,7 @@ async function SetAutoview(mycomponent, t)
       WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
       return;
     }
-    await sleep(2000);
+    await sleep(2);
   }
 };
 
@@ -1391,7 +1391,7 @@ function onMessage(e)
 
     if (msgtype === "SetAutoView")
     {
-      SetAutoview(shapeComp, 500);
+      SetAutoview(shapeComp, 1000);
       WebsockSendMsg('AutoViewSet ' + pagename);
     }
 
