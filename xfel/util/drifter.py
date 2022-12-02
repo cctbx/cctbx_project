@@ -150,6 +150,8 @@ def get_extra_info_dict_from_tdata(tdata_path):
       af.append(float(a))
       bf.append(float(b))
       cf.append(float(c))
+  print(list(af))
+  print(af.standard_deviation_of_the_sample())
   return {'a': flex.mean(af), 'delta_a': af.standard_deviation_of_the_sample(),
           'b': flex.mean(bf), 'delta_b': bf.standard_deviation_of_the_sample(),
           'c': flex.mean(cf), 'delta_c': cf.standard_deviation_of_the_sample()}
@@ -287,7 +289,7 @@ class DriftArtist(object):
       ax.set_ylabel(label)
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
-    self.axz.tick_params(labelbottom=True, rotation=90)
+    self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axh.set_ylabel('# expts')
     self.axc.set_xlabel(self.order_by.title())
 
