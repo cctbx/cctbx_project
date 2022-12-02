@@ -873,7 +873,9 @@ def test_fmodel_params():
   data_mtz2 = os.path.join(data_dir, 'data',
                            'phaser_1.mtz')
   dm.process_model_file(data_pdb)
+  dm.process_model_file(data_pdb2)
   dm.process_miller_array_file(data_mtz)
+  dm.process_miller_array_file(data_mtz2)
 
   assert dm.get_default_model_type() == ['x_ray']
   for filename in dm.get_model_names():
