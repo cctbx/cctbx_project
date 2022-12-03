@@ -223,6 +223,8 @@ class HKLViewFrame() :
       m = re.findall(r"(\d)", self.verbose)
       if len(m) >0:
         intverbose = int(m[0])
+    else:
+      intverbose = self.verbose
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
