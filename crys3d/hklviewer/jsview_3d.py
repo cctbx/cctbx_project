@@ -1530,6 +1530,8 @@ class HKLview_3d:
           #self.release_all_semaphores()
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
+        elif 'Browser.JavaScript Got:' in message:
+          self.mprint( message, verbose=3)
         elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
           self.release_all_semaphores()
@@ -1537,8 +1539,6 @@ class HKLview_3d:
           self.ProcessOrientationMessage(message)
         elif 'WebGL' in message:
           self.mprint( message, verbose=1)
-        elif 'Browser.JavaScript Got:' in message:
-          self.mprint( message, verbose=3)
         elif "websocket" in message:
           self.mprint( message, verbose=1)
         elif "Refreshing" in message or "disconnecting" in message:
@@ -1654,9 +1654,8 @@ class HKLview_3d:
         elif "RenderStageObjects" in message: # reflections have been drawn
           self.hkls_drawn_sem.release()
           self.mprint("RenderStageObjects() has drawn reflections in the browser", verbose=1)
-        else:
-          if "Ready " in message:
-            self.mprint( message, verbose=4)
+        elif "Ready " in message:
+          self.mprint( message, verbose=4)
         if philchanged:
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
@@ -1720,9 +1719,9 @@ Distance: %s
     InvMx = OrtMx.inverse()
     # Our local coordinate system has x-axis pointing right and z axis pointing out of the screen
     # unlike threeJS so rotate the coordinates emitted from there before presenting them
-    Xvec =  matrix.rec([1,0,0] ,n=(1,3))
-    Yvec =  matrix.rec([0,1,0] ,n=(1,3))
-    Zvec =  matrix.rec([0,0,1] ,n=(1,3))
+    Xvec = matrix.rec([1,0,0], n=(1,3))
+    Yvec = matrix.rec([0,1,0], n=(1,3))
+    Zvec = matrix.rec([0,0,1], n=(1,3))
 
     RotAroundYMx = matrix.sqr([-1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,-1.0])
     Xhkl = list(InvMx.transpose()*self.currentRotmx.inverse()* RotAroundYMx.transpose()* Xvec.transpose())
@@ -1736,12 +1735,14 @@ Distance: %s
                                               str(roundoff(Zhkl, 2))),
                            }
                          )
+      """
       self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
       self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
       self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
-                      name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0)
+        name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
+      """
     else:
       self.SendInfoToGUI( { "StatusBar": "X: %s , Y: %s , Z: %s" %(str(roundoff(Xhkl, 2)),
                                                      str(roundoff(Yhkl, 2)),
