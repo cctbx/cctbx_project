@@ -203,8 +203,8 @@ class DriftScraper(object):
         scrap_dict = {'tag': tag, 'trial': int(trial_dir[-9:-6]),
                       'task': int(self.path_split(task_dir)[-1][-3:]),
                       'rungroup': int(trial_dir[-3:]),
-                      'run_name': self.path_split(trial_dir)[-2]}
-        print('Processing run {} in tag {}'.format(scrap_dict['run_name'], tag))
+                      'run': self.path_split(trial_dir)[-2]}
+        print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
         scrap_dict.update(self.extract_origin(first_scaling_expt_path))
         if self.parameters.uncertainties:
           scaling_phils = self.path_lookup(task_dir, 'params_1.phil')
