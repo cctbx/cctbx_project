@@ -227,10 +227,12 @@ MainWindow.setCentralWidget(self.centralwidget)
 timer = QTimer()
 
 class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
+  # qversion() comes out like '5.12.5'. We just want '5.12'
+  Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
+  settings = QSettings("CCTBX", "HKLviewer" )
+  reset_to_factorydefaults = False
+
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
-    self.settings = QSettings("CCTBX", "HKLviewer" )
-    # qversion() comes out like '5.12.5'. We just want '5.12'
-    self.Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
     self.datatypedict = { }
     self.browserfontsize = None
     self.mousespeedscale = 2000
@@ -392,7 +394,6 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
-    self.reset_to_factorydefaults = False
     self.resetlabeltxt = QLabel()
     self.resetlabeltxt.setWordWrap(True)
     self.resetlabeltxt.setText("Delete user settings and revert to factory defaults for GUI, colour and radii scheme")
@@ -2790,14 +2791,14 @@ clip_plane {
     # This is critical as it releases a waiting semaphore in CCTBX
     #self.send_message("", msgtype="initiated_gui")
 
-
-  def RemoveQsettings(self, all=False):
-    mstr = self.Qtversion
+  @staticmethod
+  def RemoveQsettings(all=False):
+    mstr = NGL_HKLViewer.Qtversion
     if all:
       mstr = ""
-    self.settings.remove(mstr)
+    NGL_HKLViewer.settings.remove(mstr)
     print("HKLviewer settings removed. Program exits")
-    self.reset_to_factorydefaults = True
+    NGL_HKLViewer.reset_to_factorydefaults = True
 
 
 # test for any necessary flags for WebGL to work on this platform
@@ -2847,12 +2848,11 @@ def run(isembedded=False, chimeraxsession=None):
       QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
 
-    HKLguiobj = NGL_HKLViewer(app, isembedded)
     if "remove_settings" in argstr:
-      HKLguiobj.RemoveQsettings()
-      HKLguiobj.closeEvent()
+      NGL_HKLViewer.RemoveQsettings()
       sys.exit()
     else:
+      HKLguiobj = NGL_HKLViewer(app, isembedded)
       if not isembedded:
         timer.setInterval(20)
         timer.timeout.connect(HKLguiobj.ProcessMessages)
