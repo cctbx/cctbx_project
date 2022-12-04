@@ -1574,6 +1574,9 @@ class HKLview_3d:
           self.mprint( "Image blob sent to CCTBX", verbose=1)
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
+        elif "SetClipPlaneDistances" in message:
+          self.clipplane_msg_sem.release() # as was set by make_clip_plane
+          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances_getfrustum released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1674,7 +1677,7 @@ class HKLview_3d:
     cameratranslation = (flst[12], flst[13], flst[14])
     self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose="orientmsg")
     alllst = roundoff(flst)
-    self.mprint("""OrientationMatrix matrix:
+    self.mprint("""Orientation matrix:
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
@@ -1701,15 +1704,15 @@ Distance: %s
       return
     if message.find("NaN")>=0 or message.find("undefined")>=0 or message.find("Browser.JavaScript Got:")>=0:
       return
+    msgname = message[ 0 : message.find("\n")-1]
+    self.viewmtrx = message[ message.find("\n") + 1: ]
     if "OrientationBeforeReload:" in message:
       if not self.isnewfile:
-        self.viewmtrx = message[ message.find("\n") + 1: ]
         self.lastviewmtrx = self.viewmtrx
       self.isnewfile = False
-    self.viewmtrx = message[ message.find("\n") + 1: ]
     self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
     rotlst = roundoff(self.currentRotmx.elems, 4)
-    self.mprint("""Rotation matrix:
+    self.mprint(msgname + """, Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
@@ -1748,7 +1751,7 @@ Distance: %s
                                                      str(roundoff(Yhkl, 2)),
                                                      str(roundoff(Zhkl, 2))),
                            } )
-    if "MouseMovedOrientation:" in message:
+    if "MouseMoved_Orientation:" in message:
       self.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
       # Round off matrix elements to avoid machine imprecision errors that might cast
@@ -1756,14 +1759,14 @@ Distance: %s
       # crash r3_rotation_matrix_as_x_y_z_angles()
       self.currentRotmx = matrix.sqr(roundoff(self.currentRotmx.elems, 8) )
       angles = self.currentRotmx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-      self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
+      self.mprint(msgname + ", angles: %s" %str(roundoff(angles)), verbose=3)
       z_vec = flex.vec3_double( [(0,0,1)])
       self.rot_zvec = z_vec * self.currentRotmx
-      self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
+      self.mprint(msgname + ", Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
       rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
       self.rot_recip_zvec = self.rot_zvec * rfracmx
       self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-      self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
+      self.mprint(msgname + ", Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
 
 
   def OpenBrowser(self):
@@ -2396,24 +2399,12 @@ in the space group %s\nwith unit cell %s""" \
     self.mprint("Applying clip plane to reflections", verbose=1)
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
-      #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
-      #self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
-      #if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
-      #  self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-      #self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
       self.GetClipPlaneDistances()
-      #self.hkls_drawn_sem.release()
-      #self.mprint("make_clip_plane released hkls_drawn_sem", verbose="threadingmsg")
-    self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
-    self.clipplane_msg_sem.release()
-    self.mprint("make_clip_plane released clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 
@@ -2507,6 +2498,10 @@ in the space group %s\nwith unit cell %s""" \
     if zoom is None:
       zoom= self.zoom
     msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ) + ", " + str(zoom)
+    self.mprint("SetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("SetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetClipPlaneDistances", msg)
 
 
@@ -2591,7 +2586,7 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetDefaultOrientation")
-    time.sleep(2)
+    #time.sleep(2)
 
 
   def Euler2RotMatrix(self, eulerangles):

@@ -2730,7 +2730,6 @@ clip_plane {
       self.settings = QSettings("CCTBX", "HKLviewer" )
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
-
       self.QWebEngineViewFlags = flgs + " --disable-web-security" # for chromium
       os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
       if not self.isembedded:
@@ -2747,6 +2746,7 @@ clip_plane {
       if "verbose" in arg:
          print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
+
 
   def UsePersistedQsettings(self):
     # Now assign the users persisted settings to the GUI
@@ -2791,13 +2791,14 @@ clip_plane {
     # This is critical as it releases a waiting semaphore in CCTBX
     #self.send_message("", msgtype="initiated_gui")
 
+
   @staticmethod
   def RemoveQsettings(all=False):
     mstr = NGL_HKLViewer.Qtversion
     if all:
       mstr = ""
     NGL_HKLViewer.settings.remove(mstr)
-    print("HKLviewer settings removed. Program exits")
+    print("HKLviewer settings removed. Using factory defaults next time.")
     NGL_HKLViewer.reset_to_factorydefaults = True
 
 
@@ -2832,6 +2833,10 @@ def run(isembedded=False, chimeraxsession=None):
 
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
     argstr = " ".join(sys.argv[1:])
+
+    if "remove_settings" in argstr:
+      NGL_HKLViewer.RemoveQsettings()
+      sys.exit()
     if "devmode" in argstr or "debug" in argstr:
       os.environ["PYTHONASYNCIODEBUG"] = "1" # print debug output from asyncio used in webbrowser_messenger_py3
     if "devmode" in argstr or "debug" in argstr and not "UseOSBrowser" in argstr:
@@ -2847,34 +2852,29 @@ def run(isembedded=False, chimeraxsession=None):
     if not isembedded:
       QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
-
-    if "remove_settings" in argstr:
-      NGL_HKLViewer.RemoveQsettings()
-      sys.exit()
+    HKLguiobj = NGL_HKLViewer(app, isembedded)
+    if not isembedded:
+      timer.setInterval(20)
+      timer.timeout.connect(HKLguiobj.ProcessMessages)
+      timer.start()
     else:
-      HKLguiobj = NGL_HKLViewer(app, isembedded)
-      if not isembedded:
-        timer.setInterval(20)
-        timer.timeout.connect(HKLguiobj.ProcessMessages)
-        timer.start()
-      else:
-        start_time = [time.time()]
+      start_time = [time.time()]
 
-        def ChXTimer(trigger, trigger_data):
-          elapsed_time = time.time()-start_time[0]
-          if elapsed_time > 0.02:
-            start_time[0] = time.time()
-            HKLguiobj.ProcessMessages()
+      def ChXTimer(trigger, trigger_data):
+        elapsed_time = time.time()-start_time[0]
+        if elapsed_time > 0.02:
+          start_time[0] = time.time()
+          HKLguiobj.ProcessMessages()
 
-        HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
-        HKLguiobj.chimeraxsession = chimeraxsession
-      # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
-      # the QApplication eventloop has started as to ensure resizing according to persisted
-      # font size is done properly
-      QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
+      HKLguiobj.chimeraxprocmsghandler = chimeraxsession.triggers.add_handler('new frame', ChXTimer)
+      HKLguiobj.chimeraxsession = chimeraxsession
+    # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
+    # the QApplication eventloop has started as to ensure resizing according to persisted
+    # font size is done properly
+    QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
 
-      if isembedded:
-        return HKLguiobj
+    if isembedded:
+      return HKLguiobj
 
     ret = app.exec_()
 
