@@ -278,7 +278,6 @@ class DriftArtist(object):
     self.axc = self.fig.add_subplot(gs[6, 0], sharex=self.axh)
     self.axw = self.fig.add_subplot(gs[0, 1], sharey=self.axh)
     self.axl = self.fig.add_subplot(gs[1:, 1])
-    self.axt = self.axx.secondary_xaxis('top')
 
   def _setup_figure(self):
     self.axl.axis('off')
@@ -294,10 +293,7 @@ class DriftArtist(object):
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
-    self.axt.tick_params(rotation=90)
     self.axc.set_xlabel(self.order_by.title())
-    self.axt.set_xticks(self.axx.get_xticks())
-    self.axt.set_xticklabels(self.table['expts'])
     self.axh.set_ylabel('# expts')
 
   @property
@@ -326,10 +322,15 @@ class DriftArtist(object):
         unique_keys.append(key)
     return handles, unique_keys
 
-  def _plot_drift(self, axes, values_key, deltas_key=None):
+  def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
     y_err = self.table.get(deltas_key, [])
     axes.scatter(self.x, y, c=self.color_array)
+    if top:
+      ax_top = self.axx.secondary_xaxis('top')
+      ax_top.tick_params(rotation=90)
+      ax_top.set_xticks(self.axx.get_xticks())
+      ax_top.set_xticklabels(self.table['expts'])
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
@@ -355,7 +356,7 @@ class DriftArtist(object):
   def plot(self):
     self._plot_bars()
     self._plot_width_info()
-    self._plot_drift(self.axx, 'x', 'delta_x')
+    self._plot_drift(self.axx, 'x', 'delta_x', top=True)
     self._plot_drift(self.axy, 'y', 'delta_y')
     self._plot_drift(self.axz, 'z', 'delta_z')
     self._plot_drift(self.axa, 'a', 'delta_a')
