@@ -57,8 +57,8 @@ def check_log_file(fname):
   # check that only the following 108 reflections in reflections2match were visible
   setrefls = set(refls)
   if setrefls != reflections2match:
-    print("Indices of visible reflection:\n%s" %str(setrefls))
-    print("Do not match the expected ones:\n%s" %str(reflections2match))
+    print("Indices of visible reflections:\n%s" %str(setrefls))
+    print("Do not match the expected indices:\n%s" %str(reflections2match))
   assert setrefls == reflections2match
 
 
@@ -101,7 +101,7 @@ def exercise1():
             "image_file=HKLviewer1_testimage.png",
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=60",
+            "closing_time=30",
             "debug=True"
           ]
 
@@ -130,7 +130,7 @@ def exercise2():
              "verbose=4_frustum_threadingmsg", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=60", # close HKLviewer after 25 seconds
+             "closing_time=30", # close HKLviewer after 25 seconds
              "debug=True"
             ]
 

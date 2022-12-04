@@ -2397,13 +2397,13 @@ in the space group %s\nwith unit cell %s""" \
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
       #time.sleep(0.6) # must wait for autoview() animation to finish to correct camera distance
-      self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
-      if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
-        self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-      self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
+      #self.mprint("make_clip_plane waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
+      #if not self.hkls_drawn_sem.acquire(blocking=True, timeout=lock_timeout):
+      #  self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      #self.mprint("make_clip_plane got hkls_drawn_sem", verbose="threadingmsg")
       self.GetClipPlaneDistances()
-      self.hkls_drawn_sem.release()
-      self.mprint("make_clip_plane released hkls_drawn_sem", verbose="threadingmsg")
+      #self.hkls_drawn_sem.release()
+      #self.mprint("make_clip_plane released hkls_drawn_sem", verbose="threadingmsg")
     self.mprint("make_clip_plane waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
     if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
       self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
