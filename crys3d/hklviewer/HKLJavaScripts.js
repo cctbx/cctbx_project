@@ -525,8 +525,9 @@ async function RenderRequest(note = "")
   if (note != "")
     WebsockSendMsg(note + '_BeforeRendering');
   stage.viewer.requestRender();
+  await sleep(300);
   if (note != "") {
-    await sleep(100);
+    //await sleep(100);
     WebsockSendMsg(note + '_AfterRendering');
   }
   if (isdebug)
@@ -2224,7 +2225,7 @@ function HKLscene()
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
-        sleep(0).then(()=> {
+        sleep(t).then(()=> {
             //let msg = getOrientMsg();
             //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
