@@ -1011,8 +1011,8 @@ function onMessage(e)
       stage.viewerControls.orient(m4);
       if (val[9] == "verbose")
         postrotmxflag = true;
-      ReturnClipPlaneDistances();
       RenderRequest().then(()=> {
+          ReturnClipPlaneDistances();
           SendOrientationMsg("RotateStage");
         }
       );
@@ -1033,8 +1033,8 @@ function onMessage(e)
       stage.viewerControls.applyMatrix(m4);
       if (val[4] == "verbose")
         postrotmxflag = true;
-      ReturnClipPlaneDistances();
       RenderRequest().then(()=> {
+          ReturnClipPlaneDistances();
           SendOrientationMsg("RotateAxisStage");
         }
       );
@@ -2225,8 +2225,9 @@ function HKLscene()
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
         sleep(0).then(()=> {
-            let msg = getOrientMsg();
-            WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+            //let msg = getOrientMsg();
+            //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+            SendOrientationMsg("CurrentView");
             ReturnClipPlaneDistances();
           }
         );
