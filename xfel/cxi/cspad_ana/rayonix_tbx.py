@@ -5,8 +5,9 @@ from scitbx.array_family import flex
 # given value of rayonix detector saturation xppi6115
 rayonix_saturated_value = 2**16 -1
 
-# minimum value for rayonix data (actually this number is not trusted, numbers above it are)
-rayonix_min_trusted_value = -1
+# minimum value for rayonix data
+rayonix_min_trusted_value = 0
+rayonix_max_trusted_value = rayonix_saturated_value - 1
 
 def get_rayonix_pixel_size(bin_size):
   ''' Given a bin size determine a pixel size.
