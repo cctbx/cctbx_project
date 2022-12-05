@@ -1313,7 +1313,7 @@ function onMessage(e)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
       RenderRequest("getfrustum").then(()=> {
-          WebsockSendMsg('SetClipPlaneDistances');
+          WebsockSendMsg('ClipPlaneDistancesSet'); // releases clipplane_msg_sem semaphore in jsview_3d.py
           SendOrientationMsg("getfrustum");
           GetReflectionsInFrustum();
         }
