@@ -1313,7 +1313,8 @@ function onMessage(e)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
       RenderRequest("getfrustum").then(()=> {
-          SendOrientationMsg("SetClipPlaneDistances_getfrustum");
+          WebsockSendMsg('SetClipPlaneDistances');
+          SendOrientationMsg("getfrustum");
           GetReflectionsInFrustum();
         }
       );
