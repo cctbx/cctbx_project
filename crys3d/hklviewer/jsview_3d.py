@@ -1472,7 +1472,8 @@ class HKLview_3d:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
       if not self.browser_connect_sem.acquire(timeout= lock_timeout):
-        raise HKLviewerError("Timed out connecting to a web browser! ")
+        raise HKLviewerError("""Timed out connecting to a web browser after % seconds.
+Ensure web browser security settings permit websocket protocol.""" %lock_timeout)
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
 
@@ -1574,9 +1575,9 @@ class HKLview_3d:
           self.mprint( "Image blob sent to CCTBX", verbose=1)
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
-        elif "SetClipPlaneDistances" in message:
+        elif "ClipPlaneDistancesSet" in message:
           self.clipplane_msg_sem.release() # as was set by make_clip_plane
-          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances_getfrustum released clipplane_msg_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1778,7 +1779,7 @@ Distance: %s
         f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
-      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
+      self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
@@ -2400,11 +2401,17 @@ in the space group %s\nwith unit cell %s""" \
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
       self.GetClipPlaneDistances()
+
+    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("make_clip_plane got clipplane_msg_sem", verbose="threadingmsg")
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.clipplane_msg_sem.release()
+    self.mprint("make_clip_plane released clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 

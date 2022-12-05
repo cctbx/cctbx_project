@@ -75,7 +75,7 @@ def write_websocktest_html(port):
 
 
 async def closing_time():
-  dt = 0.2; t=0; maxtime = 30
+  dt = 0.2; t=0; maxtime = 60
   while t < maxtime:
     await asyncio.sleep(dt)
     t += dt
@@ -84,7 +84,7 @@ async def closing_time():
       asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
       return
 
-  print('Timed out trying to connect to webbrowser')
+  print('Timed out trying to connect to webbrowser. Waited for %s seconds' %maxtime)
   asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
 
 
