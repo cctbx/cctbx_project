@@ -2179,7 +2179,7 @@ function HKLscene()
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
-      SendOrientationMsg("MaouseClicked");
+      SendOrientationMsg("MouseClicked");
       //let msg = getOrientMsg();
       //WebsockSendMsg('MouseClickedOrientation:\n' + msg );
     }
@@ -2219,14 +2219,14 @@ function HKLscene()
   stage.viewerControls.signals.changed.add(
     function()
     {
-      let msg = getOrientMsg();
       rightnow = timefunc();
-      let t = 1000;
+      let t = 250;
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         //ReturnClipPlaneDistances();
-        sleep(t/2).then(()=> {
+        sleep(0).then(()=> {
+            let msg = getOrientMsg();
+            WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             ReturnClipPlaneDistances();
           }
         );
