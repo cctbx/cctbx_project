@@ -68,7 +68,7 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
-    self.update_handler_sem = threading.Semaphore()
+    self.update_handler_sem = threading.BoundedSemaphore()
     self.initiated_gui_sem = threading.Semaphore()
     self.start_time = time.time()
     kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
@@ -172,13 +172,13 @@ class HKLViewFrame() :
           if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
             self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
           self.initiated_gui_sem.release()
-          self.update_from_philstr("viewer.scene_id = 0")
-          time.sleep(1)
+          #self.update_from_philstr("viewer.scene_id = 0")
+          #time.sleep(1)
           self.mprint("Processing PHIL file: %s" %fname)
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            #self.viewer.RedrawNGL()
+            self.viewer.RedrawNGL()
             self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
@@ -212,9 +212,6 @@ class HKLViewFrame() :
     tmsg = "%s%s" %(msg, end)
     if with_elapsed_secs:
       tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
-    if self.output_file and self.output_file.closed==False :
-      self.output_file.write(tmsg)
-      self.output_file.flush()
     intverbose =1
     if isinstance(self.verbose,str):
       m = re.findall(r"(\d)", self.verbose)
@@ -230,9 +227,17 @@ class HKLViewFrame() :
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
+        if self.output_file and self.output_file.closed==False :
+          self.output_file.write(tmsg)
+          self.output_file.flush()
     else:
-      #print(str(msg)) # avoiding UnicodeEncodeError: 'charmap' codec can't encode character '\u03bb'
-      print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
+      if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
+       or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
+        # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
+        print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
+        if self.output_file and self.output_file.closed==False :
+          self.output_file.write(tmsg)
+          self.output_file.flush()
 
 
   def find_free_port(self):
@@ -1915,9 +1920,8 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
     else:
       if infodict.get("closing_time", False):
-        self.viewer.release_all_semaphores()
+        #self.viewer.release_all_semaphores()
         self.__exit__()
-        sys.exit(-42)
 
 
 

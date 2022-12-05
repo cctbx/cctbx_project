@@ -110,6 +110,7 @@ var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
 var canvaspos = null;
+var isAutoviewing = false;
 
 
 function sleep(ms) {
@@ -252,8 +253,7 @@ function CreateWebSocket()
 {
   try
   {
-    mysocket = new WebSocket('ws://localhost:' + websocket_portnumber);
-    //mysocket = new WebSocket('wss://localhost:' + websocket_portnumber);
+    mysocket = new WebSocket('ws://localhost:' + websocket_portnumber + '/');
     mysocket.binaryType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
@@ -378,7 +378,7 @@ Object.assign(debugmessage.style, {
 });
 
 
-function ReturnClipPlaneDistances(onrequest = false)
+function ReturnClipPlaneDistances(calledby = "")
 { // If onrequest=true then jsview.py will increase the semaphore 
   // count by calling clipplane_msg_sem.release().
   // Only do this in response to a explicit message like "GetClipPlaneDistances"
@@ -401,7 +401,7 @@ function ReturnClipPlaneDistances(onrequest = false)
       return;
 
   let msg = String([stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
-    cameradist, stage.viewer.camera.zoom, Number(onrequest)]);
+    cameradist, stage.viewer.camera.zoom, calledby]);
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
@@ -443,22 +443,6 @@ function RemovePrimitives(reprname)
 }
 
 
-function SetDefaultOrientation() {
-  let m4 = new NGL.Matrix4();
-  let axis = new NGL.Vector3();
-  axis.x = 0.0;
-  axis.y = 1.0;
-  axis.z = 0.0;
-  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
-  // But we want x-axis pointing right and z-axis pointing out of the screen. 
-  // Rotate coordinate system to that effect
-  m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 500);
-  if (!rotationdisabled)
-    stage.viewerControls.orient(m4);
-}
-
-
 function CameraZoom(t, deltaX, deltaY) {
   let dx = 0;
   if (Number.isInteger(deltaX))
@@ -471,7 +455,7 @@ function CameraZoom(t, deltaX, deltaY) {
   if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
     stage.viewer.camera.zoom = z;
     stage.viewer.requestRender();
-    ReturnClipPlaneDistances();
+    ReturnClipPlaneDistances("CameraZoom");
   }
   let msg = "dx: " + dx.toString() + ", dy: " + dy.toString()
     + ", zoom:" + stage.viewer.camera.zoom.toString();
@@ -531,7 +515,47 @@ async function RenderRequest(note = "")
     WebsockSendMsg(note + '_AfterRendering');
   }
   if (isdebug)
-    WebsockSendMsg('RenderRequest ' + pagename);
+    WebsockSendMsg('RenderRequest ');
+};
+
+
+function getRotatedZoutMatrix()
+{
+  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+  // But we want x-axis pointing right and z-axis pointing out of the screen. 
+  // Rotate coordinate system to that effect
+  let m4 = new NGL.Matrix4();
+  // GL matrices are the transpose of conventional rotation matrices
+  m4.set(-1.0,  0.0,  0.0,  0.0,
+          0.0,  1.0,  0.0,  0.0,
+          0.0,  0.0, -1.0,  0.0,
+          0.0,  0.0,  0.0,  1.0
+  );
+  return m4;
+}
+
+
+function SetDefaultOrientation() {
+  //SetAutoviewNoAnim(shapeComp);
+  SetAutoview(shapeComp, 500);
+  if (!rotationdisabled)
+    stage.viewerControls.orient(getRotatedZoutMatrix());
+}
+
+
+function SetAutoviewNoAnim(mycomponent)
+{
+  if (mycomponent == null)
+    return;
+  WebsockSendMsg('StartSetAutoViewNoAnim');
+  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+  isAutoviewing = true;
+  let zaim = mycomponent.getZoom();
+  let m = new NGL.Matrix4().identity();
+  m.multiplyScalar(zaim);
+  stage.viewerControls.orient(m);
+  WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
+  isAutoviewing = false;
 };
 
 
@@ -539,22 +563,42 @@ async function SetAutoview(mycomponent, t)
 {
   if (mycomponent == null)
     return;
-
-  WebsockSendMsg('StartSetAutoView ' + pagename);
+  WebsockSendMsg('StartSetAutoView ');
+  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+  isAutoviewing = true;
   mycomponent.autoView(t); 
-
-  while (true) {
+  let zaim = mycomponent.getZoom();
+  let dt = 50;
+  let sumt = 0;
+  while (isAutoviewing) {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
     // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
     // data size of mycomponent. It will have completed once the condition 
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
-    if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
-      WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
+    if (stage.viewer.camera.position.z == zaim && sumt > 0) {
+      //ReturnClipPlaneDistances('SetAutoview');
+      WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
+      isAutoviewing = false;
       return;
     }
-    await sleep(2);
-  }
+    await sleep(dt).then(()=> { 
+        WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+        sumt += dt;
+        if (sumt > t*4 && stage.viewer.camera.position.z != zaim)
+        { // If autoView() is stuck at stage.viewer.camera.position.z= -1 
+          // then resort to use viewerControls.orient()
+          let m4 = getRotatedZoutMatrix();
+          m4.multiplyScalar(zaim);
+          stage.viewerControls.orient(m4);
+          //ReturnClipPlaneDistances('SetAutoview');
+          WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
+          isAutoviewing = false;
+          return;
+        }
+      } 
+    );
+ }
 };
 
 
@@ -632,7 +676,7 @@ function onMessage(e)
       msgtype = datval[0];
       if (datval.length == 1 && typeof msgtype === 'string') {// if message is empty we expect the next message to be an ArrayBuffer, i.e. a byte array sent from python
         binmsgtype = msgtype; // store the msgtype of the next message
-        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype + ' ' + pagename);
+        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype);
         return;
       }
       else
@@ -660,11 +704,11 @@ function onMessage(e)
         let msg = getOrientMsg();
         WebsockSendMsg('OrientationBeforeReload:\n' + msg );
       }
-      WebsockSendMsg( 'Refreshing ' + pagename );
+      WebsockSendMsg( 'Refreshing ');
 
       sleep(200).then(()=> {
           socket_intentionally_closed = true;
-          mysocket.close(4242, 'Refreshing ' + pagename);
+          mysocket.close(4242, 'Refreshing ');
           ready_for_closing = true;
           window.location.reload(true);
         }
@@ -747,14 +791,14 @@ function onMessage(e)
       RenderRequest("notify_cctbx").then(()=> {
           SendOrientationMsg("Redraw");
           GetReflectionsInFrustum();
-          WebsockSendMsg( 'Redrawn ' + pagename );
+          WebsockSendMsg( 'Redrawn ');
         }
       );
     }
 
     if (msgtype === "ReOrient")
     {
-      WebsockSendMsg( 'Reorienting ' + pagename );
+      WebsockSendMsg( 'Reorienting ');
       let sm = new Float32Array(16);
       for (let j=0; j<16; j++)
       {
@@ -945,7 +989,7 @@ function onMessage(e)
     }
     
     if (msgtype === "DisableZoomDrag") {
-      WebsockSendMsg('using camerazoom' + pagename);
+      WebsockSendMsg('using camerazoom');
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
@@ -958,7 +1002,7 @@ function onMessage(e)
     }
 
     if (msgtype === "EnableZoomDrag") {
-      WebsockSendMsg('using mouse zoomdrag ' + pagename);
+      WebsockSendMsg('using mouse zoomdrag ');
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
@@ -970,7 +1014,7 @@ function onMessage(e)
     }
 
     if (msgtype === "DisableMouseRotation") {
-      WebsockSendMsg('Fix mouse rotation' + pagename);
+      WebsockSendMsg('Fix mouse rotation');
 
       stage.mouseControls.remove("drag-left");
       stage.mouseControls.remove("scroll");
@@ -983,7 +1027,7 @@ function onMessage(e)
     }
 
     if (msgtype === "EnableMouseRotation") {
-      WebsockSendMsg('Can mouse rotate ' + pagename);
+      WebsockSendMsg('Can mouse rotate ');
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
@@ -995,7 +1039,12 @@ function onMessage(e)
 
     if (msgtype === "RotateStage")
     { // rotate stage and its components
-      WebsockSendMsg('Rotating stage ' + pagename);
+      while (isAutoviewing)
+      {
+        sleep(100);
+      }
+
+      WebsockSendMsg('Rotating stage ');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1010,18 +1059,20 @@ function onMessage(e)
         0.0, 0.0, 0.0, 1.0
       );
       stage.viewerControls.orient(m4);
-      if (val[9] == "verbose")
+      stage.viewer.camera.zoom = parseFloat(val[9]);
+      if (val[10] == "verbose")
         postrotmxflag = true;
       RenderRequest().then(()=> {
-          ReturnClipPlaneDistances();
+          ReturnClipPlaneDistances("RotateStage");
           SendOrientationMsg("RotateStage");
+          WebsockSendMsg('Done RotateStage');
         }
       );
     }
 
     if (msgtype === "RotateAxisStage")
     { // rotate stage and its components
-      WebsockSendMsg('Rotating stage around axis' + pagename);
+      WebsockSendMsg('Rotating stage around axis');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1035,7 +1086,7 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest().then(()=> {
-          ReturnClipPlaneDistances();
+          ReturnClipPlaneDistances("RotateAxisStage");
           SendOrientationMsg("RotateAxisStage");
         }
       );
@@ -1043,7 +1094,7 @@ function onMessage(e)
 
     if (msgtype === "RotateComponents" && shapeComp != null)
     {
-      WebsockSendMsg('Rotating components ' + pagename);
+      WebsockSendMsg('Rotating components ');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1056,7 +1107,6 @@ function onMessage(e)
       m4.set(sm[0], sm[3], sm[6], stm4[3],
         sm[1], sm[4], sm[7], stm4[7],
         sm[2], sm[5], sm[8], stm4[11],
-
         stm4[12], stm4[13], stm4[14], stm4[15]
       );
       shapeComp.setTransform(m4);
@@ -1070,7 +1120,7 @@ function onMessage(e)
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null)
     { // rotating components from "Rotate around Vector" GUI control. Stage remains still
-      WebsockSendMsg('Rotating components around axis ' + pagename);
+      WebsockSendMsg('Rotating components around axis ');
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
       componenttheta = parseFloat(val[3]);
@@ -1088,7 +1138,7 @@ function onMessage(e)
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
-      WebsockSendMsg('Animate rotating components around axis ' + pagename);
+      WebsockSendMsg('Animate rotating components around axis ');
       animationspeed = parseFloat(val[3])*0.05;
       animaaxis.x = parseFloat(val[0]);
       animaaxis.y = parseFloat(val[1]);
@@ -1101,7 +1151,7 @@ function onMessage(e)
 
     if (msgtype === "TranslateHKLpoints" && shapeComp != null)
     {
-      WebsockSendMsg( 'Translating HKLs ' + pagename );
+      WebsockSendMsg( 'Translating HKLs ' );
       let strs = datval[1].split("\n");
       let sm = new Float32Array(3);
       let elmstrs = strs[0].split(",");
@@ -1313,7 +1363,7 @@ function onMessage(e)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
       RenderRequest("getfrustum").then(()=> {
-          WebsockSendMsg('SetClipPlaneDistances');
+          WebsockSendMsg('ClipPlaneDistancesSet'); // releases clipplane_msg_sem semaphore in jsview_3d.py
           SendOrientationMsg("getfrustum");
           GetReflectionsInFrustum();
         }
@@ -1321,7 +1371,7 @@ function onMessage(e)
     }
 
     if (msgtype === "GetClipPlaneDistances")
-      ReturnClipPlaneDistances(true);
+      ReturnClipPlaneDistances("GetClipPlaneDistances");
 
     if (msgtype ==="JavaScriptCleanUp")
     {
@@ -1400,25 +1450,26 @@ function onMessage(e)
         MakeHKL_Axis();
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer');
-        RenderRequest("notify_cctbx").then(()=> {
-            SendOrientationMsg("RenderStageObjectsNotifyCctbx");
-            GetReflectionsInFrustum();
-            WebsockSendMsg('RenderStageObjects');
-          }
-        );
+        WebsockSendMsg('RenderStageObjects');
+        //RenderRequest("notify_cctbx").then(()=> {
+        //    SendOrientationMsg("RenderStageObjectsNotifyCctbx");
+        //    GetReflectionsInFrustum();
+            //WebsockSendMsg('RenderStageObjects');
+         // }
+        //);
       }
     }
 
     if (msgtype == "SetDefaultOrientation")
     {
       SetDefaultOrientation();
-      WebsockSendMsg('DefaultOrientSet ' + pagename); 
+      WebsockSendMsg('DefaultOrientSet '); 
     }
 
     if (msgtype === "SetAutoView")
     {
       SetAutoview(shapeComp, 500);
-      WebsockSendMsg('AutoViewSet ' + pagename);
+      WebsockSendMsg('AutoViewSet ');
     }
 
     if (msgtype === "MakeImage") {
@@ -1439,7 +1490,7 @@ function onMessage(e)
           WebsockSendMsg(blob);
         }
 
-        WebsockSendMsg('ImageWritten ' + pagename);
+        WebsockSendMsg('ImageWritten ');
       });
     }
 
@@ -1467,7 +1518,7 @@ function onMessage(e)
       });
       ResetViewBtn.style.display = "Block";
       StopAnimateBtn.style.display = "Block";
-      WebsockSendMsg('ImageWritten ' + pagename);
+      WebsockSendMsg('ImageWritten ');
     }
 
     if (msgtype === "MakeBrowserDataColumnComboBox")
@@ -2158,8 +2209,6 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
 
-  SetDefaultOrientation();
-
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
@@ -2168,25 +2217,20 @@ function HKLscene()
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
-        ReturnClipPlaneDistances();
+        ReturnClipPlaneDistances("mouseObserver.signals.dragged");
         SendOrientationMsg("MouseDragged");
-        //WebsockSendMsg('MouseDraggedOrientation:\n' + msg);
         timenow = timefunc();
       }
       tooltip.style.display = "none";
     }
   );
 
-
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
       SendOrientationMsg("MouseClicked");
-      //let msg = getOrientMsg();
-      //WebsockSendMsg('MouseClickedOrientation:\n' + msg );
     }
   );
-
 
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
@@ -2197,14 +2241,12 @@ function HKLscene()
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
         SendOrientationMsg("MouseScrolled");
-        ReturnClipPlaneDistances();
-        //WebsockSendMsg('MouseScrolledOrientation:\n' + msg );
+        ReturnClipPlaneDistances("mouseObserver.signals.scrolled");
         timenow = timefunc();
       }
       tooltip.style.display = "none";
     }
   );
-
 
   stage.viewer.signals.rendered.add(
     function ()
@@ -2217,20 +2259,19 @@ function HKLscene()
     
   );
 
-
   stage.viewerControls.signals.changed.add(
     function()
     {
       rightnow = timefunc();
-      let t = 250;
+      let t = 500;
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
         sleep(t).then(()=> {
-            //let msg = getOrientMsg();
-            //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+            if (isAutoviewing)
+              return;
             SendOrientationMsg("CurrentView");
-            ReturnClipPlaneDistances();
+            ReturnClipPlaneDistances("viewerControls.signals.changed");
           }
         );
         timenow = timefunc();
@@ -2238,8 +2279,6 @@ function HKLscene()
     }
   );
  
-
-  //stage.tasks.onZeroOnce(GetReflectionsInFrustum);
 
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);
@@ -2250,7 +2289,7 @@ function HKLscene()
   stage.mouseControls.remove("drag-middle");
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
   stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
-
+ 
   //stage.mouseControls.remove("scroll");
   //stage.mouseControls.remove("scroll-ctrl");
   //stage.mouseControls.remove("scroll-shift");
@@ -2275,7 +2314,7 @@ function PageLoad()
 {
   try
   {
-    let ret = MyWebGL_Detect();
+    let ret = MyWebGL_Detect(); // defined in webgl_check.js
     let msg = String(ret[1]);
     if (ret[0] == false) {
       let errmsg = "Critical WebGL problem! " + msg; 
