@@ -1771,7 +1771,7 @@ def assess_cryoem_errors(
   # Compensate for numerical instability when sigmaS is extremely small, in which
   # case dobs is very small and expectE can be very large
   sel = dobs.data() < 0.00001
-  expectE.data().set_selected(sel,0.)
+  expectE.data().set_selected(sel,1.)
 
   if make_intermediate_files:
     # Write out sigmaS, sigmaE and Dobs both as mtz files and intensities-as-maps
