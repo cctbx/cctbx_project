@@ -2225,7 +2225,7 @@ function HKLscene()
       { // only post every 250 milli second as not to overwhelm python
         WebsockSendMsg('CurrentViewOrientation:\n' + msg );
         //ReturnClipPlaneDistances();
-        sleep(250).then(()=> {
+        sleep(500).then(()=> {
             ReturnClipPlaneDistances();
           }
         );
@@ -2233,7 +2233,7 @@ function HKLscene()
       }
     }
   );
-
+ 
 
   //stage.tasks.onZeroOnce(GetReflectionsInFrustum);
 

@@ -183,9 +183,6 @@ class HKLViewFrame() :
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
         self.update_from_philstr('save_image_name = "%s"' %fname)
-        self.mprint("All done in thread_process_arguments", verbose=1)
-        self.SendInfoToGUI( { "closing_time": True } )
-        return # all is said and done
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
