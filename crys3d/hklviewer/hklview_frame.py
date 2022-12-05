@@ -177,16 +177,15 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            #time.sleep(1)
-            #self.update_from_philstr("viewer.angle_around_YHKL_vector = -1.0")
-            #time.sleep(1)
-            #self.update_from_philstr("viewer.angle_around_YHKL_vector = 1.0")
-            self.viewer.RedrawNGL()
+            #self.viewer.RedrawNGL()
             self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
         self.update_from_philstr('save_image_name = "%s"' %fname)
+        self.mprint("All done in thread_process_arguments", verbose=1)
+        self.SendInfoToGUI( { "closing_time": True } )
+        return # all is said and done
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)

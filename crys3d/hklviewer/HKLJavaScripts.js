@@ -569,11 +569,11 @@ async function SendComponentRotationMatrixMsg() {
 };
 
 //async 
-function SendOrientationMsg() {
+function SendOrientationMsg(funcname) {
   //await sleep(100);
   try {
     let msg = getOrientMsg();
-    WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+    WebsockSendMsg(funcname + '_Orientation:\n' + msg);
   }
   catch (err) {
     WebsockSendMsg('JavaScriptError: ' + err.stack);
@@ -744,7 +744,7 @@ function onMessage(e)
     if (msgtype === "Redraw")
     {
       RenderRequest("notify_cctbx").then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("Redraw");
           GetReflectionsInFrustum();
           WebsockSendMsg( 'Redrawn ' + pagename );
         }
@@ -768,7 +768,7 @@ function onMessage(e)
       //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
       //stage.viewer.requestRender();
       RenderRequest().then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("ReOrient");
         }
       );
     }
@@ -1013,7 +1013,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest().then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("RotateStage");
         }
       );
     }
@@ -1035,7 +1035,7 @@ function onMessage(e)
         postrotmxflag = true;
       ReturnClipPlaneDistances();
       RenderRequest().then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("RotateAxisStage");
         }
       );
     }
@@ -1108,7 +1108,7 @@ function onMessage(e)
         sm[j] = parseFloat(elmstrs[j]);
       shapeComp.setPosition([ sm[0], sm[1], sm[2] ]);
       RenderRequest().then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("TranslateHKLpoints");
         }
       );
     }
@@ -1312,7 +1312,7 @@ function onMessage(e)
         stage.viewer.camera.zoom = zoom;
 // provide a string so async RenderRequest() to call GetReflectionsInFrustum() after rendering
       RenderRequest("getfrustum").then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("SetClipPlaneDistances_getfrustum");
           GetReflectionsInFrustum();
         }
       );
@@ -1399,7 +1399,7 @@ function onMessage(e)
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer');
         RenderRequest("notify_cctbx").then(()=> {
-            SendOrientationMsg();
+            SendOrientationMsg("RenderStageObjectsNotifyCctbx");
             GetReflectionsInFrustum();
             WebsockSendMsg('RenderStageObjects');
           }
@@ -2120,7 +2120,7 @@ function MakeButtons() {
     onclick: function () {
       SetDefaultOrientation();
       RenderRequest().then(()=> {
-          SendOrientationMsg();
+          SendOrientationMsg("MakeButtons");
         }
       );
     },
@@ -2161,13 +2161,14 @@ function HKLscene()
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
-      let msg = getOrientMsg();
+      //let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
         ReturnClipPlaneDistances();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+        SendOrientationMsg("MouseDragged");
+        //WebsockSendMsg('MouseDraggedOrientation:\n' + msg);
         timenow = timefunc();
       }
       tooltip.style.display = "none";
@@ -2178,8 +2179,9 @@ function HKLscene()
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
-      let msg = getOrientMsg();
-      WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+      SendOrientationMsg("MaouseClicked");
+      //let msg = getOrientMsg();
+      //WebsockSendMsg('MouseClickedOrientation:\n' + msg );
     }
   );
 
@@ -2187,13 +2189,14 @@ function HKLscene()
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
     {
-      let msg = getOrientMsg();
+      //let msg = getOrientMsg();
       rightnow = timefunc();
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
+        SendOrientationMsg("MouseScrolled");
         ReturnClipPlaneDistances();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg );
+        //WebsockSendMsg('MouseScrolledOrientation:\n' + msg );
         timenow = timefunc();
       }
       tooltip.style.display = "none";
@@ -2205,8 +2208,7 @@ function HKLscene()
     function ()
     {
       if (postrotmxflag === true) {
-        let msg = getOrientMsg();
-        WebsockSendMsg('CurrentViewOrientation:\n' + msg);
+        SendOrientationMsg("ViewerRendered");
         postrotmxflag = false;
       }
     }
@@ -2261,8 +2263,7 @@ function HKLscene()
 
 function OnUpdateOrientation()
 {
-  let msg = getOrientMsg();
-  WebsockSendMsg('MouseMovedOrientation:\n' + msg );
+  SendOrientationMsg('MouseMoved');
 }
 
 

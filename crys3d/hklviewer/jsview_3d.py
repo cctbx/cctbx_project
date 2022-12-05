@@ -1674,7 +1674,7 @@ class HKLview_3d:
     cameratranslation = (flst[12], flst[13], flst[14])
     self.mprint("translation: %s" %str(roundoff(cameratranslation)), verbose="orientmsg")
     alllst = roundoff(flst)
-    self.mprint("""OrientationMatrix matrix:
+    self.mprint("""Orientation matrix:
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
   %s,  %s,  %s,  %s
@@ -1701,15 +1701,15 @@ Distance: %s
       return
     if message.find("NaN")>=0 or message.find("undefined")>=0 or message.find("Browser.JavaScript Got:")>=0:
       return
+    msgname = message[ 0 : message.find("\n")-1]
+    self.viewmtrx = message[ message.find("\n") + 1: ]
     if "OrientationBeforeReload:" in message:
       if not self.isnewfile:
-        self.viewmtrx = message[ message.find("\n") + 1: ]
         self.lastviewmtrx = self.viewmtrx
       self.isnewfile = False
-    self.viewmtrx = message[ message.find("\n") + 1: ]
     self.cameraPosZ, self.currentRotmx, self.cameratranslation = self.GetCameraPosRotTrans( self.viewmtrx)
     rotlst = roundoff(self.currentRotmx.elems, 4)
-    self.mprint("""Rotation matrix:
+    self.mprint(msgname + """, Rotation matrix:
   %s,  %s,  %s
   %s,  %s,  %s
   %s,  %s,  %s
@@ -1748,7 +1748,7 @@ Distance: %s
                                                      str(roundoff(Yhkl, 2)),
                                                      str(roundoff(Zhkl, 2))),
                            } )
-    if "MouseMovedOrientation:" in message:
+    if "MouseMoved_Orientation:" in message:
       self.mouse_moved = True
     if self.currentRotmx.is_r3_rotation_matrix():
       # Round off matrix elements to avoid machine imprecision errors that might cast
@@ -1756,14 +1756,14 @@ Distance: %s
       # crash r3_rotation_matrix_as_x_y_z_angles()
       self.currentRotmx = matrix.sqr(roundoff(self.currentRotmx.elems, 8) )
       angles = self.currentRotmx.r3_rotation_matrix_as_x_y_z_angles(deg=True)
-      self.mprint("angles: %s" %str(roundoff(angles)), verbose=3)
+      self.mprint(msgname + ", angles: %s" %str(roundoff(angles)), verbose=3)
       z_vec = flex.vec3_double( [(0,0,1)])
       self.rot_zvec = z_vec * self.currentRotmx
-      self.mprint("Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
+      self.mprint(msgname + ", Rotated cartesian Z direction : %s" %str(roundoff(self.rot_zvec[0])), verbose=3)
       rfracmx = matrix.sqr( self.miller_array.unit_cell().reciprocal().fractionalization_matrix() )
       self.rot_recip_zvec = self.rot_zvec * rfracmx
       self.rot_recip_zvec = (1.0/self.rot_recip_zvec.norm()) * self.rot_recip_zvec
-      self.mprint("Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
+      self.mprint(msgname + ", Rotated reciprocal L direction : %s" %str(roundoff(self.rot_recip_zvec[0])), verbose=3)
 
 
   def OpenBrowser(self):
