@@ -108,7 +108,7 @@ def get_browser_ctrl(using=None):
   return browser, webctrl
 
 
-lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
+lock_timeout=60 # for the sempahores. Rendering could take a while for very large file. Until that
 # has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
 # are undefined.
 
@@ -225,11 +225,14 @@ class HKLview_3d:
     self.hklfname = os.path.abspath( self.hklfname )
     self.isHKLviewer= "false"
     self.verbose = 1
+    self.verbosebrowser = False
     if 'verbose' in kwds:
       try:
         self.verbose = eval(kwds['verbose'])
       except Exception as e:
         self.verbose = kwds['verbose']
+        if "browser" in self.verbose:
+          self.verbosebrowser = True
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
@@ -286,11 +289,11 @@ class HKLview_3d:
     if 'handshakewait' in kwds:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
-    self.clipplane_msg_sem = threading.Semaphore()
-    self.mousespeed_msg_sem = threading.Semaphore()
+    self.clipplane_msg_sem = threading.BoundedSemaphore()
+    self.mousespeed_msg_sem = threading.BoundedSemaphore()
     self.hkls_drawn_sem = threading.Semaphore()
     self.autoview_sem = threading.Semaphore()
-    self.browser_connect_sem = threading.Semaphore()
+    self.browser_connect_sem = threading.BoundedSemaphore()
     self.WBmessenger = WBmessenger(self)
     self.AddToBrowserMsgQueue = self.WBmessenger.AddToBrowserMsgQueue
     # Don't overwhelm ProcessBrowserMessage() with the flurry of tooltips that can get emitted by javascript
@@ -320,6 +323,24 @@ class HKLview_3d:
   def SendInfoToGUI(self, mydict):
     if self.send_info_to_gui:
       self.send_info_to_gui( mydict )
+
+
+  def GuardedAddToBrowserMsgQueue(self, semaphorename, msgtype, msg="", binary=False,
+                                  funcname="", posteriorcheck=True):
+    semaphore = self.__dict__.get(semaphorename, None)
+    self.mprint("%s waiting for %s.acquire" %(funcname, semaphorename), verbose="threadingmsg")
+    if not semaphore.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Error! Timed out waiting for %s semaphore within %s seconds" %(semaphorename,lock_timeout), verbose=1)
+    self.mprint("%s got %s" %(funcname, semaphorename), verbose="threadingmsg")
+    self.AddToBrowserMsgQueue( msgtype, msg, binary)
+    time.sleep(0.1)
+    if posteriorcheck:
+      self.mprint("%s waiting for %s.acquire again" %(funcname, semaphorename), verbose="threadingmsg")
+      if not semaphore.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Error! Timed out waiting for %s semaphore within %s seconds" %(semaphorename,lock_timeout), verbose=1)
+      self.mprint("%s got %s again" %(funcname, semaphorename), verbose="threadingmsg")
+      semaphore.release()
+      self.mprint("%s released %s" %(funcname, semaphorename), verbose="threadingmsg")
 
 
   def update_settings(self, diff_phil, curphilparam) :
@@ -496,6 +517,11 @@ class HKLview_3d:
     in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
     if self.params.viewer.scene_id is not None:
+      if self.isnewfile:
+        self.SetDefaultOrientation()
+        if len(self.WBmessenger.clientmsgqueue):
+          time.sleep(2)
+
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
       self.SetMouseSpeed(self.params.NGL.mouse_sensitivity)
@@ -594,7 +620,6 @@ class HKLview_3d:
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
       self.ExpandInBrowser()
-
       retstr = ""
       if self.miller_array and self.params.binning.bin_opacity:
         bin_opacitieslst = self.params.binning.bin_opacity
@@ -616,8 +641,6 @@ class HKLview_3d:
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
-      if self.isnewfile:
-        self.SetDefaultOrientation()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
 
@@ -1470,18 +1493,19 @@ class HKLview_3d:
     self.mprint(".", end="")
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
-      # if sempahore is not available then we failed to connect to a browser. Critical error!
+      # if sempahore is not free then websocket failed to connect to a browser. Critical error!
       if not self.browser_connect_sem.acquire(timeout= lock_timeout):
-        raise HKLviewerError("Timed out connecting to a web browser! ")
+        raise HKLviewerError("Timed out connecting to a web browser after %s seconds. Ensure web browser security settings permit websocket protocol." %lock_timeout)
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
+
+    if self.verbosebrowser:
+      self.SetBrowserDebug("true")
 
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
-        if self.debug:
-          self.SetBrowserDebug("true")
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend),
@@ -1513,21 +1537,21 @@ class HKLview_3d:
 
 
   def ProcessBrowserMessage(self, message):
-    # method runs in a separate thread handling messages from the browser displaying our reflections
+    # Runs in WebsocketClientMessageThread handling messages from the browser displaying our reflections
+    # started in webbrowser_messenger_py3
     try:
       if sys.version_info[0] > 2:
         ustr = str
       else:
         ustr = unicode
       if isinstance(message, bytes) and isinstance(self.lastmsg, ustr) and "Imageblob" in self.lastmsg:
-        self.mprint( "Saving image to %s" %self.imagename, verbose=1)
+        self.mprint( "Saving image to %s" %self.imagename, verbose=0)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
       philchanged = False
       if isinstance(message, ustr) and message != "":
         if 'Critical WebGL problem' in message:
           self.mprint(message + "\n\nCommencing initiation of protocols for invoking program termination procedures...\n", verbose=0)
-          #self.release_all_semaphores()
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
         elif 'Browser.JavaScript Got:' in message:
@@ -1546,9 +1570,12 @@ class HKLview_3d:
           time.sleep(self.sleeptime)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
-        elif "FinishedSetAutoView" in message:
+          self.mprint( message, verbose=3)
+        elif "StartSetAutoView" in message or "SetAutoView camera.z" in message:
+          self.mprint( message, verbose=3)
+        elif "FinishedSetAutoView" in message: # or "Done RotateStage" in message:
           self.autoview_sem.release()
-          self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -1574,19 +1601,20 @@ class HKLview_3d:
           self.mprint( "Image blob sent to CCTBX", verbose=1)
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
-        elif "SetClipPlaneDistances" in message:
+        elif "ClipPlaneDistancesSet" in message:
           self.clipplane_msg_sem.release() # as was set by make_clip_plane
-          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances_getfrustum released clipplane_msg_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
-          flst = [float(e) for e in lst]
+          flst = [float(e) for e in lst[0:4]]
           self.clipNear = flst[0]
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
           self.zoom = flst[3]
-          onrequest = flst[4]
-          if onrequest: # only unlock if requested by GetClipPlaneDistances()
+          calledby = lst[4]
+          self.mprint("ReturnClipPlaneDistances(%s): cameraPosZ: %s, zoom: %s" %(calledby, self.cameraPosZ, self.zoom), verbose="orientmsg")
+          if calledby == "GetClipPlaneDistances": # only unlock if requested by GetClipPlaneDistances()
             self.hkls_drawn_sem.release()
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released hkls_drawn_sem", verbose="threadingmsg")
             self.clipplane_msg_sem.release()
@@ -1658,7 +1686,7 @@ class HKLview_3d:
           self.hkls_drawn_sem.release()
           self.mprint("RenderStageObjects() has drawn reflections in the browser", verbose=1)
         elif "Ready " in message:
-          self.mprint( message, verbose=4)
+          self.mprint( message, verbose=5)
         if philchanged:
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
@@ -1738,14 +1766,6 @@ Distance: %s
                                               str(roundoff(Zhkl, 2))),
                            }
                          )
-      """
-      self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
-        name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      """
     else:
       self.SendInfoToGUI( { "StatusBar": "X: %s , Y: %s , Z: %s" %(str(roundoff(Xhkl, 2)),
                                                      str(roundoff(Yhkl, 2)),
@@ -1778,7 +1798,11 @@ Distance: %s
         f.write( self.htmlstr )
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
-      self.mprint( "Writing %s and connecting to its websocket client" %self.hklfname, verbose=1)
+      self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
+      # pause to ensure websockets server starts before the webbrowser loads page with javascript websocket client
+      while self.WBmessenger.websockeventloop.is_running() == False:
+        time.sleep(1)
+      time.sleep(3)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
@@ -2400,11 +2424,17 @@ in the space group %s\nwith unit cell %s""" \
     self.RemovePrimitives("clip_vector")
     if self.cameraPosZ is None or self.cameraPosZ == 1.0:
       self.GetClipPlaneDistances()
+
+    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Error! Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("make_clip_plane got clipplane_msg_sem", verbose="threadingmsg")
     halfdist = self.cameraPosZ + hkldist # self.viewer.boundingZ*0.5
     if clipwidth == 0.0:
       clipwidth = self.meanradius
     clipNear = halfdist - clipwidth # 50/self.viewer.boundingZ
     clipFar = halfdist + clipwidth  #50/self.viewer.boundingZ
+    self.clipplane_msg_sem.release()
+    self.mprint("make_clip_plane released clipplane_msg_sem", verbose="threadingmsg")
     self.SetClipPlaneDistances(clipNear, clipFar, -self.cameraPosZ, self.zoom)
     self.mprint("clipnear: %s, clipfar: %s, cameraZ: %s, zoom: %s" %(clipNear, clipFar, -self.cameraPosZ, self.zoom), verbose=1)
 
@@ -2481,12 +2511,13 @@ in the space group %s\nwith unit cell %s""" \
     msg = str(trackspeed)
     self.AddToBrowserMsgQueue("SetMouseSpeed", msg)
     #self.GetMouseSpeed() # TODO: fix wait time
+    self.mprint("In SetMouseSpeed:\n" + "".join( traceback.format_stack(limit=4) ), verbose="stacktrace"  )
 
 
   def GetMouseSpeed(self):
     self.mprint("GetMouseSpeed waiting for mousespeed_msg_sem.acquire", verbose="threadingmsg")
     if not self.mousespeed_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for mousespeed_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Error! Timed out waiting for mousespeed_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetMouseSpeed got mousespeed_msg_sem", verbose="threadingmsg")
     self.params.NGL.mouse_sensitivity = None
     self.AddToBrowserMsgQueue("GetMouseSpeed", "")
@@ -2498,31 +2529,27 @@ in the space group %s\nwith unit cell %s""" \
     if zoom is None:
       zoom= self.zoom
     msg = str(near) + ", " + str(far) + ", " + str(cameraPosZ) + ", " + str(zoom)
-    self.mprint("SetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("SetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
-    self.AddToBrowserMsgQueue("SetClipPlaneDistances", msg)
+    self.GuardedAddToBrowserMsgQueue("clipplane_msg_sem", "SetClipPlaneDistances", msg,
+                                     funcname="SetClipPlaneDistances", posteriorcheck=False)
 
 
   def GetClipPlaneDistances(self):
     self.mprint("GetClipPlaneDistances waiting for hkls_drawn_sem.acquire", verbose="threadingmsg")
     if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
-      self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Error! Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetClipPlaneDistances got hkls_drawn_sem", verbose="threadingmsg")
-    self.mprint("GetClipPlaneDistances waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("GetClipPlaneDistances got clipplane_msg_sem", verbose="threadingmsg")
+
     self.mprint("GetClipPlaneDistances waiting for autoview_sem.acquire", verbose="threadingmsg")
     if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("GetClipPlaneDistances got autoview_sem", verbose="threadingmsg")
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
     self.zoom = None
-    self.AddToBrowserMsgQueue("GetClipPlaneDistances", "") #
+    self.GuardedAddToBrowserMsgQueue("clipplane_msg_sem", "GetClipPlaneDistances",
+                                     funcname="GetClipPlaneDistances")
+
 
 
   def RemovePrimitives(self, reprname=""):
@@ -2533,12 +2560,17 @@ in the space group %s\nwith unit cell %s""" \
     rotmx = self.Euler2RotMatrix( ( 0.0, 0.0, 0.0 ) )
     self.currentRotmx = rotmx
     self.RotateMxStage(rotmx)
-    self.mprint("SetAutoView waiting for autoview_sem.acquire", verbose="threadingmsg")
-    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
-    self.AddToBrowserMsgQueue("SetAutoView" )
-    time.sleep(2)
+    self.GuardedAddToBrowserMsgQueue("autoview_sem", "SetAutoView", funcname="SetAutoView")
+
+
+  def SetDefaultOrientation(self):
+    if self.params.clip_plane.clip_width and not self.isnewfile:
+      # if self.params.clip_plane.clip_width
+      # then we are clipping and using camerazoom instead of camera.position.z
+      # Autoview used by SetDefaultOrientation will mess that up. So bail out.
+      return
+    self.GuardedAddToBrowserMsgQueue("autoview_sem", "SetDefaultOrientation",
+                                     funcname="SetDefaultOrientation")
 
 
   def TestNewFunction(self):
@@ -2575,20 +2607,6 @@ in the space group %s\nwith unit cell %s""" \
       self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
 
 
-  def SetDefaultOrientation(self):
-    if self.params.clip_plane.clip_width and not self.isnewfile:
-      # if self.params.clip_plane.clip_width
-      # then we are clipping and using camerazoom instead of camera.position.z
-      # Autoview used by SetDefaultOrientation will mess that up. So bail out.
-      return
-    self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
-    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
-    self.AddToBrowserMsgQueue("SetDefaultOrientation")
-    #time.sleep(2)
-
-
   def Euler2RotMatrix(self, eulerangles):
     eulerangles1 = eulerangles
     radangles = [e*math.pi/180.0 for e in eulerangles1]
@@ -2602,22 +2620,33 @@ in the space group %s\nwith unit cell %s""" \
     if self.cameraPosZ is None:
       # in case HKLJavaScripts.onMessage() crashed and failed returning cameraPosZ
       self.GetClipPlaneDistances()
-    self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
     if self.cameraPosZ is not None:
+      self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Error! Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
+      strconfirm = "ignore"
+      """
+      if threading.current_thread().name != "WebsocketClientMessageThread":
+        self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
+        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+          self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+        self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
+      """
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
       str_rot = str(ortrot)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
+      str_rot = str_rot + ", " + str(self.zoom)
       msg = str_rot + ", quiet\n"
       if not quietbrowser:
-        msg = str_rot + ", verbose\n"
+        msg = msg + ", verbose\n"
+
       self.AddToBrowserMsgQueue("RotateStage", msg)
-    self.clipplane_msg_sem.release()
-    self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
+      time.sleep(0.1)
+      self.clipplane_msg_sem.release()
+      self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
@@ -2725,11 +2754,7 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def RenderStageObjects(self):
-    self.mprint("RenderStageObjects() waiting for self.hkls_drawn_sem.acquire", verbose="threadingmsg")
-    if not self.hkls_drawn_sem.acquire(timeout=lock_timeout):
-      self.mprint("Timed out waiting for hkls_drawn_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("RenderStageObjects() got self.hkls_drawn_sem.acquire", verbose="threadingmsg")
-    self.AddToBrowserMsgQueue("RenderStageObjects")
+    self.GuardedAddToBrowserMsgQueue("hkls_drawn_sem", "RenderStageObjects", funcname="RenderStageObjects")
 
 
   def MakeColourChart(self, label, fomlabel, colourgradarray):

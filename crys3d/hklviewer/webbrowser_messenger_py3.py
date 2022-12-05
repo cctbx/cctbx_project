@@ -93,7 +93,6 @@ class WBmessenger(object):
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
       self.mprint("Starting websocket server on port %s" %str(self.websockport), verbose=1)
-      time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
       self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )
       self.wst.daemon = True # ensure thread dies whenever program terminates through sys.exit()
@@ -102,7 +101,6 @@ class WBmessenger(object):
                                                      name="WebsocketClientMessageThread")
       self.websocketclientmsgthrd.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.websocketclientmsgthrd.start()
-
       if not self.server:
         raise Sorry("Could not connect to web browser")
     except Exception as e:
