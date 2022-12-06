@@ -60,8 +60,12 @@ class integrate(worker):
       else:
         all_integrated_refls = integrated
 
-    self.logger.log("Integration done, %d experiments, %d reflections"%(len(all_integrated_expts), len(all_integrated_refls)))
+    if all_integrated_refls is None:
+      all_integrated_refls = flex.reflection_table()
+    self.logger.log("Integration done, %d experiments, %d reflections" %
+                    (len(all_integrated_expts), len(all_integrated_refls)))
     return all_integrated_expts, all_integrated_refls
+
 
 if __name__ == '__main__':
   from xfel.merging.application.worker import exercise_worker
