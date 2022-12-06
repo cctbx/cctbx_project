@@ -2547,7 +2547,33 @@ in the space group %s\nwith unit cell %s""" \
       self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
     self.mprint("SetAutoView got autoview_sem", verbose="threadingmsg")
     self.AddToBrowserMsgQueue("SetAutoView" )
-    time.sleep(2)
+    time.sleep(1)
+    self.mprint("SetAutoView2 waiting for autoview_sem.acquire", verbose="threadingmsg")
+    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("SetAutoView2 got autoview_sem", verbose="threadingmsg")
+    self.autoview_sem.release()
+    self.mprint("SetAutoView2 released autoview_sem", verbose="threadingmsg")
+
+
+  def SetDefaultOrientation(self):
+    if self.params.clip_plane.clip_width and not self.isnewfile:
+      # if self.params.clip_plane.clip_width
+      # then we are clipping and using camerazoom instead of camera.position.z
+      # Autoview used by SetDefaultOrientation will mess that up. So bail out.
+      return
+    self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
+    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
+    self.AddToBrowserMsgQueue("SetDefaultOrientation")
+    time.sleep(1)
+    self.mprint("SetDefaultOrientation2 waiting for autoview_sem.acquire", verbose="threadingmsg")
+    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+    self.mprint("SetDefaultOrientation2 got autoview_sem", verbose="threadingmsg")
+    self.autoview_sem.release()
+    self.mprint("SetDefaultOrientation2 released autoview_sem", verbose="threadingmsg")
 
 
   def TestNewFunction(self):
@@ -2582,20 +2608,6 @@ in the space group %s\nwith unit cell %s""" \
   def ReOrientStage(self):
     if self.viewmtrx:
       self.AddToBrowserMsgQueue("SetAutoView", self.viewmtrx)
-
-
-  def SetDefaultOrientation(self):
-    if self.params.clip_plane.clip_width and not self.isnewfile:
-      # if self.params.clip_plane.clip_width
-      # then we are clipping and using camerazoom instead of camera.position.z
-      # Autoview used by SetDefaultOrientation will mess that up. So bail out.
-      return
-    self.mprint("SetDefaultOrientation waiting for autoview_sem.acquire", verbose="threadingmsg")
-    if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("SetDefaultOrientation got autoview_sem", verbose="threadingmsg")
-    self.AddToBrowserMsgQueue("SetDefaultOrientation")
-    #time.sleep(2)
 
 
   def Euler2RotMatrix(self, eulerangles):

@@ -2234,7 +2234,7 @@ function HKLscene()
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
-        sleep(0).then(()=> {
+        sleep(t).then(()=> {
             //let msg = getOrientMsg();
             //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
