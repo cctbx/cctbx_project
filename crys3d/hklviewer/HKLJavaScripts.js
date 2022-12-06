@@ -110,6 +110,7 @@ var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
 var canvaspos = null;
+var isAutoviewing = false;
 
 
 function sleep(ms) {
@@ -543,8 +544,8 @@ async function SetAutoview(mycomponent, t)
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   mycomponent.autoView(t); 
-
-  while (true) {
+  isAutoviewing = true;
+  while (isAutoviewing) {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
     // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
     // data size of mycomponent. It will have completed once the condition 
@@ -552,9 +553,9 @@ async function SetAutoview(mycomponent, t)
     // at that point in time
     if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
       WebsockSendMsg('FinishedSetAutoView '); // equivalent of the signal function
+      isAutoviewing = false;
       return;
     }
-    //await sleep(2);
     await sleep(50).then(()=> { 
         WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
       } 
@@ -2226,12 +2227,14 @@ function HKLscene()
   stage.viewerControls.signals.changed.add(
     function()
     {
+      if (isAutoviewing)
+        return;
       rightnow = timefunc();
-      let t = 250;
+      let t = 500;
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
-        sleep(t/2).then(()=> {
+        sleep(0).then(()=> {
             //let msg = getOrientMsg();
             //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
