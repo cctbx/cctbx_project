@@ -68,7 +68,7 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
-    self.update_handler_sem = threading.Semaphore()
+    self.update_handler_sem = threading.BoundedSemaphore()
     self.initiated_gui_sem = threading.Semaphore()
     self.start_time = time.time()
     kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
@@ -1915,9 +1915,9 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
     else:
       if infodict.get("closing_time", False):
-        self.viewer.release_all_semaphores()
+        #self.viewer.release_all_semaphores()
         self.__exit__()
-        sys.exit(-42)
+        sys.exit()
 
 
 
