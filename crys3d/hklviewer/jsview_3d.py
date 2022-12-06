@@ -1472,8 +1472,7 @@ class HKLview_3d:
       self.ReloadNGL()
       # if sempahore is not available then we failed to connect to a browser. Critical error!
       if not self.browser_connect_sem.acquire(timeout= lock_timeout):
-        raise HKLviewerError("""Timed out connecting to a web browser after % seconds.
-Ensure web browser security settings permit websocket protocol.""" %lock_timeout)
+        raise HKLviewerError("Timed out connecting to a web browser after % seconds. Ensure web browser security settings permit websocket protocol." %lock_timeout)
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
 
@@ -1547,6 +1546,9 @@ Ensure web browser security settings permit websocket protocol.""" %lock_timeout
           time.sleep(self.sleeptime)
         elif "AutoViewSet" in message:
           self.set_volatile_params()
+          self.mprint( message, verbose=3)
+        elif "StartSetAutoView" in message:
+          self.mprint( message, verbose=3)
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")
