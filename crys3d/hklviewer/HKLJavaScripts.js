@@ -531,7 +531,7 @@ async function RenderRequest(note = "")
     WebsockSendMsg(note + '_AfterRendering');
   }
   if (isdebug)
-    WebsockSendMsg('RenderRequest ' + pagename);
+    WebsockSendMsg('RenderRequest ');
 };
 
 
@@ -540,7 +540,8 @@ async function SetAutoview(mycomponent, t)
   if (mycomponent == null)
     return;
 
-  WebsockSendMsg('StartSetAutoView ' + pagename);
+  WebsockSendMsg('StartSetAutoView ');
+  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   mycomponent.autoView(t); 
 
   while (true) {
@@ -550,11 +551,15 @@ async function SetAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
-      WebsockSendMsg('FinishedSetAutoView ' + pagename); // equivalent of the signal function
+      WebsockSendMsg('FinishedSetAutoView '); // equivalent of the signal function
       return;
     }
-    await sleep(2);
-  }
+    //await sleep(2);
+    await sleep(50).then(()=> { 
+        WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+      } 
+    );
+ }
 };
 
 
@@ -632,7 +637,7 @@ function onMessage(e)
       msgtype = datval[0];
       if (datval.length == 1 && typeof msgtype === 'string') {// if message is empty we expect the next message to be an ArrayBuffer, i.e. a byte array sent from python
         binmsgtype = msgtype; // store the msgtype of the next message
-        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype + ' ' + pagename);
+        WebsockSendMsg('Waiting for ArrayBuffer for ' + binmsgtype);
         return;
       }
       else
@@ -660,11 +665,11 @@ function onMessage(e)
         let msg = getOrientMsg();
         WebsockSendMsg('OrientationBeforeReload:\n' + msg );
       }
-      WebsockSendMsg( 'Refreshing ' + pagename );
+      WebsockSendMsg( 'Refreshing ');
 
       sleep(200).then(()=> {
           socket_intentionally_closed = true;
-          mysocket.close(4242, 'Refreshing ' + pagename);
+          mysocket.close(4242, 'Refreshing ');
           ready_for_closing = true;
           window.location.reload(true);
         }
@@ -747,14 +752,14 @@ function onMessage(e)
       RenderRequest("notify_cctbx").then(()=> {
           SendOrientationMsg("Redraw");
           GetReflectionsInFrustum();
-          WebsockSendMsg( 'Redrawn ' + pagename );
+          WebsockSendMsg( 'Redrawn ');
         }
       );
     }
 
     if (msgtype === "ReOrient")
     {
-      WebsockSendMsg( 'Reorienting ' + pagename );
+      WebsockSendMsg( 'Reorienting ');
       let sm = new Float32Array(16);
       for (let j=0; j<16; j++)
       {
@@ -945,7 +950,7 @@ function onMessage(e)
     }
     
     if (msgtype === "DisableZoomDrag") {
-      WebsockSendMsg('using camerazoom' + pagename);
+      WebsockSendMsg('using camerazoom');
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
@@ -958,7 +963,7 @@ function onMessage(e)
     }
 
     if (msgtype === "EnableZoomDrag") {
-      WebsockSendMsg('using mouse zoomdrag ' + pagename);
+      WebsockSendMsg('using mouse zoomdrag ');
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
@@ -970,7 +975,7 @@ function onMessage(e)
     }
 
     if (msgtype === "DisableMouseRotation") {
-      WebsockSendMsg('Fix mouse rotation' + pagename);
+      WebsockSendMsg('Fix mouse rotation');
 
       stage.mouseControls.remove("drag-left");
       stage.mouseControls.remove("scroll");
@@ -983,7 +988,7 @@ function onMessage(e)
     }
 
     if (msgtype === "EnableMouseRotation") {
-      WebsockSendMsg('Can mouse rotate ' + pagename);
+      WebsockSendMsg('Can mouse rotate ');
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
@@ -995,7 +1000,7 @@ function onMessage(e)
 
     if (msgtype === "RotateStage")
     { // rotate stage and its components
-      WebsockSendMsg('Rotating stage ' + pagename);
+      WebsockSendMsg('Rotating stage ');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1021,7 +1026,7 @@ function onMessage(e)
 
     if (msgtype === "RotateAxisStage")
     { // rotate stage and its components
-      WebsockSendMsg('Rotating stage around axis' + pagename);
+      WebsockSendMsg('Rotating stage around axis');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1043,7 +1048,7 @@ function onMessage(e)
 
     if (msgtype === "RotateComponents" && shapeComp != null)
     {
-      WebsockSendMsg('Rotating components ' + pagename);
+      WebsockSendMsg('Rotating components ');
 
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
@@ -1070,7 +1075,7 @@ function onMessage(e)
 
     if (msgtype === "RotateAxisComponents" && shapeComp != null)
     { // rotating components from "Rotate around Vector" GUI control. Stage remains still
-      WebsockSendMsg('Rotating components around axis ' + pagename);
+      WebsockSendMsg('Rotating components around axis ');
       let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
       componenttheta = parseFloat(val[3]);
@@ -1088,7 +1093,7 @@ function onMessage(e)
     }
 
     if (msgtype === "AnimateRotateAxisComponents" && shapeComp != null) {
-      WebsockSendMsg('Animate rotating components around axis ' + pagename);
+      WebsockSendMsg('Animate rotating components around axis ');
       animationspeed = parseFloat(val[3])*0.05;
       animaaxis.x = parseFloat(val[0]);
       animaaxis.y = parseFloat(val[1]);
@@ -1101,7 +1106,7 @@ function onMessage(e)
 
     if (msgtype === "TranslateHKLpoints" && shapeComp != null)
     {
-      WebsockSendMsg( 'Translating HKLs ' + pagename );
+      WebsockSendMsg( 'Translating HKLs ' );
       let strs = datval[1].split("\n");
       let sm = new Float32Array(3);
       let elmstrs = strs[0].split(",");
@@ -1412,13 +1417,13 @@ function onMessage(e)
     if (msgtype == "SetDefaultOrientation")
     {
       SetDefaultOrientation();
-      WebsockSendMsg('DefaultOrientSet ' + pagename); 
+      WebsockSendMsg('DefaultOrientSet '); 
     }
 
     if (msgtype === "SetAutoView")
     {
       SetAutoview(shapeComp, 500);
-      WebsockSendMsg('AutoViewSet ' + pagename);
+      WebsockSendMsg('AutoViewSet ');
     }
 
     if (msgtype === "MakeImage") {
@@ -1439,7 +1444,7 @@ function onMessage(e)
           WebsockSendMsg(blob);
         }
 
-        WebsockSendMsg('ImageWritten ' + pagename);
+        WebsockSendMsg('ImageWritten ');
       });
     }
 
@@ -1467,7 +1472,7 @@ function onMessage(e)
       });
       ResetViewBtn.style.display = "Block";
       StopAnimateBtn.style.display = "Block";
-      WebsockSendMsg('ImageWritten ' + pagename);
+      WebsockSendMsg('ImageWritten ');
     }
 
     if (msgtype === "MakeBrowserDataColumnComboBox")
