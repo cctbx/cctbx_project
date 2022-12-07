@@ -1003,7 +1003,7 @@ function onMessage(e)
     { // rotate stage and its components
       WebsockSendMsg('Rotating stage ');
 
-      let sm = new Float32Array(9);
+      let sm = new Float32Array(10);
       let m4 = new NGL.Matrix4();
 
       for (let j = 0; j < 9; j++)
@@ -1016,7 +1016,8 @@ function onMessage(e)
         0.0, 0.0, 0.0, 1.0
       );
       stage.viewerControls.orient(m4);
-      if (val[9] == "verbose")
+      stage.viewer.camera.zoom = parseFloat(val[9]);
+      if (val[10] == "verbose")
         postrotmxflag = true;
       RenderRequest().then(()=> {
           ReturnClipPlaneDistances();

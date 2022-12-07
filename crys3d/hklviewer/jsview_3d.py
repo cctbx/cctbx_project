@@ -108,7 +108,7 @@ def get_browser_ctrl(using=None):
   return browser, webctrl
 
 
-lock_timeout=20 # for the sempahores. Rendering could take a while for very large file. Until that
+lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
 # has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
 # are undefined.
 
@@ -330,7 +330,7 @@ class HKLview_3d:
       self.mprint("Timed out waiting for %s semaphore within %s seconds" %(semaphorename,lock_timeout), verbose=1)
     self.mprint("%s got %s" %(funcname, semaphorename), verbose="threadingmsg")
     self.AddToBrowserMsgQueue( msgtype, msg, binary)
-    time.sleep(0.2)
+    time.sleep(0.1)
     if posteriorcheck:
       self.mprint("%s waiting for %s.acquire again" %(funcname, semaphorename), verbose="threadingmsg")
       if not semaphore.acquire(blocking=True, timeout=lock_timeout):
@@ -1758,14 +1758,6 @@ Distance: %s
                                               str(roundoff(Zhkl, 2))),
                            }
                          )
-      """
-      self.draw_vector(0,0,0, Zhkl[0],Zhkl[1],Zhkl[2], isreciprocal=True, label="Zhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      self.draw_vector(0,0,0, Yhkl[0],Yhkl[1],Yhkl[2], isreciprocal=True, label="Yhkl",
-                      r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      self.draw_vector(0,0,0, Xhkl[0],Xhkl[1],Xhkl[2], isreciprocal=True, label="Xhkl",
-        name="XYZhkl", r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom=False)
-      """
     else:
       self.SendInfoToGUI( { "StatusBar": "X: %s , Y: %s , Z: %s" %(str(roundoff(Xhkl, 2)),
                                                      str(roundoff(Yhkl, 2)),
@@ -2625,6 +2617,7 @@ in the space group %s\nwith unit cell %s""" \
       str_rot = str(ortrot)
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
+      str_rot = str_rot + ", " + str(self.zoom)
       msg = str_rot + ", quiet\n"
       if not quietbrowser:
         msg = str_rot + ", verbose\n"
