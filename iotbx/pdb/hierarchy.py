@@ -1562,6 +1562,37 @@ class _():
     del sentinel
     return result
 
+  def round_occupancies_in_place(self, ndigits):
+    """Round occupancies of those alternative conformations that cannot be
+    rounded properly to the sum of 1 by standard round procedure in the output.
+    The rest occupancies left intact.
+
+    Args:
+        ndigits (int): number of significant digits after the dot
+    """
+    h_atoms = self.atoms()
+    ogs = self.occupancy_groups_simple()
+    for occ_group in ogs:
+      # check conditions
+      can_be_rounded = True
+      occs = []
+      occs_values = []
+      for g in occ_group:
+        occs.append(h_atoms.select(flex.size_t(g)).extract_occ())
+      for o in occs:
+        # occupancy of all atoms is the same?
+        if len(set(o)) == 1:
+          occs_values.append(o[0])
+        else:
+          can_be_rounded = False
+      if sum(occs_values) != 1.00:
+        can_be_rounded = False
+      # now round them up, values in occs_values are the ones to round
+      if can_be_rounded:
+        round_occs = group_rounding(occs_values, ndigits)
+        for i, g in enumerate(occ_group):
+          h_atoms.select(flex.size_t(g)).set_occ(flex.double([round_occs[i]]*len(g)))
+
   def chunk_selections(self, residues_per_chunk):
     result = []
     if(residues_per_chunk<1): return result
