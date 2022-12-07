@@ -1917,7 +1917,6 @@ class HKLViewFrame() :
       if infodict.get("closing_time", False):
         #self.viewer.release_all_semaphores()
         self.__exit__()
-        sys.exit()
 
 
 

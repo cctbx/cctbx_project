@@ -1568,7 +1568,7 @@ class HKLview_3d:
           self.mprint( message, verbose=3)
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
-          self.mprint("ProcessBrowserMessage, FinishedSetAutoView released autoview_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up

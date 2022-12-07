@@ -444,22 +444,6 @@ function RemovePrimitives(reprname)
 }
 
 
-function SetDefaultOrientation() {
-  let m4 = new NGL.Matrix4();
-  let axis = new NGL.Vector3();
-  axis.x = 0.0;
-  axis.y = 1.0;
-  axis.z = 0.0;
-  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
-  // But we want x-axis pointing right and z-axis pointing out of the screen. 
-  // Rotate coordinate system to that effect
-  m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 500);
-  if (!rotationdisabled)
-    stage.viewerControls.orient(m4);
-}
-
-
 function CameraZoom(t, deltaX, deltaY) {
   let dx = 0;
   if (Number.isInteger(deltaX))
@@ -536,6 +520,22 @@ async function RenderRequest(note = "")
 };
 
 
+function SetDefaultOrientation() {
+  let m4 = new NGL.Matrix4();
+  let axis = new NGL.Vector3();
+  axis.x = 0.0;
+  axis.y = 1.0;
+  axis.z = 0.0;
+  // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
+  // But we want x-axis pointing right and z-axis pointing out of the screen. 
+  // Rotate coordinate system to that effect
+  m4.makeRotationAxis(axis, Math.PI);
+  SetAutoview(shapeComp, 500);
+  if (!rotationdisabled)
+    stage.viewerControls.orient(m4);
+}
+
+
 async function SetAutoview(mycomponent, t)
 {
   if (mycomponent == null)
@@ -545,19 +545,30 @@ async function SetAutoview(mycomponent, t)
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   mycomponent.autoView(t); 
   isAutoviewing = true;
+  let zaim = mycomponent.getZoom();
+  let dt = 50;
+  let sumt = 0;
   while (isAutoviewing) {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
     // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
     // data size of mycomponent. It will have completed once the condition 
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
-    if (stage.viewer.camera.position.z == mycomponent.getZoom()) {
-      WebsockSendMsg('FinishedSetAutoView '); // equivalent of the signal function
+    if (stage.viewer.camera.position.z == zaim) {
+      WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
       isAutoviewing = false;
       return;
     }
-    await sleep(50).then(()=> { 
+    await sleep(dt).then(()=> { 
         WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+        sumt += dt;
+        if (sumt > t && stage.viewer.camera.position.z != zaim)
+        {
+          stage.viewer.camera.position.z = zaim;
+          isAutoviewing = false;
+          WebsockSendMsg('FinishedSetAutoView forced'); // equivalent of the signal function
+          return;
+        }
       } 
     );
  }
