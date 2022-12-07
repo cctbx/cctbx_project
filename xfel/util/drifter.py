@@ -70,6 +70,17 @@ DEFAULT_INPUT_SCOPE = parse("""
 """)
 
 
+def normalised(sequence):
+  max_ = max(sequence)
+  return [s / max_ for s in sequence]
+
+
+def deviation_from_average(sequence, weights=None):
+  weights = [1] * len(sequence) if weights is None else weights
+  avg = sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
+  return [s / avg - 1 for s in sequence]
+
+
 class DriftScraper(object):
   """Class for scraping cctbx.xfel output into instance of `DriftTable`"""
   def __init__(self, table, parameters):
@@ -225,7 +236,8 @@ class DriftTable(object):
     self.parameters = parameters
 
   def __getitem__(self, key):
-    return [d.get(key) for d in self.data]
+    aux_key = key in self.auxiliary.keys()
+    return self.auxiliary[key] if aux_key else [d.get(key) for d in self.data]
 
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
@@ -239,7 +251,7 @@ class DriftTable(object):
     self.data.append(kwargs)
 
   def get(self, key, default=None):
-    return self[key] if key in self.active_keys else default
+    return self[key] if key in self.available_keys else default
 
   def sort(self, by_key=KEYS[0]):
     self.data = sorted(self.data, key=lambda d: d[by_key])
@@ -249,8 +261,13 @@ class DriftTable(object):
     return [key for key in self.KEYS if not all(v is None for v in self[key])]
 
   @property
-  def density(self):
-    return [d['refls'] / d['expts'] if d['expts'] else 0.0 for d in self.data]
+  def available_keys(self):
+    return self.active_keys + list(self.auxiliary.keys())
+
+  @property
+  def auxiliary(self):
+    density = [d['refls'] / d['expts'] if d['expts'] else 0 for d in self.data]
+    return {'density': density}
 
 
 class DriftArtist(object):
@@ -336,7 +353,7 @@ class DriftArtist(object):
 
   def _plot_bars(self):
     y = self.table['expts']
-    w = [d / max(self.table.density) for d in self.table.density]
+    w = normalised(self.table['density'])
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_legend(self):
@@ -345,7 +362,7 @@ class DriftArtist(object):
 
   def _plot_width_info(self):
     extrema = [min(self.table['expts']), max(self.table['expts']),
-               min(self.table.density), max(self.table.density),
+               min(self.table['density']), max(self.table['density']),
                min(self.table['refls']), max(self.table['refls'])]
     s = "height: # expts ({} to {})\n" \
         "width: refl per expt ({:.0f} to {:.0f})\n" \
