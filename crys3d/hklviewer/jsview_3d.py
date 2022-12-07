@@ -1605,6 +1605,7 @@ class HKLview_3d:
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
           self.zoom = flst[3]
+          self.mprint("ReturnClipPlaneDistances: cameraPosZ: %s, zoom: %s" %(self.cameraPosZ, self.zoom), verbose="orientmsg")
           onrequest = flst[4]
           if onrequest: # only unlock if requested by GetClipPlaneDistances()
             self.hkls_drawn_sem.release()
