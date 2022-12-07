@@ -5,13 +5,19 @@ import scitbx.graph.tardy_tree
 import mmtbx.monomer_library.rotamer_utils
 
 def tardy_model_one_residue(residue, mon_lib_srv, log = None):
+  try:
+    resname = residue.resname
+  except AttributeError:
+    resname = residue.unique_resnames()
+    assert resname.size()==1
+    resname = resname[0]
   # FIXME atom_group objects have no id_str
   def format_atom_group_id_str(residue):
     assert (type(residue).__name__ == "atom_group")
     return '"%3s %s%4s%s"' % (residue.resname, residue.parent().parent().id,
       residue.parent().resseq, residue.parent().icode)
   if(log is None): log = sys.stdout
-  comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=residue.resname)
+  comp_comp_id = mon_lib_srv.get_comp_comp_id_direct(comp_id=resname)
   # create external clusters to address planes with missing atoms
   external_clusters = []
   for plane in comp_comp_id.get_planes():
@@ -30,11 +36,11 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
   residue_atoms = residue.atoms()
   atom_names = residue_atoms.extract_name()
   matched_atom_names = iotbx.pdb.atom_name_interpretation.interpreters[
-    residue.resname].match_atom_names(atom_names=atom_names)
+    resname].match_atom_names(atom_names=atom_names)
   mon_lib_atom_names = matched_atom_names.mon_lib_names()
   if(mon_lib_atom_names.count(None)>1):
     msg="Canot create TARDY: bad atom names in '%s %s':"%(
-      residue.resname, residue.resid())
+      resname, residue.resid())
     print(msg, file=log)
     print(list(residue.atoms().extract_name()), file=log)
     return None
@@ -50,7 +56,7 @@ def tardy_model_one_residue(residue, mon_lib_srv, log = None):
     "GLU": [(["OE1"],["HE1","1HE","DE1","1DE"]),
             (["OE2"],["HE2","2HE","DE2","2DE"])]
   }
-  if residue.resname.strip().upper() in special_cases:
+  if resname.strip().upper() in special_cases:
     edge = []
     bonded_atom_names = special_cases[residue.resname.strip().upper()]
     for ban in bonded_atom_names:
@@ -96,9 +102,14 @@ def axes_and_atoms_aa_specific(
       tardy_model=None,
       log=None):
   get_class = iotbx.pdb.common_residue_names_get_class
-  if 0: print(residue.id_str(suppress_segid=1)[-12:])
+  try: # so it can be residue or residue_group
+    resname = residue.resname
+  except AttributeError:
+    resname = residue.unique_resnames()
+    assert resname.size()==1
+    resname = resname[0]
   if(tardy_model is None):
-    if(not (get_class(residue.resname) == "common_amino_acid")): return None
+    if(not (get_class(resname) == "common_amino_acid")): return None
     tardy_model = tardy_model_one_residue(residue = residue,
       mon_lib_srv = mon_lib_srv, log = log)
   if(tardy_model is None):
