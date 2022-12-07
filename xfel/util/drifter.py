@@ -10,6 +10,7 @@ from libtbx.utils import Sorry
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
+from matplotlib.ticker import PercentFormatter
 
 
 message = ''' This script aims to investigate the spatial drift of a detector
@@ -69,16 +70,13 @@ DEFAULT_INPUT_SCOPE = parse("""
 }
 """)
 
+def average(sequence, weights=None):
+  weights = [1] * len(sequence) if weights is None else weights
+  return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
 
 def normalised(sequence):
   max_ = max(sequence)
   return [s / max_ for s in sequence]
-
-
-def deviation_from_average(sequence, weights=None):
-  weights = [1] * len(sequence) if weights is None else weights
-  avg = sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
-  return [s / avg - 1 for s in sequence]
 
 
 class DriftScraper(object):
@@ -350,6 +348,10 @@ class DriftArtist(object):
       ax_top.set_xticklabels(self.table['expts'])
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
+    axes2 = axes.twinx()
+    avg_y = average(y, weights=self.table['refls'])
+    axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
+    axes2.yaxis.set_major_formatter(PercentFormatter(decimals=0))
 
   def _plot_bars(self):
     y = self.table['expts']
