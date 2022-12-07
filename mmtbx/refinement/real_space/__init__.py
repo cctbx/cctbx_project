@@ -1042,29 +1042,36 @@ class score3(object):
                unit_cell,
                target_map,
                residue,
-               rotamer_eval):
+               rotamer_eval,
+               exclude_hd = True):
     adopt_init_args(self, locals())
     self.target = None
     self.sites_cart = self.residue.atoms().extract_xyz()
-    self.status = self.rotamer_eval.evaluate_residue(residue = self.residue)
+    self.status = None
+    if(self.rotamer_eval is not None):
+      self.status = self.rotamer_eval.evaluate_residue(residue = self.residue)
     self.hd_sel = flex.size_t()
-    for i, atom in enumerate(self.residue.atoms()):
-      if(atom.element_is_hydrogen()):
-        self.hd_sel.append(i)
+    if(self.exclude_hd):
+      for i, atom in enumerate(self.residue.atoms()):
+        if(atom.element_is_hydrogen()):
+          self.hd_sel.append(i)
 
   def compute_target(self, sites_cart, selection=None):
     if(selection is not None):
-      selection = flex.size_t(list(set(selection)-set(self.hd_sel)))
-      return maptbx.real_space_target_simple(
+      if(self.exclude_hd):
+        selection = flex.size_t(list(set(selection)-set(self.hd_sel)))
+      t = maptbx.real_space_target_simple(
         unit_cell   = self.unit_cell,
         density_map = self.target_map,
         sites_cart  = sites_cart,
         selection   = selection)
+      return t/selection.size()
     else:
-      return maptbx.real_space_target_simple(
+      t = maptbx.real_space_target_simple(
         unit_cell   = self.unit_cell,
         density_map = self.target_map,
         sites_cart  = sites_cart)
+      return t/sites_cart.size()
 
   def update(self, sites_cart, selection=None):
     target = self.compute_target(sites_cart=sites_cart, selection=selection)
@@ -1076,6 +1083,45 @@ class score3(object):
       if(fl):
         self.target = target
         self.sites_cart = sites_cart
+
+  def reset(self, sites_cart, selection=None):
+    self.target = self.compute_target(sites_cart = sites_cart,
+      selection = selection)
+    self.sites_cart = sites_cart
+
+class score4(object):
+  def __init__(self,
+               unit_cell,
+               target_map,
+               residue,
+               rotamer_eval,
+               exclude_hd = True):
+    adopt_init_args(self, locals())
+    self.sites_cart = self.residue.atoms().extract_xyz()
+    self.target = self.compute_target(sites_cart=self.sites_cart)
+    self.status = None
+    if(self.rotamer_eval is not None):
+      self.status = self.rotamer_eval.evaluate_residue(residue = self.residue)
+    self.hd_sel = flex.size_t()
+    if(self.exclude_hd):
+      for i, atom in enumerate(self.residue.atoms()):
+        if(atom.element_is_hydrogen()):
+          self.hd_sel.append(i)
+
+  def compute_target(self, sites_cart, selection=None):
+    t = maptbx.real_space_target_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.target_map,
+      sites_cart  = sites_cart)
+    return t/sites_cart.size()
+
+  def update(self, sites_cart, selection=None):
+    target = self.compute_target(sites_cart=sites_cart, selection=selection)
+    assert self.target is not None
+    if(target > self.target):
+      self.residue.atoms().set_xyz(sites_cart)
+      self.target = target
+      self.sites_cart = sites_cart
 
   def reset(self, sites_cart, selection=None):
     self.target = self.compute_target(sites_cart = sites_cart,
