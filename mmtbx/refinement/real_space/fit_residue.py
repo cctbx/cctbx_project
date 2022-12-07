@@ -523,6 +523,7 @@ class tune_up(object):
                mon_lib_srv,
                rotamer_manager,
                unit_cell,
+               exclude_hd           = True,
                monitor              = None,
                torsion_search_start = -20,
                torsion_search_stop  = 20,
@@ -532,19 +533,20 @@ class tune_up(object):
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
       backbone_sample = False).clusters
-    score_residue = mmtbx.refinement.real_space.score3(
+    self.score_residue = mmtbx.refinement.real_space.score3(
       unit_cell    = self.unit_cell,
       target_map   = self.target_map,
       residue      = self.residue,
-      rotamer_eval = self.rotamer_manager)
+      rotamer_eval = self.rotamer_manager,
+      exclude_hd   = self.exclude_hd)
     mmtbx.refinement.real_space.torsion_search(
       clusters   = self.clusters,
       sites_cart = self.residue.atoms().extract_xyz(),
-      scorer     = score_residue,
+      scorer     = self.score_residue,
       start      = self.torsion_search_start,
       stop       = self.torsion_search_stop,
       step       = self.torsion_search_step)
-    self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+    self.residue.atoms().set_xyz(new_xyz=self.score_residue.sites_cart)
     if(monitor is not None):
       monitor.add(residue = self.residue, state = "tuneup")
 
