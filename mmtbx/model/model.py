@@ -267,7 +267,8 @@ class manager(object):
     if(self._model_input is not None):
       if(self._crystal_symmetry is None):
         inp_cs = self._model_input.crystal_symmetry()
-        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense()):
+        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense() and
+           not inp_cs.is_incomplete()):
           self._crystal_symmetry = inp_cs
     # Keep track of the source of model
     if self._model_input is not None:
