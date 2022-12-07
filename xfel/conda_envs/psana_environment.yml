@@ -11,7 +11,9 @@ dependencies:
  - scons
 
  # psana
- - psana
+ # Temporary pin: This is a "new enough" psana but doesn't require boost 1.78.
+ # See discussion in dials/dials#2299 and links therein.
+ - psana=4.0.47
 
  # python
  - python
