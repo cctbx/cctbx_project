@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from scitbx.array_family import flex
-from six.moves import cStringIO as StringIO
 from libtbx.test_utils import assert_lines_in_text
 
 def tst_1():
