@@ -10,6 +10,7 @@ import mmtbx.f_model
 from cctbx import crystal
 from iotbx import crystal_symmetry_from_any
 from iotbx import extract_xtal_data
+import libtbx.phil
 
 # -----------------------------------------------------------------------------
 # extra functions for model and reflections
@@ -90,6 +91,10 @@ class fmodel_mixins(object):
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None # XXX Make part of parameters?
                  ):
+    """
+    Create mmtbx.fmodel.manager object using atomic model and diffraction data.
+    crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope
+    """
     #
     if(  array_type == "x_ray"):
       assert scattering_table in ["wk1995", "it1992", "n_gaussian"]
@@ -97,6 +102,15 @@ class fmodel_mixins(object):
       assert scattering_table == "neutron"
     elif(array_type == "electron"):
       assert scattering_table == "electron"
+    #
+    crystal_symmetry_phil = crystal_symmetry
+    if(crystal_symmetry is not None):
+      if(isinstance(crystal_symmetry, libtbx.phil.scope_extract)):
+        crystal_symmetry = crystal.symmetry(
+          unit_cell        = crystal_symmetry.unit_cell,
+          space_group_info = crystal_symmetry.space_group)
+      else:
+        assert isinstance(crystal_symmetry, libtbx.phil.scope_extract)
     # Gather models of apropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
@@ -107,10 +121,12 @@ class fmodel_mixins(object):
       raise Sorry("More than one model of '%s' type found."%array_type)
     model = models[0]
     # Get reflection file server
-    rfs = self.get_reflection_file_server(array_type = array_type)
+    rfs = self.get_reflection_file_server(
+      array_type       = array_type,
+      crystal_symmetry = crystal_symmetry)
     # Resolve symmetry issues (nplace)
     self._resolve_symmetry_conflicts(
-      params                 = crystal_symmetry,
+      params                 = crystal_symmetry_phil,
       model                  = model,
       reflection_file_server = rfs)
     # Get reflection data
