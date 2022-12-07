@@ -123,7 +123,7 @@ class fmodel_mixins(object):
     if(len(data.err)>0):
       raise Sorry("\n".join(data.err))
     if(data.f_obs is None):
-      raise Sorry("Diffraction date are not available to make fmodel.")
+      raise Sorry("Diffraction data are not available to make fmodel.")
     # Setup scattering table of xray_structure
     model.setup_scattering_dictionaries(
       scattering_table = scattering_table,
