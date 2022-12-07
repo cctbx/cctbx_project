@@ -60,6 +60,7 @@ def check_log_file(fname):
     print("Indices of visible reflections:\n%s" %str(setrefls))
     print("Do not match the expected indices:\n%s" %str(reflections2match))
   assert setrefls == reflections2match
+  print("Indices of visible reflections match the expected ones.")
 
 
 def Append2LogFile(fname, res):
