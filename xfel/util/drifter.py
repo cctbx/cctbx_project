@@ -385,12 +385,11 @@ class DriftArtist(object):
     weights = self.table['refls']
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
-    self.axw.annotate(text='correlation', xy=(0, 0), xycoords='axes fraction')
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
         if ix == iy:
-          xy_pos = (ix + 0.5, len(keys) - iy - 0.5)
-          self.axw.annotate(text=kx, xy=xy_pos, ha='center', va='center')
+          self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
+                        ha='center', va='center')
         if ix > iy:
           corr = correlation(vx, vy, weights=weights)
           color = self.cov_colormap(normalise([corr, -1, 1])[0])
@@ -406,8 +405,8 @@ class DriftArtist(object):
     extrema = [min(self.table['expts']), max(self.table['expts']),
                min(self.table['refls']), max(self.table['refls'])]
     s = "# expts/run: {} - {}\n# refls/run: {} - {}".format(*extrema)
-    self.axl.annotate(text=s, xy=(0.5, 0), annotation_clip=False, ha='center',
-                      ma='center', va='bottom', xycoords='axes fraction')
+    self.axl.text(text=s, xy=(0.5, 0), clip_on=False, ha='center',
+                  ma='center', va='top', xycoords='axes fraction')
 
   def plot(self):
     self._plot_bars()
