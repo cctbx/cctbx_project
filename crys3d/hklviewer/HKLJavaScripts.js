@@ -2243,14 +2243,14 @@ function HKLscene()
   stage.viewerControls.signals.changed.add(
     function()
     {
-      if (isAutoviewing)
-        return;
       rightnow = timefunc();
       let t = 500;
       if (rightnow - timenow > t)
       { // only post every 250 milli second as not to overwhelm python
         //ReturnClipPlaneDistances();
         sleep(t).then(()=> {
+            if (isAutoviewing)
+              return;
             //let msg = getOrientMsg();
             //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
