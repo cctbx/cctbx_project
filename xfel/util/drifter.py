@@ -372,7 +372,7 @@ class DriftArtist(object):
     axes2 = axes.twinx()
     avg_y = average(y, weights=self.table['refls'])
     axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
-    axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+    axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
 
   def _plot_bars(self):
     y = self.table['expts']
@@ -385,15 +385,17 @@ class DriftArtist(object):
     weights = self.table['refls']
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
+    self.axw.annotate(text='correlation', xy=(0, 0), xycoords='axes fraction')
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
         if ix == iy:
-          self.axw.annotate(text=kx, xy=(ix+0.5, iy-0.5), ha='center', va='center')
+          xy_pos = (ix + 0.5, len(keys) - iy - 0.5)
+          self.axw.annotate(text=kx, xy=xy_pos, ha='center', va='center')
         if ix > iy:
           corr = correlation(vx, vy, weights=weights)
           color = self.cov_colormap(normalise([corr, -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
-                        ec='white', fc=color, linewidth=3)
+                        ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
 
   def _plot_legend(self):
@@ -403,9 +405,9 @@ class DriftArtist(object):
   def _plot_width_info(self):
     extrema = [min(self.table['expts']), max(self.table['expts']),
                min(self.table['refls']), max(self.table['refls'])]
-    s = "#expts/run: {} - {}\n#refls/run: {} - {}".format(*extrema)
-    self.axw.annotate(text=s, xy=(0.0, 0.0), xycoords='axes fraction',
-                      ha='left', ma='left', va='bottom')
+    s = "# expts/run: {} - {}\n# refls/run: {} - {}".format(*extrema)
+    self.axl.annotate(text=s, xy=(0.5, 0), annotation_clip=False, ha='center',
+                      ma='center', va='bottom', xycoords='axes fraction')
 
   def plot(self):
     self._plot_bars()
