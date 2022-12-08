@@ -387,10 +387,13 @@ class DriftArtist(object):
     self.axw.set_ylim([0, len(keys)])
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
-        if ix <= iy:
+        if ix == iy:
+          self.axw.annotate(text=kx, xy=(vx+0.5, vy-0.5), ha='center', va='center')
+        if ix > iy:
           corr = correlation(vx, vy, weights=weights)
+          color = self.cov_colormap(normalise([corr, -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
-                        fc=self.cov_colormap(normalise([corr, -1, 1])[0]))
+                        ec='white', fc=color, linewidth=3)
           self.axw.add_patch(r)
 
   def _plot_legend(self):
@@ -399,13 +402,10 @@ class DriftArtist(object):
 
   def _plot_width_info(self):
     extrema = [min(self.table['expts']), max(self.table['expts']),
-               min(self.table['density']), max(self.table['density']),
                min(self.table['refls']), max(self.table['refls'])]
-    s = "height: # expts ({} to {})\n" \
-        "width: refl per expt ({:.0f} to {:.0f})\n" \
-        "area: # refls ({} to {})".format(*extrema)
-    self.axw.annotate(text=s, xy=(0.0, 0.5), xycoords='axes fraction',
-                      ha='left', ma='left', va='center')
+    s = "#expts/run: {} - {}\n#refls/run: {} - {}".format(*extrema)
+    self.axw.annotate(text=s, xy=(0.0, 0.0), xycoords='axes fraction',
+                      ha='left', ma='left', va='bottom')
 
   def plot(self):
     self._plot_bars()
