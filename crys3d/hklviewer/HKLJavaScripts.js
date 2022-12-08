@@ -1019,7 +1019,7 @@ function onMessage(e)
     { // rotate stage and its components
       WebsockSendMsg('Rotating stage ');
 
-      let sm = new Float32Array(10);
+      let sm = new Float32Array(9);
       let m4 = new NGL.Matrix4();
 
       for (let j = 0; j < 9; j++)
@@ -1079,7 +1079,6 @@ function onMessage(e)
       m4.set(sm[0], sm[3], sm[6], stm4[3],
         sm[1], sm[4], sm[7], stm4[7],
         sm[2], sm[5], sm[8], stm4[11],
-
         stm4[12], stm4[13], stm4[14], stm4[15]
       );
       shapeComp.setTransform(m4);

@@ -635,6 +635,7 @@ class HKLview_3d:
       self.visualise_sym_HKLs()
       if self.isnewfile:
         self.SetDefaultOrientation()
+        self.GetClipPlaneDistances()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
 
@@ -1544,7 +1545,6 @@ class HKLview_3d:
       if isinstance(message, ustr) and message != "":
         if 'Critical WebGL problem' in message:
           self.mprint(message + "\n\nCommencing initiation of protocols for invoking program termination procedures...\n", verbose=0)
-          #self.release_all_semaphores()
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
         elif 'Browser.JavaScript Got:' in message:
