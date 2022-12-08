@@ -797,10 +797,17 @@ int main() {
       env_etc.shlinkflags_bpl = env_etc.shlinkflags
       if sys.platform.startswith('darwin'):
         env_etc.shlinkflags_bpl += ['-undefined', 'dynamic_lookup']
-      libtbx.env.build_options.env_cxxflags = \
-        libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
-      libtbx.env.build_options.env_cppflags = \
-        libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+      if libtbx.env.build_options.cxxstd is not None:
+        for cxxstd in ['c++11', 'c++14', 'c++17']:
+          libtbx.env.build_options.env_cxxflags = \
+            libtbx.env.build_options.env_cxxflags.replace(cxxstd, libtbx.env.build_options.cxxstd)
+          libtbx.env.build_options.env_cppflags = \
+            libtbx.env.build_options.env_cppflags.replace(cxxstd, libtbx.env.build_options.cxxstd)
+      else:
+        libtbx.env.build_options.env_cxxflags = \
+          libtbx.env.build_options.env_cxxflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
+        libtbx.env.build_options.env_cppflags = \
+          libtbx.env.build_options.env_cppflags.replace('c++14', 'c++11').replace('c++17', 'c++11')
       env_etc.static_libraries = 0
     else:
       env_etc.ccflags_base = ["-fPIC", "-fno-strict-aliasing"] + \
@@ -1099,8 +1106,33 @@ if local_env is not None:
     env_base.Prepend(CPPPATH=cpppath)
   env_base.Prepend(LIBPATH=[os.path.join(abs(local_env.build_path), 'lib')])
 
+# check again that only --cxxstd or --enable_cxx11 is set
+if libtbx.env.build_options.enable_cxx11 \
+  and libtbx.env.build_options.cxxstd is not None:
+  raise Sorry('''
+Both --enable_cxx11 and --cxxstd have been set. Please only set one of
+these options.
+''')
+
+if libtbx.env.build_options.cxxstd is not None:
+
+  if sys.platform == 'win32':
+    cxx_flags = ['/std:%s' % libtbx.env.build_options.cxxstd]
+  else:
+    cxx_flags = ['-std=%s' % libtbx.env.build_options.cxxstd]
+
+  # add flags
+  env_etc.cxxflags_base.extend(cxx_flags)
+  env_base.Append(CXXFLAGS=cxx_flags)
+  env_base.Append(LINKFLAGS=cxx_flags)
+  env_etc.shlinkflags.extend(cxx_flags)
+  env_etc.shlinkflags_bpl.extend(cxx_flags)
+
+  # enable compilation check later on
+  env_etc.cxx11_is_available = True
+
 # C++11 flags for any compiler
-# XXX feautre duplication, see determine_cpp0x_flag
+# XXX feature duplication, see determine_cpp0x_flag
 if libtbx.env.build_options.enable_cxx11:
   def ver(tuple3):
     if tuple3 is None:
@@ -1153,7 +1185,10 @@ if env_etc.cxx11_is_available:
   conf.Finish()
   if not flag:
     env_etc.cxx11_is_available = False
-    if libtbx.env.build_options.enable_cxx11:
+    if libtbx.env.build_options.cxxstd is not None:
+      raise RuntimeError("{} is not available, see config.log".format(
+        libtbx.env.build_options.cxxstd.capitalize()))
+    elif libtbx.env.build_options.enable_cxx11:
       raise RuntimeError("C++11 is not available, see config.log")
 
 """ ************************ Custom Builders and Emitters **************************** """
