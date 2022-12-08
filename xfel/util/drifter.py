@@ -372,7 +372,7 @@ class DriftArtist(object):
     axes2 = axes.twinx()
     avg_y = average(y, weights=self.table['refls'])
     axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
-    axes2.yaxis.set_major_formatter(PercentFormatter())
+    axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
 
   def _plot_bars(self):
     y = self.table['expts']
@@ -383,15 +383,15 @@ class DriftArtist(object):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
     values = [self.table[key] for key in keys]
     weights = self.table['refls']
-    self.axh.set_xlim([0, len(keys)])
-    self.axh.set_ylim([0, len(keys)])
+    self.axw.set_xlim([0, len(keys)])
+    self.axw.set_ylim([0, len(keys)])
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
-        if ix + iy >= len(keys):
+        if ix <= iy:
           corr = correlation(vx, vy, weights=weights)
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         fc=self.cov_colormap(normalise([corr, -1, 1])[0]))
-          self.axh.add_patch(r)
+          self.axw.add_patch(r)
 
   def _plot_legend(self):
     handles, labels = self._get_handles_and_labels()
