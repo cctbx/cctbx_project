@@ -78,6 +78,7 @@ def average(sequence, weights=None):
 
 
 def correlation(xs, ys, weights=None):
+  weights = [1] * len(xs) if weights is None else weights
   x_variance = variance(xs, xs, weights=weights)
   y_variance = variance(ys, ys, weights=weights)
   covariance = variance(xs, ys, weights=weights)
@@ -85,6 +86,7 @@ def correlation(xs, ys, weights=None):
 
 
 def variance(xs, ys, weights=None):
+  weights = [1] * len(xs) if weights is None else weights
   x_avg = average(xs, weights=weights)
   y_avg = average(ys, weights=weights)
   x_dev = [x - x_avg for x in xs]
