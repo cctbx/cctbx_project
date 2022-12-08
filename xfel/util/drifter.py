@@ -405,8 +405,8 @@ class DriftArtist(object):
     extrema = [min(self.table['expts']), max(self.table['expts']),
                min(self.table['refls']), max(self.table['refls'])]
     s = "# expts/run: {} - {}\n# refls/run: {} - {}".format(*extrema)
-    self.axl.text(text=s, xy=(0.5, 0), clip_on=False, ha='center',
-                  ma='center', va='top', xycoords='axes fraction')
+    self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
+                  ma='center', va='top', transform=self.axl.transAxes)
 
   def plot(self):
     self._plot_bars()
