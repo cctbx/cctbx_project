@@ -433,9 +433,9 @@ def run(params_):
   dt.sort(by_key='run')
   print(dt)
   da.plot()
-  plt.show()
   if params_.save_path:
-    plt.savefig(params_.save_path)
+    da.fig.savefig(params_.save_path)
+  plt.show()
 
 
 if __name__ == '__main__':
