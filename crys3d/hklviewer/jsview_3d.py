@@ -1679,7 +1679,7 @@ class HKLview_3d:
           self.hkls_drawn_sem.release()
           self.mprint("RenderStageObjects() has drawn reflections in the browser", verbose=1)
         elif "Ready " in message:
-          self.mprint( message, verbose=4)
+          self.mprint( message, verbose=5)
         if philchanged:
           self.parent.SendCurrentPhilValues() # update GUI to correspond to current phil parameters
     except Exception as e:
@@ -2608,10 +2608,6 @@ in the space group %s\nwith unit cell %s""" \
     if self.cameraPosZ is None:
       # in case HKLJavaScripts.onMessage() crashed and failed returning cameraPosZ
       self.GetClipPlaneDistances()
-    self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-    if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-      self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-    self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
     if self.cameraPosZ is not None:
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
@@ -2622,9 +2618,20 @@ in the space group %s\nwith unit cell %s""" \
       msg = str_rot + ", quiet\n"
       if not quietbrowser:
         msg = str_rot + ", verbose\n"
+      self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
+      self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
+      if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
       self.AddToBrowserMsgQueue("RotateStage", msg)
-    self.clipplane_msg_sem.release()
-    self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
+      #time.sleep(0.1)
+      self.autoview_sem.release()
+      self.mprint("RotateMxStage released autoview_sem", verbose="threadingmsg")
+      self.clipplane_msg_sem.release()
+      self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
