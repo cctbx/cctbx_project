@@ -71,15 +71,18 @@ DEFAULT_INPUT_SCOPE = parse("""
 }
 """)
 
+
 def average(sequence, weights=None):
   weights = [1] * len(sequence) if weights is None else weights
   return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
+
 
 def correlation(xs, ys, weights=None):
   x_variance = variance(xs, xs, weights=weights)
   y_variance = variance(ys, ys, weights=weights)
   covariance = variance(xs, ys, weights=weights)
   return covariance / (x_variance * y_variance) ** 0.5
+
 
 def variance(xs, ys, weights=None):
   x_avg = average(xs, weights=weights)
@@ -88,9 +91,11 @@ def variance(xs, ys, weights=None):
   y_dev = [y - y_avg for y in ys]
   return sum(w * x * y for w, x, y in zip(weights, x_dev, y_dev)) / sum(weights)
 
-def normalised(sequence):
-  max_ = max(sequence)
-  return [s / max_ for s in sequence]
+
+def normalise(sequence):
+  min_, max_ = min(sequence), max(sequence)
+  return [(s - min_) / (max_ - min_) for s in sequence]
+
 
 class DriftScraper(object):
   """Class for scraping cctbx.xfel output into instance of `DriftTable`"""
@@ -289,8 +294,6 @@ class DriftArtist(object):
     self.color_by = 'tag'
     self.order_by = 'run'
     self.cov_colormap = plt.get_cmap('seismic')
-    self.cov_colormap.set_under(-1.0)
-    self.cov_colormap.set_over(1.0)
     self.table = table
     self.parameters = parameters
     self._init_figure()
@@ -371,7 +374,7 @@ class DriftArtist(object):
 
   def _plot_bars(self):
     y = self.table['expts']
-    w = normalised(self.table['density'])
+    w = normalise(self.table['density'])
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_covariance(self):
@@ -383,7 +386,7 @@ class DriftArtist(object):
         if ix + iy >= len(keys):
           corr = correlation(vx, vy, weights=weights)
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
-                        facecolor=self.cov_colormap(corr))
+                        fc=self.cov_colormap(normalise([corr, -1, 1])[0]))
           self.axh.add_patch(r)
 
   def _plot_legend(self):
