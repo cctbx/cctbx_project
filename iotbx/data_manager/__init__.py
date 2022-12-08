@@ -155,6 +155,10 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
 
   # add mixin classes if necessary
   mixin_classes = []
+  if 'model' in datatypes or 'miller_array' in datatypes:
+    importlib.import_module('.common', package='iotbx.data_manager')
+    mixin_classes.append(
+      getattr(sys.modules['iotbx.data_manager.common'], 'scattering_table_mixins'))
   if 'real_map' in datatypes and 'map_coefficients' in datatypes:
     importlib.import_module('.common', package='iotbx.data_manager')
     mixin_classes.append(

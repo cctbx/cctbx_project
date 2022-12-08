@@ -275,7 +275,7 @@ END
   try:
     new_dm.get_model(filename=test_filename, model_type='not_a_valid_type')
   except Sorry as s:
-    assert 'model type, "not_a_valid_type' in str(s)
+    assert 'type, "not_a_valid_type' in str(s)
   # check for copy
   new_dm.set_model_type(filename=test_filename, model_type=['electron'])
   model = new_dm.get_model(filename=test_filename)

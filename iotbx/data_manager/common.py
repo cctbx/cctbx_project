@@ -12,6 +12,62 @@ from iotbx import crystal_symmetry_from_any
 from iotbx import extract_xtal_data
 import libtbx.phil
 
+# =============================================================================
+# general functions for scattering type (applies to model and/or miller_array)
+class scattering_table_mixins(object):
+  '''
+  Functions for mapping scattering table types (wk1995 it1992 n_gaussian
+  neutron electron) to model and array types (x_ray, electron, neutron).
+  These will handle the mapping between the X-ray scattering tables
+  (wk1995 it1992 n_gaussian) to the x_ray type.
+  '''
+  possible_scattering_table_types = ['wk1995', 'it1992', 'n_gaussian',
+    'x_ray', 'neutron',  'electron']
+
+  def check_scattering_table_type(self, scattering_table):
+    '''
+    Checks that the argument is a valid scattering table type
+
+    Parameters
+    ----------
+    scattering_table : str
+      The scattering table type
+    data_type : str, optional
+      The data type, e.g. 'model' or 'array'. This is for the error message
+
+    Returns
+    -------
+    scattering_table : str
+      The input scattering table. If x_ray is provided, n_gaussian is returned
+      as the default scattering table.
+    '''
+    if scattering_table not in self.possible_scattering_table_types:
+      raise Sorry('Unrecognized scattering table type, "%s," possible choices are %s.' %
+                  (scattering_table, ', '.join(self.possible_scattering_table_types)))
+    if scattering_table == 'x_ray':
+      return 'n_gaussian'
+    return scattering_table
+
+  def map_scattering_table_type(self, scattering_table):
+    '''
+    Returns the appropriate model/array type based on the scattering table
+
+    Parameters
+    ----------
+    scattering_table : str
+      The scattering table type
+
+    Returns
+    -------
+    mapped_type : str
+      The mapped type
+    '''
+    self.check_scattering_table_type(scattering_table)
+    if scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
+      return 'x_ray'
+    else:
+      return scattering_table
+
 # -----------------------------------------------------------------------------
 # extra functions for model and reflections
 class fmodel_mixins(object):
@@ -96,12 +152,11 @@ class fmodel_mixins(object):
     crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope
     """
     #
-    if(  array_type == "x_ray"):
-      assert scattering_table in ["wk1995", "it1992", "n_gaussian"]
-    elif(array_type == "neutron"):
-      assert scattering_table == "neutron"
-    elif(array_type == "electron"):
-      assert scattering_table == "electron"
+    # if array_type is not None:
+    #   print('array_type is being removed, use scattering_table instead')
+
+    array_type = self.map_scattering_table_type(scattering_table)
+    scattering_table = self.check_scattering_table_type(scattering_table)
     #
     crystal_symmetry_phil = crystal_symmetry
     if(crystal_symmetry is not None):
@@ -153,7 +208,7 @@ class fmodel_mixins(object):
       origin         = data.mtz_object)
     return fmodel
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # extra functions for maps
 class map_mixins(object):
   '''
