@@ -254,8 +254,8 @@ class DriftTable(object):
     self.parameters = parameters
 
   def __getitem__(self, key):
-    aux_key = key in self.auxiliary.keys()
-    return self.auxiliary[key] if aux_key else [d.get(key) for d in self.data]
+    auxiliary_key = key in self.auxiliary.keys()
+    return self.auxiliary[key] if auxiliary_key else [d[key] for d in self.data]
 
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
@@ -382,7 +382,7 @@ class DriftArtist(object):
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
     values = [self.table[key] for key in keys]
-    weights = self.table['weights']
+    weights = self.table['refls']
     self.axh.set_xlim([0, len(keys)])
     self.axh.set_ylim([0, len(keys)])
     for ix, (kx, vx) in enumerate(zip(keys, values)):
