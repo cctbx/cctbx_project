@@ -388,7 +388,7 @@ class DriftArtist(object):
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
         if ix == iy:
-          self.axw.annotate(text=kx, xy=(vx+0.5, vy-0.5), ha='center', va='center')
+          self.axw.annotate(text=kx, xy=(ix+0.5, iy-0.5), ha='center', va='center')
         if ix > iy:
           corr = correlation(vx, vy, weights=weights)
           color = self.cov_colormap(normalise([corr, -1, 1])[0])
