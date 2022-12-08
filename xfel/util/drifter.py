@@ -370,17 +370,19 @@ class DriftArtist(object):
     axes2 = axes.twinx()
     avg_y = average(y, weights=self.table['refls'])
     axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
-    axes2.yaxis.set_major_formatter(PercentFormatter(decimals=0))
+    axes2.yaxis.set_major_formatter(PercentFormatter())
 
   def _plot_bars(self):
     y = self.table['expts']
     w = normalise(self.table['density'])
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
-  def _plot_covariance(self):
+  def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
     values = [self.table[key] for key in keys]
     weights = self.table['weights']
+    self.axh.set_xlim([0, len(keys)])
+    self.axh.set_ylim([0, len(keys)])
     for ix, (kx, vx) in enumerate(zip(keys, values)):
       for iy, (ky, vy) in enumerate(zip(keys, values)):
         if ix + iy >= len(keys):
@@ -405,6 +407,7 @@ class DriftArtist(object):
 
   def plot(self):
     self._plot_bars()
+    self._plot_correlations()
     self._plot_width_info()
     self._plot_drift(self.axx, 'x', 'delta_x', top=True)
     self._plot_drift(self.axy, 'y', 'delta_y')
