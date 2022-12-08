@@ -32,6 +32,9 @@ phil_scope = parse('''
   input_glob = batch*TDER/
     .type = str
     .help = glob which matches directories after TDER to be investigated.
+  save_path = ""
+    .type = str
+    .help = if given, plot will be saved with this path and name (eg.: fig.png)
   uncertainties = True
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
@@ -312,7 +315,7 @@ class DriftArtist(object):
     self.axa = self.fig.add_subplot(gs[4, 0], sharex=self.axh)
     self.axb = self.fig.add_subplot(gs[5, 0], sharex=self.axh)
     self.axc = self.fig.add_subplot(gs[6, 0], sharex=self.axh)
-    self.axw = self.fig.add_subplot(gs[0, 1], sharey=self.axh)
+    self.axw = self.fig.add_subplot(gs[0, 1])
     self.axl = self.fig.add_subplot(gs[1:, 1])
 
   def _setup_figure(self):
@@ -404,7 +407,7 @@ class DriftArtist(object):
   def _plot_width_info(self):
     extrema = [min(self.table['expts']), max(self.table['expts']),
                min(self.table['refls']), max(self.table['refls'])]
-    s = "# expts/run: {} - {}\n# refls/run: {} - {}".format(*extrema)
+    s = "#expts/run: {} - {}\n#refls/run: {} - {}".format(*extrema)
     self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
@@ -431,6 +434,8 @@ def run(params_):
   print(dt)
   da.plot()
   plt.show()
+  if params_.save_path:
+    plt.savefig(params_.save_path)
 
 
 if __name__ == '__main__':
