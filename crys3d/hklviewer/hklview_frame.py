@@ -178,7 +178,7 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            #self.viewer.RedrawNGL()
+            self.viewer.RedrawNGL()
             self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
