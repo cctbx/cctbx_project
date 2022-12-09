@@ -378,7 +378,7 @@ Object.assign(debugmessage.style, {
 });
 
 
-function ReturnClipPlaneDistances(onrequest = false)
+function ReturnClipPlaneDistances(calledby = "")
 { // If onrequest=true then jsview.py will increase the semaphore 
   // count by calling clipplane_msg_sem.release().
   // Only do this in response to a explicit message like "GetClipPlaneDistances"
@@ -401,7 +401,7 @@ function ReturnClipPlaneDistances(onrequest = false)
       return;
 
   let msg = String([stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
-    cameradist, stage.viewer.camera.zoom, Number(onrequest)]);
+    cameradist, stage.viewer.camera.zoom, calledby]);
   WebsockSendMsg('ReturnClipPlaneDistances:\n' + msg );
 }
 
@@ -455,7 +455,7 @@ function CameraZoom(t, deltaX, deltaY) {
   if (z > 0.0) {// use positive zoom values to avoid mirroring the stage
     stage.viewer.camera.zoom = z;
     stage.viewer.requestRender();
-    ReturnClipPlaneDistances();
+    ReturnClipPlaneDistances("CameraZoom");
   }
   let msg = "dx: " + dx.toString() + ", dy: " + dy.toString()
     + ", zoom:" + stage.viewer.camera.zoom.toString();
@@ -1040,7 +1040,7 @@ function onMessage(e)
       if (val[10] == "verbose")
         postrotmxflag = true;
       RenderRequest().then(()=> {
-          ReturnClipPlaneDistances();
+          ReturnClipPlaneDistances("RotateStage");
           SendOrientationMsg("RotateStage");
           WebsockSendMsg('Done RotateStage');
         }
@@ -1063,7 +1063,7 @@ function onMessage(e)
       if (val[4] == "verbose")
         postrotmxflag = true;
       RenderRequest().then(()=> {
-          ReturnClipPlaneDistances();
+          ReturnClipPlaneDistances("RotateAxisStage");
           SendOrientationMsg("RotateAxisStage");
         }
       );
@@ -1348,7 +1348,7 @@ function onMessage(e)
     }
 
     if (msgtype === "GetClipPlaneDistances")
-      ReturnClipPlaneDistances(true);
+      ReturnClipPlaneDistances("GetClipPlaneDistances");
 
     if (msgtype ==="JavaScriptCleanUp")
     {
@@ -2195,7 +2195,7 @@ function HKLscene()
       if (rightnow - timenow > 250)
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
-        ReturnClipPlaneDistances();
+        ReturnClipPlaneDistances("mouseObserver.signals.dragged");
         SendOrientationMsg("MouseDragged");
         //WebsockSendMsg('MouseDraggedOrientation:\n' + msg);
         timenow = timefunc();
@@ -2224,7 +2224,7 @@ function HKLscene()
       { // only post every 250 milli second as not to overwhelm python
         postrotmxflag = true;
         SendOrientationMsg("MouseScrolled");
-        ReturnClipPlaneDistances();
+        ReturnClipPlaneDistances("mouseObserver.signals.scrolled");
         //WebsockSendMsg('MouseScrolledOrientation:\n' + msg );
         timenow = timefunc();
       }
@@ -2259,7 +2259,7 @@ function HKLscene()
             //let msg = getOrientMsg();
             //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
-            ReturnClipPlaneDistances();
+            ReturnClipPlaneDistances("viewerControls.signals.changed");
           }
         );
         timenow = timefunc();
