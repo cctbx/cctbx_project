@@ -45,7 +45,7 @@ websock_htmlstr = """
 document.getElementById('mytext').innerHTML = "Hoping to connect to localhost via websocket..."
 var portnumber = %s;
 //const mysocket = new WebSocket('ws://localhost:424242'); // testing connection failure
-const mysocket = new WebSocket('ws://localhost:' + String(portnumber));
+const mysocket = new WebSocket('ws://localhost:' + String(portnumber) + '/');
 mysocket.addEventListener('open', function (event) {
   mysocket.send('Connection Established');
   mysocket.send('Goodbye');

@@ -253,8 +253,7 @@ function CreateWebSocket()
 {
   try
   {
-    mysocket = new WebSocket('ws://localhost:' + websocket_portnumber);
-    //mysocket = new WebSocket('wss://localhost:' + websocket_portnumber);
+    mysocket = new WebSocket('ws://localhost:' + websocket_portnumber + '/');
     mysocket.binaryType = "arraybuffer"; // "blob";
     //if (mysocket.readyState !== mysocket.OPEN)
     //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
@@ -569,7 +568,7 @@ async function SetAutoview(mycomponent, t)
           m4.elements[5] = -zaim;
           stage.viewerControls.applyMatrix(m4);
           //stage.viewerControls.orient(m4); // updates the view to camera.position.z = zaim
-          stage.viewer.requestRender();        
+          //stage.viewer.requestRender();        
           WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;
