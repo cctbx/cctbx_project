@@ -225,11 +225,14 @@ class HKLview_3d:
     self.hklfname = os.path.abspath( self.hklfname )
     self.isHKLviewer= "false"
     self.verbose = 1
+    self.verbosebrowser = False
     if 'verbose' in kwds:
       try:
         self.verbose = eval(kwds['verbose'])
       except Exception as e:
         self.verbose = kwds['verbose']
+        if "browser" in self.verbose:
+          self.verbosebrowser = True
     self.send_info_to_gui = None
     if 'send_info_to_gui' in kwds:
       self.send_info_to_gui = kwds['send_info_to_gui']
@@ -1494,12 +1497,13 @@ class HKLview_3d:
       self.browser_connect_sem.release()
       self.mprint("DrawNGLJavaScript released browser_connect_sem", verbose="threadingmsg")
 
+    if self.verbosebrowser:
+      self.SetBrowserDebug("true")
+
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
-        if self.debug:
-          self.SetBrowserDebug("true")
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
           str(Kstararrowstart), str(Kstararrowend),
           str(Lstararrowstart), str(Lstararrowend),
@@ -1567,7 +1571,7 @@ class HKLview_3d:
           self.mprint( message, verbose=3)
         elif "StartSetAutoView" in message or "SetAutoView camera.z" in message:
           self.mprint( message, verbose=3)
-        elif "FinishedSetAutoView" in message or "Done RotateStage" in message:
+        elif "FinishedSetAutoView" in message: # or "Done RotateStage" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
@@ -2615,13 +2619,13 @@ in the space group %s\nwith unit cell %s""" \
         self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
       self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
       strconfirm = "ignore"
-      #"""
+      """
       if threading.current_thread().name != "WebsocketClientMessageThread":
         self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
         if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
           self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
         self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
-      #"""
+      """
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
       str_rot = str(ortrot)
