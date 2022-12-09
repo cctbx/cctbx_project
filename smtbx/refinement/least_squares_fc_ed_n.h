@@ -40,10 +40,11 @@ namespace least_squares {
       f_calc_function(f_calc_function),
       space_group(space_group),
       fc_cr(fc_cr),
-      Kl(params[0]),
-      Fc2Ug(params[1]),
-      eps(params[2]),
-      mat_type(static_cast<int>(params[3])),
+      Kvac(params[0]),
+      Kl(params[1]),
+      Fc2Ug(params[2]),
+      eps(params[3]),
+      mat_type(static_cast<int>(params[4])),
       frames(frames),
       thickness(thickness),
       compute_grad(compute_grad)
@@ -143,10 +144,12 @@ namespace least_squares {
             thickness, Kn, frame.beams.size());
         }
         else { // ReciPro
+          af::shared<FloatType> Pgs;
           utils<FloatType>::build_eigen_matrix_recipro(A, frame.indices, K,
-            frame.RMf, frame.normal, parent.Fc2Ug
+            frame.RMf, frame.normal, Pgs, parent.Fc2Ug
           );
-          amps = utils<FloatType>::calc_amps_recipro(A, thickness, frame.beams.size());
+          amps = utils<FloatType>::calc_amps_recipro(A, Pgs, parent.Kvac,
+            thickness, frame.beams.size());
         }
         for (size_t i = 0; i < frame.beams.size(); i++) {
           Is[frame.offset + i] = std::norm(amps[i]);
@@ -295,7 +298,7 @@ namespace least_squares {
     cctbx::xray::fc_correction<FloatType> const& fc_cr;
     sgtbx::space_group const& space_group;
     af::shared<miller::index<> > indices;
-    FloatType Kl, Fc2Ug, eps;
+    FloatType Kvac, Kl, Fc2Ug, eps;
     int mat_type;
     size_t beam_n;
     /* to lookup an index in particular frame, have to keep a copy of the
