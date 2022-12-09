@@ -50,8 +50,8 @@ namespace smtbx { namespace refinement { namespace constraints {
 
   // thickness parameter
   void thickness_parameter::validate() {
-    if (thickness->value <= 0) {
-      thickness->value = 1e-3;
+    if (constrained && thickness->value <= 0) {
+      thickness->value = 1e-5;
     }
   }
   // single_scatterer_parameter
