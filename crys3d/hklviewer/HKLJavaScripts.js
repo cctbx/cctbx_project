@@ -567,7 +567,8 @@ async function SetAutoview(mycomponent, t)
           let m4 = stage.viewerControls.getOrientation( );
           m4.elements[0] = m4.elements[10] = zaim;
           m4.elements[5] = -zaim;
-          stage.viewerControls.orient(m4); // updates the view to camera.position.z = zaim
+          stage.viewerControls.applyMatrix(m4);
+          //stage.viewerControls.orient(m4); // updates the view to camera.position.z = zaim
           stage.viewer.requestRender();        
           WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
