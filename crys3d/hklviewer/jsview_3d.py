@@ -1605,14 +1605,14 @@ class HKLview_3d:
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
-          flst = [float(e) for e in lst]
+          flst = [float(e) for e in lst[0:4]]
           self.clipNear = flst[0]
           self.clipFar = flst[1]
           self.cameraPosZ = flst[2]
           self.zoom = flst[3]
-          self.mprint("ReturnClipPlaneDistances: cameraPosZ: %s, zoom: %s" %(self.cameraPosZ, self.zoom), verbose="orientmsg")
-          onrequest = flst[4]
-          if onrequest: # only unlock if requested by GetClipPlaneDistances()
+          calledby = lst[4]
+          self.mprint("ReturnClipPlaneDistances(%s): cameraPosZ: %s, zoom: %s" %(calledby, self.cameraPosZ, self.zoom), verbose="orientmsg")
+          if calledby == "GetClipPlaneDistances": # only unlock if requested by GetClipPlaneDistances()
             self.hkls_drawn_sem.release()
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released hkls_drawn_sem", verbose="threadingmsg")
             self.clipplane_msg_sem.release()
