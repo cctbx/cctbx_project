@@ -1569,6 +1569,10 @@ class HKLview_3d:
         elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
+        #elif "Done RotateStage" in message:
+        #  if threading.current_thread().name != "WebsocketClientMessageThread":
+        #    self.autoview_sem.release()
+        #    self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -2609,6 +2613,18 @@ in the space group %s\nwith unit cell %s""" \
       # in case HKLJavaScripts.onMessage() crashed and failed returning cameraPosZ
       self.GetClipPlaneDistances()
     if self.cameraPosZ is not None:
+      self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
+      if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
+      strconfirm = "ignore"
+      """
+      if threading.current_thread().name != "WebsocketClientMessageThread":
+        self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
+        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+          self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+        self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
+      """
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
       str_rot = str(ortrot)
@@ -2617,19 +2633,10 @@ in the space group %s\nwith unit cell %s""" \
       str_rot = str_rot + ", " + str(self.zoom)
       msg = str_rot + ", quiet\n"
       if not quietbrowser:
-        msg = str_rot + ", verbose\n"
-      self.mprint("RotateMxStage waiting for clipplane_msg_sem.acquire", verbose="threadingmsg")
-      if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
-        self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-      self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
-      self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
-      if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-        self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-      self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
+        msg = msg + ", verbose\n"
+
       self.AddToBrowserMsgQueue("RotateStage", msg)
       #time.sleep(0.1)
-      self.autoview_sem.release()
-      self.mprint("RotateMxStage released autoview_sem", verbose="threadingmsg")
       self.clipplane_msg_sem.release()
       self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
