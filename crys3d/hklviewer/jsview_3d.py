@@ -1531,7 +1531,8 @@ class HKLview_3d:
 
 
   def ProcessBrowserMessage(self, message):
-    # method runs in a separate thread handling messages from the browser displaying our reflections
+    # Runs in WebsocketClientMessageThread handling messages from the browser displaying our reflections
+    # started in webbrowser_messenger_py3
     try:
       if sys.version_info[0] > 2:
         ustr = str
@@ -1566,13 +1567,9 @@ class HKLview_3d:
           self.mprint( message, verbose=3)
         elif "StartSetAutoView" in message or "SetAutoView camera.z" in message:
           self.mprint( message, verbose=3)
-        elif "FinishedSetAutoView" in message:
+        elif "FinishedSetAutoView" in message or "Done RotateStage" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
-        #elif "Done RotateStage" in message:
-        #  if threading.current_thread().name != "WebsocketClientMessageThread":
-        #    self.autoview_sem.release()
-        #    self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
           self.mprint( message, verbose=1)
           time.sleep(0.5) # time for browser to clean up
@@ -2618,13 +2615,13 @@ in the space group %s\nwith unit cell %s""" \
         self.mprint("Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
       self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
       strconfirm = "ignore"
-      """
+      #"""
       if threading.current_thread().name != "WebsocketClientMessageThread":
         self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
         if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
           self.mprint("Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
         self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
-      """
+      #"""
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
       str_rot = str(ortrot)
@@ -2636,7 +2633,7 @@ in the space group %s\nwith unit cell %s""" \
         msg = msg + ", verbose\n"
 
       self.AddToBrowserMsgQueue("RotateStage", msg)
-      #time.sleep(0.1)
+      time.sleep(0.1)
       self.clipplane_msg_sem.release()
       self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
