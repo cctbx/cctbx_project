@@ -540,11 +540,10 @@ async function SetAutoview(mycomponent, t)
 {
   if (mycomponent == null)
     return;
-
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-  mycomponent.autoView(t); 
   isAutoviewing = true;
+  mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   let dt = 50;
   let sumt = 0;
@@ -1017,6 +1016,11 @@ function onMessage(e)
 
     if (msgtype === "RotateStage")
     { // rotate stage and its components
+      while (isAutoviewing)
+      {
+        sleep(100);
+      }
+
       WebsockSendMsg('Rotating stage ');
 
       let sm = new Float32Array(9);
@@ -1038,6 +1042,7 @@ function onMessage(e)
       RenderRequest().then(()=> {
           ReturnClipPlaneDistances();
           SendOrientationMsg("RotateStage");
+          WebsockSendMsg('Done RotateStage');
         }
       );
     }
