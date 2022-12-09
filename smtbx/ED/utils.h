@@ -125,16 +125,19 @@ namespace smtbx { namespace ED {
       cart_t const& K,
       mat3_t const& RMf,
       cart_t const& N,
+      af::shared<FloatType>& Pgs,
       FloatType Fc2Ug)
     {
       // Projection of K onto normal of frame normal, K*frame.normal
       const FloatType Kn = N * K;
       const size_t n_beams = indices.size() + 1;
       A.resize(af::mat_grid(n_beams, n_beams));
+      Pgs.resize(n_beams);
       for (size_t i = 0; i < n_beams; i++) {
         miller::index<> h_i = i == 0 ? miller::index<>(0,0,0) : indices[i-1];
         cart_t g_i = RMf * cart_t(h_i[0], h_i[1], h_i[2]);
         FloatType Pg = 2 * (N * (K + g_i));
+        Pgs[i] = Pg;
         for (size_t j = 0; j < n_beams; j++) {
           if (i == j) {
             A(i, i) += -(g_i * (K + K + g_i));
@@ -205,6 +208,8 @@ namespace smtbx { namespace ED {
 
     static af::shared<complex_t> calc_amps_recipro(
       af::versa<complex_t, af::mat_grid>& A,
+      const af::shared<FloatType>& Pgs,
+      FloatType Kvac,
       FloatType thickness,
       size_t num)
     {
@@ -231,6 +236,14 @@ namespace smtbx { namespace ED {
       }
       af::shared<complex_t> im(n_beams);
       const complex_t exp_k(0, 2*scitbx::constants::pi * thickness);
+      const complex_t exp_k1(0, scitbx::constants::pi * thickness);
+      // apply diagonal matrix on the left
+      for (size_t i = 0; i < n_beams; i++) {
+        complex_t p = std::exp(exp_k1 * (Pgs[i] + 2 * Kvac));
+        for (size_t j = 0; j < n_beams; j++) {
+          B(i, j) *= p;
+        }
+      }
       for (size_t i = 0; i < n_beams; i++) {
         im[i] = std::exp(ev[i] * exp_k) * Bi(i, 0);
       }
