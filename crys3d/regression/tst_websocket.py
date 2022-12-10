@@ -94,7 +94,8 @@ if __name__ == '__main__':
   print("Websockets server on localhost port %s waiting for browser connection." %port)
 
   tasks = asyncio.gather(
-    websockets.serve(handler, "localhost", port),
+    #websockets.serve(handler, "localhost", port),
+    websockets.serve(handler, None, port=port),
     closing_time()
   )
 

@@ -88,7 +88,8 @@ class WBmessenger(object):
           import logging
           logging.getLogger("asyncio").setLevel(logging.WARNING)
 
-      self.server = websockets.serve(self.WebSockHandler, 'localhost',
+      #self.server = websockets.serve(self.WebSockHandler, 'localhost',
+      self.server = websockets.serve(self.WebSockHandler, None,
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
