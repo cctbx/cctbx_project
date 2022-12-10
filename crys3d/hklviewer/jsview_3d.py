@@ -2505,6 +2505,7 @@ in the space group %s\nwith unit cell %s""" \
     msg = str(trackspeed)
     self.AddToBrowserMsgQueue("SetMouseSpeed", msg)
     #self.GetMouseSpeed() # TODO: fix wait time
+    self.mprint("In SetMouseSpeed:\n" + "".join( traceback.format_stack(limit=4) ), verbose="stacktrace"  )
 
 
   def GetMouseSpeed(self):

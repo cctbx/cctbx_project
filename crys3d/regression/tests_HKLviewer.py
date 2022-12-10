@@ -137,10 +137,11 @@ def exercise1():
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
             "closing_time=90",
-            "debug=True"
+            #"debug=True"
           ]
 
   assert cmdlineframes.run(cmdargs)
+
   check_log_file(outputfname, reflections2match2)
 
 
@@ -166,7 +167,7 @@ def exercise2():
              "image_file=HKLviewer2_testimage.png",
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closing_time=90", # close HKLviewer after 25 seconds
-             "debug=True"
+             #"debug=True"
             ]
 
   HKLviewer_result = easy_run.fully_buffered(" ".join(cmdargs))
