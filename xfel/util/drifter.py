@@ -25,11 +25,11 @@ message = ''' This script aims to investigate the spatial drift of a detector
               Example usage: `libtbx.python drifter.py input_glob=batch*TDER/`
 '''
 phil_scope = parse('''
-  input_dir
+  input_dir = None
     .type = str
     .multiple = True
     .help = list of directories after TDER to be investigated.
-  input_glob
+  input_glob = None
     .type = str
     .multiple = True
     .help = glob which matches directories after TDER to be investigated.
