@@ -32,9 +32,18 @@ phil_scope = parse('''
   input_glob = batch*TDER/
     .type = str
     .help = glob which matches directories after TDER to be investigated.
-  save_path = ""
+  plot_show = True
+    .type = bool
+    .help = If False, do not display resulting plot interactively
+  plot_path = ""
     .type = str
     .help = if given, plot will be saved with this path and name (eg.: fig.png)
+  plot_height = 8.0
+    .type = float
+    .help = Height of saved plot in inches
+  plot_width = 10.0
+    .type = float
+    .help = Width of saved plot in inches
   uncertainties = True
     .type = bool
     .help = If True, origin uncertainties will be estimated using differences \
@@ -411,7 +420,7 @@ class DriftArtist(object):
     self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
-  def plot(self):
+  def publish(self):
     self._plot_bars()
     self._plot_correlations()
     self._plot_width_info()
@@ -423,6 +432,12 @@ class DriftArtist(object):
     self._plot_drift(self.axc, 'c', 'delta_c')
     self._plot_legend()
     self.fig.align_labels()
+    if self.parameters.plot_path:
+      self.fig.set_size_inches(self.parameters.plot_width,
+                               self.parameters.plot_height)
+      self.fig.savefig(self.parameters.plot_path)
+    if self.parameters.plot_show:
+      plt.show()
 
 
 def run(params_):
@@ -432,10 +447,7 @@ def run(params_):
   ds.scrap()
   dt.sort(by_key='run')
   print(dt)
-  da.plot()
-  if params_.save_path:
-    da.fig.savefig(params_.save_path)
-  plt.show()
+  da.publish()
 
 
 if __name__ == '__main__':
