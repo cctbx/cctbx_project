@@ -74,6 +74,10 @@ namespace simtbx { namespace Kokkos {
              &simtbx::Kokkos::kokkos_energy_channels::structure_factors_to_GPU_direct,
              (arg_("dummy_int"), arg_("indices"), arg_("amplitudes"))
             )
+        .def("structure_factors_replace_GPU_direct",
+             &simtbx::Kokkos::kokkos_energy_channels::structure_factors_replace_GPU_direct,
+             (arg_("ichannel"), arg_("indices"), arg_("amplitudes"))
+            )
         .def("print_Fhkl", &simtbx::Kokkos::kokkos_energy_channels::print_Fhkl,
              (arg_("channel"), arg_("first_element"), arg_("last_element"))
             )
