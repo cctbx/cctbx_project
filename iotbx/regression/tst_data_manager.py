@@ -993,6 +993,31 @@ data_manager {
       assert label in fs_labels
 
 # -----------------------------------------------------------------------------
+def test_scattering_table_mixins():
+  for datatype in ['model', 'miller_array']:
+    dm = DataManager([datatype])
+    assert hasattr(dm, 'check_scattering_table_type')
+    assert hasattr(dm, 'map_scattering_table_type')
+
+  dm = DataManager(['phil'])
+  assert not hasattr(dm, 'check_scattering_table_type')
+  assert not hasattr(dm, 'map_scattering_table_type')
+
+  dm = DataManager()
+  for scattering_table in ['wk1995', 'it1992', 'n_gaussian', 'neutron',  'electron']:
+    assert dm.check_scattering_table_type(scattering_table) == scattering_table
+  assert dm.check_scattering_table_type('x_ray') == 'n_gaussian'
+  try:
+    dm.check_scattering_table_type('abc')
+  except Sorry as s:
+    assert 'Unrecognized scattering table type, "abc,"' in str(s)
+
+  for scattering_table in ['neutron',  'electron']:
+    assert dm.map_scattering_table_type(scattering_table) == scattering_table
+  for scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
+    assert dm.map_scattering_table_type(scattering_table) == 'x_ray'
+
+# -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
@@ -1005,6 +1030,7 @@ if __name__ == '__main__':
   test_model_skip_ss_annotations()
   test_fmodel_params()
   test_user_selected_labels()
+  test_scattering_table_mixins()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_model_and_restraint()
