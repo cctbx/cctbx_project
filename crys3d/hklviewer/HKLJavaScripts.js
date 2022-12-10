@@ -529,7 +529,7 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 500);
+  SetAutoview(shapeComp, 0);
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -542,7 +542,7 @@ async function SetAutoview(mycomponent, t)
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
-  mycomponent.autoView(t); 
+  await mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   let dt = 50;
   let sumt = 0;
@@ -2304,7 +2304,7 @@ function PageLoad()
 {
   try
   {
-    let ret = MyWebGL_Detect();
+    let ret = MyWebGL_Detect(); // defined in webgl_check.js
     let msg = String(ret[1]);
     if (ret[0] == false) {
       let errmsg = "Critical WebGL problem! " + msg; 
