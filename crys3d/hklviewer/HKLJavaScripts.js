@@ -519,7 +519,8 @@ async function RenderRequest(note = "")
 };
 
 
-function SetDefaultOrientation() {
+function getRotatedZoutMatrix()
+{
   let m4 = new NGL.Matrix4();
   let axis = new NGL.Vector3();
   axis.x = 0.0;
@@ -529,7 +530,13 @@ function SetDefaultOrientation() {
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
   m4.makeRotationAxis(axis, Math.PI);
-  SetAutoview(shapeComp, 0);
+  return m4;
+}
+
+
+function SetDefaultOrientation() {
+  let m4 = getRotatedZoutMatrix();
+  SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
     stage.viewerControls.orient(m4);
 }
@@ -542,7 +549,7 @@ async function SetAutoview(mycomponent, t)
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
-  await mycomponent.autoView(t); 
+  mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   let dt = 50;
   let sumt = 0;
@@ -552,7 +559,7 @@ async function SetAutoview(mycomponent, t)
     // data size of mycomponent. It will have completed once the condition 
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
-    if (stage.viewer.camera.position.z == zaim) {
+    if (stage.viewer.camera.position.z == zaim && sumt > 0) {
       WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
       isAutoviewing = false;
       return;
@@ -562,13 +569,10 @@ async function SetAutoview(mycomponent, t)
         sumt += dt;
         if (sumt > t && stage.viewer.camera.position.z != zaim)
         { // If autoView() is stuck at stage.viewer.camera.position.z= -1 
-          // then manually change dialgonals of the orientation matrix
-          let m4 = stage.viewerControls.getOrientation( );
-          m4.elements[0] = m4.elements[10] = zaim;
-          m4.elements[5] = -zaim;
-          stage.viewerControls.applyMatrix(m4);
-          //stage.viewerControls.orient(m4); // updates the view to camera.position.z = zaim
-          //stage.viewer.requestRender();        
+          // then resort to use viewerControls.orient()
+          let m4 = getRotatedZoutMatrix();
+          m4.multiplyScalar(zaim);
+          stage.viewerControls.orient(m4); // 
           WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;

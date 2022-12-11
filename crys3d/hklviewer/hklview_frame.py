@@ -173,7 +173,7 @@ class HKLViewFrame() :
             self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
           self.initiated_gui_sem.release()
           #self.update_from_philstr("viewer.scene_id = 0")
-          #time.sleep(15)
+          #time.sleep(1)
           self.mprint("Processing PHIL file: %s" %fname)
           with open(fname, "r") as f:
             philstr = f.read()
