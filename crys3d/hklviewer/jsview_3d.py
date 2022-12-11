@@ -517,8 +517,9 @@ class HKLview_3d:
     in browser of coordinates to P1 are also considered volatile as this operation is very fast.
     """
     if self.params.viewer.scene_id is not None:
-      #if self.isnewfile:
-      #  self.SetDefaultOrientation()
+      if self.isnewfile:
+        self.SetDefaultOrientation()
+        time.sleep(3)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
@@ -640,7 +641,7 @@ class HKLview_3d:
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
       if self.isnewfile:
-        self.SetDefaultOrientation()
+        #self.SetDefaultOrientation()
         self.GetClipPlaneDistances()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
