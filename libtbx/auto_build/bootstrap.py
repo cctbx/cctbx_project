@@ -2311,7 +2311,8 @@ class XFELBuilder(CCIBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(XFELBuilder, self).get_libtbx_configure()
-    configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
+    configlst.append('--cxxstd=c++14')
     return configlst
 
   def add_tests(self):
