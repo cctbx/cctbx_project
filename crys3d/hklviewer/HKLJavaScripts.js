@@ -554,9 +554,9 @@ function SetAutoviewNoAnim(mycomponent)
   let m4 = getRotatedZoutMatrix();
   m4.multiplyScalar(zaim);
   stage.viewerControls.orient(m4);
-  stage.viewer.updateZoom(); 
-  stage.viewer.requestRender();
-  ReturnClipPlaneDistances('SetAutoViewNoAnim');
+  //stage.viewer.updateZoom(); 
+  //stage.viewer.requestRender();
+  //ReturnClipPlaneDistances('SetAutoViewNoAnim');
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };

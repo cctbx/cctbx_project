@@ -1547,7 +1547,7 @@ class HKLview_3d:
       else:
         ustr = unicode
       if isinstance(message, bytes) and isinstance(self.lastmsg, ustr) and "Imageblob" in self.lastmsg:
-        self.mprint( "Saving image to %s" %self.imagename, verbose=1)
+        self.mprint( "Saving image to %s" %self.imagename, verbose=0)
         with open( self.imagename, "wb") as imgfile:
           imgfile.write( message)
       philchanged = False
@@ -1801,6 +1801,8 @@ Distance: %s
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
+      # ensure websockets server starts before the webbrowser loads page with javascript websocket client
+      time.sleep(3)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
