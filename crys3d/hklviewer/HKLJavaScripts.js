@@ -560,6 +560,7 @@ async function SetAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == zaim && sumt > 0) {
+      ReturnClipPlaneDistances('SetAutoview');
       WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
       isAutoviewing = false;
       return;
@@ -572,7 +573,8 @@ async function SetAutoview(mycomponent, t)
           // then resort to use viewerControls.orient()
           let m4 = getRotatedZoutMatrix();
           m4.multiplyScalar(zaim);
-          stage.viewerControls.orient(m4); // 
+          stage.viewerControls.orient(m4);
+          ReturnClipPlaneDistances('SetAutoview');
           WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;
