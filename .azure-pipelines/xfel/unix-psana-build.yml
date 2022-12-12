@@ -74,6 +74,7 @@ steps:
     libtbx.configure xfel_regression
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
+    export SIT_ROOT=/reg/g/psdm
     libtbx.run_tests_parallel module=xfel_regression nproc=4
   failOnStderr: false
   displayName: Test
