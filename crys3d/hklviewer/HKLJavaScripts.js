@@ -536,10 +536,30 @@ function getRotatedZoutMatrix()
 
 function SetDefaultOrientation() {
   let m4 = getRotatedZoutMatrix();
-  SetAutoview(shapeComp, 500);
-  if (!rotationdisabled)
-    stage.viewerControls.orient(m4);
+  //SetAutoview(shapeComp, 500);
+  SetAutoviewNoAnim(shapeComp);
+  //if (!rotationdisabled)
+  //  stage.viewerControls.orient(m4);
 }
+
+
+function SetAutoviewNoAnim(mycomponent)
+{
+  if (mycomponent == null)
+    return;
+  WebsockSendMsg('StartSetAutoViewNoAnim');
+  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+  isAutoviewing = true;
+  let zaim = mycomponent.getZoom();
+  let m4 = getRotatedZoutMatrix();
+  m4.multiplyScalar(zaim);
+  stage.viewerControls.orient(m4);
+  stage.viewer.updateZoom(); 
+  stage.viewer.requestRender();
+  ReturnClipPlaneDistances('SetAutoViewNoAnim');
+  WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
+  isAutoviewing = false;
+};
 
 
 async function SetAutoview(mycomponent, t)
@@ -1433,12 +1453,13 @@ function onMessage(e)
         MakeHKL_Axis();
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer');
-        RenderRequest("notify_cctbx").then(()=> {
-            SendOrientationMsg("RenderStageObjectsNotifyCctbx");
-            GetReflectionsInFrustum();
-            WebsockSendMsg('RenderStageObjects');
-          }
-        );
+        WebsockSendMsg('RenderStageObjects');
+        //RenderRequest("notify_cctbx").then(()=> {
+        //    SendOrientationMsg("RenderStageObjectsNotifyCctbx");
+        //    GetReflectionsInFrustum();
+            //WebsockSendMsg('RenderStageObjects');
+         // }
+        //);
       }
     }
 
@@ -2203,7 +2224,6 @@ function HKLscene()
         postrotmxflag = true;
         ReturnClipPlaneDistances("mouseObserver.signals.dragged");
         SendOrientationMsg("MouseDragged");
-        //WebsockSendMsg('MouseDraggedOrientation:\n' + msg);
         timenow = timefunc();
       }
       tooltip.style.display = "none";
@@ -2215,8 +2235,6 @@ function HKLscene()
     function (x, y)
     {
       SendOrientationMsg("MouseClicked");
-      //let msg = getOrientMsg();
-      //WebsockSendMsg('MouseClickedOrientation:\n' + msg );
     }
   );
 
@@ -2231,7 +2249,6 @@ function HKLscene()
         postrotmxflag = true;
         SendOrientationMsg("MouseScrolled");
         ReturnClipPlaneDistances("mouseObserver.signals.scrolled");
-        //WebsockSendMsg('MouseScrolledOrientation:\n' + msg );
         timenow = timefunc();
       }
       tooltip.style.display = "none";
@@ -2262,8 +2279,6 @@ function HKLscene()
         sleep(t).then(()=> {
             if (isAutoviewing)
               return;
-            //let msg = getOrientMsg();
-            //WebsockSendMsg('CurrentViewOrientation:\n' + msg );
             SendOrientationMsg("CurrentView");
             ReturnClipPlaneDistances("viewerControls.signals.changed");
           }
