@@ -521,27 +521,25 @@ async function RenderRequest(note = "")
 
 function getRotatedZoutMatrix()
 {
-  let m4 = new NGL.Matrix4();
-  let axis = new NGL.Vector3();
-  axis.x = 0.0;
-  axis.y = 1.0;
-  axis.z = 0.0;
   // Default in WebGL is for x-axis to point left and z-axis to point into the screen.
   // But we want x-axis pointing right and z-axis pointing out of the screen. 
   // Rotate coordinate system to that effect
-  m4.makeRotationAxis(axis, Math.PI);
+  let m4 = new NGL.Matrix4();
+  // GL matrices are the transpose of conventional rotation matrices
+  m4.set(-1.0,  0.0,  0.0,  0.0,
+          0.0,  1.0,  0.0,  0.0,
+          0.0,  0.0, -1.0,  0.0,
+          0.0,  0.0,  0.0,  1.0
+  );
   return m4;
 }
 
 
 function SetDefaultOrientation() {
-  SetAutoview(shapeComp, 500);
   //SetAutoviewNoAnim(shapeComp);
+  SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
-  {
-    let m4 = getRotatedZoutMatrix();
-    stage.viewerControls.applyMatrix(m4);
-  }
+    stage.viewerControls.orient(getRotatedZoutMatrix());
 }
 
 

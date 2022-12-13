@@ -1808,7 +1808,8 @@ Distance: %s
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
       # pause to ensure websockets server starts before the webbrowser loads page with javascript websocket client
-      time.sleep(3)
+      while self.WBmessenger.websockeventloop.is_running() == False:
+        time.sleep(3)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
