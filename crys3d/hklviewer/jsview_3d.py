@@ -108,7 +108,7 @@ def get_browser_ctrl(using=None):
   return browser, webctrl
 
 
-lock_timeout=40 # for the sempahores. Rendering could take a while for very large file. Until that
+lock_timeout=60 # for the sempahores. Rendering could take a while for very large file. Until that
 # has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
 # are undefined.
 
@@ -519,7 +519,7 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        time.sleep(3)
+        time.sleep(1)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
@@ -1801,7 +1801,7 @@ Distance: %s
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
-      # ensure websockets server starts before the webbrowser loads page with javascript websocket client
+      # pause to ensure websockets server starts before the webbrowser loads page with javascript websocket client
       time.sleep(3)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
