@@ -519,8 +519,13 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
+        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+          self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+        self.mprint("set_volatile_params got autoview_sem", verbose="threadingmsg")
+        self.autoview_sem.release()
+        self.mprint("set_volatile_params released autoview_sem", verbose="threadingmsg")
         if len(self.WBmessenger.clientmsgqueue):
-          time.sleep(1)
+          time.sleep(2)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
