@@ -593,7 +593,7 @@ class TableCtrl(CtrlBase):
     # add column labels (xlabels)
     if len(clabels) > 0:
       self.sizer.Add(wx.StaticText(self, label=''))
-      for item in column_labels:
+      for i in clabels:
         clabel = wx.StaticText(self, label=i.decode('utf-8'), size=clabel_size)
         clabel.SetFont(self.font)
         self.sizer.Add(clabel)
