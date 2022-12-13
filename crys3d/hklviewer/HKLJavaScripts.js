@@ -535,11 +535,13 @@ function getRotatedZoutMatrix()
 
 
 function SetDefaultOrientation() {
-  let m4 = getRotatedZoutMatrix();
-  //SetAutoview(shapeComp, 500);
-  SetAutoviewNoAnim(shapeComp);
-  //if (!rotationdisabled)
-  //  stage.viewerControls.orient(m4);
+  SetAutoview(shapeComp, 500);
+  //SetAutoviewNoAnim(shapeComp);
+  if (!rotationdisabled)
+  {
+    let m4 = getRotatedZoutMatrix();
+    stage.viewerControls.applyMatrix(m4);
+  }
 }
 
 
@@ -551,12 +553,9 @@ function SetAutoviewNoAnim(mycomponent)
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
   let zaim = mycomponent.getZoom();
-  let m4 = getRotatedZoutMatrix();
-  m4.multiplyScalar(zaim);
-  stage.viewerControls.orient(m4);
-  //stage.viewer.updateZoom(); 
-  //stage.viewer.requestRender();
-  //ReturnClipPlaneDistances('SetAutoViewNoAnim');
+  let m = new NGL.Matrix4().identity();
+  m.multiplyScalar(zaim);
+  stage.viewerControls.orient(m);
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };
@@ -580,7 +579,7 @@ async function SetAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == zaim && sumt > 0) {
-      ReturnClipPlaneDistances('SetAutoview');
+      //ReturnClipPlaneDistances('SetAutoview');
       WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
       isAutoviewing = false;
       return;
@@ -594,7 +593,7 @@ async function SetAutoview(mycomponent, t)
           let m4 = getRotatedZoutMatrix();
           m4.multiplyScalar(zaim);
           stage.viewerControls.orient(m4);
-          ReturnClipPlaneDistances('SetAutoview');
+          //ReturnClipPlaneDistances('SetAutoview');
           WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;
