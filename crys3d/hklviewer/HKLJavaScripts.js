@@ -587,7 +587,7 @@ async function SetAutoview(mycomponent, t)
     await sleep(dt).then(()=> { 
         WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
         sumt += dt;
-        if (sumt > t && stage.viewer.camera.position.z != zaim)
+        if (sumt > t*4 && stage.viewer.camera.position.z != zaim)
         { // If autoView() is stuck at stage.viewer.camera.position.z= -1 
           // then resort to use viewerControls.orient()
           let m4 = getRotatedZoutMatrix();
