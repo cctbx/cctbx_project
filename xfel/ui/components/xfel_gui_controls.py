@@ -370,7 +370,7 @@ class OptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
-               sub_labels=[],
+               sub_labels=(),
                ctrl_size=(300, -1),
                **kwargs):
 
@@ -385,7 +385,7 @@ class OptionCtrl(CtrlBase):
       opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
     for key, value in items:
-      if sub_labels != []:
+      if sub_labels:
         sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
@@ -408,7 +408,7 @@ class VerticalOptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
-               sub_labels=[],
+               sub_labels=(),
                ctrl_size=(300, -1)):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
@@ -423,7 +423,7 @@ class VerticalOptionCtrl(CtrlBase):
       opt_box = wx.FlexGridSizer(len(items) * 2, 2, 10, 10)
 
     for key, value in items:
-      if sub_labels != []:
+      if sub_labels:
         sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
@@ -572,11 +572,11 @@ class TableCtrl(CtrlBase):
       Data must be a list of lists for multi-column tables '''
 
   def __init__(self, parent,
-               clabels=[],
+               clabels=(),
                clabel_size=(200, -1),
-               rlabels=[],
+               rlabels=(),
                rlabel_size=(200, -1),
-               contents=[],
+               contents=(),
                label_style='normal',
                content_style='normal'):
 
@@ -622,8 +622,9 @@ class RadioCtrl(CtrlBase):
                label_style='normal',
                ctrl_size=(100, -1),
                direction='horizontal',
-               items={}, **kwargs):
+               items=None, **kwargs):
     CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
+    items = {} if items is None else items
 
     if direction == 'horizontal':
       radio_group = wx.FlexGridSizer(1, len(items) + 1, 0, 10)
@@ -651,8 +652,8 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     self.sortable_mixin = listmix
     wx.ListCtrl.__init__(self, parent, style=style)
 
-  def initialize_sortable_columns(self, n_col=0, itemDataMap={}):
-    self.itemDataMap = itemDataMap
+  def initialize_sortable_columns(self, n_col=0, itemDataMap=None):
+    self.itemDataMap = {} if itemDataMap is None else itemDataMap
     self.sortable_mixin.ColumnSorterMixin.__init__(self, n_col)
     sortable_list = self.GetListCtrl()
     if sortable_list:
@@ -782,7 +783,7 @@ class GaugeBar(CtrlBase):
                choice_label_size=(120, -1),
                choice_size=(100, -1),
                choice_style='normal',
-               choices=[],
+               choices=(),
                gauge_max=100):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
