@@ -519,7 +519,8 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        time.sleep(1)
+        if len(self.WBmessenger.clientmsgqueue):
+          time.sleep(1)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
