@@ -63,6 +63,7 @@ dependencies:
  - eigen
  - dials-data
  - pint
+ - nxmx
 
  # xia2
  - tabulate
