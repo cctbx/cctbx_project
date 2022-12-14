@@ -64,6 +64,9 @@ class WBmessenger(object):
       self.mywebsock = None
       self.websockeventloop = None
       self.clientmsgqueue_sem = threading.Semaphore()
+      self.listening_sem = threading.Semaphore()
+      self.listening_sem.acquire(blocking=True, timeout=lock_timeout)
+      self.mprint("WBmessenger got listening_sem", verbose="threadingmsg")
     except Exception as e:
       print( to_str(e) + "\n" + traceback.format_exc(limit=10))
 
@@ -72,6 +75,9 @@ class WBmessenger(object):
     #time.sleep(10)
     self.mprint("HKLviewerWebSockServerThread started", verbose=1)
     self.websockeventloop.run_until_complete(self.server)
+    self.mprint("websocket server is listening", verbose=1)
+    self.listening_sem.release()
+    self.mprint("WBmessenger released listening_sem", verbose="threadingmsg")
     self.websockeventloop.run_forever()
 
 
@@ -86,7 +92,9 @@ class WBmessenger(object):
         if self.parent.debug is not None:
           self.websockeventloop.set_debug(True)
           import logging
-          logging.getLogger("asyncio").setLevel(logging.WARNING)
+          logger = logging.getLogger("websockets.server")
+          logger.setLevel(logging.DEBUG)
+          logger.addHandler(logging.StreamHandler())
 
       self.server = websockets.serve(self.WebSockHandler, 'localhost',
                                       self.websockport, #ssl=ssl_context,

@@ -3,7 +3,8 @@ from crys3d.regression import tests_HKLviewer
 
 
 def run():
-  tests_HKLviewer.exercise2()
+  tests_HKLviewer.exerciseQtGUI(tests_HKLviewer.philstr1, tests_HKLviewer.reflections2match1,
+                               "QtGuiSliceK-9")
   print("OK")
 
 
