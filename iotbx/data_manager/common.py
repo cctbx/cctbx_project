@@ -88,14 +88,15 @@ class fmodel_mixins(object):
         The type to set (e.g. 'x_ray', 'neutron', or 'electron')
     '''
     # model
-    model_type = [data_type]
+    checked_type = self.map_scattering_table_type(data_type)
+    model_type = [checked_type]
     self._is_valid_model_type(model_type)
     self.set_default_model_type(model_type)
     for filename in self.get_model_names():
       self.set_model_type(filename, model_type)
 
     # miller_array
-    array_type = data_type
+    array_type = checked_type
     self.set_default_miller_array_type(array_type)
     for filename in self.get_miller_array_names():
       for label in self.get_miller_array_labels(filename):

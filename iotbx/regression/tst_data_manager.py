@@ -894,6 +894,15 @@ def test_fmodel_params():
     for label in dm.get_miller_array_labels(filename):
       assert dm.get_miller_array_type(filename, label) == 'electron'
 
+  for x_ray_type in ['wk1995', 'it1992', 'n_gaussian']:
+    dm.update_all_defaults(x_ray_type)
+    for filename in dm.get_model_names():
+      assert dm.get_model_type(filename) == ['x_ray']
+    assert dm.get_default_miller_array_type() == 'x_ray'
+    for filename in dm.get_miller_array_names():
+      for label in dm.get_miller_array_labels(filename):
+        assert dm.get_miller_array_type(filename, label) == 'x_ray'
+
 # -----------------------------------------------------------------------------
 def test_user_selected_labels():
   dm = DataManager(['miller_array', 'phil'])
