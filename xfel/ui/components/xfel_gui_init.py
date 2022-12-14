@@ -1681,6 +1681,7 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(7, "Subm ID")
     self.job_list.InsertColumn(8, "Status")
 
+    self.job_list.numeric_columns = [0]
     self.job_list_sort_flag = [0, 0, 0, 0, 0, 0, 0, 0, 0]
     self.job_list_col = 0
 

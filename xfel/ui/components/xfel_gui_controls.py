@@ -648,6 +648,7 @@ import wx.lib.mixins.listctrl as listmix
 
 class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent, style=wx.LC_ICON):
+    self.numeric_columns = []
     self.parent = parent
     self.sortable_mixin = listmix
     wx.ListCtrl.__init__(self, parent, style=style)
@@ -662,7 +663,7 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __OnColClick(self, e):
     self._col = e.GetColumn()
     self._colSortFlag[self._col] = int(not self._colSortFlag[self._col])
-    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.GetListCtrl().SortItems(self.get_appropriate_sorter())
     self.OnSortOrderChanged()
     if hasattr(self.parent, 'onColClick'):
       self.parent.onColClick(e)
@@ -670,11 +671,26 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def RestoreSortOrder(self, col, colSortFlag):
     self._col = col
     self._colSortFlag = colSortFlag
-    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.GetListCtrl().SortItems(self.get_appropriate_sorter())
     self.OnSortOrderChanged()
 
   def GetListCtrl(self):
     return self
+
+  def get_appropriate_sorter(self):
+    return self.numerical_column_sorter if self._col in self.numeric_columns \
+      else self.GetColumnSorter()
+
+  def numerical_column_sorter(self, key1, key2):
+    col = self._col
+    ascending = self._colSortFlag[col]
+    item1 = float(self.itemDataMap[key1][col])
+    item2 = float(self.itemDataMap[key2][col])
+    difference = item1 - item2
+    if difference == 0:
+      difference = 1 if key1 > key2 else -1
+    return difference if ascending else -difference
+
 
 # ------------------------------- UI Elements -------------------------------- #
 
