@@ -2210,6 +2210,8 @@ function HKLscene()
   stage.viewer.container.appendChild(tooltip);
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
+  
+  SetDefaultOrientation();
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
