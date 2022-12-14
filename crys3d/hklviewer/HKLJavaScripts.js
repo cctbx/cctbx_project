@@ -536,10 +536,10 @@ function getRotatedZoutMatrix()
 
 
 function SetDefaultOrientation() {
-  SetAutoviewNoAnim(shapeComp);
-  //SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
     stage.viewerControls.orient(getRotatedZoutMatrix());
+  SetAutoviewNoAnim(shapeComp);
+  //SetAutoview(shapeComp, 500);
 }
 
 
@@ -551,11 +551,12 @@ function SetAutoviewNoAnim(mycomponent)
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
   let zaim = mycomponent.getZoom();
-  let m = new NGL.Matrix4().identity();
+  //let m = new NGL.Matrix4().identity();
+  let m = getRotatedZoutMatrix();
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
-  stage.viewer.updateZoom(); 
-  stage.viewer.requestRender();
+  //stage.viewer.updateZoom(); 
+  //stage.viewer.requestRender();
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };
@@ -2211,7 +2212,7 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
   
-  SetDefaultOrientation();
+  //SetDefaultOrientation();
 
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
