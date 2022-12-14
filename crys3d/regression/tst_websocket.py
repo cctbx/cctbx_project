@@ -89,6 +89,12 @@ async def closing_time():
   asyncio.get_event_loop().call_soon(asyncio.get_event_loop().stop)
 
 
+async def startserver(port):
+  async with websockets.serve(handler, "localhost", port):
+    print("in startserver")
+    #await asyncio.Future()
+    #await asyncio.sleep(10)
+
 if __name__ == '__main__':
   port = find_free_port()
   thrd = threading.Thread(target = write_and_run_websocktest_html, args=(port,) )
@@ -96,6 +102,7 @@ if __name__ == '__main__':
   thrd.start()
   print("Websockets server on localhost port %s waiting for browser connection." %port)
   tasks = asyncio.gather(
+    #startserver(port),
     websockets.serve(handler, "localhost", port),
     closing_time()
   )

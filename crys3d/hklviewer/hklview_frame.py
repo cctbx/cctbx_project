@@ -178,12 +178,17 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
+            time.sleep(1)
             self.viewer.RedrawNGL()
+            time.sleep(3)
+            self.viewer.SimulateClick()
+            time.sleep(3)
             self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
-        self.update_from_philstr('save_image_name = "%s"' %fname)
+        self.update_from_philstr('''save_image_name = "%s"
+#use_wireframe = True''' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
@@ -1069,6 +1074,8 @@ class HKLViewFrame() :
     ret = False
     self.NewFileLoaded=True
     if (file_name != ""):
+      if not os.path.isfile(file_name):
+        raise Sorry(file_name + " doesn't exists")
       try :
         self.mprint("\nReading file %s..." %file_name)
         self.prepare_dataloading()
@@ -2089,6 +2096,9 @@ master_phil_str = """
     .type = str
   tooltip_data = "[]"
     .type = str
+  use_wireframe = False
+    .type = bool
+    .help = "Draw objects using wireframe mesh"
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 
