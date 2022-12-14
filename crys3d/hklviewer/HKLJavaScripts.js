@@ -536,8 +536,8 @@ function getRotatedZoutMatrix()
 
 
 function SetDefaultOrientation() {
-  //SetAutoviewNoAnim(shapeComp);
-  SetAutoview(shapeComp, 500);
+  SetAutoviewNoAnim(shapeComp);
+  //SetAutoview(shapeComp, 500);
   if (!rotationdisabled)
     stage.viewerControls.orient(getRotatedZoutMatrix());
 }
