@@ -659,7 +659,7 @@ def multi_core_run( myfunction, argstuples, nproc, keep_input_order=False ):
   myfunction: name of the function to be parallelised,
   argstuples: list of tuples of associated input arguments,
   nproc: number of cores to run on.
-  keep_input_order: if True, the function returns once all child processes have completed and 
+  keep_input_order: if True, the function returns once all child processes have completed and
                     results are in same order as the argstuples elements
 
   Both myfunction and its input arguments must be pickleable.
