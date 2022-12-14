@@ -1069,6 +1069,8 @@ class HKLViewFrame() :
     ret = False
     self.NewFileLoaded=True
     if (file_name != ""):
+      if not os.path.isfile(file_name):
+        raise Sorry(file_name + " doesn't exists")
       try :
         self.mprint("\nReading file %s..." %file_name)
         self.prepare_dataloading()
