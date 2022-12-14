@@ -2,6 +2,11 @@ from __future__ import division
 from xfel.merging.application.worker import worker
 from dials.array_family import flex
 from six.moves import cStringIO as StringIO
+from xfel.merging.application.reflection_table_utils import \
+    reflection_table_utils as rt_util
+from cctbx.crystal import symmetry
+from cctbx import miller
+
 
 class intensity_histogram(worker):
   '''Builds a histogram of reflection intensities'''
@@ -13,6 +18,12 @@ class intensity_histogram(worker):
     return 'Intensity histogram'
 
   def run(self, experiments, reflections):
+    if self.params.statistics.histogram.mode == "legacy":
+      return self.run_legacy(experiments, reflections)
+    elif self.params.statistics.histogram.mode == "individual":
+      return self.run_individual(experiments, reflections)
+
+  def run_legacy(self, experiments, reflections):
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
     if self.mpi_helper.rank == 0:
@@ -21,6 +32,36 @@ class intensity_histogram(worker):
       self.logger.log_step_time("INTENSITY_HISTOGRAM", True)
 
     return experiments, reflections
+
+  def run_individual(self, experiments, reflections):
+    all_reflections_merged = rt_util.merge_reflections(
+        reflections,
+        self.params.merging.minimum_multiplicity
+    )
+    all_merged_reflection_tables = self.mpi_helper.comm.gather(
+        all_reflections_merged, root=0
+    )
+    if self.mpi_helper.rank == 0:
+      final_merged_reflection_table = rt_util.merged_reflection_table()
+      for table in all_merged_reflection_tables:
+        final_merged_reflection_table.extend(table)
+
+    unit_cell = self.params.scaling.unit_cell
+    final_symm = symmetry(
+        unit_cell=unit_cell,
+        space_group_info=self.params.scaling.space_group
+    )
+    all_obs = miller.array(
+        miller_set=miller.set(final_symm, reflections['miller_index'], False),
+        data=reflections['intensity'],
+        sigmas=reflections['sigma']
+    ).resolution_filter(
+        d_min=self.params.merging.d_min,
+        d_max=self.params.merging.d_max
+    ).set_observation_type_xray_intensity()
+
+    
+
 
   def histogram(self, data):
     from matplotlib import pyplot as plt

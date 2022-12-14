@@ -599,6 +599,10 @@ statistics {
   uc_precision = 2
     .type = int
     .help = Decimal places for unit cell statistics
+  histogram {
+    mode = *legacy individual
+      .type = choice
+  }
 }
 """
 
