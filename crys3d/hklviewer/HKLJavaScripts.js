@@ -2209,8 +2209,6 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
 
-  SetDefaultOrientation();
-
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
@@ -2227,14 +2225,12 @@ function HKLscene()
     }
   );
 
-
   stage.mouseObserver.signals.clicked.add(
     function (x, y)
     {
       SendOrientationMsg("MouseClicked");
     }
   );
-
 
   stage.mouseObserver.signals.scrolled.add(
     function (delta)
@@ -2252,7 +2248,6 @@ function HKLscene()
     }
   );
 
-
   stage.viewer.signals.rendered.add(
     function ()
     {
@@ -2263,7 +2258,6 @@ function HKLscene()
     }
     
   );
-
 
   stage.viewerControls.signals.changed.add(
     function()
@@ -2286,8 +2280,6 @@ function HKLscene()
   );
  
 
-  //stage.tasks.onZeroOnce(GetReflectionsInFrustum);
-
   if (isdebug)
     stage.viewer.container.appendChild(debugmessage);
 
@@ -2297,7 +2289,7 @@ function HKLscene()
   stage.mouseControls.remove("drag-middle");
   stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
   stage.mouseControls.remove('clickPick-left'); // avoid undefined move-pick when clicking on a sphere
-
+ 
   //stage.mouseControls.remove("scroll");
   //stage.mouseControls.remove("scroll-ctrl");
   //stage.mouseControls.remove("scroll-shift");

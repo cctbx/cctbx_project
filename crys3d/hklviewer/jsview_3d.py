@@ -519,11 +519,6 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-          self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-        self.mprint("set_volatile_params got autoview_sem", verbose="threadingmsg")
-        self.autoview_sem.release()
-        self.mprint("set_volatile_params released autoview_sem", verbose="threadingmsg")
         if len(self.WBmessenger.clientmsgqueue):
           time.sleep(2)
 
@@ -646,9 +641,6 @@ class HKLview_3d:
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
-      if self.isnewfile:
-        #self.SetDefaultOrientation()
-        self.GetClipPlaneDistances()
       self.isnewfile = False
       self.make_clip_plane(hkldist, clipwidth)
 
@@ -1809,7 +1801,8 @@ Distance: %s
       self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
       # pause to ensure websockets server starts before the webbrowser loads page with javascript websocket client
       while self.WBmessenger.websockeventloop.is_running() == False:
-        time.sleep(3)
+        time.sleep(1)
+      time.sleep(3)
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
