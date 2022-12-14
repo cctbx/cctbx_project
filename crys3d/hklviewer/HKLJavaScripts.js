@@ -554,6 +554,8 @@ function SetAutoviewNoAnim(mycomponent)
   let m = new NGL.Matrix4().identity();
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
+  stage.viewer.updateZoom(); 
+  stage.viewer.requestRender();
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };
