@@ -108,9 +108,9 @@ def get_browser_ctrl(using=None):
   return browser, webctrl
 
 
-lock_timeout=60 # for the sempahores. Rendering could take a while for very large file. Until that
+lock_timeout=120 # for the sempahores. Rendering could take a while for very large file. Until that
 # has been completed, geometries of the NGL stage such as clipnear, clipfar, cameraZ and bounding box
-# are undefined.
+# are undefined. websocket connection could take a while on Azure pipelines
 
 
 class HKLview_3d:
