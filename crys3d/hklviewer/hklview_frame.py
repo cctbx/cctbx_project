@@ -178,14 +178,14 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            time.sleep(1)
+            time.sleep(2)
             self.viewer.RedrawNGL()
             time.sleep(1)
-            self.viewer.GetReflectionsInFrustum()
-            time.sleep(3)
             self.viewer.SimulateClick()
+            time.sleep(1)
+            self.viewer.RedrawNGL()
       if 'image_file' in kwds: # save displayed reflections to an image file
-        time.sleep(5)
+        time.sleep(1)
         fname = kwds.get('image_file', "testimage.png" )
         self.update_from_philstr('save_image_name = "%s"' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
