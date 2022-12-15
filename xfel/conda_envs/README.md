@@ -7,6 +7,8 @@ dependencies.
 The build steps below were tested on Oct 19, 2022. They should be done in a clean environment: start
 a new shell before proceeding.
 
+Note, reading HDF5 data and general crystallographic data is supported with these instructions. Reading XTC data from LCLS requires additional [environment variables](#LCLS-environment).
+
 ## Prerequisite: Install Miniconda3 and add mamba
 
 If needed, visit: https://docs.conda.io/en/latest/miniconda.html and install the correct Miniconda
@@ -64,6 +66,29 @@ $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
   --nproc=10 --python=39 --no-boost-src build
 ```
+
+## LCLS environment
+
+For LCLS data, when not on the main LCLS servers, additional environment variables are needed so psana can find the XTC streams are stored. Given a folder named `$WORKING`, the XTC streams should be in `$WORKING/<endstation>/<experiment>/xtc`. If the data is older than run 21 (spring 2022), `$WORKING/lcls/ExpNameDb` should exist, with the file `experiment-db.dat`. That file will have entries like `280 CXI cxi78513` to map the numbers in the XTC streams to experiment names. Newer data doesn't need this. Given this folder structure, export these environment variables:
+
+```
+export SIT_DATA=$WORKING/lcls
+export SIT_ROOT=$SIT_DATA
+export SIT_PSDM_DATA=$SIT_DATA
+```
+
+Once in place, a simple test to ensure things are working is `detnames exp=<experiment>:run=<run>`. If there are no errors, then psana is configured correctly.
+
+cctbx.xfel uses psana to read data using locator files. The simplest example is below:
+
+```
+$ cat example.loc
+experiment=cxi78513
+run=22
+detector_address=CxiDs1.0:Cspad.0
+```
+
+This can be used using cctbx.xfel and dials commands, such as `dials.image_viewer example.loc load_models=False`. Most detectors require additional information in the locator files. The full set of options is listed in [FormatXTC in dxtbx](https://github.com/cctbx/dxtbx/blob/main/src/dxtbx/format/FormatXTC.py) and dervied classes, such as FormatXTCRayonix.py.
 
 # cctbx.xfel tests
 
