@@ -58,6 +58,12 @@ jobs:
       git lfs pull
     displayName: Update xfel_regression
 
+  # checkout dials branch unpin_boost
+  - script: |
+      cd $(Pipeline.Workspace)/modules/dials
+      git checkout unpin_boost && echo "checkout successful"
+    displayName: Checkout dials branch
+
   # preserve permissions and delete extra files
   - script: |
       cd $(Pipeline.Workspace)
