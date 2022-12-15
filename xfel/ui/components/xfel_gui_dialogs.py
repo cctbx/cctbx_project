@@ -2443,21 +2443,34 @@ class RunBlockDialog(BaseDialog):
       assert first > 0 and first >= self.first_avail
       self.first_run = first
     except (ValueError, AssertionError) as e:
-      print("Please select a run between %d and %d." % (self.first_avail, self.last_avail))
-      raise e
+      wx.MessageBox("Please select a contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                    'Warning!', wx.ICON_EXCLAMATION)
+      return
     if self.end_type.specify.GetValue() == 1:
       try:
         last = int(self.runblocks_end.ctr.GetValue())
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
       except (ValueError, AssertionError) as e:
-        print("Please select a run between %d and %d." % (self.first_run, self.last_avail))
-        raise e
+        wx.MessageBox("Please select contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                      'Warning!', wx.ICON_EXCLAMATION)
+        return
     elif self.end_type.specify.GetValue() == 0:
       self.last_run = None
     else:
       assert False
     rg_open = self.last_run is None
+
+    if self.is_lcls:
+      # Validation
+      if 'rayonix' in self.address.ctr.GetValue().lower():
+        def is_none(string):
+          return string is None or string in ['', 'None']
+        if is_none(self.beam_xyz.X.GetValue()) or is_none(self.beam_xyz.Y.GetValue()) or \
+             is_none(self.beam_xyz.DetZ.GetValue()):
+          wx.MessageBox("For Rayonix, beam x, y, and DetZ are required, even if reference_geometry is specified. reference_geometry will take precedence.",
+                        'Warning!', wx.ICON_EXCLAMATION)
+          return
 
     rg_dict = dict(active=True,
                    open=rg_open,
