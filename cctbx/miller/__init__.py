@@ -40,10 +40,17 @@ fp_eps_double = scitbx.math.floating_point_epsilon_double_get()
 
 generate_r_free_params_str = r_free_utils.generate_r_free_params_str
 
+def _safe_slice(slice_object):
+  if type(slice_object) == int:
+    return slice(slice_object, slice_object+1)
+  elif type(slice_object) == slice:
+    return slice_object
+  else:
+    raise TypeError('bad slice: {}'.format(slice_object))
+
 def _slice_or_none(array, slice_object):
-  assert type(slice_object) == slice
   if (array is None): return None
-  return array.__getitem__(slice_object)
+  return array.__getitem__(_safe_slice(slice_object))
 
 class binner(ext.binner):
 
@@ -481,11 +488,10 @@ class set(crystal.symmetry):
     return array(miller_set=self, data=data, sigmas=sigmas)
 
   def __getitem__(self, slice_object):
-    assert type(slice_object) == slice
     assert self.indices() is not None
     return set(
       crystal_symmetry=self,
-      indices=self.indices().__getitem__(slice_object),
+      indices=self.indices().__getitem__(_safe_slice(slice_object)),
       anomalous_flag=self.anomalous_flag())
 
   def show_summary(self, f=None, prefix=""):
