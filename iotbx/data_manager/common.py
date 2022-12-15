@@ -142,20 +142,17 @@ class fmodel_mixins(object):
         crystal_symmetry = model.crystal_symmetry())
 
   def get_fmodel(self,
-                 array_type,
                  crystal_symmetry = None,
                  parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
-                 scattering_table = None # XXX Make part of parameters?
+                 scattering_table = None
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
-    crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope
+    crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope.
+    scattering_table will trigger the use of model and reflections with corrct
+    array_type.
     """
-    #
-    # if array_type is not None:
-    #   print('array_type is being removed, use scattering_table instead')
-
     array_type = self.map_scattering_table_type(scattering_table)
     scattering_table = self.check_scattering_table_type(scattering_table)
     #
@@ -180,7 +177,7 @@ class fmodel_mixins(object):
     rfs = self.get_reflection_file_server(
       array_type       = array_type,
       crystal_symmetry = crystal_symmetry)
-    # Resolve symmetry issues (nplace)
+    # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
       params                 = crystal_symmetry_phil,
       model                  = model,
