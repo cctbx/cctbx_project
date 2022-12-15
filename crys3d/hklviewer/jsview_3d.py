@@ -473,6 +473,7 @@ class HKLview_3d:
                       "show_vector",
                       "show_all_vectors",
                       "hkls",
+                      "use_wireframe",
                       "viewer") and self.params.viewer.scene_id is not None:
        # any change to parameters in the master phil in display2.py
       self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
@@ -1502,6 +1503,10 @@ class HKLview_3d:
 
     if self.verbosebrowser:
       self.SetBrowserDebug("true")
+    if self.params.use_wireframe:
+      self.UseWireFrame("true")
+    else:
+      self.UseWireFrame("false")
 
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
@@ -2501,6 +2506,11 @@ in the space group %s\nwith unit cell %s""" \
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
+
+
+  def UseWireFrame(self, iswireframe):
+    msg = str(iswireframe)
+    self.AddToBrowserMsgQueue("UseWireFrame", msg)
 
 
   def SetBrowserDebug(self, isdebug):

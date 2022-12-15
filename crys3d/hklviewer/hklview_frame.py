@@ -2091,6 +2091,9 @@ master_phil_str = """
     .type = str
   tooltip_data = "[]"
     .type = str
+  use_wireframe = False
+    .type = bool
+    .help = "Draw objects using wireframe mesh"
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 
