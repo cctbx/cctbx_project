@@ -1496,6 +1496,7 @@ class HKLview_3d:
     if not self.WBmessenger.browserisopen:
       self.ReloadNGL()
       # if sempahore is not free then websocket failed to connect to a browser. Critical error!
+      self.mprint("DrawNGLJavaScript waiting for browser_connect_sem semaphore", verbose="threadingmsg")
       if not self.browser_connect_sem.acquire(timeout= lock_timeout):
         raise HKLviewerError("Timed out connecting to a web browser after %s seconds. Ensure web browser security settings permit websocket protocol." %lock_timeout)
       self.browser_connect_sem.release()
@@ -1503,6 +1504,7 @@ class HKLview_3d:
 
     if self.verbosebrowser:
       self.SetBrowserDebug("true")
+
     if self.params.use_wireframe:
       self.UseWireFrame("true")
     else:
