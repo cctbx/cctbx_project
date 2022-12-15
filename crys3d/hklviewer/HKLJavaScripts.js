@@ -658,6 +658,7 @@ var coordarray; // global for the binary data that are sent after receiving the 
 var colourarray;// global for the binary data that are sent after receiving the AddHKLColours message
 var radiiarray; // global for the binary data that are sent after receiving the AddHKLRadii message
 var ttipids; // global for the binary data that are sent after receiving the AddHKLTTipIds message
+var iswireframe = false;
 
 function onMessage(e)
 {
@@ -962,7 +963,7 @@ function onMessage(e)
               radius: expansion_radii[bin],
 // rotmxidx works as the id of the rotation of applied symmetry operator when creating tooltip for an hkl
               picking: expansion_ttips[bin][rotmxidx],
-              } );
+              }, { disableImpostor: iswireframe } );
           shape.addBuffer(expansion_shapebufs[bin][rotmxidx]);
           WebsockSendMsg('Expanded rotation operator ' + rotmxidx.toString());
         }
@@ -977,15 +978,12 @@ function onMessage(e)
       }
       shapeComp = stage.addComponentFromObject(shape);
       MakeHKL_Axis();
-      repr = shapeComp.addRepresentation('buffer');
+      repr = shapeComp.addRepresentation('buffer', { wireframe: iswireframe });
 
       for (let bin=0; bin<nbins; bin++)
-      {
         for (let rotmxidx=0; rotmxidx < nrots; rotmxidx++ )
-        {
-          expansion_shapebufs[bin][rotmxidx].setParameters({opacity: alphas[bin]});
-        }
-      }
+          expansion_shapebufs[bin][rotmxidx].setParameters( { opacity: alphas[bin] } ); 
+
       RotateAxisComponents(componentaxis, componenttheta); // apply any component rotation if specified on the GUI
       RenderRequest();
       WebsockSendMsg( 'Done ' + msgtype );
@@ -1409,6 +1407,10 @@ function onMessage(e)
       isdebug = (val[0] === "true");
     }
 
+    if (msgtype === "UseWireFrame") {
+      iswireframe = (val[0] === "true");
+    }
+
     if (msgtype === "BackgroundColour") {
       stage.setParameters( { backgroundColor: datval[1] } )
     }
@@ -1433,7 +1435,7 @@ function onMessage(e)
     if (msgtype === "AddHKLTTipIds") {
       ttipids = Array.from(new Float32Array(e.data)); // convert to plain javascript array so we can concatenate additional elements
       // assuming the above arrays have been initialised create the shape buffer
-      AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids);
+      AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids, iswireframe);
     }
 
     if (msgtype === "MakeColourChart")
@@ -1452,7 +1454,7 @@ function onMessage(e)
         shapeComp = stage.addComponentFromObject(shape);
         MakeHKL_Axis();
         MakeXYZ_Axis();
-        repr = shapeComp.addRepresentation('buffer');
+        repr = shapeComp.addRepresentation('buffer', { wireframe: iswireframe } );
         WebsockSendMsg('RenderStageObjects');
         //RenderRequest("notify_cctbx").then(()=> {
         //    SendOrientationMsg("RenderStageObjectsNotifyCctbx");
@@ -2057,7 +2059,7 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
     color: colours[curridx], // 1dim array [R0, G0, B0, R1, G1, B1,...] for all reflections
     radius: radii[curridx], // 1dim array [r0, r1, r3,...]for all reflections
     picking: ttips[curridx],
-  })
+  }, { disableImpostor: iswireframe })
   );
 
   if (shape == null)
@@ -2079,7 +2081,9 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
 
   for (let i = 0; i < buffer.picking.cartpos.length; i++)
   {
-    let radius = buffer.geometry.attributes.radius.array[i];
+    let radius = 0.2; // possibly needs a better default value in case of using wireframe
+    if (iswireframe == false) // no radius array available if using wireframe
+      radius = buffer.geometry.attributes.radius.array[i];
     let x = buffer.picking.cartpos[i][0];
     let y = buffer.picking.cartpos[i][1];
     let z = buffer.picking.cartpos[i][2];
