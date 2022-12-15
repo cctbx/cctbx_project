@@ -1805,10 +1805,14 @@ Distance: %s
       self.url = "file:///" + os.path.abspath( self.hklfname )
       self.url = self.url.replace("\\", "/")
       self.mprint( "Writing %s and connecting to its websocket client..." %self.hklfname, verbose=1)
-      # pause to ensure websockets server starts before the webbrowser loads page with javascript websocket client
-      while self.WBmessenger.websockeventloop.is_running() == False:
-        time.sleep(1)
-      time.sleep(3)
+      # ensure websockets server starts before the webbrowser loads page with javascript websocket client
+      self.mprint("OpenBrowser waiting for listening_sem.acquire", verbose="threadingmsg")
+      if not self.WBmessenger.listening_sem.acquire(blocking=True, timeout=lock_timeout):
+        self.mprint("Error! Timed out waiting for listening_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+      self.mprint("OpenBrowser got listening_sem", verbose="threadingmsg")
+      self.WBmessenger.listening_sem.release()
+      self.mprint("OpenBrowser released listening_sem", verbose="threadingmsg")
+
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
           self.mprint("Could not open the default web browser")
@@ -2611,6 +2615,10 @@ in the space group %s\nwith unit cell %s""" \
 
   def UseZoomDrag(self): # enable zoom with the mouse
     self.AddToBrowserMsgQueue("EnableZoomDrag")
+
+
+  def SimulateClick(self):
+    self.AddToBrowserMsgQueue("SimulateClick")
 
 
   def ReOrientStage(self):

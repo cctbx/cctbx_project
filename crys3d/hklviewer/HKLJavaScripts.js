@@ -113,6 +113,14 @@ var canvaspos = null;
 var isAutoviewing = false;
 
 
+const simulate_click_evt = new MouseEvent("simulate_click", {
+  view: window,
+  bubbles: true,
+  cancelable: true,
+  clientX: 20,
+});
+
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -1407,6 +1415,10 @@ function onMessage(e)
       isdebug = (val[0] === "true");
     }
 
+    if (msgtype === "SimulateClick") {
+      document.dispatchEvent(simulate_click_evt);
+    }
+
     if (msgtype === "UseWireFrame") {
       iswireframe = (val[0] === "true");
     }
@@ -2344,6 +2356,8 @@ function PageLoad()
     document.addEventListener('scroll', function (e) { OnUpdateOrientation(); }, false );
     // mitigate flickering on some PCs when resizing
     document.addEventListener('resize', function () { RenderRequest(); }, false);
+
+    document.addEventListener('simulate_click', function () { RenderRequest(); }, false);
   }
   catch(err)
   {
