@@ -1209,7 +1209,7 @@ namespace iotbx { namespace mtz {
           + column_label_ampl + ", " + column_label_phi + ", "
           + "hkl=" + hkl.get_miller_index(i_refl).as_string()
           + phenix_mtz_dump_tip);
-      } 
+      }
           END OF REMOVED CHECK */
 
       if (counts.n_nan == 0) {
