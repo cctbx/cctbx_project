@@ -4960,6 +4960,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
       tracking_data.set_full_crystal_symmetry(
          ccp4_map.unit_cell_crystal_symmetry())
       tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
+      print("ZZA cs from ",params.input_files.map_file,crystal_symmetry)
     map_data = ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
