@@ -43,6 +43,7 @@ export SIT_DATA={SIT_DATA}
 
 #for psana
 export SIT_PSDM_DATA={SIT_PSDM_DATA}
+export SIT_ROOT=/reg/g/psdm
 
 #needed to open h5 files from compute nodes
 export HDF5_USE_FILE_LOCKING=FALSE

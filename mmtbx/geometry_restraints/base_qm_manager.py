@@ -288,17 +288,17 @@ class base_qm_manager(base_manager):
         if os.path.exists(filename):
           process_qm_log_file(filename, log=log)
         print('  Reading energy from %s\n' % filename, file=log)
-        energy = self.read_energy()
+        energy, units = self.read_energy()
     if energy is None:
       outl = self.get_input_lines(optimise_ligand=optimise_ligand,
                                   optimise_h=optimise_h)
       self.write_input(outl)
       self.run_cmd(redirect_output=redirect_output)
-      energy = self.read_energy()
+      energy, units = self.read_energy()
     if cleanup: self.cleanup(level=cleanup)
     print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
     self.preamble = old_preamble
-    return energy
+    return energy, units
 
   def get_strain(self,
                  cleanup=False,
@@ -312,11 +312,12 @@ class base_qm_manager(base_manager):
                                          cleanup=cleanup,
                                          log=log)
     self.preamble = old_preamble+'_strain'
-    final_energy, junk = self.get_opt(redirect_output=redirect_output,
-                                      cleanup=cleanup,
-                                      log=log)
-    final_energy, junk = self.read_energy()
+    final_energy, units = self.get_opt(redirect_output=redirect_output,
+                                       cleanup=cleanup,
+                                       log=log)
+    final_energy, units = self.read_energy()
     self.strain = start_energy-final_energy
+    self.units = units
     print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
     self.preamble = old_preamble
     return self.strain, self.units

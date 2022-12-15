@@ -8,6 +8,7 @@ export SIT_DATA=/global/common/software/lcls/psdm/data
 
 #for psana
 export SIT_PSDM_DATA=/global/cscratch1/sd/psdatmgr/data/psdm
+export SIT_ROOT=/reg/g/psdm
 
 #needed to open h5 files from compute nodes
 export HDF5_USE_FILE_LOCKING=FALSE

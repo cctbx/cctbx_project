@@ -1,11 +1,11 @@
 jobs:
-#  - template: ./conda-linux.yml
-#    parameters:
-#      distribution: centos
-#      version: [7]
-#      modules: xfel_modules
-#      template: ./unix-conda-build.yml
-#      prefix: xfel_
+  - template: ./conda-linux.yml
+    parameters:
+      distribution: centos
+      version: [7]
+      modules: xfel_modules
+      template: ./unix-conda-build.yml
+      prefix: xfel_
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
@@ -13,10 +13,10 @@ jobs:
       modules: xfel_modules
       template: ./unix-psana-build.yml
       prefix: xfel_psana_
-#  - template: ./conda-osx.yml
-#    parameters:
-#      vmImage: [11]
-#      xcode_version: [12, 5, 1]
-#      modules: xfel_modules
-#      template: ./unix-conda-build.yml
-#      prefix: xfel_
+  - template: ./conda-osx.yml
+    parameters:
+      vmImage: [11]
+      xcode_version: [12, 5, 1]
+      modules: xfel_modules
+      template: ./unix-conda-build.yml
+      prefix: xfel_
