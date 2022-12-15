@@ -26,9 +26,13 @@ class intensity_histogram(worker):
   def run_legacy(self, experiments, reflections):
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
+#    if self.mpi_helper.rank==0:
+#      import IPython;IPython.embed()
+#    else:
+#      import time;time.sleep(10000)
     if self.mpi_helper.rank == 0:
       self.logger.log_step_time("INTENSITY_HISTOGRAM")
-      self.histogram(reflections['intensity'])
+      self.histogram(reflections['intensity.sum.value'])
       self.logger.log_step_time("INTENSITY_HISTOGRAM", True)
 
     return experiments, reflections
@@ -46,19 +50,27 @@ class intensity_histogram(worker):
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)
 
-    unit_cell = self.params.scaling.unit_cell
-    final_symm = symmetry(
-        unit_cell=unit_cell,
-        space_group_info=self.params.scaling.space_group
-    )
-    all_obs = miller.array(
-        miller_set=miller.set(final_symm, reflections['miller_index'], False),
-        data=reflections['intensity'],
-        sigmas=reflections['sigma']
-    ).resolution_filter(
-        d_min=self.params.merging.d_min,
-        d_max=self.params.merging.d_max
-    ).set_observation_type_xray_intensity()
+      unit_cell = self.params.scaling.unit_cell
+      final_symm = symmetry(
+          unit_cell=unit_cell,
+          space_group_info=self.params.scaling.space_group
+      )
+      all_obs = miller.array(
+          miller_set=miller.set(final_symm, final_merged_reflection_table['miller_index'], False),
+          data=final_merged_reflection_table['intensity'],
+          sigmas=final_merged_reflection_table['sigma']
+      ).resolution_filter(
+          d_min=self.params.merging.d_min,
+          d_max=self.params.merging.d_max
+      ).set_observation_type_xray_intensity()
+      print(list(all_obs[0:2].indices()))
+      print(list(all_obs[0:2].data()))
+
+#    if self.mpi_helper.rank==0:
+#      import IPython;IPython.embed()
+#    else:
+#      import time;time.sleep(10000)
+    return experiments, reflections
 
     
 
