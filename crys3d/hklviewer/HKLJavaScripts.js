@@ -2081,7 +2081,8 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
 
   for (let i = 0; i < buffer.picking.cartpos.length; i++)
   {
-    let radius = 0.2; // possibly needs a better default value in case of using wireframe
+    let radius = 0.05* Math.abs(stage.viewer.parameters.clipFar -stage.viewer.parameters.clipNear)
+    // possibly needs a better default value in case of using wireframe
     if (iswireframe == false) // no radius array available if using wireframe
       radius = buffer.geometry.attributes.radius.array[i];
     let x = buffer.picking.cartpos[i][0];
