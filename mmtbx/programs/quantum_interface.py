@@ -10,6 +10,7 @@ from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
 import iotbx.pdb
 import iotbx.phil
 from libtbx.utils import Sorry
+from libtbx.utils import null_out
 
 get_class = iotbx.pdb.common_residue_names_get_class
 
@@ -51,7 +52,7 @@ def assert_histidine_double_protonated(ag):
   for atom in ag.atoms():
     if atom.name.strip() in ['HD1', 'HE2', 'DD1', 'DE2']:
       count+=1
-  if count not in [1]:
+  if count not in [2]:
     raise Sorry('incorrect protonation of %s' % ag.id_str())
 
 def generate_flipping_his(ag,
@@ -59,12 +60,11 @@ def generate_flipping_his(ag,
                           include_unprotonated=False,
                           chain_id=None,
                           resseq=None):
-  # assume double protonated HIS
   assert_histidine_double_protonated(ag)
   booleans = [[1,1], [1,0], [0,1]]
   if include_unprotonated: booleans = [[1,1], [1,0], [0,1], [0,0]]
   for flip in range(2):
-    for i, (hd, he) in enumerate([[1,1], [1,0], [0,1], [0,0]]):
+    for i, (hd, he) in enumerate(booleans):
       if i==0 and flip:
         for n1, n2 in [[' ND1', ' CD2'],
                        [' CE1', ' NE2'],
@@ -75,6 +75,7 @@ def generate_flipping_his(ag,
                       ]:
           a1 = ag.get_atom(n1.strip())
           a2 = ag.get_atom(n2.strip())
+          if a1 is None or a2 is None: continue
           tmp = a1.xyz
           a1.xyz = a2.xyz
           a2.xyz = tmp
@@ -111,36 +112,22 @@ def get_selection_from_user(hierarchy):
     #   assert 0
     atom_group = residue_group.atom_groups()[0]
     rc = get_class(atom_group.resname)
-    if rc in ['common_amino_acid', 'common_water']: continue
-    print(j, residue_group.id_str(), atom_group.resname, rc)
-    print(dir(residue_group))
-    # opts.append('chain %s and resid %s and resname %s' % (
-    #   residue_group.parent().id,
-    #   residue_group.resid(),
-    #   atom_group.resname,
-    # ))
+    if atom_group.resname in ['HIS']: pass
+    elif rc in ['common_amino_acid', 'common_water']: continue
     for conformer in residue_group.conformers():
-      print(dir(conformer))
       for residue in conformer.residues():
-        print(dir(residue))
         sel_str = 'chain %s and resid %s and resname %s' % (
             residue_group.parent().id,
             residue_group.resid(),
             residue.resname,
           )
-        print(sel_str)
         if residue.is_pure_main_conf:
           opts.append(sel_str)
         else:
           altlocs=[]
-          print(dir(altlocs))
           for atom in residue.atoms():
-            print(atom.quote())
-            print(dir(atom))
-            print(atom.parent().altloc)
             altloc = atom.parent().altloc
             if altloc not in altlocs: altlocs.append(altloc)
-          print(altlocs)
           ts = []
           for altloc in altlocs:
             ts.append('(%s and altloc %s)' % (sel_str, altloc))
@@ -164,7 +151,7 @@ class Program(ProgramTemplate):
 phenix.qi: tool for selecting some atoms for QI
 
 Usage examples:
-  phenix.quantum_inteface model.pdb "chain A"
+  phenix.quantum_interface model.pdb "chain A"
   '''
 
   datatypes = ['model', 'phil', 'restraint']
@@ -182,8 +169,16 @@ Usage examples:
       .type = bool
     run_qmr = False
       .type = bool
+    randomise_selection = None
+      .type = float
+    run_directory = None
+      .type = str
     iterate_histidine = None
       .type = atom_selection
+    nproc = 1
+      .type = int
+    verbose = False
+      .type = bool
   }
 """ % (get_qm_restraints_scope())
 
@@ -199,6 +194,8 @@ Usage examples:
       self.params.output.prefix = prefix
     if self.params.qi.iterate_histidine:
       self.params.qi.selection = [self.params.qi.iterate_histidine]
+    if self.params.qi.randomise_selection and self.params.qi.randomise_selection>0.5:
+      raise Sorry('Random select value %s is too large' % self.params.qi.randomise_selection)
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -213,6 +210,9 @@ Usage examples:
         self.params.qi.iterate_histidine is None and
         len(self.params.qi.qm_restraints)==0):
       rc = get_selection_from_user(model.get_hierarchy())
+      if rc.find('resname HIS')>-1:
+        self.params.qi.iterate_histidine=rc
+        self.params.qi.format='quantum_interface'
       self.params.qi.selection = [rc]
     #
     # validate selection
@@ -226,14 +226,43 @@ Usage examples:
     print('Selected model  %s' % selected_model, file=log)
     self.data_manager.add_model('ligand', selected_model)
 
-    if self.params.qi.write_qmr_phil:
-      self.write_qmr_phil(output_format=self.params.qi.format)
+    if self.params.qi.randomise_selection:
+      import random
+      sites_cart = model.get_sites_cart()
+      for i, (b, xyz) in enumerate(zip(selection_array, sites_cart)):
+        if b:
+          xyz=list(xyz)
+          for j in range(3):
+            xyz[j] += random.gauss(0, self.params.qi.randomise_selection)
+          sites_cart[i]=tuple(xyz)
+      model.set_sites_cart(sites_cart)
 
-    if self.params.qi.run_qmr:
+    if self.params.qi.write_qmr_phil:
+      pf = self.write_qmr_phil(iterate_histidine=self.params.qi.iterate_histidine,
+                               output_format=self.params.qi.format)
+      ih = ''
+      if self.params.qi.iterate_histidine:
+        ih = 'iterate_histidine="%s"' % self.params.qi.iterate_histidine
+        ih = ih.replace('  ',' ')
+      print('''
+
+      mmtbx.quantum_interface %s run_qmr=True %s %s
+      ''' % (self.data_manager.get_default_model_name(),
+             ih,
+             pf))
+      return
+
+    if self.params.qi.run_directory:
+      if not os.path.exists(self.params.qi.run_directory):
+        os.mkdir(self.params.qi.run_directory)
+      os.chdir(self.params.qi.run_directory)
+
+    if self.params.qi.run_qmr and not self.params.qi.iterate_histidine:
       self.params.qi.qm_restraints.selection=self.params.qi.selection
       self.run_qmr(self.params.qi.format)
 
     if self.params.qi.iterate_histidine:
+      assert self.params.qi.randomise_selection==None
       self.iterate_histidine(self.params.qi.iterate_histidine)
 
   def iterate_histidine(self, selection, log=None):
@@ -241,6 +270,7 @@ Usage examples:
       self.write_qmr_phil(iterate_histidine=True)
       print('Restart command with PHIL file')
       return
+    nproc = self.params.qi.nproc
     model = self.data_manager.get_model()
     selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
@@ -250,8 +280,12 @@ Usage examples:
     for atom in hierarchy.atoms(): break
     rg_resseq = atom.parent().parent().resseq
     chain_id = atom.parent().parent().parent().id
+    energies = []
+    argstuples = []
+    logs = []
     for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
       model = self.data_manager.get_model()
+      if nproc>1: model=model.deep_copy()
       hierarchy = model.get_hierarchy()
       for chain in hierarchy.chains():
         if chain.id!=chain_id: continue
@@ -264,11 +298,54 @@ Usage examples:
       # hierarchy.write_pdb_file('his_%02d.pdb' % i)
       self.params.output.prefix='iterate_histidine_%02d' % (i+1)
       # self.params.output.prefix='his_%02d' % (i+1)
-      update_restraints(model,
-                        self.params,
-                        never_write_restraints=True,
-                        log=log)
-      # run clashscore
+      arg_log=null_out()
+      if self.params.qi.verbose:
+        arg_log=log
+      if nproc==1:
+        res = update_restraints(model,
+                                self.params,
+                                never_write_restraints=True,
+                                # never_run_strain=True,
+                                log=arg_log)
+        energies.append(res[0][0])
+        units=res[1]
+      else:
+        import copy
+        # from six.moves import StringIO
+        params = copy.deepcopy(self.params)
+        argstuples.append(( model,
+                            params,
+                            None, # macro_cycle=None,
+                            True, #never_write_restraints=False,
+                            1, # nproc=1,
+                            null_out(),
+                            ))
+
+    from libtbx import easy_mp
+    i=0
+    for args, res, err_str in easy_mp.multi_core_run( update_restraints,
+                                                      argstuples,
+                                                      nproc):
+      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
+      print(args[1].output.prefix,res[0][0])
+      energies.append(res[0][0])
+      units = res[1]
+      i+=1
+
+    protonation = [ 'ND1,NE2',
+                    'ND1 only',
+                    'NE2 only',
+                    'ND1,NE2 flipped',
+                    'ND1 only flipped',
+                    'NE2 only flipped',
+    ]
+    print('\n\nEnergies in units of %s\n' % units, file=log)
+    for i, (pro, energy) in enumerate(zip(protonation, energies)):
+      if i in [0,3]:
+        if units.lower() in ['kcal/mol']:
+          pass #energy-=156.9
+      print('  %i. %-20s : %7.2f' % (i+1, pro, energy), file=log)
+    # run clashscore
 
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
@@ -282,6 +359,7 @@ Usage examples:
         # nproc=self.params.main.nproc,
         log=log,
         )
+      print('starting strain',rc)
     #
     # minimise ligands geometry
     #
@@ -289,8 +367,8 @@ Usage examples:
                             self.params,
                             log=log,
                             )
-    if qmr.calculate_final_strain:
-      assert 0
+    # if qmr.calculate_final_strain:
+    #   assert 0
 
   def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
     qi_phil_string = get_qm_restraints_scope()
@@ -311,7 +389,7 @@ Usage examples:
     qi_phil = iotbx.phil.parse(qi_phil_string,
                              # process_includes=True,
                              )
-    qi_phil.show()
+    # qi_phil.show()
 
     qi_phil_string = qi_phil_string.replace('qm_restraints',
                                             'refinement.qi.qm_restraints',
@@ -320,6 +398,10 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
+      # qi_phil_string = qi_phil_string.replace('write_restraints = True',
+      #                                         'write_restraints = False')
+      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
+                                              'exclude_protein_main_chain_from_optimisation = True')
 
     if output_format=='quantum_interface':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
@@ -344,8 +426,10 @@ Usage examples:
     f=open(pf, 'w')
     for line in qi_phil_string.splitlines():
       if line.strip().startswith('.'): continue
+      print('%s' % line)
       f.write('%s\n' % line)
     del f
+    return pf
 
   # ---------------------------------------------------------------------------
   def get_results(self):
