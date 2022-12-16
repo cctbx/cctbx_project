@@ -63,6 +63,20 @@ class intensity_histogram(worker):
           d_min=self.params.merging.d_min,
           d_max=self.params.merging.d_max
       ).set_observation_type_xray_intensity()
+      import IPython;IPython.embed()
+
+
+      d_vals = [x[1] for x in all_obs.d_spacings()] # dspacings are ((h,k,l),d)
+      n_unique = len(d_vals)
+      d_percentiles = [0, 5, 10, 40, 80]
+      d_slice_starts = [int(x*n_unique/100) for x in d_percentiles]
+      d_slice_size = n_unique/100
+      d_slices = [slice(x, x+d_slice_size) for x in d_slice_starts]
+
+      d_i_miller = zip(d_vals, all_obs.data(), all_obs.indices())
+      outer_slices = [d_i_miller[s] for s in d_slices]
+
+      iobs_percentiles = [0,5,10,40,80]
       print(list(all_obs[0:2].indices()))
       print(list(all_obs[0:2].data()))
 
@@ -71,6 +85,21 @@ class intensity_histogram(worker):
 #    else:
 #      import time;time.sleep(10000)
     return experiments, reflections
+
+  def single_histogram(self, reflections, miller, ax):
+    sel = reflections['miller_index_asymmetric'] == miller
+    matching_refl = reflections.select(sel)
+    matching_intensities = matching_refl['intensity.sum.value']
+    all_matching_intensities = self.mpi_helper.comm.gather(
+        matching_intensities, root=0
+    )
+
+    if self.mpi_helper.rank == 0:
+      final_intensities = flex.double()
+      for x in all_matching_intensities:
+        final_intensities.extend(x)
+      ax.hist(final_intensities.as_numpy_array())
+
 
     
 
