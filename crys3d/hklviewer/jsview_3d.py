@@ -1562,7 +1562,7 @@ class HKLview_3d:
           self.mprint(message + "\n\nCommencing initiation of protocols for invoking program termination procedures...\n", verbose=0)
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
-        elif 'Browser.JavaScript Got:' in message:
+        elif 'Browser.JavaScript' in message:
           self.mprint( message, verbose=3)
         elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
@@ -1738,7 +1738,7 @@ Distance: %s
   def ProcessOrientationMessage(self, message):
     if self.params.viewer.scene_id is None or self.miller_array is None:
       return
-    if message.find("NaN")>=0 or message.find("undefined")>=0 or message.find("Browser.JavaScript Got:")>=0:
+    if message.find("NaN")>=0 or message.find("undefined")>=0 or message.find("Browser.JavaScript")>=0:
       return
     msgname = message[ 0 : message.find("\n")-1]
     self.viewmtrx = message[ message.find("\n") + 1: ]

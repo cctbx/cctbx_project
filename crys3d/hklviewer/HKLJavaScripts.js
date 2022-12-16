@@ -1581,6 +1581,10 @@ function onMessage(e)
       /*
       */
     }
+
+    if (isdebug)
+      WebsockSendMsg('Browser.JavaScript Done: ' + msgtype); // tell server We are done
+
   }
 
   catch(err)
