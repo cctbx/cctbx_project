@@ -2731,13 +2731,20 @@ clip_plane {
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
       #self.QWebEngineViewFlags = flgs + " --disable-web-security" # for chromium
-      self.QWebEngineViewFlags = flgs + " --enable-webgl-software-rendering --disable-web-security --disable-gpu-compositing --ignore-gpu-blacklist" # for chromium
+      self.QWebEngineViewFlags = flgs + " --enable-webgl-software-rendering" \
+        + " --disable-web-security --disable-gpu-compositing --ignore-gpu-blacklist" \
+        + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+       + " --swiftshader --swiftshader-webgl"
       os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
       if not self.isembedded:
         print("Testing if WebGL works in QWebEngineView....")
         #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
         if not TestWebGL():
-          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist"
+          self.QWebEngineViewFlags = self.QWebEngineViewFlags \
+            + " --enable-webgl-software-rendering --ignore-gpu-blacklist" \
+            + " --disable-web-security --disable-gpu-compositing" \
+            + " --disable_chromium_framebuffer_multisample"
+
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
           if not TestWebGL():
             print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
