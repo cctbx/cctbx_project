@@ -12,12 +12,12 @@ jobs:
       vmImage: windows-2022
       vs: 2022
       modules: ${{ parameters.modules }}
-  # - template: ./conda-linux.yml
-  #   parameters:
-  #     distribution: centos
-  #     version: [6]
-  #     modules: ${{ parameters.modules }}
-  #     template: ./unix-conda-build.yml
+  - template: ./conda-linux.yml
+    parameters:
+      distribution: rockylinux
+      version: [9]
+      modules: ${{ parameters.modules }}
+      template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
@@ -39,7 +39,7 @@ jobs:
   - template: ./conda-linux.yml
     parameters:
       distribution: ubuntu
-      version: ['16', '04']
+      version: ['22', '04']
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
