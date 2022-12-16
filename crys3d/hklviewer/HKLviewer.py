@@ -2731,7 +2731,7 @@ clip_plane {
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
       #self.QWebEngineViewFlags = flgs + " --disable-web-security" # for chromium
-      self.QWebEngineViewFlags = flgs + " --enable-webgl-software-rendering --disable-web-security --disable-gpu-compositing --num-raster-threads=1" # for chromium
+      self.QWebEngineViewFlags = flgs + " --enable-webgl-software-rendering --disable-web-security --disable-gpu --disable-gpu-compositing --num-raster-threads=1" # for chromium
       os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
       if not self.isembedded:
         print("Testing if WebGL works in QWebEngineView....")
