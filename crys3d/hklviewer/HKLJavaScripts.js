@@ -2357,7 +2357,7 @@ function PageLoad()
     // mitigate flickering on some PCs when resizing
     document.addEventListener('resize', function () { RenderRequest(); }, false);
 
-    document.addEventListener('simulate_click', function () { RenderRequest(); }, false);
+    document.addEventListener('simulate_click', function () { stage.viewer.requestRender(); }, false);
   }
   catch(err)
   {
