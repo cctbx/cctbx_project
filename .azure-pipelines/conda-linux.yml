@@ -100,7 +100,6 @@ jobs:
         libXau \
         alsa-lib \
         gtk2 \
-        gtkmm24 \
         libXcomposite \
         libXcursor \
         libXi \
@@ -112,10 +111,21 @@ jobs:
         libXfixes \
         libXxf86vm \
         xorg-x11-server-Xvfb
-
     displayName: Install dependencies for CentOS
     condition: or(eq('${{ parameters.distribution }}', 'centos'),
                   eq('${{ parameters.distribution }}', 'rockylinux'))
+
+  - script: |
+      sudo yum install -y gtkmm24
+    displayName: Install dependencies for CentOS 7 and Rocky Linux 8
+    condition: and(eq('${{ parameters.distribution }}', 'centos'),
+                   ne('${{ parameters.version[0] }}', 9))
+
+  - script: |
+      sudo yum install -y gtkmm30
+    displayName: Install dependencies for Rocky Linux 9
+    condition: and(eq('${{ parameters.distribution }}', 'centos'),
+                   eq('${{ parameters.version[0] }}', 9))
 
   - script: |
       sudo yum install -y python-argparse
