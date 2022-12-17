@@ -1632,6 +1632,9 @@ class HKLview_3d:
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
             self.autoview_sem.release()
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released autoview_sem", verbose="threadingmsg")
+          if calledby == "RotateStage": # only unlock if requested by GetClipPlaneDistances()
+            self.clipplane_msg_sem.release()
+            self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -2653,14 +2656,6 @@ in the space group %s\nwith unit cell %s""" \
       if not self.clipplane_msg_sem.acquire(blocking=True, timeout=lock_timeout):
         self.mprint("Error! Timed out waiting for clipplane_msg_sem semaphore within %s seconds" %lock_timeout, verbose=1)
       self.mprint("RotateMxStage got clipplane_msg_sem", verbose="threadingmsg")
-      strconfirm = "ignore"
-      """
-      if threading.current_thread().name != "WebsocketClientMessageThread":
-        self.mprint("RotateMxStage waiting for autoview_sem.acquire", verbose="threadingmsg")
-        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
-          self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
-        self.mprint("RotateMxStage got autoview_sem", verbose="threadingmsg")
-      """
       scaleRot = rotmx * self.cameraPosZ
       ortrot = scaleRot.as_mat3()
       str_rot = str(ortrot)
@@ -2672,8 +2667,8 @@ in the space group %s\nwith unit cell %s""" \
         msg = msg + ", verbose\n"
 
       self.AddToBrowserMsgQueue("RotateStage", msg)
-      time.sleep(0.1)
-      self.clipplane_msg_sem.release()
+      #time.sleep(0.1)
+      #self.clipplane_msg_sem.release()
       self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
 
