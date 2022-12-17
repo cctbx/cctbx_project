@@ -993,9 +993,10 @@ function onMessage(e)
           expansion_shapebufs[bin][rotmxidx].setParameters( { opacity: alphas[bin] } ); 
 
       RotateAxisComponents(componentaxis, componenttheta); // apply any component rotation if specified on the GUI
-      RenderRequest();
-      WebsockSendMsg( 'Done ' + msgtype );
-    }
+      RenderRequest(); //.then(()=> {
+        WebsockSendMsg('Done ExpandedInBrowser ' + msgtype ); // "ExpandedInBrowser checked for in python
+     // });
+     }
     
     if (msgtype === "DisableZoomDrag") {
       WebsockSendMsg('using camerazoom');
@@ -1584,7 +1585,6 @@ function onMessage(e)
 
     if (isdebug)
       WebsockSendMsg('Browser.JavaScript Done: ' + msgtype); // tell server We are done
-
   }
 
   catch(err)

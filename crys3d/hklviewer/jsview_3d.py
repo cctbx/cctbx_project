@@ -1611,7 +1611,10 @@ class HKLview_3d:
           self.mprint("ProcessBrowserMessage, ImageWritten released self.hkls_drawn_sem", verbose="threadingmsg")
         elif "ClipPlaneDistancesSet" in message:
           self.clipplane_msg_sem.release() # as was set by make_clip_plane
-          self.mprint("ProcessBrowserMessage, SetClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
+          self.mprint("ProcessBrowserMessage, ClipPlaneDistancesSet released clipplane_msg_sem", verbose="threadingmsg")
+        #elif "ExpandedInBrowser" in message:
+        #  self.clipplane_msg_sem.release() # as was set by make_clip_plane
+        #  self.mprint("ProcessBrowserMessage, ExpandedInBrowser released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1920,8 +1923,12 @@ Distance: %s
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
-    self.AddToBrowserMsgQueue(msgtype, msg)
-
+    #self.AddToBrowserMsgQueue(msgtype, msg)
+    self.GuardedAddToBrowserMsgQueue(semaphorename="clipplane_msg_sem", msgtype=msgtype, msg=msg,
+                                     funcname="ExpandInBrowser",  posteriorcheck=False)
+    time.sleep(1)
+    self.clipplane_msg_sem.release()
+    self.mprint("ExpandInBrowser released clipplane_msg_sem", verbose="threadingmsg")
 
   def draw_sphere(self, s1, s2, s3, isreciprocal=True,
                   r=0, g=0, b=0, name="", radius = 1.0, mesh=False):
