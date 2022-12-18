@@ -1348,7 +1348,7 @@ function onMessage(e)
       let far = parseFloat(val[1]);
       let origcameraZpos = parseFloat(val[2]);
       let zoom = parseFloat(val[3]);
-      stage.viewer.parameters.clipMode =  'camera';
+      stage.viewer.parameters.clipMode = 'camera';
       // clipScale = 'absolute' means clip planes are using scene dimensions
       stage.viewer.parameters.clipScale = 'absolute';
       clipFixToCamPosZ = true;
@@ -2296,8 +2296,8 @@ function HKLscene()
         sleep(t).then(()=> {
             if (isAutoviewing)
               return;
-            SendOrientationMsg("CurrentView");
-            ReturnClipPlaneDistances("viewerControls.signals.changed");
+            //SendOrientationMsg("CurrentView");
+            //ReturnClipPlaneDistances("viewerControls.signals.changed");
           }
         );
         timenow = timefunc();

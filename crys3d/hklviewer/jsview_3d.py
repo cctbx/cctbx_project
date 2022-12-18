@@ -1634,7 +1634,7 @@ class HKLview_3d:
             self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released autoview_sem", verbose="threadingmsg")
           if calledby == "RotateStage": # only unlock if requested by GetClipPlaneDistances()
             self.clipplane_msg_sem.release()
-            self.mprint("ProcessBrowserMessage, ReturnClipPlaneDistances released clipplane_msg_sem", verbose="threadingmsg")
+            self.mprint("ProcessBrowserMessage, RotateStage released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnMouseSpeed" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -2669,7 +2669,7 @@ in the space group %s\nwith unit cell %s""" \
       self.AddToBrowserMsgQueue("RotateStage", msg)
       #time.sleep(0.1)
       #self.clipplane_msg_sem.release()
-      self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
+      #self.mprint("RotateMxStage released clipplane_msg_sem", verbose="threadingmsg")
 
 
   def RotateAxisMx(self, vec, theta, quietbrowser=True):
