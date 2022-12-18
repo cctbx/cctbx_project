@@ -120,7 +120,7 @@ def exercise1():
       mfile.write( k + "=" + v + "\n")
 
   with open("HKLviewer_philinput.txt","w") as f:
-    f.write(philstr)
+    f.write(philstr2)
 
   # check we can actually open a browser
   #browser = "chrome"
@@ -144,7 +144,7 @@ def exercise1():
 
   assert cmdlineframes.run(cmdargs)
 
-  check_log_file(outputfname, reflections2match)
+  check_log_file(outputfname, reflections2match2)
 
 
 def exercise2():
@@ -156,7 +156,7 @@ def exercise2():
   print("Starting the real HKLviewer test...")
 
   with open("HKLviewer_philinput.txt","w") as f:
-    f.write(philstr)
+    f.write(philstr2)
 
   outputfname = "HKLviewer2_test.log"
   if os.path.isfile(outputfname):
@@ -179,7 +179,7 @@ def exercise2():
   print("retval: " + str(HKLviewer_result.return_code))
   #assert HKLviewer_result.return_code == 0
   #assert remove_settings_result.return_code == 0
-  check_log_file(outputfname, reflections2match)
+  check_log_file(outputfname, reflections2match2)
 
 
 

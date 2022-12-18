@@ -621,7 +621,7 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      self.ExpandInBrowser()
+      #self.ExpandInBrowser()
       retstr = ""
       if self.miller_array and self.params.binning.bin_opacity:
         bin_opacitieslst = self.params.binning.bin_opacity
