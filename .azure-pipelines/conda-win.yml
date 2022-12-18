@@ -174,9 +174,8 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
 
-      cd modules\boost
-      git checkout 1.74
-      cd ..\dxtbx
+      cd modules
+      cd dxtbx
       git checkout dials-3.8
       cd ..\..
 

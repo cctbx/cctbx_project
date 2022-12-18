@@ -47,6 +47,15 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules
+    wget "https://github.com/SCons/scons/archive/3.1.1.zip"
+    unzip 3.1.1.zip
+    mv scons-3.1.1 scons
+  displayName: Download SCons for Python 2
+  condition: eq(variables['PYTHON_VERSION'], 'py27')
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)/modules/dxtbx
     git remote set-url origin https://github.com/dials/dxtbx.git
     git fetch origin
@@ -141,10 +150,21 @@ steps:
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
-    python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
+    python bootstrap.py build \
+      --builder=cctbx \
+      --use-conda=${CONDA_PREFIX} \
+      --nproc=4 \
+      --config-flags="--enable_cxx11"
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+    libtbx.configure \
+      cma_es \
+      fable \
+      rstbx \
+      spotfinder \
+      cbflib_adaptbx \
+      phenix_regression \
+      phenix_examples
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
