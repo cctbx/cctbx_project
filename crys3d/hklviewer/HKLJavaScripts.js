@@ -110,6 +110,7 @@ var rotationdisabled = false;
 var div_annotation_opacity = 0.7;
 var camtype = "orthographic";
 var canvaspos = null;
+var requestedby = "";
 var isAutoviewing = false;
 
 
@@ -513,15 +514,18 @@ function RotateAxisComponents(axis, theta)
 
 async function RenderRequest(note = "")
 {
-  await sleep(100);
-  if (note != "")
-    WebsockSendMsg(note + '_BeforeRendering');
-  stage.viewer.requestRender();
+  requestedby = note;
+  //await sleep(100);
+  if (requestedby != "")
+    WebsockSendMsg(requestedby + '_BeforeRendering');
+  await stage.viewer.requestRender();
+  /*
   await sleep(300);
-  if (note != "") {
+  if (requestedby != "") {
     //await sleep(100);
-    WebsockSendMsg(note + '_AfterRendering');
+    WebsockSendMsg(requestedby + '_AfterRendering');
   }
+  */
   if (isdebug)
     WebsockSendMsg('RenderRequest ');
 };
@@ -802,7 +806,7 @@ function onMessage(e)
     {
       RenderRequest("notify_cctbx").then(()=> {
           SendOrientationMsg("Redraw");
-          GetReflectionsInFrustum();
+          //GetReflectionsInFrustum();
           WebsockSendMsg( 'Redrawn ');
         }
       );
@@ -993,8 +997,8 @@ function onMessage(e)
           expansion_shapebufs[bin][rotmxidx].setParameters( { opacity: alphas[bin] } ); 
 
       RotateAxisComponents(componentaxis, componenttheta); // apply any component rotation if specified on the GUI
-      RenderRequest(); //.then(()=> {
-        WebsockSendMsg('Done ExpandedInBrowser ' + msgtype ); // "ExpandedInBrowser checked for in python
+      RenderRequest("ExpandedInBrowser"); //.then(()=> {
+      WebsockSendMsg('Done ExpandedInBrowser ' + msgtype ); // "ExpandedInBrowser checked for in python
      // });
      }
     
@@ -1003,8 +1007,8 @@ function onMessage(e)
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
-	  stage.mouseControls.remove("drag-middle");
-	  stage.mouseControls.add("drag-middle", CameraZoom);
+	    stage.mouseControls.remove("drag-middle");
+	    stage.mouseControls.add("drag-middle", CameraZoom);
       stage.mouseControls.add("drag-shift-right", CameraZoom);
       stage.mouseControls.add("drag-shift-left", CameraZoom);
       stage.mouseControls.add("scroll", CameraZoom);
@@ -1016,8 +1020,8 @@ function onMessage(e)
 
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
-	  stage.mouseControls.remove("drag-middle");
-	  stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
+	    stage.mouseControls.remove("drag-middle");
+	    stage.mouseControls.add("drag-middle", NGL.MouseActions.zoomDrag);
       stage.mouseControls.add("drag-shift-right", NGL.MouseActions.zoomDrag);
       stage.mouseControls.add("drag-shift-left", NGL.MouseActions.zoomDrag);
       rotationdisabled = false;
@@ -1030,7 +1034,6 @@ function onMessage(e)
       stage.mouseControls.remove("scroll");
       stage.mouseControls.remove("scroll-ctrl");
       stage.mouseControls.remove("scroll-shift");
-
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
       rotationdisabled = true;
@@ -1041,7 +1044,6 @@ function onMessage(e)
       stage.mouseControls.add("drag-left", NGL.MouseActions.rotateDrag);
       stage.mouseControls.add("scroll-ctrl", NGL.MouseActions.scrollCtrl);
       stage.mouseControls.add("scroll-shift", NGL.MouseActions.scrollShift);
-
       stage.mouseControls.remove("drag-shift-right");
       stage.mouseControls.remove("drag-shift-left");
       rotationdisabled = false;
@@ -2277,9 +2279,15 @@ function HKLscene()
   stage.viewer.signals.rendered.add(
     function ()
     {
-      if (postrotmxflag === true) {
+      if (postrotmxflag === true) 
+      {
         SendOrientationMsg("ViewerRendered");
         postrotmxflag = false;
+      }
+      if (requestedby != "")
+      {
+        WebsockSendMsg(requestedby + '_AfterRendering');
+        requestedby = "";
       }
     }
     

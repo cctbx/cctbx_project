@@ -621,7 +621,7 @@ class HKLview_3d:
         self.cosine, _, _ = self.project_vector1_vector2(cartvec, real_space_vec)
       # show equation or info in the browser
       self.AddToBrowserMsgQueue("PrintInformation", infomsg)
-      #self.ExpandInBrowser()
+      self.ExpandInBrowser()
       retstr = ""
       if self.miller_array and self.params.binning.bin_opacity:
         bin_opacitieslst = self.params.binning.bin_opacity
@@ -1612,9 +1612,9 @@ class HKLview_3d:
         elif "ClipPlaneDistancesSet" in message:
           self.clipplane_msg_sem.release() # as was set by make_clip_plane
           self.mprint("ProcessBrowserMessage, ClipPlaneDistancesSet released clipplane_msg_sem", verbose="threadingmsg")
-        #elif "ExpandedInBrowser" in message:
-        #  self.clipplane_msg_sem.release() # as was set by make_clip_plane
-        #  self.mprint("ProcessBrowserMessage, ExpandedInBrowser released clipplane_msg_sem", verbose="threadingmsg")
+        elif "ExpandedInBrowser_AfterRendering" in message:
+          self.clipplane_msg_sem.release() # as was set by make_clip_plane
+          self.mprint("ProcessBrowserMessage, ExpandedInBrowser released clipplane_msg_sem", verbose="threadingmsg")
         elif "ReturnClipPlaneDistances:" in message:
           datastr = message[ message.find("\n") + 1: ]
           lst = datastr.split(",")
@@ -1688,6 +1688,7 @@ class HKLview_3d:
         elif "notify_cctbx_AfterRendering" in message:
           self.hkls_drawn_sem.release()
           self.mprint("ProcessBrowserMessage, notify_cctbx_AfterRendering released self.hkls_drawn_sem", verbose="threadingmsg")
+          self.GetReflectionsInFrustum()
         elif "MoveClipPlanesUp" in message:
           self.params.clip_plane.hkldist += 1
           self.set_volatile_params()
