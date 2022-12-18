@@ -569,6 +569,7 @@ function SetAutoviewNoAnim(mycomponent)
   stage.viewerControls.orient(m);
   //stage.viewer.updateZoom(); 
   //stage.viewer.requestRender();
+  RenderRequest("AutoViewFinished");
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };

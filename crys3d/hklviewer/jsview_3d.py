@@ -1579,9 +1579,9 @@ class HKLview_3d:
         elif "AutoViewSet" in message:
           self.set_volatile_params()
           self.mprint( message, verbose=3)
-        elif "StartSetAutoView" in message or "SetAutoView camera.z" in message:
+        elif "SetAutoView" in message:
           self.mprint( message, verbose=3)
-        elif "FinishedSetAutoView" in message: # or "Done RotateStage" in message:
+        elif "AutoViewFinished_AfterRendering" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
