@@ -1579,9 +1579,10 @@ class HKLview_3d:
         elif "AutoViewSet" in message:
           self.set_volatile_params()
           self.mprint( message, verbose=3)
-        elif "SetAutoView" in message:
-          self.mprint( message, verbose=3)
+        #elif "SetAutoView" in message:
+        #  self.mprint( message, verbose=3)
         elif "AutoViewFinished_AfterRendering" in message:
+        #elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
@@ -2574,7 +2575,7 @@ in the space group %s\nwith unit cell %s""" \
     self.clipNear = None
     self.clipFar = None
     self.cameraPosZ = None
-    self.zoom = None
+    self.zoom = None # very first call will yield bogus zoom value
     self.GuardedAddToBrowserMsgQueue("clipplane_msg_sem", "GetClipPlaneDistances",
                                      funcname="GetClipPlaneDistances")
 

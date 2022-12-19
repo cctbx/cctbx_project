@@ -518,7 +518,10 @@ async function RenderRequest(note = "")
   //await sleep(100);
   if (requestedby != "")
     WebsockSendMsg(requestedby + '_BeforeRendering');
-  await stage.viewer.requestRender();
+  //await stage.viewer.requestRender();
+  await sleep(100).then(()=> { 
+    stage.viewer.requestRender();
+  });
   /*
   await sleep(300);
   if (requestedby != "") {
@@ -568,7 +571,9 @@ function SetAutoviewNoAnim(mycomponent)
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
   //stage.viewer.updateZoom(); 
+  //requestedby = "AutoViewFinished";
   //stage.viewer.requestRender();
+  ReturnClipPlaneDistances(); // updates zoom value in python
   RenderRequest("AutoViewFinished");
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
