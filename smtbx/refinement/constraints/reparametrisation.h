@@ -373,6 +373,7 @@ public:
   thickness_parameter(thickness_t * thickness)
     : parameter(0),
     independent_parameter(thickness->grad),
+    constrained(true),
     thickness(thickness)
   {}
 
@@ -383,6 +384,7 @@ public:
   virtual size_t n_param() const {
     return 1;
   }
+  bool constrained; // > 0
 protected:
   thickness_t* thickness;
 };
