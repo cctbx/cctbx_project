@@ -998,7 +998,9 @@ function onMessage(e)
           expansion_shapebufs[bin][rotmxidx].setParameters( { opacity: alphas[bin] } ); 
 
       RotateAxisComponents(componentaxis, componenttheta); // apply any component rotation if specified on the GUI
-      RenderRequest("ExpandedInBrowser"); //.then(()=> {
+      requestedby = "ExpandedInBrowser";
+      stage.viewer.requestRender();
+      //RenderRequest("ExpandedInBrowser"); //.then(()=> {
       WebsockSendMsg('Done ExpandedInBrowser ' + msgtype ); // "ExpandedInBrowser checked for in python
      // });
      }
