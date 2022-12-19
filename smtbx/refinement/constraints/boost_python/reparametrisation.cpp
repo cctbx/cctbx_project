@@ -215,6 +215,7 @@ namespace boost_python {
         std::auto_ptr<wt> >("thickness_parameter", no_init)
         .def(init<cctbx::xray::thickness<double>*>
           (arg("thickness")))
+        .def_readwrite("constrained", &wt::constrained)
         ;
       implicitly_convertible<std::auto_ptr<wt>, std::auto_ptr<parameter> >();
     }
