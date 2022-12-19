@@ -4,6 +4,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.str_utils import format_value
 import sys
 import six
+import json
 
 class entity(slots_getstate_setstate):
   """
@@ -84,6 +85,13 @@ class entity(slots_getstate_setstate):
 
   def format_old(self):
     raise NotImplementedError()
+
+  def as_JSON(self):
+    """
+    Returns a (empty) JSON object representing a single validation object. 
+    Should be overwritten by each validation script to actually output the data.
+    """
+    return json.dumps({})
 
   def __eq__(self, other):
     """
@@ -216,6 +224,16 @@ class residue(entity):
     assert (len(sel) > 0)
     self.xyz = pdb_hierarchy.atoms().select(sel).extract_xyz().mean()
 
+  # for creating the hierarchical json output
+  def nest_dict(self, level_list, upper_dict):
+    inner_dict = {}
+    if len(level_list) > 0:
+      next_level = level_list[0]
+      upper_dict[getattr(self, next_level)] = self.nest_dict(level_list[1:], inner_dict)
+    else:
+      return json.loads(self.as_JSON())
+    return upper_dict
+
 class atoms(entity):
   """
   Base class for validation results involving a specific set of atoms, such
@@ -256,6 +274,18 @@ class atoms(entity):
       if (a.chain_id == chain_id):
         return True
     return False
+
+  def nest_dict(self, level_list, upper_dict):
+    inner_dict = {}
+    if len(level_list) > 0:
+      next_level = level_list[0]
+      try:
+        upper_dict[getattr(self, next_level)] = self.nest_dict(level_list[1:], inner_dict)
+      except AttributeError:
+        upper_dict[getattr(self.atoms_info[0], next_level)] = self.nest_dict(level_list[1:], inner_dict)
+    else:
+      return json.loads(self.as_JSON())
+    return upper_dict
 
 class atom_base(slots_getstate_setstate):
   """

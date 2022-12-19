@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import omegalyze
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, approx_equal
 from iotbx import pdb
+from iotbx.data_manager import DataManager
 import libtbx.load_env
 import os
+import json
 
 ref_omegalyze_give_text = """residues:type:omega:conformation:mc_bmax
  A  40  PHE to  A  41  PRO: Pro     : -14.27:Cis     :28.76
@@ -52,8 +54,41 @@ def exercise_omegalyze():
 
   assert not show_diff(text_test.output , ref_omegalyze_give_text)
 
+def exercise_omegalyze_json():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/2hr0.pdb",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print("Skipping exercise_omegalyze(): input pdb (2hr0.pdb) not available")
+    return
+  #-----
+  dm = DataManager()
+  m = dm.get_model(regression_pdb)
+  omegalyze_json = omegalyze.omegalyze(pdb_hierarchy=m.get_hierarchy(), nontrans_only=True).as_JSON()
+  omjson_dict = json.loads(omegalyze_json)
+  import pprint
+  #pprint.pprint(omjson_dict)
+  assert len(omjson_dict['flat_results'])==9, "tst_omegalyze json output not returning correct number of nontrans residues"
+  assert approx_equal(omjson_dict['flat_results'][0]['omega'], -14.27418253081719), "tst_omegalyze json output first calculated omega dihedral angle not matching previous value"
+  assert omjson_dict['flat_results'][0]['omega_type']=='Cis', "tst_omegalyze json output first omega_type not matching previous value"
+  assert approx_equal(omjson_dict['flat_results'][8]['omega'], 8.043663329121266), "tst_omegalyze json output last calculated omega dihedral angle not matching previous value"
+  assert omjson_dict['flat_results'][8]['omega_type']=='Cis', "tst_omegalyze json output last omega_type not matching previous value"
+
+  #assert count(omjson_dict['hierarchical_results'], "PRO")==3, "tst_omegalyze json hierarchical output number of Pro omega outliers changed"
+  assert count(omjson_dict['hierarchical_results'], "omega")==9, "tst_omegalyze json hierarchical output total number of omega outliers changed"
+
+def count(prod, count_key, c=0):
+  for mykey in prod:
+    if mykey == count_key:
+      c += 1    
+    if isinstance(prod[mykey], dict):
+      # calls repeatedly
+      c = count(prod[mykey], count_key, c)
+  return c
+
 def run():
   exercise_omegalyze()
+  exercise_omegalyze_json()
   print("OK")
 
 if (__name__ == "__main__"):

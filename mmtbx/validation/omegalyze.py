@@ -4,6 +4,8 @@ import os.path
 from libtbx import slots_getstate_setstate
 import numpy
 import os, sys
+import collections
+import json
 from iotbx.pdb.hybrid_36 import hy36decode
 
 from mmtbx.conformation_dependent_library import generate_protein_fragments
@@ -99,6 +101,41 @@ class omega_result(residue):
   def format_old(self):
     return "%s to %s: %s :%s:%s:%s" % (self.prev_id_str(),self.id_str(), self.residue_type(),
       ('%.2f'%self.omega).rjust(7), self.omegalyze_type().ljust(8),self.highest_mc_b)
+
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if s != 'markup_atoms' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict["omega_type"] = omega_types[slots_as_dict["omega_type"]]
+    return json.dumps(slots_as_dict, indent=2)
+
+#{'': {'A': {'  41 ': {'': {'altloc': '',
+#                           'atom_selection': None,
+#                           'chain_id': 'A',
+#                           'highest_mc_b': 28.76,
+#                           'icode': ' ',
+#                           'is_nontrans': True,
+#                           'model_id': '',
+#                           'occupancy': None,
+#                           'omega': -14.27418253081719,
+#                           'omega_type': 'Cis',
+#                           'outlier': True,
+#                           'prev_altloc': '',
+#                           'prev_icode': ' ',
+#                           'prev_resname': 'PHE',
+#                           'prev_resseq': '  40',
+#                           'res_type': 1,
+#                           'resname': 'PRO',
+#                           'resseq': '  41',
+#                           'score': None,
+#                           'segid': None,
+#                           'xyz': [-9.124,
+#                                   3.291,
+#                                   40.391]}},
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   def as_kinemage(self, triangles=False, vectors=False):
     ca1,c,n,ca2  = self.markup_atoms[0].xyz, self.markup_atoms[1].xyz, self.markup_atoms[2].xyz, self.markup_atoms[3].xyz
@@ -386,6 +423,50 @@ class omegalyze(validation):
       if result.is_nontrans:
         data.append((result.chain_id, result.resid, result.resname, result.score, result.xyz))
     return data
+
+  def as_JSON(self):
+    # self.chain_id, "%1s%s %4s%1s to %1s%s %s" % (self.prev_altloc, self.prev_resname, self.prev_resseq, self.prev_icode, self.altloc, self.resname, self.resid),
+    #         res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
+    # keep names roughly the same
+    #check name in program template
+    # {model: {1: {chain: {A: {residue_group: {1A: results}}}}}}
+    data = {"validation_type": "omegalyze"}
+    flat_results = []
+    hierarchical_results = {}
+    #hierarchical_results_dict = collections.defaultdict(dict)
+    #hierarchical_results_dict['model_id']['chain_id']['resseq+icode']['resname'] = 'result'
+    #print(hierarchical_results_dict)
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = {
+    "num_cis_proline" : self.n_cis_proline(), 
+    "num_twisted_proline" : self.n_twisted_proline(), 
+    "num_proline" : self.n_proline(), 
+    "num_cis_general" : self.n_cis_general(), 
+    "num_twisted_general" : self.n_twisted_general(),
+    "num_general" : self.n_general(), 
+    }
+    return json.dumps(data, indent=2)
+
+  def merge(self, a, b, path=None):
+    "merges b into a"
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                self.merge(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a
 
   def show_summary(self, out=sys.stdout, prefix=""):
     print(prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (

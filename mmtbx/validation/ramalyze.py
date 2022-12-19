@@ -483,6 +483,16 @@ class ramalyze(validation):
           result.score, result.xyz))
     return data
 
+  def as_JSON(self):
+    #unfinished
+    data = {"validation_type": "ramalyze"}
+    results_list = []
+    for result in self.results:
+      result_dict = {}
+      result_dict["chain_id"] = result.chain_id
+      results.append(result_dict)
+    return data
+
 def get_matching_atom_group(residue_group, altloc):
   match = None
   if (residue_group != None):
