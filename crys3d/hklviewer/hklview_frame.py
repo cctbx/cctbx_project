@@ -188,7 +188,7 @@ class HKLViewFrame() :
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
         self.update_from_philstr('''save_image_name = "%s"
-use_wireframe = True''' %fname)
+#use_wireframe = True''' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
