@@ -508,7 +508,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     mpi_log_file_handle.close()
 
   def psana_mask_to_dials_mask(self, psana_mask):
-    if psana_mask.dtype == np.bool:
+    if psana_mask.dtype == bool:
       psana_mask = flex.bool(psana_mask)
     else:
       psana_mask = flex.bool(psana_mask == 1)
