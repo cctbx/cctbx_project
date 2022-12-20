@@ -11,8 +11,10 @@ class reflection_table_utils(object):
   def slice_table(reflections, start, stop):
     ''' Slice a table, preserving experiment identifiers '''
     subset = reflections[start:stop] # drops identifier map
+    src = reflections.experiment_identifiers()
+    dest = subset.experiment_identifiers()
     for expt_id in set(subset['id']):
-      subset.experiment_identifiers()[expt_id] = reflections.experiment_identifiers()[expt_id]
+      dest[expt_id] = src[expt_id]
     return subset
 
   @staticmethod
