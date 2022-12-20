@@ -6,10 +6,8 @@ import libtbx.load_env
 tst_list = [
   "$D/regression/tst_hklinfo.py",
   "$D/regression/tst_websocket.py",
-  "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-  "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-  "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-  "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
+  "$D/regression/tst_HKLviewerQtGui.py",
+  "$D/regression/tst_HKLviewerOSbrowser.py",
 ]
 
 # expected failure for Python 2
