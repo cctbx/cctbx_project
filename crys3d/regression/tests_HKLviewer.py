@@ -118,6 +118,7 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
   (-2, 0, 9), (-1, 0, 9), (0, -3, 9), (-2, -4, 9)]
 )
 
+closetime = 140
 
 def check_log_file(fname, refls2match):
   with open(fname, "r") as f:
@@ -177,7 +178,7 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
             "image_file=%sHKLviewer.png" %prefix,
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=20",
+            "closing_time=%d" %closetime,
             #"debug=True"
           ]
 
@@ -207,7 +208,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
              "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=%sHKLviewer.png" %prefix,
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=20", # close HKLviewer after 25 seconds
+             "closing_time=%d" %closetime, # close HKLviewer after 25 seconds
              #"debug=True"
             ]
 
