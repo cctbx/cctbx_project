@@ -22,7 +22,7 @@ viewer {
 }
 hkls.expand_to_p1 = True
 hkls.expand_anomalous = True
-use_wireframe = True
+#use_wireframe = True
 
 """
 
@@ -45,7 +45,7 @@ viewer {
   show_vector = "['K-axis (0,1,0)', True]"
   fixorientation = *vector None
 }
-use_wireframe = True
+#use_wireframe = True
 
 """
 
