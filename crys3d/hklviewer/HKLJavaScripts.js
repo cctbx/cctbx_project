@@ -575,7 +575,7 @@ function SetAutoviewNoAnim(mycomponent)
   //RenderRequest("AutoViewFinished");
   requestedby = "AutoViewFinished";
   stage.viewer.requestRender();
-  WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
+  WebsockSendMsg('FinishedSetAutoViewNoAnim forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };
 
@@ -613,7 +613,7 @@ async function SetAutoview(mycomponent, t)
           m4.multiplyScalar(zaim);
           stage.viewerControls.orient(m4);
           //ReturnClipPlaneDistances('SetAutoview');
-          WebsockSendMsg('FinishedSetAutoView forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
+          WebsockSendMsg('FinishedSetAutoView forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;
         }
