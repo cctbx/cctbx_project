@@ -172,8 +172,6 @@ class HKLViewFrame() :
           if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
             self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
           self.initiated_gui_sem.release()
-          #self.update_from_philstr("viewer.scene_id = 0")
-          #time.sleep(1)
           self.mprint("Processing PHIL file: %s" %fname)
           with open(fname, "r") as f:
             philstr = f.read()
@@ -198,6 +196,7 @@ class HKLViewFrame() :
     except HKLviewerError as e:
       self.mprint("\nClosing due to:\n" + str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
       self.SendInfoToGUI( { "closing_time": True } )
+      raise
     except Exception as e:
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
@@ -1927,7 +1926,6 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
     else:
       if infodict.get("closing_time", False):
-        #self.viewer.release_all_semaphores()
         self.__exit__()
 
 

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.hklviewer import jsview_3d
+from crys3d.regression import tests_HKLviewer
 import asyncio, os.path, websockets, socket, subprocess, time, threading
 
 
@@ -67,7 +68,7 @@ def write_and_run_websocktest_html(port):
     f.write(websock_htmlstr %port)
   myurl = "file:///" + os.path.abspath( "websocket_test.html" )
   myurl = myurl.replace("\\", "/")
-  browserpath, webctrl = jsview_3d.get_browser_ctrl("firefox")
+  browserpath, webctrl = jsview_3d.get_browser_ctrl(tests_HKLviewer.browser)
   #assert webctrl.open(myurl)
   #os.system('"' + browserpath + '" ' + myurl + ' &')
   # ensure websockets server starts before the webbrowser loads page with javascript websocket client
