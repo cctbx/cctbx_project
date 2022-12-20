@@ -571,10 +571,10 @@ function SetAutoviewNoAnim(mycomponent)
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
   //stage.viewer.updateZoom(); 
-  //requestedby = "AutoViewFinished";
-  //stage.viewer.requestRender();
   ReturnClipPlaneDistances(); // updates zoom value in python
-  RenderRequest("AutoViewFinished");
+  //RenderRequest("AutoViewFinished");
+  requestedby = "AutoViewFinished";
+  stage.viewer.requestRender();
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (camera.position.z= ' + zaim.toString() + ')'); // equivalent of the signal function
   isAutoviewing = false;
 };

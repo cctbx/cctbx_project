@@ -1579,8 +1579,8 @@ class HKLview_3d:
         elif "AutoViewSet" in message:
           self.set_volatile_params()
           self.mprint( message, verbose=3)
-        #elif "SetAutoView" in message:
-        #  self.mprint( message, verbose=3)
+        elif "SetAutoView" in message:
+          self.mprint( message, verbose=3)
         elif "AutoViewFinished_AfterRendering" in message:
         #elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
