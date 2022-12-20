@@ -101,6 +101,13 @@ def get_browser_ctrl(using=None):
       browser = "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
       if not os.path.isfile(browser):
         browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    if sys.platform.startswith("darwin"):
+      browser = '"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"'
+      if not os.path.isfile(browser):
+        browser = '"/Applications/Google Chrome.app"'
+    if sys.platform == "linux":
+      #pass
+      browser = "/usr/bin/firefox"
 
   webbrowser.register(using, None, webbrowser.BackgroundBrowser(browser))
   webctrl = webbrowser.get(using)
@@ -262,8 +269,12 @@ class HKLview_3d:
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
-                                  NGLliburl, HKLjscripturl)
+    self.htmlstr = self.hklhtml %(self.isHKLviewer,
+                                  self.websockport,
+                                  WeblglCheckliburl,
+                                  Html2Canvasliburl,
+                                  NGLliburl,
+                                  HKLjscripturl)
     self.colourgradientvalues = []
     self.browserpath, self.webctrl = get_browser_ctrl()
     self.UseOSBrowser = ""
@@ -524,7 +535,7 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        time.sleep(1)
+        time.sleep(5)
         if len(self.WBmessenger.clientmsgqueue):
           time.sleep(2)
 
@@ -1567,7 +1578,7 @@ class HKLview_3d:
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
         elif 'Browser.JavaScript' in message:
-          self.mprint( message, verbose=3)
+          self.mprint( message, verbose=1)
         elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
           self.release_all_semaphores()
@@ -1586,7 +1597,6 @@ class HKLview_3d:
         elif "SetAutoView" in message:
           self.mprint( message, verbose=3)
         elif "AutoViewFinished_AfterRendering" in message:
-        #elif "FinishedSetAutoView" in message:
           self.autoview_sem.release()
           self.mprint("ProcessBrowserMessage, %s released autoview_sem" %message, verbose="threadingmsg")
         elif "JavaScriptCleanUpDone:" in message:
@@ -1832,6 +1842,7 @@ Distance: %s
       self.mprint("OpenBrowser got listening_sem", verbose="threadingmsg")
       self.WBmessenger.listening_sem.release()
       self.mprint("OpenBrowser released listening_sem", verbose="threadingmsg")
+      time.sleep(0.5)
 
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):

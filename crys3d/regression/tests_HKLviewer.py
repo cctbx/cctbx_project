@@ -118,6 +118,11 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
   (-2, 0, 9), (-1, 0, 9), (0, -3, 9), (-2, -4, 9)]
 )
 
+closetime = 140
+#browser = "chrome"
+browser = "firefox"
+#browser = "default"
+
 
 def check_log_file(fname, refls2match):
   with open(fname, "r") as f:
@@ -151,7 +156,7 @@ def Append2LogFile(fname, res):
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
   assert os.path.isfile(datafname)
-  outputfname = prefix + "HKLviewer_test.log"
+  outputfname = prefix + "HKLviewer.log"
 
   with open("environ.txt","w") as mfile:
     # print environment variables to log file
@@ -162,9 +167,6 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
     f.write(philstr)
 
   # check we can actually open a browser
-  #browser = "chrome"
-  browser = "firefox"
-  #browser = "default"
   browserpath, webctrl = jsview_3d.get_browser_ctrl(browser)
   #assert webctrl.open("https://get.webgl.org/")
   #subprocess.run('"' + browserpath + '"  https://get.webgl.org/ &', shell=True,
@@ -177,13 +179,13 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
             "image_file=%sHKLviewer.png" %prefix,
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-            "closing_time=20",
+            "closing_time=%d" %closetime,
             #"debug=True"
           ]
 
   assert cmdlineframes.run(cmdargs)
-
   check_log_file(outputfname, refl2match)
+  print("\n" + "=" * 80 + "\n\n")
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
@@ -197,7 +199,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
-  outputfname = prefix + "HKLviewer_test.log"
+  outputfname = prefix + "HKLviewer.log"
   if os.path.isfile(outputfname):
     os.remove(outputfname)
 
@@ -207,7 +209,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
              "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=%sHKLviewer.png" %prefix,
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
-             "closing_time=20", # close HKLviewer after 25 seconds
+             "closing_time=%d" %closetime, # close HKLviewer after 25 seconds
              #"debug=True"
             ]
 
@@ -217,3 +219,4 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   Append2LogFile(outputfname, HKLviewer_result)
   print("retval: " + str(HKLviewer_result.return_code))
   check_log_file(outputfname, refl2match)
+  print("\n" + "=" * 80 + "\n\n")
