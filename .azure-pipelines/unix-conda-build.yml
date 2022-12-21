@@ -176,12 +176,26 @@ steps:
     export PYTHONDEVMODE=1
     export PYTHONTRACEMALLOC=1
     libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cbflib_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=rstbx \
+      module=scitbx \
       module=crys3d \
+      module=smtbx \
+      module=spotfinder \
       nproc=4
   failOnStderr: false
   displayName: Test
   condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
-#  retryCountOnTaskFailure: 3
+  retryCountOnTaskFailure: 3
 
 - script: |
     set -xe
@@ -195,18 +209,28 @@ steps:
     export PYTHONDEVMODE=1
     export PYTHONTRACEMALLOC=1
     libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=scitbx \
       module=crys3d \
+      module=smtbx \
       nproc=4
   failOnStderr: false
   displayName: Test
   condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
-#  retryCountOnTaskFailure: 3
+  retryCountOnTaskFailure: 3
 
 # store tests directory as an artifact
 - script: |
     set -xe
     cd $(Pipeline.Workspace)
-    rm -f tests_$(job_name).tar.xz
     tar -Jcf tests_$(job_name).tar.xz ./tests
   displayName: Save test directory
   condition: succeededOrFailed()

@@ -87,8 +87,8 @@ steps:
       --config-flags="--enable_openmp_if_possible=True" \
       --config-flags="--compiler=conda" \
       --config-flags="--use_environment_flags" \
-      --config-flags="--enable_cxx11" \
       --config-flags="--no_bin_python" \
+      --config-flags="--enable_kokkos" \
       --no-boost-src \
       build
     if [ "$(OS)" = "linux" ]; then
