@@ -152,7 +152,7 @@ def Append2LogFile(fname, res):
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
   assert os.path.isfile(datafname)
-  outputfname = prefix + "HKLviewer_test.log"
+  outputfname = prefix + "HKLviewer.log"
 
   with open("environ.txt","w") as mfile:
     # print environment variables to log file
@@ -183,8 +183,8 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
           ]
 
   assert cmdlineframes.run(cmdargs)
-
   check_log_file(outputfname, refl2match)
+  print("\n" + "=" * 80 + "\n\n")
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
@@ -198,7 +198,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
-  outputfname = prefix + "HKLviewer_test.log"
+  outputfname = prefix + "HKLviewer.log"
   if os.path.isfile(outputfname):
     os.remove(outputfname)
 
@@ -218,3 +218,4 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   Append2LogFile(outputfname, HKLviewer_result)
   print("retval: " + str(HKLviewer_result.return_code))
   check_log_file(outputfname, refl2match)
+  print("\n" + "=" * 80 + "\n\n")
