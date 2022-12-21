@@ -225,7 +225,7 @@ class ServerProxy(object):
 #-----------------------------------------------------------------------
 class external_program_thread(threading.Thread):
   def __init__(self, command_args, program_id, log=None,
-      intercept_output=True):
+      intercept_output=True, use_env = False):
     adopt_init_args(self, locals())
     if self.log is None :
       self.log = sys.stdout
@@ -233,11 +233,21 @@ class external_program_thread(threading.Thread):
     self._alive = True
 
   def run(self):
-    if self.intercept_output :
-      p = subprocess.Popen(args=self.command_args, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, shell=True)
-    else :
-      p = subprocess.Popen(args=self.command_args, shell=True)
+    if self.use_env:
+      # Allow specifically sending the environment (including CCTBX_COOT_PORT)
+      #  and do not depend on details of the operating system
+      local_env = os.environ.copy()
+      if self.intercept_output :
+        p = subprocess.Popen(args=self.command_args, stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE, shell=True, env = local_env)
+      else :
+        p = subprocess.Popen(args=self.command_args, shell=True, env = local_env)
+    else: # usual
+      if self.intercept_output :
+        p = subprocess.Popen(args=self.command_args, stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE, shell=True)
+      else :
+        p = subprocess.Popen(args=self.command_args, shell=True)
     while True :
       if p.poll() is not None :
         break
@@ -258,7 +268,8 @@ class external_program_server(object):
   port_ranges = [ (40001, 40840),
                   (46000, 46999) ]
   def __init__(self, command_args, program_id, timeout, cache_requests=False,
-                local_port=None, log=None, intercept_output=False):
+                local_port=None, log=None, intercept_output=False,
+                use_env = False):
     adopt_init_args(self, locals())
     assert isinstance(command_args, list) or isinstance(command_args, tuple)
     self._process = None
@@ -282,7 +293,8 @@ class external_program_server(object):
         command_args=self.command_args,
         program_id=self.program_id,
         log=self.log,
-        intercept_output=self.intercept_output)
+        intercept_output=self.intercept_output,
+        use_env = self.use_env)
       self._process.start()
       if self.cache_requests :
         proxy_class = ServerProxy
