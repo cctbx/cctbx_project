@@ -191,7 +191,21 @@ steps:
     export PYTHONDEVMODE=1
     export PYTHONTRACEMALLOC=1
     libtbx.run_tests_parallel \
+      module=annlib_adaptbx \
+      module=boost_adaptbx \
+      module=cbflib_adaptbx \
+      module=cctbx \
+      module=cctbx_website \
+      module=cma_es \
+      module=fable \
+      module=gltbx \
+      module=iotbx \
+      module=libtbx \
+      module=rstbx \
+      module=scitbx \
       module=crys3d \
+      module=smtbx \
+      module=spotfinder \
       nproc=4
   failOnStderr: false
   displayName: Test
@@ -201,14 +215,17 @@ steps:
            and(eq(variables['PYTHON_VERSION'], 'py27'),
                and(ne('${{ parameters.version[0] }}', 22),
                    ne('${{ parameters.version[0] }}', 9)))))
-  # retryCountOnTaskFailure: 3
+  retryCountOnTaskFailure: 3
 
 # store tests directory as an artifact
 - script: |
     set -xe
     cd $(Pipeline.Workspace)
+<<<<<<< HEAD
     mkdir -p tests
     rm -f tests_$(job_name).tar.xz
+=======
+>>>>>>> 7e7399fd86 (using unmodified pipelines scripts from master branch)
     tar -Jcf tests_$(job_name).tar.xz ./tests
     touch ./tests/output.xml
   displayName: Save test directory
