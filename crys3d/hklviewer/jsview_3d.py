@@ -1567,7 +1567,7 @@ class HKLview_3d:
           self.webgl_OK = False
           self.SendInfoToGUI( { "closing_time": True } )
         elif 'Browser.JavaScript' in message:
-          self.mprint( message, verbose=3)
+          self.mprint( message, verbose=1)
         elif "JavaScriptError" in message:
           self.mprint( message, verbose=0)
           self.release_all_semaphores()
