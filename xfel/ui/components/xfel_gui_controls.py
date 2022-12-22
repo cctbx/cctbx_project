@@ -687,11 +687,11 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     ascending = self._colSortFlag[col]
     try:
       item1 = float(self.itemDataMap[key1][col])
-    except ValueError:
+    except (ValueError, SystemError):
       item1 = float('-Inf')
     try:
       item2 = float(self.itemDataMap[key2][col])
-    except ValueError:
+    except (ValueError, SystemError):
       item2 = float('-Inf')
     difference = item1 - item2
     if difference == 0 or math.isnan(difference):
