@@ -685,21 +685,16 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def numerical_column_sorter(self, key1, key2):
     col = self._col
     ascending = self._colSortFlag[col]
-    try:
-      item1 = float(self.itemDataMap[key1][col])
-    except (ValueError, SystemError):
-      item1 = -1e99
-    try:
-      item2 = float(self.itemDataMap[key2][col])
-    except (ValueError, SystemError):
-      item2 = -1e99
+    item1 = self.itemDataMap[key1][col]
+    item2 = self.itemDataMap[key2][col]
+    value1 = -2147483647 if item1 == '-' else int(item1)
+    value2 = -2147483647 if item2 == '-' else int(item2)
     print(key1, type(key1))
     print(key2, type(key2))
-    print(item1, type(item1))
-    print(item2, type(item2))
-    difference = item1 - item2
+    print(value1, type(value1))
+    print(value2, type(value2))
+    difference = value1 - value2
     print(difference, type(difference))
-    difference = 1 if item1 > item2 else -1 if item1 < item2 else 0
     if difference == 0 or math.isnan(difference):
       difference = 1 if key1 > key2 else -1
     print(difference, type(difference))
