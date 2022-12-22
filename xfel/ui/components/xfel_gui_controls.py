@@ -648,7 +648,7 @@ import wx.lib.mixins.listctrl as listmix
 
 class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent, style=wx.LC_ICON):
-    self.numeric_columns = []
+    self.numeric_columns = set()
     self.parent = parent
     self.sortable_mixin = listmix
     wx.ListCtrl.__init__(self, parent, style=style)
