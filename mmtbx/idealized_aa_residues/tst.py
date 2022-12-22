@@ -27,7 +27,6 @@ pdb_files = [
   "met.pdb",
   "mse.pdb", # is ignored with rotamer named None
   "phe.pdb",
-  "pro.pdb", # BAD all-rotamers files
   "ser.pdb",
   "thr.pdb",
   "trp.pdb",
