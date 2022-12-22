@@ -699,6 +699,7 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     print(item2, type(item2))
     difference = item1 - item2
     print(difference, type(difference))
+    difference = 1 if item1 > item2 else -1 if item1 < item2 else 0
     if difference == 0 or math.isnan(difference):
       difference = 1 if key1 > key2 else -1
     print(difference, type(difference))
