@@ -8,6 +8,7 @@ Last Changed: 06/03/2016
 Description : XFEL UI Custom Widgets and Controls
 '''
 
+import math
 import os
 import wx
 import wx.lib.agw.floatspin as fs
@@ -684,10 +685,16 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def numerical_column_sorter(self, key1, key2):
     col = self._col
     ascending = self._colSortFlag[col]
-    item1 = float(self.itemDataMap[key1][col])
-    item2 = float(self.itemDataMap[key2][col])
+    try:
+      item1 = float(self.itemDataMap[key1][col])
+    except ValueError:
+      item1 = float('-Inf')
+    try:
+      item2 = float(self.itemDataMap[key2][col])
+    except ValueError:
+      item2 = float('-Inf')
     difference = item1 - item2
-    if difference == 0:
+    if difference == 0 or math.isnan(difference):
       difference = 1 if key1 > key2 else -1
     return difference if ascending else -difference
 
