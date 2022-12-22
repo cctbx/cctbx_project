@@ -5,8 +5,6 @@ from crys3d.regression import tests_HKLviewer
 def run():
   tests_HKLviewer.exercise_OSbrowser(tests_HKLviewer.philstr1, tests_HKLviewer.reflections2match1,
                                     "OSbrowserSliceK-9" )
-  tests_HKLviewer.exercise_OSbrowser(tests_HKLviewer.philstr3, tests_HKLviewer.reflections2match3,
-                                    "OSbrowserBinFSigF" )
   print("OK")
 
 

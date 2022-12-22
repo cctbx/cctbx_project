@@ -66,4 +66,3 @@ if (__name__ == "__main__") :
   webpage.setHtml(htmlstr1)
   browser.hide() # show() or hide() is necessary for loading the html page
   app1.exec_()
-
