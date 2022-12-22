@@ -8,7 +8,6 @@ Last Changed: 06/03/2016
 Description : XFEL UI Custom Widgets and Controls
 '''
 
-import math
 import os
 import wx
 import wx.lib.agw.floatspin as fs
@@ -649,7 +648,7 @@ import wx.lib.mixins.listctrl as listmix
 
 class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent, style=wx.LC_ICON):
-    self.numeric_columns = set()
+    self.integer_columns = set()
     self.parent = parent
     self.sortable_mixin = listmix
     wx.ListCtrl.__init__(self, parent, style=style)
@@ -679,25 +678,23 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     return self
 
   def get_appropriate_sorter(self):
-    return self.numerical_column_sorter if self._col in self.numeric_columns \
+    return self.integer_column_sorter if self._col in self.integer_columns \
       else self.GetColumnSorter()
 
-  def numerical_column_sorter(self, key1, key2):
+  def integer_column_sorter(self, key1, key2):
     col = self._col
     ascending = self._colSortFlag[col]
-    item1 = self.itemDataMap[key1][col]
-    item2 = self.itemDataMap[key2][col]
-    value1 = -2147483647 if item1 == '-' else int(item1)
-    value2 = -2147483647 if item2 == '-' else int(item2)
-    print(key1, type(key1))
-    print(key2, type(key2))
-    print(value1, type(value1))
-    print(value2, type(value2))
-    difference = value1 - value2
-    print(difference, type(difference))
-    if difference == 0 or math.isnan(difference):
+    try:
+      item1 = int(self.itemDataMap[key1][col])
+    except (ValueError, SystemError):
+      item1 = -1073741824
+    try:
+      item2 = int(self.itemDataMap[key2][col])
+    except (ValueError, SystemError):
+      item2 = -1073741824
+    difference = item1 - item2
+    if difference == 0:
       difference = 1 if key1 > key2 else -1
-    print(difference, type(difference))
     return difference if ascending else -difference
 
 
