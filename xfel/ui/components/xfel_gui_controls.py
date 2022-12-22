@@ -688,11 +688,11 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     try:
       item1 = float(self.itemDataMap[key1][col])
     except (ValueError, SystemError):
-      item1 = float('-Inf')
+      item1 = -1e99
     try:
       item2 = float(self.itemDataMap[key2][col])
     except (ValueError, SystemError):
-      item2 = float('-Inf')
+      item2 = -1e99
     print(key1, type(key1))
     print(key2, type(key2))
     print(item1, type(item1))
