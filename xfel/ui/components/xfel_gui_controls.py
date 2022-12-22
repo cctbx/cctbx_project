@@ -693,9 +693,13 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
       item2 = float(self.itemDataMap[key2][col])
     except (ValueError, SystemError):
       item2 = float('-Inf')
+    print(item1)
+    print(item2)
     difference = item1 - item2
+    print(difference)
     if difference == 0 or math.isnan(difference):
       difference = 1 if key1 > key2 else -1
+    print(difference)
     return difference if ascending else -difference
 
 
