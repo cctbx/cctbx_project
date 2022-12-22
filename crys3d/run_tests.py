@@ -3,6 +3,7 @@ import sys
 from libtbx import test_utils
 import libtbx.load_env
 
+
 if "darwin" in sys.platform:
   tst_list = [
     "$D/regression/tst_hklinfo.py",
@@ -12,6 +13,18 @@ if "darwin" in sys.platform:
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
+
+  if sys.version_info[0:2] == (3, 10):
+    tst_list_expected_failures = [ # No PySide2 yet in conda python 3.10
+      "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
+      "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
+    ]
+    tst_list = [
+      "$D/regression/tst_hklinfo.py",
+      "$D/regression/tst_websocket.py",
+      "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+      "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
+    ]
 
 
 if sys.platform == "win32":
@@ -23,7 +36,6 @@ if sys.platform == "win32":
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
   ]
-
   tst_list_expected_failures = [ # WebGL + QWebEngine doesn't quite work in a virtual machine
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
@@ -34,7 +46,6 @@ if "linux" in sys.platform:
   tst_list = [
     "$D/regression/tst_hklinfo.py",
   ]
-  tst_list_expected_unstable = []
   tst_list_expected_failures = [ # no DISPLAY environment on azure
     "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
