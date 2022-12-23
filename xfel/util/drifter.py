@@ -22,29 +22,33 @@ message = ''' This script aims to investigate the spatial drift of a detector
               of run number (horizontal position), colored according to tag
               name. Error bars are derived from the uncertainty of individual
               reflections' position in laboratory reference system.
-              Example usage: `libtbx.python drifter.py input_glob=batch*TDER/`
+              Example usage: `libtbx.python drifter.py input.glob=batch*TDER/`
 '''
 phil_scope = parse('''
-  input_glob = None
+input {
+  glob = None
     .type = str
     .multiple = True
     .help = glob which matches directories after TDER to be investigated.
-  plot_show = True
+}
+plot {
+  show = True
     .type = bool
     .help = If False, do not display resulting plot interactively
-  plot_path = ""
+  path = ""
     .type = str
     .help = if given, plot will be saved with this path and name (eg.: fig.png)
-  plot_height = 8.0
+  height = 8.0
     .type = float
-    .help = Height of saved plot in inches
-  plot_width = 10.0
+   .help = Height of saved plot in inches
+  width = 10.0
     .type = float
     .help = Width of saved plot in inches
   uncertainties = True
     .type = bool
-    .help = If True, origin uncertainties will be estimated using differences \
-            between predicted and observed positions of all reflections.
+    .help = If True, uncertainties will be estimated using differences \
+          between predicted and observed refl positions and cell distribution
+}
 ''')
 
 
@@ -192,7 +196,7 @@ class DriftScraper(object):
 
   def locate_input_tags(self):
     input_paths = []
-    for ig in self.parameters.input_glob:
+    for ig in self.parameters.input.glob:
         input_paths.extend(glob.glob(ig))
     return input_paths
 
@@ -242,7 +246,7 @@ class DriftScraper(object):
         task_dir = self.path_join(first_scaling_expt_path, '..', '..')
         trial_dir = self.path_join(task_dir, '..')
         scrap_dict = {'tag': tag, 'trial': int(trial_dir[-9:-6]),
-                      'task': int(self.path_split(task_dir)[-1][-3:]),
+                      'task': int(self.path_split(task_dir)[-1].lstrip('task')),
                       'rungroup': int(trial_dir[-3:]),
                       'run': self.path_split(trial_dir)[-2]}
         print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
@@ -432,11 +436,11 @@ class DriftArtist(object):
     self._plot_drift(self.axc, 'c', 'delta_c')
     self._plot_legend()
     self.fig.align_labels()
-    if self.parameters.plot_path:
-      self.fig.set_size_inches(self.parameters.plot_width,
-                               self.parameters.plot_height)
-      self.fig.savefig(self.parameters.plot_path)
-    if self.parameters.plot_show:
+    if self.parameters.plot.path:
+      self.fig.set_size_inches(self.parameters.plot.width,
+                               self.parameters.plot.height)
+      self.fig.savefig(self.parameters.plot.path)
+    if self.parameters.plot.show:
       plt.show()
 
 
