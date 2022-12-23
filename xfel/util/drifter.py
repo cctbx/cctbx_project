@@ -23,7 +23,8 @@ message = ''' This script aims to investigate the spatial drift of a detector
               name. Error bars are derived from the uncertainty of individual
               reflections' position in laboratory reference system.
               Example usage: `libtbx.python `libtbx.find_in_repositories
-              xfel`/util/drifter.py input.glob=batch*TDER/`.
+              xfel`/util/drifter.py input.glob=batch*TDER/`, where `batch*TDER`
+              describes folders (and thus dataset names) with merging results.
 '''
 phil_scope = parse('''
 input {
