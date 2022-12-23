@@ -1,7 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
-from libtbx.env_config import get_gcc_version
-import sys
 import libtbx.load_env
 
 tst_list_base = [
@@ -16,19 +14,10 @@ tst_list_base = [
   "$D/tests/tst_deprecation_tools.py",
   ]
 
-# failing test on Python 3 or GCC > 7
-tst_list_fail_py3 = [
+# failing test
+tst_list_fail = [
   "$D/tests/tst_python_streambuf.py",
   ]
-tst_list_fail = list()
-gcc_version = get_gcc_version()
-if gcc_version is None:
-  gcc_version = 0
-if sys.version_info[0] > 2 \
-   or (sys.platform.startswith('linux') and gcc_version >= 70000):
-  tst_list_fail += tst_list_fail_py3
-else:
-  tst_list_base += tst_list_fail_py3
 
 # final lists
 tst_list = tst_list_base
