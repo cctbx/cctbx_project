@@ -27,30 +27,30 @@ message = ''' This script aims to investigate the spatial drift of a detector
               describes folders (and thus dataset names) with merging results.
 '''
 phil_scope = parse('''
-input {
-  glob = None
-    .type = str
-    .multiple = True
-    .help = glob which matches directories after TDER to be investigated.
-}
-plot {
-  show = True
-    .type = bool
-    .help = If False, do not display resulting plot interactively
-  path = ""
-    .type = str
-    .help = if given, plot will be saved with this path and name (eg.: fig.png)
-  height = 8.0
-    .type = float
-   .help = Height of saved plot in inches
-  width = 10.0
-    .type = float
-    .help = Width of saved plot in inches
+  input {
+    glob = None
+      .type = str
+      .multiple = True
+      .help = glob which matches directories after TDER to be investigated.
+  }
+  plot {
+    show = True
+      .type = bool
+      .help = If False, do not display resulting plot interactively
+    path = ""
+      .type = str
+      .help = if given, plot will be saved with this path and name (eg.: fig.png)
+    height = 8.0
+      .type = float
+     .help = Height of saved plot in inches
+    width = 10.0
+      .type = float
+      .help = Width of saved plot in inches
+  }
   uncertainties = True
     .type = bool
     .help = If True, uncertainties will be estimated using differences \
           between predicted and observed refl positions and cell distribution
-}
 ''')
 
 
