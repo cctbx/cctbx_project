@@ -553,8 +553,8 @@ function getRotatedZoutMatrix()
 function SetDefaultOrientation() {
   if (!rotationdisabled)
     stage.viewerControls.orient(getRotatedZoutMatrix());
-  SetAutoviewNoAnim(shapeComp);
-  //SetAutoview(shapeComp, 500);
+  //SetAutoviewNoAnim(shapeComp);
+  SetAutoview(shapeComp, 500);
 }
 
 
@@ -570,9 +570,7 @@ function SetAutoviewNoAnim(mycomponent)
   let m = getRotatedZoutMatrix();
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
-  //stage.viewer.updateZoom(); 
   ReturnClipPlaneDistances(); // updates zoom value in python
-  //RenderRequest("AutoViewFinished");
   requestedby = "AutoViewFinished";
   stage.viewer.requestRender();
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
@@ -598,7 +596,9 @@ async function SetAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == zaim && sumt > 0) {
-      //ReturnClipPlaneDistances('SetAutoview');
+      ReturnClipPlaneDistances(); // updates zoom value in python
+      requestedby = "AutoViewFinished";
+      stage.viewer.requestRender();
       WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
       isAutoviewing = false;
       return;
@@ -612,7 +612,9 @@ async function SetAutoview(mycomponent, t)
           let m4 = getRotatedZoutMatrix();
           m4.multiplyScalar(zaim);
           stage.viewerControls.orient(m4);
-          //ReturnClipPlaneDistances('SetAutoview');
+          ReturnClipPlaneDistances(); // updates zoom value in python
+          requestedby = "AutoViewFinished";
+          stage.viewer.requestRender();
           WebsockSendMsg('FinishedSetAutoView forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
           isAutoviewing = false;
           return;

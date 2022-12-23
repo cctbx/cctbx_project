@@ -13,7 +13,6 @@ if "darwin" in sys.platform:
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
-
   if sys.version_info[0:2] == (3, 10):
     tst_list_expected_failures = [ # No PySide2 yet in conda python 3.10
       "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
