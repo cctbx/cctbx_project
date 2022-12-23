@@ -25,10 +25,6 @@ message = ''' This script aims to investigate the spatial drift of a detector
               Example usage: `libtbx.python drifter.py input_glob=batch*TDER/`
 '''
 phil_scope = parse('''
-  input_dir = None
-    .type = str
-    .multiple = True
-    .help = list of directories after TDER to be investigated.
   input_glob = None
     .type = str
     .multiple = True
@@ -195,7 +191,7 @@ class DriftScraper(object):
             'delta_c': cf.standard_deviation_of_the_sample()}
 
   def locate_input_tags(self):
-    input_paths = list(self.parameters.input_dir)
+    input_paths = []
     for ig in self.parameters.input_glob:
         input_paths.extend(glob.glob(ig))
     return input_paths
