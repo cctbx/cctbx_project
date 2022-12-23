@@ -1832,6 +1832,7 @@ Distance: %s
       self.mprint("OpenBrowser got listening_sem", verbose="threadingmsg")
       self.WBmessenger.listening_sem.release()
       self.mprint("OpenBrowser released listening_sem", verbose="threadingmsg")
+      time.sleep(0.5)
 
       if self.UseOSBrowser=="default":
         if not self.webctrl.open(self.url):
