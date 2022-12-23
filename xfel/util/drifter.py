@@ -22,7 +22,8 @@ message = ''' This script aims to investigate the spatial drift of a detector
               of run number (horizontal position), colored according to tag
               name. Error bars are derived from the uncertainty of individual
               reflections' position in laboratory reference system.
-              Example usage: `libtbx.python drifter.py input.glob=batch*TDER/`
+              Example usage: `libtbx.python `libtbx.find_in_repositories
+              xfel`/util/drifter.py input.glob=batch*TDER/`.
 '''
 phil_scope = parse('''
 input {
