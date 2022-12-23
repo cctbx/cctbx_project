@@ -596,6 +596,10 @@ async function SetAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == zaim && sumt > 0) {
+      let m = stage.viewerControls.getOrientation();
+      let det = Math.pow(m.determinant(), 1/3);
+      m.multiplyScalar(-zaim/det);
+      stage.viewerControls.orient(m);
       ReturnClipPlaneDistances(); // updates zoom value in python
       requestedby = "AutoViewFinished";
       stage.viewer.requestRender();
@@ -610,8 +614,8 @@ async function SetAutoview(mycomponent, t)
         { // If autoView() is stuck at stage.viewer.camera.position.z= -1 
           // then resort to use viewerControls.orient()
           let m4 = getRotatedZoutMatrix();
-          m4.multiplyScalar(zaim);
-          stage.viewerControls.orient(m4);
+          let det = Math.pow(m4.determinant(), 1/3);
+          m4.multiplyScalar(-zaim/det);
           ReturnClipPlaneDistances(); // updates zoom value in python
           requestedby = "AutoViewFinished";
           stage.viewer.requestRender();
