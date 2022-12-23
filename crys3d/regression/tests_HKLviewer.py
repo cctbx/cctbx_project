@@ -118,7 +118,7 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
   (-2, 0, 9), (-1, 0, 9), (0, -3, 9), (-2, -4, 9)]
 )
 
-closetime = 40
+closetime = 140
 
 def check_log_file(fname, refls2match):
   with open(fname, "r") as f:
