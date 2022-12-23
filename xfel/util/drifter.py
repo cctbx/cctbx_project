@@ -394,7 +394,7 @@ class DriftArtist(object):
 
   def _plot_bars(self):
     y = self.table['expts']
-    w = normalise(self.table['density'])
+    w = normalise([0, *self.table['density']])[1:]
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_correlations(self):
