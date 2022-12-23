@@ -277,7 +277,7 @@ class DriftTable(object):
     return self.auxiliary[key] if auxiliary_key else [d[key] for d in self.data]
 
   def __str__(self):
-    lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.active_keys)]
+    lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.available_keys)]
     for d in self.data:
       cells = ['{:.20f}'.format(d[k]) if isinstance(d[k], float) else d[k]
                for k in self.active_keys]
