@@ -278,9 +278,11 @@ class DriftTable(object):
 
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.available_keys)]
-    for d in self.data:
+    for i, d in enumerate(self.data):
       cells = ['{:.20f}'.format(d[k]) if isinstance(d[k], float) else d[k]
                for k in self.active_keys]
+      for ak in self.auxiliary.keys():
+        cells.append('{:.20f}'.format(self[ak][i]))
       lines.append(' '.join('{!s:9.9}'.format(cell) for cell in cells))
     return '\n'.join(lines)
 
