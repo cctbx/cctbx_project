@@ -616,6 +616,7 @@ async function SetAutoview(mycomponent, t)
           let m4 = getRotatedZoutMatrix();
           let det = Math.pow(m4.determinant(), 1/3);
           m4.multiplyScalar(-zaim/det);
+          stage.viewerControls.orient(m4);
           ReturnClipPlaneDistances(); // updates zoom value in python
           requestedby = "AutoViewFinished";
           stage.viewer.requestRender();
