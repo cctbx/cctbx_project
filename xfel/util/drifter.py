@@ -111,7 +111,8 @@ def variance(xs, ys, weights=None):
 
 def normalise(sequence):
   min_, max_ = min(sequence), max(sequence)
-  return [(s - min_) / (max_ - min_) for s in sequence]
+  return sequence if min_ == max_ else \
+    [(s - min_) / (max_ - min_) for s in sequence]
 
 
 class DriftScraper(object):
@@ -427,16 +428,17 @@ class DriftArtist(object):
                   ma='center', va='top', transform=self.axl.transAxes)
 
   def publish(self):
-    self._plot_bars()
-    self._plot_correlations()
-    self._plot_width_info()
-    self._plot_drift(self.axx, 'x', 'delta_x', top=True)
-    self._plot_drift(self.axy, 'y', 'delta_y')
-    self._plot_drift(self.axz, 'z', 'delta_z')
-    self._plot_drift(self.axa, 'a', 'delta_a')
-    self._plot_drift(self.axb, 'b', 'delta_b')
-    self._plot_drift(self.axc, 'c', 'delta_c')
-    self._plot_legend()
+    if self.table.data:
+      self._plot_bars()
+      self._plot_correlations()
+      self._plot_width_info()
+      self._plot_drift(self.axx, 'x', 'delta_x', top=True)
+      self._plot_drift(self.axy, 'y', 'delta_y')
+      self._plot_drift(self.axz, 'z', 'delta_z')
+      self._plot_drift(self.axa, 'a', 'delta_a')
+      self._plot_drift(self.axb, 'b', 'delta_b')
+      self._plot_drift(self.axc, 'c', 'delta_c')
+      self._plot_legend()
     self.fig.align_labels()
     if self.parameters.plot.path:
       self.fig.set_size_inches(self.parameters.plot.width,
