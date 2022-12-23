@@ -687,11 +687,11 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
     try:
       item1 = int(self.itemDataMap[key1][col])
     except (ValueError, SystemError):
-      item1 = -1073741824
+      item1 = -1073741820
     try:
       item2 = int(self.itemDataMap[key2][col])
     except (ValueError, SystemError):
-      item2 = -1073741824
+      item2 = -1073741820
     difference = item1 - item2
     if difference == 0:
       difference = 1 if key1 > key2 else -1
