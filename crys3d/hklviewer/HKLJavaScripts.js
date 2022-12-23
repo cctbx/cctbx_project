@@ -600,10 +600,10 @@ async function SetAutoview(mycomponent, t)
       let det = Math.pow(m.determinant(), 1/3);
       m.multiplyScalar(-zaim/det);
       stage.viewerControls.orient(m);
-      ReturnClipPlaneDistances(); // updates zoom value in python
       requestedby = "AutoViewFinished";
       stage.viewer.requestRender();
       WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
+      ReturnClipPlaneDistances(); // updates zoom value in python
       isAutoviewing = false;
       return;
     }
@@ -617,10 +617,10 @@ async function SetAutoview(mycomponent, t)
           let det = Math.pow(m4.determinant(), 1/3);
           m4.multiplyScalar(-zaim/det);
           stage.viewerControls.orient(m4);
-          ReturnClipPlaneDistances(); // updates zoom value in python
           requestedby = "AutoViewFinished";
           stage.viewer.requestRender();
           WebsockSendMsg('FinishedSetAutoView forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
+          ReturnClipPlaneDistances(); // updates zoom value in python
           isAutoviewing = false;
           return;
         }
