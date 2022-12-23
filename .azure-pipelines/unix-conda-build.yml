@@ -237,7 +237,7 @@ steps:
   continueOnError: true
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
-  artifact: tests_$(job_name).tar.xz
+  artifact: tests_$(job_name)_$(MODULES)
   condition: succeededOrFailed()
   continueOnError: true
 
