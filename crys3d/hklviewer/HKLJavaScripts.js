@@ -662,7 +662,10 @@ async function ResolveAutoview(mycomponent, t)
       isAutoviewing = false;
       return true;
     }
-    await sleep(dt).then(()=> { sumt += dt; } );   
+    await sleep(dt).then(()=> { 
+      sumt += dt; 
+      WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+    } );   
  }
 };
 
@@ -670,7 +673,7 @@ async function ResolveAutoview(mycomponent, t)
 function AutoViewPromise(mycomponent, t)
 {
   return new Promise(resolve => {
-    ResolveAutoview(mycomponent, t);
+    resolve(ResolveAutoview(mycomponent, t));
     setTimeout(() => resolve(false), t+10000); // return false if autoview animation is stalling
   });
 }
