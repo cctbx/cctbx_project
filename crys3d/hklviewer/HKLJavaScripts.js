@@ -671,7 +671,7 @@ function AutoViewPromise(mycomponent, t)
 {
   return new Promise(resolve => {
     ResolveAutoview(mycomponent, t);
-    setTimeout(() => resolve(false), t+100); // return false if autoview animation is stalling
+    setTimeout(() => resolve(false), t+10000); // return false if autoview animation is stalling
   });
 }
 
