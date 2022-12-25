@@ -262,8 +262,12 @@ class HKLview_3d:
     Html2Canvasliburl = "file:///" + Html2Canvaslibpath.replace("\\","/")
     NGLliburl = "file:///" + NGLlibpath.replace("\\","/")
     HKLjscripturl = "file:///" + HKLjscriptpath.replace("\\","/")
-    self.htmlstr = self.hklhtml %(self.isHKLviewer, self.websockport, WeblglCheckliburl, Html2Canvasliburl,
-                                  NGLliburl, HKLjscripturl)
+    self.htmlstr = self.hklhtml %(self.isHKLviewer,
+                                  self.websockport,
+                                  WeblglCheckliburl,
+                                  Html2Canvasliburl,
+                                  NGLliburl,
+                                  HKLjscripturl)
     self.colourgradientvalues = []
     self.browserpath, self.webctrl = get_browser_ctrl()
     self.UseOSBrowser = ""

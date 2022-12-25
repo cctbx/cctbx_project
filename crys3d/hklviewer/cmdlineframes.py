@@ -9,6 +9,7 @@ def run(args=""):
     utility function for passing keyword arguments more directly to hklview_frame.HKLViewFrame()
     """
     from crys3d.hklviewer import hklview_frame
+    from crys3d.hklviewer.jsview_3d import HKLviewerError as HKLviewerError
     #import time; time.sleep(15) # enough for attaching debugger
     # dirty hack for parsing a file path with spaces of a browser if not using default
     if args == "":
@@ -45,6 +46,9 @@ def run(args=""):
 
     myHKLview = hklview_frame.HKLViewFrame(*sysargs, **kwargs)
     return myHKLview # only necessary for aiding debugging or line profiling
+  except HKLviewerError as e:
+    print( str(e) + "\n" + traceback.format_exc(limit=10))
+    raise # pass on to caller
   except Exception as e:
     print( str(e) + "\n" + traceback.format_exc(limit=10))
     return 0
