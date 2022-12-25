@@ -641,7 +641,7 @@ async function ResolveAutoview(mycomponent, t)
   //isAutoviewing = true;
   mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
-  let dt = 10;
+  let dt = 50;
   let sumt = 0;
   while (isAutoviewing) {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
@@ -650,15 +650,7 @@ async function ResolveAutoview(mycomponent, t)
     // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
     // at that point in time
     if (stage.viewer.camera.position.z == zaim && sumt > 0) 
-    {/*
-      let m = stage.viewerControls.getOrientation();
-      let det = Math.pow(m.determinant(), 1/3);
-      m.multiplyScalar(-zaim/det);
-      stage.viewerControls.orient(m);
-      requestedby = "AutoViewFinished";
-      stage.viewer.requestRender();
-      ReturnClipPlaneDistances(); // updates zoom value in python 
-      */
+    {
       if (isAutoviewing==true) 
       {
         WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
