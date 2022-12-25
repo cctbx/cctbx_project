@@ -677,12 +677,12 @@ function AutoViewPromise(mycomponent, t)
 }
 
 
-function SetAutoviewTimeout(mycomponent, t)
+async function SetAutoviewTimeout(mycomponent, t)
 {
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
-  let ontime = AutoViewPromise(mycomponent, t);
+  let ontime = await AutoViewPromise(mycomponent, t);
   if (ontime == false) // position component explicitly if autoview animation is stalling
     SetAutoviewNoAnim(mycomponent);
   requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()

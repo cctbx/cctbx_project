@@ -196,6 +196,7 @@ class HKLViewFrame() :
     except HKLviewerError as e:
       self.mprint("\nClosing due to:\n" + str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
       self.SendInfoToGUI( { "closing_time": True } )
+      raise
     except Exception as e:
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
@@ -1925,7 +1926,6 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
     else:
       if infodict.get("closing_time", False):
-        #self.viewer.release_all_semaphores()
         self.__exit__()
 
 
