@@ -571,11 +571,12 @@ function SetAutoviewNoAnim(mycomponent)
   let m = getRotatedZoutMatrix();
   m.multiplyScalar(zaim);
   stage.viewerControls.orient(m);
+  isAutoviewing = false;
+
   //ReturnClipPlaneDistances(); // updates zoom value in python
   //requestedby = "AutoViewFinished";
   //stage.viewer.requestRender();
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
-  //isAutoviewing = false;
 };
 
 
@@ -658,9 +659,14 @@ async function ResolveAutoview(mycomponent, t)
       stage.viewer.requestRender();
       ReturnClipPlaneDistances(); // updates zoom value in python 
       */
-      WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
-      isAutoviewing = false;
-      return true;
+      if (isAutoviewing==true) 
+      {
+        WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
+        isAutoviewing = false;   
+        return true;
+      }
+      else // set by SetAutoviewNoAnim()
+        return;
     }
     await sleep(dt).then(()=> { 
       sumt += dt; 
@@ -690,7 +696,6 @@ async function SetAutoviewTimeout(mycomponent, t)
   requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
   stage.viewer.requestRender();
   ReturnClipPlaneDistances(); // updates zoom value in python */
-  isAutoviewing = false;
 }
 
 
