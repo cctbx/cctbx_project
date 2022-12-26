@@ -660,10 +660,10 @@ async function ResolveAutoview(mycomponent, t)
       else // set by SetAutoviewNoAnim()
         return;
     }
-    await sleep(dt).then(()=> { 
+    await sleep(dt); //.then(()=> { 
       sumt += dt; 
       WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-    } );   
+    //} );   
  }
 };
 
