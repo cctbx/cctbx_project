@@ -639,7 +639,7 @@ async function ResolveAutoview(mycomponent, t)
   //WebsockSendMsg('StartSetAutoView ');
   //WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   //isAutoviewing = true;
-  mycomponent.autoView(t); 
+  await mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   let dt = 50;
   let sumt = 0;
@@ -660,10 +660,10 @@ async function ResolveAutoview(mycomponent, t)
       else // set by SetAutoviewNoAnim()
         return;
     }
-    await sleep(dt); //.then(()=> { 
+    await sleep(dt).then(()=> { 
       sumt += dt; 
       WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-    //} );   
+    } );   
  }
 };
 
