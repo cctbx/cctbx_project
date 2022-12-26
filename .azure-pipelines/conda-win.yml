@@ -175,9 +175,8 @@ jobs:
       cd $(Pipeline.Workspace)
 
       cd modules
-      cd dxtbx
-      git checkout dials-3.8
-      cd ..\..
+      rmdir /S /Q boost
+      cd ..
 
       if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
         call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
@@ -186,7 +185,11 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      python bootstrap.py build --builder=cctbx --use-conda=%CONDA_PREFIX% --nproc=4
+      python bootstrap.py build ^
+        --builder=cctbx ^
+        --use-conda=%CONDA_PREFIX% ^
+        --config-flags="--cxxstd=c++14"
+        --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure ^
         cma_es ^
@@ -200,41 +203,7 @@ jobs:
       call libtbx.scons -j 4
       call libtbx.scons -j 4
     displayName: Configure and Build
-    # condition: ne(variables['PYTHON_VERSION'], 'py310')
     retryCountOnTaskFailure: 3
-
-  # - script: |
-  #     cd $(Pipeline.Workspace)
-
-  #     cd modules
-  #     rmdir /S /Q cbflib
-  #     rmdir /S /Q dxtbx
-  #     rmdir /S /Q boost
-  #     git clone https://github.com/cctbx/boost.git -b py310
-  #     cd ..
-
-  #     if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
-  #       call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-  #     )
-  #     if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
-  #       call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-  #     )
-  #     call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-  #     python bootstrap.py build --builder=cctbxlite --use-conda=%CONDA_PREFIX% --nproc=4
-  #     call .\build\setpaths.bat
-  #     call libtbx.configure ^
-  #       annlib ^
-  #       cma_es ^
-  #       crys3d ^
-  #       fable ^
-  #       phenix_regression ^
-  #       phenix_examples
-  #     cd build
-  #     call libtbx.scons -j 4
-  #     call libtbx.scons -j 4
-  #   displayName: Configure and Build (Python 3.10)
-  #   condition: eq(variables['PYTHON_VERSION'], 'py310')
-  #   retryCountOnTaskFailure: 3
 
   # test
   - script: |
@@ -269,40 +238,7 @@ jobs:
         nproc=4
     failOnStderr: false
     displayName: Test
-    # condition: ne(variables['PYTHON_VERSION'], 'py310')
     retryCountOnTaskFailure: 3
-
-  # - script: |
-  #     SET PYTHONLEGACYWINDOWSSTDIO=1
-  #     cd $(Pipeline.Workspace)
-  #     if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
-  #       call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-  #     )
-  #     if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
-  #       call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-  #     )
-  #     call .\build\setpaths.bat
-  #     rmdir /S /Q tests
-  #     mkdir tests
-  #     cd tests
-  #     call libtbx.run_tests_parallel ^
-  #       module=boost_adaptbx ^
-  #       module=cctbx ^
-  #       module=cctbx_website ^
-  #       module=cma_es ^
-  #       module=fable ^
-  #       module=gltbx ^
-  #       module=iotbx ^
-  #       module=libtbx ^
-  #       module=scitbx ^
-  #       module=smtbx ^
-  #       module=annlib_adaptbx ^
-  #       module=crys3d ^
-  #       nproc=4
-  #   failOnStderr: false
-  #   displayName: Test (Python 3.10)
-  #   condition: eq(variables['PYTHON_VERSION'], 'py310')
-  #   retryCountOnTaskFailure: 3
 
   # store tests directory as an artifact
   - script: |

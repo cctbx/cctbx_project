@@ -109,13 +109,14 @@ jobs:
   - script: |
       sudo yum install -y gtkmm24
     displayName: Install dependencies for CentOS 7 and Rocky Linux 8
-    condition: and(eq('${{ parameters.distribution }}', 'centos'),
+    condition: and(or(eq('${{ parameters.distribution }}', 'centos'),
+                      eq('${{ parameters.distribution }}', 'rockylinux')),
                    ne('${{ parameters.version[0] }}', 9))
 
   - script: |
-      sudo yum install -y gtkmm30
+      sudo yum install -y glibc-langpack-en gtkmm30
     displayName: Install dependencies for Rocky Linux 9
-    condition: and(eq('${{ parameters.distribution }}', 'centos'),
+    condition: and(eq('${{ parameters.distribution }}', 'rockylinux'),
                    eq('${{ parameters.version[0] }}', 9))
 
   - bash: |
@@ -206,6 +207,7 @@ jobs:
   # preserve permissions
   - script: |
       cd $(Pipeline.Workspace)
+      mkdir -p build
       tar -chf build.tar build
     displayName: Build tarball
     condition: >
