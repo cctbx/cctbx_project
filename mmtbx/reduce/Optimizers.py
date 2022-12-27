@@ -606,7 +606,7 @@ class _SingletonOptimizer(object):
             finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
-            elif abs(finalScore - otherScore) <= nonFlipPreference:
+            elif "Unflipped" in description and finalScore - otherScore <= nonFlipPreference:
               description += " Uncertain"
             else:
               description += " ."
