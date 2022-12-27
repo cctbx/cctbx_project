@@ -69,9 +69,12 @@ def get_stats(data):
 
 master_phil_str = '''
 hbond {
-  output_pymol_files = True
+  output_pymol_file = True
     .type = bool
-    .short_caption = Output useful PyMOL files for visualisation
+    .short_caption = Output PyMOL files for visualisation
+  output_restraint_file = True
+    .type = bool
+    .short_caption = Output geometry restraints edits file
 }
 '''
 
@@ -198,7 +201,7 @@ def stats(model, prefix, no_ticks=True):
 #  result_dict["loop"]  = get_selected(sel=loop_sel)
   # Load histograms for reference high-resolution d_HA and a_DHA
   pkl_fn = libtbx.env.find_in_repositories(
-    relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res.pkl"
+    relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res_p3.pkl"
   assert os.path.isfile(pkl_fn)
   ref = easy_pickle.load(pkl_fn)
   #
@@ -348,8 +351,7 @@ class find(object):
         model,
         h_bond_params  = None,
         protein_only   = False,
-        pair_proxies   = None,
-        write_eff_file = True):
+        pair_proxies   = None):
     if(h_bond_params is None):
       import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
       h_bond_params = pnp.h_bond()
@@ -484,9 +486,6 @@ class find(object):
         proxy_custom = group_args(i_seq = i, j_seq = j, rt_mx_ji = rt_mx_ji,
           atom_H = atom_H, atom_A = atom_A)
         self.pair_proxies.append(proxy_custom)
-    #
-    if(write_eff_file):
-      self.as_restraints()
 
   def get_params_as_arrays(self, b=None, occ=None,
                            replace_with_empty_threshold=None):
@@ -543,6 +542,7 @@ class find(object):
       fmt="%8s %7.3f %7.3f %7.3f %7.3f"
       print(fmt%(prefix, o.mean, o.sd, o.skew, o.kurtosis), file=log)
     c = self.get_counts()
+    if(c is None): return
     if(c.theta_1 is None): return
     print("Total:       %d"%c.n,     file=log)
     print("Symmetry:    %d"%c.n_sym, file=log)

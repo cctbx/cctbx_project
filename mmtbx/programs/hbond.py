@@ -34,8 +34,12 @@ Usage example:
     self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
     self.results.show_summary(log = self.logger)
-    if self.params.hbond.output_pymol_files:
+    if self.params.hbond.output_pymol_file:
       self.results.as_pymol()
+    if self.params.hbond.output_restraint_file:
+      self.results.as_restraints()
+    #
+    mmtbx.nci.hbond.stats(model = model, prefix="hbond_stats")
 
   # ---------------------------------------------------------------------------
   def get_results(self):
