@@ -102,9 +102,9 @@ def get_browser_ctrl(using=None):
       if not os.path.isfile(browser):
         browser = "C:/Program Files/Google/Chrome/Application/chrome.exe"
     if sys.platform.startswith("darwin"):
-      browser = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      browser = '"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"'
       if not os.path.isfile(browser):
-        browser = "/Applications/Google Chrome.app"
+        browser = '"/Applications/Google Chrome.app"'
     if sys.platform == "linux":
       #pass
       browser = "/usr/bin/firefox"
