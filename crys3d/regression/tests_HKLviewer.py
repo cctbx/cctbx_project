@@ -119,6 +119,10 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
 )
 
 closetime = 140
+browser = "chrome"
+#browser = "firefox"
+#browser = "default"
+
 
 def check_log_file(fname, refls2match):
   with open(fname, "r") as f:
@@ -163,9 +167,6 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
     f.write(philstr)
 
   # check we can actually open a browser
-  #browser = "chrome"
-  browser = "firefox"
-  #browser = "default"
   browserpath, webctrl = jsview_3d.get_browser_ctrl(browser)
   #assert webctrl.open("https://get.webgl.org/")
   #subprocess.run('"' + browserpath + '"  https://get.webgl.org/ &', shell=True,
