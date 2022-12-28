@@ -554,24 +554,20 @@ function getRotatedZoutMatrix()
 function SetDefaultOrientation() {
   if (!rotationdisabled)
     stage.viewerControls.orient(getRotatedZoutMatrix());
-  //SetAutoviewNoAnim(shapeComp);
-  //SetAutoview(shapeComp, 500);
   SetAutoviewTimeout(shapeComp, 500);
 }
 
 
 function SetAutoviewNoAnim(mycomponent)
 {
-  if (mycomponent == null)
+  if (mycomponent == null || isAutoviewing==false)
     return;
-  //WebsockSendMsg('StartSetAutoViewNoAnim');
-  //WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-  //isAutoviewing = true;
   if (zoomanis != null)
   {
     mycomponent.stage.animationControls.pause();
-    //mycomponent.stage.animationControls.remove(zoomanis[0]);
-    //mycomponent.stage.animationControls.remove(zoomanis[1]);
+    mycomponent.stage.animationControls.remove(zoomanis[0]);
+    mycomponent.stage.animationControls.remove(zoomanis[1]);
+    zoomanis = null;
   }
   let zaim = mycomponent.getZoom();
   //let m = new NGL.Matrix4().identity();
@@ -579,77 +575,21 @@ function SetAutoviewNoAnim(mycomponent)
   m.multiplyScalar(-zaim);
   stage.viewerControls.orient(m);
   isAutoviewing = false;
-
+  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
   return true;
 };
 
 
-async function SetAutoview(mycomponent, t)
-{
-  if (mycomponent == null)
-    return;
-  WebsockSendMsg('StartSetAutoView ');
-  WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-  isAutoviewing = true;
-  mycomponent.autoView(t); 
-  let zaim = mycomponent.getZoom();
-  let dt = 50;
-  let sumt = 0;
-  while (isAutoviewing) {
-    // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
-    // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
-    // data size of mycomponent. It will have completed once the condition 
-    // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
-    // at that point in time
-    if (stage.viewer.camera.position.z == zaim && sumt > 0) {
-      let m = stage.viewerControls.getOrientation();
-      let det = Math.pow(m.determinant(), 1/3);
-      m.multiplyScalar(-zaim/det);
-      stage.viewerControls.orient(m);
-      requestedby = "AutoViewFinished";
-      stage.viewer.requestRender();
-      WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
-      ReturnClipPlaneDistances(); // updates zoom value in python
-      isAutoviewing = false;
-      return;
-    }
-    await sleep(dt).then(()=> { 
-        WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-        sumt += dt;
-        if (sumt > t*4 && stage.viewer.camera.position.z != zaim)
-        { // If autoView() is stuck at stage.viewer.camera.position.z= -1 
-          // then resort to use viewerControls.orient()
-          let m4 = getRotatedZoutMatrix();
-          let det = Math.pow(m4.determinant(), 1/3);
-          m4.multiplyScalar(-zaim/det);
-          stage.viewerControls.orient(m4);
-          requestedby = "AutoViewFinished";
-          stage.viewer.requestRender();
-          WebsockSendMsg('FinishedSetAutoView forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
-          ReturnClipPlaneDistances(); // updates zoom value in python
-          isAutoviewing = false;
-          return;
-        }
-      } 
-    );
- }
-};
-
-
-
-
 async function ResolveAutoview(mycomponent, t)
 {
-  //WebsockSendMsg('StartSetAutoView ');
-  //WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-  //isAutoviewing = true;
-  mycomponent.autoView(t); 
+  zoomanis = mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   //zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
   let dt = 50;
   let sumt = 0;
-  while (isAutoviewing) {
+  while (isAutoviewing) 
+  {
     // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
     // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
     // data size of mycomponent. It will have completed once the condition 
@@ -663,10 +603,7 @@ async function ResolveAutoview(mycomponent, t)
         let det = Math.pow(m.determinant(), 1/3);
         m.multiplyScalar(-zaim/det);
         stage.viewerControls.orient(m);
-        requestedby = "AutoViewFinished";
-        stage.viewer.requestRender();
-        ReturnClipPlaneDistances();
-        WebsockSendMsg('FinishedSetAutoView'); // equivalent of the signal function
+        WebsockSendMsg('FinishedSetAutoView');
         isAutoviewing = false;   
         return true;
       }
@@ -677,27 +614,19 @@ async function ResolveAutoview(mycomponent, t)
       sumt += dt; 
       WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
     } );   
- }
+  }
 };
-
-
-function AutoViewPromise(mycomponent, t)
-{
-  return new Promise(resolve => {
-    resolve(ResolveAutoview(mycomponent, t));
-    setTimeout(() => resolve(false), t+10000); // return false if autoview animation is stalling
-  });
-}
 
 
 async function AutoViewPromiseRace(mycomponent, t)
 {
   function onTimeoutResolveDefaultThreshold() 
-  {
+  {// position component explicitly with SetAutoviewNoAnim() if autoview animation in 
+   // ResolveAutoview() is stalling
     return new Promise(async (resolve) => {
-      setTimeout(() => {// position component explicitly if autoview animation is stalling
+      setTimeout(() => {
         resolve(SetAutoviewNoAnim(mycomponent));
-      }, 5000)
+      }, t * 10) // start if 10 times t ms has lapsed
     });
   }
   return await Promise.race([ResolveAutoview(mycomponent, t),
@@ -711,14 +640,10 @@ async function SetAutoviewTimeout(mycomponent, t)
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
   AutoViewPromiseRace(mycomponent, t).then(()=>{
-    //requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
-    //stage.viewer.requestRender();
-    //ReturnClipPlaneDistances(); // updates zoom value in python */
+    requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
+    stage.viewer.requestRender();
+    ReturnClipPlaneDistances(); // updates zoom value in python */
   });
-  //let ontime = AutoViewPromise(mycomponent, t);
-  //if (ontime == false) // position component explicitly if autoview animation is stalling
-  //  SetAutoviewNoAnim(mycomponent);
-  stage.viewer.requestRender();
 }
 
 
