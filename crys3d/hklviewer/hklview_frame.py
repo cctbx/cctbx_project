@@ -176,12 +176,6 @@ class HKLViewFrame() :
           with open(fname, "r") as f:
             philstr = f.read()
             self.update_from_philstr(philstr)
-            time.sleep(1)
-            self.viewer.RedrawNGL()
-            time.sleep(3)
-            self.viewer.SimulateClick()
-            time.sleep(3)
-            self.viewer.GetReflectionsInFrustum()
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )
@@ -474,15 +468,21 @@ class HKLViewFrame() :
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_update_settings(new_phil, msgtype="preset_philstr")
+    self.guarded_update_settings(new_phil, msgtype="preset_philstr", postrender=True)
 
 
-  def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+  def guarded_update_settings(self, new_phil=None, msgtype="philstr",
+                              lastmsgtype="philstr", postrender=False):
     self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
       self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
     self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+    if postrender:
+      self.viewer.RedrawNGL()
+      self.viewer.SimulateClick()
+      self.viewer.GetReflectionsInFrustum()
+
     self.update_handler_sem.release()
     self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
