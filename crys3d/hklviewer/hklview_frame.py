@@ -154,7 +154,7 @@ class HKLViewFrame() :
     self.closingtime = int(kwds.get('closing_time', -1 ))
     # if invoked from command line not using Qt close us by waiting for thread processing cmdline kwargs to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
-      self.thrd2.join(timeout = self.closingtime * 2)
+      self.thrd2.join(timeout = self.closingtime + 40)
       if self.thrd2.is_alive():
         self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
         self.SendInfoToGUI( { "closing_time": True } )
@@ -168,25 +168,17 @@ class HKLViewFrame() :
       self.validate_preset_buttons()
       if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
         fname = kwds.get('phil_file', "" )
-        if os.path.isfile(fname):
-          if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
-            self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
-          self.initiated_gui_sem.release()
-          self.mprint("Processing PHIL file: %s" %fname)
-          with open(fname, "r") as f:
-            philstr = f.read()
-            self.update_from_philstr(philstr)
-            time.sleep(1)
-            self.viewer.RedrawNGL()
-            time.sleep(3)
-            self.viewer.SimulateClick()
-            time.sleep(3)
-            self.viewer.GetReflectionsInFrustum()
+        if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
+          self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+        self.initiated_gui_sem.release()
+        self.mprint("Processing PHIL file: %s" %fname)
+        with open(fname, "r") as f:
+          philstr = f.read()
+          self.update_from_philstr(philstr)
       if 'image_file' in kwds: # save displayed reflections to an image file
-        time.sleep(5)
+        time.sleep(1)
         fname = kwds.get('image_file', "testimage.png" )
-        self.update_from_philstr('''save_image_name = "%s"
-#use_wireframe = True''' %fname)
+        self.update_from_philstr('save_image_name = "%s"' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
@@ -474,18 +466,25 @@ class HKLViewFrame() :
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_update_settings(new_phil, msgtype="preset_philstr")
+    self.guarded_update_settings(new_phil, msgtype="preset_philstr", postrender=True)
 
 
-  def guarded_update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+  def guarded_update_settings(self, new_phil=None, msgtype="philstr",
+                              lastmsgtype="philstr", postrender=False):
     self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
       self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
     self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+    if postrender:
+      time.sleep(1)
+      self.viewer.RedrawNGL()
+      time.sleep(1)
+      self.viewer.SimulateClick()
+      time.sleep(1)
+      self.viewer.GetReflectionsInFrustum()
     self.update_handler_sem.release()
     self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
-
 
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
