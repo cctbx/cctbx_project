@@ -733,6 +733,9 @@ class MoverAmideFlip(object):
   def __init__(self, nh2Atom, caAtomName, bondedNeighborLists, nonFlipPreference):
     """Constructs a Mover that will handle flipping an NH2 with an O, both of which
        are attached to the same Carbon atom (and each of which has no other bonds).
+       This Mover will move the hydrogens so that they are located at +/-120 degrees from the
+       Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen and at the same
+       distance from the Nitrogen as at least one of them started out.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the plane with the other three atoms)
        for its testing, but during FixUp it adjusts the bond lengths of the Oxygen
@@ -824,14 +827,29 @@ class MoverAmideFlip(object):
     self._atoms.extend(linkerHydrogens)
 
     #########################
+    # Compute the original positions for the Hydrogens such that they are at the same distance from
+    # the Nitrogen as one of them started out and located at +/-120 degrees from the
+    # Carbon-Nitrogen bond in the plane of the Nitrogen, Carbon, and Oxygen.
+    cToN = lvec3(nh2Atom.xyz) - lvec3(hinge.xyz)
+    cToO = rvec3(oxygen.xyz) - rvec3(hinge.xyz)
+
+    # Normal to the plane containing Nitrogen, Carbon, and Oxygen
+    normal = lvec3(scitbx.matrix.cross_product_matrix(cToN) * cToO).normalize()
+
+    hBond0Len = (rvec3(nh2Hydrogens[0].xyz) - rvec3(nh2Atom.xyz)).length()
+    hBond1Len = (rvec3(nh2Hydrogens[1].xyz) - rvec3(nh2Atom.xyz)).length()
+    nh2Hydrogens[0].xyz = lvec3(nh2Atom.xyz) + ((-cToN.normalize()) * hBond0Len).rotate_around_origin(normal, 120 * math.pi/180)
+    nh2Hydrogens[1].xyz = lvec3(nh2Atom.xyz) + ((-cToN.normalize()) * hBond1Len).rotate_around_origin(normal,-120 * math.pi/180)
+
+    #########################
     # Compute the new positions for the Hydrogens such that they are at the same distance from
     # the Oxygen as one of them is from the Nitrogen and located at +/-120 degrees from the
     # Carbon-Oxygen bond in the plane of the Nitrogen, Carbon, and Oxygen.
     cToO = lvec3(oxygen.xyz) - lvec3(hinge.xyz)
-    nToO = rvec3(nh2Atom.xyz) - rvec3(hinge.xyz)
+    cToN = rvec3(nh2Atom.xyz) - rvec3(hinge.xyz)
 
     # Normal to the plane containing Nitrogen, Carbon, and Oxygen
-    normal = lvec3(scitbx.matrix.cross_product_matrix(cToO) * nToO).normalize()
+    normal = lvec3(scitbx.matrix.cross_product_matrix(cToO) * cToN).normalize()
 
     hBond0Len = (rvec3(nh2Hydrogens[0].xyz) - rvec3(nh2Atom.xyz)).length()
     hBond1Len = (rvec3(nh2Hydrogens[1].xyz) - rvec3(nh2Atom.xyz)).length()
@@ -2117,6 +2135,25 @@ def Test():
     bondedNeighborLists[ca] = [ f ]
 
     mover = MoverAmideFlip(n, ca.name, bondedNeighborLists, 0.5)
+
+    # Ensure that the hydrogens have been rotated to have a 0 and 180 dihedral with
+    # the Oxygen atom.
+    sites = [ h1.xyz, n.xyz, p.xyz, o.xyz ]
+    degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    while degrees > 180:
+        degrees -= 360
+    while degrees <= -180:
+        degrees += 360
+    if abs(degrees) > 1e-5 and abs(180 - degrees) > 1e-5:
+      return "Movers.Test() MoverAmideFlip: h1 dihedral not 0 or 180: {:.2f}".format(degrees)
+    sites = [ h2.xyz, n.xyz, p.xyz, o.xyz ]
+    degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
+    while degrees > 180:
+        degrees -= 360
+    while degrees <= -180:
+        degrees += 360
+    if abs(degrees) > 1e-5 and abs(180 - degrees) > 1e-5:
+      return "Movers.Test() MoverAmideFlip: h2 dihedral not 0 or 180: {:.2f}".format(degrees)
 
     # Ensure that the coarse-flip results meet the expections:
     # 1) N and O are flipped in position
