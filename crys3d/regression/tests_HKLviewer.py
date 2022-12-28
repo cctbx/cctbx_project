@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env, os.path, re, os, time, subprocess
-from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 
 
@@ -143,15 +142,11 @@ def check_log_file(fname, refls2match):
   print("Indices of visible reflections match the expected ones.")
 
 
-def Append2LogFile(fname, res):
+def Append2LogFile(fname, souterr):
   # write terminal output to our log file
   with open(fname, "a") as f:
-    f.write("\nstdout in terminal: \n" + "-" * 80 + "\n")
-    for line in res.stdout_lines:
-      f.write(line + "\n")
-    f.write("\nstderr in terminal: \n" + "-" * 80 + "\n")
-    for line in res.stderr_lines:
-      f.write(line + "\n")
+    f.write("\nstdout, stderr in terminal: \n" + "-" * 80 + "\n")
+    f.write(souterr + "\n")
 
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
@@ -180,7 +175,6 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
             "closing_time=%d" %closetime,
-            #"debug=True"
           ]
 
   assert cmdlineframes.run(cmdargs)
@@ -188,14 +182,27 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
   print("\n" + "=" * 80 + "\n\n")
 
 
+
 def exerciseQtGUI(philstr, refl2match, prefix=""):
+  # setting these flags makes it more likely QWebEngine will work on the VM used on Azure
+  os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " --disable-web-security" \
+            + " --enable-webgl-software-rendering --disable-gpu-compositing" \
+            + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
+
   assert os.path.isfile(datafname)
   # First delete any settings from previous HKLviewer runs that might be present on this platform
   print("Removing any previous Qsettings...")
-  remove_settings_result = easy_run.fully_buffered(command="cctbx.HKLviewer remove_settings")
+  obj = subprocess.Popen("cctbx.HKLviewer remove_settings",
+                         shell=True,
+                         env = os.environ,
+                         stdin = subprocess.PIPE,
+                         stdout = subprocess.PIPE,
+                         stderr = subprocess.STDOUT)
+  out,err = obj.communicate()
+  remove_settings_result = out.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
 
   print("Starting the real HKLviewer test...")
-
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
     f.write(philstr)
 
@@ -210,13 +217,19 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
              "image_file=%sHKLviewer.png" %prefix,
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closing_time=%d" %closetime, # close HKLviewer after 25 seconds
-             #"debug=True"
             ]
 
-  HKLviewer_result = easy_run.fully_buffered(" ".join(cmdargs))
+  obj = subprocess.Popen(" ".join(cmdargs),
+                         shell=True,
+                         env = os.environ,
+                         stdin = subprocess.PIPE,
+                         stdout = subprocess.PIPE,
+                         stderr = subprocess.STDOUT)
+  out,err = obj.communicate()
+  HKLviewer_result = out.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
   # append terminal output to log file
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)
-  print("retval: " + str(HKLviewer_result.return_code))
+  print("retval: " + str(obj.returncode))
   check_log_file(outputfname, refl2match)
   print("\n" + "=" * 80 + "\n\n")

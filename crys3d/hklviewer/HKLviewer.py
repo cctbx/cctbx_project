@@ -799,7 +799,7 @@ from phasertng.scripts import xtricorder
 
 tabname = "Xtricorder"
 (retobj) = xtricorder.xtricorder(
-'''phasertng {
+r'''phasertng {
             hklin.filename = "%s"
             reflections.wavelength = 1.0
             suite.mute = True
@@ -859,7 +859,7 @@ from io import StringIO
 tabname = "Xtriage"
 
 logstrbuf = StringIO()
-xtriageobj = xtriage.run([ "%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
+xtriageobj = xtriage.run([ r"%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
 logfname = "%s_xtriage.log"
 with open(logfname, "w") as f:
   f.write( logstrbuf.getvalue() )
@@ -905,6 +905,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
       if self.cctbxproc.poll() is not None and not self.closing:
         print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.", flush=True)
         timer.stop()
+        self.closeEvent()
 
       if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
         self.lasttime = time.monotonic()
@@ -2744,7 +2745,7 @@ clip_plane {
           self.QWebEngineViewFlags = flgs + " --disable-web-security" \
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
-            + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
 
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
           if not TestWebGL():
@@ -2840,7 +2841,7 @@ def run(isembedded=False, chimeraxsession=None):
           if not kwargs.get('hklin', False):
             kwargs['hklin'] = arg
 
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
     argstr = " ".join(sys.argv[1:])
 
     if "remove_settings" in argstr:

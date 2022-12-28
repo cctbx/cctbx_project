@@ -301,7 +301,7 @@ class HKLview_3d:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
     self.use_semaphore = True
-    self.clipplane_msg_sem = threading.BoundedSemaphore()
+    self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.BoundedSemaphore()
     self.hkls_drawn_sem = threading.Semaphore()
     self.autoview_sem = threading.Semaphore()
@@ -535,9 +535,16 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        time.sleep(5)
+        #time.sleep(5)
+        if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
+          self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
+        self.mprint("set_volatile_params got autoview_sem", verbose="threadingmsg")
+        self.autoview_sem.release()
+        self.mprint("set_volatile_params released clipplane_msg_sem", verbose="threadingmsg")
+
         if len(self.WBmessenger.clientmsgqueue):
-          time.sleep(2)
+          self.mprint("set_volatile_params sleep", verbose=3)
+          time.sleep(3)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
@@ -1527,6 +1534,7 @@ class HKLview_3d:
 
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
+      self.SetFontSize(self.params.NGL.fontsize)
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
@@ -1538,7 +1546,6 @@ class HKLview_3d:
       self.mprint(".", end="")
       self.RenderStageObjects()
       self.mprint(".", end="")
-      self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )
