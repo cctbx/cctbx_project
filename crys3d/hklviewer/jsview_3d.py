@@ -535,7 +535,7 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        time.sleep(1)
+        time.sleep(5)
         if len(self.WBmessenger.clientmsgqueue):
           time.sleep(2)
 
