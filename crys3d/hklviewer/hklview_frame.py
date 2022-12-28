@@ -479,10 +479,12 @@ class HKLViewFrame() :
     self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
     self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
     if postrender:
+      time.sleep(1)
       self.viewer.RedrawNGL()
+      time.sleep(3)
       self.viewer.SimulateClick()
+      time.sleep(3)
       self.viewer.GetReflectionsInFrustum()
-
     self.update_handler_sem.release()
     self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
