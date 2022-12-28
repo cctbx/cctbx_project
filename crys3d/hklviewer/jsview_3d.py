@@ -543,7 +543,7 @@ class HKLview_3d:
         self.mprint("set_volatile_params released clipplane_msg_sem", verbose="threadingmsg")
 
         if len(self.WBmessenger.clientmsgqueue):
-          time.sleep(2)
+          time.sleep(1)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
