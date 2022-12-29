@@ -10,6 +10,19 @@ if "darwin" in sys.platform:
     "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
+  ]
+  tst_list_expected_unstable = [ # WebGL + QWebEngine doesn't quite work with Qt5.15
+    "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
+    "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
+  ]
+
+
+if sys.platform == "win32":
+  tst_list = [
+    "$D/regression/tst_hklinfo.py",
+    "$D/regression/tst_websocket.py",
+    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
@@ -24,21 +37,6 @@ if "darwin" in sys.platform:
       "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
       "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
     ]
-
-
-if sys.platform == "win32":
-  tst_list = [
-    "$D/regression/tst_hklinfo.py",
-  ]
-  tst_list_expected_unstable = [ # browser with websocket has latency issue in a virtual machine
-    "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-  ]
-  tst_list_expected_failures = [ # WebGL + QWebEngine doesn't quite work in a virtual machine
-    "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-    "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-  ]
 
 
 if "linux" in sys.platform:

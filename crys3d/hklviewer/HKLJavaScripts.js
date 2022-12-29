@@ -836,7 +836,6 @@ function onMessage(e)
     {
       RenderRequest("notify_cctbx").then(()=> {
           SendOrientationMsg("Redraw");
-          //GetReflectionsInFrustum();
           WebsockSendMsg( 'Redrawn ');
         }
       );
