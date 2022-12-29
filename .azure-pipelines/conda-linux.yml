@@ -52,7 +52,6 @@ jobs:
       value: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
     - name: day
       value: $(Get-Date -Format dddd)
-    - group: Settings
 
   steps:
   - script: |
