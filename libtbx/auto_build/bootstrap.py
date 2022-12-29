@@ -2789,7 +2789,11 @@ class PhenixTNGBuilder(PhenixBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
-    configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst:
+      configlst.remove('--enable_cxx11')
+    set_std = ['cxxstd' in conf for conf in configlst]
+    if set_std.count(True) == 0:
+      configlst.append('--cxxstd=c++11')
     return configlst
 
   # select Boost 1.74
