@@ -213,6 +213,11 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
              #"debug=True"
             ]
 
+  os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " --disable-web-security" \
+            + " --enable-webgl-software-rendering --disable-gpu-compositing" \
+            + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+
   HKLviewer_result = easy_run.fully_buffered(" ".join(cmdargs))
   # append terminal output to log file
   Append2LogFile(outputfname, remove_settings_result)
