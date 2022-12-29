@@ -489,7 +489,6 @@ class HKLViewFrame() :
     self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
 
-
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       if not self.viewer.webgl_OK:
