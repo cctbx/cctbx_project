@@ -2730,10 +2730,10 @@ clip_plane {
       self.settings = QSettings("CCTBX", "HKLviewer" )
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
       flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
-      self.QWebEngineViewFlags = flgs + " --disable-web-security" #\
-      #  + " --enable-webgl-software-rendering --disable-gpu-compositing" \
-      #  + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
-      #  + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+      self.QWebEngineViewFlags = flgs + " --disable-web-security" \
+        + " --enable-webgl-software-rendering --disable-gpu-compositing" \
+        + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+        + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
 
       os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
       # QTWEBENGINE_CHROMIUM_FLAGS environment is now set for TestWebGL()
