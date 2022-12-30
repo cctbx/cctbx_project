@@ -154,7 +154,7 @@ class HKLViewFrame() :
     self.closingtime = int(kwds.get('closing_time', -1 ))
     # if invoked from command line not using Qt close us by waiting for thread processing cmdline kwargs to finish
     if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
-      self.thrd2.join(timeout = self.closingtime * 2)
+      self.thrd2.join(timeout = self.closingtime + 40)
       if self.thrd2.is_alive():
         self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
         self.SendInfoToGUI( { "closing_time": True } )
@@ -176,10 +176,9 @@ class HKLViewFrame() :
           philstr = f.read()
           self.update_from_philstr(philstr)
       if 'image_file' in kwds: # save displayed reflections to an image file
-        time.sleep(5)
+        time.sleep(1)
         fname = kwds.get('image_file', "testimage.png" )
-        self.update_from_philstr('''save_image_name = "%s"
-#use_wireframe = True''' %fname)
+        self.update_from_philstr('save_image_name = "%s"' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(self.closingtime)
@@ -480,9 +479,9 @@ class HKLViewFrame() :
     if postrender:
       time.sleep(1)
       self.viewer.RedrawNGL()
-      time.sleep(3)
+      time.sleep(1)
       self.viewer.SimulateClick()
-      time.sleep(3)
+      time.sleep(1)
       self.viewer.GetReflectionsInFrustum()
     self.update_handler_sem.release()
     self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
