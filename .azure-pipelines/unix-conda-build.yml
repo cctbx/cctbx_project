@@ -171,7 +171,7 @@ steps:
 - script: |
     set -xe
     cd $(Pipeline.Workspace)
-    if [ -d "./build" ]; then
+    if [ -f "./build/config.log" ]; then
       cd build
       cat config.log
     fi
