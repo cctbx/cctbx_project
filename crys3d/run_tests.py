@@ -8,12 +8,12 @@ if "darwin" in sys.platform:
   tst_list = [
     "$D/regression/tst_hklinfo.py",
     "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-  ]
-  tst_list_expected_unstable = [ # WebGL + QWebEngine doesn't quite work with Qt5.15
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
+  ]
+  tst_list_expected_unstable = [
+    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
   ]
 
 
@@ -21,22 +21,13 @@ if sys.platform == "win32":
   tst_list = [
     "$D/regression/tst_hklinfo.py",
     "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
-  if sys.version_info[0:2] == (3, 10):
-    tst_list_expected_failures = [ # No PySide2 yet in conda python 3.10
-      "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-      "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-    ]
-    tst_list = [
-      "$D/regression/tst_hklinfo.py",
-      "$D/regression/tst_websocket.py",
-      "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-      "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-    ]
+  tst_list_expected_unstable = [
+    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
+  ]
 
 
 if "linux" in sys.platform:
@@ -54,6 +45,7 @@ if "linux" in sys.platform:
 # expected failure for Python 2
 if sys.version_info < (3, 0):
   tst_list_expected_failures = tst_list
+  tst_list_expected_unstable = []
   tst_list = []
 
 
