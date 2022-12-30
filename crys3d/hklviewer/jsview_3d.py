@@ -1534,6 +1534,7 @@ class HKLview_3d:
 
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
+      self.SetFontSize(self.params.NGL.fontsize)
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
@@ -1545,7 +1546,6 @@ class HKLview_3d:
       self.mprint(".", end="")
       self.RenderStageObjects()
       self.mprint(".", end="")
-      self.SetFontSize(self.params.NGL.fontsize)
       self.MakeColourChart(colourlabel, fomlabel, colourgradstrs)
       self.GetClipPlaneDistances()
       self.SetMouseSpeed( self.params.NGL.mouse_sensitivity )

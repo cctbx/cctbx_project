@@ -905,6 +905,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
       if self.cctbxproc.poll() is not None and not self.closing:
         print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.", flush=True)
         timer.stop()
+        self.closeEvent()
 
       if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
         self.lasttime = time.monotonic()

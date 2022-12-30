@@ -393,7 +393,7 @@ function ReturnClipPlaneDistances(calledby = "")
   // count by calling clipplane_msg_sem.release().
   // Only do this in response to a explicit message like "GetClipPlaneDistances"
   // from where the sempahore has been acquired
-  let cameradist;
+  let cameradist = stage.viewer.camera.position.z;
   if (stage.viewer.parameters.clipScale == 'relative')
     cameradist = stage.viewer.cDist;
   if (stage.viewer.parameters.clipScale == 'absolute')
@@ -407,8 +407,8 @@ function ReturnClipPlaneDistances(calledby = "")
       cameradist = stage.viewer.camera.position.z;
     else if (stage.viewer.camera.position.z == -stage.viewer.cDist)
       cameradist = stage.viewer.cDist;
-    else
-      return;
+    //else
+    //  return;
 
   let msg = String([stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
     cameradist, stage.viewer.camera.zoom, calledby]);
@@ -570,11 +570,12 @@ function SetAutoviewNoAnim(mycomponent)
     zoomanis = null;
   }
   let zaim = mycomponent.getZoom();
-  //let m = new NGL.Matrix4().identity();
   let m = getRotatedZoutMatrix();
   m.multiplyScalar(-zaim);
   stage.viewerControls.orient(m);
+  stage.viewer.cDist = -stage.viewer.camera.position.z;
   isAutoviewing = false;
+  stage.viewer.requestRender();
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   WebsockSendMsg('FinishedSetAutoViewNoAnim forced (zaim= ' + zaim.toString() + ')'); // equivalent of the signal function
   return true;
@@ -583,9 +584,9 @@ function SetAutoviewNoAnim(mycomponent)
 
 async function ResolveAutoview(mycomponent, t)
 {
-  zoomanis = mycomponent.autoView(t); 
+  //zoomanis = mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
-  //zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
+  zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
   let dt = 50;
   let sumt = 0;
   while (isAutoviewing) 
