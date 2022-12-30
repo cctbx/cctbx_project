@@ -184,10 +184,11 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
+  # setting these flags makes it more likely QWebEngine will work on the VM used on Azure
   os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " --disable-web-security" \
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
-            + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
 
   assert os.path.isfile(datafname)
   # First delete any settings from previous HKLviewer runs that might be present on this platform

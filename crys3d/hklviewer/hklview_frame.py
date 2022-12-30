@@ -168,14 +168,13 @@ class HKLViewFrame() :
       self.validate_preset_buttons()
       if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
         fname = kwds.get('phil_file', "" )
-        if os.path.isfile(fname):
-          if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
-            self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
-          self.initiated_gui_sem.release()
-          self.mprint("Processing PHIL file: %s" %fname)
-          with open(fname, "r") as f:
-            philstr = f.read()
-            self.update_from_philstr(philstr)
+        if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
+          self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+        self.initiated_gui_sem.release()
+        self.mprint("Processing PHIL file: %s" %fname)
+        with open(fname, "r") as f:
+          philstr = f.read()
+          self.update_from_philstr(philstr)
       if 'image_file' in kwds: # save displayed reflections to an image file
         time.sleep(5)
         fname = kwds.get('image_file', "testimage.png" )

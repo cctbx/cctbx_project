@@ -2744,7 +2744,7 @@ clip_plane {
           self.QWebEngineViewFlags = flgs + " --disable-web-security" \
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
-            + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
 
           os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
           if not TestWebGL():
