@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env, os.path, re, os, time, subprocess
-from libtbx import easy_run
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 
 
