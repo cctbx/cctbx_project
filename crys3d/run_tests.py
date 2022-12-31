@@ -7,11 +7,11 @@ import libtbx.load_env
 if "darwin" in sys.platform:
   tst_list = [
     "$D/regression/tst_hklinfo.py",
-    "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
   tst_list_expected_unstable = [
+    "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
   ]
@@ -20,11 +20,11 @@ if "darwin" in sys.platform:
 if sys.platform == "win32":
   tst_list = [
     "$D/regression/tst_hklinfo.py",
-    "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
   tst_list_expected_unstable = [
+    "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
   ]
