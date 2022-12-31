@@ -407,8 +407,6 @@ function ReturnClipPlaneDistances(calledby = "")
       cameradist = stage.viewer.camera.position.z;
     else if (stage.viewer.camera.position.z == -stage.viewer.cDist)
       cameradist = stage.viewer.cDist;
-    //else
-    //  return;
 
   let msg = String([stage.viewer.parameters.clipNear, stage.viewer.parameters.clipFar,
     cameradist, stage.viewer.camera.zoom, calledby]);
@@ -560,6 +558,8 @@ function SetDefaultOrientation() {
 
 function SetAutoviewNoAnim(mycomponent)
 {
+// position component explicitly with SetAutoviewNoAnim() if autoview animation in 
+// ResolveAutoview() is stalling which could happen on VMs in regression tests
   if (mycomponent == null || isAutoviewing==false)
     return;
   if (zoomanis != null)
@@ -573,7 +573,9 @@ function SetAutoviewNoAnim(mycomponent)
   let m = getRotatedZoutMatrix();
   m.multiplyScalar(-zaim);
   stage.viewerControls.orient(m);
-  stage.viewer.cDist = -stage.viewer.camera.position.z;
+  // ensure next call to ReturnClipPlaneDistances posts correct values to python
+  // so python computes correct clipplane values
+  stage.viewer.cDist = -stage.viewer.camera.position.z; 
   isAutoviewing = false;
   stage.viewer.requestRender();
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
@@ -584,7 +586,6 @@ function SetAutoviewNoAnim(mycomponent)
 
 async function ResolveAutoview(mycomponent, t)
 {
-  //zoomanis = mycomponent.autoView(t); 
   let zaim = mycomponent.getZoom();
   zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
   let dt = 50;
@@ -623,7 +624,7 @@ async function AutoViewPromiseRace(mycomponent, t)
 {
   function onTimeoutResolveDefaultThreshold() 
   {// position component explicitly with SetAutoviewNoAnim() if autoview animation in 
-   // ResolveAutoview() is stalling
+   // ResolveAutoview() is stalling which could happen on VMs in regression tests
     return new Promise(async (resolve) => {
       setTimeout(() => {
         resolve(SetAutoviewNoAnim(mycomponent));
@@ -1349,8 +1350,6 @@ function onMessage(e)
       MakeColourChart();
       MakeButtons();
       MakePlusMinusButtons();
-      MakeHKL_Axis();
-      MakeXYZ_Axis();
     }
 
     if (msgtype === "GetReflectionsInFrustum")

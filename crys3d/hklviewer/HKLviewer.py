@@ -799,7 +799,7 @@ from phasertng.scripts import xtricorder
 
 tabname = "Xtricorder"
 (retobj) = xtricorder.xtricorder(
-'''phasertng {
+r'''phasertng {
             hklin.filename = "%s"
             reflections.wavelength = 1.0
             suite.mute = True
@@ -859,7 +859,7 @@ from io import StringIO
 tabname = "Xtriage"
 
 logstrbuf = StringIO()
-xtriageobj = xtriage.run([ "%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
+xtriageobj = xtriage.run([ r"%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
 logfname = "%s_xtriage.log"
 with open(logfname, "w") as f:
   f.write( logstrbuf.getvalue() )

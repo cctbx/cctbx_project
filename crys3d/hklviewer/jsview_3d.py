@@ -301,7 +301,7 @@ class HKLview_3d:
       self.handshakewait = eval(kwds['handshakewait'])
     self.lastmsg = "" # "Ready"
     self.use_semaphore = True
-    self.clipplane_msg_sem = threading.BoundedSemaphore()
+    self.clipplane_msg_sem = threading.Semaphore()
     self.mousespeed_msg_sem = threading.BoundedSemaphore()
     self.hkls_drawn_sem = threading.Semaphore()
     self.autoview_sem = threading.Semaphore()
