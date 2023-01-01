@@ -223,17 +223,18 @@ class HKLViewFrame() :
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
         self.SendInfoToGUI( { "alert": tmsg } )
-        if self.output_file and self.output_file.closed==False :
+        if self.output_file and self.output_file.closed==False:
           self.output_file.write(tmsg)
           self.output_file.flush()
     else:
       if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
-        if self.output_file and self.output_file.closed==False :
+        if self.output_file and self.output_file.closed==False:
           self.output_file.write(tmsg)
           self.output_file.flush()
+        else:
+          print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
 
 
   def find_free_port(self):
@@ -1368,10 +1369,8 @@ class HKLViewFrame() :
                 nvectorsfound +=1
                 if len(philveclabel) < len(veclabel):
                   if philstr_userlbl:
-                    #veclabels += "," + philstr_userlbl
                     veclabels.append(philstr_userlbl)
                   else:
-                    #veclabels += "," + veclabel
                     veclabels.append(veclabel)
             if (iphilvec+1) > nvectorsfound:
               self.mprint("\"%s\" is disabled until a vector, \"%s\", has been " \
@@ -1389,7 +1388,6 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
-            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
           for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1408,8 +1406,6 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
-            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
-
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
 
