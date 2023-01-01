@@ -10,13 +10,15 @@ def run():
   count = 0
   while True:
     print("running %d" %count)
+    # exerciseQtGUI() is unstable and might yield a bogus failure. If so, repeat the test
+    # at most maxruns times or until it passes
     if not tests_HKLviewer.runagain(tests_HKLviewer.exerciseQtGUI,
                                     tests_HKLviewer.philstr3,
                                     tests_HKLviewer.reflections2match3,
                                     "QtGuiBinFSigF"):
       break
     count +=1
-    assert(count < 3)
+    assert(count < tests_HKLviewer.maxruns)
 
 
 if __name__ == '__main__':
