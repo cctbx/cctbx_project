@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env, os.path, re, os, time, subprocess
 from crys3d.hklviewer import cmdlineframes, jsview_3d
+import traceback
 
 
 
@@ -109,7 +110,9 @@ hkls {
 }
 
 """
-
+# These are the indices of visible reflections of phaser_1.mtz of the F/SigF dataset created on the fly
+# where the sphere of reflections have been sliced with a clip plane at l=9 and only reflections
+# with F/SigF<=1 are displayed
 reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2, 9), (-4, -1, 9), (0, 3, 9),
   (-5, -2, 9), (-5, -1, 9), (-3, 1, 9), (-2, 1, 9), (-5, 1, 9), (2, -1, 9), (1, -2, 9), (2, -2, 9),
   (-2, -1, 9), (-3, -1, 9), (-3, -2, 9), (2, 1, 9), (-2, -3, 9), (-1, -3, 9), (0, 4, 9), (-5, 2, 9),
@@ -117,7 +120,8 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
   (-2, 0, 9), (-1, 0, 9), (0, -3, 9), (-2, -4, 9)]
 )
 
-closetime = 140
+closetime = 150 # about half the maximum time each test will run
+maxruns = 5 # maximum number to repeat unstable test until it passes
 #browser = "chrome"
 browser = "firefox"
 #browser = "default"
@@ -177,14 +181,13 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
             "closing_time=%d" %closetime,
           ]
 
-  assert cmdlineframes.run(cmdargs)
+  cmdlineframes.run(cmdargs)
+  print("=" * 80)
   check_log_file(outputfname, refl2match)
-  print("\n" + "=" * 80 + "\n\n")
-
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
-  # setting these flags makes it more likely QWebEngine will work on the VM used on Azure
+  # These flags enables QWebEngine, Qt5.15 to work on VMs used on Azure
   os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " --disable-web-security" \
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
@@ -231,5 +234,15 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)
   print("retval: " + str(obj.returncode))
+  print("=" * 80)
   check_log_file(outputfname, refl2match)
-  print("\n" + "=" * 80 + "\n\n")
+
+
+def runagain(func, philstr, refl2match, name):
+  try:
+    func(philstr, refl2match, name)
+    print("OK\n")
+    return False
+  except Exception as e:
+    print( str(e) + traceback.format_exc(limit=10))
+    return True

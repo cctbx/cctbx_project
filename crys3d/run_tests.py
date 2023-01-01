@@ -11,6 +11,7 @@ if "darwin" in sys.platform:
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
   tst_list_expected_unstable = [
+    # fails sometimes due to websocket connection problem to webbrowser
     "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
@@ -24,6 +25,7 @@ if sys.platform == "win32":
     "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
   ]
   tst_list_expected_unstable = [
+    # fails sometimes due to websocket connection problem to webbrowser
     "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
@@ -34,7 +36,8 @@ if "linux" in sys.platform:
   tst_list = [
     "$D/regression/tst_hklinfo.py",
   ]
-  tst_list_expected_failures = [ # no DISPLAY environment on azure
+  tst_list_expected_failures = [
+    # no DISPLAY environment for linux on azure so will crash by definition
     "$D/regression/tst_websocket.py",
     "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
     "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
