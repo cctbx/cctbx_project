@@ -181,9 +181,8 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
           ]
 
   cmdlineframes.run(cmdargs)
+  print("=" * 80)
   check_log_file(outputfname, refl2match)
-  print("\n" + "=" * 80)
-
 
 
 def exerciseQtGUI(philstr, refl2match, prefix=""):
@@ -234,8 +233,8 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)
   print("retval: " + str(obj.returncode))
+  print("=" * 80)
   check_log_file(outputfname, refl2match)
-  print("\n" + "=" * 80)
 
 
 
