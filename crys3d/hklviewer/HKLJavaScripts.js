@@ -257,22 +257,16 @@ function createDivElement(label, rgb)
 }
 
 
-
-
 function CreateWebSocket()
 {
   try
   {
     mysocket = new WebSocket('ws://localhost:' + websocket_portnumber + '/');
     mysocket.binaryType = "arraybuffer"; // "blob";
-    //if (mysocket.readyState !== mysocket.OPEN)
-    //  alert('Cannot connect to websocket server! \nAre the firewall permissions or browser security too strict?');
-    //  socket_intentionally_closed = false;
     mysocket.onerror = function(e) { onError(e)  };
     mysocket.onopen = function(e) { onOpen(e)  };
     mysocket.onclose = function(e) { onClose(e)  };
     mysocket.onmessage = function(e) { onMessage(e)  };
-
   }
   catch(err)
   {
@@ -514,20 +508,13 @@ function RotateAxisComponents(axis, theta)
 async function RenderRequest(note = "")
 {
   requestedby = note;
-  //await sleep(100);
   if (requestedby != "")
     WebsockSendMsg(requestedby + '_BeforeRendering');
-  //await stage.viewer.requestRender();
+    // requestedby + '_AfterRendering' message is then sent by stage.viewer.signals.rendered
+    // triggered by stage.viewer.requestRender
   await sleep(100).then(()=> { 
     stage.viewer.requestRender();
   });
-  /*
-  await sleep(300);
-  if (requestedby != "") {
-    //await sleep(100);
-    WebsockSendMsg(requestedby + '_AfterRendering');
-  }
-  */
   if (isdebug)
     WebsockSendMsg('RenderRequest ');
 };
@@ -662,7 +649,6 @@ async function SendComponentRotationMatrixMsg() {
 
 //async 
 function SendOrientationMsg(funcname) {
-  //await sleep(100);
   try {
     let msg = getOrientMsg();
     WebsockSendMsg(funcname + '_Orientation:\n' + msg);
@@ -857,8 +843,6 @@ function onMessage(e)
       let m = new NGL.Matrix4();
       m.fromArray(sm);
       stage.viewerControls.orient(m);
-      //stage.viewer.renderer.setClearColor( 0xffffff, 0.01);
-      //stage.viewer.requestRender();
       RenderRequest().then(()=> {
           SendOrientationMsg("ReOrient");
         }
@@ -1502,13 +1486,7 @@ function onMessage(e)
         MakeHKL_Axis();
         MakeXYZ_Axis();
         repr = shapeComp.addRepresentation('buffer', { wireframe: iswireframe } );
-        WebsockSendMsg('RenderStageObjects');
-        //RenderRequest("notify_cctbx").then(()=> {
-        //    SendOrientationMsg("RenderStageObjectsNotifyCctbx");
-        //    GetReflectionsInFrustum();
-            //WebsockSendMsg('RenderStageObjects');
-         // }
-        //);
+        WebsockSendMsg('RenderStageObjects'); // tell python it may release hkls_drawn_sem semaphore
       }
     }
 
