@@ -2822,7 +2822,7 @@ def TestWebGL():
 
 def run(isembedded=False, chimeraxsession=None):
   import time
-  time.sleep(15) # enough time for attaching debugger
+  #time.sleep(15) # enough time for attaching debugger
 
   # TODO: rewrite this function at some point to use python's argparse module
   try:
