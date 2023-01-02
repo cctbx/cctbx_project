@@ -121,7 +121,7 @@ reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2,
 )
 
 closetime = 150 # about half the maximum time each test will run
-maxruns = 5 # maximum number to repeat unstable test until it passes
+maxruns = 4 # maximum number to repeat unstable test until it passes
 #browser = "chrome"
 browser = "firefox"
 #browser = "default"
@@ -236,6 +236,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   print("retval: " + str(obj.returncode))
   print("=" * 80)
   check_log_file(outputfname, refl2match)
+
 
 
 def runagain(func, philstr, refl2match, name):

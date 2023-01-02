@@ -28,14 +28,10 @@ from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QCombo
 from .qt import QColor, QFont, QIcon, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
-try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import hklviewer_gui
-  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
-                                     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
-except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from . import hklviewer_gui
-  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
-     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox, FindDialog )
+
+from . import hklviewer_gui
+from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
+    MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox, FindDialog )
 
 
 class MakeNewDataForm(QDialog):
@@ -949,7 +945,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
 
           if self.infodict.get("closing_time"): # notified by cctbx in regression tests
             QTimer.singleShot(10000, self.closeEvent )
-            #self.closeEvent()
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
@@ -2827,7 +2822,7 @@ def TestWebGL():
 
 def run(isembedded=False, chimeraxsession=None):
   import time
-  #time.sleep(15) # enough time for attaching debugger
+  time.sleep(15) # enough time for attaching debugger
 
   # TODO: rewrite this function at some point to use python's argparse module
   try:
@@ -2855,6 +2850,8 @@ def run(isembedded=False, chimeraxsession=None):
       if "devmode" in argstr: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+    if kwargs.get('closing_time', False): # close when time is up during regression tests
+      closingtime = int(kwargs['closing_time']) * 2000 # miliseconds
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
@@ -2881,6 +2878,9 @@ def run(isembedded=False, chimeraxsession=None):
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
     QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
+    # For regression tests close us after a specified time
+    if closingtime:
+      QTimer.singleShot(closingtime, HKLguiobj.closeEvent)
 
     if isembedded:
       return HKLguiobj
