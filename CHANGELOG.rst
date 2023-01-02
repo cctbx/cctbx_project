@@ -1,3 +1,8 @@
+2022.12
+=======
+
+* New code for fitting histidine
+* DataManager can map scattering table types to data types
 
 2022.11
 =======
