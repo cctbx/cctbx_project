@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 from libtbx.program_template import ProgramTemplate
 
+from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
+
 from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
@@ -113,7 +115,10 @@ def get_selection_from_user(hierarchy):
     atom_group = residue_group.atom_groups()[0]
     rc = get_class(atom_group.resname)
     if atom_group.resname in ['HIS']: pass
-    elif rc in ['common_amino_acid', 'common_water']: continue
+    elif (rc!='common_rna_dna' and
+          atom_group.resname.strip() in ad_hoc_single_metal_residue_element_types):
+      pass # ions
+    elif rc in ['common_amino_acid', 'common_water', 'common_rna_dna']: continue
     for conformer in residue_group.conformers():
       for residue in conformer.residues():
         sel_str = 'chain %s and resid %s and resname %s' % (
@@ -322,10 +327,13 @@ Usage examples:
                             ))
 
     from libtbx import easy_mp
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
+    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
     i=0
     for args, res, err_str in easy_mp.multi_core_run( update_restraints,
                                                       argstuples,
-                                                      nproc):
+                                                      nproc,
+                                                      keep_input_order=True):
       assert not err_str, '\n\nDebug in serial :\n%s' % err_str
       print(args[1].output.prefix,res[0][0])
       energies.append(res[0][0])
@@ -339,12 +347,36 @@ Usage examples:
                     'ND1 only flipped',
                     'NE2 only flipped',
     ]
+    cmd = '\n\n  phenix.start_coot'
     print('\n\nEnergies in units of %s\n' % units, file=log)
+    te=[]
     for i, (pro, energy) in enumerate(zip(protonation, energies)):
       if i in [0,3]:
         if units.lower() in ['kcal/mol']:
           pass #energy-=156.9
-      print('  %i. %-20s : %7.2f' % (i+1, pro, energy), file=log)
+        elif units.lower() in ['hartree']:
+          energy+=0.5
+      te.append(energy)
+    me=min(te)
+    for i, (pro, energy) in enumerate(zip(protonation, energies)):
+      energy=te[i]
+      prefix='iterate_histidine_%02d' % (i+1)
+      filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
+      assert os.path.exists(filename), '"%s"' % filename
+      if self.params.qi.run_directory:
+        cmd += ' %s' % os.path.join(self.params.qi.run_directory, filename)
+      else:
+        cmd += ' %s' % filename
+      if units.lower() in ['hartree']:
+        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol' % (
+          i+1,
+          pro,
+          energy,
+          units,
+          (energy-me)*627.503,
+          ), file=log)
+    cmd += '\n\n'
+    print(cmd)
     # run clashscore
 
   def run_qmr(self, format, log=None):
