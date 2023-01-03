@@ -787,6 +787,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+    firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
     # Put xtricorders temp directory into current working directory and
     # replace any backslashes on Windows with forwardslashes for the sake of phasertng
     tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
@@ -815,6 +816,8 @@ if len(mtzfiles) > 0 :  # xtricorder succeeded
   self.hklin =  "%s" + "_xtricorder.mtz"
   shutil.copyfile( timesortedmtzfiles[-1][0], self.hklin ) # copy the last file only
   self.LoadReflectionsFile(self.hklin)
+else:
+  raise Sorry("Could not locate any mtz file after running Xtricorder")
 
 logs = glob.glob("%s/**/*.logfile.log", recursive=True)
 timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
@@ -829,6 +832,9 @@ logfname = "%s_xtricorder.log"
 
 with open(logfname, 'w') as f:
   f.write(mstr)
+
+if len(timesortedmtzfiles) == 0:
+  raise Sorry("Could not locate the expected mtz file after running Xtricorder")
 
 shutil.rmtree("%s")
 
@@ -2850,6 +2856,7 @@ def run(isembedded=False, chimeraxsession=None):
       if "devmode" in argstr: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+    closingtime = None
     if kwargs.get('closing_time', False): # close when time is up during regression tests
       closingtime = int(kwargs['closing_time']) * 2000 # miliseconds
 
