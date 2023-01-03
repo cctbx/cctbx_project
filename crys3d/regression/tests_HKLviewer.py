@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, os, time, subprocess
+import libtbx.load_env, os.path, re, os, sys, time, subprocess
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 import traceback
 
@@ -154,6 +154,8 @@ def Append2LogFile(fname, souterr):
 
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
+  if "linux" in sys.platform:
+    os.environ["DISPLAY"] = "O:O"
   assert os.path.isfile(datafname)
   outputfname = prefix + "HKLviewer.log"
 
