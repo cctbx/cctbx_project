@@ -965,8 +965,8 @@ class manager(object):
       # Set up scattering table if there was one before
       if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-      
-      # Remove these because they won't be ok 
+
+      # Remove these because they won't be ok
       self.unset_restraints_manager()
       self.unset_ncs_constraints_groups()
 
