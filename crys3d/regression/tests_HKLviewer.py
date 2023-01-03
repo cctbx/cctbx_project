@@ -154,10 +154,12 @@ def Append2LogFile(fname, souterr):
 
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
+  #if "linux" in sys.platform:
+  #  os.environ["DISPLAY"] = "O:O"
   assert os.path.isfile(datafname)
   outputfname = prefix + "HKLviewer.log"
 
-  with open("environ.txt","w") as mfile:
+  with open(prefix + "environ.txt","w") as mfile:
     # print environment variables to log file
     for k,v in os.environ.items():
       mfile.write( k + "=" + v + "\n")
@@ -192,8 +194,12 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
             + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
-  if "linux" in sys.platform:
-    os.environ["DISPLAY"] = "O:O"
+  #if "linux" in sys.platform:
+  #  os.environ["DISPLAY"] = "O:O"
+  with open(prefix + "environ.txt","w") as mfile:
+    # print environment variables to log file
+    for k,v in os.environ.items():
+      mfile.write( k + "=" + v + "\n")
 
   assert os.path.isfile(datafname)
   # First delete any settings from previous HKLviewer runs that might be present on this platform
