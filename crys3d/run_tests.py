@@ -4,46 +4,21 @@ from libtbx import test_utils
 import libtbx.load_env
 
 
-if "darwin" in sys.platform:
-  tst_list = [
-    "$D/regression/tst_hklinfo.py",
-    "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-    "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-  ]
-  tst_list_expected_unstable = [
-    # fails sometimes due to websocket connection problem to webbrowser
-    "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-  ]
-
-
-if sys.platform == "win32":
-  tst_list = [
-    "$D/regression/tst_hklinfo.py",
-    "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-    "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-  ]
-  tst_list_expected_unstable = [
-    # fails sometimes due to websocket connection problem to webbrowser
-    "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-  ]
-
-
-if "linux" in sys.platform:
-  tst_list = [
-    "$D/regression/tst_hklinfo.py",
-  ]
-  tst_list_expected_failures = [
-    # no DISPLAY environment for linux on azure so will crash by definition
-    "$D/regression/tst_websocket.py",
-    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
-    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-    "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-    "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-  ]
+tst_list = [ "$D/regression/tst_hklinfo.py" ]
+tst_list_expected_unstable = [
+   # fails sometimes due to websocket connection problem to webbrowser
+   "$D/regression/tst_websocket.py",
+   "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+   "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
+]
+other_tests = [
+  "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
+  "$D/regression/tst_HKLviewerQtGuiBinFSigF.py"
+]
+if sys.platform == "darwin" or sys.platform == "win32":
+  tst_list.extend(other_tests)
+else:
+  tst_list_expected_unstable.extend(other_tests)
 
 # expected failure for Python 2
 if sys.version_info < (3, 0):
