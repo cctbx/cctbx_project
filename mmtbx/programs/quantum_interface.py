@@ -421,8 +421,8 @@ Usage examples:
 
   def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
     qi_phil_string = get_qm_restraints_scope()
-    qi_phil_string = qi_phil_string.replace('selection = None',
-                                            'selection = "%s"' % self.params.qi.selection[0])
+    qi_phil_string = qi_phil_string.replace(' selection = None',
+                                            ' selection = "%s"' % self.params.qi.selection[0])
     qi_phil_string = qi_phil_string.replace('read_output_to_skip_opt_if_available = False',
                                             'read_output_to_skip_opt_if_available = True')
     qi_phil_string = qi_phil_string.replace('capping_groups = False',

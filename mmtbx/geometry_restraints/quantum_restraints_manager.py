@@ -254,6 +254,17 @@ def use_neutron_distances_in_model_in_place(model):
                 pdb_interpretation_params = params)
   model.set_hydrogen_bond_length(show=False)
 
+def reverse_shift(original_model, moved_model):
+  from scitbx.matrix import col
+  ph=original_model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  box_cushion = sites_cart.min()
+  ph=moved_model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  translate = sites_cart.min()
+  sites_cart=sites_cart+col(box_cushion)-col(translate)
+  ph.atoms().set_xyz(sites_cart)
+
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   from cctbx.maptbx.box import shift_and_box_model
   if WRITE_STEPS_GLOBAL: write_steps=True
@@ -285,14 +296,15 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
                        qmr.buffer,
                        do_not_prune=do_not_prune,
                        write_steps=write_steps)
+  if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
+  buffer_model.unset_restraints_manager()
+  buffer_model.log=null_out()
+  buffer_model.process(make_restraints=True)
+  original_model = buffer_model.deep_copy()
   buffer_model_p1 = shift_and_box_model(model=buffer_model)
+  if write_steps: write_pdb_file(buffer_model, 'post_shift.pdb', None)
   for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
     atom1.tmp=atom2.tmp
-  for atom1 in buffer_model.get_atoms():
-    for atom2 in ligand_model.get_atoms():
-      if atom1.id_str()==atom2.id_str():
-        atom2.xyz=atom1.xyz
-        break
   buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
@@ -314,6 +326,8 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
       raise Sorry('''Bug alert
   Atom %s from ligand does not appear in buffer. Contact Phenix with input files.
   ''' % atom1.quote())
+  reverse_shift(original_model, buffer_model_p1)
+  if write_steps: write_pdb_file(buffer_model, 'post_reverse_shift.pdb', None)
   use_neutron_distances_in_model_in_place(ligand_model)
   use_neutron_distances_in_model_in_place(buffer_model)
   if write_steps:
