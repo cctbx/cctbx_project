@@ -17,6 +17,19 @@ from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
 WRITE_STEPS_GLOBAL=False
 
+def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
+def min_dist2(residue_group1, residue_group2, limit=1e-2):
+  min_d2=1e9
+  min_ca_d2=1e9
+  for atom1 in residue_group1.atoms():
+    for atom2 in residue_group2.atoms(): # ligand but could be more than one rg!!!
+      d2 = dist2(atom1.xyz, atom2.xyz)
+      if d2<limit and min_ca_d2<1e9: return d2, min_ca_d2
+      min_d2 = min(min_d2, d2)
+      if atom1.name.strip()=='CA':
+        min_ca_d2 = min(min_ca_d2, d2)
+  return min_d2, min_ca_d2
+
 class manager(standard_manager):
   def __init__(self,
                params,
@@ -142,20 +155,13 @@ def select_and_reindex(model,
     rc = _reindexing(selected_model, selection_array, verbose=verbose)
   return selected_model
 
-def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., write_steps=False):
+def super_cell_and_prune(buffer_model,
+                         ligand_model,
+                         buffer,
+                         prune_limit=5.,
+                         do_not_prune=False,
+                         write_steps=False):
   from cctbx.crystal import super_cell
-  def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
-  def min_dist2(residue_group1, residue_group2, limit=1e-2):
-    min_d2=1e9
-    min_ca_d2=1e9
-    for atom1 in residue_group1.atoms():
-      for atom2 in residue_group2.atoms(): # ligand but could be more than one rg!!!
-        d2 = dist2(atom1.xyz, atom2.xyz)
-        if d2<limit and min_ca_d2<1e9: return d2, min_ca_d2
-        min_d2 = min(min_d2, d2)
-        if atom1.name.strip()=='CA':
-          min_ca_d2 = min(min_ca_d2, d2)
-    return min_d2, min_ca_d2
   def find_movers(buffer_model, ligand_model, buffer, prune_limit=5.):
     buffer*=buffer
     prune_limit*=prune_limit
@@ -183,6 +189,7 @@ def super_cell_and_prune(buffer_model, ligand_model, buffer, prune_limit=5., wri
           prune_main.append(residue_group1)
       assert residue_group1 in movers or residue_group1 in close or residue_group1 in same
     for chain in buffer_model.get_hierarchy().chains():
+      if do_not_prune: break
       for rg in movers+removers:
         if rg in chain.residue_groups():
           chain.remove_residue_group(rg)
@@ -258,8 +265,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
     raise Sorry('selection "%s" results in empty model' % qmr.selection)
   if write_steps: write_pdb_file(ligand_model, 'model_selection.pdb', None)
   assert qmr.selection.find('within')==-1
-  buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
-                                                         qmr.selection)
+  if qmr.buffer_selection:
+    buffer_selection_string = qmr.buffer_selection
+  else:
+    buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
+                                                           qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
   buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
@@ -269,7 +279,12 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
       raise Sorry("Not implemented: cannot run QI on buffer "+
                   "molecules with alternate conformations")
   if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
-  super_cell_and_prune(buffer_model, ligand_model, qmr.buffer, write_steps=write_steps)
+  do_not_prune = qmr.buffer_selection
+  super_cell_and_prune(buffer_model,
+                       ligand_model,
+                       qmr.buffer,
+                       do_not_prune=do_not_prune,
+                       write_steps=write_steps)
   buffer_model_p1 = shift_and_box_model(model=buffer_model)
   for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
     atom1.tmp=atom2.tmp

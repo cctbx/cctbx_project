@@ -112,6 +112,10 @@ qm_restraints
     .type = bool
     .style = hidden
     .help = For testing and maybe getting strain energy of standard restraints
+  buffer_selection = None
+    .type = atom_selection
+    .help = use this instead of distance from selection
+    .style = hidden
   %s
 }
 '''

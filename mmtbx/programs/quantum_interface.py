@@ -7,6 +7,7 @@ from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_elem
 
 from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
+from mmtbx.geometry_restraints.quantum_restraints_manager import min_dist2
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
 
 import iotbx.pdb
@@ -168,6 +169,10 @@ Usage examples:
       .type = atom_selection
       .help = what to select
       .multiple = True
+    buffer_selection = None
+      .type = atom_selection
+      .help = what to select for buffer
+      .style = hidden
     format = *phenix_refine quantum_interface
       .type = choice
     write_qmr_phil = False
@@ -288,6 +293,9 @@ Usage examples:
     energies = []
     argstuples = []
     logs = []
+    buffer_selection = ''
+    buffer = self.params.qi.qm_restraints[0].buffer
+    buffer *= buffer
     for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
       model = self.data_manager.get_model()
       if nproc>1: model=model.deep_copy()
@@ -300,12 +308,22 @@ Usage examples:
           assert j==0
           rg.remove_atom_group(ag)
           rg.insert_atom_group(0, flipping_his)
-      # hierarchy.write_pdb_file('his_%02d.pdb' % i)
       self.params.output.prefix='iterate_histidine_%02d' % (i+1)
-      # self.params.output.prefix='his_%02d' % (i+1)
       arg_log=null_out()
       if self.params.qi.verbose:
         arg_log=log
+      if not buffer_selection:
+        for rg in hierarchy.residue_groups():
+          min_d2 = min_dist2(rg,ag)
+          if min_d2[0]>=buffer: continue
+          buffer_selection += ' (chain %s and resname %s and resid %s) or' % (
+            rg.parent().id,
+            rg.atom_groups()[0].resname,
+            rg.resseq,
+            )
+        assert buffer_selection
+        buffer_selection = buffer_selection[:-3]
+      self.params.qi.qm_restraints[0].buffer_selection=buffer_selection
       if nproc==1:
         res = update_restraints(model,
                                 self.params,
@@ -316,7 +334,6 @@ Usage examples:
         units=res[1]
       else:
         import copy
-        # from six.moves import StringIO
         params = copy.deepcopy(self.params)
         argstuples.append(( model,
                             params,
