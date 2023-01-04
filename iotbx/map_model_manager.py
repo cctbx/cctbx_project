@@ -894,7 +894,7 @@ class map_model_manager(object):
   def get_map_data_by_id(self, map_id):
     ''' Get map_data from a map_manager with the name map_id'''
     map_manager = self.get_map_manager_by_id(map_id)
-    if map_manager:
+    if map_manager and (not map_manager.is_dummy_map_manager()):
       return map_manager.map_data()
     else:
       return None
@@ -8066,14 +8066,17 @@ class map_model_manager(object):
   #  Perhaps remove all these
 
   def map_data(self):
-    return self.map_manager().map_data()
+    if self.map_manager() and (not self.map_manager().is_dummy_map_manager()):
+      return self.map_manager().map_data()
 
   def map_data_1(self):
-    if self.map_manager_1():
+    if self.map_manager_1() and (
+       not self.map_manager_1().is_dummy_map_manager()):
       return self.map_manager_1().map_data()
 
   def map_data_2(self):
-    if self.map_manager_2():
+    if self.map_manager_2() and (
+       not self.map_manager_2().is_dummy_map_manager()):
       return self.map_manager_2().map_data()
 
   def map_data_list(self):
