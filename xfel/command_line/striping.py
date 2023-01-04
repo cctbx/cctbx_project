@@ -22,6 +22,7 @@ import six
 
 multiprocessing_override_str = '''
 mp {
+  method = local
   use_mpi = False
 }
 '''
