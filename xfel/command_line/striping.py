@@ -24,6 +24,8 @@ multiprocessing_override_str = '''
 mp {
   method = local
   use_mpi = False
+  mpi_command = source
+  local.include_mp_in_command = False
 }
 '''
 
