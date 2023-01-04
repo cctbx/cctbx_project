@@ -69,6 +69,10 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -xf modules.tar
       del modules.tar
+
+      cd $(Pipeline.Workspace)\modules
+      del /S /Q scons*.zip
+      rmdir /S /Q scons
     displayName: Extract modules tarball
 
   - script: |
@@ -118,6 +122,8 @@ jobs:
       call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
       if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
+      if %errorlevel% neq 0 exit /b %errorlevel%
+      call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp
       if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml pytest=7.0
       if %errorlevel% neq 0 exit /b %errorlevel%
@@ -173,10 +179,6 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
 
-      cd modules
-      rmdir /S /Q boost
-      cd ..
-
       if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
         call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
       )
@@ -187,7 +189,6 @@ jobs:
       python bootstrap.py build ^
         --builder=cctbx ^
         --use-conda=%CONDA_PREFIX% ^
-        --config-flags="--cxxstd=c++14"
         --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure ^

@@ -26,6 +26,9 @@ steps:
     set -xe
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
+
+    cd $(Pipeline.Workspace)/modules
+    rm -fr scons*
   displayName: Extract modules tarball
 
 - script: |
@@ -33,17 +36,6 @@ steps:
     cd $(Pipeline.Workspace)/modules/boost
     git checkout 1.74
   displayName: Select Boost 1.74
-
-- script: |
-    set -xe
-    cd $(Pipeline.Workspace)/modules
-    rm -fr boost
-  displayName: Remove boost source on Rocky Linux 9 and Ubuntu 22.04
-  condition: and(ne(variables['PYTHON_VERSION'], 'py27'),
-                 or(and(eq('${{ parameters.distribution }}', 'ubuntu'),
-                        eq('${{ parameters.version[0] }}', 22)),
-                    and(eq('${{ parameters.distribution }}', 'rockylinux'),
-                        eq('${{ parameters.version[0] }}', 9))))
 
 - script: |
     set -xe
@@ -146,7 +138,6 @@ steps:
     python bootstrap.py build \
       --builder=cctbx \
       --use-conda=${CONDA_PREFIX} \
-      --config-flags="--cxxstd=c++11" \
       --nproc=4
     cd build
     source setpaths.sh
