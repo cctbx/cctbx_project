@@ -809,36 +809,30 @@ r'''phasertng {
 )
 retval = retobj.exit_code()
 errormsg = retobj.error_type() + " error, " + retobj.error_message()
-import glob, shutil
-mtzfiles = glob.glob("%s/**/*%s/*%s*.data.mtz", recursive=True)
-if len(mtzfiles) > 0 :  # xtricorder succeeded
-  timesortedmtzfiles = sorted( [ (p, os.path.getmtime(p) )   for p in mtzfiles ], key=lambda e: e[1] )
+import shutil, glob
+mtzs = retobj.get_filenames(["mtz"])
+if len(mtzs):
+  xtricordermtz = mtzs[-1]
   self.hklin =  "%s" + "_xtricorder.mtz"
-  shutil.copyfile( timesortedmtzfiles[-1][0], self.hklin ) # copy the last file only
+  shutil.copyfile( xtricordermtz, self.hklin ) # copy the last file only
   self.LoadReflectionsFile(self.hklin)
-else:
-  raise Sorry("Could not locate any mtz file after running Xtricorder")
-
 logs = glob.glob("%s/**/*.logfile.log", recursive=True)
 timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
 mstr = ''
 for fname, t in timesortedlogs:
   with open(fname, 'r') as f:
     mstr += f.read() + '\\n'
-
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
 logfname = "%s_xtricorder.log"
-
 with open(logfname, 'w') as f:
   f.write(mstr)
-
-if len(timesortedmtzfiles) == 0:
-  raise Sorry("Could not locate the expected mtz file after running Xtricorder")
+if len(mtzs) == 0:
+  raise Sorry("Could not find the mtz file from running Xtricorder")
 
 shutil.rmtree("%s")
 
-""" %(self.currentfileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
+""" %(self.currentfileName, tempdir, firstpart, tempdir, firstpart, tempdir )
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
     self.send_message("%s" %xtricorder_cmd, "external_cmd" )
