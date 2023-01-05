@@ -8416,7 +8416,7 @@ class map_model_manager(object):
       for id in self.model_id_list():
         new_model_dict[id]=self.get_model_by_id(id).deep_copy()
 
-    if map_dict: # take new map_dict without deep_copy
+    if map_dict is not None: # take new map_dict without deep_copy
       new_map_dict = map_dict
     else:  # deep_copy existing map_dict
       new_map_dict = {}
