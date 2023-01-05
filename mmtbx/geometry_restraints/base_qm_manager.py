@@ -126,8 +126,10 @@ class base_manager():
       self.solvent_model,
       )
     residues = []
-    for atom in self.atoms:
-      outl += '  %s\n' % atom.quote()
+    for i, atom in enumerate(self.atoms):
+      ann=''
+      if self.ligand_atoms_array: ann=self.ligand_atoms_array[i]
+      outl += '  %s %s\n' % (atom.quote(), ann)
       if atom.parent().id_str() not in residues:
         residues.append(atom.parent().id_str())
     outl += '  residues\n'

@@ -185,6 +185,8 @@ Usage examples:
       .type = str
     iterate_histidine = None
       .type = atom_selection
+    each_amino_acid = False
+      .type = bool
     nproc = 1
       .type = int
     verbose = False
@@ -206,6 +208,8 @@ Usage examples:
       self.params.qi.selection = [self.params.qi.iterate_histidine]
     if self.params.qi.randomise_selection and self.params.qi.randomise_selection>0.5:
       raise Sorry('Random select value %s is too large' % self.params.qi.randomise_selection)
+    # if self.params.qi.each_amino_acid:
+    #   self.params.qi.write_qmr_phil=True
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -218,7 +222,8 @@ Usage examples:
     #   cif_object = self.data_manager.get_restraint()
     if (not self.params.qi.selection and
         self.params.qi.iterate_histidine is None and
-        len(self.params.qi.qm_restraints)==0):
+        len(self.params.qi.qm_restraints)==0 and
+        not self.params.qi.each_amino_acid):
       rc = get_selection_from_user(model.get_hierarchy())
       if rc.find('resname HIS')>-1:
         self.params.qi.iterate_histidine=rc
@@ -227,14 +232,39 @@ Usage examples:
     #
     # validate selection
     #
+    selection=None
     if len(self.params.qi.qm_restraints)!=0:
       selection = self.params.qi.qm_restraints[0].selection
     elif self.params.qi.selection:
       selection=self.params.qi.selection[0]
-    selection_array = model.selection(selection)
-    selected_model = model.select(selection_array)
-    print('Selected model  %s' % selected_model, file=log)
-    self.data_manager.add_model('ligand', selected_model)
+    if selection:
+      selection_array = model.selection(selection)
+      selected_model = model.select(selection_array)
+      print('Selected model  %s' % selected_model, file=log)
+      self.data_manager.add_model('ligand', selected_model)
+
+    if self.params.qi.each_amino_acid:
+      hierarchy = model.get_hierarchy()
+      outl = ''
+      for rg in hierarchy.residue_groups():
+        if len(rg.atom_groups())!=1: continue
+        gc = get_class(rg.atom_groups()[0].resname)
+        if gc not in ['common_amino_acid']: continue
+        selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
+        qi_phil_string = self.get_single_qm_restraints_scope(selection)
+        qi_phil_string = self.set_all_write_to_true(qi_phil_string)
+        print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
+        outl += '%s' % qi_phil_string
+      pf = '%s_all.phil' % (
+        self.data_manager.get_default_model_name().replace('.pdb',''))
+      f=open(pf, 'w')
+      f.write('refinement.qi {\n')
+      for line in outl.splitlines():
+        if line.strip().startswith('.'): continue
+        f.write('%s\n' % line)
+      f.write('}\n')
+      del f
+      return
 
     if self.params.qi.randomise_selection:
       import random
@@ -325,6 +355,7 @@ Usage examples:
         buffer_selection = buffer_selection[:-3]
       self.params.qi.qm_restraints[0].buffer_selection=buffer_selection
       if nproc==1:
+        print('  Running HIS flip %d' % (i+1), file=log)
         res = update_restraints(model,
                                 self.params,
                                 never_write_restraints=True,
@@ -332,6 +363,7 @@ Usage examples:
                                 log=arg_log)
         energies.append(res[0][0])
         units=res[1]
+        print('    Energy %s %s' % (energies[-1],units), file=log)
       else:
         import copy
         params = copy.deepcopy(self.params)
@@ -352,9 +384,10 @@ Usage examples:
                                                       nproc,
                                                       keep_input_order=True):
       assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      print(args[1].output.prefix,res[0][0])
+      print('  Running HIS flip %d' % (i+1), file=log)
       energies.append(res[0][0])
       units = res[1]
+      print('    Energy %s %s' % (energies[-1],units), file=log)
       i+=1
 
     protonation = [ 'ND1,NE2',
@@ -370,7 +403,8 @@ Usage examples:
     for i, (pro, energy) in enumerate(zip(protonation, energies)):
       if i in [0,3]:
         if units.lower() in ['kcal/mol']:
-          pass #energy-=156.9
+          # energy-=247.80642
+          energy-=156.9
         elif units.lower() in ['hartree']:
           energy+=0.5
       te.append(energy)
@@ -391,6 +425,14 @@ Usage examples:
           energy,
           units,
           (energy-me)*627.503,
+          ), file=log)
+      elif units.lower() in ['kcal/mol']:
+        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol' % (
+          i+1,
+          pro,
+          energy,
+          units,
+          (energy-me),
           ), file=log)
     cmd += '\n\n'
     print(cmd)
@@ -419,22 +461,38 @@ Usage examples:
     # if qmr.calculate_final_strain:
     #   assert 0
 
-  def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
+  def get_single_qm_restraints_scope(self, selection):
     qi_phil_string = get_qm_restraints_scope()
     qi_phil_string = qi_phil_string.replace(' selection = None',
-                                            ' selection = "%s"' % self.params.qi.selection[0])
+                                            ' selection = "%s"' % selection)
     qi_phil_string = qi_phil_string.replace('read_output_to_skip_opt_if_available = False',
                                             'read_output_to_skip_opt_if_available = True')
     qi_phil_string = qi_phil_string.replace('capping_groups = False',
                                             'capping_groups = True')
+    return qi_phil_string
 
+  def set_all_calculate_to_true(self, qi_phil_string):
     outl = ''
     for line in qi_phil_string.splitlines():
-      if line.find(' write_')>-1 or line.find(' calculate_')>-1:
+      if line.find(' calculate_')>-1:
         tmp=line.split()
         line = '  %s = True' % tmp[0]
       outl += '%s\n' % line
-    qi_phil_string = outl
+    return outl
+
+  def set_all_write_to_true(self, qi_phil_string):
+    outl = ''
+    for line in qi_phil_string.splitlines():
+      if line.find(' write_')>-1:
+        tmp=line.split()
+        line = '  %s = True' % tmp[0]
+      outl += '%s\n' % line
+    return outl
+
+  def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
+    qi_phil_string = self.get_single_qm_restraints_scope(self.params.qi.selection[0])
+    qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
+    qi_phil_string = self.set_all_write_to_true(qi_phil_string)
     qi_phil = iotbx.phil.parse(qi_phil_string,
                              # process_includes=True,
                              )

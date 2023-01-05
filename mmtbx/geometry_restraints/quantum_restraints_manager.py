@@ -15,6 +15,8 @@ from mmtbx.geometry_restraints import orca_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
+from scitbx.matrix import col
+
 WRITE_STEPS_GLOBAL=False
 
 def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
@@ -97,7 +99,11 @@ def write_restraints(model, filename, header=None, log=None):
       log (None, optional): Description
 
   """
-  co = get_restraints_from_model_via_grm(model, ideal=False)
+  try:
+    co = get_restraints_from_model_via_grm(model, ideal=False)
+  except AssertionError:
+    print('\n  Failed to write restraints', file=log)
+    return
   print('\n  Writing restraints : %s' % filename, file=log)
   f=open(filename, 'w')
   if header:
@@ -128,6 +134,9 @@ def add_additional_hydrogen_atoms_to_model( model,
   rc = add_water_hydrogen_atoms_simple(model.get_hierarchy())
   if not n_terminal_charge:
     rc = delete_charged_n_terminal_hydrogens(model.get_hierarchy())
+  hierarchy = model.get_hierarchy()
+  for i, atom in enumerate(hierarchy.atoms()):
+    if i and not atom.tmp: atom.tmp=-1
 
 def select_and_reindex(model,
                        selection_str=None,
@@ -234,7 +243,7 @@ def super_cell_and_prune(buffer_model,
   if(write_steps):
     complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
       crystal_symmetry = complete_p1.crystal_symmetry)
-
+  for atom in complete_p1.hierarchy.atoms(): atom.tmp=-1
   for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
     atom2.tmp = atom1.tmp
   buffer_model._pdb_hierarchy = complete_p1.hierarchy
@@ -297,11 +306,14 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
                        do_not_prune=do_not_prune,
                        write_steps=write_steps)
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
-  buffer_model.unset_restraints_manager()
-  buffer_model.log=null_out()
-  buffer_model.process(make_restraints=True)
-  original_model = buffer_model.deep_copy()
+
+  ph=buffer_model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  mc = sites_cart.min()
   buffer_model_p1 = shift_and_box_model(model=buffer_model)
+  ph=buffer_model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  box = sites_cart.min()
   if write_steps: write_pdb_file(buffer_model, 'post_shift.pdb', None)
   for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
     atom1.tmp=atom2.tmp
@@ -326,7 +338,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
       raise Sorry('''Bug alert
   Atom %s from ligand does not appear in buffer. Contact Phenix with input files.
   ''' % atom1.quote())
-  reverse_shift(original_model, buffer_model_p1)
+  # reverse_shift(original_model, buffer_model_p1)
+  ph=buffer_model.get_hierarchy()
+  sites_cart=ph.atoms().extract_xyz()
+  sites_cart=sites_cart-col(box)+col(mc)
+  ph.atoms().set_xyz(sites_cart)
   if write_steps: write_pdb_file(buffer_model, 'post_reverse_shift.pdb', None)
   use_neutron_distances_in_model_in_place(ligand_model)
   use_neutron_distances_in_model_in_place(buffer_model)
@@ -421,7 +437,11 @@ def get_all_xyz(inputs, nproc):
   from libtbx import easy_mp
   argss = []
   for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(inputs):
-    argss.append([qmm])
+    argss.append([qmm,
+                  qmr.cleanup,
+                  qmr.package.read_output_to_skip_opt_if_available,
+                  not(qmr.package.ignore_input_differences),
+                  log])
   print(argss)
   for args, res, err_str in easy_mp.multi_core_run(qm_manager.qm_runner,
                                                    tuple(argss),
