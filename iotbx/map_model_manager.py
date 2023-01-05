@@ -3576,7 +3576,10 @@ class map_model_manager(object):
     ''' Return a new map_model_manager with maps sampled more finely
         Parameter:  sampling_ratio  must be an integer
         Creates new maps, keeps same models
+        Sampling ratio must be greater than 1
     '''
+
+    assert sampling_ratio > 1
 
     n_real = tuple([
        int(sampling_ratio *n) for n in self.map_manager().map_data().all()])
