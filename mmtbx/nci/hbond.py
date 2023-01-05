@@ -69,6 +69,8 @@ def get_stats(data):
 
 master_phil_str = '''
 hbond {
+  show_hbonds = True
+    .type = bool
   output_pymol_file = True
     .type = bool
     .short_caption = Output PyMOL files for visualisation
@@ -193,7 +195,7 @@ def stats(model, prefix, no_ticks=True):
     ).get_params_as_arrays(replace_with_empty_threshold=N)
   HB_beta = find(model = model.select(SS.both.s_sel), h_bond_params=h_bond_params
     ).get_params_as_arrays(replace_with_empty_threshold=N)
-  print (HB_all.d_HA.size())
+  # print (HB_all.d_HA.size())
   result_dict = {}
   result_dict["all"]   = HB_all
   result_dict["alpha"] = HB_alpha
