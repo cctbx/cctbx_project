@@ -76,6 +76,11 @@ jobs:
     displayName: Extract modules tarball
 
   - script: |
+      cd $(Pipeline.Workspace)\modules\boost
+      git checkout 1.74
+    displayName: Select Boost 1.74
+
+  - script: |
       cd $(Pipeline.Workspace)
       copy modules\cctbx_project\libtbx\auto_build\bootstrap.py .
     displayName: Copy bootstrap.py
