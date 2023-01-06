@@ -6,13 +6,16 @@ from cctbx import geometry_restraints
 from cctbx.array_family import flex
 
 limits = {
-  ('CD', 'NE', 'CZ', 'NH1') : 5,
-  ('CD', 'NE', 'CZ', 'NH2') : 5,
-  ('NE', 'CZ', 'NH1', 'NH2'): 2,
+  ('CD', 'NE', 'CZ', 'NH1')  : 10,
+  ('CD', 'NE', 'CZ', 'NH2')  : 10,
+  ('NE', 'CZ', 'NH1', 'NH2') : 2,
   ('NE', 'CZ', 'NH1', 'HH11'): 1,
   ('NE', 'CZ', 'NH1', 'HH12'): 1,
   ('NE', 'CZ', 'NH2', 'HH21'): 1,
   ('NE', 'CZ', 'NH2', 'HH22'): 1,
+  #
+  ('CD', 'NE', 'CZ', 'NH?')  : 10,
+  ('NE', 'CZ', 'NHn', 'HHn?'): 1,
   }
 
 def get_atoms_key(atoms):
@@ -104,7 +107,11 @@ Usage examples:
         torsion_xyzs = []
         for atom in torsion_atom_names:
           ta = atom_group.get_atom(atom)
+          if ta is None:
+            torsion_xyzs=[]
+            break
           torsion_xyzs.append(ta.xyz)
+        if not torsion_xyzs: continue
         v = geometry_restraints.dihedral(sites=torsion_xyzs, angle_ideal=0, weight=1).angle_model
         current[tuple(torsion_atom_names)]=v
     self.results.process()
