@@ -93,8 +93,7 @@ Usage examples:
     # print('Validating inputs', file=self.logger)
     pass
 
-  # ---------------------------------------------------------------------------
-  def run(self, log=None):
+  def arginine_simple(self):
     model = self.data_manager.get_model()
     hierarchy = model.get_hierarchy()
     self.results = arginine_deviations()
@@ -115,6 +114,13 @@ Usage examples:
         v = geometry_restraints.dihedral(sites=torsion_xyzs, angle_ideal=0, weight=1).angle_model
         current[tuple(torsion_atom_names)]=v
     self.results.process()
+
+  def torsions_in_planes(self):
+    assert 0
+
+  # ---------------------------------------------------------------------------
+  def run(self, log=None):
+    self.arginine_simple()
     print('\n%s' % self.results, file=log)
 
   # ---------------------------------------------------------------------------
