@@ -69,16 +69,7 @@ jobs:
       cd $(Pipeline.Workspace)
       tar -xf modules.tar
       del modules.tar
-
-      cd $(Pipeline.Workspace)\modules
-      del /S /Q scons*.zip
-      rmdir /S /Q scons
     displayName: Extract modules tarball
-
-  - script: |
-      cd $(Pipeline.Workspace)\modules\boost
-      git checkout 1.74
-    displayName: Select Boost 1.74
 
   - script: |
       cd $(Pipeline.Workspace)

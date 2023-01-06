@@ -26,16 +26,7 @@ steps:
     set -xe
     cd $(Pipeline.Workspace)
     tar -xf modules.tar
-
-    cd $(Pipeline.Workspace)/modules
-    rm -fr scons*
   displayName: Extract modules tarball
-
-- script: |
-    set -xe
-    cd $(Pipeline.Workspace)/modules/boost
-    git checkout 1.74
-  displayName: Select Boost 1.74
 
 - script: |
     set -xe
