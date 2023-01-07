@@ -856,9 +856,9 @@ class HKLViewFrame() :
       arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, type2)
 
     for arr in self.procarrays:
-      if label in arr.info().labels + [ "", None]:
+      if label in arr.info().label_string():
         if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
-          return self.viewer.get_scene_id_from_label_or_type(label)
+          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
         raise Sorry("Provide a label for the new miller array that isn't already used.")
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
