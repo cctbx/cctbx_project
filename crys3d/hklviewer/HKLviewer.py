@@ -2376,9 +2376,14 @@ clip_plane {
   def onMakeNewData(self):
     lbltype2 = ["",""]
     if self.operate_arrayidx2 >= 0: # a dataset was selected in the millercombobox. Get label and type
-      lbltype2 = [self.millerarraylabels[self.operate_arrayidx2], self.operate_arraytype2]
-    mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
-            [self.millerarraylabels[self.operate_arrayidx1], self.operate_arraytype1], lbltype2 )
+      lbltype2 = [self.millerarraylabels[self.operate_arrayidx2],
+                  self.operate_arraytype2]
+    mtpl = (self.operationtxtbox.toPlainText(),
+              self.newlabeltxtbox.text() ,
+              [self.millerarraylabels[self.operate_arrayidx1],
+               self.operate_arraytype1],
+               lbltype2
+            )
     self.send_message('miller_array_operation = "%s"' %str(mtpl) )
     self.makenewdataform.accept()
 
@@ -2585,7 +2590,8 @@ clip_plane {
     Qtversion = self.Qtversion
     if write_factory_default_settings:
       self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
-      self.AddInfoText("Writing factory defaults to " + self.factorydefaultfname)
+      self.AddInfoText("Writing factory defaults to %s\n" %self.factorydefaultfname)
+      self.AddAlertsText("Writing factory defaults to %s\n" %self.factorydefaultfname)
       Qtversion = "Qt"
     if not write_factory_default_settings:  # don't store system specific value as a default
       self.settings.setValue("PythonPath", self.cctbxpython )

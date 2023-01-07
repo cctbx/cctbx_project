@@ -877,7 +877,7 @@ class HKLViewFrame() :
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
     if newarray is None:
-       # allow user to quickly amend his broken python code without having to enter a new column label
+      # allow user to quickly amend his broken python code without having to enter a new column label
       self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
       # and update_settings() won't bail out with a "No change in PHIL parameters" message
     else:
@@ -1377,10 +1377,15 @@ class HKLViewFrame() :
                    "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
         miller_array_operation_can_be_done = False
         if millaroperationstr:
-          for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if datalabel == arr1label or datatype == arr1type:
+          for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+            if datalabel == arr1label:
               miller_array_operation_can_be_done = True
               break
+          if not miller_array_operation_can_be_done:
+            for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+              if datatype == arr1type:
+                miller_array_operation_can_be_done = True
+                break
           if miller_array_operation_can_be_done:
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
