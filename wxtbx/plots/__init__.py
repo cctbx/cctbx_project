@@ -29,7 +29,7 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
                 show_data_points=True,
                 point_types=('o', '^', '+', 's', 'D'),
                 title_alignment="right",
-                figure_position=None):
+                toolbar_position=None):
     wx.BoxSizer.__init__(self, wx.VERTICAL)
     adopt_init_args(self, locals())
     self._fonts = {}
@@ -82,8 +82,8 @@ class plot_container(wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin):
       self.canvas = FigureCanvasWxAgg(self.parent, -1, self.figure)
       self.canvas.toolbar = oop.null()
       self.figmgr = FigureManager(self.canvas, 1, self)
-      if figure_position:
-        self.figmgr.toolbar.SetPosition(figure_position)
+      if toolbar_position:
+        self.figmgr.toolbar.SetPosition(toolbar_position)
       self.Add(self.canvas, 1, wx.EXPAND|wx.ALL)
       self.setup_fonts()
       self.null_fmt = matplotlib.ticker.NullFormatter()
