@@ -502,7 +502,7 @@ class HKLview_3d:
       if has_phil_path(diff_phil, "show_all_vectors"):
         self.show_all_vectors()
 
-      if has_phil_path(diff_phil, "normal_vector"):
+      if has_phil_path(diff_phil, "normal_vector") and self.params.clip_plane.normal_vector != "":
         found = False
         for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
           if self.params.clip_plane.normal_vector in label:
@@ -565,7 +565,7 @@ class HKLview_3d:
       infomsg = ""
       self.normal_vecnr = -1
       for (opnr, label, order, cartvec, hklop, hkl, abc, length) in self.all_vectors:
-        if self.params.clip_plane.normal_vector in label:
+        if self.params.clip_plane.normal_vector in label and self.params.clip_plane.normal_vector != "":
           self.normal_vecnr = opnr
 
       if self.normal_vecnr != -1: # then we are orienting clip plane with a vector

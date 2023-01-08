@@ -1642,13 +1642,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
       self.send_message('''
       hkls.expand_to_p1 = True
       hkls.expand_anomalous = True
-      hkls.inbrowser = True
                       ''' )
     else:
       self.send_message('''
       hkls.expand_to_p1 = False
       hkls.expand_anomalous = False
-      hkls.inbrowser = True
                       ''' )
 
 
@@ -1656,30 +1654,18 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     if self.unfeedback:
       return
     if self.expandP1checkbox.isChecked():
-      self.send_message('''
-      hkls.expand_to_p1 = True
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_to_p1 = True' )
     else:
-      self.send_message('''
-      hkls.expand_to_p1 = False
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_to_p1 = False' )
 
 
   def ExpandAnomalous(self):
     if self.unfeedback:
       return
     if self.expandAnomalouscheckbox.isChecked():
-      self.send_message('''
-      hkls.expand_anomalous = True
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_anomalous = True' )
     else:
-      self.send_message('''
-      hkls.expand_anomalous = False
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_anomalous = False' )
 
 
   def showSysAbsent(self):
@@ -2025,7 +2011,7 @@ clip_plane.normal_vector_length_scale = -1
     self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
 clip_plane.clip_width = %f
-clip_plane.normal_vector = "-1"
+clip_plane.normal_vector = ""
 """ %self.clipwidth_spinBox.value()
     self.send_message(philstr)
 
@@ -2107,7 +2093,6 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(False)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = False
 viewer.fixorientation = *vector
@@ -2121,7 +2106,6 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(False)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = False
 viewer.fixorientation = *vector
@@ -2135,21 +2119,19 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(True)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = True
 viewer.fixorientation = *None
 clip_plane.clip_width = %f
-clip_plane.normal_vector = "-1"
+clip_plane.normal_vector = ""
           """ %self.clipwidth_spinBox.value()
     else:
       philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.fixorientation = *None
 clip_plane {
-  normal_vector = -1
+  normal_vector = ""
   clip_width = None
 }
        """

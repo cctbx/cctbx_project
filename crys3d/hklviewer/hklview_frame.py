@@ -1974,7 +1974,7 @@ master_phil_str = """
               "vector the unit of hkldist is the length of the reciprocal lattice vector. " \
               "If the clip plane is normal to a real space vector the unit of hkldist is the " \
               "inverse of its real space length."
-    normal_vector = "-1"
+    normal_vector = ""
       .type = str
     is_assoc_real_space_vector = False
       .type = bool
