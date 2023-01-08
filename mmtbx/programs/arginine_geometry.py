@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import os
+
 from libtbx.program_template import ProgramTemplate
 from cctbx import geometry_restraints
 

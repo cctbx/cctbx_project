@@ -1956,10 +1956,8 @@ Distance: %s
       str_rot = str_rot.replace("(", "")
       str_rot = str_rot.replace(")", "")
       msg += str_rot + "\n" # add rotation matrix to end of message string
-    #self.AddToBrowserMsgQueue(msgtype, msg)
     self.GuardedAddToBrowserMsgQueue(semaphorename="clipplane_msg_sem", msgtype=msgtype, msg=msg,
                                      funcname="ExpandInBrowser",  posteriorcheck=False)
-    time.sleep(1)
     if self.use_semaphore:
       self.clipplane_msg_sem.release()
       self.mprint("ExpandInBrowser released clipplane_msg_sem", verbose="threadingmsg")
