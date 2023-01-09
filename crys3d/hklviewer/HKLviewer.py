@@ -972,8 +972,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
 
-          if self.infodict.get("array_infotpls"):
-            self.array_infotpls = self.infodict.get("array_infotpls",[])
+          if self.infodict.get("array_infotpls", None) is not None:
+            self.array_infotpls = self.infodict["array_infotpls"]
             self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
             self.make_new_millertable()
 
@@ -1009,8 +1009,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             # needed in case we run xtriage on this miller array
             self.current_labels = self.infodict.get("current_labels")
 
-          if self.infodict.get("colnames_select_lst"):
-            self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
+          if self.infodict.get("colnames_select_lst", None) is not None:
+            self.colnames_select_lst = self.infodict["colnames_select_lst"]
             self.select_millertable_column_dlg.make_new_selection_table()
 
           if self.infodict.get("bin_infotpls"):

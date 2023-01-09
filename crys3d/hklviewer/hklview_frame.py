@@ -288,6 +288,7 @@ class HKLViewFrame() :
     self.ResetPhil(extraphil)
     self.viewer.symops = []
     self.viewer.sg = None
+    self.procarrays = []
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
     self.uservectors = []
@@ -296,6 +297,7 @@ class HKLViewFrame() :
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
     self.validated_preset_buttons = False
+    self.viewer.hkl_scenes_infos = []
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
       self.viewer.RemoveStageObjects()
@@ -609,6 +611,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename") or make_new_info_tuples:
         self.viewer.array_info_format_tpl = []
+        colnames_select_lst = []
         for array in self.procarrays:
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
             uniquestrings = list(set(array.data()))
@@ -624,13 +627,11 @@ class HKLViewFrame() :
           arrayinfo = ArrayInfo(array,wrap_labels)
           info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
           self.viewer.array_info_format_tpl.append( info_fmt )
-        self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
-
-        colnames_select_lst = []
-        for philname,selected in list(self.params.selected_info.__dict__.items()):
-          if not philname.startswith("__"):
-            colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
-        self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
+          for philname,selected in list(self.params.selected_info.__dict__.items()):
+            if not philname.startswith("__"):
+              colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
+        self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl,
+                            "colnames_select_lst": colnames_select_lst })
 
       if jsview_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
@@ -1690,8 +1691,11 @@ class HKLViewFrame() :
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     if self.viewer.miller_array is not None:
       uc = self.viewer.miller_array.unit_cell()
-    else: # a fallback
+    elif len(self.procarrays):  # a fallback
       uc = self.procarrays[0].unit_cell()
+    else:
+      self.viewer.all_vectors = []
+      return self.viewer.all_vectors
 
     tncsvec = []
     if self.tncsvec is not None:
