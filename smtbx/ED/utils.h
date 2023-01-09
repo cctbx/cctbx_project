@@ -315,6 +315,19 @@ namespace smtbx { namespace ED {
       return all;
     }
 
+    static af::shared<miller::index<> > filter_index_set(
+      const af::shared<ExcitedBeam>& beams,
+      FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
+    {
+      af::shared<miller::index<> > rv;
+      for (size_t i = 0; i < beams.size(); i++) {
+        if (is_excited_g(beams[i].g, Kl, MaxSg, MaxG, precession_angle)) {
+          rv.push_back(beams[i].h);
+        }
+      }
+      return rv;
+    }
+
     static af::shared<ExcitedBeam> update_index_set(
       af::shared<ExcitedBeam> &beams,
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis

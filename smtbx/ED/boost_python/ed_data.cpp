@@ -50,6 +50,7 @@ namespace boost_python {
         .def("is_excited", &wt::is_excited)
         .def("add_beam", &wt::add_beam)
         .def("top_up", &wt::top_up)
+        .def("add_indices", &wt::add_indices)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
@@ -114,6 +115,8 @@ namespace boost_python {
         .staticmethod("generate_index_set")
         .def("update_index_set", &wt::update_index_set)
         .staticmethod("update_index_set")
+        .def("filter_index_set", &wt::filter_index_set)
+        .staticmethod("filter_index_set")
         ;
     }
     static void wrap() {
