@@ -1430,7 +1430,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     if self.currentphilstringdict['clip_plane.clip_width']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clip_width'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation'] == "vector" )
+    if self.currentphilstringdict['viewer.fixorientation'] == "vector":
+      self.AlignVectorGroupBox.setChecked( True)
+      self.RotateAroundframe.setEnabled(True)
+    else:
+      self.AlignVectorGroupBox.setChecked( False)
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['hkls.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1878,13 +1882,13 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
         if label is None:
           return
         if col==0:
+          philstr = ""
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.send_message("viewer.angle_around_vector = '[%d, 0]'" %self.rotvec)
+              philstr += "viewer.angle_around_vector = '[%d, 0]'\n" %self.rotvec
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
           sum = 0
           ivec= []
-          philstr = ""
           for rvrow in range(self.vectortable2.rowCount()):
             if self.vectortable2.item(rvrow, 0) is not None:
               opnr = self.vectortable2.item(rvrow, 0).data(Qt.UserRole)
@@ -1895,17 +1899,15 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
               else:
                 ivec = [opnr, False]
               philstr += "viewer.show_vector = " + str(ivec) + "\n"
-          self.send_message(philstr)
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(0, -1.0)) #
-            self.send_message('viewer.fixorientation = *None')
+            philstr += "viewer.animate_rotation_around_vector = '[%d, %f]'\n" %(0, -1.0)
+            philstr += 'viewer.fixorientation = *None\n'
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
-
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.send_message("viewer.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            philstr += "viewer.angle_around_vector = '[%d, 0.0]'\n" %self.rotvec
           else:
             self.RotateAroundframe.setDisabled(True)
           if sum >= rc:
@@ -1914,6 +1916,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
           if sum >0.0 and sum < rc:
             self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
+          self.send_message(philstr)
       if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
