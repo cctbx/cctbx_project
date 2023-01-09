@@ -12,7 +12,7 @@ jobs:
 - job: vs${{ parameters.vs }}
   pool:
     vmImage: ${{ parameters.vmImage }}
-  timeoutInMinutes: 40
+  timeoutInMinutes: 180
   strategy:
     maxParallel: 2
     matrix:
@@ -216,6 +216,20 @@ jobs:
       mkdir tests
       cd tests
       call libtbx.run_tests_parallel ^
+        module=boost_adaptbx ^
+        module=cctbx ^
+        module=cctbx_website ^
+        module=cma_es ^
+        module=fable ^
+        module=gltbx ^
+        module=iotbx ^
+        module=libtbx ^
+        module=rstbx ^
+        module=scitbx ^
+        module=smtbx ^
+        module=spotfinder ^
+        module=annlib_adaptbx ^
+        module=cbflib_adaptbx ^
         module=crys3d ^
         nproc=4
     failOnStderr: false
