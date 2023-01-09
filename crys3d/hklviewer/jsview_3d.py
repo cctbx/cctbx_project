@@ -2147,12 +2147,15 @@ in the space group %s\nwith unit cell %s""" \
     return tuple((rotaxis)[0]), theta, label, order
 
 
-  def calc_rotation_axes(self):
+  def calc_rotation_axes(self, ma=None):
+    if ma is not None:
+      self.sg = ma.space_group()
+      self.symops = list(self.sg.all_ops())
     if self.sg:
       unique_rot_ops = self.symops[ 0 : self.sg.order_p() ] # avoid duplicate rotation matrices
       self.rotation_operators = []
       for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
-        (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( op.r() )
+        (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( rot=op.r(), ma=ma )
         if label != "":
           self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
           veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )

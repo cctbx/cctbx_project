@@ -1687,7 +1687,7 @@ class HKLViewFrame() :
 
 
   def list_vectors(self):
-    self.viewer.calc_rotation_axes()
+    self.viewer.calc_rotation_axes(ma=self.procarrays[0] )
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     if self.viewer.miller_array is not None:
       uc = self.viewer.miller_array.unit_cell()

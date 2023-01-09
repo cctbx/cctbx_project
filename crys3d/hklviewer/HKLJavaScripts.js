@@ -494,6 +494,8 @@ function AnimateRotation(axis, animatheta) {
 
 function RotateAxisComponents(axis, theta)
 {
+  if (shapeComp == null)
+    return;
   let m4 = new NGL.Matrix4();
   m4.makeRotationAxis(axis, theta);
 
@@ -637,6 +639,8 @@ async function SetAutoviewTimeout(mycomponent, t)
 
 
 async function SendComponentRotationMatrixMsg() {
+  if (shapeComp === null)
+    return;
   await sleep(100);
   try {
     let msg = String(shapeComp.matrix.elements);
