@@ -46,6 +46,8 @@ public:
     sgtbx::space_group const& space_group, bool anomalous
   );
 
+  void add_indices(const af::shared<miller::index<> >& indices);
+
   void add_beam(const miller::index<>& index,
     FloatType I, FloatType sig);
 
@@ -85,6 +87,16 @@ void FrameInfo<FloatType>::add_beam(
   FloatType I, FloatType sig)
 {
   beams.push_back(BeamInfo<FloatType>(index, I, sig));
+}
+
+template <typename FloatType>
+void FrameInfo<FloatType>::add_indices(
+  const af::shared<miller::index<> >& indices)
+{
+  this->indices.reserve(this->indices.size() + indices.size());
+  for (size_t i = 0; i < indices.size(); i++) {
+    this->indices.push_back(indices[i]);
+  }
 }
 
 template <typename FloatType>
