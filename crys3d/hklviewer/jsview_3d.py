@@ -2466,7 +2466,7 @@ in the space group %s\nwith unit cell %s""" \
 
   def make_clip_plane(self, hkldist=0.0, clipwidth=None):
     # create clip plane oriented parallel or perpendicular to abc vector
-    if clipwidth is None: 
+    if clipwidth is None:
       self.SetClipPlaneDistances(0, 0) # tells NGL not to do clipping
       self.TranslateHKLpoints(0, 0, 0, 0.0)
       return
