@@ -52,6 +52,8 @@ def run(args, out=sys.stdout):
   program_name = args[-1]
   build_dir = abs(libtbx.env.build_path)
   bin_dir = os.path.join(build_dir, "bin")
+  if libtbx.env.installed:
+    bin_dir = abs(libtbx.env.bin_path)
   if (not program_name in os.listdir(bin_dir)):
     print("No program named '%s' found in %s." % (program_name,
       bin_dir), file=out)
