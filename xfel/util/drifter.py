@@ -132,7 +132,7 @@ class CorrelationMatrix(object):
     s = 'Correlation ' + ' '.join('{:>11}'.format(k) for k in self.keys)
     for k1 in self.keys:
       s += '\n + {:>11} '.format(k1)
-      s += ' '.join('    {:+6.4f}'.format(self.corr[k1][k2] for k2 in self.keys))
+      s += ' '.join('    {:+6.4f}'.format(self.corr[k1][k2]) for k2 in self.keys)
     return s
 
 
