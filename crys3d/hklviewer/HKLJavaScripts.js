@@ -538,10 +538,10 @@ function getRotatedZoutMatrix()
 }
 
 
-function SetDefaultOrientation() {
+function SetDefaultOrientation(release_python_semaphore=true) {
   if (!rotationdisabled)
     stage.viewerControls.orient(getRotatedZoutMatrix());
-  SetAutoviewTimeout(shapeComp, 500);
+  SetAutoviewTimeout(shapeComp, 500, release_python_semaphore);
 }
 
 
@@ -625,13 +625,15 @@ async function AutoViewPromiseRace(mycomponent, t)
 }
 
 
-async function SetAutoviewTimeout(mycomponent, t)
+async function SetAutoviewTimeout(mycomponent, t, release_python_semaphore)
 {
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
   AutoViewPromiseRace(mycomponent, t).then(()=>{
-    requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
+    requestedby = ""
+    if (release_python_semaphore==true)
+      requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
     stage.viewer.requestRender();
     ReturnClipPlaneDistances(); // updates zoom value in python */
   });
@@ -1304,7 +1306,7 @@ function onMessage(e)
         );
         if (autozoom == "True" && !wasremoved) // don't animate if adding a vector that was just removed above
           vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
-
+          //SetAutoviewTimeout(vectorshapeComps[vectorshapeComps.length - 1], 500);
         vectorshape = null;
         RenderRequest();
       }
@@ -2211,7 +2213,7 @@ function MakeButtons() {
     value: "Reset view",
     type: "button",
     onclick: function () {
-      SetDefaultOrientation();
+      SetDefaultOrientation(false); // don't release python semaphore when SetDefaultOrientation isn't' called from python
       RenderRequest().then(()=> {
           SendOrientationMsg("MakeButtons");
         }
@@ -2249,8 +2251,6 @@ function HKLscene()
   // Always listen to click event as to display any symmetry hkls
   stage.signals.clicked.add(ClickPickingProxyfunc);
   
-  //SetDefaultOrientation();
-
   stage.mouseObserver.signals.dragged.add(
     function ( deltaX, deltaY)
     {
