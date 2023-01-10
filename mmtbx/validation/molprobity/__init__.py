@@ -616,7 +616,7 @@ class molprobity(slots_getstate_setstate):
     enabled.
     """
     coot_script = libtbx.env.find_in_repositories(
-      relative_path="cctbx_project/cootbx/validation_lists.py",
+      relative_path="cootbx/validation_lists.py",
       test=os.path.isfile)
     if (coot_script is None):
       raise Sorry("Can't find template Python script for Coot.")
