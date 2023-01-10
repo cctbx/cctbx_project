@@ -412,10 +412,16 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
+          print('Calculating correlation between {} and {}:'.format(kx, ky))
+          print('{} values: {}'.format(kx, list(vx)))
+          print('{} values: {}'.format(ky, list(vy)))
           corr = correlation(vx, vy, weights=weights)
           color = self.cov_colormap(normalise([corr, -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
+          print('Calculated corr: {}; color: {}; pos: {}'.format(corr, color,
+                                                        (ix, len(keys) - iy)))
+          print('-' * 80 + '\n')
           self.axw.add_patch(r)
 
   def _plot_legend(self):
