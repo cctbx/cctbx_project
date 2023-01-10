@@ -129,10 +129,11 @@ class CorrelationMatrix(object):
           self.corr[k1][k2] = self.corr[k2][k1] = corr
 
   def __str__(self):
-    s = 'Correlation ' + ' '.join('{:>11}'.format(k) for k in self.keys)
+    s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
     for k1 in self.keys:
-      s += '\n + {:>11} '.format(k1)
-      s += ' '.join('    {:+6.4f}'.format(self.corr[k1][k2]) for k2 in self.keys)
+      s += '\n{:7}'.format(k1)
+      for k2 in self.keys:
+        s += ' {:+6.4f}'.format(self.corr[k1][k2])
     return s
 
 
@@ -434,16 +435,9 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
-          print('Calculating correlation between {} and {}:'.format(kx, ky))
-          print('{} values: {}'.format(kx, list(self.table[kx])))
-          print('{} values: {}'.format(ky, list(self.table[ky])))
-          corr = cm.corr[kx][ky]
-          color = self.cov_colormap(normalise([corr, -1, 1])[0])
+          color = self.cov_colormap(normalise([cm.corr[kx][ky], -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
-          print('Calculated corr: {}; color: {}; pos: {}'.format(corr, color,
-                                                        (ix, len(keys) - iy)))
-          print('-' * 80 + '\n')
           self.axw.add_patch(r)
 
   def _plot_legend(self):
