@@ -115,6 +115,27 @@ def normalise(sequence):
     [(s - min_) / (max_ - min_) for s in sequence]
 
 
+class CorrelationMatrix(object):
+  def __init__(self, variables, weights=None):
+    """Calculate corr. matrix between every pair in `variables` dict-like"""
+    self.keys = variables.keys()
+    self.corr = {k: {} for k in self.keys}
+    for i1, k1 in enumerate(self.keys):
+      for i2, k2 in enumerate(self.keys):
+        if i1 == i2:
+          self.corr[k1][k2] = self.corr[k2][k1] = 1.0
+        elif i2 > i1:
+          corr = correlation(variables[k1], variables[k2], weights=weights)
+          self.corr[k1][k2] = self.corr[k2][k1] = corr
+
+  def __str__(self):
+    s = 'Correlation ' + ' '.join('{:>11}'.format(k) for k in self.keys)
+    for k1 in self.keys:
+      s += '\n + {:>11} '.format(k1)
+      s += ' '.join('    {:+6.4f}'.format(self.corr[k1][k2] for k2 in self.keys))
+    return s
+
+
 class DriftScraper(object):
   """Class for scraping cctbx.xfel output into instance of `DriftTable`"""
   def __init__(self, table, parameters):
@@ -402,20 +423,21 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    values = [self.table[key] for key in keys]
-    weights = self.table['refls']
+    cm = CorrelationMatrix({k: self.table[k] for k in keys},
+                           weights=self.table['refls'])
+    print(cm)
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
-    for ix, (kx, vx) in enumerate(zip(keys, values)):
-      for iy, (ky, vy) in enumerate(zip(keys, values)):
+    for ix, kx in enumerate(keys):
+      for iy, ky in enumerate(keys):
         if ix == iy:
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
           print('Calculating correlation between {} and {}:'.format(kx, ky))
-          print('{} values: {}'.format(kx, list(vx)))
-          print('{} values: {}'.format(ky, list(vy)))
-          corr = correlation(vx, vy, weights=weights)
+          print('{} values: {}'.format(kx, list(self.table[kx])))
+          print('{} values: {}'.format(ky, list(self.table[ky])))
+          corr = cm.corr[kx][ky]
           color = self.cov_colormap(normalise([corr, -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
