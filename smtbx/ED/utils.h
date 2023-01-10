@@ -262,9 +262,9 @@ namespace smtbx { namespace ED {
       FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
       FloatType gl = g_.length();
-      cart_t g(g_[0], g_[1], g_[2] - Kl);
-      FloatType Sg = std::abs((Kl * Kl - g.length_sq()) / (2 * Kl));
-      return Sg < MaxSg&& gl < MaxG && Sg / (gl * precession_angle) < 1.0;
+      cart_t Kg(g_[0], g_[1], g_[2] - Kl);
+      FloatType Sg = std::abs((Kl * Kl - Kg.length_sq()) / (2 * Kl));
+      return Sg < MaxSg && gl < MaxG && Sg / (gl * precession_angle) < 1.0;
     }
 
     static bool is_excited_h(miller::index<> const& index,
@@ -278,10 +278,14 @@ namespace smtbx { namespace ED {
     struct ExcitedBeam {
       miller::index<> h;
       cart_t g;
-      FloatType w, s;
-      ExcitedBeam(miller::index<> const& index, cart_t const& g, FloatType weight, FloatType s)
+      FloatType w, Sg;
+      ExcitedBeam()
+        : w(0), Sg(0)
+      {}
+      ExcitedBeam(miller::index<> const& index, cart_t const& g, FloatType weight,
+        FloatType Sg)
         : h(index), g(g),
-        w(weight), s(s)
+        w(weight), Sg(Sg)
       {}
       static bool compare(ExcitedBeam const& a, ExcitedBeam const& b) {
         return a.w < b.w;
@@ -289,61 +293,45 @@ namespace smtbx { namespace ED {
     };
 
     /* Generates a list of miller indices for given resolution and space group
-    * The indices are sorted by excitation FoM asc
+    * The indices are will fulfil the MaxSg and MaxG parameters and sorted by
+    * FoM from ReciPro
     */
     static af::shared<ExcitedBeam> generate_index_set(
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
       FloatType Kl,
       FloatType min_d,
-      uctbx::unit_cell const& unit_cell,
-      sgtbx::space_group const& space_group, bool anomalous)
+      FloatType MaxSg, FloatType MaxG, FloatType PAngle,
+      uctbx::unit_cell const& unit_cell)
     {
       using namespace cctbx::miller;
 
-      index_generator h_generator(unit_cell, space_group.type(), anomalous, min_d);
+      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
+        true,
+        min_d, true);
 
       miller::index<> h;
       af::shared<ExcitedBeam> all;
+      const FloatType max_f_sq = MaxG * MaxG,
+        p_ang_sq = PAngle*PAngle;
       while (!(h = h_generator.next()).is_zero()) {
         cart_t g = RMf * cart_t(h[0], h[1], h[2]);
-        g[2] += Kl;
-        FloatType s = std::abs(Kl * Kl - g.length_sq());
-        FloatType w = s * s * g.length_sq();
-        all.push_back(ExcitedBeam(h, g, w, s));
+        FloatType g_sq = g.length_sq();
+        if (g_sq > max_f_sq || g_sq * p_ang_sq > 1.0) {
+          continue;
+        }
+        cart_t Kg(g[0], g[1], g[2] - Kl);
+        FloatType Kg_sq = Kg.length_sq();
+        FloatType s = Kl * Kl - Kg_sq;
+        FloatType Sg = std::abs(s / (2 * Kl));
+        if (Sg > MaxSg) {
+          continue;
+        }
+        FloatType w = s * s * Kg_sq;
+        all.push_back(ExcitedBeam(h, g, w, Sg));
       }
       std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
       return all;
     }
 
-    static af::shared<miller::index<> > filter_index_set(
-      const af::shared<ExcitedBeam>& beams,
-      FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
-    {
-      af::shared<miller::index<> > rv;
-      for (size_t i = 0; i < beams.size(); i++) {
-        if (is_excited_g(beams[i].g, Kl, MaxSg, MaxG, precession_angle)) {
-          rv.push_back(beams[i].h);
-        }
-      }
-      return rv;
-    }
-
-    static af::shared<ExcitedBeam> update_index_set(
-      af::shared<ExcitedBeam> &beams,
-      mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
-      FloatType Kl)
-    {
-      using namespace cctbx::miller;
-      for (size_t i = 0; i < beams.size(); i++) {
-        cart_t g = RMf * cart_t(beams[i].h[0], beams[i].h[1], beams[i].h[2]);
-        g[2] += Kl;
-        FloatType s = std::abs(Kl * Kl - g.length_sq());
-        beams[i].w = s * s * g.length_sq();
-        beams[i].s = s;
-        beams[i].g = g;
-      }
-      std::sort(beams.begin(), beams.end(), &ExcitedBeam::compare);
-      return beams;
-    }
   }; //struct smtbx::ED::utils
 }} // namespace smtbx::ED

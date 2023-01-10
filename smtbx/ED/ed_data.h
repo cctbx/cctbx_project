@@ -34,14 +34,21 @@ public:
     normal = RM * f_normal;
     normal /= normal.length();
   }
-  bool is_excited(const BeamInfo<FloatType> &beam,
+  bool is_excited_index(const miller::index<> &h,
     FloatType Kl,
     FloatType MaxSg,
     FloatType MaxG
     ) const;
   
+  bool is_excited_beam(const BeamInfo<FloatType>& beam,
+    FloatType Kl,
+    FloatType MaxSg,
+    FloatType MaxG
+  ) const;
+
   void top_up(FloatType Kl,
     size_t num, FloatType min_d,
+    FloatType MaxSg, FloatType MaxG,
     uctbx::unit_cell const& unit_cell,
     sgtbx::space_group const& space_group, bool anomalous
   );
@@ -75,10 +82,17 @@ struct BeamInfo {
 };
 
 template <typename FloatType>
-bool FrameInfo<FloatType>::is_excited(const BeamInfo<FloatType>& beam,
+bool FrameInfo<FloatType>::is_excited_index(const miller::index<>& h,
   FloatType Kl, FloatType MaxSg, FloatType MaxG) const
 {
-  return utils<FloatType>::is_excited_h(beam.index, RMf, Kl, MaxSg, MaxG, angle);
+  return utils<FloatType>::is_excited_h(h, RMf, Kl, MaxSg, MaxG, angle);
+}
+
+template <typename FloatType>
+bool FrameInfo<FloatType>::is_excited_beam(const BeamInfo<FloatType>& beam,
+  FloatType Kl, FloatType MaxSg, FloatType MaxG) const
+{
+  return is_excited_index(beam.index, Kl, MaxSg, MaxG);
 }
 
 template <typename FloatType>
@@ -103,6 +117,7 @@ template <typename FloatType>
 void FrameInfo<FloatType>::top_up(
   FloatType Kl,
   size_t num, FloatType min_d,
+  FloatType MaxSg, FloatType MaxG,
   uctbx::unit_cell const& unit_cell,
   sgtbx::space_group const &space_group, bool anomalous)
 {
@@ -112,7 +127,9 @@ void FrameInfo<FloatType>::top_up(
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
   af::shared<typename utils<FloatType>::ExcitedBeam> ebeams =
-    utils<FloatType>::generate_index_set(RMf, Kl, min_d, unit_cell, space_group, anomalous);
+    utils<FloatType>::generate_index_set(RMf, Kl, min_d,
+      MaxSg, MaxG, angle,
+      unit_cell);
 
   lookup_t existing = lookup_t(
     indices.const_ref(),
