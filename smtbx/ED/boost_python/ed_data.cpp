@@ -25,29 +25,31 @@ namespace boost_python {
     static void wrap_frame() {
       using namespace boost::python;
       typedef return_internal_reference<> rir_t;
-      //return_value_policy<return_by_value> rbv;
+      return_value_policy<return_by_value> rbv;
       typedef FrameInfo<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("frame_info", no_init)
         .def(init<int, typename wt::cart_t const&,
           FloatType, FloatType, FloatType, FloatType, FloatType,
           typename wt::mat3_t const&>
-             ((arg("id"), arg("normal"),
-               arg("alpha"), arg("beta"), arg("omega"), arg("angle"), arg("scale"),
-               arg("UB"))))
+          ((arg("id"), arg("normal"),
+            arg("alpha"), arg("beta"), arg("omega"), arg("angle"), arg("scale"),
+            arg("UB"))))
         .def_readonly("id", &wt::id)
         .def_readwrite("tag", &wt::tag)
-        .add_property("normal", make_getter(&wt::normal, rir_t()))
-        .add_property("RM", make_getter(&wt::RM, rir_t()))
-        .add_property("RMf", make_getter(&wt::RMf, rir_t()))
+        .add_property("normal", make_getter(&wt::normal, rbv))
+        .add_property("RM", make_getter(&wt::RM, rbv))
+        .add_property("RMf", make_getter(&wt::RMf, rbv))
         .add_property("alpha", &wt::alpha)
         .add_property("beta", &wt::beta)
         .add_property("omega", &wt::omega)
         .add_property("angle", &wt::angle)
         .add_property("scale", &wt::scale)
-        .def_readwrite("indices", &wt::indices)
-        .def_readwrite("beams", &wt::beams)
-        .def("is_excited", &wt::is_excited)
+        .add_property("indices", make_getter(&wt::indices, rbv), &wt::indices)
+        .add_property("beams", make_getter(&wt::beams, rbv), &wt::beams)
+        .def("is_excited_index", &wt::is_excited_index)
+        .def("is_excited_beam", &wt::is_excited_beam)
+        .def("is_fully_covered", &wt::is_excited_beam)
         .def("add_beam", &wt::add_beam)
         .def("top_up", &wt::top_up)
         .def("add_indices", &wt::add_indices)
@@ -82,11 +84,12 @@ namespace boost_python {
       typedef typename utils<FloatType>::ExcitedBeam wt;
       class_<wt>("ExcitedBeam", no_init)
         .add_property("weight", &wt::w)
-        .add_property("s", &wt::s)
+        .add_property("Sg", &wt::Sg)
         .add_property("h", &wt::h)
         .add_property("g", &wt::g)
         ;
-
+      typedef return_internal_reference<> rir_t;
+      scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_info");
     }
 
     static void wrap_utils() {
@@ -113,10 +116,6 @@ namespace boost_python {
         .staticmethod("is_excited_h")
         .def("generate_index_set", &wt::generate_index_set)
         .staticmethod("generate_index_set")
-        .def("update_index_set", &wt::update_index_set)
-        .staticmethod("update_index_set")
-        .def("filter_index_set", &wt::filter_index_set)
-        .staticmethod("filter_index_set")
         ;
     }
     static void wrap() {
