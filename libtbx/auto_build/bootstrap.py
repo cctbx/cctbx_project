@@ -2381,6 +2381,8 @@ class PhenixBuilder(CCIBuilder):
     'dials',
     'xia2',
     'prime',
+    'cootbx',
+    'qttbx',
   ]
 
   # select dials-3.2 branch
