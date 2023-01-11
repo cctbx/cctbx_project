@@ -217,7 +217,7 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
 
 MainWindow.setCentralWidget(self.centralwidget)
 
-# from  the function hklviewer_gui.Ui_MainWindow.setupUi()
+from  the function hklviewer_gui.Ui_MainWindow.setupUi()
 
 """
 timer = QTimer()
