@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
 try: # if invoked by cctbx.python or some such
