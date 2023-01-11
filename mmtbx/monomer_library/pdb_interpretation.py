@@ -1678,7 +1678,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       m_i=self,
       m_j=self,
       plane_list=self.monomer.get_planes(),
-      planarity_proxy_registry=planarity_proxy_registry,
+      parallelity_proxy_registry=parallelity_proxy_registry,
       special_position_dict=special_position_dict).counters
 
 class link_match_one(object):
