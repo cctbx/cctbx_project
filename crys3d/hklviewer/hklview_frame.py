@@ -181,7 +181,7 @@ class HKLViewFrame() :
         self.update_from_philstr('save_image_name = "%s"' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
-        time.sleep(self.closingtime)
+        time.sleep(10)
         self.mprint("Closing time reached", verbose=1)
         self.SendInfoToGUI( { "closing_time": True } )
       self.mprint("Done thread_process_arguments()", verbose=2)
@@ -1930,7 +1930,7 @@ class HKLViewFrame() :
         self.guisocket.send( bindict )
     else:
       if infodict.get("closing_time", False):
-        self.__exit__()
+        return
 
 
 
