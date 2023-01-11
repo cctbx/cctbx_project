@@ -14,6 +14,7 @@ import wx
 import wx.lib.scrolledpanel
 import math, sys, os
 from six.moves import range
+from wxtbx.wx4_compatibility import create_measuring_context # XXX PYTHON 3 FIX
 
 WXTBX_SEQ_SELECT_NONE = 1
 WXTBX_SEQ_SELECT_SINGLE = 2
@@ -159,7 +160,8 @@ multiple residues."
       #gc.DrawRectangle(x1, y1, x2 - x1, y2 - y1)
 
   def DoGetBestSize(self):
-    dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+    #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+    dc = create_measuring_context()
     dc.SetFont(self.txt_font)
     i = 0
     (panel_w, panel_h) = (32, 32)
@@ -237,7 +239,8 @@ multiple residues."
 
   def get_char_size(self, dc=None):
     if dc is None :
-      dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+      #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+      dc = create_measuring_context()
       dc.SetFont(self.txt_font)
     line_w, char_h = dc.GetTextExtent("X" * 50)
     if wx.Platform == '__WXGTK__' :
@@ -252,7 +255,8 @@ multiple residues."
     return (char_w, char_h)
 
   def build_boxes(self):
-    dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+    #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
+    dc = create_measuring_context()
     dc.SetFont(self.txt_font)
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
