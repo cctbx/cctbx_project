@@ -363,6 +363,7 @@ def allocate_chunks(results_dir,
   refl_ending += extension
   batch_chunks = {}
   for batch in batchable:
+    batch_chunks[batch] = []
     contents = batch_contents[batch]
     expts = [c for c in contents if c.endswith(expt_ending)]
     refls = [c for c in contents if c.endswith(refl_ending)]
@@ -371,7 +372,7 @@ def allocate_chunks(results_dir,
     pack_name = "stripe" if stripe else "chunk"
     expts_packs, refls_packs, pack_lengths = pack_func(expts, refls)
     for expts_pack, refls_pack in zip(expts_packs, refls_packs):
-      batch_chunks[batch] = (expts_pack, refls_pack)
+      batch_chunks[batch].append((expts_pack, refls_pack))
     r = '{}ed {} experiments from {} files in {} into {} {}s with sizes = {}'
     print(r.format(pack_name.title(), sum(pack_lengths), len(expts), batch,
                    len(pack_lengths), pack_name, pack_lengths))
