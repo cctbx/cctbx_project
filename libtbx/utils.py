@@ -1540,7 +1540,8 @@ class multi_out(object):
     """
     i = self.labels.index(old_label)
     old_file_object = self.file_objects[i]
-    new_file_object.write(old_file_object.getvalue())
+    if hasattr(old_file_object, 'getvalue'):
+      new_file_object.write(old_file_object.getvalue())
     old_file_object.close()
     self.labels[i] = new_label
     self.file_objects[i] = new_file_object
