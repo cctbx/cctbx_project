@@ -369,13 +369,13 @@ def allocate_chunks(results_dir,
     refls = sorted([c for c in contents if c.endswith(refl_ending)])
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     pack_func = stripe_pairs if stripe else chunk_pairs
-    pack_name = "stripe" if stripe else "chunk"
     expts_packs, refls_packs, pack_lengths = pack_func(expts, refls, max_size)
     for expts_pack, refls_pack in zip(expts_packs, refls_packs):
       batch_chunks[batch].append((expts_pack, refls_pack))
-    r = '{}ed {} experiments from {} files in {} into {} {}s with sizes = {}'
-    print(r.format(pack_name.title(), sum(pack_lengths), len(expts), batch,
-                   len(pack_lengths), pack_name, pack_lengths))
+    r = '{} {} experiments from {} files in {} into {} {}s with sizes = {}'
+    print(r.format("Striped" if stripe else "Chunked", sum(pack_lengths),
+                   len(expts), batch, len(pack_lengths),
+                   "stripes" if stripe else "chunks", pack_lengths))
     return batch_chunks
 
 
