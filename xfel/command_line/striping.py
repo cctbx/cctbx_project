@@ -54,7 +54,7 @@ striping {
     .help = "Enable to select results evenly spaced across each rungroup"
             "(stripes) as opposed to contiguous chunks."
   chunk_size = 1000
-    .type = float
+    .type = int(value_min=1)
     .help = "Maximum number of images per chunk or stripe."
   respect_rungroup_barriers = True
     .type = bool
@@ -370,7 +370,7 @@ def allocate_chunks(results_dir,
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     pack_func = stripe_pairs if stripe else chunk_pairs
     pack_name = "stripe" if stripe else "chunk"
-    expts_packs, refls_packs, pack_lengths = pack_func(expts, refls)
+    expts_packs, refls_packs, pack_lengths = pack_func(expts, refls, max_size)
     for expts_pack, refls_pack in zip(expts_packs, refls_packs):
       batch_chunks[batch].append((expts_pack, refls_pack))
     r = '{}ed {} experiments from {} files in {} into {} {}s with sizes = {}'
