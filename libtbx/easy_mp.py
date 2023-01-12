@@ -651,7 +651,7 @@ def parallel_map(
 
 
 
-def multi_core_run( myfunction, argstuples, nproc ):
+def multi_core_run( myfunction, argstuples, nproc, keep_input_order=False ):
   """
   Run myfunction on many cpu cores using multiprocessing.
   A simplified version of parallel_map() above
@@ -659,6 +659,8 @@ def multi_core_run( myfunction, argstuples, nproc ):
   myfunction: name of the function to be parallelised,
   argstuples: list of tuples of associated input arguments,
   nproc: number of cores to run on.
+  keep_input_order: if True, the function returns once all child processes have completed and
+                    results are in same order as the argstuples elements
 
   Both myfunction and its input arguments must be pickleable.
 
@@ -721,7 +723,7 @@ def multi_core_run( myfunction, argstuples, nproc ):
   pfi = parallel_for.iterator(
       calculations = ( ( myfunction, args, {} ) for args in argstuples ),
       manager = manager,
-      keep_input_order = False,
+      keep_input_order = keep_input_order,
       )
 
   for i, ( calc, res ) in enumerate(pfi):

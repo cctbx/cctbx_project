@@ -10,6 +10,63 @@ import mmtbx.f_model
 from cctbx import crystal
 from iotbx import crystal_symmetry_from_any
 from iotbx import extract_xtal_data
+import libtbx.phil
+
+# =============================================================================
+# general functions for scattering type (applies to model and/or miller_array)
+class scattering_table_mixins(object):
+  '''
+  Functions for mapping scattering table types (wk1995 it1992 n_gaussian
+  neutron electron) to model and array types (x_ray, electron, neutron).
+  These will handle the mapping between the X-ray scattering tables
+  (wk1995 it1992 n_gaussian) to the x_ray type.
+  '''
+  possible_scattering_table_types = ['wk1995', 'it1992', 'n_gaussian',
+    'x_ray', 'neutron',  'electron']
+
+  def check_scattering_table_type(self, scattering_table):
+    '''
+    Checks that the argument is a valid scattering table type
+
+    Parameters
+    ----------
+    scattering_table : str
+      The scattering table type
+    data_type : str, optional
+      The data type, e.g. 'model' or 'array'. This is for the error message
+
+    Returns
+    -------
+    scattering_table : str
+      The input scattering table. If x_ray is provided, n_gaussian is returned
+      as the default scattering table.
+    '''
+    if scattering_table not in self.possible_scattering_table_types:
+      raise Sorry('Unrecognized scattering table type, "%s," possible choices are %s.' %
+                  (scattering_table, ', '.join(self.possible_scattering_table_types)))
+    if scattering_table == 'x_ray':
+      return 'n_gaussian'
+    return scattering_table
+
+  def map_scattering_table_type(self, scattering_table):
+    '''
+    Returns the appropriate model/array type based on the scattering table
+
+    Parameters
+    ----------
+    scattering_table : str
+      The scattering table type
+
+    Returns
+    -------
+    mapped_type : str
+      The mapped type
+    '''
+    self.check_scattering_table_type(scattering_table)
+    if scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
+      return 'x_ray'
+    else:
+      return scattering_table
 
 # -----------------------------------------------------------------------------
 # extra functions for model and reflections
@@ -18,6 +75,32 @@ class fmodel_mixins(object):
   Function to extract fmodel when the DataManager supports both the "model"
   and "miller_array" data types.
   '''
+
+  def update_all_defaults(self, data_type):
+    '''
+    Convenience function for setting the data_type of all models and
+    Miller arrays. This sets the default as well as the type for all
+    currently loaded files.
+
+    Parameters
+    ----------
+    data_type : str
+        The type to set (e.g. 'x_ray', 'neutron', or 'electron')
+    '''
+    # model
+    checked_type = self.map_scattering_table_type(data_type)
+    model_type = [checked_type]
+    self._is_valid_model_type(model_type)
+    self.set_default_model_type(model_type)
+    for filename in self.get_model_names():
+      self.set_model_type(filename, model_type)
+
+    # miller_array
+    array_type = checked_type
+    self.set_default_miller_array_type(array_type)
+    for filename in self.get_miller_array_names():
+      for label in self.get_miller_array_labels(filename):
+        self.set_miller_array_type(filename, label, array_type)
 
   def get_fmodel_params(self):
     '''
@@ -59,19 +142,28 @@ class fmodel_mixins(object):
         crystal_symmetry = model.crystal_symmetry())
 
   def get_fmodel(self,
-                 array_type,
                  crystal_symmetry = None,
                  parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
-                 scattering_table = None # XXX Make part of parameters?
+                 scattering_table = None
                  ):
+    """
+    Create mmtbx.fmodel.manager object using atomic model and diffraction data.
+    crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope.
+    scattering_table will trigger the use of model and reflections with corrct
+    array_type.
+    """
+    array_type = self.map_scattering_table_type(scattering_table)
+    scattering_table = self.check_scattering_table_type(scattering_table)
     #
-    if(  array_type == "x_ray"):
-      assert scattering_table in ["wk1995", "it1992", "n_gaussian"]
-    elif(array_type == "neutron"):
-      assert scattering_table == "neutron"
-    elif(array_type == "electron"):
-      assert scattering_table == "electron"
+    crystal_symmetry_phil = crystal_symmetry
+    if(crystal_symmetry is not None):
+      if(isinstance(crystal_symmetry, libtbx.phil.scope_extract)):
+        crystal_symmetry = crystal.symmetry(
+          unit_cell        = crystal_symmetry.unit_cell,
+          space_group_info = crystal_symmetry.space_group)
+      else:
+        assert isinstance(crystal_symmetry, libtbx.phil.scope_extract)
     # Gather models of apropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
@@ -82,10 +174,12 @@ class fmodel_mixins(object):
       raise Sorry("More than one model of '%s' type found."%array_type)
     model = models[0]
     # Get reflection file server
-    rfs = self.get_reflection_file_server(array_type = array_type)
-    # Resolve symmetry issues (nplace)
+    rfs = self.get_reflection_file_server(
+      array_type       = array_type,
+      crystal_symmetry = crystal_symmetry)
+    # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
-      params                 = crystal_symmetry,
+      params                 = crystal_symmetry_phil,
       model                  = model,
       reflection_file_server = rfs)
     # Get reflection data
@@ -98,7 +192,7 @@ class fmodel_mixins(object):
     if(len(data.err)>0):
       raise Sorry("\n".join(data.err))
     if(data.f_obs is None):
-      raise Sorry("Diffraction date are not available to make fmodel.")
+      raise Sorry("Diffraction data are not available to make fmodel.")
     # Setup scattering table of xray_structure
     model.setup_scattering_dictionaries(
       scattering_table = scattering_table,
@@ -112,7 +206,7 @@ class fmodel_mixins(object):
       origin         = data.mtz_object)
     return fmodel
 
-# =============================================================================
+# -----------------------------------------------------------------------------
 # extra functions for maps
 class map_mixins(object):
   '''

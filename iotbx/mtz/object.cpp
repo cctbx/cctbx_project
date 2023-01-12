@@ -1199,6 +1199,10 @@ namespace iotbx { namespace mtz {
     column data_phi(get_column(column_label_phi));
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
       nan_and_non_zero_counts counts(data_ampl, data_phi, i_refl);
+
+      /*  REMOVE CHECKS BECAUSE SOME MTZ CONTAIN THESE MIXED NaN/Values
+          WITHOUT CHECK THESE VALUES ARE SIMPLY IGNORED (AS IF THEY WERE
+          NOT PRESENT IN THE ARRAY)
       if (!counts.are_consistent()) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
@@ -1206,6 +1210,8 @@ namespace iotbx { namespace mtz {
           + "hkl=" + hkl.get_miller_index(i_refl).as_string()
           + phenix_mtz_dump_tip);
       }
+          END OF REMOVED CHECK */
+
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(hkl.get_miller_index(i_refl));
@@ -1232,6 +1238,11 @@ namespace iotbx { namespace mtz {
     column data_phi_minus(get_column(column_label_phi_minus));
     for(int i_refl=0;i_refl<n_refl;i_refl++) {
       nan_and_non_zero_counts counts(data_ampl_plus, data_phi_plus, i_refl);
+
+      /*  REMOVE CHECKS BECAUSE SOME MTZ CONTAIN THESE MIXED NaN/Values
+          WITHOUT CHECK THESE VALUES ARE SIMPLY IGNORED (AS IF THEY WERE
+          NOT PRESENT IN THE ARRAY)
+
       if (!counts.are_consistent()) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
@@ -1239,6 +1250,8 @@ namespace iotbx { namespace mtz {
           + "hkl=" + hkl.get_miller_index(i_refl).as_string()
           + phenix_mtz_dump_tip);
       }
+          END OF REMOVED CHECK */
+
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(hkl.get_miller_index(i_refl));
@@ -1247,6 +1260,10 @@ namespace iotbx { namespace mtz {
           data_phi_plus.float_datum(i_refl)));
       }
       counts = nan_and_non_zero_counts(data_ampl_minus,data_phi_minus,i_refl);
+
+      /*  REMOVE CHECKS BECAUSE SOME MTZ CONTAIN THESE MIXED NaN/Values
+          WITHOUT CHECK THESE VALUES ARE SIMPLY IGNORED (AS IF THEY WERE
+          NOT PRESENT IN THE ARRAY)
       if (!counts.are_consistent()) {
         throw cctbx::error(std::string(
           "Unexpected NAN while extracting complex array from columns: ")
@@ -1254,6 +1271,8 @@ namespace iotbx { namespace mtz {
           + "hkl=" + hkl.get_miller_index(i_refl).as_string()
           + phenix_mtz_dump_tip);
       }
+          END OF REMOVED CHECK */
+
       if (counts.n_nan == 0) {
         result.mtz_reflection_indices.push_back(i_refl);
         result.indices.push_back(-hkl.get_miller_index(i_refl));

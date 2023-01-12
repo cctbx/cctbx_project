@@ -1562,6 +1562,37 @@ class _():
     del sentinel
     return result
 
+  def round_occupancies_in_place(self, ndigits):
+    """Round occupancies of those alternative conformations that cannot be
+    rounded properly to the sum of 1 by standard round procedure in the output.
+    The rest occupancies left intact.
+
+    Args:
+        ndigits (int): number of significant digits after the dot
+    """
+    h_atoms = self.atoms()
+    ogs = self.occupancy_groups_simple()
+    for occ_group in ogs:
+      # check conditions
+      can_be_rounded = True
+      occs = []
+      occs_values = []
+      for g in occ_group:
+        occs.append(h_atoms.select(flex.size_t(g)).extract_occ())
+      for o in occs:
+        # occupancy of all atoms is the same?
+        if len(set(o)) == 1:
+          occs_values.append(o[0])
+        else:
+          can_be_rounded = False
+      if sum(occs_values) != 1.00:
+        can_be_rounded = False
+      # now round them up, values in occs_values are the ones to round
+      if can_be_rounded:
+        round_occs = group_rounding(occs_values, ndigits)
+        for i, g in enumerate(occ_group):
+          h_atoms.select(flex.size_t(g)).set_occ(flex.double([round_occs[i]]*len(g)))
+
   def chunk_selections(self, residues_per_chunk):
     result = []
     if(residues_per_chunk<1): return result
@@ -3216,3 +3247,43 @@ def substitute_atom_group(
       current_group.append_atom(atom)
   current_group.resname = new_group.resname
   return current_group
+
+def group_rounding(values, digits):
+  """Round values to number of digits after the dot maintaining the sum of 1.
+  Currently used for rounding occupancies, so when the total sum is != 1,
+  no rounding occurs.
+  Taken from: https://explainextended.com/2009/09/21/rounding-numbers-preserving-their-sum/
+
+  Args:
+      values (list): list of occupancies
+      digits (integer): how many digits after the dot should be left
+
+  Returns:
+      list: rounded occupancies
+  """
+  def sort_index(s):
+    # helper function to get sorted indices in reverse order, much like reindexing_array.
+    # used here for simplicity
+    return sorted(range(len(s)), key=lambda k: s[k], reverse=True)
+
+  if len(values) < 2:
+    return values
+  total_occs = sum(values)
+  if round(total_occs, 6) != 1:
+    return values
+  # Try standard rounding first.
+  result = [round(i, digits) for i in values]
+  if round(sum(result), digits) == 1:
+    return result
+  # Now when all the above failed, do the trick ourselves.
+  p_10 = pow(10,digits)
+  result = [i*p_10 for i in values]
+  total_occs *= p_10
+  sum_all_floor = sum([math.floor(i) for i in result])
+  n_to_ceil = int(total_occs - sum_all_floor)
+  sorted_index = sort_index([i % 1 for i in result])
+  for i in range(n_to_ceil):
+    result[sorted_index[i]] = math.ceil(result[sorted_index[i]])/p_10
+  for i in range(n_to_ceil, len(result)):
+    result[sorted_index[i]] = math.floor(result[sorted_index[i]])/p_10
+  return result

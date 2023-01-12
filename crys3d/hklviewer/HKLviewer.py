@@ -28,14 +28,10 @@ from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QCombo
 from .qt import QColor, QFont, QIcon, QCursor, QDesktopServices
 from .qt import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )
 
-try: # if invoked by cctbx.python or some such
-  from crys3d.hklview import hklviewer_gui
-  from crys3d.hklview.helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
-                                     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog )
-except Exception as e: # if invoked by a generic python that doesn't know cctbx modules
-  from . import hklviewer_gui
-  from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
-     MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox, FindDialog )
+
+from . import hklviewer_gui
+from .helpers import ( MillerArrayTableView, MillerArrayTableForm, MyhorizontalHeader, MyQPlainTextEdit,
+    MillerArrayTableModel, MPLColourSchemes, MillerTableColumnHeaderDialog, MyQDoubleSpinBox, FindDialog )
 
 
 class MakeNewDataForm(QDialog):
@@ -221,20 +217,24 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
 
 MainWindow.setCentralWidget(self.centralwidget)
 
-# from  the function hklviewer_gui.Ui_MainWindow.setupUi()
+from  the function hklviewer_gui.Ui_MainWindow.setupUi()
 
 """
 timer = QTimer()
 
 class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
+  # qversion() comes out like '5.12.5'. We just want '5.12'
+  Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
+  settings = QSettings("CCTBX", "HKLviewer" )
+  reset_to_factorydefaults = False
+
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
-    self.settings = QSettings("CCTBX", "HKLviewer" )
-    # qversion() comes out like '5.12.5'. We just want '5.12'
-    self.Qtversion = "Qt" + ".".join( QtCore.qVersion().split(".")[0:2])
     self.datatypedict = { }
     self.browserfontsize = None
     self.mousespeedscale = 2000
     self.isembedded = isembedded
+    self.philfname = "" # for regression tests
+    self.image_fname = "testimage.png"
     print("version " + self.Qtversion)
     self.colnames_select_dict = {}
     self.lasttime = time.monotonic()
@@ -289,7 +289,8 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
       if isinstance( self.__getattribute__(a), QTabWidget):
         self.ntabs += 1
     self.factorydefaultfname = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HKLviewerDefaults.ini")
-    self.ReadPersistedQsettings()
+    if not self.ReadPersistedQsettings():
+      sys.exit()
     self.buttonsdeflist =[]
     self.app = thisapp
     self.cctbxversion = "unversioned"
@@ -389,7 +390,6 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.ttipalpha_spinBox.valueChanged.connect(self.onTooltipAlphaChanged)
     self.ttipalpha_labeltxt = QLabel()
     self.ttipalpha_labeltxt.setText("Tooltip Opacity:")
-    self.reset_to_factorydefaults = False
     self.resetlabeltxt = QLabel()
     self.resetlabeltxt.setWordWrap(True)
     self.resetlabeltxt.setText("Delete user settings and revert to factory defaults for GUI, colour and radii scheme")
@@ -598,7 +598,7 @@ newarray._sigmas = sigs
     self.onPresetbtn_click()
 
 
-  def closeEvent(self, event=QCloseEvent()): # provide default value for QTimer.singleShot below
+  def closeEvent(self, event=QCloseEvent()): # provide default value when called explicitly below
     self.send_message('action = is_terminating')
     self.closing = True
     self.finddlg.setVisible(False)
@@ -703,9 +703,7 @@ newarray._sigmas = sigs
     self.currentfileName, filtr = QFileDialog.getOpenFileName(self.window,
             "Open a reflection file", "",
             ";;".join(self.filterlst), "", options)
-    if self.currentfileName:
-      self.setWindowFilenameTitles( self.currentfileName)
-      self.send_message('openfilename = "%s"' %self.currentfileName )
+    if self.openReflectionFile():
       # Rearrange filters to use the current filter as default for next time we open a file
       # The default filter is the first one. So promote the one chosen to be first in the list for next time
       idx = self.filterlst.index(filtr) # find its place in the list of filters
@@ -714,6 +712,14 @@ newarray._sigmas = sigs
       newfilterlst = [filtr]
       newfilterlst.extend(self.filterlst)
       self.filterlst = newfilterlst
+
+
+  def openReflectionFile(self):
+    if self.currentfileName:
+      self.setWindowFilenameTitles( self.currentfileName)
+      self.send_message('openfilename = "%s"' %self.currentfileName )
+      return True
+    return False
 
 
   def onSaveReflectionFile(self):
@@ -756,6 +762,21 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     self.select_millertable_column_dlg.activateWindow()
 
 
+  def SaveImage(self):
+    self.send_message('save_image_name = "%s"' %self.image_fname)
+
+
+  def SetFirstScene(self):
+    self.send_message("viewer.scene_id = 0")
+
+
+  def SetStateFromPHILfile(self):
+    with open(self.philfname, "r") as f:
+      self.AddAlertsText("Processing PHIL file: %s\n" %self.philfname)
+      PHILstr = f.read()
+      self.send_message(PHILstr, msgtype = "preset_philstr")
+
+
   def onXtricorderRun(self):
     if not self.currentfileName:
       QMessageBox.warning(self.window, "HKLviewer",
@@ -766,6 +787,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       return
     from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
+    firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
     # Put xtricorders temp directory into current working directory and
     # replace any backslashes on Windows with forwardslashes for the sake of phasertng
     tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
@@ -774,7 +796,7 @@ from phasertng.scripts import xtricorder
 
 tabname = "Xtricorder"
 (retobj) = xtricorder.xtricorder(
-'''phasertng {
+r'''phasertng {
             hklin.filename = "%s"
             reflections.wavelength = 1.0
             suite.mute = True
@@ -787,31 +809,30 @@ tabname = "Xtricorder"
 )
 retval = retobj.exit_code()
 errormsg = retobj.error_type() + " error, " + retobj.error_message()
-import glob, shutil
-mtzfiles = glob.glob("%s/**/*%s/*%s*.data.mtz", recursive=True)
-if len(mtzfiles) > 0 :  # xtricorder succeeded
-  timesortedmtzfiles = sorted( [ (p, os.path.getmtime(p) )   for p in mtzfiles ], key=lambda e: e[1] )
+import shutil, glob
+mtzs = retobj.get_filenames(["mtz"])
+if len(mtzs):
+  xtricordermtz = mtzs[-1]
   self.hklin =  "%s" + "_xtricorder.mtz"
-  shutil.copyfile( timesortedmtzfiles[-1][0], self.hklin ) # copy the last file only
+  shutil.copyfile( xtricordermtz, self.hklin ) # copy the last file only
   self.LoadReflectionsFile(self.hklin)
-
 logs = glob.glob("%s/**/*.logfile.log", recursive=True)
 timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
 mstr = ''
 for fname, t in timesortedlogs:
   with open(fname, 'r') as f:
     mstr += f.read() + '\\n'
-
 # The name of logfile and tab should be present in ldic after running exec().
 # cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
 logfname = "%s_xtricorder.log"
-
 with open(logfname, 'w') as f:
   f.write(mstr)
+if len(mtzs) == 0:
+  raise Sorry("Could not find the mtz file from running Xtricorder")
 
 shutil.rmtree("%s")
 
-""" %(self.currentfileName, tempdir, tempdir, firstpart, firstpart, firstpart, tempdir, firstpart, tempdir )
+""" %(self.currentfileName, tempdir, firstpart, tempdir, firstpart, tempdir )
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
     self.send_message("%s" %xtricorder_cmd, "external_cmd" )
@@ -834,7 +855,7 @@ from io import StringIO
 tabname = "Xtriage"
 
 logstrbuf = StringIO()
-xtriageobj = xtriage.run([ "%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
+xtriageobj = xtriage.run([ r"%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
 logfname = "%s_xtriage.log"
 with open(logfname, "w") as f:
   f.write( logstrbuf.getvalue() )
@@ -878,8 +899,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
         pass
     if self.zmq_context:
       if self.cctbxproc.poll() is not None and not self.closing:
-        print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.")
+        print("Critical Error: CCTBX process has terminated. Please restart HKLviewer.", flush=True)
         timer.stop()
+        self.closeEvent()
 
       if (time.monotonic() - 5) > self.lasttime: # send Isoldes clipper data every 5 sec
         self.lasttime = time.monotonic()
@@ -921,10 +943,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.XtricorderBtn.setVisible(True)
             self.XtriageBtn.setVisible(True)
 
-          if self.infodict.get("WebGL_error"):
-            self.BrowserBox.close()
-            sys.argv.append("--enable-webgl-software-rendering")
-            self.InitBrowser()
+          if self.infodict.get("closing_time"): # notified by cctbx in regression tests
+            QTimer.singleShot(10000, self.closeEvent )
 
           if self.infodict.get("current_phil_strings"):
             philstringdict = self.infodict.get("current_phil_strings", {})
@@ -952,8 +972,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
           if self.infodict.get("scene_array_label_types"):
             self.scenearraylabeltypes = self.infodict.get("scene_array_label_types", [])
 
-          if self.infodict.get("array_infotpls"):
-            self.array_infotpls = self.infodict.get("array_infotpls",[])
+          if self.infodict.get("array_infotpls", None) is not None:
+            self.array_infotpls = self.infodict["array_infotpls"]
             self.millerarraylabels =  [e[1][0] for e in self.array_infotpls]
             self.make_new_millertable()
 
@@ -989,8 +1009,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             # needed in case we run xtriage on this miller array
             self.current_labels = self.infodict.get("current_labels")
 
-          if self.infodict.get("colnames_select_lst"):
-            self.colnames_select_lst = self.infodict.get("colnames_select_lst",[])
+          if self.infodict.get("colnames_select_lst", None) is not None:
+            self.colnames_select_lst = self.infodict["colnames_select_lst"]
             self.select_millertable_column_dlg.make_new_selection_table()
 
           if self.infodict.get("bin_infotpls"):
@@ -1047,6 +1067,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
               self.BrowserBox.setAutoFillBackground(True)
               pal.setColor(self.BrowserBox.backgroundRole(), self.backgroundcolour)
               self.BrowserBox.setPalette(pal)
+              self.send_message("Loading %s in QwebEngine" %self.html_url, msgtype="debug_info")
 
           if self.infodict.get("spacegroups"):
             spgs = self.infodict.get("spacegroups",[])
@@ -1169,6 +1190,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
             self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
+    # Notify CCTBX that GUI has been initiated and it can now process messages.
+    # This is critical as it releases a waiting semaphore in CCTBX
+            self.send_message("", msgtype="initiated_gui")
 
           if self.infodict.get("NewHKLscenes"):
             self.NewHKLscenes = self.infodict.get("NewHKLscenes",False)
@@ -1249,12 +1273,28 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 self.__dict__[btnname] = QRadioButton(self.PresetButtonsFrame)
                 pbutton = self.__getattribute__(btnname)
                 pbutton.setObjectName(btnname)
-                pbutton.setText(label)
+                # since QRadioButton cannot wrap text the text for pbutton goes in
+                # btnlabel below which is a QLabel where text can be wrapped if needed
+                pbutton.setText("")
                 if datalabel != "":
                   pbutton.setToolTip("using the " + datalabel + " dataset")
                 pbutton.setEnabled(isenabled)
                 pbutton.clicked.connect(self.onPresetbtn_click)
+                sizePolicy1 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+                sizePolicy1.setHorizontalStretch(0)
+                sizePolicy1.setVerticalStretch(0)
+                sizePolicy1.setHeightForWidth(pbutton.sizePolicy().hasHeightForWidth())
+                pbutton.setSizePolicy(sizePolicy1)
                 self.gridLayout_24.addWidget(pbutton, i, 0, 1, 1)
+                btnlabel = QLabel(self.widget)
+                sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+                sizePolicy2.setHorizontalStretch(1)
+                sizePolicy2.setVerticalStretch(1)
+                sizePolicy2.setHeightForWidth(btnlabel.sizePolicy().hasHeightForWidth())
+                btnlabel.setSizePolicy(sizePolicy2)
+                btnlabel.setWordWrap(True)
+                btnlabel.setText(label)
+                self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 
                 if moniker != "" and len(veclabels):
                   comboboxname = btnname + "_vectors"
@@ -1262,7 +1302,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                   vectorscombobox = self.__getattribute__(comboboxname)
                   vectorscombobox.addItems( veclabels )
                   vectorscombobox.activated.connect(self.onVectorsComboSelchange)
-                  self.gridLayout_24.addWidget(vectorscombobox, i, 1, 1, 1)
+                  self.gridLayout_24.addWidget(vectorscombobox, i, 2, 1, 1)
 
                 if self.ipresetbtn == i:
                   pbutton.setChecked(True)
@@ -1406,7 +1446,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     if self.currentphilstringdict['clip_plane.clip_width']:
       self.clipwidth_spinBox.setValue( self.currentphilstringdict['clip_plane.clip_width'])
     self.hkldist_spinBox.setValue( self.currentphilstringdict['clip_plane.hkldist'])
-    self.AlignVectorGroupBox.setChecked( self.currentphilstringdict['viewer.fixorientation'] == "vector" )
+    if self.currentphilstringdict['viewer.fixorientation'] == "vector":
+      self.AlignVectorGroupBox.setChecked( True)
+      self.RotateAroundframe.setEnabled(True)
+    else:
+      self.AlignVectorGroupBox.setChecked( False)
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['hkls.show_only_missing'])
     if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
       self.DrawRealUnitCellBox.setChecked(True)
@@ -1588,7 +1632,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                               buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
     if ret == QMessageBox.Yes:
       self.RemoveQsettings()
-      self.reset_to_factorydefaults = True
       msg = "User settings for %s have been removed. Factory defaults will be used after restart." %self.Qtversion
       self.AddInfoText(msg)
       self.resetFactoryDefaultbtn.setEnabled(False)
@@ -1619,13 +1662,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
       self.send_message('''
       hkls.expand_to_p1 = True
       hkls.expand_anomalous = True
-      hkls.inbrowser = True
                       ''' )
     else:
       self.send_message('''
       hkls.expand_to_p1 = False
       hkls.expand_anomalous = False
-      hkls.inbrowser = True
                       ''' )
 
 
@@ -1633,30 +1674,18 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     if self.unfeedback:
       return
     if self.expandP1checkbox.isChecked():
-      self.send_message('''
-      hkls.expand_to_p1 = True
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_to_p1 = True' )
     else:
-      self.send_message('''
-      hkls.expand_to_p1 = False
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_to_p1 = False' )
 
 
   def ExpandAnomalous(self):
     if self.unfeedback:
       return
     if self.expandAnomalouscheckbox.isChecked():
-      self.send_message('''
-      hkls.expand_anomalous = True
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_anomalous = True' )
     else:
-      self.send_message('''
-      hkls.expand_anomalous = False
-      hkls.inbrowser = True
-                      ''' )
+      self.send_message('hkls.expand_anomalous = False' )
 
 
   def showSysAbsent(self):
@@ -1869,13 +1898,13 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
         if label is None:
           return
         if col==0:
+          philstr = ""
           if self.rotvec is not None: # reset any imposed angle to 0 whenever checking or unchecking a vector
-              self.send_message("viewer.angle_around_vector = '[%d, 0]'" %self.rotvec)
+              philstr += "viewer.angle_around_vector = '[%d, 0]'\n" %self.rotvec
               self.rotavecangle_slider.setValue(0)
           self.rotvec = None
           sum = 0
           ivec= []
-          philstr = ""
           for rvrow in range(self.vectortable2.rowCount()):
             if self.vectortable2.item(rvrow, 0) is not None:
               opnr = self.vectortable2.item(rvrow, 0).data(Qt.UserRole)
@@ -1886,17 +1915,15 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
               else:
                 ivec = [opnr, False]
               philstr += "viewer.show_vector = " + str(ivec) + "\n"
-          self.send_message(philstr)
           if sum > 1 or sum == 0: # can only use one vector to rotate around. so if more are selected then deselect them altogether
-            self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(0, -1.0)) #
-            self.send_message('viewer.fixorientation = *None')
+            philstr += "viewer.animate_rotation_around_vector = '[%d, %f]'\n" %(0, -1.0)
+            philstr += 'viewer.fixorientation = *None\n'
             self.AnimaRotCheckBox.setCheckState(Qt.Unchecked)
             self.rotvec = None
-
           if self.rotvec is not None:
             self.RotateAroundframe.setEnabled(True)
             # notify cctbx which is the curently selected vector
-            self.send_message("viewer.angle_around_vector = '[%d, 0.0]'" %self.rotvec)
+            philstr += "viewer.angle_around_vector = '[%d, 0.0]'\n" %self.rotvec
           else:
             self.RotateAroundframe.setDisabled(True)
           if sum >= rc:
@@ -1905,6 +1932,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
           if sum >0.0 and sum < rc:
             self.ShowAllVectorsBtn.setCheckState(Qt.PartiallyChecked)
+          self.send_message(philstr)
       if row==rc and label !="" and label != "new vector": # a user defined vector
         if col==1:
           hklop = self.vectortable2.item(row, 1).text()
@@ -2002,7 +2030,7 @@ clip_plane.normal_vector_length_scale = -1
     self.RotateGroupBox.setEnabled(True)
     philstr = """viewer.fixorientation = *None
 clip_plane.clip_width = %f
-clip_plane.normal_vector = "-1"
+clip_plane.normal_vector = ""
 """ %self.clipwidth_spinBox.value()
     self.send_message(philstr)
 
@@ -2084,7 +2112,6 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(False)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = False
 viewer.fixorientation = *vector
@@ -2098,7 +2125,6 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(False)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = False
 viewer.fixorientation = *vector
@@ -2112,21 +2138,19 @@ clip_plane.normal_vector_length_scale = -1
         self.RotateGroupBox.setEnabled(True)
         philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.is_parallel = True
 viewer.fixorientation = *None
 clip_plane.clip_width = %f
-clip_plane.normal_vector = "-1"
+clip_plane.normal_vector = ""
           """ %self.clipwidth_spinBox.value()
     else:
       philstr = """hkls {
   slice_mode = False
-  inbrowser = True
 }
 viewer.fixorientation = *None
 clip_plane {
-  normal_vector = -1
+  normal_vector = ""
   clip_width = None
 }
        """
@@ -2353,9 +2377,14 @@ clip_plane {
   def onMakeNewData(self):
     lbltype2 = ["",""]
     if self.operate_arrayidx2 >= 0: # a dataset was selected in the millercombobox. Get label and type
-      lbltype2 = [self.millerarraylabels[self.operate_arrayidx2], self.operate_arraytype2]
-    mtpl = (self.operationtxtbox.toPlainText(), self.newlabeltxtbox.text() ,
-            [self.millerarraylabels[self.operate_arrayidx1], self.operate_arraytype1], lbltype2 )
+      lbltype2 = [self.millerarraylabels[self.operate_arrayidx2],
+                  self.operate_arraytype2]
+    mtpl = (self.operationtxtbox.toPlainText(),
+              self.newlabeltxtbox.text() ,
+              [self.millerarraylabels[self.operate_arrayidx1],
+               self.operate_arraytype1],
+               lbltype2
+            )
     self.send_message('miller_array_operation = "%s"' %str(mtpl) )
     self.makenewdataform.accept()
 
@@ -2562,7 +2591,8 @@ clip_plane {
     Qtversion = self.Qtversion
     if write_factory_default_settings:
       self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
-      self.AddInfoText("Writing factory defaults to " + self.factorydefaultfname)
+      self.AddInfoText("Writing factory defaults to %s\n" %self.factorydefaultfname)
+      self.AddAlertsText("Writing factory defaults to %s\n" %self.factorydefaultfname)
       Qtversion = "Qt"
     if not write_factory_default_settings:  # don't store system specific value as a default
       self.settings.setValue("PythonPath", self.cctbxpython )
@@ -2703,22 +2733,32 @@ clip_plane {
       # Windows: HKEY_CURRENT_USER\Software\ , Linux: $HOME/.config/ or MacOS: $HOME/Library/Preferences/
       # Do this by constructing a Qsettings object with our program scope
       self.settings = QSettings("CCTBX", "HKLviewer" )
-
-    # test for any necessary flags for WebGL to work on this platform
     if self.QWebEngineViewFlags is None: # avoid doing this test over and over again on the same PC
-      self.QWebEngineViewFlags = " --disable-web-security" # for chromium
+      flgs = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+      self.QWebEngineViewFlags = flgs + " --disable-web-security" #\
+      #  + " --enable-webgl-software-rendering --disable-gpu-compositing" \
+      #  + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+      #  + " --swiftshader --swiftshader-webgl --ignore-gpu-blacklist"
+
+      os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
+      # QTWEBENGINE_CHROMIUM_FLAGS environment is now set for TestWebGL()
       if not self.isembedded:
         print("Testing if WebGL works in QWebEngineView....")
-        QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
-        cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
-        webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        procout, procerr = webglproc.communicate()
-        if not "WebGL works" in procout.decode():
-          self.QWebEngineViewFlags = " --enable-webgl-software-rendering --ignore-gpu-blacklist "
-    if "verbose" in sys.argv[1:]:
-      print("using flags for QWebEngineView: " + self.QWebEngineViewFlags)
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += self.QWebEngineViewFlags
+        #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+        if not TestWebGL(): # try software rendering
+          self.QWebEngineViewFlags = flgs + " --disable-web-security" \
+            + " --enable-webgl-software-rendering --disable-gpu-compositing" \
+            + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
+            + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
+
+          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = self.QWebEngineViewFlags
+          if not TestWebGL():
+            print("FATAL ERROR: WebGL does not work in QWebEngineView on this platform!")
+            return False
+        print(" It does!")
+    for arg in sys.argv[1:]:
+      if "verbose" in arg:
+         print("using flags for QWebEngineView: " + os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
     return True
 
 
@@ -2763,43 +2803,71 @@ clip_plane {
       self.PersistQsettings(True)
 
 
-  def RemoveQsettings(self, all=False):
-    mstr = self.Qtversion
+  @staticmethod
+  def RemoveQsettings(all=False):
+    mstr = NGL_HKLViewer.Qtversion
     if all:
       mstr = ""
-    self.settings.remove(mstr)
+    NGL_HKLViewer.settings.remove(mstr)
+    print("HKLviewer settings removed. Using factory defaults next time.")
+    NGL_HKLViewer.reset_to_factorydefaults = True
+
+
+# test for any necessary flags for WebGL to work on this platform
+def TestWebGL():
+  #print("QTWEBENGINE_CHROMIUM_FLAGS = %s" %os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] )
+  QtChromiumCheck_fpath = os.path.join(os.path.split(hklviewer_gui.__file__)[0], "qt_chromium_check.py")
+  cmdargs = [ sys.executable, QtChromiumCheck_fpath ]
+  webglproc = subprocess.Popen( cmdargs, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  procout, procerr = webglproc.communicate()
+  if "WebGL works" in procout.decode():
+    return True
+  print(procout.decode())
+  return False
 
 
 def run(isembedded=False, chimeraxsession=None):
   import time
   #time.sleep(15) # enough time for attaching debugger
+
+  # TODO: rewrite this function at some point to use python's argparse module
   try:
-    debugtrue = False
-    closingtime = 0
     kwargs = dict(arg.split('=') for arg in sys.argv if '=' in arg)
-    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " "
-    for e in sys.argv:
-      if "devmode" in e or "debug" in e and not "UseOSBrowser" in e:
-        debugtrue = True
-        # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
-        if "debug" in e:
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
-        if "devmode" in e: # Also start our WebEngineDebugForm
+    # if an argument is a filename then have it as a keyword argument and assume it's a reflection file
+    for arg in sys.argv[1:]:
+      if '=' not in arg:
+      # if so add it as a keyword argument
+        if os.path.isfile(arg):
+          if not kwargs.get('hklin', False):
+            kwargs['hklin'] = arg
+
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    argstr = " ".join(sys.argv[1:])
+
+    if "remove_settings" in argstr:
+      NGL_HKLViewer.RemoveQsettings()
+      sys.exit()
+    if "devmode" in argstr or "debug" in argstr:
+      os.environ["PYTHONASYNCIODEBUG"] = "1" # print debug output from asyncio used in webbrowser_messenger_py3
+    if "devmode" in argstr or "debug" in argstr and not "UseOSBrowser" in argstr:
+      # some useful flags as per https://doc.qt.io/qt-5/qtwebengine-debugging.html
+      if "debug" in argstr:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--remote-debugging-port=9741 --single-process --js-flags='--expose_gc'"
+      if "devmode" in argstr: # Also start our WebEngineDebugForm
 # Don't use --single-process as it will freeze the WebEngineDebugForm when reaching user defined JavaScript breakpoints
-          os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
-    if kwargs.get('closingtime', False): # close when time is up during regression tests
-      closingtime = int(kwargs['closingtime']) * 1000 # miliseconds
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--js-flags='--expose_gc'"
+    closingtime = None
+    if kwargs.get('closing_time', False): # close when time is up during regression tests
+      closingtime = int(kwargs['closing_time']) * 2000 # miliseconds
 
     from .qt import QApplication
     # ensure QWebEngineView scales correctly on a screen with high DPI
     if not isembedded:
       QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     app = QApplication(sys.argv)
-
     HKLguiobj = NGL_HKLViewer(app, isembedded)
-
     if not isembedded:
-      #timer = QTimer()
       timer.setInterval(20)
       timer.timeout.connect(HKLguiobj.ProcessMessages)
       timer.start()
@@ -2817,7 +2885,7 @@ def run(isembedded=False, chimeraxsession=None):
     # Call HKLguiobj.UsePersistedQsettings() but through QTimer so it happens after
     # the QApplication eventloop has started as to ensure resizing according to persisted
     # font size is done properly
-    QTimer.singleShot(500, HKLguiobj.UsePersistedQsettings)
+    QTimer.singleShot(1000, HKLguiobj.UsePersistedQsettings)
     # For regression tests close us after a specified time
     if closingtime:
       QTimer.singleShot(closingtime, HKLguiobj.closeEvent)

@@ -6,6 +6,7 @@ from cctbx.xray import observation_types
 from iotbx.gui_tools.reflections import ArrayInfo
 from crys3d.hklviewer import display2 as display
 from crys3d.hklviewer import jsview_3d
+from crys3d.hklviewer.jsview_3d import HKLviewerError as HKLviewerError
 from cctbx import miller
 from cctbx import crystal
 from libtbx.math_utils import roundoff
@@ -67,6 +68,10 @@ class HKLViewFrame() :
      ("html2canvas copyright", os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_for_html2canvas.txt"))
     ]
     self.zmqsleeptime = 0.1
+    self.update_handler_sem = threading.BoundedSemaphore()
+    self.initiated_gui_sem = threading.Semaphore()
+    self.start_time = time.time()
+    kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
     buttonsdeflist = []
     if 'useGuiSocket' in kwds:
       self.guiSocketPort = eval(kwds['useGuiSocket'])
@@ -74,11 +79,14 @@ class HKLViewFrame() :
       self.guisocket = self.context.socket(zmq.PAIR)
       self.guisocket.connect("tcp://127.0.0.1:%s" %self.guiSocketPort )
       self.STOP = False
+      self.initiated_gui_sem.acquire(timeout=20) # released once HKLviewer sends a message of type "initiated_gui"
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
       self.mprint("CCTBX process with pid: %s starting socket thread" %os.getpid(), verbose=1)
       # name this thread to ensure any asyncio functions are called only from main thread
       self.msgqueuethrd = threading.Thread(target = self.zmq_listen, name="HKLviewerZmqThread" )
       self.msgqueuethrd.daemon = True
-      kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
+      #kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
       pyversion = "cctbx.python.version: " + str(sys.version_info[0])
       # tell gui what python version we are
       self.SendInfoToGUI(pyversion )
@@ -98,6 +106,9 @@ class HKLViewFrame() :
         buttonsdeflist = []
       if "phenix_buttonsdeflist" in dir():
         self.SendInfoToGUI({"AddPhenixButtons": True})
+    else:
+      now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
+      self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
     self.mprint("kwds= " +str(kwds), verbose=1)
     self.mprint("args= " + str(args), verbose=1)
     kwds['websockport'] = self.find_free_port()
@@ -132,21 +143,54 @@ class HKLViewFrame() :
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
     self.hklin = None
-    if 'hklin' in kwds or 'HKLIN' in kwds:
-      self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
-    self.LoadReflectionsFile(self.hklin)
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
-    if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
-      fname = kwds.get('phil_file', "" )
-      if os.path.isfile(fname):
+    self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
+    self.thrd2.daemon = True
+    self.thrd2.start()
+    self.closingtime = int(kwds.get('closing_time', -1 ))
+    # if invoked from command line not using Qt close us by waiting for thread processing cmdline kwargs to finish
+    if 'closing_time' in kwds and not 'useGuiSocket' in kwds:
+      self.thrd2.join(timeout = self.closingtime + 40)
+      if self.thrd2.is_alive():
+        self.mprint("Error: Timeout reached for thread_process_arguments()", verbose=2)
+        self.SendInfoToGUI( { "closing_time": True } )
+
+
+  def thread_process_arguments(self, **kwds):
+    try:
+      if 'hklin' in kwds or 'HKLIN' in kwds:
+        self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+      self.LoadReflectionsFile(self.hklin)
+      self.validate_preset_buttons()
+      if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
+        fname = kwds.get('phil_file', "" )
+        if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
+          self.mprint("Failed acquiring initiated_gui_sem semaphore within 300 seconds", verbose=1)
+        self.initiated_gui_sem.release()
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
+      if 'image_file' in kwds: # save displayed reflections to an image file
+        time.sleep(1)
+        fname = kwds.get('image_file', "testimage.png" )
+        self.update_from_philstr('save_image_name = "%s"' %fname)
+      # if we are invoked using Qtgui close us gracefully if requested
+      if 'closing_time' in kwds:
+        time.sleep(10)
+        self.mprint("Closing time reached", verbose=1)
+        self.SendInfoToGUI( { "closing_time": True } )
+      self.mprint("Done thread_process_arguments()", verbose=2)
+    except HKLviewerError as e:
+      self.mprint("\nClosing due to:\n" + str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
+      self.SendInfoToGUI( { "closing_time": True } )
+      raise
+    except Exception as e:
+      self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
 
   def __exit__(self, exc_type=None, exc_value=0, traceback=None):
@@ -157,22 +201,40 @@ class HKLViewFrame() :
       self.output_file.close()
       self.output_file = None
     del self
-    #sys.exit()
 
 
-  def mprint(self, msg, verbose=0, end="\n"):
-    if self.output_file and self.output_file.closed==False :
-      self.output_file.write(msg + end)
+  def mprint(self, msg, verbose=0, end="\n", with_elapsed_secs=True):
+    elapsed = time.time() - self.start_time
+    tmsg = "%s%s" %(msg, end)
+    if with_elapsed_secs:
+      tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
+    intverbose =1
+    if isinstance(self.verbose,str):
+      m = re.findall(r"(\d)", self.verbose)
+      if len(m) >0:
+        intverbose = int(m[0])
+    else:
+      intverbose = self.verbose
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "info": msg + end } )
-      if  (isinstance(self.verbose,int) and isinstance(verbose,int) and verbose >= 1 and verbose <= self.verbose) \
+        self.SendInfoToGUI( { "info": tmsg } )
+      if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "alert": msg + end } )
+        self.SendInfoToGUI( { "alert": tmsg } )
+        if self.output_file and self.output_file.closed==False:
+          self.output_file.write(tmsg)
+          self.output_file.flush()
     else:
-      print(msg)
+      if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
+       or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
+        # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
+        if self.output_file and self.output_file.closed==False:
+          self.output_file.write(tmsg)
+          self.output_file.flush()
+        else:
+          print( str(msg).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding) )
 
 
   def find_free_port(self):
@@ -185,7 +247,6 @@ class HKLViewFrame() :
 
 
   def zmq_listen(self):
-    #time.sleep(5)
     nan = float("nan") # workaround for "evaluating" any NaN values in the messages received
     lastmsgtype = ""
     while not self.STOP:
@@ -193,8 +254,13 @@ class HKLViewFrame() :
         msgstr = self.guisocket.recv().decode("utf-8")
         if msgstr == "":
           continue
-        self.mprint("Received message string:\n" + msgstr, verbose=2)
+        self.mprint("Received message string:\n" + msgstr, verbose=3)
         msgtype, mstr = eval(msgstr)
+        if msgtype == "initiated_gui":
+          self.mprint("GUI has been initialised.\n", verbose=1)
+          self.initiated_gui_sem.release()
+        if msgtype=="debug_info":
+          self.mprint(mstr, verbose=2 )
         if msgtype=="debug_show_phil":
           self.mprint(self.show_current_phil() )
         if msgtype=="datatypedict":
@@ -202,15 +268,14 @@ class HKLViewFrame() :
         if msgtype=="clipper_crystdict":
           self.clipper_crystdict = eval(mstr)
           self.convert_clipperdict_to_millerarrays(self.clipper_crystdict)
-        if msgtype=="philstr" or msgtype=="preset_philstr":
+        if msgtype in ["philstr", "preset_philstr"]:
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
-          self.update_settings(new_phil, msgtype, lastmsgtype)
+          self.guarded_update_settings(new_phil, msgtype, lastmsgtype)
         if msgtype=="external_cmd":
           self.external_cmd = mstr
           self.mprint("Received python command string:\n" + mstr, verbose=1)
           self.run_external_cmd()
-
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -223,6 +288,7 @@ class HKLViewFrame() :
     self.ResetPhil(extraphil)
     self.viewer.symops = []
     self.viewer.sg = None
+    self.procarrays = []
     self.viewer.proc_arrays = []
     self.viewer.HKLscenedict = {}
     self.uservectors = []
@@ -231,6 +297,7 @@ class HKLViewFrame() :
     self.viewer.sceneisdirty = True
     self.viewer.isnewfile = True
     self.validated_preset_buttons = False
+    self.viewer.hkl_scenes_infos = []
     if self.viewer.miller_array:
       self.viewer.params.viewer.scene_id = None
       self.viewer.RemoveStageObjects()
@@ -402,11 +469,31 @@ class HKLViewFrame() :
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.update_settings(new_phil)
+    self.guarded_update_settings(new_phil, msgtype="preset_philstr", postrender=True)
+
+
+  def guarded_update_settings(self, new_phil=None, msgtype="philstr",
+                              lastmsgtype="philstr", postrender=False):
+    self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
+    if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
+      self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+    self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
+    self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+    if postrender:
+      time.sleep(1)
+      self.viewer.RedrawNGL()
+      time.sleep(1)
+      self.viewer.SimulateClick()
+      time.sleep(1)
+      self.viewer.GetReflectionsInFrustum()
+    self.update_handler_sem.release()
+    self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
 
 
   def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
+      if not self.viewer.webgl_OK:
+        raise HKLviewerError("Critical WebGL problem! ")
       oldsceneid = self.params.viewer.scene_id
       currentNGLscope = None
       currentSelectInfoscope = None
@@ -524,6 +611,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename") or make_new_info_tuples:
         self.viewer.array_info_format_tpl = []
+        colnames_select_lst = []
         for array in self.procarrays:
           if type(array.data()) == flex.std_string: # in case of status array from a cif file
             uniquestrings = list(set(array.data()))
@@ -539,13 +627,11 @@ class HKLViewFrame() :
           arrayinfo = ArrayInfo(array,wrap_labels)
           info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
           self.viewer.array_info_format_tpl.append( info_fmt )
-        self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl})
-
-        colnames_select_lst = []
-        for philname,selected in list(self.params.selected_info.__dict__.items()):
-          if not philname.startswith("__"):
-            colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
-        self.SendInfoToGUI({ "colnames_select_lst": colnames_select_lst })
+          for philname,selected in list(self.params.selected_info.__dict__.items()):
+            if not philname.startswith("__"):
+              colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
+        self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl,
+                            "colnames_select_lst": colnames_select_lst })
 
       if jsview_3d.has_phil_path(diff_phil, "save_image_name"):
         self.SaveImageName(phl.save_image_name)
@@ -579,6 +665,9 @@ class HKLViewFrame() :
       if (self.viewer.miller_array is None) :
         self.mprint( NOREFLDATA, verbose=1)
       self.mprint( "Ready")
+    except HKLviewerError as e:
+      # raised in DrawNGLJavaScript() if WebGL error flag was set or failing to connect to webbrowser
+      raise e
     except Exception as e:
       self.mprint(to_str(e) + "\n" + traceback.format_exc())
 
@@ -737,12 +826,12 @@ class HKLViewFrame() :
 
   def SetSpaceGroupChoice(self, n):
     self.params.spacegroup_choice = n
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetDefaultSpaceGroup(self):
     self.params.using_space_subgroup = False
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_default_spacegroup(self):
@@ -755,7 +844,7 @@ class HKLViewFrame() :
     # get list of existing new miller arrays and operations if present
     miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
     self.params.miller_array_operations = str( miller_array_operations_lst )
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def make_new_miller_array(self, is_preset_philstr=False):
@@ -768,9 +857,9 @@ class HKLViewFrame() :
       arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, type2)
 
     for arr in self.procarrays:
-      if label in arr.info().labels + [ "", None]:
+      if label in arr.info().label_string():
         if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
-          return self.viewer.get_scene_id_from_label_or_type(label)
+          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
         raise Sorry("Provide a label for the new miller array that isn't already used.")
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
@@ -789,7 +878,7 @@ class HKLViewFrame() :
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
     if newarray is None:
-       # allow user to quickly amend his broken python code without having to enter a new column label
+      # allow user to quickly amend his broken python code without having to enter a new column label
       self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
       # and update_settings() won't bail out with a "No change in PHIL parameters" message
     else:
@@ -985,6 +1074,8 @@ class HKLViewFrame() :
     ret = False
     self.NewFileLoaded=True
     if (file_name != ""):
+      if not os.path.isfile(file_name):
+        raise Sorry(file_name + " doesn't exists")
       try :
         self.mprint("\nReading file %s..." %file_name)
         self.prepare_dataloading()
@@ -1090,7 +1181,7 @@ class HKLViewFrame() :
 
   def LoadReflectionsFile(self, openfilename):
     self.params.openfilename = openfilename
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def load_miller_arrays(self):
@@ -1113,7 +1204,7 @@ class HKLViewFrame() :
 
   def LoadMillerArrays(self, marrays):
     self.provided_miller_arrays = marrays
-    self.update_settings()
+    self.guarded_update_settings()
     self.params.use_provided_miller_arrays = True
 
 
@@ -1183,7 +1274,7 @@ class HKLViewFrame() :
     label = ""
     for e in self.hklfile_history:
       for tngcolumn_tag in tngcolumn_tags.split(","):
-        m =  re.findall(tngcolumn_tag + '/(\S*)/', e, re.VERBOSE)
+        m =  re.findall(tngcolumn_tag + r'/(\S*)/', e, re.VERBOSE)
         if len(m) > 0:
           tngcols.append(m[0])
     if len(tngcols):
@@ -1279,20 +1370,23 @@ class HKLViewFrame() :
                 nvectorsfound +=1
                 if len(philveclabel) < len(veclabel):
                   if philstr_userlbl:
-                    #veclabels += "," + philstr_userlbl
                     veclabels.append(philstr_userlbl)
                   else:
-                    #veclabels += "," + veclabel
                     veclabels.append(veclabel)
             if (iphilvec+1) > nvectorsfound:
               self.mprint("\"%s\" is disabled until a vector, \"%s\", has been " \
                    "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
         miller_array_operation_can_be_done = False
         if millaroperationstr:
-          for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
-            if datalabel == arr1label or datatype == arr1type:
+          for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+            if datalabel == arr1label:
               miller_array_operation_can_be_done = True
               break
+          if not miller_array_operation_can_be_done:
+            for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+              if datatype == arr1type:
+                miller_array_operation_can_be_done = True
+                break
           if miller_array_operation_can_be_done:
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
@@ -1300,7 +1394,6 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
-            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
         if philstr_label is not None and millaroperationstr is None:
           labeltypefound = False
           for inflst, pidx, fidx, datalabel, datatype, hassigmas, sceneid in self.viewer.hkl_scenes_infos:
@@ -1319,8 +1412,6 @@ class HKLViewFrame() :
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
-            #activebtns.append((self.allbuttonslist[ibtn], False, "", None))
-
       self.SendInfoToGUI({"enable_disable_preset_buttons": str(activebtns)})
     self.validated_preset_buttons = True
 
@@ -1435,42 +1526,42 @@ class HKLViewFrame() :
 
   def TabulateMillerArray(self, ids):
     self.params.tabulate_miller_array_ids = str(ids)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetCameraType(self, camtype):
     self.params.NGL.camera_type = camtype
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ExpandToP1(self, val):
     self.params.hkls.expand_to_p1 = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ExpandAnomalous(self, val):
     self.params.hkls.expand_anomalous = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowOnlyMissing(self, val):
     self.params.hkls.show_only_missing = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowMissing(self, val):
     self.params.hkls.show_missing = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowDataOverSigma(self, val):
     self.params.hkls.show_data_over_sigma = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowSystematicAbsences(self, val):
     self.params.hkls.show_systematic_absences = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowSlice(self, val, axis="h", index=0):
@@ -1478,7 +1569,7 @@ class HKLViewFrame() :
     self.params.hkls.slice_mode = val
     self.params.hkls.slice_axis = axisstr
     self.params.hkls.slice_index = index
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_scene_bin_thresholds(self, thresholds = None, binner_idx = 0,  nbins = 6):
@@ -1496,7 +1587,7 @@ class HKLViewFrame() :
     self.params.nbins = nbins
     self.params.binning.binner_idx = binner_idx
     self.params.binning.bin_opacity = [ [1.0, e] for e in range(nbins) ]
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def GetNumberingOfBinners(self):
@@ -1509,23 +1600,23 @@ class HKLViewFrame() :
     else:
       self.params.scene_bin_thresholds = thresholds[:]
     self.params.nbins = len(binvals)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetOpacities(self, bin_opacities):
     #self.params.bin_opacities = str(bin_opacities)
     self.params.bin_opacities = bin_opacity
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetToolTipOpacity(self, val):
     self.params.NGL.tooltip_alpha = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetShowToolTips(self, val):
     self.params.NGL.show_tooltips = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_scene(self, scene_id):
@@ -1545,12 +1636,12 @@ class HKLViewFrame() :
 
   def SetScene(self, scene_id):
     self.params.viewer.scene_id = scene_id
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetMergeData(self, val):
     self.params.merge_data = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetRadiiScale(self, scale=1.0, nth_power_scale = float("nan")):
@@ -1562,23 +1653,23 @@ class HKLViewFrame() :
     """
     self.params.hkls.scale = scale
     self.params.hkls.nth_power_scale_radii = nth_power_scale
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetColourRadiusToSigmas(self, val):
     self.params.hkls.sigma_color_radius = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetColourScheme(self, color_scheme, color_powscale=1.0):
     self.params.hkls.color_scheme = color_scheme
     self.params.hkls.color_powscale = color_powscale
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetAction(self, val):
     self.params.action = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def set_action(self, val):
@@ -1596,12 +1687,15 @@ class HKLViewFrame() :
 
 
   def list_vectors(self):
-    self.viewer.calc_rotation_axes()
+    self.viewer.calc_rotation_axes(ma=self.procarrays[0] )
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
     if self.viewer.miller_array is not None:
       uc = self.viewer.miller_array.unit_cell()
-    else: # a fallback
+    elif len(self.procarrays):  # a fallback
       uc = self.procarrays[0].unit_cell()
+    else:
+      self.viewer.all_vectors = []
+      return self.viewer.all_vectors
 
     tncsvec = []
     if self.tncsvec is not None:
@@ -1720,22 +1814,22 @@ class HKLViewFrame() :
     self.params.viewer.add_user_vector_hkl_op = str(hkl_op)
     self.params.viewer.add_user_vector_abc = str(abc)
     self.params.viewer.add_user_vector_hkl = str(hkl)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowVector(self, val, b=True):
     self.params.viewer.show_vector = [str([val, b])]
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowUnitCell(self, val):
     self.params.show_real_space_unit_cell = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowReciprocalUnitCell(self, val):
     self.params.show_reciprocal_unit_cell = val
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
@@ -1745,27 +1839,27 @@ class HKLViewFrame() :
       self.params.hkls.slice_mode = False
     else:
       self.params.clip_plane.clip_width = None
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):
     self.params.viewer.animate_rotation_around_vector = str([vecnr, speed])
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def RotateAroundVector(self, vecnr, dgr):
     self.params.viewer.angle_around_vector = str([vecnr, dgr])
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def ShowHKL(self, hkl):
     self.params.viewer.show_hkl = str(hkl)
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def SetMouseSpeed(self, trackspeed):
     self.params.NGL.mouse_sensitivity = trackspeed
-    self.update_settings()
+    self.guarded_update_settings()
 
 
   def GetMouseSpeed(self):
@@ -1834,6 +1928,11 @@ class HKLViewFrame() :
           m = bytes(m)
         bindict = zlib.compress( m )
         self.guisocket.send( bindict )
+    else:
+      if infodict.get("closing_time", False):
+        return
+
+
 
 
 master_phil_str = """
@@ -1879,7 +1978,7 @@ master_phil_str = """
               "vector the unit of hkldist is the length of the reciprocal lattice vector. " \
               "If the clip plane is normal to a real space vector the unit of hkldist is the " \
               "inverse of its real space length."
-    normal_vector = "-1"
+    normal_vector = ""
       .type = str
     is_assoc_real_space_vector = False
       .type = bool
@@ -1999,6 +2098,9 @@ master_phil_str = """
     .type = str
   tooltip_data = "[]"
     .type = str
+  use_wireframe = False
+    .type = bool
+    .help = "Draw objects using wireframe mesh"
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 

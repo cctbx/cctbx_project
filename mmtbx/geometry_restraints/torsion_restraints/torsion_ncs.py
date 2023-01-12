@@ -390,7 +390,7 @@ class torsion_ncs(object):
           cur_matches = super_hash.get(i_seq)
           if cur_matches is None:
             continue
-          for key in cur_matches.keys():
+          for key in list(cur_matches.keys()):
             try:
               temp[key].append(cur_matches[key])
             except Exception:
@@ -402,7 +402,7 @@ class torsion_ncs(object):
         dp_match = []
           # cctbx.geometry_restraints.shared_dihedral_proxy()
         dp_match.append([dp, False, False, False])
-        for key in temp.keys():
+        for key in list(temp.keys()):
           cur_dp_hash = dp_hash.get(tuple(temp[key]))
           if cur_dp_hash is not None:
             dp_match.append([cur_dp_hash, False, False, False])
@@ -467,7 +467,7 @@ class torsion_ncs(object):
       self.ncs_match_hash = ncs_match_hash
       self.reduce_redundancies()
 
-      for res in self.ncs_match_hash.keys():
+      for res in list(self.ncs_match_hash.keys()):
         resnum = res[6:10]
         hash_key = res_to_selection_hash[res]
         cur_len = match_counter[hash_key]
@@ -480,7 +480,7 @@ class torsion_ncs(object):
 
       #determine ranges
       self.master_ranges = {}
-      for key in inclusive_range.keys():
+      for key in list(inclusive_range.keys()):
         current = None
         previous = None
         start = None
@@ -544,8 +544,8 @@ class torsion_ncs(object):
 
   def reduce_redundancies(self):
     #clear out redundancies
-    for key in self.ncs_match_hash.keys():
-      for key2 in self.ncs_match_hash.keys():
+    for key in list(self.ncs_match_hash.keys()):
+      for key2 in list(self.ncs_match_hash.keys()):
         if key == key2:
           continue
         if key in self.ncs_match_hash[key2]:
@@ -588,7 +588,7 @@ class torsion_ncs(object):
     current_rotamers = {}
     for rot in self.r.results:
       current_rotamers[rot.id_str()] = rot.rotamer_name
-    for key in self.ncs_match_hash.keys():
+    for key in list(self.ncs_match_hash.keys()):
       search_key = key[4:11]+key[0:4] # SEGIDs?
       rotamer = current_rotamers.get(search_key)
       if rotamer is not None:
@@ -928,7 +928,7 @@ class torsion_ncs(object):
             used.append(j)
       if i not in used:
         clusters[i] = None
-    for key in clusters.keys():
+    for key in list(clusters.keys()):
       cluster = clusters[key]
       if cluster is None:
         target_angles[key] = None
@@ -1005,7 +1005,7 @@ class torsion_ncs(object):
     for rot in self.r.results:
       model_hash[rot.id_str()] = rot.rotamer_name
       model_score[rot.id_str()] = rot.score
-    for key in self.res_match_master.keys():
+    for key in list(self.res_match_master.keys()):
       res_key = key[4:10]+' '+key[0:4]
       all_rotamers[res_key] = []
       model_rot = model_hash.get(res_key)
@@ -1077,7 +1077,7 @@ class torsion_ncs(object):
     fix_list = {}
     rotamer_targets = {}
 
-    for key in self.res_match_master.keys():
+    for key in list(self.res_match_master.keys()):
       res_key = key[4:11]+key[0:4]
       model_rot = model_hash.get(res_key)
       if model_rot == "OUTLIER":
@@ -1122,7 +1122,7 @@ class torsion_ncs(object):
             #key = '%s%5s %s' % (
             #          chain.id, residue_group.resid(),
             #          atom_group.altloc+atom_group.resname)
-            if key in fix_list.keys():
+            if key in list(fix_list.keys()):
               model_rot, m_chis, value = rotalyze.evaluate_rotamer(
                 atom_group=atom_group,
                 sidechain_angles=self.sa,
@@ -1235,7 +1235,7 @@ class torsion_ncs(object):
     map_cc_hash, sigma_cutoff_hash = \
       self.get_sidechain_map_correlation(xray_structure, pdb_hierarchy)
     cc_candidate_list = []
-    for key in self.ncs_match_hash.keys():
+    for key in list(self.ncs_match_hash.keys()):
       whole_set = []
       value = map_cc_hash.get(key)
       max = None
@@ -1349,7 +1349,7 @@ class torsion_ncs(object):
 
   def build_sidechain_angle_hash(self):
     sidechain_angle_hash = {}
-    for key in self.sa.atomsForAngle.keys():
+    for key in list(self.sa.atomsForAngle.keys()):
       resname = key[0:3].upper()
       if sidechain_angle_hash.get(resname) is None:
         sidechain_angle_hash[resname] = {}

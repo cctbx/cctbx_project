@@ -106,7 +106,7 @@ class experiment_scaler(worker):
     self.logger.log("Experiments rejected because of low correlation with reference: %d"%experiments_rejected_because_of_low_correlation_with_reference)
     self.logger.log("Reflections rejected because of rejected experiments: %d"%reflections_removed_because_of_rejected_experiments)
     self.logger.log("High resolution experiments: %d"%high_res_experiments)
-    if self.params.postrefinement.enable:
+    if self.params.postrefinement.enable and 'postrefine' in self.params.dispatch.step_list:
       self.logger.log("Note: scale factors were not applied, because postrefinement is enabled")
 
     # MPI-reduce all counts

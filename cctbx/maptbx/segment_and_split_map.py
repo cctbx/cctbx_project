@@ -3135,7 +3135,7 @@ def get_ncs_from_map(params = None,
        identify_ncs_id = identify_ncs_id,
        ncs_in_cell_only = ncs_in_cell_only,
       sites_orth = sites_orth, crystal_symmetry = crystal_symmetry, out = out)
-    if cc_avg < min_ncs_cc:
+    if cc_avg is None or cc_avg < min_ncs_cc:
       score = 0. # Do not allow low CC values to be used
     if score is None:
       print("symmetry:", symmetry, " no score", ncs_obj.max_operators(), file = out)
@@ -3159,7 +3159,7 @@ def get_ncs_from_map(params = None,
         identify_ncs_id = identify_ncs_id,
         ncs_in_cell_only = ncs_in_cell_only,
         sites_orth = new_sites_orth, crystal_symmetry = crystal_symmetry, out = out)
-      if cc_avg < min_ncs_cc:
+      if cc_avg is None or cc_avg < min_ncs_cc:
         score = 0. # Do not allow low CC values to be used
       if score is None:
         print("symmetry:", symmetry, " no score", ncs_obj.max_operators(), file = out)
@@ -4960,6 +4960,7 @@ def get_params(args, map_data = None, crystal_symmetry = None,
       tracking_data.set_full_crystal_symmetry(
          ccp4_map.unit_cell_crystal_symmetry())
       tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
+      print("ZZA cs from ",params.input_files.map_file,crystal_symmetry)
     map_data = ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")

@@ -38,6 +38,7 @@ default_enable_cuda = False
 default_enable_kokkos = False
 default_opt_resources = False
 default_enable_cxx11 = False
+default_cxxstd = None
 default_use_conda = False
 
 def is_64bit_architecture():
@@ -985,6 +986,7 @@ Wait for the command to finish, then try again.""" % vars())
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
+        cxxstd=command_line.options.cxxstd,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       # if an installed environment exists, override with build_options
@@ -2644,6 +2646,7 @@ class build_options:
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
+        cxxstd=default_cxxstd,
         skip_phenix_dispatchers=False):
 
     adopt_init_args(self, locals())
@@ -2928,6 +2931,12 @@ class pre_process_args:
       action="store_true",
       default=default_enable_cxx11,
       help="use C++11 standard")
+    parser.option(None, "--cxxstd",
+      action="store",
+      type="choice",
+      default=default_cxxstd,
+      choices=['c++11', 'c++14'], # this should just be the argument to the -std flag
+      help="Set the C++ standard. This cannot be set along with --enable_cxx11")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
       default=False,
@@ -2961,6 +2970,14 @@ class pre_process_args:
           and os.name != "nt"):
         raise RuntimeError(
           "The --msvc_arch_flag option is not valid for this platform.")
+
+      # check that only enable_cxx11 or cxxstd is set
+      if self.command_line.options.enable_cxx11 \
+        and self.command_line.options.cxxstd is not None:
+        raise RuntimeError('''
+Both --enable_cxx11 and --cxxstd have been set. Please only set one of
+these options.
+      ''')
 
   def option_repository(self, option, opt, value, parser):
     if (not op.isdir(value)):
@@ -3096,6 +3113,9 @@ def unpickle(build_path=None, env_name="libtbx_env"):
   # XXX backward compatibility 2022-01-19
   if not hasattr(env.build_options, "enable_kokkos"):
     env.build_options.enable_kokkos = False
+  # XXX backward compatibility 2022-12-07
+  if not hasattr(env.build_options, "cxxstd"):
+    env.build_options.cxxstd = None
   # update installed location
   if env.installed:
     sys_prefix = get_conda_prefix()

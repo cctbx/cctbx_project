@@ -162,13 +162,7 @@ model
 There is more than one model type, {}. You must specify one.
 '''.format(self.get_model_type(filename=filename)))
     else:
-      type_options = ['x_ray', 'n_gaussian', 'wk1995', 'it1992', 'electron', 'neutron']
-      if model_type not in type_options:
-        raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
-                    (model_type, ', '.join(type_options)))
-      check_type = model_type
-      if check_type in ['n_gaussian', 'wk1995', 'it1992']:
-        check_type = 'x_ray'
+      check_type = self.map_scattering_table_type(model_type)
       if check_type not in self.get_model_type(filename=filename):
         raise Sorry('''
 The model type, {}, is not one of the types set for the model, {}.

@@ -30,19 +30,21 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules
+    wget "https://github.com/SCons/scons/archive/3.1.1.zip"
+    unzip 3.1.1.zip
+    mv scons-3.1.1 scons
+  displayName: Download SCons for Python 2
+  condition: eq(variables['PYTHON_VERSION'], 'py27')
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)/modules/dxtbx
     git remote set-url origin https://github.com/dials/dxtbx.git
     git fetch origin
     git checkout dials-2.2
   displayName: Use dials-2.2 branch for Python 2
   condition: eq(variables['PYTHON_VERSION'], 'py27')
-
-- script: |
-    set -xe
-    cd $(Pipeline.Workspace)/modules/eigen
-    git checkout 3.3.9
-  displayName: Use eigen 3.3.9 for CentOS 6
-  condition: eq('${{ parameters.version[0] }}', 6)
 
 - script: |
     set -xe
@@ -118,50 +120,45 @@ steps:
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 
-# - script: |
-#     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-#     conda remove -y --force -n $(PYTHON_VERSION) boost boost-cpp
-#     conda install -y --no-deps -c cctbx-old-abi -n $(PYTHON_VERSION) boost boost-cpp
-#   displayName: Use Boost from cctbx-old-abi channel
-#   condition: or(eq('${{ parameters.version[0] }}', 6), eq('${{ parameters.version[0] }}', 7), eq('${{ parameters.version[0] }}', 14))
-
 # build
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
-    python bootstrap.py build --builder=cctbx --use-conda=${CONDA_PREFIX} --nproc=4
+    python bootstrap.py build \
+      --builder=cctbx \
+      --use-conda=${CONDA_PREFIX} \
+      --nproc=4
     cd build
     source setpaths.sh
-    libtbx.configure cma_es fable rstbx spotfinder cbflib_adaptbx phenix_regression phenix_examples
+    libtbx.configure \
+      cma_es \
+      fable \
+      rstbx \
+      spotfinder \
+      cbflib_adaptbx \
+      phenix_regression \
+      phenix_examples
     libtbx.scons -j 4
     libtbx.scons -j 4
   displayName: Configure and Build
-  condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
+  condition: >
+    and(succeeded(),
+        or(ne(variables['PYTHON_VERSION'], 'py27'),
+           and(eq(variables['PYTHON_VERSION'], 'py27'),
+               and(ne('${{ parameters.version[0] }}', 22),
+                   ne('${{ parameters.version[0] }}', 9)))))
 
 - script: |
     set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
-
-    cd modules
-    rm -fr cbflib
-    rm -fr dxtbx
-    cd boost
-    git checkout py310
-    cd ..
-    cd ..
-
-    python bootstrap.py build --builder=cctbxlite --use-conda=${CONDA_PREFIX} --nproc=4
-    cd build
-    source setpaths.sh
-    libtbx.configure annlib cma_es crys3d fable phenix_regression phenix_examples
-    libtbx.scons -j 4
-    libtbx.scons -j 4
-  displayName: Configure and Build
-  condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
+    if [ -f "./build/config.log" ]; then
+      cd build
+      cat config.log
+    fi
+  displayName: Debug info
+  condition: succeededOrFailed()
 
 # test
 - script: |
@@ -194,50 +191,27 @@ steps:
       nproc=4
   failOnStderr: false
   displayName: Test
-  condition: and(succeeded(), ne(variables['PYTHON_VERSION'], 'py310'))
-  retryCountOnTaskFailure: 3
-
-- script: |
-    set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda activate $(PYTHON_VERSION)
-    cd $(Pipeline.Workspace)
-    source ./build/setpaths.sh
-    rm -fr tests
-    mkdir tests
-    cd tests
-    export PYTHONDEVMODE=1
-    export PYTHONTRACEMALLOC=1
-    libtbx.run_tests_parallel \
-      module=annlib_adaptbx \
-      module=boost_adaptbx \
-      module=cctbx \
-      module=cctbx_website \
-      module=cma_es \
-      module=fable \
-      module=gltbx \
-      module=iotbx \
-      module=libtbx \
-      module=scitbx \
-      module=crys3d \
-      module=smtbx \
-      nproc=4
-  failOnStderr: false
-  displayName: Test
-  condition: and(succeeded(), eq(variables['PYTHON_VERSION'], 'py310'))
+  condition: >
+    and(succeeded(),
+        or(ne(variables['PYTHON_VERSION'], 'py27'),
+           and(eq(variables['PYTHON_VERSION'], 'py27'),
+               and(ne('${{ parameters.version[0] }}', 22),
+                   ne('${{ parameters.version[0] }}', 9)))))
   retryCountOnTaskFailure: 3
 
 # store tests directory as an artifact
 - script: |
     set -xe
     cd $(Pipeline.Workspace)
+    mkdir -p tests
     tar -Jcf tests_$(job_name).tar.xz ./tests
+    touch ./tests/output.xml
   displayName: Save test directory
   condition: succeededOrFailed()
   continueOnError: true
 
 - publish: $(Pipeline.Workspace)/tests_$(job_name).tar.xz
-  artifact: tests_$(job_name).tar.xz
+  artifact: tests_$(job_name)_$(MODULES)
   condition: succeededOrFailed()
   continueOnError: true
 

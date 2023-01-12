@@ -109,6 +109,17 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
   # STOP()
   # edits = None
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1, wp_extract)
+  # Check the .geo file
+  geo_fname = "pdb_interpretation_tst_edits_exercise_user_edits.geo"
+  geometry.write_geo_file(file_name=geo_fname, site_labels=xrs.scatterers().extract_labels())
+  with open(geo_fname, 'r') as f:
+    user_suppl_count = 0
+    for l in f.readlines():
+      if l.startswith("User supplied"):
+        user_suppl_count += 1
+    # Right now user-supplied planarity is missing from the .geo file.
+    assert user_suppl_count == 5, "Expected 5 user-supplied restraints, got %i in the .geo" % user_suppl_count
+
   # initial
   assert geometry.pair_proxies().bond_proxies.simple.size() == 9
   assert geometry.pair_proxies().bond_proxies.asu.size() == 0

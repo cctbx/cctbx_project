@@ -47,6 +47,7 @@ class WBmessenger(object):
     try:
       self.parent = viewerparent
       self.ProcessBrowserMessage = self.parent.ProcessBrowserMessage
+      self.on_browser_connection = self.parent.on_browser_connection
       self.websockport = self.parent.websockport
       self.sleeptime = self.parent.sleeptime
       self.mprint = self.parent.mprint
@@ -63,13 +64,20 @@ class WBmessenger(object):
       self.mywebsock = None
       self.websockeventloop = None
       self.clientmsgqueue_sem = threading.Semaphore()
+      self.listening_sem = threading.Semaphore()
+      self.listening_sem.acquire(blocking=True, timeout=lock_timeout)
+      self.mprint("WBmessenger got listening_sem", verbose="threadingmsg")
     except Exception as e:
       print( to_str(e) + "\n" + traceback.format_exc(limit=10))
 
 
   def start_server_loop(self):
-    #time.sleep(20)
+    #time.sleep(10)
+    self.mprint("HKLviewerWebSockServerThread started", verbose=1)
     self.websockeventloop.run_until_complete(self.server)
+    self.mprint("websocket server is listening", verbose=1)
+    self.listening_sem.release()
+    self.mprint("WBmessenger released listening_sem", verbose="threadingmsg")
     self.websockeventloop.run_forever()
 
 
@@ -84,24 +92,23 @@ class WBmessenger(object):
         if self.parent.debug is not None:
           self.websockeventloop.set_debug(True)
           import logging
-          logging.getLogger("asyncio").setLevel(logging.WARNING)
+          logger = logging.getLogger("websockets.server")
+          logger.setLevel(logging.DEBUG)
+          logger.addHandler(logging.StreamHandler())
 
       self.server = websockets.serve(self.WebSockHandler, 'localhost',
                                       self.websockport, #ssl=ssl_context,
                                       create_protocol=MyWebSocketServerProtocol,
                                       )
       self.mprint("Starting websocket server on port %s" %str(self.websockport), verbose=1)
-      time.sleep(0.2)
       # run_forever() blocks execution so put in a separate thread
       self.wst = threading.Thread(target=self.start_server_loop, name="HKLviewerWebSockServerThread" )
       self.wst.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.wst.start()
-
       self.websocketclientmsgthrd = threading.Thread(target = self.ProcessClientMessageLoop,
                                                      name="WebsocketClientMessageThread")
       self.websocketclientmsgthrd.daemon = True # ensure thread dies whenever program terminates through sys.exit()
       self.websocketclientmsgthrd.start()
-
       if not self.server:
         raise Sorry("Could not connect to web browser")
     except Exception as e:
@@ -169,7 +176,7 @@ class WBmessenger(object):
       # present in clientmsgqueue, then replace it with message rather than appending it to clientmsgqueue.
       notfound = True
       for rmsg in self.replace_msg_lst:
-        if rmsg in message:
+        if isinstance(message, str) and rmsg in message:
           for msg in self.clientmsgqueue:
             if rmsg in msg:
               msg = message
@@ -229,6 +236,7 @@ class WBmessenger(object):
   def OnConnectWebsocketClient(self, client):
     self.websockclient = client
     self.mprint( "Browser connected " + str( self.websockclient ), verbose=1 )
+    self.on_browser_connection()
     self.was_disconnected = None
     if self.parent.lastviewmtrx and self.parent.viewerparams.scene_id is not None:
       self.parent.set_volatile_params()

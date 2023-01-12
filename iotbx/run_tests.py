@@ -139,6 +139,8 @@ tst_list_base = [
   "$D/regression/tst_extract_xtal_data.py",
   "$D/regression/tst_cli_parser.py",
   "$D/regression/tst_mtz_as_cif.py",
+  "$D/regression/tst_group_rounding.py",
+  "$D/regression/tst_hierarchy_occupancies_rounding.py",
   ]
 
 # failing tests on Windows, Python 2.7

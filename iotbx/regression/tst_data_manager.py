@@ -275,7 +275,7 @@ END
   try:
     new_dm.get_model(filename=test_filename, model_type='not_a_valid_type')
   except Sorry as s:
-    assert 'model type, "not_a_valid_type' in str(s)
+    assert 'type, "not_a_valid_type' in str(s)
   # check for copy
   new_dm.set_model_type(filename=test_filename, model_type=['electron'])
   model = new_dm.get_model(filename=test_filename)
@@ -863,6 +863,46 @@ def test_fmodel_params():
   params = dm.get_fmodel_params()
   assert params.xray_data.french_wilson.max_bins == 1
 
+  # test updated defaults
+  dm = DataManager(['model', 'miller_array'])
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_pdb = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_pdb2 = os.path.join(data_dir, 'data', '2ERL.pdb')
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+  data_mtz2 = os.path.join(data_dir, 'data',
+                           'phaser_1.mtz')
+  dm.process_model_file(data_pdb)
+  dm.process_model_file(data_pdb2)
+  dm.process_miller_array_file(data_mtz)
+  dm.process_miller_array_file(data_mtz2)
+
+  assert dm.get_default_model_type() == ['x_ray']
+  for filename in dm.get_model_names():
+    assert dm.get_model_type(filename) == ['x_ray']
+  assert dm.get_default_miller_array_type() == 'x_ray'
+  for filename in dm.get_miller_array_names():
+    for label in dm.get_miller_array_labels(filename):
+      assert dm.get_miller_array_type(filename, label) == 'x_ray'
+
+  dm.update_all_defaults('electron')
+  assert dm.get_default_model_type() == ['electron']
+  for filename in dm.get_model_names():
+    assert dm.get_model_type(filename) == ['electron']
+  assert dm.get_default_miller_array_type() == 'electron'
+  for filename in dm.get_miller_array_names():
+    for label in dm.get_miller_array_labels(filename):
+      assert dm.get_miller_array_type(filename, label) == 'electron'
+
+  for x_ray_type in ['wk1995', 'it1992', 'n_gaussian']:
+    dm.update_all_defaults(x_ray_type)
+    for filename in dm.get_model_names():
+      assert dm.get_model_type(filename) == ['x_ray']
+    assert dm.get_default_miller_array_type() == 'x_ray'
+    for filename in dm.get_miller_array_names():
+      for label in dm.get_miller_array_labels(filename):
+        assert dm.get_miller_array_type(filename, label) == 'x_ray'
+
 # -----------------------------------------------------------------------------
 def test_user_selected_labels():
   dm = DataManager(['miller_array', 'phil'])
@@ -962,6 +1002,31 @@ data_manager {
       assert label in fs_labels
 
 # -----------------------------------------------------------------------------
+def test_scattering_table_mixins():
+  for datatype in ['model', 'miller_array']:
+    dm = DataManager([datatype])
+    assert hasattr(dm, 'check_scattering_table_type')
+    assert hasattr(dm, 'map_scattering_table_type')
+
+  dm = DataManager(['phil'])
+  assert not hasattr(dm, 'check_scattering_table_type')
+  assert not hasattr(dm, 'map_scattering_table_type')
+
+  dm = DataManager()
+  for scattering_table in ['wk1995', 'it1992', 'n_gaussian', 'neutron',  'electron']:
+    assert dm.check_scattering_table_type(scattering_table) == scattering_table
+  assert dm.check_scattering_table_type('x_ray') == 'n_gaussian'
+  try:
+    dm.check_scattering_table_type('abc')
+  except Sorry as s:
+    assert 'Unrecognized scattering table type, "abc,"' in str(s)
+
+  for scattering_table in ['neutron',  'electron']:
+    assert dm.map_scattering_table_type(scattering_table) == scattering_table
+  for scattering_table in ['wk1995', 'it1992', 'n_gaussian']:
+    assert dm.map_scattering_table_type(scattering_table) == 'x_ray'
+
+# -----------------------------------------------------------------------------
 if __name__ == '__main__':
 
   test_data_manager()
@@ -974,6 +1039,7 @@ if __name__ == '__main__':
   test_model_skip_ss_annotations()
   test_fmodel_params()
   test_user_selected_labels()
+  test_scattering_table_mixins()
 
   if libtbx.env.find_in_repositories(relative_path='chem_data') is not None:
     test_model_and_restraint()

@@ -3,15 +3,29 @@ import sys
 from libtbx import test_utils
 import libtbx.load_env
 
-tst_list = [
-"$D/regression/tst_hklinfo.py",
-#"$D/regression/tst_HKLviewer.py",
+
+tst_list = [ "$D/regression/tst_hklinfo.py" ]
+tst_list_expected_unstable = [
+   # fails sometimes due to websocket connection problem to webbrowser
+   "$D/regression/tst_websocket.py",
+   "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
+   "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
 ]
+other_tests = [
+  "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
+  "$D/regression/tst_HKLviewerQtGuiBinFSigF.py"
+]
+if sys.platform == "darwin" or sys.platform == "win32":
+  tst_list.extend(other_tests)
+else:
+  tst_list_expected_unstable.extend(other_tests)
 
 # expected failure for Python 2
 if sys.version_info < (3, 0):
   tst_list_expected_failures = tst_list
+  tst_list_expected_unstable = []
   tst_list = []
+
 
 def run():
   build_dir = libtbx.env.under_build("crys3d")

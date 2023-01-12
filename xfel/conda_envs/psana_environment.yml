@@ -34,8 +34,7 @@ dependencies:
  - pyopengl
 
  # HDF5 (main libraries come with psana)
- # 11/08/22: pin h5py, see h5py/h5py#1880 and conda-forge/h5py-feedstock#92
- - h5py<3.2
+ - h5py
  - hdf5plugin  # [unix]
 
  # other
@@ -61,6 +60,7 @@ dependencies:
  - eigen
  - dials-data
  - pint
+ - nxmx
 
  # xia2
  - tabulate
@@ -76,3 +76,7 @@ dependencies:
  # Avoid numpy 1.21.[01234]
  # See https://github.com/cctbx/cctbx_project/issues/627
  - numpy=1.20|>=1.21.5
+
+ # boost
+ - boost
+ - boost-cpp

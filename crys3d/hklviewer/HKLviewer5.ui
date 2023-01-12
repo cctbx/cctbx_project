@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1180</width>
-    <height>863</height>
+    <width>1047</width>
+    <height>792</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -128,7 +128,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="usesScrollButtons">
             <bool>true</bool>
@@ -158,7 +158,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>448</width>
-                  <height>662</height>
+                  <height>599</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -217,7 +217,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>Run Phenix.Xtriage</string>
+                <string>Run Xtriage</string>
                </property>
               </widget>
              </item>
@@ -230,7 +230,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>Run PhaserTNG.Xtricorder</string>
+                <string>Run Xtricorder</string>
                </property>
               </widget>
              </item>

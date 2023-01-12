@@ -100,6 +100,8 @@ qm_restraints
     .type = bool
   capping_groups = True
     .type = bool
+  exclude_protein_main_chain_from_optimisation = False
+    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
   do_not_update_restraints = False
@@ -110,6 +112,10 @@ qm_restraints
     .type = bool
     .style = hidden
     .help = For testing and maybe getting strain energy of standard restraints
+  buffer_selection = None
+    .type = atom_selection
+    .help = use this instead of distance from selection
+    .style = hidden
   %s
 }
 '''
@@ -162,6 +168,8 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
     s+='_N'
+  if qmr.exclude_protein_main_chain_from_optimisation:
+    s+='_S'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)
   if qmr.package.basis_set is not Auto and qmr.package.basis_set:

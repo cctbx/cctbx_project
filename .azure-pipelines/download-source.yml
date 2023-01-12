@@ -33,6 +33,18 @@ jobs:
       python bootstrap.py hot update --builder=cctbx --python=38 ${{ parameters.flags }}
     displayName: Download sources
 
+  - script: |
+      set -xe
+      cd $(Pipeline.Workspace)/modules
+      rm -fr scons*
+    displayName: Remove packaged SCons
+
+  - script: |
+      set -xe
+      cd $(Pipeline.Workspace)/modules/boost
+      git checkout 1.74
+    displayName: Select Boost 1.74
+
   # change optimization level (linux, macOS)
   - script: |
       cd $(Pipeline.Workspace)/modules/cctbx_project/libtbx

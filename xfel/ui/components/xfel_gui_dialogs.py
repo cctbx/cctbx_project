@@ -1031,12 +1031,15 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel (LCLS mode)', 'cctbx.xfel (standalone mode)', 'Ha14', 'Small cell', 'custom']
-    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
+    self.back_ends = ['cctbx.xfel (standard mode)', 'Small cell', 'custom']
+    self.dispatchers = ['cctbx.xfel.process', 'cctbx.xfel.small_cell_process', 'custom']
+    # Legacy dispatchers disabled 12/14/22
+    #self.back_ends = ['cctbx.xfel (LCLS mode)', 'cctbx.xfel (standalone mode)', 'Ha14', 'Small cell', 'custom']
+    #self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'cxi.xtc_process', 'cctbx.xfel.small_cell_process', 'custom']
     self.dispatcher_descriptions = [
-      'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs.',
+      #'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Converts XTC into CBF in memory and optionally provides dumping of CBFs.',
       'Process the data according to Brewster 2018, using DIALS for indexing, refinement and integration, with stills-specific defaults. Reads image files directly.',
-      'Process the data according to Hattne 2014, using LABELIT for initial indexing and stills-specific refinement and integration code implemented in the package cctbx.rstbx.',
+      #'Process the data according to Hattne 2014, using LABELIT for initial indexing and stills-specific refinement and integration code implemented in the package cctbx.rstbx.',
       'Process the data according to Brewster 2015, using small cell for initial indexing and using DIALS for refinement and integration, with stills-specific defaults.',
       'Provide a custom program. See authors for details.']
 
@@ -2440,21 +2443,34 @@ class RunBlockDialog(BaseDialog):
       assert first > 0 and first >= self.first_avail
       self.first_run = first
     except (ValueError, AssertionError) as e:
-      print("Please select a run between %d and %d." % (self.first_avail, self.last_avail))
-      raise e
+      wx.MessageBox("Please select a contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                    'Warning!', wx.ICON_EXCLAMATION)
+      return
     if self.end_type.specify.GetValue() == 1:
       try:
         last = int(self.runblocks_end.ctr.GetValue())
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
       except (ValueError, AssertionError) as e:
-        print("Please select a run between %d and %d." % (self.first_run, self.last_avail))
-        raise e
+        wx.MessageBox("Please select contiguous runs between %d and %d." % (self.first_avail, self.last_avail),
+                      'Warning!', wx.ICON_EXCLAMATION)
+        return
     elif self.end_type.specify.GetValue() == 0:
       self.last_run = None
     else:
       assert False
     rg_open = self.last_run is None
+
+    if self.is_lcls:
+      # Validation
+      if 'rayonix' in self.address.ctr.GetValue().lower():
+        def is_none(string):
+          return string is None or string in ['', 'None']
+        if is_none(self.beam_xyz.X.GetValue()) or is_none(self.beam_xyz.Y.GetValue()) or \
+             is_none(self.beam_xyz.DetZ.GetValue()):
+          wx.MessageBox("For Rayonix, beam x, y, and DetZ are required, even if reference_geometry is specified. reference_geometry will take precedence.",
+                        'Warning!', wx.ICON_EXCLAMATION)
+          return
 
     rg_dict = dict(active=True,
                    open=rg_open,

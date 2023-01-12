@@ -5,8 +5,9 @@ from scitbx.array_family import flex
 # given value of rayonix detector saturation xppi6115
 rayonix_saturated_value = 2**16 -1
 
-# minimum value for rayonix data (actually this number is not trusted, numbers above it are)
-rayonix_min_trusted_value = -1
+# minimum value for rayonix data
+rayonix_min_trusted_value = 0
+rayonix_max_trusted_value = rayonix_saturated_value - 1
 
 def get_rayonix_pixel_size(bin_size):
   ''' Given a bin size determine a pixel size.
@@ -61,8 +62,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
                                         # included in the axis_settings table below
       basis.pixel_size = (pixel_size,pixel_size)
       basis.dimension = detector_size
-      from xfel.cxi.cspad_ana.rayonix_tbx import rayonix_saturated_value
-      basis.trusted_range = (rayonix_min_trusted_value, rayonix_saturated_value)
+      basis.trusted_range = (rayonix_min_trusted_value, rayonix_max_trusted_value)
     else:
       assert False # shouldn't be reached as it would indicate a hierarchy for this detector
     basis.axis_name = detector_axes_names[-1]
@@ -289,7 +289,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
 
   n_asics = data.focus()[0] * data.focus()[1]
   cspad_cbf_tbx.add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
-    [(rayonix_min_trusted_value, rayonix_saturated_value)]*n_asics)
+    [(rayonix_min_trusted_value, rayonix_max_trusted_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis
   cbf.find_category(b"diffrn_scan_frame_axis")

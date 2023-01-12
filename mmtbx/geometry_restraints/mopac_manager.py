@@ -127,7 +127,10 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       if line.find('FINAL HEAT OF FORMATION')>-1:
         self.energy = float(line.split()[5])
         self.units = line.split()[6]
-    return self.energy, None
+      # if line.find('TOTAL ENERGY            =')>-1:
+      #   self.energy = float(line.split()[3])
+      #   self.units = line.split()[4]
+    return self.energy, self.units
 
   def cleanup(self, level=None, verbose=False):
     if level=='all':

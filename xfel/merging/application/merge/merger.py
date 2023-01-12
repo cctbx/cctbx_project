@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-from xfel.merging.application.reflection_table_utils import reflection_table_utils
+from xfel.merging.application.reflection_table_utils import \
+    reflection_table_utils as rt_util
 from cctbx.crystal import symmetry
 from cctbx import miller
 import os
@@ -19,19 +20,31 @@ class merger(worker):
   def run(self, experiments, reflections):
 
     # select, merge and output odd reflections
-    odd_reflections = reflection_table_utils.select_odd_experiment_reflections(reflections)
-    odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outlier.mad_thresh)
+    odd_reflections = rt_util.select_odd_experiment_reflections(reflections)
+    odd_reflections_merged = rt_util.merge_reflections(
+        odd_reflections,
+        self.params.merging.minimum_multiplicity,
+        thresh=self.params.filter.outlier.mad_thresh
+    )
     self.gather_and_output_reflections(odd_reflections_merged, 'odd')
 
     # select, merge and output even reflections
-    even_reflections = reflection_table_utils.select_even_experiment_reflections(reflections)
-    even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity, thresh=self.params.filter.outlier.mad_thresh)
+    even_reflections = rt_util.select_even_experiment_reflections(reflections)
+    even_reflections_merged = rt_util.merge_reflections(
+        even_reflections,
+        self.params.merging.minimum_multiplicity,
+        thresh=self.params.filter.outlier.mad_thresh
+    )
     self.gather_and_output_reflections(even_reflections_merged, 'even')
 
     # merge and output all reflections
     name = "merged_good_refls2/rank%d" % self.mpi_helper.comm.rank
-    all_reflections_merged = reflection_table_utils.merge_reflections(reflections, self.params.merging.minimum_multiplicity,
-                                nameprefix=name, thresh=self.params.filter.outlier.mad_thresh)
+    all_reflections_merged = rt_util.merge_reflections(
+        reflections,
+        self.params.merging.minimum_multiplicity,
+        nameprefix=name,
+        thresh=self.params.filter.outlier.mad_thresh
+    )
     self.gather_and_output_reflections(all_reflections_merged, 'all')
 
     return None, reflections
@@ -46,7 +59,7 @@ class merger(worker):
     # concatenate all merged HKLs
     if self.mpi_helper.rank == 0:
       self.logger.log_step_time("MERGE")
-      final_merged_reflection_table = reflection_table_utils.merged_reflection_table()
+      final_merged_reflection_table = rt_util.merged_reflection_table()
       self.logger.log("Concatenating merged %s HKLs at rank 0..."%selection_name)
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)

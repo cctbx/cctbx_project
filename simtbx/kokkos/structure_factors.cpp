@@ -23,6 +23,13 @@ namespace simtbx { namespace Kokkos {
                              h_min, h_max, h_range, k_min, k_max, k_range, l_min, l_max, l_range };
     }
   }
+  void
+  kokkos_energy_channels::structure_factors_replace_KOKKOS_detail(int const& ichannel,
+                              af::shared<double> linear_amplitudes){
+    double * raw_ptr = linear_amplitudes.begin();
+    vector_cudareal_t device_this_channel = d_channel_Fhkl[ichannel];
+    transfer_shared2kokkos(device_this_channel, linear_amplitudes);
+  }
 
   void
   kokkos_energy_channels::print_Fhkl(int channel, int first_element, int last_element) {

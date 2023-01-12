@@ -1,3 +1,16 @@
+2022.12
+=======
+
+* New code for fitting histidine
+* DataManager can map scattering table types to data types
+
+2022.11
+=======
+
+* Improved occupancy handling of multiple conformations so that the sum does
+  not exceed 1
+* Improvements to reduce2 and probe2 tools for MolProbity
+
 2022.10
 =======
 

@@ -26,7 +26,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1180, 863)
+        MainWindow.resize(1047, 792)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -136,7 +136,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 662))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 599))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -1040,7 +1040,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
@@ -1072,8 +1072,8 @@ class Ui_MainWindow(object):
         self.actionBackground_Colour.setToolTip(QCoreApplication.translate("MainWindow", u"change colour of the background", None))
 #endif // QT_CONFIG(tooltip)
         self.dockWidget.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Controls", None))
-        self.XtriageBtn.setText(QCoreApplication.translate("MainWindow", u"Run Phenix.Xtriage", None))
-        self.XtricorderBtn.setText(QCoreApplication.translate("MainWindow", u"Run PhaserTNG.Xtricorder", None))
+        self.XtriageBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtriage", None))
+        self.XtricorderBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtricorder", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPresetbuttons), QCoreApplication.translate("MainWindow", u"Quick View", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
 #if QT_CONFIG(tooltip)

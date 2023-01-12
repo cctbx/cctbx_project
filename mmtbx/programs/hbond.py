@@ -31,11 +31,16 @@ Usage example:
     model.set_log(log = null_out())
     model.process(make_restraints=True)
     self.results = mmtbx.nci.hbond.find(model = model)
-    self.results.show(log = self.logger)
+    if self.params.hbond.show_hbonds:
+      self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
     self.results.show_summary(log = self.logger)
-    if self.params.hbond.output_pymol_files:
+    if self.params.hbond.output_pymol_file:
       self.results.as_pymol()
+    if self.params.hbond.output_restraint_file:
+      self.results.as_restraints()
+    #
+    mmtbx.nci.hbond.stats(model = model, prefix="hbond_stats")
 
   # ---------------------------------------------------------------------------
   def get_results(self):

@@ -267,7 +267,8 @@ class manager(object):
     if(self._model_input is not None):
       if(self._crystal_symmetry is None):
         inp_cs = self._model_input.crystal_symmetry()
-        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense()):
+        if(inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsense() and
+           not inp_cs.is_incomplete()):
           self._crystal_symmetry = inp_cs
     # Keep track of the source of model
     if self._model_input is not None:
@@ -964,18 +965,10 @@ class manager(object):
       # Set up scattering table if there was one before
       if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-      #
-      if(self.get_restraints_manager() is not None):
-        self.get_restraints_manager().geometry.replace_site_symmetry(
-          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
-          special_position_settings = self._xray_structure.special_position_settings(),
-          sites_cart                = self._xray_structure.sites_cart())
-        # Not sure if this is needed.
-        self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
-        self.restraints_manager.crystal_symmetry=crystal_symmetry
-        # This updates some of internals
-        self.get_restraints_manager().geometry.pair_proxies(
-          sites_cart = self.get_sites_cart())
+
+      # Remove these because they won't be ok
+      self.unset_restraints_manager()
+      self.unset_ncs_constraints_groups()
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:

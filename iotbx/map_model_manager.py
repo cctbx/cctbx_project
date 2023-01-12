@@ -894,7 +894,7 @@ class map_model_manager(object):
   def get_map_data_by_id(self, map_id):
     ''' Get map_data from a map_manager with the name map_id'''
     map_manager = self.get_map_manager_by_id(map_id)
-    if map_manager:
+    if map_manager and (not map_manager.is_dummy_map_manager()):
       return map_manager.map_data()
     else:
       return None
@@ -3576,7 +3576,10 @@ class map_model_manager(object):
     ''' Return a new map_model_manager with maps sampled more finely
         Parameter:  sampling_ratio  must be an integer
         Creates new maps, keeps same models
+        Sampling ratio must be greater than 1
     '''
+
+    assert sampling_ratio > 1
 
     n_real = tuple([
        int(sampling_ratio *n) for n in self.map_manager().map_data().all()])
@@ -8066,14 +8069,17 @@ class map_model_manager(object):
   #  Perhaps remove all these
 
   def map_data(self):
-    return self.map_manager().map_data()
+    if self.map_manager() and (not self.map_manager().is_dummy_map_manager()):
+      return self.map_manager().map_data()
 
   def map_data_1(self):
-    if self.map_manager_1():
+    if self.map_manager_1() and (
+       not self.map_manager_1().is_dummy_map_manager()):
       return self.map_manager_1().map_data()
 
   def map_data_2(self):
-    if self.map_manager_2():
+    if self.map_manager_2() and (
+       not self.map_manager_2().is_dummy_map_manager()):
       return self.map_manager_2().map_data()
 
   def map_data_list(self):
@@ -8410,7 +8416,7 @@ class map_model_manager(object):
       for id in self.model_id_list():
         new_model_dict[id]=self.get_model_by_id(id).deep_copy()
 
-    if map_dict: # take new map_dict without deep_copy
+    if map_dict is not None: # take new map_dict without deep_copy
       new_map_dict = map_dict
     else:  # deep_copy existing map_dict
       new_map_dict = {}

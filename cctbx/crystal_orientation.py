@@ -13,8 +13,13 @@ class basis_type:
 class _():
 
   def __getattr__(self,tag):
+    from scitbx.matrix import col
+    if tag in ['astar','bstar','cstar']:
+      F = self.reciprocal_matrix()
+      if tag == 'astar': return col((F[0],F[3],F[6]))
+      if tag == 'bstar': return col((F[1],F[4],F[7]))
+      if tag == 'cstar': return col((F[2],F[5],F[8]))
     if tag in 'abc':
-      from scitbx.matrix import col
       direct = self.direct_matrix()
       if tag=='a':
         return col((direct[0],direct[1],direct[2]))

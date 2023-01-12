@@ -533,6 +533,16 @@ def contains_lines(lines, expected):
 
 def assert_lines_in_text(text, lines,
     remove_white_spaces=True, remove_newline=True):
+  """Tests if lines present in the text.
+
+  Args:
+      text (str): source text
+      lines (str): lines to search for
+      remove_white_spaces (bool, optional): Remove whitespaces for more robust search.
+          Defaults to True.
+      remove_newline (bool, optional): Remove newlines for more robust search.
+          Defaults to True.
+  """
   filtered_lines = lines
   if remove_white_spaces:
     text = text.replace(" ", "")

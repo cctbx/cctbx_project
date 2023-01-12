@@ -2584,6 +2584,9 @@ class manager(manager_mixin):
         miller_array=alpha, column_root_label="ALPHA")
       mtz_dataset.add_miller_array(
         miller_array=beta, column_root_label="BETA")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_obs().centric_flags(),
+        column_root_label="CENTRIC_FLAGS")
       if(self.hl_coeffs() is not None):
         mtz_dataset.add_miller_array(
           miller_array=self.hl_coeffs(), column_root_label="HL")
