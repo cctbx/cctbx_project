@@ -370,7 +370,7 @@ class OptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
-               sub_labels=[],
+               sub_labels=(),
                ctrl_size=(300, -1),
                **kwargs):
 
@@ -385,7 +385,7 @@ class OptionCtrl(CtrlBase):
       opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
     for key, value in items:
-      if sub_labels != []:
+      if sub_labels:
         sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
@@ -408,7 +408,7 @@ class VerticalOptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
-               sub_labels=[],
+               sub_labels=(),
                ctrl_size=(300, -1)):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
@@ -423,7 +423,7 @@ class VerticalOptionCtrl(CtrlBase):
       opt_box = wx.FlexGridSizer(len(items) * 2, 2, 10, 10)
 
     for key, value in items:
-      if sub_labels != []:
+      if sub_labels:
         sub_label = sub_labels[items.index((key, value))]
       else:
         sub_label = key
@@ -572,11 +572,11 @@ class TableCtrl(CtrlBase):
       Data must be a list of lists for multi-column tables '''
 
   def __init__(self, parent,
-               clabels=[],
+               clabels=(),
                clabel_size=(200, -1),
-               rlabels=[],
+               rlabels=(),
                rlabel_size=(200, -1),
-               contents=[],
+               contents=(),
                label_style='normal',
                content_style='normal'):
 
@@ -593,7 +593,7 @@ class TableCtrl(CtrlBase):
     # add column labels (xlabels)
     if len(clabels) > 0:
       self.sizer.Add(wx.StaticText(self, label=''))
-      for item in column_labels:
+      for i in clabels:
         clabel = wx.StaticText(self, label=i.decode('utf-8'), size=clabel_size)
         clabel.SetFont(self.font)
         self.sizer.Add(clabel)
@@ -622,8 +622,9 @@ class RadioCtrl(CtrlBase):
                label_style='normal',
                ctrl_size=(100, -1),
                direction='horizontal',
-               items={}, **kwargs):
+               items=None, **kwargs):
     CtrlBase.__init__(self, parent=parent, label_style=label_style, **kwargs)
+    items = {} if items is None else items
 
     if direction == 'horizontal':
       radio_group = wx.FlexGridSizer(1, len(items) + 1, 0, 10)
@@ -647,12 +648,13 @@ import wx.lib.mixins.listctrl as listmix
 
 class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent, style=wx.LC_ICON):
+    self.integer_columns = set()
     self.parent = parent
     self.sortable_mixin = listmix
     wx.ListCtrl.__init__(self, parent, style=style)
 
-  def initialize_sortable_columns(self, n_col=0, itemDataMap={}):
-    self.itemDataMap = itemDataMap
+  def initialize_sortable_columns(self, n_col=0, itemDataMap=None):
+    self.itemDataMap = {} if itemDataMap is None else itemDataMap
     self.sortable_mixin.ColumnSorterMixin.__init__(self, n_col)
     sortable_list = self.GetListCtrl()
     if sortable_list:
@@ -661,7 +663,7 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def __OnColClick(self, e):
     self._col = e.GetColumn()
     self._colSortFlag[self._col] = int(not self._colSortFlag[self._col])
-    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.GetListCtrl().SortItems(self.get_appropriate_sorter())
     self.OnSortOrderChanged()
     if hasattr(self.parent, 'onColClick'):
       self.parent.onColClick(e)
@@ -669,11 +671,32 @@ class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
   def RestoreSortOrder(self, col, colSortFlag):
     self._col = col
     self._colSortFlag = colSortFlag
-    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.GetListCtrl().SortItems(self.get_appropriate_sorter())
     self.OnSortOrderChanged()
 
   def GetListCtrl(self):
     return self
+
+  def get_appropriate_sorter(self):
+    return self.integer_column_sorter if self._col in self.integer_columns \
+      else self.GetColumnSorter()
+
+  def integer_column_sorter(self, key1, key2):
+    col = self._col
+    ascending = self._colSortFlag[col]
+    try:
+      item1 = int(self.itemDataMap[key1][col])
+    except (ValueError, SystemError):
+      item1 = -1073741820
+    try:
+      item2 = int(self.itemDataMap[key2][col])
+    except (ValueError, SystemError):
+      item2 = -1073741820
+    difference = item1 - item2
+    if difference == 0:
+      difference = 1 if key1 > key2 else -1
+    return difference if ascending else -difference
+
 
 # ------------------------------- UI Elements -------------------------------- #
 
@@ -782,7 +805,7 @@ class GaugeBar(CtrlBase):
                choice_label_size=(120, -1),
                choice_size=(100, -1),
                choice_style='normal',
-               choices=[],
+               choices=(),
                gauge_max=100):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
