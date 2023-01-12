@@ -365,8 +365,8 @@ def allocate_chunks(results_dir,
   for batch in batchable:
     batch_chunks[batch] = []
     contents = batch_contents[batch]
-    expts = [c for c in contents if c.endswith(expt_ending)]
-    refls = [c for c in contents if c.endswith(refl_ending)]
+    expts = sorted([c for c in contents if c.endswith(expt_ending)])
+    refls = sorted([c for c in contents if c.endswith(refl_ending)])
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     pack_func = stripe_pairs if stripe else chunk_pairs
     pack_name = "stripe" if stripe else "chunk"
