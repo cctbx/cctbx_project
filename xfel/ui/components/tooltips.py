@@ -1,7 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 from xfel.ui import master_phil_scope
-from dxtbx.format.FormatXTC import locator_scope
+try:
+  from dxtbx.format.FormatXTC import locator_scope
+except (ImportError, TypeError):
+  locator_scope = None
 from xfel.ui.command_line.plot_run_stats import phil_scope as rs_scope
 
 def get_help(path, scope = master_phil_scope):
@@ -79,7 +82,7 @@ tooltips = {
   'rg_bin_nrg_gain_binning': 'Rayonix binning (2, 3, 4, etc.)',
   'rg_bin_nrg_gain_energy': 'Energy override for all images (eV)',
   'rg_wavelength_offset': 'Offset applied to wavelength of each image (Å)',
-  'rg_spectrum_calibration': get_help('spectrum_eV_per_pixel', locator_scope),
+  'rg_spectrum_calibration': get_help('spectrum_eV_per_pixel', locator_scope) if locator_scope else '',
   'rg_energy_ctr': 'Energy override for all images (eV)',
   'rg_two_thetas': 'Two 2θ values (deg). The ratio of high/low is used to check for presence of solvent on each image. ' + \
                    'Defaults are the water ring and a low resolution ring',
