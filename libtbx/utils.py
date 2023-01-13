@@ -1523,7 +1523,8 @@ class multi_out(object):
         old_label,
         new_label,
         new_file_object,
-        new_atexit_send_to=None):
+        new_atexit_send_to=None,
+        close_old_stream=True):
     """
     Replaces a registered stream with a new file. Dumps everything accumulated
     in stream to the file.
@@ -1537,12 +1538,14 @@ class multi_out(object):
     new_label : str
     new_file_object : file
     new_atexit_send_to : file, optional
+    close_old_stream :  bool, close existing stream
     """
     i = self.labels.index(old_label)
     old_file_object = self.file_objects[i]
     if hasattr(old_file_object, 'getvalue'):
       new_file_object.write(old_file_object.getvalue())
-    old_file_object.close()
+    if close_old_stream:
+      old_file_object.close()
     self.labels[i] = new_label
     self.file_objects[i] = new_file_object
     self.atexit_send_to[i] = new_atexit_send_to
