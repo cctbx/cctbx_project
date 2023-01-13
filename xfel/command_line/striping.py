@@ -373,7 +373,7 @@ def allocate_chunks(results_dir,
     expts_packs, refls_packs, pack_lengths = pack_func(expts, refls, max_size)
     for expts_pack, refls_pack in zip(expts_packs, refls_packs):
       batch_chunks[batch].append((expts_pack, refls_pack))
-    r = '{} {} experiments from {} files in {} into {} {}s with sizes = {}'
+    r = '{} {} experiments from {} files in {} into {} {}{} with sizes = {}'
     print(r.format("Striped" if stripe else "Chunked", sum(pack_lengths),
                    len(expts), batch, len(pack_lengths),
                    "stripes" if stripe else "chunks", pack_lengths))
