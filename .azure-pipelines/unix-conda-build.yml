@@ -120,6 +120,12 @@ steps:
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 
+- script: |
+    set -xe
+    conda remove -y -n $(PYTHON_VERSION) --force boost boost-cpp
+  displayName: Remove Boost from conda environment for -O0 on macOS
+  condition: and(eq(variables['MODULES'], 'modules0'), eq(variables['OS'], 'osx-64'))
+
 # build
 - script: |
     set -xe
