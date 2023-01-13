@@ -29,6 +29,7 @@ mp {
   method = local
   use_mpi = False
   mpi_command = source
+  mpi_option = ""
   local.include_mp_in_command = False
 }
 '''
