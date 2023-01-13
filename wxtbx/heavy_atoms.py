@@ -7,15 +7,16 @@ from libtbx.utils import Sorry
 import sys
 from six.moves import range
 
-class SitesList(wx.ListCtrl,
-                  wx.lib.mixins.listctrl.CheckListCtrlMixin):
+# XXX TEMPORARY PYTHON 3 FIX TT
+class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
   """
   ListCtrl for displaying and editing heavy-atom sites.  Only the occupancy
   and the selection of sites may be changed.
   """
   def __init__(self, *args, **kwds):
     wx.ListCtrl.__init__(self, *args, **kwds)
-    wx.lib.mixins.listctrl.CheckListCtrlMixin.__init__(self)
+    # XXX TEMPORARY PYTHON 3 FIX TT
+    #wx.lib.mixins.listctrl.CheckListCtrlMixin.__init__(self)
     self._atoms = None
     self._symm = None
     self.InsertColumn(0, "#", format=wx.LIST_FORMAT_RIGHT, width=64)
@@ -195,7 +196,8 @@ class sites_panel_mixin(object):
     self.sites_list = SitesList(self, -1,
       size=(540,200),
       style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-    sizer.Add(self.sites_list, 1, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 5)
+    # XXX  TEMPORARY PYTHON 3 FIX TT
+    sizer.Add(self.sites_list, 1, wx.ALL, 5) # |wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 5)
     szr2 = wx.BoxSizer(wx.HORIZONTAL)
     sizer.Add(szr2)
     if (show_load_button):
