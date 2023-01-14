@@ -335,6 +335,7 @@ class CCTBXParser(ParserBase):
     print('on %s by %s' % (time.asctime(), getpass.getuser()), file=self.logger)
     print('='*self.text_width, file=self.logger)
     print('', file=self.logger)
+    self.logger.flush()
 
     # process files
     if self.parse_files:
