@@ -44,6 +44,16 @@ class limited(object):
 
     return self.njobs <= njobs
 
+  def reduce_capacity_if_possible(self, target = None):
+    if target is None or target >= self.njobs:
+      target = self.njobs - 1
+
+    if target > 0:
+      self.njobs = target
+      return True # success
+    else:
+      self.njobs = 1
+      return False
 
 class unlimited(object):
   """
@@ -217,8 +227,18 @@ class manager(object):
         target = job_cycle,
         args = ( self.inqueue, jobid, target, args, kwargs ),
         )
+      try:
+        process.start()
+      except Exception as e:
+        # It will crash if process cannot start. See if we can just reduce
+        #   capacity
+        if hasattr(self.capacity, 'reduce_capacity_if_possible'):
+          ok = self.capacity.reduce_capacity_if_possible(
+            target = self.process_count())
+          if ok:
+            continue # back to top
+        raise Exception(e) # Process could not start
 
-      process.start()
       self.process_data_for[ jobid ] = process
 
 
