@@ -138,8 +138,8 @@ NOTES:
     -nobuild9999: approach=add preference_magnitude=9999
     -noflip: approach=add add_flip_movers=True preference_magnitude=9999
     -onlya: alt_id=A
-    -nuclear: use_neutron_distances
-    -demandflipallnhqs: add_flip_movers = True
+    -nuclear: use_neutron_distances=True
+    -demandflipallnhqs: add_flip_movers=True
 '''.format(version)
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str

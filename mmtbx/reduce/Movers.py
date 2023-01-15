@@ -829,7 +829,10 @@ class MoverAmideFlip(object):
     #########################
     # Compute the original positions for the Hydrogens such that they are at the same distance from
     # the Nitrogen as one of them started out and located at +/-120 degrees from the
-    # Carbon-Nitrogen bond in the plane of the Nitrogen, Carbon, and Oxygen.
+    # Carbon-Nitrogen bond in the plane of the Nitrogen, Carbon, and Oxygen. The first one should
+    # point back towards the mainchain and the second more towards the Oxygen.
+    # @todo This assumes that all placement is done like Hydrogenate does, where the first-listed
+    # atom is the lower-numbered one.
     cToN = lvec3(nh2Atom.xyz) - lvec3(hinge.xyz)
     cToO = rvec3(oxygen.xyz) - rvec3(hinge.xyz)
 
