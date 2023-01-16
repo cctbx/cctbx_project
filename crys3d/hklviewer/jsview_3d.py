@@ -602,7 +602,7 @@ class HKLview_3d:
           abcvec = self.all_vectors[ self.normal_vecnr ][6]
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec), verbose=1)
           infomsg = "Vector distance from origin: %d" %(self.params.clip_plane.hkldist)
-          if self.all_vectors[ self.normal_vecnr ][1] == "TNCS":
+          if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
             The tncs modulation length is the inverse length of the tncs vector as defined in

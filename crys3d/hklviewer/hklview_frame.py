@@ -1699,13 +1699,13 @@ class HKLViewFrame() :
 
     tncsvec = []
     if self.tncsvec is not None:
-      # TNCS vector is specified in realspace fractional coordinates. Convert it to cartesian
+      # TNCS vector from xtricorder is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
       # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
       # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
       veclength = self.viewer.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      tncsvec = [("TNCS", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
+      tncsvec = [("TNCS_xtricorder", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
 
     anisovectors = []
     if self.aniso1 is not None:
