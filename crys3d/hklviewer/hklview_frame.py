@@ -218,7 +218,7 @@ class HKLViewFrame() :
     if self.guiSocketPort:
       if  verbose == 0:
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
-        self.SendInfoToGUI( { "info": tmsg } )
+        self.SendInfoToGUI( { "info": msg + end } )
       if (intverbose and isinstance(verbose,int) and verbose >= 0 and verbose <= intverbose) \
        or (isinstance(self.verbose,str) and self.verbose.find(str(verbose))>=0 ):
         # say verbose="2threading" then print all messages with verbose=2 or verbose=threading
