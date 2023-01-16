@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import adopt_init_args
 from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
+from cctbx import sgtbx
 import sys, re
 from six.moves import range
 
@@ -377,8 +378,11 @@ class info(object):
     #_refine.solvent_model_param_bsol
     cif_block["_refine.pdbx_solvent_vdw_probe_radii"] = round_4_for_cif(self.mask_solvent_radius)
     cif_block["_refine.pdbx_solvent_shrinkage_radii"] = round_4_for_cif(self.mask_shrink_radius)
-
-    # twinning?
+    # twinning
+    if self.twin_law is not None:
+      cif_block["_pdbx_reflns_twin.operator"] = sgtbx.change_of_basis_op(self.twin_law).as_hkl()
+    if(self.twin_fraction is not None):
+      cif_block["_pdbx_reflns_twin.fraction"] = round_4_for_cif(self.twin_fraction)
 
     cif_block["_refine.overall_SU_ML"] = round_4_for_cif(self.ml_coordinate_error)
     cif_block["_refine.pdbx_overall_phase_error"] = round_4_for_cif(self.ml_phase_error)
@@ -433,7 +437,6 @@ class info(object):
     out.flush()
 
   def show_rfactors_targets_scales_overall(self, header = None, out=None):
-    from cctbx import sgtbx
     if(out is None): out = sys.stdout
     out.flush()
     p = " "

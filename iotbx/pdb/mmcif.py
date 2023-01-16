@@ -620,9 +620,10 @@ def extract_f_model_core_constants(cif_block):
   r_shrink = _float_or_None(cif_block.get('_refine.pdbx_solvent_shrinkage_radii'))
   r_work = _float_or_None(cif_block.get('_refine.ls_R_factor_R_work'))
   r_free = _float_or_None(cif_block.get('_refine.ls_R_factor_R_free'))
+
+  twin_fraction = _float_or_None(cif_block.get('_pdbx_reflns_twin.fraction'))
+  twin_law = cif_block.get('_pdbx_reflns_twin.operator')
   # TODO: extract these from the CIF?
-  twin_fraction = None
-  twin_law = None
   grid_step_factor = None
   return group_args(
     k_sol            = k_sol,
