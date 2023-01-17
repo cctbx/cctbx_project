@@ -564,6 +564,10 @@ def calculate_fsc(**kw):
     fc_map=model_map_coeffs
     b_eff=None
 
+  if not mc1 or not mc2:  # nothing to do
+    si.target_scale_factors = None
+    return si
+
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
