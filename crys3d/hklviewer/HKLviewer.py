@@ -1304,6 +1304,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 btnlabel.setSizePolicy(sizePolicy2)
                 btnlabel.setWordWrap(True)
                 btnlabel.setText(label)
+                if datalabel != "":
+                  pbutton.setToolTip("using the " + datalabel + " dataset")
+                  btnlabel.setToolTip("using the " + datalabel + " dataset")
                 self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 
                 if moniker != "" and len(veclabels):
@@ -1462,16 +1465,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     else:
       self.AlignVectorGroupBox.setChecked( False)
     self.onlymissingcheckbox.setChecked( self.currentphilstringdict['hkls.show_only_missing'])
-    if self.currentphilstringdict['real_space_unit_cell_scale_fraction'] is not None:
-      self.DrawRealUnitCellBox.setChecked(True)
-      self.unitcellslider.setValue( self.currentphilstringdict['real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
-    else:
-      self.DrawRealUnitCellBox.setChecked(False)
-    if self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] is not None:
-      self.DrawReciprocUnitCellBox.setChecked(True)
-      self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
-    else:
-      self.DrawReciprocUnitCellBox.setChecked(False)
+
+    self.DrawRealUnitCellBox.setChecked(self.currentphilstringdict['draw_real_space_unit_cell'])
+    self.unitcellslider.setValue( self.currentphilstringdict['real_space_unit_cell_scale_fraction'] * self.unitcellslider.maximum())
+    self.DrawReciprocUnitCellBox.setChecked(self.currentphilstringdict['draw_reciprocal_unit_cell'])
+    self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
 
     if self.currentphilstringdict['viewer.animate_rotation_around_vector'] is not None:
       vecnr,speed = self.currentphilstringdict['viewer.animate_rotation_around_vector']
@@ -1509,6 +1507,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
       self.clipplane_normal_vector_combo.setCurrentIndex(idx )
       if isinstance(self.clipplane_normal_vector_combo.currentData(), float) or isinstance(self.clipplane_normal_vector_combo.currentData(), int):
         self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
+
+    for i in range(self.vectortable2.rowCount()):
+      self.vectortable2.item(i, 0).setCheckState(Qt.Unchecked)
 
     if self.currentphilstringdict['viewer.show_vector'] is not None:
       ivecs = self.currentphilstringdict['viewer.show_vector']
@@ -2485,19 +2486,17 @@ clip_plane {
   def onDrawReciprocUnitCellBoxClick(self):
     if not self.unfeedback:
       if self.DrawReciprocUnitCellBox.isChecked():
-        val = self.reciprocunitcellslider.value()/self.reciprocunitcellslider.maximum()
-        self.send_message("reciprocal_unit_cell_scale_fraction = %f" %val)
+        self.send_message("draw_reciprocal_unit_cell = True")
       else:
-        self.send_message("reciprocal_unit_cell_scale_fraction = None")
+        self.send_message("draw_reciprocal_unit_cell = False")
 
 
   def onDrawUnitCellBoxClick(self):
     if not self.unfeedback:
       if self.DrawRealUnitCellBox.isChecked():
-        val = self.unitcellslider.value()/self.unitcellslider.maximum()
-        self.send_message("real_space_unit_cell_scale_fraction = %f" %val)
+        self.send_message("draw_real_space_unit_cell = True")
       else:
-        self.send_message("real_space_unit_cell_scale_fraction = None")
+        self.send_message("draw_real_space_unit_cell = False")
 
 
   def onUnitcellScale(self):

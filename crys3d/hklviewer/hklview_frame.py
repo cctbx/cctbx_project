@@ -1960,11 +1960,17 @@ master_phil_str = """
   using_space_subgroup = False
     .type = bool
     .help = "internal flag"
-  real_space_unit_cell_scale_fraction = None
+  draw_real_space_unit_cell = False
+    .type = bool
+    .help = "show real space unit cell"
+  draw_reciprocal_unit_cell = False
+    .type = bool
+    .help = "show reciprocal space unit cell"
+  real_space_unit_cell_scale_fraction = 0.0
     .type = float(value_min=0.0, value_max=1.0)
     .help = "Parameter specifying the scale at which to display the unit cell compared to reciprocal space. 0 means " \
             "true to scale of the size of the reciprocal lattice. 1 means close to the radius of the displayed sphere of reflections."
-  reciprocal_unit_cell_scale_fraction = None
+  reciprocal_unit_cell_scale_fraction = 0.0
     .type = float(value_min=0.0, value_max=1.0)
     .help = "Parameter specifying the scale at which to display the reciprocal unit cell compared to reciprocal space. " \
             "0 means true to scale of the size of the reciprocal lattice. 1 means close to the radius of the displayed sphere of reflections."

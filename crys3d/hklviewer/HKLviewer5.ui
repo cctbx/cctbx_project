@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>1047</width>
-    <height>792</height>
+    <height>803</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -128,7 +128,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="usesScrollButtons">
             <bool>true</bool>
@@ -158,7 +158,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>448</width>
-                  <height>599</height>
+                  <height>609</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -332,7 +332,7 @@
                </widget>
                <widget class="QTextEdit" name="SpaceGrpUCellText">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -378,9 +378,9 @@
                  <property name="geometry">
                   <rect>
                    <x>0</x>
-                   <y>0</y>
+                   <y>-102</y>
                    <width>453</width>
-                   <height>364</height>
+                   <height>412</height>
                   </rect>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_4">
@@ -405,7 +405,7 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>4</number>
                     </property>
                     <widget class="QWidget" name="tab">
                      <attribute name="title">
@@ -1543,15 +1543,15 @@
                        </widget>
                       </item>
                       <item row="1" column="0">
-                       <widget class="QGroupBox" name="DrawReciprocUnitCellBox">
+                       <widget class="QGroupBox" name="ReciprocUnitCellgrp">
                         <property name="toolTip">
                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="title">
-                         <string>Show Reciprocal Unit Cell</string>
+                         <string>Reciprocal Vectors</string>
                         </property>
                         <property name="checkable">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                         <property name="checked">
                          <bool>false</bool>
@@ -1563,7 +1563,7 @@
                          <property name="bottomMargin">
                           <number>3</number>
                          </property>
-                         <item row="0" column="0">
+                         <item row="1" column="0">
                           <widget class="QLabel" name="label_2">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -1579,7 +1579,7 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="1">
+                         <item row="1" column="1">
                           <widget class="QSlider" name="reciprocunitcellslider">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1598,7 +1598,14 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="2">
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="DrawReciprocUnitCellBox">
+                           <property name="text">
+                            <string>Show Unit Cell</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="2" rowspan="2">
                           <widget class="QLabel" name="label_4">
                            <property name="text">
                             <string>Close to radius of sphere of reflections</string>
@@ -1612,15 +1619,15 @@
                        </widget>
                       </item>
                       <item row="2" column="0">
-                       <widget class="QGroupBox" name="DrawRealUnitCellBox">
+                       <widget class="QGroupBox" name="RealUnitCellBoxgrp">
                         <property name="toolTip">
                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The real space unit cell is often much larger than the sphere of displayed reflections. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="title">
-                         <string>Show Real Space Unit Cell</string>
+                         <string>Real Space Vectors</string>
                         </property>
                         <property name="checkable">
-                         <bool>true</bool>
+                         <bool>false</bool>
                         </property>
                         <property name="checked">
                          <bool>false</bool>
@@ -1632,7 +1639,7 @@
                          <property name="bottomMargin">
                           <number>3</number>
                          </property>
-                         <item row="0" column="0">
+                         <item row="1" column="0">
                           <widget class="QLabel" name="label_6">
                            <property name="text">
                             <string>True to Scale</string>
@@ -1642,7 +1649,7 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="1">
+                         <item row="1" column="1">
                           <widget class="QSlider" name="unitcellslider">
                            <property name="minimum">
                             <number>0</number>
@@ -1655,7 +1662,14 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="2">
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="DrawRealUnitCellBox">
+                           <property name="text">
+                            <string>Show Unit Cell</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="2" rowspan="2">
                           <widget class="QLabel" name="label_5">
                            <property name="text">
                             <string>Close to radius of sphere of reflections</string>

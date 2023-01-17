@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+
 from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
@@ -22,11 +23,12 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1047, 792)
+        MainWindow.resize(1047, 803)
         sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -136,7 +138,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 599))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 609))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -235,8 +237,8 @@ class Ui_MainWindow(object):
         self.splitter.addWidget(self.widget_4)
         self.SpaceGrpUCellText = QTextEdit(self.splitter)
         self.SpaceGrpUCellText.setObjectName(u"SpaceGrpUCellText")
-        sizePolicy2.setHeightForWidth(self.SpaceGrpUCellText.sizePolicy().hasHeightForWidth())
-        self.SpaceGrpUCellText.setSizePolicy(sizePolicy2)
+        sizePolicy7.setHeightForWidth(self.SpaceGrpUCellText.sizePolicy().hasHeightForWidth())
+        self.SpaceGrpUCellText.setSizePolicy(sizePolicy7)
         self.SpaceGrpUCellText.setMinimumSize(QSize(0, 30))
         self.SpaceGrpUCellText.setMaximumSize(QSize(16777215, 192))
         font = QFont()
@@ -253,7 +255,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 453, 364))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, -102, 453, 412))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -893,24 +895,24 @@ class Ui_MainWindow(object):
 
         self.gridLayout_14.addWidget(self.RotationVectorsBox, 0, 0, 1, 1)
 
-        self.DrawReciprocUnitCellBox = QGroupBox(self.tab_5)
-        self.DrawReciprocUnitCellBox.setObjectName(u"DrawReciprocUnitCellBox")
-        self.DrawReciprocUnitCellBox.setCheckable(True)
-        self.DrawReciprocUnitCellBox.setChecked(False)
-        self.gridLayout_15 = QGridLayout(self.DrawReciprocUnitCellBox)
+        self.ReciprocUnitCellgrp = QGroupBox(self.tab_5)
+        self.ReciprocUnitCellgrp.setObjectName(u"ReciprocUnitCellgrp")
+        self.ReciprocUnitCellgrp.setCheckable(False)
+        self.ReciprocUnitCellgrp.setChecked(False)
+        self.gridLayout_15 = QGridLayout(self.ReciprocUnitCellgrp)
         self.gridLayout_15.setSpacing(4)
         self.gridLayout_15.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_15.setObjectName(u"gridLayout_15")
         self.gridLayout_15.setContentsMargins(-1, 3, -1, 3)
-        self.label_2 = QLabel(self.DrawReciprocUnitCellBox)
+        self.label_2 = QLabel(self.ReciprocUnitCellgrp)
         self.label_2.setObjectName(u"label_2")
         sizePolicy2.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
         self.label_2.setSizePolicy(sizePolicy2)
         self.label_2.setWordWrap(True)
 
-        self.gridLayout_15.addWidget(self.label_2, 0, 0, 1, 1)
+        self.gridLayout_15.addWidget(self.label_2, 1, 0, 1, 1)
 
-        self.reciprocunitcellslider = QSlider(self.DrawReciprocUnitCellBox)
+        self.reciprocunitcellslider = QSlider(self.ReciprocUnitCellgrp)
         self.reciprocunitcellslider.setObjectName(u"reciprocunitcellslider")
         sizePolicy25 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         sizePolicy25.setHorizontalStretch(0)
@@ -921,48 +923,58 @@ class Ui_MainWindow(object):
         self.reciprocunitcellslider.setMaximum(100)
         self.reciprocunitcellslider.setOrientation(Qt.Horizontal)
 
-        self.gridLayout_15.addWidget(self.reciprocunitcellslider, 0, 1, 1, 1)
+        self.gridLayout_15.addWidget(self.reciprocunitcellslider, 1, 1, 1, 1)
 
-        self.label_4 = QLabel(self.DrawReciprocUnitCellBox)
+        self.DrawReciprocUnitCellBox = QCheckBox(self.ReciprocUnitCellgrp)
+        self.DrawReciprocUnitCellBox.setObjectName(u"DrawReciprocUnitCellBox")
+
+        self.gridLayout_15.addWidget(self.DrawReciprocUnitCellBox, 0, 0, 1, 1)
+
+        self.label_4 = QLabel(self.ReciprocUnitCellgrp)
         self.label_4.setObjectName(u"label_4")
         self.label_4.setWordWrap(True)
 
-        self.gridLayout_15.addWidget(self.label_4, 0, 2, 1, 1)
+        self.gridLayout_15.addWidget(self.label_4, 0, 2, 2, 1)
 
 
-        self.gridLayout_14.addWidget(self.DrawReciprocUnitCellBox, 1, 0, 1, 1)
+        self.gridLayout_14.addWidget(self.ReciprocUnitCellgrp, 1, 0, 1, 1)
 
-        self.DrawRealUnitCellBox = QGroupBox(self.tab_5)
-        self.DrawRealUnitCellBox.setObjectName(u"DrawRealUnitCellBox")
-        self.DrawRealUnitCellBox.setCheckable(True)
-        self.DrawRealUnitCellBox.setChecked(False)
-        self.gridLayout_26 = QGridLayout(self.DrawRealUnitCellBox)
+        self.RealUnitCellBoxgrp = QGroupBox(self.tab_5)
+        self.RealUnitCellBoxgrp.setObjectName(u"RealUnitCellBoxgrp")
+        self.RealUnitCellBoxgrp.setCheckable(False)
+        self.RealUnitCellBoxgrp.setChecked(False)
+        self.gridLayout_26 = QGridLayout(self.RealUnitCellBoxgrp)
         self.gridLayout_26.setSpacing(4)
         self.gridLayout_26.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_26.setObjectName(u"gridLayout_26")
         self.gridLayout_26.setContentsMargins(-1, 3, -1, 3)
-        self.label_6 = QLabel(self.DrawRealUnitCellBox)
+        self.label_6 = QLabel(self.RealUnitCellBoxgrp)
         self.label_6.setObjectName(u"label_6")
         self.label_6.setWordWrap(True)
 
-        self.gridLayout_26.addWidget(self.label_6, 0, 0, 1, 1)
+        self.gridLayout_26.addWidget(self.label_6, 1, 0, 1, 1)
 
-        self.unitcellslider = QSlider(self.DrawRealUnitCellBox)
+        self.unitcellslider = QSlider(self.RealUnitCellBoxgrp)
         self.unitcellslider.setObjectName(u"unitcellslider")
         self.unitcellslider.setMinimum(0)
         self.unitcellslider.setMaximum(100)
         self.unitcellslider.setOrientation(Qt.Horizontal)
 
-        self.gridLayout_26.addWidget(self.unitcellslider, 0, 1, 1, 1)
+        self.gridLayout_26.addWidget(self.unitcellslider, 1, 1, 1, 1)
 
-        self.label_5 = QLabel(self.DrawRealUnitCellBox)
+        self.DrawRealUnitCellBox = QCheckBox(self.RealUnitCellBoxgrp)
+        self.DrawRealUnitCellBox.setObjectName(u"DrawRealUnitCellBox")
+
+        self.gridLayout_26.addWidget(self.DrawRealUnitCellBox, 0, 0, 1, 1)
+
+        self.label_5 = QLabel(self.RealUnitCellBoxgrp)
         self.label_5.setObjectName(u"label_5")
         self.label_5.setWordWrap(True)
 
-        self.gridLayout_26.addWidget(self.label_5, 0, 2, 1, 1)
+        self.gridLayout_26.addWidget(self.label_5, 0, 2, 2, 1)
 
 
-        self.gridLayout_14.addWidget(self.DrawRealUnitCellBox, 2, 0, 1, 1)
+        self.gridLayout_14.addWidget(self.RealUnitCellBoxgrp, 2, 0, 1, 1)
 
         self.functionTabWidget.addTab(self.tab_5, "")
 
@@ -1040,8 +1052,8 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
-        self.functionTabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
+        self.functionTabWidget.setCurrentIndex(4)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
         self.tabText.setCurrentIndex(0)
@@ -1194,16 +1206,18 @@ class Ui_MainWindow(object):
         self.AnimaRotCheckBox.setText(QCoreApplication.translate("MainWindow", u"Rotate continuously", None))
         self.label_8.setText(QCoreApplication.translate("MainWindow", u"Speed", None))
 #if QT_CONFIG(tooltip)
-        self.DrawReciprocUnitCellBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
+        self.ReciprocUnitCellgrp.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.DrawReciprocUnitCellBox.setTitle(QCoreApplication.translate("MainWindow", u"Show Reciprocal Unit Cell", None))
+        self.ReciprocUnitCellgrp.setTitle(QCoreApplication.translate("MainWindow", u"Reciprocal Vectors", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"True to Scale", None))
+        self.DrawReciprocUnitCellBox.setText(QCoreApplication.translate("MainWindow", u"Show Unit Cell", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
 #if QT_CONFIG(tooltip)
-        self.DrawRealUnitCellBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The real space unit cell is often much larger than the sphere of displayed reflections. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
+        self.RealUnitCellBoxgrp.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The real space unit cell is often much larger than the sphere of displayed reflections. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.DrawRealUnitCellBox.setTitle(QCoreApplication.translate("MainWindow", u"Show Real Space Unit Cell", None))
+        self.RealUnitCellBoxgrp.setTitle(QCoreApplication.translate("MainWindow", u"Real Space Vectors", None))
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"True to Scale", None))
+        self.DrawRealUnitCellBox.setText(QCoreApplication.translate("MainWindow", u"Show Unit Cell", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"Vectors", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabDetails), QCoreApplication.translate("MainWindow", u"Details", None))

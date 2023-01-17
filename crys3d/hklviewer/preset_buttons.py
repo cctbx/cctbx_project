@@ -163,6 +163,7 @@ phenix_buttonsdeflist = [
  """),
 
   ("aniso4", "Rotate around one anisotropy principal axis:", """
+        real_space_unit_cell_scale_fraction = 0.9
         binning {
           binlabel = "ANISO"
           bin_opacity = 1 0
@@ -192,9 +193,10 @@ phenix_buttonsdeflist = [
   """),
 
   ("aniso", "Show anisotropy principal axes", """
-          real_space_unit_cell_scale_fraction = 0
+          draw_real_space_unit_cell = True
+          real_space_unit_cell_scale_fraction = 0.9
           binning {
-            binlabel = 'ANISO'
+            binlabel = "ANISO"
             bin_opacity = 1 0
             bin_opacity = 1 1
             bin_opacity = 0 2
@@ -213,6 +215,7 @@ phenix_buttonsdeflist = [
             show_vector = "['Anisotropy1', True]"
             show_vector = "['Anisotropy2', True]"
             show_vector = "['Anisotropy3', True]"
+            animate_rotation_around_vector = "[0, -1.0]"
           }
           hkls {
             expand_to_p1 = True

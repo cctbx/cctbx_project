@@ -199,6 +199,8 @@ class HKLview_3d:
     self.binstrs = []
     self.rotation_operators = []
     self.all_vectors = []
+    self.realSpaceMag = 1
+    self.recipSpaceMag = 1
     self.cosine = 1
     self.L = 1.0
     self.nuniqueval = 0
@@ -483,6 +485,8 @@ class HKLview_3d:
                       "mouse_sensitivity",
                       "real_space_unit_cell_scale_fraction",
                       "reciprocal_unit_cell_scale_fraction",
+                      "draw_real_space_unit_cell",
+                      "draw_reciprocal_unit_cell",
                       "clip_plane",
                       "show_vector",
                       "show_all_vectors",
@@ -495,8 +499,12 @@ class HKLview_3d:
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25) # for debugging
       #self.show_rotation_axes()
+      self.realSpaceMag = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
+      self.recipSpaceMag = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
 
-      if has_phil_path(diff_phil, "show_vector"):
+      if has_phil_path(diff_phil, "show_vector",
+                                  "real_space_unit_cell_scale_fraction",
+                                  "reciprocal_unit_cell_scale_fraction"):
         self.show_vectors(self.params.viewer.show_vector, diff_phil)
 
       if has_phil_path(diff_phil, "show_all_vectors"):
@@ -651,17 +659,8 @@ class HKLview_3d:
           retstr += self.set_opacity(bin, alpha)
         self.SendInfoToGUI( { "bin_opacity": self.params.binning.bin_opacity } )
       self.mprint( retstr, verbose=1)
-
-      if self.params.real_space_unit_cell_scale_fraction is None:
-        scale = None
-      else:
-        scale = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
-      self.DrawUnitCell(scale )
-      if self.params.reciprocal_unit_cell_scale_fraction is None:
-        scale = None
-      else:
-        scale = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
-      self.DrawReciprocalUnitCell(scale )
+      self.DrawUnitCell()
+      self.DrawReciprocalUnitCell()
       self.set_tooltip_opacity()
       self.set_show_tooltips()
       self.visualise_sym_HKLs()
@@ -2174,7 +2173,13 @@ in the space group %s\nwith unit cell %s""" \
       if val >= len(self.all_vectors):
         return str([])
       (opnr, label, order, cartvec, hklop, hkl, abc, length) = self.all_vectors[val]
-      self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
+      scale = 1
+      if len(abc) > 0:
+        mag = self.realSpaceMag
+      if len(hkl) > 0:
+        mag = self.recipSpaceMag
+      self.show_labelled_vector(isvisible, label, order, cartvec, hklop,
+                                autozoom=autozoom, mag=mag)
       if not isvisible:
         self.params.viewer.show_all_vectors = 0
       return str([val, isvisible])
@@ -2182,7 +2187,12 @@ in the space group %s\nwith unit cell %s""" \
       for i,(opnr, label, order, cartvec, hklop, hkl, abc, length) in enumerate(self.all_vectors):
         #if val in label: # so that user_vector.label="twin" declared for a preset button will match "2-fold_mytwin"
         if val == label:
-          self.show_labelled_vector(isvisible, label, order, cartvec, hklop, autozoom=autozoom)
+          if len(abc) > 0:
+            mag = self.realSpaceMag
+          if len(hkl) > 0:
+            mag = self.recipSpaceMag
+          self.show_labelled_vector(isvisible, label, order, cartvec, hklop,
+                                    autozoom=autozoom, mag=mag)
           if not isvisible:
             self.params.viewer.show_all_vectors = 0
           return str([i, isvisible])
@@ -2220,7 +2230,7 @@ in the space group %s\nwith unit cell %s""" \
         pass
 
 
-  def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True):
+  def show_labelled_vector(self, isvisible, label, order, cartvec, hklop, autozoom=True, mag=1):
     # avoid onMessage-DrawVector in HKLJavaScripts.js misinterpreting the commas in strings like "-x,z+y,-y"
     name = label + "_" + hklop.replace(",", "_")
     if isvisible:
@@ -2241,8 +2251,9 @@ in the space group %s\nwith unit cell %s""" \
         # adjust the length of the rotation axes to be compatible with the sphere of reflections
         uc = self.miller_array.unit_cell()
         OrtMx = matrix.sqr( uc.orthogonalization_matrix())
-        s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale
+        s = math.sqrt(OrtMx.transpose().norm_sq())*self.realspace_scale*mag
         self.currentrotvec = [s*cartvec[0], s*cartvec[1], s*cartvec[2]]
+      self.currentrotvec = [mag*self.currentrotvec[0], mag*self.currentrotvec[1], mag*self.currentrotvec[2]]
       self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
                                   self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
                                   label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
@@ -2352,46 +2363,46 @@ in the space group %s\nwith unit cell %s""" \
     return vecnr,speed
 
 
-  def DrawUnitCell(self, scale=1):
-    if scale is None:
+  def DrawUnitCell(self):
+    if self.params.draw_real_space_unit_cell is False:
       self.RemovePrimitives("unitcell")
       self.mprint( "Removing real space unit cell", verbose=2)
       return
     rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
-    self.draw_vector(0,0,0, scale,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
-    self.draw_vector(0,0,0, 0,scale,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
-    self.draw_vector(0,0,0, 0,0,scale, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
-    self.draw_vector(scale,0,0, scale,scale,0, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.draw_vector(0,scale,0, scale,scale,0, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.draw_vector(0,0,scale, scale,0,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.draw_vector(0,0,scale, 0,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.draw_vector(0,scale,scale, scale,scale,scale, False, r=0.5, g=0.8, b=0.8, radius=rad)
-    self.draw_vector(scale,0,scale, scale,scale,scale, False, r=0.8, g=0.5, b=0.8, radius=rad)
-    self.draw_vector(scale,0,0, scale,0,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
-    self.draw_vector(0,scale,0, 0,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad)
-    self.draw_vector(scale,scale,0, scale,scale,scale, False, r=0.8, g=0.8, b=0.5, radius=rad,
+    self.draw_vector(0,0,0, self.realSpaceMag,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,0, 0,self.realSpaceMag,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,0,0, 0,0,self.realSpaceMag, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(self.realSpaceMag,0,0, self.realSpaceMag,self.realSpaceMag,0, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,self.realSpaceMag,0, self.realSpaceMag,self.realSpaceMag,0, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,self.realSpaceMag, self.realSpaceMag,0,self.realSpaceMag, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(0,0,self.realSpaceMag, 0,self.realSpaceMag,self.realSpaceMag, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(0,self.realSpaceMag,self.realSpaceMag, self.realSpaceMag,self.realSpaceMag,self.realSpaceMag, False, r=0.5, g=0.8, b=0.8, radius=rad)
+    self.draw_vector(self.realSpaceMag,0,self.realSpaceMag, self.realSpaceMag,self.realSpaceMag,self.realSpaceMag, False, r=0.8, g=0.5, b=0.8, radius=rad)
+    self.draw_vector(self.realSpaceMag,0,0, self.realSpaceMag,0,self.realSpaceMag, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(0,self.realSpaceMag,0, 0,self.realSpaceMag,self.realSpaceMag, False, r=0.8, g=0.8, b=0.5, radius=rad)
+    self.draw_vector(self.realSpaceMag,self.realSpaceMag,0, self.realSpaceMag,self.realSpaceMag,self.realSpaceMag, False, r=0.8, g=0.8, b=0.5, radius=rad,
                      name="unitcell", autozoom=False)
     self.mprint( "Adding real space unit cell", verbose=1)
 
 
-  def DrawReciprocalUnitCell(self, scale=1):
-    if scale is None:
+  def DrawReciprocalUnitCell(self):
+    if self.params.draw_reciprocal_unit_cell is False:
       self.RemovePrimitives("reciprocal_unitcell")
       self.mprint( "Removing reciprocal unit cell", verbose=2)
       return
     rad = 0.2 # 0.05 * scale
-    self.draw_vector(0,0,0, scale,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
-    self.draw_vector(0,0,0, 0,scale,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
-    self.draw_vector(0,0,0, 0,0,scale, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
-    self.draw_vector(scale,0,0, scale,scale,0, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.draw_vector(0,scale,0, scale,scale,0, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.draw_vector(0,0,scale, scale,0,scale, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.draw_vector(0,0,scale, 0,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.draw_vector(0,scale,scale, scale,scale,scale, r=0.5, g=0.3, b=0.3, radius=rad)
-    self.draw_vector(scale,0,scale, scale,scale,scale, r=0.3, g=0.5, b=0.3, radius=rad)
-    self.draw_vector(scale,0,0, scale,0,scale, r=0.3, g=0.3, b=0.5, radius=rad)
-    self.draw_vector(0,scale,0, 0,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad)
-    self.draw_vector(scale,scale,0, scale,scale,scale, r=0.3, g=0.3, b=0.5, radius=rad,
+    self.draw_vector(0,0,0, self.recipSpaceMag,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,0, 0,self.recipSpaceMag,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,0,0, 0,0,self.recipSpaceMag, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(self.recipSpaceMag,0,0, self.recipSpaceMag,self.recipSpaceMag,0, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,self.recipSpaceMag,0, self.recipSpaceMag,self.recipSpaceMag,0, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,self.recipSpaceMag, self.recipSpaceMag,0,self.recipSpaceMag, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(0,0,self.recipSpaceMag, 0,self.recipSpaceMag,self.recipSpaceMag, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(0,self.recipSpaceMag,self.recipSpaceMag, self.recipSpaceMag,self.recipSpaceMag,self.recipSpaceMag, r=0.5, g=0.3, b=0.3, radius=rad)
+    self.draw_vector(self.recipSpaceMag,0,self.recipSpaceMag, self.recipSpaceMag,self.recipSpaceMag,self.recipSpaceMag, r=0.3, g=0.5, b=0.3, radius=rad)
+    self.draw_vector(self.recipSpaceMag,0,0, self.recipSpaceMag,0,self.recipSpaceMag, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(0,self.recipSpaceMag,0, 0,self.recipSpaceMag,self.recipSpaceMag, r=0.3, g=0.3, b=0.5, radius=rad)
+    self.draw_vector(self.recipSpaceMag,self.recipSpaceMag,0, self.recipSpaceMag,self.recipSpaceMag,self.recipSpaceMag, r=0.3, g=0.3, b=0.5, radius=rad,
                      name="reciprocal_unitcell", autozoom=False)
     self.mprint( "Adding reciprocal unit cell", verbose=1)
 
