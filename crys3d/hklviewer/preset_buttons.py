@@ -222,9 +222,9 @@ phenix_buttonsdeflist = [
             expand_anomalous = True
           }
   """),
-  ("TNCSlayer", "Slice perpendicular to TNCS vector", """
+  ("TNCSlayer_xtricorder", "Slice perpendicular to TNCS_xtricorder vector", """
           clip_plane {
-            normal_vector = "TNCS"
+            normal_vector = "TNCS_xtricorder"
             clip_width = 0.380397231
           }
           viewer {
@@ -232,7 +232,7 @@ phenix_buttonsdeflist = [
               label = "TEPS"
               datatype = "Floating-point"
             }
-            show_vector = "['TNCS', True]"
+            show_vector = "['TNCS_xtricorder', True]"
             fixorientation = *vector None
           }
           hkls {
@@ -241,7 +241,7 @@ phenix_buttonsdeflist = [
           }
 
 """),
-  ("TNCSvecrotate", "Rotate around TNCS vector", """
+  ("TNCSvecrotate_xtricorder", "Rotate around TNCS_xtricorder vector", """
             clip_plane {
               clip_width = 6
               auto_clip_width = False
@@ -251,10 +251,57 @@ phenix_buttonsdeflist = [
                 label = "TEPS"
                 datatype = "Floating-point"
               }
-              show_vector = "['TNCS', True]"
+              show_vector = "['TNCS_xtricorder', True]"
               is_parallel = True
               fixorientation = *vector None
-              animate_rotation_around_vector = "['TNCS', 5.0]"
+              animate_rotation_around_vector = "['TNCS_xtricorder', 5.0]"
+            }
+            hkls {
+              expand_to_p1 = True
+              expand_anomalous = True
+            }
+"""),
+  ("TNCSlayer_xtriage", "Slice perpendicular to TNCS_xtriage vector", """
+          clip_plane {
+            normal_vector = "TNCS_xtriage"
+            clip_width = 0.380397231
+          }
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          viewer {
+            data_array {
+              label = "E-values"
+              datatype = "Amplitude"
+            }
+            show_vector = "['TNCS_xtriage', True]"
+            user_vector {
+              label = "TNCS_xtriage"
+            }
+            fixorientation = *vector None
+          }
+          hkls {
+            expand_to_p1 = True
+            expand_anomalous = True
+          }
+
+"""),
+  ("TNCSvecrotate_xtriage", "Rotate around TNCS_xtriage vector", """
+            clip_plane {
+              clip_width = 6
+              auto_clip_width = False
+            }
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            viewer {
+              data_array {
+                label = "E-values"
+                datatype = "Amplitude"
+              }
+              show_vector = "['TNCS_xtriage', True]"
+              user_vector {
+                label = "TNCS_xtriage"
+              }
+              is_parallel = True
+              fixorientation = *vector None
+              animate_rotation_around_vector = "['TNCS_xtriage', 5.0]"
             }
             hkls {
               expand_to_p1 = True

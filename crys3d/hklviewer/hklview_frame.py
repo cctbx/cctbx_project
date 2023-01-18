@@ -1355,10 +1355,6 @@ class HKLViewFrame() :
           nvectorsfound = 0
           for iphilvec,philstrvec in enumerate(philstr_showvectors):
             philveclabel, philshowvec = eval(philstrvec)
-            # see if any of the user_vectors_labels is a substring of the label for the vectors to display
-            #if True in [ lbl in philveclabel for lbl in philstr_user_vectors_labels ] :
-            #  nvectorsfound = len(philstr_showvectors)
-            #  continue # button phil defines a user vector matching the show vector
             for opnr, veclabel, order, cartvec, hklop, hkl, abc, length in self.viewer.all_vectors:
               # allow label to be just a substring of veclabel
               philstr_userlbl = ""
@@ -1387,7 +1383,7 @@ class HKLViewFrame() :
               if datatype == arr1type:
                 miller_array_operation_can_be_done = True
                 break
-          if miller_array_operation_can_be_done:
+          if miller_array_operation_can_be_done and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
             activebtns.append((self.allbuttonslist[ibtn],True, datalabel, None))
@@ -1702,9 +1698,7 @@ class HKLViewFrame() :
       # TNCS vector from xtricorder is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
-      # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
-      # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
-      veclength = self.viewer.renderscale*0.5/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
+      veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
       tncsvec = [("TNCS_xtricorder", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
 
     anisovectors = []

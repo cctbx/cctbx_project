@@ -581,6 +581,10 @@ class HKLview_3d:
         # or abcvec vector in cartesian coordinates
         cartvec = self.all_vectors[ self.normal_vecnr ][3]
         self.L = self.all_vectors[ self.normal_vecnr ][7]
+        # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
+        # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
+        if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
+          self.L *= 0.5
 
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
           self.params.clip_plane.clip_width = 0.5*self.L # equal to half the hkl vector length
@@ -616,7 +620,7 @@ class HKLview_3d:
             The tncs modulation length is the inverse length of the tncs vector as defined in
             HKLViewFrame.list_vectors() where the length is stored as half the length of the tncs vector
             for the sake of stepping through alternating weak and strong layers with the +/- buttons.
-            So set clip plane width to 0.5*0.5/tncs-vector-length
+            So set clip plane width to 0.5*0.5/tncs-vector-length.
             """
             if self.params.clip_plane.auto_clip_width: # use the default spacing between tncs layers of reflections
               self.params.clip_plane.clip_width = 0.5*self.L
