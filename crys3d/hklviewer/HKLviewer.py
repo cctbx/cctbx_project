@@ -1442,8 +1442,9 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     self.sysabsentcheckbox.setChecked( self.currentphilstringdict['hkls.show_systematic_absences'])
     self.ttipalpha_spinBox.setValue( self.currentphilstringdict['NGL.tooltip_alpha'])
     self.mousemoveslider.setValue( self.mousespeedscale*self.currentphilstringdict['NGL.mouse_sensitivity'])
-    vecnr, dgr = self.currentphilstringdict['viewer.angle_around_vector']
-    self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
+    if self.currentphilstringdict['viewer.angle_around_vector'] is not None:
+      self.rotvec, dgr = self.currentphilstringdict['viewer.angle_around_vector']
+      self.rotavecangle_labeltxt.setText("Reflections rotated around Vector with Angle: %3.1fº" %dgr)
 
     self.ColourMapSelectDlg.selcolmap = self.currentphilstringdict["hkls.color_scheme"]
     self.ColourMapSelectDlg.setPowerScaleSliderVal( self.currentphilstringdict["hkls.color_powscale"] )
@@ -1473,7 +1474,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
     self.reciprocunitcellslider.setValue( self.currentphilstringdict['reciprocal_unit_cell_scale_fraction'] * self.reciprocunitcellslider.maximum())
 
     if self.currentphilstringdict['viewer.animate_rotation_around_vector'] is not None:
-      vecnr,speed = self.currentphilstringdict['viewer.animate_rotation_around_vector']
+      self.rotvec,speed = self.currentphilstringdict['viewer.animate_rotation_around_vector']
       self.AnimaRotCheckBox.setChecked( speed > 0 )
 
     self.ClipPlaneChkGroupBox.setChecked(self.currentphilstringdict['clip_plane.clip_width'] != None)
