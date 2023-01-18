@@ -4064,7 +4064,8 @@ class manager(object):
     vals = list(chain_ids_match_dict.values())
     for v in vals:
       assert len(vals[0]) == len(v), chain_ids_match_dict
-    result.reset_i_seq_if_necessary()
+    result.atoms().reset_i_seq()
+    result.atoms().reset_serial()
     self._pdb_hierarchy = result
     if self._pdb_hierarchy.models_size() == 1:
       # Drop model.id if there is only one model.
