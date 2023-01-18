@@ -2169,6 +2169,7 @@ in the space group %s\nwith unit cell %s""" \
   def show_vector(self, val, isvisible, autozoom=True):
     # val can be either the number (zero offset) of the vector in the list of vectors
     # or the label name of the vector in the list of vectors
+    mag=1
     if isinstance(val, int):
       if val >= len(self.all_vectors):
         return str([])

@@ -1510,12 +1510,15 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
         self.clipplane_normal_vector_length.setText("{:.6g}".format(self.clipplane_normal_vector_combo.currentData()))
 
     for i in range(self.vectortable2.rowCount()):
-      self.vectortable2.item(i, 0).setCheckState(Qt.Unchecked)
+      try: # checkboxes are not present first time gui is started
+        self.vectortable2.item(i, 0).setCheckState(Qt.Unchecked)
+      except Exception as e:
+        pass
 
     if self.currentphilstringdict['viewer.show_vector'] is not None:
       ivecs = self.currentphilstringdict['viewer.show_vector']
       for ivec in ivecs:
-        try:
+        try: # checkboxes are not present first time gui is started
           [i,b] = eval(ivec)
           if i < self.vectortable2.rowCount():
             if b:
