@@ -2383,6 +2383,7 @@ class PhenixBuilder(CCIBuilder):
     'prime',
     'cootbx',
     'qttbx',
+    'Colabs',
   ]
 
   # select dials-3.2 branch
