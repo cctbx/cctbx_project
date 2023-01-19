@@ -338,32 +338,6 @@ phenix_buttonsdeflist = [
 
   """),
 
-  ("TwinAxisrotampl", "Rotate amplitudes around twin axis", """
-
-          clip_plane {
-            clip_width = 10
-            auto_clip_width = False
-          }
-          viewer {
-            data_array {
-              label = "F,SIGF"
-              datatype = "Amplitude"
-            }
-            show_vector = "['twin', True]"
-            is_parallel = True
-            user_vector {
-              label = "twin"
-            }
-            fixorientation = *vector None
-            animate_rotation_around_vector = "['twin', 2.0]"
-          }
-          hkls {
-            expand_to_p1 = True
-            expand_anomalous = True
-          }
-
-  """),
-
   ("TwinAxisintens", "Slice intensities perpendicular to twin axis", """
 
           clip_plane {
@@ -381,32 +355,6 @@ phenix_buttonsdeflist = [
               label = "twin"
             }
             fixorientation = *vector None
-          }
-          hkls {
-            expand_to_p1 = True
-            expand_anomalous = True
-          }
-
-  """),
-
-  ("TwinAxisintensrot", "Rotate intensities around twin axis", """
-
-          clip_plane {
-            clip_width = 10
-            auto_clip_width = False
-          }
-          viewer {
-            data_array {
-              label = "I,SIGI"
-              datatype = "Intensity"
-            }
-            show_vector = "['twin', True]"
-            is_parallel = True
-            user_vector {
-              label = "twin"
-            }
-            fixorientation = *vector None
-            animate_rotation_around_vector = "['twin', 2.0]"
           }
           hkls {
             expand_to_p1 = True
