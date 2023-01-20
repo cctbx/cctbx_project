@@ -2202,6 +2202,11 @@ clip_plane {
         self.AnimateSpeedSlider.setEnabled(True)
         self.rotavecangle_slider.setDisabled(True)
         speed = self.AnimateSpeedSlider.value()
+        for rvrow in range(self.vectortable2.rowCount()):
+          if self.vectortable2.item(rvrow, 0) is not None:
+            if self.vectortable2.item(rvrow, 0).checkState()==Qt.Checked:
+              self.rotvec = rvrow
+              break
         self.send_message("viewer.animate_rotation_around_vector = '[%d, %f]'" %(self.rotvec, speed))
       else:
         self.rotavecangle_slider.setEnabled(True)

@@ -111,8 +111,8 @@ def ExtendAnyData(data, nsize):
   return data
 
 
-def MergeData(array, show_anomalous_pairs=False):
-  merge = array.merge_equivalents()
+def MergeData(inputarray, show_anomalous_pairs=False):
+  merge = inputarray.deep_copy().merge_equivalents()
   multiplicities = merge.redundancies()
   array = merge.array()
   if not show_anomalous_pairs and array.anomalous_flag():
