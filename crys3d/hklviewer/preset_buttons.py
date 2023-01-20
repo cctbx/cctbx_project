@@ -114,24 +114,26 @@ cctbx_buttonsdeflist = [
 
 ("Merged", "Merged Intensities ( miller_array.merge_equivalents() )",
  """
-          miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\n', 'merged_data', ['I,SIGI','Intensity'], ['', ''])"
-          viewer {
-            data_array {
-              label = "merged_data,Sigmerged_data"
-              datatype = "Intensity"
-            }
-          }
+      miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())\\n', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
+      viewer {
+        data_array {
+          label = "Imerge,SigImerge"
+          datatype = "Intensity"
+        }
+      }
+
  """),
 
 ("Multiplicities", "Multiplicities ( miller_array.merge_equivalents() )",
  """
-          miller_array_operation = "('merge = array1.merge_equivalents()\\nmultiplicities = merge.redundancies()\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)\\n', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
-          viewer {
-            data_array {
-              label = "multiplicity"
-              datatype = "Floating-point"
-            }
-          }
+      miller_array_operation = "('\\nfrom crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
+      viewer {
+        data_array {
+          label = "multiplicity"
+          datatype = "Floating-point"
+        }
+      }
+
  """),
 
 ]

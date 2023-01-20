@@ -112,27 +112,30 @@ def ExtendAnyData(data, nsize):
 
 
 def MergeData(array, show_anomalous_pairs=False):
-  if show_anomalous_pairs:
-    merge = array.merge_equivalents()
-    multiplicities = merge.redundancies()
+  merge = array.merge_equivalents()
+  multiplicities = merge.redundancies()
+  array = merge.array()
+  if not show_anomalous_pairs and array.anomalous_flag():
     asu, matches = multiplicities.match_bijvoet_mates()
     mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
     anom_mult = flex.int(
       min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
-    #flex.min_max_mean_double(anom_mult.as_double()).show()
-    anomalous_multiplicities = miller.array(
+    multiplicities = miller.array(
       miller.set(asu.crystal_symmetry(),
                  mult_plus.indices(),
                  anomalous_flag=False), anom_mult)
-    anomalous_multiplicities = anomalous_multiplicities.select(
-      anomalous_multiplicities.data() > 0)
+    multiplicities = multiplicities.select(
+      multiplicities.data() >= 0)
 
-    array = anomalous_multiplicities
-    multiplicities = anomalous_multiplicities
-  else:
-    merge = array.merge_equivalents()
-    array = merge.array()
-    multiplicities = merge.redundancies()
+    array_plus, array_minus = array.hemispheres_acentrics()
+    avg_data = flex.double(
+      (p + m)*0.5 for (p, m) in zip(array_plus.data(), array_minus.data()))
+    avg_sigmas = flex.double(
+      math.sqrt(p*p + m*m) for (p, m) in zip(array_plus.sigmas(), array_minus.sigmas()))
+    array = miller.array(
+      miller.set(asu.crystal_symmetry(),
+                 array_plus.indices(),
+                 anomalous_flag=False), avg_data, sigmas=avg_sigmas)
   return array, multiplicities, merge
 
 

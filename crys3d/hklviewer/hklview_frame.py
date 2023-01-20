@@ -880,6 +880,7 @@ class HKLViewFrame() :
     if newarray is None:
       # allow user to quickly amend his broken python code without having to enter a new column label
       self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
+      self.currentphil = master_phil.format(python_object = self.params)
       # and update_settings() won't bail out with a "No change in PHIL parameters" message
     else:
       self.mprint("New dataset has %d reflections." %newarray.size())
