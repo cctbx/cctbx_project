@@ -441,7 +441,7 @@ class map_model_manager(object):
 
   def __setstate__(self, pickle_dict):
     self.__dict__ = pickle_dict
-    if self.log is None:
+    if not hasattr(self, 'log') or self.log is None:
       self.log = sys.stdout
 
   def __repr__(self):
