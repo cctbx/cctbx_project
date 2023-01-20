@@ -287,14 +287,14 @@ def copy_modules(env, sp_dir=None, link=False):
                 copy_cmd(src, dst, link)
             continue
           elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante']:
-            # yacc.py
             if module == 'elbow':
-              yacc = 'yacc.py'
-              src = abs(dist_path / yacc)
-              dst = os.path.join(sp_dir, yacc)
-              print('  source:      ' + src)
-              print('  destination: ' + dst)
-              copy_cmd(src, dst, link)
+              # yacc.py and resources
+              for m in ['yacc.py', 'resources']:
+                src = abs(dist_path / m)
+                dst = os.path.join(sp_dir, m)
+                print('  source:      ' + src)
+                print('  destination: ' + dst)
+                copy_cmd(src, dst, link)
             src = abs(dist_path / module)
           dst = os.path.join(sp_dir, os.path.basename(src))
           if os.path.exists(dst):
@@ -306,6 +306,13 @@ def copy_modules(env, sp_dir=None, link=False):
             copy_cmd(src, dst, link)
           else:
             print('  Nothing done')
+          if module == 'tntbx':
+            for f in ['__init__.py', 'eigensystem.py']:
+              src = abs(dist_path / module / f)
+              dst = os.path.join(sp_dir, module, f)
+              print('  source:      ' + src)
+              print('  destination: ' + dst)
+              copy_cmd(src, dst, link)
     except KeyError:
       print(dist_path)
 
@@ -453,7 +460,10 @@ by the LIBTBX_BUILD environment variable''')
         print('  {name} not found'.format(name=name))
 
     # extra stuff
-    for module_name, extra_stuff in [('elbow', 'yacc.py'), ('phenix', 'wxGUI2')]:
+    for module_name, extra_stuff in [
+      ('elbow', 'yacc.py'),
+      ('elbow', 'resources'),
+      ('phenix', 'wxGUI2')]:
       if module == module_name:
         src = os.path.join(sp_dir, extra_stuff)
         if os.path.exists(src):
