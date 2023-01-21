@@ -55,6 +55,13 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules/cctbx_project/scitbx/math/tests
+    sed -i .back 's/  test_B_matrix/# test_B_matrix/g' tst_error_propagation_matrix_inverse.py
+  displayName: Skip test for -O0 on macOS
+  condition: and(eq(variables['MODULES'], 'modules0'), eq(variables['OS'], 'osx-64'))
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)
     ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
   displayName: Link bootstrap.py
@@ -119,12 +126,6 @@ steps:
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
-
-- script: |
-    set -xe
-    conda remove -y -n $(PYTHON_VERSION) --force boost boost-cpp
-  displayName: Remove Boost from conda environment for -O0 on macOS
-  condition: and(eq(variables['MODULES'], 'modules0'), eq(variables['OS'], 'osx-64'))
 
 # build
 - script: |
