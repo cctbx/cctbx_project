@@ -32,7 +32,10 @@ class StrCtrl(ValidatedTextCtrl):
         else :
           ValidatedTextCtrl.SetValue(self, value)
       else :
-        if (not isinstance(value, unicode)):
+        if (sys.version_info.major < 3) and (not isinstance(value, unicode)):
+          raise RuntimeError("Improper value (type: %s) for control %s" %
+            (type(value).__name__, self.GetName()))
+        if (sys.version_info.major >= 3) and (not isinstance(value, str)):
           raise RuntimeError("Improper value (type: %s) for control %s" %
             (type(value).__name__, self.GetName()))
         ValidatedTextCtrl.SetValue(self, value)
