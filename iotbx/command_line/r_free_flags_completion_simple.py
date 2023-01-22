@@ -66,14 +66,19 @@ def run(args, output_file_name = None, log = sys.stdout):
   print("Number of missing R-free-flags:", missing_set.indices().size(),
      file = log)
   print(file = log)
-  missing_flags = missing_set.generate_r_free_flags(
-    fraction=fraction_free,
-    max_free=None,
-    use_lattice_symmetry=True)
-  extended_r_free_flags = r_free_flags.concatenate(other=missing_flags)
-  print("Summary of extended R-free-flags:",file = log)
-  extended_r_free_flags.show_comprehensive_summary(prefix="  ")
-  print(file = log)
+  if missing_set.indices().size() == 0:
+    print("No missing r_free flags...skipping missing set generation\n",
+      file = log)
+    extended_r_free_flags = r_free_flags
+  else: # usual
+    missing_flags = missing_set.generate_r_free_flags(
+      fraction=fraction_free,
+      max_free=None,
+      use_lattice_symmetry=True)
+    extended_r_free_flags = r_free_flags.concatenate(other=missing_flags)
+    print("Summary of extended R-free-flags:",file = log)
+    extended_r_free_flags.show_comprehensive_summary(prefix="  ")
+    print(file = log)
   mtz_dataset = extended_r_free_flags.as_mtz_dataset(
     column_root_label="Extended-R-free-flags")
   if not output_file_name:
