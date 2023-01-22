@@ -120,22 +120,20 @@ def MergeData(inputarray, show_anomalous_pairs=False):
     mult_plus, mult_minus = multiplicities.hemispheres_acentrics()
     anom_mult = flex.int(
       min(p, m) for (p, m) in zip(mult_plus.data(), mult_minus.data()))
+    # Got acentric multiplicities. Get the centric multiplicities
+    matches = array.match_bijvoet_mates()[1]
+    sel_sp = matches.singles("+")
+    centrics = multiplicities.select( sel_sp)
+    # TODO: fix needed for obtaining the correct number of indices in the asu
+    # when merging unmerged data
     multiplicities = miller.array(
       miller.set(asu.crystal_symmetry(),
-                 mult_plus.indices(),
-                 anomalous_flag=False), anom_mult)
+                 flex.miller_index(list(mult_plus._indices) + list(centrics._indices) ) ,
+                 anomalous_flag=False), flex.int(list(anom_mult) + list(centrics.data()) ))
     multiplicities = multiplicities.select(
       multiplicities.data() >= 0)
 
-    array_plus, array_minus = array.hemispheres_acentrics()
-    avg_data = flex.double(
-      (p + m)*0.5 for (p, m) in zip(array_plus.data(), array_minus.data()))
-    avg_sigmas = flex.double(
-      math.sqrt(p*p + m*m) for (p, m) in zip(array_plus.sigmas(), array_minus.sigmas()))
-    array = miller.array(
-      miller.set(asu.crystal_symmetry(),
-                 array_plus.indices(),
-                 anomalous_flag=False), avg_data, sigmas=avg_sigmas)
+    array = array.average_bijvoet_mates()
   return array, multiplicities, merge
 
 
