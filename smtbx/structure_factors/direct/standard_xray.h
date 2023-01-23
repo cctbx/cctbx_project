@@ -228,12 +228,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
           if (compute_grad && scatterer.flags.grad_site()) {
             complex_type grad_site_factor = i * two_pi * f;
             for (int j=0; j<3; ++j) {
-              float_type h_j = g.hr[j];
-              grad_site[j] += grad_site_factor * h_j;
+              grad_site[j] += grad_site_factor * static_cast<float_type>(g.hr[j]);;
             }
           }
         }
-
         if (hr_ht.is_centric) {
           // Compute S = S' + conj(S') exp(i 2pi h.t_inv) and its gradients
           structure_factor += std::conj(structure_factor) * hr_ht.f_h_inv_t;
@@ -243,8 +241,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 grad_site[j] += std::conj(grad_site[j]) * hr_ht.f_h_inv_t;
               }
             }
-            if (scatterer.flags.use_u_aniso() && scatterer.flags.grad_u_aniso())
-            {
+            if (scatterer.flags.use_u_aniso() && scatterer.flags.grad_u_aniso()) {
               for (int j=0; j<6; ++j) {
                 grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
               }
@@ -473,6 +470,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
         // Finish
         structure_factor *= ff_iso;
+        
         if (!compute_grad) {
           return;
         }

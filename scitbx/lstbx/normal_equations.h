@@ -605,7 +605,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
           for (int i = start; i < start + chunk_size; ++i) {
             const double* g_yc_loc = &(jacobian_yc[(i - start) * n_par]);
 #pragma omp for nowait schedule(static,1)
-            for (int x = n_par - 1; x >= 0; ++x) {
+            for (int x = n_par - 1; x >= 0; x--) {
               l_ogc[x] += g_yc_loc[x] * yo[i];
               l_cgc[x] += g_yc_loc[x] * yc[i];
               int run = x * (n_par - 1) - x * (x - 1) / 2;
