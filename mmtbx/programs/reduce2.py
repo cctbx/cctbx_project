@@ -30,7 +30,7 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 
-version = "0.5.0"
+version = "0.6.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -77,6 +77,10 @@ output
     .type = str
     .short_caption = Description output file name
     .help = Description output file name
+  flipkin_directory = None
+    .type = str
+    .short_caption = Where to place the Flipkin Kinemages
+    .help = Where to place the Flipkin Kinemages. If None, no Flipkin files are made.
   print_atom_info = False
     .type = bool
     .short_caption = Print extra atom info
@@ -94,6 +98,39 @@ citation {
   external = True
 }
 ''')
+
+# ------------------------------------------------------------------------------
+
+def _FindFlipsInOutputString(s, moverType):
+  '''Return a list of _FlipMoverState items that include all of them found in the
+  output string from an Optimizer.
+  :param s: String returned from the getInfo() method on an optimizer.
+  :param moverType: Either AmideFlip or HisFlip, selects the flip type to report.
+  :return: List of _FlipMoverState objects indicating all flip Movers listed inside
+  any BEGIN...END REPORT block in the string, including whether they were marked as
+  flipped.
+  '''
+  ret = []
+  modelId = None
+  altId = None
+  inBlock = False
+  for line in s.splitlines():
+    words = line.split()
+    if inBlock:
+      if words[0:2] == ['END','REPORT']:
+        inBlock = False
+      elif words[0] == moverType:
+        ret.append(Optimizers.FlipMoverState(moverType, modelId, altId, words[3], words[4],
+                                   int(words[5]), words[14] == 'Flipped') )
+    else:
+      if words[0:2] == ['BEGIN','REPORT:']:
+        modelId = int(words[3])
+        # Remove the single-quote and colon characters from the AltId, possibly leaving it empty
+        trim = words[5].replace("'", "")
+        trim = trim.replace(":", "")
+        altId = trim
+        inBlock = True
+  return ret
 
 # ------------------------------------------------------------------------------
 
@@ -237,11 +274,12 @@ NOTES:
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
-      Optimizers.probePhil = self.params.probe
-      Optimizers.nonFlipPreference = self.params.non_flip_preference
-      Optimizers.skipBondFixup = self.params.skip_bond_fix_up
-      opt = Optimizers.FastOptimizer(self.params.add_flip_movers, self.model, probeRadius=0.25,
-        altID=self.params.alt_id, preferenceMagnitude=self.params.preference_magnitude)
+      opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+        self.model, probeRadius=0.25, altID=self.params.alt_id,
+        preferenceMagnitude=self.params.preference_magnitude,
+        nonFlipPreference=self.params.non_flip_preference,
+        skipBondFixup=self.params.non_flip_preference,
+        verbosity=3)
       doneOpt = work_clock()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
@@ -280,6 +318,42 @@ NOTES:
 
     print('Wrote', self.params.output.filename,'and',
       self.params.output.description_file_name, file = self.logger)
+
+    # If we've been asked to make Flipkins, then make each of them.
+    if self.params.add_flip_movers and self.params.output.flipkin_directory is not None:
+
+      make_sub_header('Generating Amide Flipkin', out=self.logger)
+
+      # Find the base name of the two output files we will produce.
+      inName = self.data_manager.get_default_model_name()
+      suffix = os.path.splitext(os.path.basename(inName))[1]
+      pad = 'FH'
+      base = os.path.splitext(os.path.basename(inName))[0] + pad
+      flipkinBase = self.params.output.flipkin_directory + "/" + base
+
+      # Make list of Movers to lock in one flip orientation and then the other,
+      # keeping track of which state they are in when Reduce was choosing.
+      # We need a different list for the Amide Movers and the Histidine Movers
+      # because we generate two different Flipkin files, one for each.
+      amides = _FindFlipsInOutputString(outString, 'AmideFlip')
+      print('XXX Amide:', amides)
+
+      # @todo Figure out how to run the optimization without fixup on the
+      # original orientation of all flippers and again on the flipped orientation
+      # for each and combine the info from both of them into the same Flipkin. This
+      # is made complicated by the addition and deletion of atoms.
+
+      make_sub_header('Generating Histidine Flipkin', out=self.logger)
+      hists = _FindFlipsInOutputString(outString, 'HisFlip')
+      print('XXX His:', hists)
+
+      # @todo Enable subsetting the states of a Histidine so that it will try
+      # all four protenations at a specific flip orientation, so that we can
+      # ask it to do each set separately.
+      # @todo Enabling setting the state (flipped or not) of each of the Movers
+      # and passing a list of locked ones to the Optimizer in two passes for
+      # each Flipkin file.
+      # @todo
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
