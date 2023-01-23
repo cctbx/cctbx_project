@@ -32,6 +32,8 @@ phil_scope = parse('''
       .type = str
       .multiple = True
       .help = glob which matches directories after TDER to be investigated.
+    structure = *new old
+      .type = choice
   }
   plot {
     show = True
@@ -173,6 +175,25 @@ class DriftScraper(object):
     return os.path.normpath(path).split(os.sep)
 
   @staticmethod
+  def return_only_value_or_range_as_str(sorted_iterable):
+    first, last = str(sorted_iterable[0]), str(sorted_iterable[-1])
+    return first if first == last else first + '-' + last
+
+  def extract_db_metadata(self, combine_phil_path):
+    """Get trial, task, rungroup, chunk, run info based on combining phil"""
+    parsed_combine_phil = parse(file_name=combine_phil_path)
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_combine_phil).extract()
+    index_dirs = [self.path_join(pie, '..') for pie in phil.input.experiments]
+    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
+    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
+    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
+    return {'chunk': combine_phil_path[16:19],
+            'run': self.return_only_value_or_range_as_str(runs),
+            'rungroup': self.return_only_value_or_range_as_str(rungroups),
+            'task': self.path_split(combine_phil_path)[-4],
+            'trial': self.return_only_value_or_range_as_str(trials)}
+
+  @staticmethod
   def extract_origin(expt_path):
     """Read origin from lines 14-16 after 'hierarchy' text in expt file"""
     with open(expt_path, 'r') as expt_file:
@@ -225,6 +246,17 @@ class DriftScraper(object):
         input_paths.extend(glob.glob(ig))
     return input_paths
 
+  def locate_combining_phil_paths(self, scaling_phil_path):
+    """Return paths to all phil files used to combine later-scaled expts"""
+    parsed_scaling_phil = parse(file_name=scaling_phil_path)
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
+    combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
+    combine_phil_paths = []
+    for cd in combine_dirs:
+      combine_phil_paths.extend(self.path_lookup(cd, '*chunk*_combine_*.phil'))
+    return sorted(set(combine_phil_paths))
+    # t000_rg002_chunk000_combine_experiments.phil
+
   @staticmethod
   def locate_scaling_directories(merging_phil_paths):
     """Return paths to all directories specified as input.path in phil file"""
@@ -247,6 +279,13 @@ class DriftScraper(object):
       refl_paths.extend(glob.glob(refl_glob))
     return sorted(set(expt_paths)), sorted(set(refl_paths))
 
+  def locate_refined_expt_refl_paths(self, combine_phil_path):
+    """Return paths to all refined expts and refls got after input combining"""
+    stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    expts = self.path_lookup(stem + '_refined.expt')
+    refls = self.path_lookup(stem + '_refined.refl')
+    return expts, refls
+
   def _write_tdata(self, expt_paths, tdata_path):
     """Read all expt_paths and write a tdata file with unit cells in lines"""
     s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
@@ -259,29 +298,56 @@ class DriftScraper(object):
       tdata_file.write('\n'.join(tdata_lines))
 
   def scrap(self):
+    if self.parameters.input.structure == "gui":
+      self._scrap_gui_structure()
+    else:
+      self._scrap_general()
+
+  def _scrap_gui_structure(self):
     for tag in self.locate_input_tags():
       last_v_dir = sorted(self.path_lookup(tag, 'v*/'))[-1]
       merging_phil_files = self.path_lookup(last_v_dir, '*_params.phil')
-      for scaling_dir in self.locate_scaling_directories(merging_phil_files):
-        scaling_expts = self.path_lookup(scaling_dir, 'scaling_*.expt')
+      for scaling_out in self.locate_scaling_directories(merging_phil_files):
+        scaling_expts = self.path_lookup(scaling_out, 'scaling_*.expt')
         try:
           first_scaling_expt_path = sorted(scaling_expts)[0]
         except IndexError:
           continue
-        task_dir = self.path_join(first_scaling_expt_path, '..', '..')
-        trial_dir = self.path_join(task_dir, '..')
+        scaling_dir = self.path_join(first_scaling_expt_path, '..', '..')
+        trial_dir = self.path_join(scaling_dir, '..')
         scrap_dict = {'tag': tag, 'trial': int(trial_dir[-9:-6]),
-                      'task': int(self.path_split(task_dir)[-1].lstrip('task')),
+                      'task': int(self.path_split(scaling_dir)[-1].lstrip('task')),
                       'rungroup': int(trial_dir[-3:]),
                       'run': self.path_split(trial_dir)[-2]}
         print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
         scrap_dict.update(self.extract_origin(first_scaling_expt_path))
         if self.parameters.uncertainties:
-          scaling_phils = self.path_lookup(task_dir, 'params_1.phil')
-          expt_p, refl_p = self.locate_tder_refined_expts_and_refls(scaling_phils)
+          scaling_phil = self.path_lookup(scaling_dir, 'params_1.phil')
+          expt_p, refl_p = self.locate_tder_refined_expts_and_refls(scaling_phil)
           scrap_dict.update(self.extract_size_and_origin_deltas(expt_p, refl_p))
           scrap_dict.update(self.extract_unit_cell_distribution(scaling_expts))
         self.table.add(**scrap_dict)
+
+  def _scrap_general(self):
+    for tag in self.locate_input_tags():
+      merging_phils = self.path_lookup(tag, '**', '*.phil')
+      merging_phils.sort(key=os.path.getmtime)
+      for scaling_dir in self.locate_scaling_directories(merging_phils):
+        scaling_expts = self.path_lookup(scaling_dir, 'scaling_*.expt')
+        try:
+          first_scaling_expt_path = sorted(scaling_expts)[0]
+        except IndexError:
+          continue
+        scaling_dir = self.path_join(first_scaling_expt_path, '..', '..')
+        scaling_phil = self.path_lookup(scaling_dir, 'params_1.phil')
+        combine_phil_paths = self.locate_combining_phil_paths(scaling_phil)
+        for cpp in combine_phil_paths:
+          scrap_dict = {}
+          scrap_dict.update(self.extract_db_metadata(cpp))
+          rep, rrp = self.locate_refined_expt_refl_paths(cpp)
+          scrap_dict.update(self.extract_size_and_origin_deltas(rep, rrp))
+          scrap_dict.update(self.extract_unit_cell_distribution(rep))
+          self.table.add(**scrap_dict)
 
 
 class DriftTable(object):
