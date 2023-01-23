@@ -248,13 +248,12 @@ class DriftScraper(object):
 
   def locate_combining_phil_paths(self, scaling_phil_paths):
     """Return paths to all phil files used to combine later-scaled expts"""
+    parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
+    combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
     combine_phil_paths = []
-    for scaling_phil_path in scaling_phil_paths:
-      parsed_scaling_phil = parse(file_name=scaling_phil_path)
-      phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
-      combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
-      for cd in combine_dirs:
-        combine_phil_paths.extend(self.path_lookup(cd, '*chunk*combine*.phil'))
+    for cd in combine_dirs:
+      combine_phil_paths.extend(self.path_lookup(cd, '*chunk*_combine_*.phil'))
     return sorted(set(combine_phil_paths))
     # t000_rg002_chunk000_combine_experiments.phil
 
