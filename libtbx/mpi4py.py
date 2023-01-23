@@ -59,8 +59,5 @@ except ImportError:
   print ("\nWarning: could not import mpi4py. Running as a single process.\n")
   MPI = mpiEmulator()
 else:
-  prev_excepthook = sys.excepthook
-  def global_except_hook(exctype, value, traceback):
-    prev_excepthook(exctype, value, traceback)
-    MPI.COMM_WORLD.Abort(1)
-  sys.excepthook = global_except_hook
+  import atexit
+  atexit.register(MPI.COMM_WORLD.Abort, 1)
