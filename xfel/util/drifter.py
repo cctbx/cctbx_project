@@ -284,14 +284,15 @@ class BaseDriftScraper(object):
         input_paths.extend(glob.glob(ig))
     return input_paths
 
-  def locate_combining_phil_paths(self, scaling_phil_path):
+  def locate_combining_phil_paths(self, scaling_phil_paths):
     """Return paths to all phil files used to combine later-scaled expts"""
-    parsed_scaling_phil = parse(file_name=scaling_phil_path)
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
-    combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
     combine_phil_paths = []
-    for cd in combine_dirs:
-      combine_phil_paths.extend(self.path_lookup(cd, '*chunk*_combine_*.phil'))
+    for scaling_phil_path in scaling_phil_paths:
+      parsed_scaling_phil = parse(file_name=scaling_phil_path)
+      phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
+      combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
+      for cd in combine_dirs:
+        combine_phil_paths.extend(self.path_lookup(cd, '*chunk*combine*.phil'))
     return sorted(set(combine_phil_paths))
     # t000_rg002_chunk000_combine_experiments.phil
 
@@ -336,7 +337,7 @@ class BaseDriftScraper(object):
       tdata_file.write('\n'.join(tdata_lines))
 
   def scrap(self):
-    if self.parameters.input.structure == "gui":
+    if self.parameters.input.structure == "old":
       self._scrap_gui_structure()
     else:
       self._scrap_general()
@@ -368,18 +369,18 @@ class BaseDriftScraper(object):
 
   def _scrap_general(self):
     for tag in self.locate_input_tags():
-      merging_phils = self.path_lookup(tag, '**', '*.phil')
-      merging_phils.sort(key=os.path.getmtime)
-      for scaling_dir in self.locate_scaling_directories(merging_phils):
-        scaling_expts = self.path_lookup(scaling_dir, 'scaling_*.expt')
+      merging_phil_paths = self.path_lookup(tag, '**', '*.phil')
+      merging_phil_paths.sort(key=os.path.getmtime)
+      for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
+        scaling_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
         try:
-          first_scaling_expt_path = sorted(scaling_expts)[0]
+          first_scaling_expt_path = sorted(scaling_expt_paths)[0]
         except IndexError:
           continue
         scaling_dir = self.path_join(first_scaling_expt_path, '..', '..')
-        scaling_phil = self.path_lookup(scaling_dir, 'params_1.phil')
-        combine_phil_paths = self.locate_combining_phil_paths(scaling_phil)
-        for cpp in combine_phil_paths:
+        scaling_phil_paths = self.path_lookup(scaling_dir, '*.phil')
+        comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
+        for cpp in comb_phil_paths:
           scrap_dict = {}
           scrap_dict.update(self.extract_db_metadata(cpp))
           rep, rrp = self.locate_refined_expt_refl_paths(cpp)
