@@ -345,7 +345,7 @@ class BaseDriftScraper(object):
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = self.path_lookup(path_stem + '_refined.expt')
-    refls_paths = self.path_lookup(path_stem + '_refined.refls')
+    refls_paths = self.path_lookup(path_stem + '_refined.refl')
     expts = self.load_experiments(*expts_paths)
     refls = self.load_reflections(*refls_paths)
     return expts, refls
