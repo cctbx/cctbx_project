@@ -1,4 +1,6 @@
 from __future__ import absolute_import, print_function, division
+
+import copy
 import glob
 import os
 import sys
@@ -207,6 +209,12 @@ class DriftScraper(object):
       z = float(expt_lines[hierarchy_word_pos + 16].replace(',', '').strip())
     return {'x': x, 'y': y, 'z': z}
 
+  @staticmethod
+  def extract_origin2(expts):
+    """Read detector origin (x, y, z) from the first expt file"""
+    x, y, z = expts[-1].detector.hierarchy().get_origin()
+    return {'x': x, 'y': y, 'z': z}
+
   def extract_size_and_origin_deltas(self, expt_paths, refl_paths):
     """Get number of experiments and reflections, as well as uncertainties
     of origin positions from refined TDER reflection position deviations"""
@@ -217,6 +225,23 @@ class DriftScraper(object):
     if self.parameters.uncertainties:
       for panel in tder_expts[0].detector:               # pr:  panel refls
         pr = tder_refls.select(tder_refls['panel'] == panel.index())
+        pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in det space
+        pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
+        pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+        pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+        deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+      d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+      return_dict.update({'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]})
+    return return_dict
+
+  def extract_size_and_origin_deltas2(self, expts, refls):
+    """Get number of experiments and reflections, as well as uncertainties
+    of origin positions from refined TDER reflection position deviations"""
+    return_dict = {'expts': len(expts), 'refls': len(refls)}
+    deltas_flex = flex.vec3_double()
+    if self.parameters.uncertainties:
+      for panel in expts[0].detector:               # pr:  panel refls
+        pr = refls.select(refls['panel'] == panel.index())
         pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in det space
         pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
         pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
@@ -281,12 +306,27 @@ class DriftScraper(object):
       refl_paths.extend(glob.glob(refl_glob))
     return sorted(set(expt_paths)), sorted(set(refl_paths))
 
+  def locate_refined_expt_identifiers(self, combine_phil_path):
+    """Return all refined expts and refls down-stream from combine_phil_path"""
+    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    expts_paths = self.path_lookup(path_stem + '_refined.expt')
+    return self.load_experiments(*expts_paths).identifiers()
+
   def locate_refined_expt_refl_paths(self, combine_phil_path):
     """Return paths to all refined expts and refls got after input combining"""
     stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts = self.path_lookup(stem + '_refined.expt')
     refls = self.path_lookup(stem + '_refined.refl')
     return expts, refls
+
+  @staticmethod
+  def select_refls_on_experiment_identifiers(refls, identifiers):
+    selection = flex.bool(len(refls), False)
+    id_map = refls.experiment_identifiers()
+    inv_identifiers = {v: k for k, v in zip(id_map.keys(), id_map.values())}
+    for identifier in identifiers:
+      selection |= (refls['id'] == inv_identifiers.get(identifier, default=-1))
+    return refls.select(selection)
 
   def _write_tdata(self, expt_paths, tdata_path):
     """Read all expt_paths and write a tdata file with unit cells in lines"""
@@ -336,6 +376,9 @@ class DriftScraper(object):
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
         scaling_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
+        scaling_refl_paths = self.path_lookup(scaling_dir, 'scaling_*.refl')
+        scaling_expts = self.load_experiments(*scaling_expt_paths)
+        scaling_refls = self.load_reflections(*scaling_refl_paths)
         try:
           first_scaling_expt_path = sorted(scaling_expt_paths)[0]
         except IndexError:
@@ -347,10 +390,14 @@ class DriftScraper(object):
           scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
           print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
-          rep, rrp = self.locate_refined_expt_refl_paths(cpp)
-          scrap_dict.update(self.extract_origin(rep[0]))
-          scrap_dict.update(self.extract_size_and_origin_deltas(rep, rrp))
-          scrap_dict.update(self.extract_unit_cell_distribution(rep))
+          refined_ids = self.locate_refined_expt_identifiers(cpp)
+          expts = copy.deepcopy(scaling_expts)
+          expts.select_on_experiment_identifiers(refined_ids)
+          refls = self.select_refls_on_experiment_identifiers(
+            scaling_refls, refined_ids)
+          scrap_dict.update(self.extract_origin2(expts))
+          scrap_dict.update(self.extract_size_and_origin_deltas2(expts, refls))
+          scrap_dict.update(self.extract_unit_cell_distribution(refls))
           self.table.add(**scrap_dict)
 
 
