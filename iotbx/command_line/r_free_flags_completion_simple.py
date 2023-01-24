@@ -21,8 +21,8 @@ def run(args, output_file_name = None, log = sys.stdout):
   refl_file = None
   high_res = None
   for arg in args:
-    if (op.isfile(arg)):
-      refl_file_name = arg
+    if (op.isfile(str(arg))):
+      refl_file_name = str(arg)
       refl_file = iotbx.reflection_file_reader.any_reflection_file(
         file_name=refl_file_name)
       if (refl_file.file_type() is None):
