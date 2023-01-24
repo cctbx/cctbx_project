@@ -182,7 +182,7 @@ class DriftScraper(object):
   def extract_db_metadata(self, combine_phil_path):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_combine_phil).extract()
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
     index_dirs = [self.path_join(pie, '..') for pie in phil.input.experiments]
     rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
