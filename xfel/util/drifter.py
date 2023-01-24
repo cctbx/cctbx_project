@@ -169,7 +169,7 @@ class DriftScraper(object):
 
   def path_lookup(self, *path_elements):
     """Join path elements and return a list of all matching files/dirs"""
-    return glob.glob(self.path_join(*path_elements))
+    return glob.glob(self.path_join(*path_elements), recursive=True)
 
   @staticmethod
   def path_split(path):
