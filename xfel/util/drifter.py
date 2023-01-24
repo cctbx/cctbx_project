@@ -179,9 +179,10 @@ class DriftScraper(object):
     return os.path.normpath(path).split(os.sep)
 
   @staticmethod
-  def return_only_value_or_range_as_str(sorted_iterable):
-    first, last = str(sorted_iterable[0]), str(sorted_iterable[-1])
-    return first if first == last else first + '-' + last
+  def return_string_value_or_range(sorted_iterable):
+    fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
+    d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
+    return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
 
   def extract_db_metadata(self, combine_phil_path):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
@@ -192,10 +193,10 @@ class DriftScraper(object):
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
     runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
     return {'chunk': combine_phil_path[16:19],
-            'run': self.return_only_value_or_range_as_str(runs),
-            'rungroup': self.return_only_value_or_range_as_str(rungroups),
+            'run': self.return_string_value_or_range(runs),
+            'rungroup': self.return_string_value_or_range(rungroups),
             'task': self.path_split(combine_phil_path)[-4],
-            'trial': self.return_only_value_or_range_as_str(trials)}
+            'trial': self.return_string_value_or_range(trials)}
 
   @staticmethod
   def extract_origin(expt_path):
