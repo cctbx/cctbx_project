@@ -126,9 +126,11 @@ class CorrelationMatrix(object):
       for i2, k2 in enumerate(self.keys):
         if i1 == i2:
           self.corr[k1][k2] = self.corr[k2][k1] = 1.0
+        elif len(variables[k1]) < 2:
+          self.corr[k1][k2] = self.corr[k2][k1] = 0.0
         elif i2 > i1:
-          corr = correlation(variables[k1], variables[k2], weights=weights)
-          self.corr[k1][k2] = self.corr[k2][k1] = corr
+          self.corr[k1][k2] = self.corr[k2][k1] = \
+            correlation(variables[k1], variables[k2], weights=weights)
 
   def __str__(self):
     s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
