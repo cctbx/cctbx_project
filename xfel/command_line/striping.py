@@ -205,7 +205,7 @@ reintegration{
 # split results and coerce to integration pickle for merging
 postprocessing_str = '''
 postprocessing {
-  enable = True
+  enable = False
   include scope xfel.command_line.frame_extractor.phil_scope
 }
 '''
@@ -451,8 +451,8 @@ class Script(object):
         self.intermediates)
       command = ". %s" % os.path.join(self.params.striping.output_folder, self.intermediates, script)
     else:
-      command = "%s %s" % (dispatcher_name, phil_filename)
-    self.command_sequence.append(command)
+      command = "%s_phil=%s" % (dispatcher_name, phil_filename)
+    self.argument_sequence.append(command)
 
   def run(self):
     '''Execute the script.'''
@@ -485,7 +485,7 @@ class Script(object):
 
         # reset for this chunk/stripe
         self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, batch, tag, idx)
-        self.command_sequence = []
+        self.argument_sequence = []
 
         # set up the file containing input expts and refls (logging)
         chunk_path = os.path.join(self.params.striping.output_folder, self.intermediates, self.filename)
@@ -502,35 +502,36 @@ class Script(object):
         for refl_path in chunk[1]:
           custom_parts.append("    reflections = %s" % refl_path)
         custom_parts.append("  }")
-        self.set_up_section("combine_experiments", "dials.combine_experiments",
+        self.set_up_section("combine_experiments", "combine_experiments",
           clustering=False, custom_parts=custom_parts)
 
         # refinement of the grouped experiments
-        self.set_up_section("refinement", "dials.refine",
+        self.set_up_section("refinement", "refine",
           clustering=self.clustering)
 
         # refinement of the grouped experiments
-        self.set_up_section("recompute_mosaicity", "cctbx.xfel.recompute_mosaicity",
+        self.set_up_section("recompute_mosaicity", "recompute_mosaicity",
           clustering=self.clustering)
 
         # reintegration
         if self.params.reintegration.enable:
-          if self.params.mp.method == 'shifter' or not self.params.mp.mpi_command:
-            self.set_up_section("reintegration", "cctbx.xfel.mpi_integrate", clustering=self.clustering)
-          else:
-            self.set_up_section("reintegration", "%s cctbx.xfel.mpi_integrate"%self.params.mp.mpi_command,
-                clustering=self.clustering)
+          self.set_up_section("reintegration", "integration", clustering=self.clustering)
 
         # extract results to integration pickles for merging
         if self.params.postprocessing.enable:
-          lambda_diff_str = lambda diff_str: (diff_str % \
-            (os.path.join("..", "final_extracted"))).replace("ITER", "%04d")
-          self.set_up_section("postprocessing", "cctbx.xfel.frame_extractor",
-            lambda_diff_str=lambda_diff_str, clustering=self.clustering)
+          pass # disabled
+          #lambda_diff_str = lambda diff_str: (diff_str % \
+          #  (os.path.join("..", "final_extracted"))).replace("ITER", "%04d")
+          #self.set_up_section("postprocessing", "cctbx.xfel.frame_extractor",
+          #  lambda_diff_str=lambda_diff_str, clustering=self.clustering)
 
         # submit queued job from appropriate directory
         os.chdir(self.intermediates)
-        command = " && ".join(self.command_sequence)
+        command = "cctbx.xfel.ensemble_refinement_pipeline " + " ".join(self.argument_sequence)
+
+        if self.params.mp.method != 'shifter' and self.params.mp.mpi_command:
+          command = "%s %s"%(self.params.mp.mpi_command, command)
+
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
