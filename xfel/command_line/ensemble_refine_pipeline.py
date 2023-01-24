@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 help_message = """
 This is an MPI enabled pipeline to run several dials and cctbx.xfel commands in row.
 Specifically dials.combine_experiments, dials.refine, cctbx.xfel.recompute_mosaicity,
-and optionally cctbx.xfel.mpi_integrate and the legacy cctbx.xfel.frame_extractor
+and optionally cctbx.xfel.mpi_integrate
 """
 
 from libtbx.phil import parse
