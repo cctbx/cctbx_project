@@ -401,7 +401,7 @@ class DriftScraper(object):
           scrap_dict.update(self.extract_origin2(scaling_expts_subset))
           scrap_dict.update({'expts': len(scaling_expts_subset)})
           scrap_dict.update({'refls': len(scaling_refls_subset)})
-          scrap_dict.update(self.extract_unit_cell_distribution(scaling_refls_subset))
+          scrap_dict.update(self.extract_unit_cell_distribution(scaling_expts_subset))
           refined_expts_subset = copy.deepcopy(refined_expts)
           refined_expts_subset.select_on_experiment_identifiers(scaling_ids)
           refined_refls_subset = self.select_refls_on_experiment_identifiers(
