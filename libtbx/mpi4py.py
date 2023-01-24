@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
+import sys
 
 ''' mpi4py wrapper: emulating mpi4py behavior for a single rank when the real mpi4py is not installed '''
 
@@ -58,5 +59,16 @@ except ImportError:
   print ("\nWarning: could not import mpi4py. Running as a single process.\n")
   MPI = mpiEmulator()
 else:
-  import atexit
-  atexit.register(MPI.COMM_WORLD.Abort, 1)
+  prev_excepthook = sys.excepthook
+  def global_except_hook(exctype, value, traceback):
+    prev_excepthook(exctype, value, traceback)
+    MPI.COMM_WORLD.Abort(1)
+  sys.excepthook = global_except_hook
+  prev_sys_exit = sys.exit
+  def global_sys_exit(status=None):
+    if status is not None:
+      MPI.COMM_WORLD.Abort(1)
+    else:
+      MPI.COMM_WORLD.Abort(0)
+    prev_sys_exit(status)
+  sys.exit = global_sys_exit
