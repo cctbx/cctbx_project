@@ -272,22 +272,19 @@ class BaseDriftScraper(object):
       return_dict.update({'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]})
     return return_dict
 
-  def extract_size_and_origin_deltas2(self, expts, refls):
-    """Get number of experiments and reflections, as well as uncertainties
-    of origin positions from refined TDER reflection position deviations"""
-    return_dict = {'expts': len(expts), 'refls': len(refls)}
+  @staticmethod
+  def extract_origin_deltas(expts, refls):
+    """Get uncertainties of origin positions from refl. position deviations"""
     deltas_flex = flex.vec3_double()
-    if self.parameters.uncertainties:
-      for panel in expts[0].detector:               # pr:  panel refls
-        pr = refls.select(refls['panel'] == panel.index())
-        pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in det space
-        pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
-        pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
-        pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-        deltas_flex.extend(pr_obs_lab - pr_cal_lab)
-      d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
-      return_dict.update({'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]})
-    return return_dict
+    for panel in expts[0].detector:
+      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
   def extract_unit_cell_distribution(self, scaling_expt_paths):
     """Retrieve average a, b, c and their deltas using expt paths"""
@@ -344,11 +341,14 @@ class BaseDriftScraper(object):
       refl_paths.extend(glob.glob(refl_glob))
     return sorted(set(expt_paths)), sorted(set(refl_paths))
 
-  def locate_refined_expt_identifiers(self, combine_phil_path):
+  def locate_refined_expts_refls(self, combine_phil_path):
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = self.path_lookup(path_stem + '_refined.expt')
-    return list(self.load_experiments(*expts_paths).identifiers())
+    refls_paths = self.path_lookup(path_stem + '_refined.refls')
+    expts = self.load_experiments(*expts_paths)
+    refls = self.load_reflections(*refls_paths)
+    return expts, refls
 
   def locate_refined_expt_refl_paths(self, combine_phil_path):
     """Return paths to all refined expts and refls got after input combining"""
@@ -421,6 +421,7 @@ class BaseDriftScraper(object):
           first_scaling_expt_path = sorted(scaling_expt_paths)[0]
         except IndexError:
           continue
+        scaling_ids = list(scaling_expts.identifiers())
         scaling_dir = self.path_join(first_scaling_expt_path, '..', '..')
         scaling_phil_paths = self.path_lookup(scaling_dir, '*.phil')
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
@@ -428,14 +429,23 @@ class BaseDriftScraper(object):
           scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
           print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
-          refined_ids = self.locate_refined_expt_identifiers(cpp)
-          expts = copy.deepcopy(scaling_expts)
-          expts.select_on_experiment_identifiers(refined_ids)
-          refls = self.select_refls_on_experiment_identifiers(
+          refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+          refined_ids = list(refined_expts.identifiers())
+          scaling_expts_subset = copy.deepcopy(scaling_expts)
+          scaling_expts_subset.select_on_experiment_identifiers(refined_ids)
+          scaling_refls_subset = self.select_refls_on_experiment_identifiers(
             scaling_refls, refined_ids)
-          scrap_dict.update(self.extract_origin2(expts))
-          scrap_dict.update(self.extract_size_and_origin_deltas2(expts, refls))
-          scrap_dict.update(self.extract_unit_cell_distribution(refls))
+          scrap_dict.update(self.extract_origin2(scaling_expts_subset))
+          scrap_dict.update({'expts': len(scaling_expts_subset)})
+          scrap_dict.update({'refls': len(scaling_refls_subset)})
+          scrap_dict.update(self.extract_unit_cell_distribution(scaling_refls_subset))
+          refined_expts_subset = copy.deepcopy(refined_expts)
+          refined_expts_subset.select_on_experiment_identifiers(scaling_ids)
+          refined_refls_subset = self.select_refls_on_experiment_identifiers(
+            refined_refls, scaling_ids)
+          if self.parameters.uncertainties:
+            scrap_dict.update(self.extract_origin_deltas(refined_expts_subset,
+                                                         refined_refls_subset))
           self.table.add(**scrap_dict)
 
 
