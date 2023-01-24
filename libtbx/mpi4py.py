@@ -67,8 +67,8 @@ else:
   prev_sys_exit = sys.exit
   def global_sys_exit(status=None):
     if status is not None:
+      sys.stderr.write(str(status) + '\n')
       MPI.COMM_WORLD.Abort(1)
     else:
       MPI.COMM_WORLD.Abort(0)
-    prev_sys_exit(status)
   sys.exit = global_sys_exit
