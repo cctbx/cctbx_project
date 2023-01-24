@@ -346,6 +346,7 @@ class DriftScraper(object):
         for cpp in comb_phil_paths:
           scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
+          print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
           rep, rrp = self.locate_refined_expt_refl_paths(cpp)
           scrap_dict.update(self.extract_origin(rep[0]))
           scrap_dict.update(self.extract_size_and_origin_deltas(rep, rrp))
