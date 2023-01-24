@@ -191,15 +191,15 @@ class BaseDriftScraper(object):
   def load_experiments(*expt_paths):
     """Create an instance of ExperimentList from *expt_paths"""
     expts = ExperimentList()
-    for expt_path in expt_paths:
+    for expt_path in set(expt_paths):
       expts.extend(ExperimentList.from_file(expt_path, check_format=False))
     return expts
 
   @staticmethod
   def load_reflections(*refl_paths):
     """Create an instance of flex.reflection_table from *refl_paths"""
-    refls_list = [flex.reflection_table.from_file(rp) for rp in refl_paths]
-    return flex.reflection_table.concat(refls_list)
+    refl_list = [flex.reflection_table.from_file(rp) for rp in set(refl_paths)]
+    return flex.reflection_table.concat(refl_list)
 
   @staticmethod
   def path_join(*path_elements):
