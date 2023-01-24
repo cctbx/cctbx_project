@@ -286,11 +286,11 @@ class BaseDriftScraper(object):
     d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
     return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
-  def extract_unit_cell_distribution(self, scaling_expt_paths):
+  def extract_unit_cell_distribution(self, scaling_expts):
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(scaling_expt_paths, tdata_file.name)
+      self._write_tdata(scaling_expts, tdata_file.name)
       with open(tdata_file.name, 'r') as tdata:
         for line in tdata.read().splitlines():
           a, b, c = line.strip().split(' ')[:3]
@@ -366,11 +366,12 @@ class BaseDriftScraper(object):
       selection |= (refls['id'] == inv_identifiers.get(identifier, -1))
     return refls.select(selection)
 
-  def _write_tdata(self, expt_paths, tdata_path):
+  @staticmethod
+  def _write_tdata(expts, tdata_path):
     """Read all expt_paths and write a tdata file with unit cells in lines"""
     s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
     tdata_lines = []
-    for expt in self.load_experiments(*expt_paths):
+    for expt in expts:
       uc_params = expt.crystal.get_unit_cell().parameters()
       sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
       tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
