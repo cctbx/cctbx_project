@@ -342,7 +342,7 @@ class DriftScraper(object):
         scaling_phil_paths = self.path_lookup(scaling_dir, '*.phil')
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in comb_phil_paths:
-          scrap_dict = {}
+          scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
           rep, rrp = self.locate_refined_expt_refl_paths(cpp)
           scrap_dict.update(self.extract_size_and_origin_deltas(rep, rrp))
