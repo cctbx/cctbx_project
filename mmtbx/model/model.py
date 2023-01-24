@@ -1536,6 +1536,7 @@ class manager(object):
         do_not_shift_back=do_not_shift_back)
 
     if hierarchy_to_output is not None:
+      hierarchy_to_output.round_occupancies_in_place(2)
       result.write(hierarchy_to_output.as_pdb_string(
           crystal_symmetry=cs_to_output,
           atoms_reset_serial_first_value=atoms_reset_serial_first_value,
@@ -1662,6 +1663,7 @@ class manager(object):
         do_not_shift_back=do_not_shift_back)
     if hierarchy_to_output is not None:
       if cif_block is not None:
+        hierarchy_to_output.round_occupancies_in_place(3)
         cif_block.update(hierarchy_to_output.as_cif_block())
       else:
         cif_block = hierarchy_to_output.as_cif_block()
