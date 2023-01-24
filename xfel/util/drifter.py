@@ -310,7 +310,7 @@ class DriftScraper(object):
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = self.path_lookup(path_stem + '_refined.expt')
-    return self.load_experiments(*expts_paths).identifiers()
+    return list(self.load_experiments(*expts_paths).identifiers())
 
   def locate_refined_expt_refl_paths(self, combine_phil_path):
     """Return paths to all refined expts and refls got after input combining"""
@@ -325,7 +325,7 @@ class DriftScraper(object):
     id_map = refls.experiment_identifiers()
     inv_identifiers = {v: k for k, v in zip(id_map.keys(), id_map.values())}
     for identifier in identifiers:
-      selection |= (refls['id'] == inv_identifiers.get(identifier, default=-1))
+      selection |= (refls['id'] == inv_identifiers.get(identifier, -1))
     return refls.select(selection)
 
   def _write_tdata(self, expt_paths, tdata_path):
