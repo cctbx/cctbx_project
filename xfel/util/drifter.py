@@ -383,6 +383,7 @@ class BaseDriftScraper(object):
           scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
           rep, rrp = self.locate_refined_expt_refl_paths(cpp)
+          scrap_dict.update(self.extract_origin(rep[0]))
           scrap_dict.update(self.extract_size_and_origin_deltas(rep, rrp))
           scrap_dict.update(self.extract_unit_cell_distribution(rep))
           self.table.add(**scrap_dict)
