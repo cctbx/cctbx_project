@@ -47,8 +47,9 @@ def assign_random_r_free_flags(n_refl, fraction_free, format="cns"):
         break
       if (i_end + 1 == n_refl):
         i_end += 1
-      assert i_end - i_start >= 2
-      result[random.randrange(i_start, i_end)] = True
+      # assert i_end - i_start >= 2
+      if i_end - i_start >= 2:
+        result[random.randrange(i_start, i_end)] = True
       i_start = i_end
     if (format == "shelx"):
       result_ = flex.int(n_refl, 1)
