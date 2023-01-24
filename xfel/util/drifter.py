@@ -414,39 +414,28 @@ class BaseDriftScraper(object):
       merging_phil_paths = self.path_lookup(tag, '**', '*.phil')
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
-        scaling_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
-        scaling_refl_paths = self.path_lookup(scaling_dir, 'scaling_*.refl')
-        scaling_expts = self.load_experiments(*scaling_expt_paths)
-        scaling_refls = self.load_reflections(*scaling_refl_paths)
-        try:
-          first_scaling_expt_path = sorted(scaling_expt_paths)[0]
-        except IndexError:
-          continue
-        scaling_ids = list(scaling_expts.identifiers())
-        scaling_dir = self.path_join(first_scaling_expt_path, '..', '..')
-        scaling_phil_paths = self.path_lookup(scaling_dir, '*.phil')
+        scaled_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
+        scaled_expts = self.load_experiments(*scaled_expt_paths)
+        scaled_identifiers = list(scaled_expts.identifiers())
+        scaling_phil_paths = []
+        for sep in scaled_expt_paths:
+          scaling_phil_paths.extend(self.path_lookup(sep, '..', '..', '*.phil'))
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in comb_phil_paths:
           scrap_dict = {'tag': tag}
           scrap_dict.update(self.extract_db_metadata(cpp))
           print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
           refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-          refined_ids = list(refined_expts.identifiers())
-          scaling_expts_subset = copy.deepcopy(scaling_expts)
-          scaling_expts_subset.select_on_experiment_identifiers(refined_ids)
-          scaling_refls_subset = self.select_refls_on_experiment_identifiers(
-            scaling_refls, refined_ids)
-          scrap_dict.update(self.extract_origin2(scaling_expts_subset))
-          scrap_dict.update({'expts': len(scaling_expts_subset)})
-          scrap_dict.update({'refls': len(scaling_refls_subset)})
-          scrap_dict.update(self.extract_unit_cell_distribution(scaling_expts_subset))
-          refined_expts_subset = copy.deepcopy(refined_expts)
-          refined_expts_subset.select_on_experiment_identifiers(scaling_ids)
-          refined_refls_subset = self.select_refls_on_experiment_identifiers(
-            refined_refls, scaling_ids)
+          refined_expts.select_on_experiment_identifiers(scaled_identifiers)
+          refined_refls = self.select_refls_on_experiment_identifiers(
+            refined_refls, scaled_identifiers)
+          scrap_dict.update({'expts': len(refined_expts)})
+          scrap_dict.update({'refls': len(refined_refls)})
+          scrap_dict.update(self.extract_origin2(refined_expts))
+          scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
           if self.parameters.uncertainties:
-            scrap_dict.update(self.extract_origin_deltas(refined_expts_subset,
-                                                         refined_refls_subset))
+            o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
+            scrap_dict.update(o_deltas)
           self.table.add(**scrap_dict)
 
 
