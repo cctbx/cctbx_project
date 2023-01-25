@@ -216,6 +216,7 @@ class BaseDriftScraper(object):
 
   @staticmethod
   def return_string_value_or_range(sorted_iterable):
+    """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
     fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
     d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
     return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
@@ -370,7 +371,7 @@ class TderExptFilesDriftScraper(BaseDriftScraper):
 
 class DriftTable(object):
   """Class responsible for storing info about all DriftDataclass instances"""
-  KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z',
+  KEYS = ['tag', 'run', 'rungroup', 'trial', 'chunk', 'task', 'x', 'y', 'z',
           'delta_x', 'delta_y', 'delta_z', 'expts', 'refls',
           'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
 
