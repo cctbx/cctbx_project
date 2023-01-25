@@ -201,9 +201,11 @@ class reparametrisation(ext.reparametrisation):
       elif isinstance(self.fc_correction, xray.shelx_SWAT_correction):
         p = self.add(SWAT_parameter, self.fc_correction)
       self.independent_scalar_parameters.append(p)
+    self.thickness_param = None
     if self.thickness is not None and self.thickness.grad:
       p = self.add(thickness_parameter, self.thickness)
       self.independent_scalar_parameters.append(p)
+      self.thickness_param = p
     self.finalise()
 
   def finalise(self):
