@@ -424,7 +424,7 @@ class DriftArtist(object):
   def __init__(self, table, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.color_by = 'tag'
+    self.color_by = 'tag' if len(set(table['tag'])) > 1 else 'task'
     self.order_by = 'run'
     self.cov_colormap = plt.get_cmap('seismic')
     self.table = table
@@ -462,10 +462,6 @@ class DriftArtist(object):
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axc.set_xlabel(self.order_by.title())
     self.axh.set_ylabel('# expts')
-
-  @property
-  def _refl_to_expt_ratios(self):
-    return [r / e for e, r in zip(self.table['expts'], self.table['refls'])]
 
   @property
   def color_array(self):
@@ -573,6 +569,7 @@ def run(params_):
   da.publish()
 
 
+params = []
 if __name__ == '__main__':
   if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
     print(message)
