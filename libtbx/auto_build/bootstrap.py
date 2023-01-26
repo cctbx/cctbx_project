@@ -2326,6 +2326,7 @@ class XFELBuilder(CCIBuilder):
     pass
 
 class PhenixBuilder(CCIBuilder):
+  HOT = []
   CODEBASES_EXTRA = [
     'chem_data',
     'phenix',
@@ -2360,7 +2361,6 @@ class PhenixBuilder(CCIBuilder):
     'phaser_voyager',
     # 'iota',
   ]
-  HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
