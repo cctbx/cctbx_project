@@ -82,7 +82,7 @@ master_phil_str = """
       .type = choice
       .help = The B-factor field in predicted models can be LDDT \
              (confidence, 0-1 or 0-100) or rmsd (A) or a B-factor
-      .short_caption = Contents of B-value field (required)
+      .short_caption = Contents of B-value field for supplied predicted models
       .expert_level = 3
 
     input_lddt_is_fractional = None
