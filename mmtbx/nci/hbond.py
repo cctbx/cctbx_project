@@ -551,7 +551,7 @@ class find(object):
     print("Per residue: %7.4f"%c.bpr,   file=log)
     min_stat_limit=50
     if c.n<min_stat_limit:
-      print('Statistics not displayed due to low number of H bonds found.')
+      print('Statistics not displayed due to low number of H bonds found.', file=log)
     else:
       print("            Mean      SD    Skew   Kurtosis",   file=log)
       printit(c.theta_1, "theta_1:")
