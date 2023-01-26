@@ -40,11 +40,13 @@ phil_scope = parse('''
       .type = str
       .multiple = True
       .help = glob which matches directories after TDER to be investigated.
+    exclude = None
+      .type = str
+      .multiple = True
+      .help = glob which matches merging directories to exclude from input.glob
     kind = tder_expt_files *merging_directory
       .type = choice
       .help = The type of files located by input.glob
-    structure = *new old
-      .type = choice
   }
   plot {
     show = True
@@ -274,10 +276,12 @@ class BaseDriftScraper(object):
   def locate_input_tags(self):
     """Return all tags (paths relative to working directory)
     which contain merging results to be processed"""
-    input_tags = []
+    input_tags, exclude_tags = [], []
     for ig in self.parameters.input.glob:
-        input_tags.extend(glob.glob(ig))
-    return input_tags
+      input_tags.extend(glob.glob(ig))
+    for ie in self.parameters.input.exclude:
+      exclude_tags.extend(glob.glob(ie))
+    return [it for it in input_tags if it not in exclude_tags]
 
   def locate_combining_phil_paths(self, scaling_phil_paths):
     """Return paths to all phil files used to combine later-scaled expts"""
