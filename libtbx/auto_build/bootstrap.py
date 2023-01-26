@@ -2493,10 +2493,12 @@ in your path. """)
 
   def get_libtbx_configure(self):
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
+    if not self.isPlatformWindows():
+      if 'phasertng' not in configlst:
+        configlst.insert(0, 'phasertng')
+      configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
-    #if self.isPlatformMacOSX():
-    #  configlst.append("--compiler=clang-omp")
     return configlst
 
 
