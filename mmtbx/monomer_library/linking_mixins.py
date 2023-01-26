@@ -854,6 +854,11 @@ Residue classes
         origin_id=None
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
+        if not bond_i_seqs:
+          raise Sorry('Failed to find atoms and/or bond for "%s" in "%s" and "%s"' % (
+            key,
+            atom_group1.id_str(),
+            atom_group2.id_str()))
         links[key][-1]+=bond_i_seqs[0]
         continue
       else:
