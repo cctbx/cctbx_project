@@ -348,9 +348,13 @@ class BaseDriftScraper(object):
             scrap_dict.update(self.extract_db_metadata(cpp))
             print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+            print('  # expts, refls before selecting good:',
+                  len(refined_expts), len(refined_refls))
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
             refined_refls = self.select_refls_on_experiment_identifiers(
               refined_refls, scaled_identifiers)
+            print('  # expts, refls after selecting good:',
+                  len(refined_expts), len(refined_refls))
             scrap_dict.update({'expts': len(refined_expts)})
             scrap_dict.update({'refls': len(refined_refls)})
             scrap_dict.update(self.extract_origin(refined_expts))
