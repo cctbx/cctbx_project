@@ -51,24 +51,34 @@ class mpiCommEmulator(object):
   def size(self):
     return self.Get_size()
 
+
 mpiEmulator.COMM_WORLD = mpiCommEmulator()
 
 try:
   from mpi4py import MPI
+  using_mpi = True
 except ImportError:
   print ("\nWarning: could not import mpi4py. Running as a single process.\n")
   MPI = mpiEmulator()
-else:
-  prev_excepthook = sys.excepthook
-  def global_except_hook(exctype, value, traceback):
-    prev_excepthook(exctype, value, traceback)
-    MPI.COMM_WORLD.Abort(1)
-  sys.excepthook = global_except_hook
-  prev_sys_exit = sys.exit
-  def global_sys_exit(status=None):
-    if status is not None:
-      sys.stderr.write(str(status) + '\n')
+  using_mpi = False
+
+def mpi_abort_on_exception(func):
+  """
+  A decorator for functions that will be called in an MPI context. This ensures
+  the MPI job will abort if a single rank raises an exception (or exits) out of
+  the decorated function.
+  """
+  def wrapped_func(*args, **kwargs):
+    try:
+      return func(*args, **kwargs)
+    except Exception:
+      sys.excepthook(*sys.exc_info())
       MPI.COMM_WORLD.Abort(1)
-    else:
-      MPI.COMM_WORLD.Abort(0)
-  sys.exit = global_sys_exit
+    except SystemExit as e:
+      if e.code:
+        sys.stderr.write(e.code + '\n')
+      MPI.COMM_WORLD.Abort(1)
+  if using_mpi:
+    return wrapped_func
+  else:
+    return func

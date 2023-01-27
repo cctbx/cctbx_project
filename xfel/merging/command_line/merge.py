@@ -16,6 +16,7 @@ if os.environ.get("CCTBX_NO_UUID", None) is not None:
 
 from xfel.merging.application.mpi_helper import mpi_helper
 from xfel.merging.application.mpi_logger import mpi_logger
+from libtbx.mpi4py import mpi_abort_on_exception
 
 # Note, when modifying this list, be sure to modify the README in xfel/merging
 
@@ -102,6 +103,7 @@ class Script(object):
     self.mpi_logger.log("Received input parameters and options")
     self.mpi_logger.log_step_time("BROADCAST_INPUT_PARAMS", True)
 
+  @mpi_abort_on_exception
   def run(self):
     import datetime
     time_now = datetime.datetime.now()
