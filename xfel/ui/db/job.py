@@ -656,7 +656,7 @@ class EnsembleRefinementJob(Job):
     reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
-               1,#self.app.params.mp.nproc,
+               self.app.params.mp.nnodes_tder or self.app.params.mp.nnodes,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
