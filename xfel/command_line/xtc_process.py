@@ -22,7 +22,6 @@ from dials.util.options import ArgumentParser
 from libtbx.phil import parse
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
-import numpy as np
 from libtbx import easy_pickle
 from dxtbx.model.experiment_list import ExperimentList
 
