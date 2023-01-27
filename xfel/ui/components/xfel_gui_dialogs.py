@@ -903,6 +903,17 @@ class AdvancedSettingsDialog(BaseDialog):
     self.jobtype_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_scale = gctr.SpinCtrl(self,
+                                      name='nnodes_tder',
+                                      label='TDER:',
+                                      label_size=(80, -1),
+                                      label_style='normal',
+                                      ctrl_size=(100, -1),
+                                      ctrl_value='%d'%(params.mp.nnodes_tder or 1),
+                                      ctrl_min=1,
+                                      ctrl_max=1000)
+    self.jobtype_nnodes_sizer.Add(self.nnodes_tder, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.nnodes_scale = gctr.SpinCtrl(self,
                                       name='nnodes_scale',
                                       label='Scaling:',
                                       label_size=(80, -1),
@@ -1110,6 +1121,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.htcondor_filesystemdomain.Hide()
       self.jobtype_nnodes_box.Hide()
       self.nnodes_index.Hide()
+      self.nnodes_tder.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
       self.extra_box.Hide()
@@ -1135,6 +1147,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
+      self.nnodes_tder.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
       self.extra_box.Show()
@@ -1161,6 +1174,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.htcondor_executable_path.Show()
       self.htcondor_filesystemdomain.Show()
       self.nnodes_index.Hide()
+      self.nnodes_tder.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
       self.extra_box.Hide()
@@ -1187,6 +1201,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Show()
+      self.nnodes_tder.Show()
       self.nnodes_scale.Show()
       self.nnodes_merge.Show()
       self.extra_box.Show()
@@ -1217,6 +1232,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.htcondor_executable_path.Hide()
       self.htcondor_filesystemdomain.Hide()
       self.nnodes_index.Hide()
+      self.nnodes_tder.Hide()
       self.nnodes_scale.Hide()
       self.nnodes_merge.Hide()
       self.extra_box.Show()
@@ -1282,6 +1298,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.params.mp.queue = self.queue_text.ctr.GetValue()
       if self.mp_option.ctr.GetStringSelection() in ['shifter', 'slurm', 'pbs']:
         self.params.mp.nnodes_index = int(self.nnodes_index.ctr.GetValue())
+        self.params.mp.nnodes_tder = int(self.nnodes_tder.ctr.GetValue())
         self.params.mp.nnodes_scale = int(self.nnodes_scale.ctr.GetValue())
         self.params.mp.nnodes_merge = int(self.nnodes_merge.ctr.GetValue())
       if self.mp_option.ctr.GetStringSelection() == 'shifter':
