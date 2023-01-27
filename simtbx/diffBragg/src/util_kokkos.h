@@ -26,6 +26,27 @@ inline MAT3 to_mat3(const Eigen::Matrix3d& m) {
     return MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
 }
 
+template <class T, class U>
+inline void transfer(T& target, U& source) {
+    for (int i=0; i<source.size(); ++i) {
+        target(i) = source[i];
+    }
+}
+
+template <class T, class U>
+inline void transfer_VEC3(T& target, U& source) {
+    for (int i=0; i<source.size(); ++i) {
+        target(i) = to_vec3(source[i]);
+    }
+}
+
+template <class T, class U>
+inline void transfer_MAT3(T& target, U& source) {
+    for (int i=0; i<source.size(); ++i) {
+        target(i) = to_mat3(source[i]);
+    }
+}
+
 // CONTAINERS
 struct kokkos_crystal {
     MAT3 anisoG;

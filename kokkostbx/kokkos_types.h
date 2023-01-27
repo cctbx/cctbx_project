@@ -3,7 +3,7 @@
 #include <Kokkos_Core.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
-    #define MemSpace Kokkos::CudaSpace
+    #define MemSpace Kokkos::CudaUVMSpace
 #endif
 #ifdef KOKKOS_ENABLE_HIP
     #define MemSpace Kokkos::Experimental::HIPSpace
