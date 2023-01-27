@@ -894,9 +894,9 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nnodes_index = gctr.SpinCtrl(self,
                                       name='nnodes_index',
                                       label='Indexing:',
-                                      label_size=(80, -1),
+                                      label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(50, -1),
+                                      ctrl_size=(60, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_index or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -905,20 +905,21 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nnodes_tder = gctr.SpinCtrl(self,
                                       name='nnodes_tder',
                                       label='TDER:',
-                                      label_size=(80, -1),
+                                      label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(50, -1),
+                                      ctrl_size=(60, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_tder or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
+    self.nnodes_tder.SetToolTip('Time Dependent Ensemble Refinement')
     self.jobtype_nnodes_sizer.Add(self.nnodes_tder, flag=wx.EXPAND | wx.ALL, border=10)
 
     self.nnodes_scale = gctr.SpinCtrl(self,
                                       name='nnodes_scale',
                                       label='Scaling:',
-                                      label_size=(80, -1),
+                                      label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(50, -1),
+                                      ctrl_size=(60, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_scale or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -927,9 +928,9 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nnodes_merge = gctr.SpinCtrl(self,
                                       name='nnodes_merge',
                                       label='Merging:',
-                                      label_size=(80, -1),
+                                      label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(50, -1),
+                                      ctrl_size=(60, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_merge or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
