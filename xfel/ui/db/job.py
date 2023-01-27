@@ -663,7 +663,7 @@ class EnsembleRefinementJob(Job):
                '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
                self.app.params.mp.wall_time,
                self.app.params.mp.mpi_command,
-               "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
+               "\n".join(["mp.extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.mp.shifter.submit_command,
                self.app.params.mp.shifter.shifter_image,
                self.app.params.mp.shifter.sbatch_script_template,
@@ -681,7 +681,8 @@ class EnsembleRefinementJob(Job):
                target_phil_path,
                path,
                self.rungroup.untrusted_pixel_mask_path,
-               ).split()
+               ).split('\n')
+    arguments = [arg.strip() for arg in arguments]
 
     try:
       commands = Script(arguments).run()
