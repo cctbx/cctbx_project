@@ -902,7 +902,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       ctrl_max=1000)
     self.jobtype_nnodes_sizer.Add(self.nnodes_index, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.nnodes_scale = gctr.SpinCtrl(self,
+    self.nnodes_tder = gctr.SpinCtrl(self,
                                       name='nnodes_tder',
                                       label='TDER:',
                                       label_size=(80, -1),
