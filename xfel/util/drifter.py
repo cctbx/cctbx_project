@@ -305,21 +305,25 @@ class DriftScraper(object):
           scaling_phil_paths.extend(self.path_lookup(sep, '..', '..', '*.phil'))
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in comb_phil_paths:
-          scrap_dict = {'tag': tag}
-          scrap_dict.update(self.extract_db_metadata(cpp))
-          print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
-          refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-          refined_expts.select_on_experiment_identifiers(scaled_identifiers)
-          refined_refls = self.select_refls_on_experiment_identifiers(
-            refined_refls, scaled_identifiers)
-          scrap_dict.update({'expts': len(refined_expts)})
-          scrap_dict.update({'refls': len(refined_refls)})
-          scrap_dict.update(self.extract_origin(refined_expts))
-          scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
-          if self.parameters.uncertainties:
-            o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
-            scrap_dict.update(o_deltas)
-          self.table.add(**scrap_dict)
+          try:
+            scrap_dict = {'tag': tag}
+            scrap_dict.update(self.extract_db_metadata(cpp))
+            print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
+            refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+            refined_expts.select_on_experiment_identifiers(scaled_identifiers)
+            refined_refls = self.select_refls_on_experiment_identifiers(
+              refined_refls, scaled_identifiers)
+            scrap_dict.update({'expts': len(refined_expts)})
+            scrap_dict.update({'refls': len(refined_refls)})
+            scrap_dict.update(self.extract_origin(refined_expts))
+            scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
+            if self.parameters.uncertainties:
+              o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
+              scrap_dict.update(o_deltas)
+          except (KeyError, IndexError) as e:
+            print(e)
+          else:
+            self.table.add(**scrap_dict)
 
 
 class DriftTable(object):
