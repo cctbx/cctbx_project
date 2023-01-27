@@ -896,7 +896,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Indexing:',
                                       label_size=(80, -1),
                                       label_style='normal',
-                                      ctrl_size=(100, -1),
+                                      ctrl_size=(50, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_index or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -907,7 +907,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='TDER:',
                                       label_size=(80, -1),
                                       label_style='normal',
-                                      ctrl_size=(100, -1),
+                                      ctrl_size=(50, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_tder or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -918,7 +918,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Scaling:',
                                       label_size=(80, -1),
                                       label_style='normal',
-                                      ctrl_size=(100, -1),
+                                      ctrl_size=(50, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_scale or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -929,7 +929,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Merging:',
                                       label_size=(80, -1),
                                       label_style='normal',
-                                      ctrl_size=(100, -1),
+                                      ctrl_size=(50, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_merge or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
