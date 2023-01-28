@@ -229,6 +229,7 @@ class manager(object):
     self.original_xh_lengths = None
     self.riding_h_manager = None
     self._pdb_interpretation_params = None
+    self._neutralized = False
     # Used for reprocessing (that needs to go). Only used in this file.
     # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
@@ -2320,6 +2321,11 @@ class manager(object):
       log = None,
       set_inelastic_form_factors=None,
       iff_wavelength=None):
+    # XXX Fix for electron table: ions are not supported.
+    # XXX Need to remove this once a better table is available.
+    if(scattering_table == "electron"):
+      self.neutralize_scatterers()
+    #
     self.get_xray_structure()
     self.scattering_dict_info = group_args(
         scattering_table=scattering_table,
@@ -2713,15 +2719,15 @@ class manager(object):
     return out.getvalue()
 
   def neutralize_scatterers(self):
-    neutralized = False
+    if(self._neutralized): return
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
       neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
-        neutralized = True
+        self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
-    if neutralized:
+    if self._neutralized:
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
