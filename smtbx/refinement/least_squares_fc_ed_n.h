@@ -117,6 +117,21 @@ namespace least_squares {
 
       void operator()() const {
         const cart_t K = cart_t(0, 0, -parent.Kl);
+        if (parent.mat_type == 3) { // 2-beam
+          for (size_t i = 0; i < frame.beams.size(); i++) {
+            int ii = parent.mi_lookup.find_hkl(frame.beams[i].index);
+            complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+            complex_t ci = utils<FloatType>::calc_amp_2beam(
+              frame.beams[i].index, parent.Fc2Ug * Fc,
+              thickness,
+              K, frame.RMf, frame.normal);
+            Is[frame.offset + i] = std::norm(ci);
+            if (CIs.size() != 0) {
+              CIs[frame.offset + i] = ci;
+            }
+          }
+          return;
+        }
         af::versa<complex_t, af::mat_grid> A;
         utils<FloatType>::build_Ug_matrix(
           A, Fcs_k,
@@ -143,7 +158,7 @@ namespace least_squares {
           amps = utils<FloatType>::calc_amps_2015(A, M,
             thickness, Kn, frame.beams.size());
         }
-        else { // ReciPro
+        else if (parent.mat_type == 2) { // ReciPro
           af::shared<FloatType> Pgs;
           utils<FloatType>::build_eigen_matrix_recipro(A, frame.indices, K,
             frame.RMf, frame.normal, Pgs, parent.Fc2Ug

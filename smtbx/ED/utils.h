@@ -258,6 +258,53 @@ namespace smtbx { namespace ED {
       return rv;
     }
 
+    // Assumes A(0,0)=0, replaces A with column egein vecs
+    //https://quantumcomputing.stackexchange.com/questions/22222/how-to-find-the-eigenstates-of-a-general-2-times-2-hermitian-matrix
+    static void two_beam_eigen(af::versa<complex_t, af::mat_grid> &A,
+      af::shared<FloatType> &ev)
+    {
+      FloatType h11 = A(1, 1).real() / 2;
+      FloatType s = std::sqrt(h11 * h11 + std::norm(A(0, 1)));
+      ev[0] = h11 + s;
+      ev[1] = h11 - s;
+      FloatType v1l = std::sqrt(2 * s * ev[0]);
+      FloatType v2l = std::sqrt(-2 * s * ev[1]);
+      complex_t A01 = A(0, 1);
+      A(0, 0) = A01 / v1l;  A(0, 1) = ev[0] / v1l;
+      A(1, 0) = A01 / v2l;  A(1, 1) = ev[1] / v2l;
+    }
+
+    static complex_t calc_amp_2beam(
+      const miller::index<> &h, const complex_t Ug,
+      FloatType thickness,
+      cart_t const& K,
+      mat3_t const& RMf,
+      cart_t const& N)
+    {
+      using namespace fast_linalg;
+      const FloatType Kn = N * K, Kl = K.length();
+      cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
+      FloatType s_2k = Kl * Kl - K_g.length_sq();
+
+      af::versa<complex_t, af::mat_grid> A(af::mat_grid(2,2));
+      A(1, 0) = Ug;
+      A(0, 1) = std::conj(Ug);
+      A(1, 1) = s_2k;
+      af::shared<FloatType> ev(2);
+      two_beam_eigen(A, ev);
+      // heev replaces A with column-wise eigenvectors
+//      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, 2,
+//        A.begin(), 2, ev.begin());
+//      SMTBX_ASSERT(!info)(info);
+      const complex_t exp_k(0, scitbx::constants::pi * thickness);
+      af::shared<complex_t> im(2);
+      FloatType ExpDen = K_g * N;
+      im[0] = std::exp(ev[0] * exp_k / Kn) * std::conj(A(0, 0));
+      im[1] = std::exp(ev[1] * exp_k / (K_g * N)) * std::conj(A(0, 1));
+      af::shared<complex_t> res = af::matrix_multiply(A.const_ref(), im.const_ref());
+      return res[1];
+    }
+
     static bool is_excited_g(cart_t const& g_,
       FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
