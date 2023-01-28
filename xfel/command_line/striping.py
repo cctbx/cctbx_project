@@ -1,7 +1,4 @@
 from __future__ import absolute_import, division, print_function
-
-import abc
-
 from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
