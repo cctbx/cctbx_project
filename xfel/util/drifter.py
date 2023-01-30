@@ -366,6 +366,9 @@ class BaseDriftScraper(object):
             print(e)
           else:
             self.table.add(**scrap_dict)
+            print('Updating table with: {}'.format(scrap_dict))
+    for key in self.table.KEYS:
+      print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
