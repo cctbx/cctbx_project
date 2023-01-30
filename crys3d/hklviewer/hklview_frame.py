@@ -561,7 +561,7 @@ class HKLViewFrame() :
         currentNGLscope = self.currentphil.extract().NGL
         currentSelectInfoscope = self.currentphil.extract().selected_info
         phl = self.ResetPhilandViewer()
-        phl.openfilename = fname # as openfilename was reset above
+        #phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
           return
         self.params.NGL = currentNGLscope # override default NGL and selected_info scopes with user settings
@@ -1063,7 +1063,7 @@ class HKLViewFrame() :
                   "merge_data": self.params.merge_data,
                   "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
                   "NewFileLoaded": self.NewFileLoaded,
-                  "file_name": self.params.openfilename
+                  "file_name": self.loaded_file_name
                 }
       self.SendInfoToGUI(mydict)
     self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
@@ -1131,7 +1131,6 @@ class HKLViewFrame() :
               self.origarrays[labl] = origarray
         if hkl_file._file_type == 'ccp4_mtz':
           self.hklfile_history = list(hkl_file._file_content.history())
-          self.loaded_file_name = file_name
           for e in self.hklfile_history:
             if "TNCS" in e and "VECTOR" in e:
               svec = e.split()[-3:]
@@ -1170,6 +1169,7 @@ class HKLViewFrame() :
               else:
                 self.origarrays[arr.info().labels[0]] = arr.data()
                 self.origarrays[arr.info().labels[1]] = arr.sigmas()
+        self.loaded_file_name = file_name
         self.finish_dataloading(arrays)
         self.SendInfoToGUI({"NewFileLoaded": self.NewFileLoaded})
       except Exception as e :
