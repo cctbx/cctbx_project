@@ -56,6 +56,7 @@ jobs:
       git lfs install --local
       git pull --rebase
       git lfs pull
+      git checkout tst_mpi_abort
     displayName: Update xfel_regression
 
   # preserve permissions and delete extra files
