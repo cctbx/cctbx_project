@@ -370,13 +370,22 @@ def process_predicted_model(
   if p.remove_low_confidence_residues:
     n_before = ph.overall_counts().n_residues
     selection_string = " (bfactor < %s)" %maximum_b_value
+
+    # Get selection based on CA/P atoms
     asc1 = ph.atom_selection_cache()
-    sel = asc1.selection(selection_string)
+    sel1 = asc1.selection('(name ca or name P) and (%s) ' %selection_string)
+    ca_ph = ph.select(sel1)
+    selection_string_2 = get_selection_for_short_segments(ca_ph,None)
+
+    # Apply this selection to full hierarchy
+    asc1 = ph.atom_selection_cache()
+    sel = asc1.selection(selection_string_2)
     working_ph = ph.select(sel)
+
     if p.minimum_sequential_residues:  #
       # Remove any very short segments
       asc1 = working_ph.atom_selection_cache()
-      sel1 = asc1.selection('name ca')
+      sel1 = asc1.selection('name ca or name P')
       ca_ph = working_ph.select(sel1)
       selection_to_remove = get_selection_for_short_segments(ca_ph,
          p.minimum_sequential_residues)
@@ -425,7 +434,6 @@ def process_predicted_model(
       ph = new_ph
   else:
     remainder_sequence_str = None
-
   # Get a new model
   new_model = model.as_map_model_manager().model_from_hierarchy(
      ph, return_as_model = True)
@@ -481,8 +489,9 @@ def process_predicted_model(
 def get_vrms_list(p, model_list):
   vrms_list = []
   for m in model_list:
+    s = m.as_sequence(as_string = True)
     b_values = m.apply_selection_string(
-      'name ca and not element ca').get_b_iso()
+       '(name ca or name P) and not element ca').get_b_iso()
     rmsd = get_rmsd_from_lddt(get_lddt_from_b(b_values)).min_max_mean().mean
     vrms = rmsd * p.vrms_from_rmsd_slope + p.vrms_from_rmsd_intercept
     vrms_list.append(vrms)
@@ -502,7 +511,8 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
   for chain_id in chain_dict.keys():
     residue_list = chain_dict[chain_id]
     for r in get_indices_as_ranges(residue_list):
-      if r.end - r.start + 1 < minimum_sequential_residues:
+      if (minimum_sequential_residues is None) or (
+          r.end - r.start + 1 < minimum_sequential_residues):
         selections.append("(chain %s and resseq %s:%s)" %(
           chain_id, r.start, r.end))
   selection_string = " or ".join(selections)
@@ -671,11 +681,9 @@ def get_rmsd_from_lddt(lddt_values, is_fractional = None):
   Outputs:
     flex array of error estimates (A)
   """
-
   if is_fractional is None:
     is_fractional = ( lddt_values.min_max_mean().min >= 0  and
       lddt_values.min_max_mean().max <= 1 )
-
 
   if is_fractional:
     fractional_values = lddt_values.deep_copy()
