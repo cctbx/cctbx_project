@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from json.decoder import JSONDecodeError
 import glob
 import os
 import sys
@@ -324,7 +325,7 @@ class DriftScraper(object):
             if self.parameters.uncertainties:
               o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
               scrap_dict.update(o_deltas)
-          except (KeyError, IndexError) as e:
+          except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
             self.table.add(**scrap_dict)
