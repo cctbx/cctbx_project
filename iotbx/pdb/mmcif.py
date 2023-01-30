@@ -434,10 +434,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     if yyyymmdd is not None:
       return int(yyyymmdd[:4])
 
-  def deposition_date(self):
+  def deposition_date(self, us_style=True):
     # date format: yyyy-mm-dd
     cif_block = list(self.cif_model.values())[0]
-    return cif_block.get("_pdbx_database_status.recvd_initial_deposition_date")
+    date_orig = cif_block.get("_pdbx_database_status.recvd_initial_deposition_date")
+    result = date_orig
+    if not us_style:
+      raise NotImplementedError
+    return result
     #rev_num = cif_block.get('_database_PDB_rev.num')
     #if rev_num is not None:
     #  date_original = cif_block.get('_database_PDB_rev.date_original')
@@ -448,7 +452,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     #    if date_original is not None:
     #      return date_original[i]
 
-  def get_r_rfree_sigma(self, file_name):
+  def get_r_rfree_sigma(self, file_name=None):
     return _cif_get_r_rfree_sigma_object(self.cif_block, file_name)
 
   def get_solvent_content(self):
