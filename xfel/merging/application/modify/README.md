@@ -93,7 +93,7 @@ filter.unit_cell.cluster.covariance.file=../tdata/covariance_trial_cells.pickle
 filter.unit_cell.cluster.covariance.component=0
 filter.unit_cell.cluster.covariance.mahalanobis=4.0
 ```
-Apply the covariance method to select unit cells that are closely isomorphous.  Refer to the [documentation](https://github.com/cctbx/cctbx_project/tree/merge_polar/xfel/merging/application/tdata) for details.
+Apply the covariance method to select unit cells that are closely isomorphous.  Refer to the [documentation](https://github.com/cctbx/cctbx_project/tree/master/xfel/merging/application/tdata) for details.
 
 ```
 modify.reindex_to_reference.dataframe=test_reindex_dataframe.pickle
