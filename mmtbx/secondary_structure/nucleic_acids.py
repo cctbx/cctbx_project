@@ -6,6 +6,7 @@ import math
 from iotbx.pdb import get_one_letter_rna_dna_name
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
+from mmtbx.monomer_library import bondlength_defaults
 import iotbx.phil
 
 import six
@@ -256,7 +257,6 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
   r1 = a1.parent()
   r2 = a2.parent()
   r1, r2, r1n, r2n = unify_residue_names_and_order(a1.parent(), a2.parent())
-  from mmtbx.monomer_library import bondlength_defaults
   best_possible_link_list = []
   best_score = 100.
   best_class_number = None
@@ -617,11 +617,13 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
   result = []
   if saenger_class == 0:
     return result
+  if saenger_class == 16:
+    # We don't have values for this one.
+    return result
   assert len(atoms) == 2
   new_hbonds = []
   r1, r2, r1n, r2n = unify_residue_names_and_order(
       atoms[0].parent(), atoms[1].parent())
-  from mmtbx.monomer_library import bondlength_defaults
   if bondlength_defaults.basepairs_lengths[saenger_class][0] != (r1n, r2n):
     print(bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class)
     print(r1.id_str(), r2.id_str())
