@@ -52,6 +52,7 @@ dependencies:
  # dials
  - jinja2
  - msgpack-python
+ - msgpack-c
  - orderedset
  - procrunner
  - python-blosc

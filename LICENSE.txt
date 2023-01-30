@@ -1,6 +1,6 @@
 *** License agreement ***
 
-cctbx Copyright (c) 2006 - 2018, The Regents of the University of
+cctbx Copyright (c) 2006 - 2023, The Regents of the University of
 California, through Lawrence Berkeley National Laboratory (subject to
 receipt of any required approvals from the U.S. Dept. of Energy).  All
 rights reserved.

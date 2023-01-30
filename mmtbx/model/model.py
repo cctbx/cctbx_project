@@ -229,6 +229,7 @@ class manager(object):
     self.original_xh_lengths = None
     self.riding_h_manager = None
     self._pdb_interpretation_params = None
+    self._neutralized = False
     # Used for reprocessing (that needs to go). Only used in this file.
     # XXX REMOVE WHEN POSSIBLE! XXX
     self.scattering_dict_info = None
@@ -965,10 +966,18 @@ class manager(object):
       # Set up scattering table if there was one before
       if scattering_table:
         self.setup_scattering_dictionaries(scattering_table = scattering_table)
-
-      # Remove these because they won't be ok
-      self.unset_restraints_manager()
-      self.unset_ncs_constraints_groups()
+      #
+      if(self.get_restraints_manager() is not None):
+        self.get_restraints_manager().geometry.replace_site_symmetry(
+          new_site_symmetry_table   = self._xray_structure.site_symmetry_table(),
+          special_position_settings = self._xray_structure.special_position_settings(),
+          sites_cart                = self._xray_structure.sites_cart())
+        # Not sure if this is needed.
+        self.get_restraints_manager().geometry.crystal_symmetry=crystal_symmetry
+        self.restraints_manager.crystal_symmetry=crystal_symmetry
+        # This updates some of internals
+        self.get_restraints_manager().geometry.pair_proxies(
+          sites_cart = self.get_sites_cart())
 
   def unit_cell_crystal_symmetry(self):
     if self._unit_cell_crystal_symmetry is not None:
@@ -1536,6 +1545,7 @@ class manager(object):
         do_not_shift_back=do_not_shift_back)
 
     if hierarchy_to_output is not None:
+      hierarchy_to_output.round_occupancies_in_place(2)
       result.write(hierarchy_to_output.as_pdb_string(
           crystal_symmetry=cs_to_output,
           atoms_reset_serial_first_value=atoms_reset_serial_first_value,
@@ -1662,6 +1672,7 @@ class manager(object):
         do_not_shift_back=do_not_shift_back)
     if hierarchy_to_output is not None:
       if cif_block is not None:
+        hierarchy_to_output.round_occupancies_in_place(3)
         cif_block.update(hierarchy_to_output.as_cif_block())
       else:
         cif_block = hierarchy_to_output.as_cif_block()
@@ -2310,6 +2321,11 @@ class manager(object):
       log = None,
       set_inelastic_form_factors=None,
       iff_wavelength=None):
+    # XXX Fix for electron table: ions are not supported.
+    # XXX Need to remove this once a better table is available.
+    if(scattering_table == "electron"):
+      self.neutralize_scatterers()
+    #
     self.get_xray_structure()
     self.scattering_dict_info = group_args(
         scattering_table=scattering_table,
@@ -2703,15 +2719,15 @@ class manager(object):
     return out.getvalue()
 
   def neutralize_scatterers(self):
-    neutralized = False
+    if(self._neutralized): return
     xrs = self.get_xray_structure()
     scatterers = xrs.scatterers()
     for scatterer in scatterers:
       neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
-        neutralized = True
+        self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
-    if neutralized:
+    if self._neutralized:
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 

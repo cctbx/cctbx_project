@@ -175,10 +175,10 @@ class HKLViewFrame() :
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
-      if 'image_file' in kwds: # save displayed reflections to an image file
-        time.sleep(1)
-        fname = kwds.get('image_file', "testimage.png" )
-        self.update_from_philstr('save_image_name = "%s"' %fname)
+        if 'image_file' in kwds: # save displayed reflections to an image file
+          time.sleep(1)
+          fname = kwds.get('image_file', "testimage.png" )
+          self.update_from_philstr('save_image_name = "%s"' %fname)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(10)
@@ -271,7 +271,7 @@ class HKLViewFrame() :
         if msgtype in ["philstr", "preset_philstr"]:
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
-          self.guarded_update_settings(new_phil, msgtype, lastmsgtype)
+          self.guarded_process_PHIL_parameters(new_phil, msgtype, lastmsgtype)
         if msgtype=="external_cmd":
           self.external_cmd = mstr
           self.mprint("Received python command string:\n" + mstr, verbose=1)
@@ -469,16 +469,16 @@ class HKLViewFrame() :
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_update_settings(new_phil, msgtype="preset_philstr", postrender=True)
+    self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
 
 
-  def guarded_update_settings(self, new_phil=None, msgtype="philstr",
+  def guarded_process_PHIL_parameters(self, new_phil=None, msgtype="philstr",
                               lastmsgtype="philstr", postrender=False):
-    self.mprint("guarded_update_settings() waiting for update_handler_sem.acquire", verbose="threadingmsg")
+    self.mprint("guarded_process_PHIL_parameters() waiting for update_handler_sem.acquire", verbose="threadingmsg")
     if not self.update_handler_sem.acquire(timeout=jsview_3d.lock_timeout):
       self.mprint("Timed out getting update_handler_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
-    self.mprint("guarded_update_settings() got update_handler_sem", verbose="threadingmsg")
-    self.update_settings(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
+    self.mprint("guarded_process_PHIL_parameters() got update_handler_sem", verbose="threadingmsg")
+    self.process_PHIL_parameters(new_phil=new_phil, msgtype=msgtype, lastmsgtype=lastmsgtype)
     if postrender:
       time.sleep(1)
       self.viewer.RedrawNGL()
@@ -487,10 +487,10 @@ class HKLViewFrame() :
       time.sleep(1)
       self.viewer.GetReflectionsInFrustum()
     self.update_handler_sem.release()
-    self.mprint("guarded_update_settings() releasing update_handler_sem", verbose="threadingmsg")
+    self.mprint("guarded_process_PHIL_parameters() releasing update_handler_sem", verbose="threadingmsg")
 
 
-  def update_settings(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
+  def process_PHIL_parameters(self, new_phil=None, msgtype="philstr", lastmsgtype="philstr"):
     try:
       if not self.viewer.webgl_OK:
         raise HKLviewerError("Critical WebGL problem! ")
@@ -655,7 +655,7 @@ class HKLViewFrame() :
         self.list_vectors()
         self.validated_preset_buttons = False
 
-      self.params = self.viewer.update_settings(diff_phil, phl)
+      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
 
       self.SendCurrentPhilValues()
@@ -826,12 +826,12 @@ class HKLViewFrame() :
 
   def SetSpaceGroupChoice(self, n):
     self.params.spacegroup_choice = n
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetDefaultSpaceGroup(self):
     self.params.using_space_subgroup = False
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def set_default_spacegroup(self):
@@ -844,7 +844,7 @@ class HKLViewFrame() :
     # get list of existing new miller arrays and operations if present
     miller_array_operations_lst = [ ( operation, label, arrid1, arrid2 ) ]
     self.params.miller_array_operations = str( miller_array_operations_lst )
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def make_new_miller_array(self, is_preset_philstr=False):
@@ -881,7 +881,7 @@ class HKLViewFrame() :
       # allow user to quickly amend his broken python code without having to enter a new column label
       self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
       self.currentphil = master_phil.format(python_object = self.params)
-      # and update_settings() won't bail out with a "No change in PHIL parameters" message
+      # and process_PHIL_parameters() won't bail out with a "No change in PHIL parameters" message
     else:
       self.mprint("New dataset has %d reflections." %newarray.size())
       newarray.set_info(millarr1._info )
@@ -1182,7 +1182,7 @@ class HKLViewFrame() :
 
   def LoadReflectionsFile(self, openfilename):
     self.params.openfilename = openfilename
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def load_miller_arrays(self):
@@ -1205,7 +1205,7 @@ class HKLViewFrame() :
 
   def LoadMillerArrays(self, marrays):
     self.provided_miller_arrays = marrays
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
     self.params.use_provided_miller_arrays = True
 
 
@@ -1523,42 +1523,42 @@ class HKLViewFrame() :
 
   def TabulateMillerArray(self, ids):
     self.params.tabulate_miller_array_ids = str(ids)
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetCameraType(self, camtype):
     self.params.NGL.camera_type = camtype
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ExpandToP1(self, val):
     self.params.hkls.expand_to_p1 = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ExpandAnomalous(self, val):
     self.params.hkls.expand_anomalous = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowOnlyMissing(self, val):
     self.params.hkls.show_only_missing = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowMissing(self, val):
     self.params.hkls.show_missing = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowDataOverSigma(self, val):
     self.params.hkls.show_data_over_sigma = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowSystematicAbsences(self, val):
     self.params.hkls.show_systematic_absences = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowSlice(self, val, axis="h", index=0):
@@ -1566,7 +1566,7 @@ class HKLViewFrame() :
     self.params.hkls.slice_mode = val
     self.params.hkls.slice_axis = axisstr
     self.params.hkls.slice_index = index
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def set_scene_bin_thresholds(self, thresholds = None, binner_idx = 0,  nbins = 6):
@@ -1584,7 +1584,7 @@ class HKLViewFrame() :
     self.params.nbins = nbins
     self.params.binning.binner_idx = binner_idx
     self.params.binning.bin_opacity = [ [1.0, e] for e in range(nbins) ]
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def GetNumberingOfBinners(self):
@@ -1597,23 +1597,23 @@ class HKLViewFrame() :
     else:
       self.params.scene_bin_thresholds = thresholds[:]
     self.params.nbins = len(binvals)
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetOpacities(self, bin_opacities):
     #self.params.bin_opacities = str(bin_opacities)
     self.params.bin_opacities = bin_opacity
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetToolTipOpacity(self, val):
     self.params.NGL.tooltip_alpha = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetShowToolTips(self, val):
     self.params.NGL.show_tooltips = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def set_scene(self, scene_id):
@@ -1633,12 +1633,12 @@ class HKLViewFrame() :
 
   def SetScene(self, scene_id):
     self.params.viewer.scene_id = scene_id
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetMergeData(self, val):
     self.params.merge_data = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetRadiiScale(self, scale=1.0, nth_power_scale = float("nan")):
@@ -1650,23 +1650,23 @@ class HKLViewFrame() :
     """
     self.params.hkls.scale = scale
     self.params.hkls.nth_power_scale_radii = nth_power_scale
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetColourRadiusToSigmas(self, val):
     self.params.hkls.sigma_color_radius = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetColourScheme(self, color_scheme, color_powscale=1.0):
     self.params.hkls.color_scheme = color_scheme
     self.params.hkls.color_powscale = color_powscale
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetAction(self, val):
     self.params.action = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def set_action(self, val):
@@ -1809,22 +1809,22 @@ class HKLViewFrame() :
     self.params.viewer.add_user_vector_hkl_op = str(hkl_op)
     self.params.viewer.add_user_vector_abc = str(abc)
     self.params.viewer.add_user_vector_hkl = str(hkl)
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowVector(self, val, b=True):
     self.params.viewer.show_vector = [str([val, b])]
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowUnitCell(self, val):
     self.params.show_real_space_unit_cell = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowReciprocalUnitCell(self, val):
     self.params.show_reciprocal_unit_cell = val
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetClipPlane(self, use=True, hkldist=0.0, clipwidth=2.0):
@@ -1834,27 +1834,27 @@ class HKLViewFrame() :
       self.params.hkls.slice_mode = False
     else:
       self.params.clip_plane.clip_width = None
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def AnimateRotateAroundVector(self, vecnr, speed):
     self.params.viewer.animate_rotation_around_vector = str([vecnr, speed])
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def RotateAroundVector(self, vecnr, dgr):
     self.params.viewer.angle_around_vector = str([vecnr, dgr])
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def ShowHKL(self, hkl):
     self.params.viewer.show_hkl = str(hkl)
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def SetMouseSpeed(self, trackspeed):
     self.params.NGL.mouse_sensitivity = trackspeed
-    self.guarded_update_settings()
+    self.guarded_process_PHIL_parameters()
 
 
   def GetMouseSpeed(self):

@@ -357,6 +357,44 @@ citation {
 }
 
 citation {
+  article_id = alphafold
+  authors = Jumper J, Evans R, Pritzel A, Green T, Figurnov M, Ronneberger O, Tunyasuvunakool K, Bates R, Žídek A, Potapenko A, Bridgland A, Meyer C, Kohl SAA, Ballard AJ, Cowie A, Romera-Paredes B, Nikolov S, Jain R, Adler J, Back T, Petersen S, Reiman D, Clancy E, Zielinski M, Steinegger M, Pacholska M, Berghammer T, Bodenstein S, Silver D, Vinyals O, Senior AW, Kavukcuoglu K, Kohli P, Hassabis D
+  title = Highly accurate protein structure prediction with AlphaFold
+  journal = Nature
+  volume = 596
+  pages = 583-589
+  year = 2021
+  doi_id =  doi:10.1038/s41586-021-03819-2
+  pmid = 34265844
+}
+
+citation {
+  article_id = predict_and_build_cryo_em
+  authors = Terwilliger TC, Poon BK, Afonine PV, Schlicksup CJ, Croll TI, Millán C, Richardson JS, Read RJ, Adams PD
+  title = Improved AlphaFold modeling with implicit experimental information
+  journal = Nature Methods
+  volume = 19
+  pages = 1376-1382
+  year = 2022
+  doi_id =  doi:10.1038/s41592-022-01645-6
+  pmid = 36266465
+}
+
+
+citation {
+  article_id = colabfold
+  authors = Mirdita M, Schütze K, Moriwaki Y, Heo L, Ovchinnikov S, Steinegger M
+  title = Making protein folding accessible to all
+  journal = Nature Methods
+  volume = 19
+  pages = 679–682
+  year = 2022
+  doi_id =  doi:10.1038/s41592-022-01488-
+  pmid = 35637307
+}
+
+
+citation {
   article_id = merritt_server
   authors = Merritt EA
   title = X-ray Anomalous Scattering

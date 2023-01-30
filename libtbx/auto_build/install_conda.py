@@ -154,15 +154,15 @@ class conda_manager(object):
   # Currently, there is one monolithic environment
   # The key names for this dictionary must match the builder names in
   # bootstrap.py
+  phenix_env = os.path.join('phenix', 'conda_envs',
+    default_format.format(builder='phenix', version=version,
+                          platform=conda_platform[platform.system()]))
   env_locations = {
     'cctbxlite': default_file,
     'cctbx': default_file,
-    'phenix': os.path.join('phenix', 'conda_envs',
-      default_format.format(builder='phenix', version=version,
-                            platform=conda_platform[platform.system()])),
-    'phenix_voyager': os.path.join('phenix', 'conda_envs',
-      default_format.format(builder='phenix', version=version,
-                            platform=conda_platform[platform.system()])),
+    'phenix': phenix_env,
+    'phenix_voyager': phenix_env,
+    'phenix_release': phenix_env,
     'xfellegacy': default_file,
     'dials-old': os.path.join('dials', '.conda-envs',
       default_format.format(builder='dials', version=version,

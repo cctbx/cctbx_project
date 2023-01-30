@@ -359,7 +359,7 @@ class HKLview_3d:
       self.mprint("%s released %s" %(funcname, semaphorename), verbose="threadingmsg")
 
 
-  def update_settings(self, diff_phil, curphilparam) :
+  def process_PHIL_parameters(self, diff_phil, curphilparam) :
     """
     Event handler for zmq messages from the GUI or simply for commandline interaction when
     scripting HKLviewer with python

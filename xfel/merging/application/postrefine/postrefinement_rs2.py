@@ -203,6 +203,9 @@ class postrefinement_rs2(postrefinement_rs):
         assert (exp_reflections_match_results['intensity.sum.value'] == result_observations_original_index.data()).count(False) == 0
         new_exp_reflections['intensity.sum.value.unmodified'] = exp_reflections_match_results['intensity.sum.value.unmodified']
         new_exp_reflections['intensity.sum.variance.unmodified'] = exp_reflections_match_results['intensity.sum.variance.unmodified']
+        for key in self.params.input.persistent_refl_cols:
+          if key not in new_exp_reflections.keys():
+            new_exp_reflections[key] = exp_reflections_match_results[key]
 
         new_reflections.extend(new_exp_reflections)
 

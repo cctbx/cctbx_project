@@ -2326,6 +2326,7 @@ class XFELBuilder(CCIBuilder):
     pass
 
 class PhenixBuilder(CCIBuilder):
+  HOT = []
   CODEBASES_EXTRA = [
     'chem_data',
     'phenix',
@@ -2351,16 +2352,15 @@ class PhenixBuilder(CCIBuilder):
     'reduce',
     'probe',
     'king',
-    'dials',
-    'xia2',
+    # 'dials',
+    # 'xia2',
     'phaser',
     'phasertng',
     'phaser_regression',
     'voyager_regression',
     'phaser_voyager',
-    'iota',
+    # 'iota',
   ]
-  HOT_EXTRA = ['msgpack']
   LIBTBX_EXTRA = [
     'chem_data',
     'phenix',
@@ -2378,15 +2378,15 @@ class PhenixBuilder(CCIBuilder):
     'amber_adaptbx',
     'reduce',
     'probe',
-    'dials',
-    'xia2',
-    'prime',
+    # 'dials',
+    # 'xia2',
+    # 'prime',
     'cootbx',
     'qttbx',
     'Colabs',
   ]
 
-  # select dials-3.2 branch
+  # select dials-3.8 branch
   def _add_git(self, module, parameters, destination=None):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
@@ -2394,9 +2394,9 @@ class PhenixBuilder(CCIBuilder):
       if module == 'dxtbx':
         self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
         self.add_step(self.shell(command=['git', 'fetch', 'origin'], workdir=workdir))
-      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.2'], workdir=workdir))
+      self.add_step(self.shell(command=['git', 'checkout', 'dials-3.8'], workdir=workdir))
       self.add_step(self.shell(
-        command=['git', 'branch', '--set-upstream-to=origin/dials-3.2', 'dials-3.2'],
+        command=['git', 'branch', '--set-upstream-to=origin/dials-3.8', 'dials-3.8'],
         workdir=workdir))
 
   def add_module(self, module, workdir=None, module_directory=None):
@@ -2493,10 +2493,12 @@ in your path. """)
 
   def get_libtbx_configure(self):
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
+    if not self.isPlatformWindows():
+      if 'phasertng' not in configlst:
+        configlst.insert(0, 'phasertng')
+      configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
-    #if self.isPlatformMacOSX():
-    #  configlst.append("--compiler=clang-omp")
     return configlst
 
 
@@ -2787,8 +2789,9 @@ class PhenixTNGBuilder(PhenixBuilder):
   '''
   Phenix with phasertng and c++11
   '''
-  CODEBASES = PhenixBuilder.CODEBASES + ['phasertng', 'phaser_voyager', 'voyager_regression']
-  LIBTBX = PhenixBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
+  phasertng_modules = ['phasertng', 'phaser_voyager', 'voyager_regression']
+  CODEBASES = PhenixBuilder.CODEBASES + phasertng_modules
+  LIBTBX = PhenixBuilder.LIBTBX + phasertng_modules
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2805,6 +2808,15 @@ class PhenixTNGBuilder(PhenixBuilder):
     if module == 'boost':
       workdir = ['modules', module]
       self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
+
+class PhenixReleaseBuilder(PhenixTNGBuilder):
+  '''
+  Phenix with DIALS
+  '''
+  extra_codebases = ['dials', 'iota', 'xia2']
+  extra_libtbx = extra_codebases + ['prime']
+  CODEBASES = PhenixTNGBuilder.CODEBASES + extra_codebases
+  LIBTBX = PhenixTNGBuilder.LIBTBX + extra_libtbx
 
 def set_builder_defaults(options):
   '''
@@ -2829,6 +2841,7 @@ def run(root=None):
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
     'phenix_voyager': PhenixTNGBuilder,
+    'phenix_release': PhenixReleaseBuilder,
     'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
     'labelit': LABELITBuilder,

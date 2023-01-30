@@ -35,10 +35,12 @@ Usage example:
       self.results.show(log = self.logger)
     print("-"*79, file=self.logger)
     self.results.show_summary(log = self.logger)
+    prefix=self.params.output.prefix
+    if not prefix: prefix='hbond'
     if self.params.hbond.output_pymol_file:
-      self.results.as_pymol()
+      self.results.as_pymol(prefix=prefix)
     if self.params.hbond.output_restraint_file:
-      self.results.as_restraints()
+      self.results.as_restraints(file_name='%s.eff' % prefix)
     #
     mmtbx.nci.hbond.stats(model = model, prefix="hbond_stats")
 

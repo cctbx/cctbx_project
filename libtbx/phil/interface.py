@@ -398,7 +398,9 @@ class index(object):
           (def_name.endswith(".title") or def_name.endswith(".job_title"))):
         phil_def = self._full_path_index[def_name]
         assert phil_def.is_definition
-        return phil_def.extract()
+        title = phil_def.extract()
+        if title is not None:
+          return title
     return None
 
   def get_output_dir(self):

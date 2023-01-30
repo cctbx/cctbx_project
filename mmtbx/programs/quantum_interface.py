@@ -183,8 +183,10 @@ Usage examples:
       .type = float
     run_directory = None
       .type = str
-    iterate_histidine = None
-      .type = atom_selection
+    iterate_histidine = False
+      .type = bool
+    iterate_metals = None
+      .type = str
     each_amino_acid = False
       .type = bool
     nproc = 1
@@ -204,12 +206,8 @@ Usage examples:
       prefix = os.path.splitext(self.data_manager.get_default_model_name())[0]
       print('  Setting output prefix to %s' % prefix, file=self.logger)
       self.params.output.prefix = prefix
-    if self.params.qi.iterate_histidine:
-      self.params.qi.selection = [self.params.qi.iterate_histidine]
     if self.params.qi.randomise_selection and self.params.qi.randomise_selection>0.5:
       raise Sorry('Random select value %s is too large' % self.params.qi.randomise_selection)
-    # if self.params.qi.each_amino_acid:
-    #   self.params.qi.write_qmr_phil=True
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -279,11 +277,13 @@ Usage examples:
 
     if self.params.qi.write_qmr_phil:
       pf = self.write_qmr_phil(iterate_histidine=self.params.qi.iterate_histidine,
-                               output_format=self.params.qi.format)
+                               iterate_metals=self.params.qi.iterate_metals,
+                               output_format=self.params.qi.format,
+                               )
       ih = ''
-      if self.params.qi.iterate_histidine:
-        ih = 'iterate_histidine="%s"' % self.params.qi.iterate_histidine
-        ih = ih.replace('  ',' ')
+      # if self.params.qi.iterate_histidine:
+      #   ih = 'iterate_histidine="%s"' % self.params.qi.iterate_histidine
+      #   ih = ih.replace('  ',' ')
       print('''
 
       mmtbx.quantum_interface %s run_qmr=True %s %s
@@ -297,19 +297,111 @@ Usage examples:
         os.mkdir(self.params.qi.run_directory)
       os.chdir(self.params.qi.run_directory)
 
-    if self.params.qi.run_qmr and not self.params.qi.iterate_histidine:
+    if ( self.params.qi.run_qmr and
+         not (self.params.qi.iterate_histidine or
+              self.params.qi.iterate_metals)):
       self.params.qi.qm_restraints.selection=self.params.qi.selection
       self.run_qmr(self.params.qi.format)
 
     if self.params.qi.iterate_histidine:
       assert self.params.qi.randomise_selection==None
-      self.iterate_histidine(self.params.qi.iterate_histidine)
+      self.iterate_histidine()
 
-  def iterate_histidine(self, selection, log=None):
+    if self.params.qi.iterate_metals:
+      self.iterate_metals()
+
+  def iterate_metals(self, log=None):
+    if len(self.params.qi.qm_restraints)<1:
+      self.write_qmr_phil(iterate_metals=True)
+      print('Restart command with PHIL file')
+      return
+    def generate_metals(s):
+      s=s.replace(' ',',')
+      for t in s.split(','):
+        yield t.upper()
+    selection = self.params.qi.qm_restraints[0].selection
+    nproc = self.params.qi.nproc
+    model = self.data_manager.get_model()
+    selection_array = model.selection(selection)
+    selected_model = model.select(selection_array)
+    hierarchy = selected_model.get_hierarchy()
+    for atom in hierarchy.atoms(): break
+    rg_resseq = atom.parent().parent().resseq
+    chain_id = atom.parent().parent().parent().id
+    energies = []
+    argstuples = []
+    # logs = []
+    # buffer_selection = ''
+    # buffer = self.params.qi.qm_restraints[0].buffer
+    # buffer *= buffer
+    # for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
+    for element in generate_metals(self.params.qi.iterate_metals):
+      print('Substituting element : %s' % element)
+      model = self.data_manager.get_model()
+      if nproc>1: model=model.deep_copy()
+      hierarchy = model.get_hierarchy()
+      for chain in hierarchy.chains():
+        if chain.id!=chain_id: continue
+        for rg in chain.residue_groups():
+          if rg.resseq!=rg_resseq: continue
+          for j, ag in enumerate(rg.atom_groups()): pass
+          assert j==0
+          eag = ag.detached_copy()
+          eag.resname = element
+          eag.atoms()[0].element=element
+          eag.atoms()[0].name=element
+          selection = selection.replace(' %s' % ag.resname.upper().strip(),
+                                        ' %s' % element)
+          self.params.qi.qm_restraints[0].selection = selection
+          rg.remove_atom_group(ag)
+          rg.insert_atom_group(0, eag)
+      self.params.output.prefix='iterate_metals_%s' % (element)
+      arg_log=null_out()
+      if self.params.qi.verbose:
+        arg_log=log
+      if nproc==1:
+        print('  Running metal swap %s' % (element), file=log)
+        res = update_restraints(model,
+                                self.params,
+                                never_write_restraints=True,
+                                # never_run_strain=True,
+                                log=arg_log)
+        energies.append(res[0][0])
+        units=res[1]
+        # print('    Energy %s %s' % (energies[-1],units), file=log)
+      else:
+        import copy
+        params = copy.deepcopy(self.params)
+        argstuples.append(( model,
+                            params,
+                            None, # macro_cycle=None,
+                            True, #never_write_restraints=False,
+                            1, # nproc=1,
+                            null_out(),
+                            ))
+    from libtbx import easy_mp
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
+    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
+    if argstuples:
+      print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
+    i=0
+    for args, res, err_str in easy_mp.multi_core_run( update_restraints,
+                                                      argstuples,
+                                                      nproc,
+                                                      keep_input_order=True):
+      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
+      print('  Running metal substitution %d' % (i+1), file=log)
+      energies.append(res[0][0])
+      units = res[1]
+      print('    Energy %s %s' % (energies[-1],units), file=log)
+      i+=1
+
+  def iterate_histidine(self, log=None):
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_histidine=True)
       print('Restart command with PHIL file')
       return
+    selection = self.params.qi.qm_restraints[0].selection
     nproc = self.params.qi.nproc
     model = self.data_manager.get_model()
     selection_array = model.selection(selection)
@@ -322,7 +414,7 @@ Usage examples:
     chain_id = atom.parent().parent().parent().id
     energies = []
     argstuples = []
-    logs = []
+    # logs = []
     buffer_selection = ''
     buffer = self.params.qi.qm_restraints[0].buffer
     buffer *= buffer
@@ -342,6 +434,9 @@ Usage examples:
       arg_log=null_out()
       if self.params.qi.verbose:
         arg_log=log
+      #
+      # need the same buffer for energy
+      #
       if not buffer_selection:
         for rg in hierarchy.residue_groups():
           min_d2 = min_dist2(rg,ag)
@@ -378,6 +473,7 @@ Usage examples:
     from libtbx import easy_mp
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
+    print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
     i=0
     for args, res, err_str in easy_mp.multi_core_run( update_restraints,
                                                       argstuples,
@@ -418,22 +514,33 @@ Usage examples:
         cmd += ' %s' % os.path.join(self.params.qi.run_directory, filename)
       else:
         cmd += ' %s' % filename
+      # run hbond
+      from iotbx.cli_parser import run_program
+      from mmtbx.programs.hbond import Program
+      hbonds = run_program(program_class=Program,
+                           args=[filename,'--quiet']
+                           )
+      n = hbonds.get_counts().n
+      #
       if units.lower() in ['hartree']:
-        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol' % (
+        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d' % (
           i+1,
           pro,
           energy,
           units,
           (energy-me)*627.503,
+          n,
           ), file=log)
       elif units.lower() in ['kcal/mol']:
-        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol' % (
+        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d' % (
           i+1,
           pro,
           energy,
           units,
           (energy-me),
+          n,
           ), file=log)
+
     cmd += '\n\n'
     print(cmd)
     # run clashscore
@@ -489,13 +596,19 @@ Usage examples:
       outl += '%s\n' % line
     return outl
 
-  def write_qmr_phil(self, iterate_histidine=False, output_format=None, log=None):
+  def write_qmr_phil(self,
+                     iterate_histidine=False,
+                     iterate_metals=False,
+                     output_format=None,
+                     log=None):
     qi_phil_string = self.get_single_qm_restraints_scope(self.params.qi.selection[0])
     qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
-    qi_phil_string = self.set_all_write_to_true(qi_phil_string)
+    # qi_phil_string = self.set_all_write_to_true(qi_phil_string)
     qi_phil = iotbx.phil.parse(qi_phil_string,
                              # process_includes=True,
                              )
+    qi_phil_string = qi_phil_string.replace('write_final_pdb_buffer = False',
+                                            'write_final_pdb_buffer = True')
     # qi_phil.show()
 
     qi_phil_string = qi_phil_string.replace('qm_restraints',
@@ -509,6 +622,10 @@ Usage examples:
       #                                         'write_restraints = False')
       qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
                                               'exclude_protein_main_chain_from_optimisation = True')
+
+    if iterate_metals:
+      qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                              'include_nearest_neighbours_in_optimisation = True')
 
     if output_format=='quantum_interface':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
