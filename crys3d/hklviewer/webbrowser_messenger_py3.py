@@ -123,7 +123,8 @@ class WBmessenger(object):
 
 
   async def WebSockHandler(self, mywebsock, path):
-    self.mprint("Entering WebSockHandler", verbose=1)
+    # invoked only when a new websocket client (the browser) is waiting to connect
+    self.mprint("Pending websocket client wanting to connect", verbose=1)
     if hasattr(self.mywebsock, "state") and self.mywebsock.state == 2 \
                                         and self.websockclient is not None:
       await self.mywebsock.wait_closed()

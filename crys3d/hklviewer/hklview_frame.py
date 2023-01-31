@@ -205,6 +205,8 @@ class HKLViewFrame() :
 
   def mprint(self, msg, verbose=0, end="\n", with_elapsed_secs=True):
     elapsed = time.time() - self.start_time
+    if elapsed > 3600: # reset to 0 after an hour
+      self.start_time = time.time()
     tmsg = "%s%s" %(msg, end)
     if with_elapsed_secs:
       tmsg = "[%4.2f] %s%s" %(elapsed, msg, end)
