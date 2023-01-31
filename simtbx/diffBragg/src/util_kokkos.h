@@ -27,8 +27,9 @@ inline MAT3 to_mat3(const Eigen::Matrix3d& m) {
 }
 
 template <class T, class U>
-inline void transfer(T& target, U& source) {
-    for (int i=0; i<source.size(); ++i) {
+inline void transfer(T& target, U& source, int size=-1) {
+    const int length = size>=0 ? size : source.size();
+    for (int i=0; i<length; ++i) {
         target(i) = source[i];
     }
 }
@@ -49,6 +50,16 @@ inline void transfer_MAT3(T& target, U& source) {
 
 // CONTAINERS
 struct kokkos_crystal {
+    double Friedel_beta = 1e10; // restraint factor for Friedel pairs
+    double Finit_beta = 1e10; // restraint factor for Friedel pairs
+    std::vector<int> pos_inds; // indices of the positive Friedel mate
+    std::vector<int> neg_inds; // indices of the negative Friedel mate
+    double Fhkl_beta=1e10;
+    bool use_geometric_mean=false;
+    std::unordered_set<int> Fhkl_grad_idx_tracker;
+    int num_Fhkl_channels=1;
+    int laue_group_num=1;
+    int stencil_size=0;    
     MAT3 anisoG;
     std::vector<MAT3> dG_dgamma;
     std::vector<MAT3> dU_dsigma;
@@ -63,8 +74,14 @@ struct kokkos_crystal {
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
     CUDAREAL dmin;  // res
+    std::vector<double> dspace_bins;
     std::vector<CUDAREAL> FhklLinear,
         Fhkl2Linear;              // structure factor amps magnitude (or real, image of complex)
+    std::vector<double> ASU_dspace, ASU_Fcell;
+    std::vector<int> FhklLinear_ASUid;
+    std::unordered_map<std::string, int> ASUid_map;
+    int Num_ASU;
+    std::string hall_symbol =" P 4nw 2abw";
     std::vector<CUDAREAL> fpfdp;  // fprim fdblprime
     std::vector<CUDAREAL> fpfdp_derivs;  // fprime fdblprime deriv
     std::vector<CUDAREAL> atom_data;     // heavy atom data
@@ -92,7 +109,17 @@ struct kokkos_crystal {
     std::vector<MAT3> dB2_Mats;
 
     kokkos_crystal(crystal T)
-        : anisoG(to_mat3(T.anisoG)),
+        : Friedel_beta(T.Friedel_beta),
+          Finit_beta(T.Finit_beta),
+          pos_inds(T.pos_inds),
+          neg_inds(T.neg_inds),
+          Fhkl_beta(T.Fhkl_beta),
+          use_geometric_mean(T.use_geomtric_mean),
+          Fhkl_grad_idx_tracker(T.Fhkl_grad_idx_tracker),
+          num_Fhkl_channels(T.num_Fhkl_channels),
+          laue_group_num(T.laue_group_num),
+          stencil_size(T.stencil_size),
+          anisoG(to_mat3(T.anisoG)),
           anisoU(to_mat3(T.anisoU)),
           mosaic_domains(T.mosaic_domains),
           Na(T.Na),
@@ -116,8 +143,15 @@ struct kokkos_crystal {
           l_max(T.l_max),
           l_min(T.l_min),
           dmin(T.dmin),
+          dspace_bins(T.dspace_bins),
           FhklLinear(T.FhklLinear),
           Fhkl2Linear(T.Fhkl2Linear),
+          ASU_dspace(T.ASU_dspace),
+          ASU_Fcell(T.ASU_Fcell),
+          FhklLinear_ASUid(T.FhklLinear_ASUid),
+          ASUid_map(T.ASUid_map),
+          Num_ASU(T.Num_ASU),
+          hall_symbol(T.hall_symbol),
           fpfdp(T.fpfdp),
           fpfdp_derivs(T.fpfdp_derivs),
           atom_data(T.atom_data),
@@ -173,6 +207,7 @@ struct kokkos_crystal {
 
 struct kokkos_beam {
     VEC3 polarization_axis;
+    std::vector<int> Fhkl_channels; // if refining scale factors for wavelength dependent structure factor intensities
     CUDAREAL fluence;                          // total fluence
     CUDAREAL kahn_factor;                      // polarization factor
     CUDAREAL *source_X, *source_Y, *source_Z;  // beam vectors
@@ -182,7 +217,8 @@ struct kokkos_beam {
     int number_of_sources;                     // number of beams
 
     kokkos_beam(beam T)
-        : fluence(T.fluence),
+        : Fhkl_channels(T.Fhkl_channels),
+          fluence(T.fluence),
           kahn_factor(T.kahn_factor),
           source_X(T.source_X),
           source_Y(T.source_Y),

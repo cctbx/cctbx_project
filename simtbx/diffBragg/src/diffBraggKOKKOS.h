@@ -108,6 +108,23 @@ class diffBraggKOKKOS {
     vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
     vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
 
+    bool m_Fhkl_gradient_mode;
+    bool m_using_trusted_mask;
+    bool m_Fhkl_channels_empty;
+    bool m_Fhkl_have_scale_factors;
+    // these are copied once at first iteration
+    bool m_Fhkl_grad_arrays_allocated=false;
+    CUDAREAL_VIEW(m_data_residual); // length is number of modeled pixels
+    CUDAREAL_VIEW(m_data_variance); // length is number of modeled pixels
+    INTEGER_VIEW(m_data_freq); // length is number of modeled pixels
+    vector_bool_t m_data_trusted = vector_bool_t("m_data_trusted", 0); // length is number of modeled pixels
+    INTEGER_VIEW(m_FhklLinear_ASUid); // length is number of ASU in FhklLinear
+    CUDAREAL_VIEW(m_Fhkl_channels);
+    // Fhkl_scale is dynamically copied each iteration
+    // Fhkl_scale_deriv is set to 0 each iteration
+    CUDAREAL_VIEW(m_Fhkl_scale);  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
+    CUDAREAL_VIEW(m_Fhkl_scale_deriv); // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)    
+
    public:
     void diffBragg_sum_over_steps_kokkos(
         int Npix_to_model,

@@ -59,7 +59,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  support dynamic allocation for different numbers of sources
     Kokkos::Tools::pushRegion("resize sources");
     if (m_previous_nsource != 0 && m_previous_nsource != local_beam.number_of_sources) {
-        printf("Resizing for %d sources!:\n", local_beam.number_of_sources);
+        // printf("Resizing for %d sources!:\n", local_beam.number_of_sources);
+        resize(m_Fhkl_channels, local_beam.number_of_sources);
         resize(m_source_X, local_beam.number_of_sources);
         resize(m_source_Y, local_beam.number_of_sources);
         resize(m_source_Z, local_beam.number_of_sources);
@@ -82,6 +83,20 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
                 "Will model %d pixels and allocate %d pix\n", Npix_to_model,
                 db_cu_flags.Npix_to_allocate);
         }
+        // Check the Fhkl geradient arrays
+        if (db_flags.Fhkl_have_scale_factors){
+            resize(m_data_residual, db_cu_flags.Npix_to_allocate);
+            resize(m_data_variance, db_cu_flags.Npix_to_allocate);
+            resize(m_data_freq, db_cu_flags.Npix_to_allocate);            
+            resize(m_data_trusted, db_cu_flags.Npix_to_allocate);
+            resize(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid.size());
+            resize(m_Fhkl_scale, d_image.Fhkl_scale.size());
+            // alloc Fhkl_scale_deriv to bs same length as Fhkl_scale.size(), as Fhkl_scale_deriv is only set when Fhkl_gradient_mode=True, typpically not first iteration
+            resize(m_Fhkl_scale_deriv, d_image.Fhkl_scale.size());
+            m_Fhkl_grad_arrays_allocated = true;
+        }
+
+        resize(m_Fhkl_channels, local_beam.number_of_sources);
         resize(m_source_X, local_beam.number_of_sources);
         resize(m_source_Y, local_beam.number_of_sources);
         resize(m_source_Z, local_beam.number_of_sources);
@@ -205,6 +220,29 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     bool FORCE_COPY = true;
 
     //  END step position
+    if (db_flags.Fhkl_gradient_mode){
+        transfer(m_data_residual, d_image.residual, Npix_to_model);
+        transfer(m_data_variance, d_image.variance, Npix_to_model);
+        transfer(m_data_trusted, d_image.trusted, Npix_to_model);
+        transfer(m_data_freq, d_image.freq, Npix_to_model);
+    }
+
+    if (db_flags.Fhkl_have_scale_factors && ALLOC){
+        transfer(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
+    }
+
+    if (db_flags.Fhkl_have_scale_factors){
+        //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
+        transfer(m_Fhkl_channels, db_beam.Fhkl_channels);
+        transfer(m_Fhkl_scale, d_image.Fhkl_scale);
+
+        for (int i=0; i < d_image.Fhkl_scale.size(); i++){
+            cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
+            // if (db_flags.Fhkl_gradient_mode){
+            //     cp.Fhkl_scale_deriv[i] = 0;
+            // }
+        }
+    }
 
     //  BEGIN sources
     Kokkos::Tools::pushRegion("BEGIN sources");
@@ -407,7 +445,16 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, db_flags.refine_fp_fdp, m_nominal_hkl,
         use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
         m_d_diffuse_gamma_images, m_d_diffuse_sigma_images, db_flags.refine_diffuse,
-        db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img);
+        db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img,
+        db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode, 
+        db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
+        db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
+        cp.data_residual, cp.data_variance,
+        cp.data_freq, cp.data_trusted,
+        cp.FhklLinear_ASUid,
+        cp.Fhkl_channels,
+        cp.Fhkl_scale, cp.Fhkl_scale_deriv
+        );        
 
     ::Kokkos::fence("after kernel call");
 
@@ -432,6 +479,16 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_kokkos2vector(d_image.fcell, m_d_fcell_images);
         kokkostbx::transfer_kokkos2vector(d2_image.fcell, m_d2_fcell_images);
     }
+    if (db_flags.Fhkl_gradient_mode){
+        if (db_flags.Fhkl_errors_mode){
+            for (int i=0; i < d_image.Fhkl_hessian.size(); i++)
+                d_image.Fhkl_hessian[i]= m_Fhkl_scale_deriv(i);
+        }
+        else{
+            for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++)
+                d_image.Fhkl_scale_deriv[i]= m_Fhkl_scale_deriv(i);
+        }
+    }    
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0) {
         kokkostbx::transfer_kokkos2vector(d_image.Umat, m_d_Umat_images);
         kokkostbx::transfer_kokkos2vector(d2_image.Umat, m_d2_Umat_images);
