@@ -32,6 +32,7 @@ tooltips = {
   'htcondor_executable_path_ctr': get_help('mp.htcondor.executable_path'),
   'htcondor_filesystemdomain_ctr': get_help('mp.htcondor.filesystemdomain'),
   'nnodes_index_ctr': get_help('mp.nnodes_index'),
+  'nnodes_tder_ctr': get_help('mp.nnodes_tder'),
   'nnodes_scale_ctr': get_help('mp.nnodes_scale'),
   'nnodes_merge_ctr': get_help('mp.nnodes_merge'),
   'extra_options': get_help('mp.extra_options'),
