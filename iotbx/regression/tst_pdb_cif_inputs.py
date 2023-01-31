@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import sys
 import iotbx.pdb
 from iotbx.pdb.mmcif import cif_input
 import inspect
@@ -126,4 +127,7 @@ def exercise():
   # print extra_in_cif
 
 if (__name__ == "__main__"):
-  exercise()
+  if sys.version_info.major > 2:
+    exercise()
+  else:
+    print("Skipping - Python 3 required")
