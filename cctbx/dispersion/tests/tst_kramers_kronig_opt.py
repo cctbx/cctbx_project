@@ -1,7 +1,10 @@
 """Tests for optimizations using the kramkron API"""
 
+import sys
 import numpy as np
-import kramers_kronig_opt
+
+sys.path.append("..")
+import kramers_kronig.kramers_kronig_opt as kramers_kronig_opt
 
 def test_run_example_opt_params_0():
     """Test optimization with Kramers-Kronig penalty yields decreasing actual loss"""

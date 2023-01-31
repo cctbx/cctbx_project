@@ -80,8 +80,6 @@ def run_example_opt(width=5,
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
                                trim=trim)
-    f_p = torch.tensor(f_p)
-    f_dp = torch.tensor(f_dp)
     
     f_p_noisy,f_dp_noisy = sample(f_p,f_dp,
                                   loc=noise_loc,
