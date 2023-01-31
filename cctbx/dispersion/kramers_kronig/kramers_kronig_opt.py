@@ -1,20 +1,11 @@
-"""
-Example use of kramkron API:
-1. Simulate f" based on a very simple model of the K-edge.
-2. Use the dispersion relations to calculate f′.
-3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
-4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
-5. Compare the optimized model to the initial ground truth. 
-6. Show result in matplotlib.
-"""
+"""Functions to optimize with kramers_kronig"""
 
-import sys
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-import core_functions
-import core_functions_pytorch
+from . import kramers_kronig
+from . import kramers_kronig_helper
 
 def create_f(width=10,
              dE=.1,
@@ -34,15 +25,13 @@ def create_f(width=10,
     mid_ind = len(f_dp)//2
     f_dp[mid_ind:mid_ind+ramp_size] = ramp[ramp_start:ramp_end]
     
+    f_dp = torch.Tensor(f_dp)
+    
     """get f' from the Hilbert transform"""
-    _,f_p,energy_padded,f_p_padded,f_dp_padded = \
-    core_functions.get_f_p(energy, f_dp, padn=padn,
+    energy_padded,_,f_p_padded,f_dp_padded = \
+    kramers_kronig.get_f_p(energy, f_dp, padn=padn,
                            trim=trim,
                            )
-    
-    energy = energy[trim:len(energy)-trim]
-    f_dp = f_dp[trim:len(f_dp)-trim]
-    f_p = f_p[trim:len(f_p)-trim]
     
     return(energy_padded,f_p_padded,f_dp_padded)
 
@@ -74,7 +63,7 @@ def loss_fn(energy,
             inds,
             ):
     data_loss = torch.mean((f_p_opt[inds]-f_p_noisy_ss)**2 + (f_dp_opt[inds]-f_dp_noisy_ss)**2)
-    kk_loss = core_functions_pytorch.penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0)
+    kk_loss = kramers_kronig.penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0)
     
     return(data_loss + kk_loss)
 
@@ -103,13 +92,13 @@ def run_example_opt(width=5,
     
 
     
-    core_functions_pytorch.penalty(energy, f_p, f_dp, padn=0)
+    kramers_kronig.penalty(energy, f_p, f_dp, padn=0)
 
 
     """From energy_ss,f_p_noisy_ss,f_dp_noisy_ss determine f_p and f_dp, energy is given"""
     
-    f_p_pred_0 = core_functions.INTERP_FUNC(energy_ss,f_p_noisy_ss)(energy)
-    f_dp_pred_0 = core_functions.INTERP_FUNC(energy_ss,f_dp_noisy_ss)(energy)
+    f_p_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_p_noisy_ss)(energy)
+    f_dp_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_dp_noisy_ss)(energy)
     
     f_p_opt = torch.tensor(f_p_pred_0,requires_grad=True)
     f_dp_opt = torch.tensor(f_dp_pred_0, requires_grad=True)
@@ -189,39 +178,3 @@ def visualize(energy,
     plt.figure()
     plt.title('Ground Truth Loss')
     plt.plot([actual_loss.detach().numpy() for actual_loss in actual_loss_vec])
-    
-if __name__ == "__main__":
-    energy,\
-    f_p,\
-    f_dp,\
-    energy_ss,\
-    f_p_noisy_ss,\
-    f_dp_noisy_ss,\
-    f_p_pred_0,\
-    f_dp_pred_0,\
-    f_p_opt,\
-    f_dp_opt,\
-    loss_vec,\
-    actual_loss_vec  = run_example_opt(width=5,
-                                       padn=100,
-                                       trim=30,
-                                       spacing=20,
-                                       noise_loc=[0,0],
-                                       noise_scale=[1e-3,1e-3],
-                                       learning_rate=1e-1,
-                                       num_iter=10000,
-                                       )
-    
-    visualize(energy,
-              f_p,
-              f_dp,
-              energy_ss,
-              f_p_noisy_ss,
-              f_dp_noisy_ss,
-              f_p_pred_0,
-              f_dp_pred_0,
-              f_p_opt,
-              f_dp_opt,
-              loss_vec,
-              actual_loss_vec,
-              )

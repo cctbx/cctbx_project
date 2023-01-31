@@ -3,8 +3,8 @@
 import numpy as np
 import torch
 
-from core_functions import INTERP_FUNC
 from scipy.signal.windows import get_window
+from . import kramers_kronig_helper
 
 def hilbert(x, 
             axis=-1):
@@ -41,25 +41,29 @@ def get_f_p(energy, # uniform spacing
     """Derive f' from f" """
     
     if known_response_energy is not None:
-        known_response_f_p_interp = INTERP_FUNC(known_response_energy, known_response_f_p)(energy)
-        known_response_f_dp_interp = INTERP_FUNC(known_response_energy, known_response_f_dp)(energy)
+        known_response_f_p_interp = kramers_kronig_helper.INTERP_FUNC(known_response_energy, known_response_f_p)(energy)
+        known_response_f_dp_interp = kramers_kronig_helper.INTERP_FUNC(known_response_energy, known_response_f_dp)(energy)
     else:
         known_response_f_p_interp = torch.zeros_like(f_dp)
         known_response_f_dp_interp = torch.zeros_like(f_dp)
     
-    f_in = f_dp - known_response_f_dp_interp
-        
-    f_in = apply_window(f_dp, padn, trim=trim, window_type=window_type)
+    f_in = f_dp - known_response_f_dp_interp    
+    f_in = apply_window(f_in, padn, trim=trim, window_type=window_type)
     
     f_p_pred_padded = hilbert(f_in)
     
     if padn != 0:
         f_p_pred = f_p_pred_padded[padn:-padn]
+        dE = energy[1] - energy[0]
+        start_energy = energy[0]-padn*dE
+        end_energy = energy[-1]+(padn+1)*dE
+        energy_padded = torch.arange(start_energy,end_energy,dE)
     else:
         f_p_pred = f_p_pred_padded
+        energy_padded = energy
         
     f_p_pred = f_p_pred + known_response_f_p_interp
-    return(f_p_pred,f_p_pred_padded)
+    return(energy_padded,f_p_pred,f_p_pred_padded,f_in)
 
 
 def get_f_dp(energy, # uniform spacing
@@ -76,15 +80,16 @@ def get_f_dp(energy, # uniform spacing
     
     if known_response_f_p is not None:
         known_response_f_p = -known_response_f_p
-        
-    f_dp_pred,f_dp_pred_padded = get_f_p(energy, -f_p, padn=padn,
-                                         trim=trim,
-                                         window_type=window_type,
-                                         known_response_energy=known_response_energy,
-                                         known_response_f_p=known_response_f_dp,
-                                         known_response_f_dp=known_response_f_p,
-                                         )
-    return(f_dp_pred,f_dp_pred_padded)
+    
+
+    energy_padded,f_dp_pred,f_dp_pred_padded,f_in = get_f_p(energy, -f_p, padn=padn,
+                                                            trim=trim,
+                                                            window_type=window_type,
+                                                            known_response_energy=known_response_energy,
+                                                            known_response_f_p=known_response_f_dp,
+                                                            known_response_f_dp=known_response_f_p,
+                                                            )
+    return(energy_padded,f_dp_pred,f_dp_pred_padded,f_in)
 
 
 def apply_window(f_in, padn,
@@ -124,12 +129,13 @@ def penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     """How close f' and f" are to obeying the Kramers Kronig relation?"""
     
     """Going from f_dp to f_p"""
-    f_p_pred,f_p_pred_padded = get_f_p(energy, f_dp, trim=trim, padn=padn,
-                                       window_type=window_type,
-                                       known_response_energy=known_response_energy,
-                                       known_response_f_p=known_response_f_p,
-                                       known_response_f_dp=known_response_f_dp,
-                                       )
+
+    energy_padded,f_p_pred,f_p_pred_padded,f_in = get_f_p(energy, f_dp, trim=trim, padn=padn,
+                                                          window_type=window_type,
+                                                          known_response_energy=known_response_energy,
+                                                          known_response_f_p=known_response_f_p,
+                                                          known_response_f_dp=known_response_f_dp,
+                                                          )
     
     # add back DC term
     F_p_pred = torch.fft.fft(f_p_pred_padded)
@@ -145,12 +151,12 @@ def penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
 
     
     """Going from f_p to f_dp"""
-    f_dp_pred,f_dp_pred_padded = get_f_dp(energy, f_p, trim=trim, padn=padn,
-                                          window_type=window_type,
-                                          known_response_energy=known_response_energy,
-                                          known_response_f_p=known_response_f_p,
-                                          known_response_f_dp=known_response_f_dp,
-                                          )
+    energy_padded,f_dp_pred,f_dp_pred_padded, f_in = get_f_dp(energy, f_p, trim=trim, padn=padn,
+                                                              window_type=window_type,
+                                                              known_response_energy=known_response_energy,
+                                                              known_response_f_p=known_response_f_p,
+                                                              known_response_f_dp=known_response_f_dp,
+                                                              )
     
     # add back DC term
     F_dp_pred = torch.fft.fft(f_dp_pred_padded)
