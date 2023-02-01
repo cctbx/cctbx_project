@@ -142,7 +142,7 @@ class HKLViewFrame() :
     self.fileinfo = None
     if 'fileinfo' in kwds:
       self.fileinfo = kwds.get('fileinfo', 1 )
-    self.hklin = None
+    self.hklin = ""
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
@@ -163,7 +163,7 @@ class HKLViewFrame() :
   def thread_process_arguments(self, **kwds):
     try:
       if 'hklin' in kwds or 'HKLIN' in kwds:
-        self.hklin = kwds.get('hklin', kwds.get('HKLIN') )
+        self.hklin = kwds.get('hklin', kwds.get('HKLIN', "") )
       self.LoadReflectionsFile(self.hklin)
       self.validate_preset_buttons()
       if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
@@ -1183,6 +1183,8 @@ class HKLViewFrame() :
 
 
   def LoadReflectionsFile(self, openfilename):
+    if not os.path.isfile(openfilename):
+      raise Sorry('The file \"' + openfilename + "\" doesn't exists\n")
     self.params.openfilename = openfilename
     self.guarded_process_PHIL_parameters()
 
