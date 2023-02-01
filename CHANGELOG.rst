@@ -1,7 +1,8 @@
 2023.1
 ======
 
-* Enable rounding of occupancies so that the sum is equal to 1
+* Enable rounding of occupancies in the ouput files so that the sum is equal to 1
+* Improved mmCIF support with twinning information and fixes in _pdbx_struct_oper_list handling
 * New tool to validate torsions
 * Bug fixes and improvements to cctbx.HKLviewer
 
