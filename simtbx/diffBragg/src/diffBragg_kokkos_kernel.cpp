@@ -291,8 +291,8 @@ void kokkos_sum_over_steps(
 
             // for (int pixIdx=tid; pixIdx < Npix_to_model; pixIdx+= thread_stride){
             if (using_trusted_mask) {
-                if (!data_trusted(i_pix))
-                    continue;
+                if (!data_trusted(pixIdx))
+                    return;
             }                
             int _pid = panels_fasts_slows(pixIdx * 3);
             int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
@@ -300,13 +300,13 @@ void kokkos_sum_over_steps(
 
             CUDAREAL Fhkl_deriv_coef=0;
             CUDAREAL Fhkl_hessian_coef=0;
-            if (s_Fhkl_gradient_mode) {
-                CUDAREAL u = data_residual(i_pix);
-                CUDAREAL one_by_v = 1/data_variance(i_pix);
+            if (Fhkl_gradient_mode) {
+                CUDAREAL u = data_residual(pixIdx);
+                CUDAREAL one_by_v = 1/data_variance(pixIdx);
                 CUDAREAL Gterm = 1 - 2*u - u*u*one_by_v;
-                Fhkl_deriv_coef = 0.5 * Gterm*one_by_v / data_freq(i_pix);
-                if (s_Fhkl_errors_mode) {
-                    Fhkl_hessian_coef = -0.5*one_by_v*(one_by_v*Gterm - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)/data_freq(i_pix);
+                Fhkl_deriv_coef = 0.5 * Gterm*one_by_v / data_freq(pixIdx);
+                if (Fhkl_errors_mode) {
+                    Fhkl_hessian_coef = -0.5*one_by_v*(one_by_v*Gterm - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)/data_freq(pixIdx);
                 }
             }            
 
@@ -418,7 +418,7 @@ void kokkos_sum_over_steps(
 
                             // polarization
                             CUDAREAL polar_for_Fhkl_grad=1;
-                            if (!s_nopolar && s_Fhkl_gradient_mode){
+                            if (!nopolar && Fhkl_gradient_mode){
                                 //polar_for_Fhkl_grad = diffBragg_gpu_kernel_polarization(_incident, _diffracted,
                                 //                    s_polarization_axis, s_kahn_factor);
                                 // component of diffracted unit vector along incident beam unit vector
@@ -427,9 +427,9 @@ void kokkos_sum_over_steps(
                                 CUDAREAL sin2theta_sqr = 1-cos2theta_sqr;
 
                                 CUDAREAL _psi=0;
-                                if(s_kahn_factor != 0.0){
+                                if(kahn_factor != 0.0){
                                     // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                                    VEC3 B_in = s_polarization_axis.cross(_incident);
+                                    VEC3 B_in = polarization_axis.cross(_incident);
                                     // cross product with incident beam to get E-vector direction
                                     VEC3 E_in = _incident.cross(B_in);
                                     // get components of diffracted ray projected onto the E-B plane
@@ -439,7 +439,7 @@ void kokkos_sum_over_steps(
                                     _psi = -atan2(_kBi,_kEi);
                                 }
                                 // correction for polarized incident beam
-                                polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - s_kahn_factor*cos(2*_psi)*sin2theta_sqr);
+                                polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
                             }
 
                             VEC3 _scattering = (_diffracted - _incident) / _lambda;
@@ -582,7 +582,7 @@ void kokkos_sum_over_steps(
                                     // __ldg(&Fhkl2Linear[Fhkl_linear_index]);
                                     if (complex_miller)
                                         _F_cell2 = Fhkl2Linear(Fhkl_linear_index);
-                                    if (s_Fhkl_have_scale_factors)
+                                    if (Fhkl_have_scale_factors)
                                         i_hklasu = FhklLinear_ASUid(Fhkl_linear_index);
                                 }
 
@@ -661,38 +661,38 @@ void kokkos_sum_over_steps(
                                             Freal * d_deriv_Fcell_real + Fimag * d_deriv_Fcell_imag;
                                     }
                                 }
-                                if (!s_oversample_omega && ! s_Fhkl_gradient_mode)
+                                if (!oversample_omega && ! Fhkl_gradient_mode)
                                     _omega_pixel = 1;
 
                                 CUDAREAL _I_cell = _F_cell;
                                 if (!refine_Icell)
                                     _I_cell *= _F_cell;                                
-                                CUDAREAL s_hkl=1;
+                                CUDAREAL hkl=1;
                                 int Fhkl_channel=0;
-                                if (! s_Fhkl_channels_empty)
+                                if (! Fhkl_channels_empty)
                                     Fhkl_channel = Fhkl_channels(_source);
-                                if (s_Fhkl_have_scale_factors)
-                                    s_hkl = Fhkl_scale(i_hklasu + Fhkl_channel*s_Num_ASU);
-                                if (s_Fhkl_gradient_mode){
-                                    CUDAREAL Fhkl_deriv_scale = s_overall_scale*polar_for_Fhkl_grad;
+                                if (Fhkl_have_scale_factors)
+                                    hkl = Fhkl_scale(i_hklasu + Fhkl_channel*Num_ASU);
+                                if (Fhkl_gradient_mode){
+                                    CUDAREAL Fhkl_deriv_scale = overall_scale*polar_for_Fhkl_grad;
                                     CUDAREAL I_noFcell=texture_scale*I0;
                                     CUDAREAL dfhkl = I_noFcell*_I_cell * Fhkl_deriv_scale;
                                     CUDAREAL grad_incr = dfhkl*Fhkl_deriv_coef;
-                                    int fhkl_grad_idx=i_hklasu + Fhkl_channel*s_Num_ASU;
+                                    int fhkl_grad_idx=i_hklasu + Fhkl_channel*Num_ASU;
 
-                                    if (s_Fhkl_errors_mode){
+                                    if (Fhkl_errors_mode){
                                         // here we hi-kack the Fhkl_scale_deriv array, if computing errors, in order to store the hessian terms
                                         // if we are getting the hessian terms, we no longer need the  gradients (e.g. by this point we are done refininig)
                                         CUDAREAL hessian_incr = Fhkl_hessian_coef*dfhkl*dfhkl;
-                                        atomic_add(&Fhkl_scale_deriv(fhkl_grad_idx), hessian_incr);
+                                        ::Kokkos::atomic_add(&Fhkl_scale_deriv(fhkl_grad_idx), hessian_incr);
                                     }
                                     else{
-                                        atomic_add(&Fhkl_scale_deriv(fhkl_grad_idx), grad_incr);
+                                        ::Kokkos::atomic_add(&Fhkl_scale_deriv(fhkl_grad_idx), grad_incr);
                                     }
                                     continue;
                                 }
 
-                                CUDAREAL _I_total = s_hkl*_I_cell *I0;
+                                CUDAREAL _I_total = hkl*_I_cell *I0;
                                 CUDAREAL Iincrement = _I_total * texture_scale;
                                 _I += Iincrement;
                                 if (save_wavelenimage)
@@ -1114,8 +1114,8 @@ void kokkos_sum_over_steps(
                     }          // end of thick step loop
                 }              // end of fpos loop
             }                  // end of spos loop
-            if (s_Fhkl_gradient_mode)
-                continue;
+            if (Fhkl_gradient_mode)
+                return;
 
             CUDAREAL _Fdet_ave = pixel_size * _fpixel + pixel_size / 2.0;
             CUDAREAL _Sdet_ave = pixel_size * _spixel + pixel_size / 2.0;

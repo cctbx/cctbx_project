@@ -114,7 +114,7 @@ struct kokkos_crystal {
           pos_inds(T.pos_inds),
           neg_inds(T.neg_inds),
           Fhkl_beta(T.Fhkl_beta),
-          use_geometric_mean(T.use_geomtric_mean),
+          use_geometric_mean(T.use_geometric_mean),
           Fhkl_grad_idx_tracker(T.Fhkl_grad_idx_tracker),
           num_Fhkl_channels(T.num_Fhkl_channels),
           laue_group_num(T.laue_group_num),

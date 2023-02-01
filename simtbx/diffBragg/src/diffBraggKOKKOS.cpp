@@ -236,12 +236,12 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         transfer(m_Fhkl_channels, db_beam.Fhkl_channels);
         transfer(m_Fhkl_scale, d_image.Fhkl_scale);
 
-        for (int i=0; i < d_image.Fhkl_scale.size(); i++){
-            cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
+        // for (int i=0; i < d_image.Fhkl_scale.size(); i++){
+            // cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
             // if (db_flags.Fhkl_gradient_mode){
             //     cp.Fhkl_scale_deriv[i] = 0;
             // }
-        }
+        // }
     }
 
     //  BEGIN sources
@@ -449,11 +449,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode, 
         db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
         db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
-        cp.data_residual, cp.data_variance,
-        cp.data_freq, cp.data_trusted,
-        cp.FhklLinear_ASUid,
-        cp.Fhkl_channels,
-        cp.Fhkl_scale, cp.Fhkl_scale_deriv
+        m_data_residual, m_data_variance,
+        m_data_freq, m_data_trusted,
+        m_FhklLinear_ASUid,
+        m_Fhkl_channels,
+        m_Fhkl_scale, m_Fhkl_scale_deriv
         );        
 
     ::Kokkos::fence("after kernel call");
