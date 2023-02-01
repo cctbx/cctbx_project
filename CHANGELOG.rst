@@ -1,3 +1,10 @@
+2023.1
+======
+
+* Enable rounding of occupancies so that the sum is equal to 1
+* New tool to validate torsions
+* Bug fixes and improvements to cctbx.HKLviewer
+
 2022.12
 =======
 
