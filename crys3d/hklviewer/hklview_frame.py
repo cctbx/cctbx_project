@@ -1183,7 +1183,7 @@ class HKLViewFrame() :
 
 
   def LoadReflectionsFile(self, openfilename):
-    if not os.path.isfile(openfilename):
+    if not os.path.isfile(openfilename) and openfilename != "":
       raise Sorry('The file \"' + openfilename + "\" doesn't exists\n")
     self.params.openfilename = openfilename
     self.guarded_process_PHIL_parameters()
