@@ -118,9 +118,7 @@ def test_get_f_p_cos_wave_0():
     T = energy[-1]-energy[0]
     w = 2*np.pi/T
     u = torch.Tensor(np.cos(w*energy))
-    # U = torch.fft.fft(u)
-    # U[0]=0
-    # u = torch.fft.ifft(U).real
+
     _,h_u,_,_ = kramers_kronig.get_f_p(energy, u, padn=padn,
                                             known_response_energy=None,
                                             known_response_f_p=None,
@@ -147,9 +145,7 @@ def test_get_f_p_cos_wave(Fe3):
     T = energy[-1]-energy[0]
     w = 2*np.pi/T
     u = torch.Tensor(np.cos(w*energy))
-    U = torch.fft.fft(u)
-    U[0]=0
-    u = torch.fft.ifft(U).real
+
     _,h_u,_,_ = kramers_kronig.get_f_p(energy, u, padn=padn,
                                             known_response_energy=None,
                                             known_response_f_p=None,

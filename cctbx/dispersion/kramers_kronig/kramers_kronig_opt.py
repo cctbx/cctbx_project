@@ -1,4 +1,7 @@
-"""Functions to optimize with kramers_kronig"""
+"""
+Functions to create example optimization with a kramers-kronig penalty.
+These functions are meant to be used as exploration of the 
+"""
 
 import numpy as np
 import torch
@@ -76,6 +79,15 @@ def run_example_opt(width=5,
                     learning_rate=1e-1,
                     num_iter=10000,
                     ):
+    """
+    Run an example optimization with the following steps:
+    1. Simulate f" based on a very simple model of the K-edge.
+    2. Use the dispersion relations to calculate f′.
+    3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
+    4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
+    5. Compare the optimized model to the initial ground truth. 
+    6. Show result in matplotlib.
+    """
     
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
@@ -90,8 +102,6 @@ def run_example_opt(width=5,
     
 
     
-    kramers_kronig.penalty(energy, f_p, f_dp, padn=0)
-
 
     """From energy_ss,f_p_noisy_ss,f_dp_noisy_ss determine f_p and f_dp, energy is given"""
     

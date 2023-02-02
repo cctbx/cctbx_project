@@ -1,11 +1,7 @@
 """
-Example use of kramers_kronig API:
-1. Simulate f" based on a very simple model of the K-edge.
-2. Use the dispersion relations to calculate f′.
-3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
-4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
-5. Compare the optimized model to the initial ground truth. 
-6. Show result in matplotlib.
+Example optimization using functions in kramers_kronig_opt.
+This script is meant to test importing and running the functions.
+
 """
 
 import kramers_kronig.kramers_kronig_opt as kramers_kronig_opt
