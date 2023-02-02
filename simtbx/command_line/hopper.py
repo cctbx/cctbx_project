@@ -243,7 +243,6 @@ class Script:
             else:
                 dev = COMM.rank % self.params.refiner.num_devices
                 logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
-            print("RANK%d, DEV=%d" % (COMM.rank, dev))
 
             SIM.D.device_Id = dev
 

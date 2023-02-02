@@ -12,18 +12,18 @@
 #endif
 
 using image_type = std::vector<CUDAREAL>;
-using VEC3 = kokkostbx::vector3<CUDAREAL>;
-using MAT3 = kokkostbx::matrix3<CUDAREAL>;
-// using vector_vec3_t = view_1d_t<VEC3>;
-// using vector_mat3_t = view_1d_t<MAT3>;
+using KOKKOS_VEC3 = kokkostbx::vector3<CUDAREAL>;
+using KOKKOS_MAT3 = kokkostbx::matrix3<CUDAREAL>;
+// using vector_vec3_t = view_1d_t<KOKKOS_VEC3>;
+// using vector_mat3_t = view_1d_t<KOKKOS_MAT3>;
 
-inline VEC3 to_vec3(const Eigen::Vector3d& v) {
-    return VEC3(v[0], v[1], v[2]);
+inline KOKKOS_VEC3 to_vec3(const Eigen::Vector3d& v) {
+    return KOKKOS_VEC3(v[0], v[1], v[2]);
 }
 
-inline MAT3 to_mat3(const Eigen::Matrix3d& m) {
+inline KOKKOS_MAT3 to_mat3(const Eigen::Matrix3d& m) {
     // Eigen matrix is column-major!
-    return MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
+    return KOKKOS_MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
 }
 
 template <class T, class U>
@@ -35,14 +35,14 @@ inline void transfer(T& target, U& source, int size=-1) {
 }
 
 template <class T, class U>
-inline void transfer_VEC3(T& target, U& source) {
+inline void transfer_KOKKOS_VEC3(T& target, U& source) {
     for (int i=0; i<source.size(); ++i) {
         target(i) = to_vec3(source[i]);
     }
 }
 
 template <class T, class U>
-inline void transfer_MAT3(T& target, U& source) {
+inline void transfer_KOKKOS_MAT3(T& target, U& source) {
     for (int i=0; i<source.size(); ++i) {
         target(i) = to_mat3(source[i]);
     }
@@ -60,10 +60,10 @@ struct kokkos_crystal {
     int num_Fhkl_channels=1;
     int laue_group_num=1;
     int stencil_size=0;    
-    MAT3 anisoG;
-    std::vector<MAT3> dG_dgamma;
-    std::vector<MAT3> dU_dsigma;
-    MAT3 anisoU;
+    KOKKOS_MAT3 anisoG;
+    std::vector<KOKKOS_MAT3> dG_dgamma;
+    std::vector<KOKKOS_MAT3> dU_dsigma;
+    KOKKOS_MAT3 anisoU;
     int mosaic_domains;               // number of mosaic domains to model
     CUDAREAL Na, Nb, Nc, Nd, Ne, Nf;  // mosaic domain terms
     CUDAREAL phi0;                    // gonio
@@ -89,24 +89,24 @@ struct kokkos_crystal {
     CUDAREAL default_F;                  // place holder amplitude
     CUDAREAL r_e_sqr;                    // electron rad
 
-    MAT3 eig_U;        // Umatrix
-    MAT3 eig_O;        // O-matrix
-    MAT3 eig_B;        // B matrix
-    MAT3 RXYZ;         // Rx*Ry*Rz misset perturtbation matrix (this is whats refined)
-    VEC3 spindle_vec;  // gonio
+    KOKKOS_MAT3 eig_U;        // Umatrix
+    KOKKOS_MAT3 eig_O;        // O-matrix
+    KOKKOS_MAT3 eig_B;        // B matrix
+    KOKKOS_MAT3 RXYZ;         // Rx*Ry*Rz misset perturtbation matrix (this is whats refined)
+    KOKKOS_VEC3 spindle_vec;  // gonio
 
-    std::vector<MAT3> UMATS_RXYZ;
-    std::vector<MAT3> UMATS_RXYZ_prime;
-    std::vector<MAT3> UMATS_RXYZ_dbl_prime;
+    std::vector<KOKKOS_MAT3> UMATS_RXYZ;
+    std::vector<KOKKOS_MAT3> UMATS_RXYZ_prime;
+    std::vector<KOKKOS_MAT3> UMATS_RXYZ_dbl_prime;
 
-    std::vector<MAT3> RotMats;
-    std::vector<MAT3> dRotMats;
-    std::vector<MAT3> d2RotMats;
-    std::vector<MAT3> UMATS;
-    std::vector<MAT3> UMATS_prime;
-    std::vector<MAT3> UMATS_dbl_prime;
-    std::vector<MAT3> dB_Mats;
-    std::vector<MAT3> dB2_Mats;
+    std::vector<KOKKOS_MAT3> RotMats;
+    std::vector<KOKKOS_MAT3> dRotMats;
+    std::vector<KOKKOS_MAT3> d2RotMats;
+    std::vector<KOKKOS_MAT3> UMATS;
+    std::vector<KOKKOS_MAT3> UMATS_prime;
+    std::vector<KOKKOS_MAT3> UMATS_dbl_prime;
+    std::vector<KOKKOS_MAT3> dB_Mats;
+    std::vector<KOKKOS_MAT3> dB2_Mats;
 
     kokkos_crystal(crystal T)
         : Friedel_beta(T.Friedel_beta),
@@ -206,7 +206,7 @@ struct kokkos_crystal {
 };
 
 struct kokkos_beam {
-    VEC3 polarization_axis;
+    KOKKOS_VEC3 polarization_axis;
     std::vector<int> Fhkl_channels; // if refining scale factors for wavelength dependent structure factor intensities
     CUDAREAL fluence;                          // total fluence
     CUDAREAL kahn_factor;                      // polarization factor
@@ -232,8 +232,8 @@ struct kokkos_beam {
 };
 
 struct kokkos_detector {
-    std::vector<VEC3> dF_vecs;  // derivative of the panel fast direction
-    std::vector<VEC3> dS_vecs;  // derivative of the panel slow direction
+    std::vector<KOKKOS_VEC3> dF_vecs;  // derivative of the panel fast direction
+    std::vector<KOKKOS_VEC3> dS_vecs;  // derivative of the panel slow direction
     CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
     std::vector<CUDAREAL> close_distances;  // offsets to the detector origins (Z direction)
     int oversample;                         // determines the pixel subsampling rate

@@ -258,7 +258,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         auto tmp_src_Z = m_source_Z;
         Kokkos::parallel_for(
             "normalize incident vector", source_count, KOKKOS_LAMBDA(const int& i) {
-                VEC3 incident{tmp_src_X(i), tmp_src_Y(i), tmp_src_Z(i)};
+                KOKKOS_VEC3 incident{tmp_src_X(i), tmp_src_Y(i), tmp_src_Z(i)};
                 incident.normalize();
                 tmp_src_X(i) = incident.x_val();
                 tmp_src_Y(i) = incident.y_val();
@@ -275,10 +275,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  UMATS
     Kokkos::Tools::pushRegion("UMATS");
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
-        transfer_MAT3(m_UMATS, db_cryst.UMATS);
-        transfer_MAT3(m_UMATS_RXYZ, db_cryst.UMATS_RXYZ);
-        transfer_MAT3(m_UMATS_RXYZ_prime, db_cryst.UMATS_RXYZ_prime);
-        transfer_MAT3(m_UMATS_RXYZ_dbl_prime, db_cryst.UMATS_RXYZ_dbl_prime);
+        transfer_KOKKOS_MAT3(m_UMATS, db_cryst.UMATS);
+        transfer_KOKKOS_MAT3(m_UMATS_RXYZ, db_cryst.UMATS_RXYZ);
+        transfer_KOKKOS_MAT3(m_UMATS_RXYZ_prime, db_cryst.UMATS_RXYZ_prime);
+        transfer_KOKKOS_MAT3(m_UMATS_RXYZ_dbl_prime, db_cryst.UMATS_RXYZ_dbl_prime);
 
         if (db_flags.verbose > 1)
             printf("H2D Done copying Umats\n");
@@ -298,8 +298,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BMATS
     Kokkos::Tools::pushRegion("BMATS");
     if (db_cu_flags.update_dB_mats || ALLOC || FORCE_COPY) {
-        transfer_MAT3(m_dB_Mats, db_cryst.dB_Mats);
-        transfer_MAT3(m_dB2_Mats, db_cryst.dB2_Mats);
+        transfer_KOKKOS_MAT3(m_dB_Mats, db_cryst.dB_Mats);
+        transfer_KOKKOS_MAT3(m_dB2_Mats, db_cryst.dB2_Mats);
         if (db_flags.verbose > 1)
             printf("H2D Done copying dB_Mats\n");
     }
@@ -309,9 +309,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  ROT MATS
     Kokkos::Tools::pushRegion("ROT MATS");
     if (db_cu_flags.update_rotmats || ALLOC || FORCE_COPY) {
-        transfer_MAT3(m_RotMats, db_cryst.RotMats);
-        transfer_MAT3(m_dRotMats, db_cryst.dRotMats);
-        transfer_MAT3(m_d2RotMats, db_cryst.d2RotMats);
+        transfer_KOKKOS_MAT3(m_RotMats, db_cryst.RotMats);
+        transfer_KOKKOS_MAT3(m_dRotMats, db_cryst.dRotMats);
+        transfer_KOKKOS_MAT3(m_d2RotMats, db_cryst.d2RotMats);
         if (db_flags.verbose > 1)
             printf("H2D Done copying rotmats\n");
     }

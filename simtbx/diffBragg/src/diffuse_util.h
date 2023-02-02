@@ -7,11 +7,14 @@
 
 #define REAL double
 
+#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
+template <class M3>
+#endif
 #if CUDA_COMPILE
 __device__ __host__
 #endif
 #if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
-int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
+int gen_laue_mats(int laue_group_num, M3 *lmats) {
   if ( laue_group_num < 1 or laue_group_num > 14) {
     return 0;
   }
@@ -555,11 +558,14 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
 int gen_laue_mats(int laue_group_num, MAT3 *lmats);
 #endif
 
+#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
+template <class V3, class M3>
+#endif
 #if CUDA_COMPILE
 __device__ __host__
 #endif
 #if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
-void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VEC3 Hrange, MAT3 Ainv, const REAL *FhklLinear, int num_laue_mats, MAT3 *laue_mats, MAT3 anisoG_local, MAT3 anisoU_local, MAT3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param){
+void calc_diffuse_at_hkl(V3 H_vec, V3 H0, V3 dHH, V3 Hmin, V3 Hmax, V3 Hrange, M3 Ainv, const REAL *FhklLinear, int num_laue_mats, const M3 *laue_mats, M3 anisoG_local, M3 anisoU_local, const M3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param){
   REAL four_mpi_sq = 4.*M_PI*M_PI;
   // loop over laue matrices
   bool h_bounded= (H0[0]+dHH[0]<=Hmax[0]) && (H0[0]-dHH[0]>=Hmin[0]) ;
@@ -569,7 +575,7 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
     int Fhkl_linear_index_0 = (H0[0]-Hmin[0]) * Hrange[1] * Hrange[2]
       + (H0[1]-Hmin[1]) * Hrange[2] + (H0[2]-Hmin[2]);
     REAL _F_cell_0 = FhklLinear[Fhkl_linear_index_0];
-    MAT3 Ginv = anisoG_local.inverse();
+    M3 Ginv = anisoG_local.inverse();
     REAL anisoG_determ = anisoG_local.determinant();
     for (int hh=-dHH[0]; hh <= dHH[0]; hh++){
       for (int kk=-dHH[1]; kk <= dHH[1]; kk++){
@@ -588,17 +594,17 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
           _this_diffuse_scale *= _this_diffuse_scale/(REAL)num_laue_mats;
           /* TODO: Apply discrete transformations to H0 and delta_H_offset
              like the following to reorient G and recover calmodulin diffuse
-          MAT3 xform;
+          M3 xform;
           xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
           */
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
-            VEC3 Q0 =Ainv*laue_mats[iL]*H0;
+            V3 Q0 =Ainv*laue_mats[iL]*H0;
             REAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
             REAL dwf = exp(-exparg);
-            VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
-            VEC3 delta_H_offset = H_vec - H0_offset;
-            VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
-            VEC3 anisoG_q = anisoG_local*delta_Q;
+            V3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
+            V3 delta_H_offset = H_vec - H0_offset;
+            V3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
+            V3 anisoG_q = anisoG_local*delta_Q;
 
             REAL V_dot_V = anisoG_q.dot(anisoG_q);
             REAL gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
@@ -610,12 +616,12 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
             ID_this += this_I_latt_diffuse;
             if (refine_diffuse){ // add the contributions to diffuse scattering gradients here
               for (int i_gam=0; i_gam<3; i_gam++){
-                VEC3 dV = dG_dgam[i_gam]*delta_Q;
+                V3 dV = dG_dgam[i_gam]*delta_Q;
                 REAL V_dot_dV = anisoG_q.dot(dV);
                 REAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
                 step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
               }
-              MAT3 dU_dsigma;
+              M3 dU_dsigma;
               dU_dsigma << 0,0,0,0,0,0,0,0,0;
               for (int i_sig = 0;i_sig<3; i_sig++){
                 dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
@@ -637,7 +643,8 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
 }
 
 #else
-void calc_diffuse_at_hkl(VEC3 Hvec, VEC3 H0vec, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VEC3 Hrange, MAT3 Ainv, const REAL *FhklLinear, int num_laue_mats, MAT3 *laue_mats, MAT3 anisoG_local, MAT3 anisoU_local, MAT3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param);
+template<class V3, class M3>
+void calc_diffuse_at_hkl(V3 Hvec, V3 H0vec, V3 dHH, V3 Hmin, V3 Hmax, V3 Hrange, M3 Ainv, const REAL *FhklLinear, int num_laue_mats, const M3 *laue_mats, M3 anisoG_local, M3 anisoU_local, const M3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param);
 #endif
 
 #endif

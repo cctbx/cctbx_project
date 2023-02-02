@@ -1,19 +1,11 @@
-#ifndef SIMTBX_DIFFBRAGG_CUDA
-#define SIMTBX_DIFFBRAGG_CUDA
-
 #include <Eigen/Dense>
 #include <iostream>
-#include <cmath>
+#include <math.h>
 #include <vector>
 #include <simtbx/diffBragg/src/util.h>
 #ifndef CUDAREAL
 #define CUDAREAL double
 #endif
-
-typedef Eigen::Matrix<CUDAREAL,3,1> VEC3;
-typedef Eigen::Matrix<CUDAREAL,3,3> MAT3;
-typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
-typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
 //#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 
@@ -132,9 +124,8 @@ void diffBragg_sum_over_steps_cuda(
         crystal& db_cryst,
         flags& db_flags,
         cuda_flags& db_cu_flags,
-        // diffBragg_cudaPointers& cp,
+        diffBragg_cudaPointers& cp,
         timer_variables& TIMERS);
 
 
-// void freedom(diffBragg_cudaPointers& cp);
-#endif
+void freedom(diffBragg_cudaPointers& cp);

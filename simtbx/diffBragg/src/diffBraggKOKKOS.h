@@ -10,8 +10,8 @@
 #include "simtbx/diffBragg/src/util.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
 
-using vector_vec3_t = view_1d_t<VEC3>;
-using vector_mat3_t = view_1d_t<MAT3>;
+using vector_vec3_t = view_1d_t<KOKKOS_VEC3>;
+using vector_mat3_t = view_1d_t<KOKKOS_MAT3>;
 
 #define INTEGER_VIEW(varname) vector_int_t varname = vector_int_t(#varname, 0)
 #define CUDAREAL_VIEW(varname) vector_cudareal_t varname = vector_cudareal_t(#varname, 0)

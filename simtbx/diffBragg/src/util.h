@@ -9,7 +9,11 @@
 #include<unordered_set>
 #include <string>
 
-typedef std::vector<double> image_type;
+#ifndef CUDAREAL
+    #define CUDAREAL double
+#endif
+
+using image_type = std::vector<CUDAREAL>;
 typedef Eigen::Matrix<double,3,1> VEC3;
 typedef Eigen::Matrix<double,3,3> MAT3;
 typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
