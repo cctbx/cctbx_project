@@ -210,7 +210,8 @@ class WBmessenger(object):
           while not self.browserisopen:  #self.websockclient:
             await asyncio.sleep(self.sleeptime)
             nwait += self.sleeptime
-            if nwait > self.parent.handshakewait or self.parent.javascriptcleaned or not self.parent.viewerparams.scene_id is not None:
+            if nwait > self.parent.handshakewait or self.parent.javascriptcleaned \
+                or not self.parent.params.viewer.scene_id is not None:
               continue
           if gotsent:
             self.msgqueue.remove( self.msgqueue[0] )
@@ -239,7 +240,7 @@ class WBmessenger(object):
     self.mprint( "Browser connected " + str( self.websockclient ), verbose=1 )
     self.on_browser_connection()
     self.was_disconnected = None
-    if self.parent.lastviewmtrx and self.parent.viewerparams.scene_id is not None:
+    if self.parent.lastviewmtrx and self.parent.params.viewer.scene_id is not None:
       self.parent.set_volatile_params()
       self.mprint( "Reorienting client after refresh:" + str( self.websockclient ), verbose=2 )
       self.AddToBrowserMsgQueue("ReOrient", self.parent.lastviewmtrx)
@@ -249,6 +250,7 @@ class WBmessenger(object):
     msg =  "Browser lost connection %s, code %s, reason: %s" %(str(self.websockclient), close_code, close_reason)
     self.mprint(msg , verbose=1 )
     self.was_disconnected = close_code
+    self.browserisopen = False
     self.websockclient = None
     self.ishandling = False
 
