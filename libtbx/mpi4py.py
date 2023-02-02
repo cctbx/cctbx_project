@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
+import sys
 
 ''' mpi4py wrapper: emulating mpi4py behavior for a single rank when the real mpi4py is not installed '''
 
@@ -50,10 +51,34 @@ class mpiCommEmulator(object):
   def size(self):
     return self.Get_size()
 
+
 mpiEmulator.COMM_WORLD = mpiCommEmulator()
 
 try:
   from mpi4py import MPI
+  using_mpi = True
 except ImportError:
   print ("\nWarning: could not import mpi4py. Running as a single process.\n")
   MPI = mpiEmulator()
+  using_mpi = False
+
+def mpi_abort_on_exception(func):
+  """
+  A decorator for functions that will be called in an MPI context. This ensures
+  the MPI job will abort if a single rank raises an exception (or exits) out of
+  the decorated function.
+  """
+  def wrapped_func(*args, **kwargs):
+    try:
+      return func(*args, **kwargs)
+    except Exception:
+      sys.excepthook(*sys.exc_info())
+      MPI.COMM_WORLD.Abort(1)
+    except SystemExit as e:
+      if e.code:
+        sys.stderr.write(e.code + '\n')
+      MPI.COMM_WORLD.Abort(1)
+  if using_mpi:
+    return wrapped_func
+  else:
+    return func

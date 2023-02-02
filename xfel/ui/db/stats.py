@@ -63,8 +63,8 @@ class Stats(object):
                JOIN `%s_event` evt ON evt.id = ie.event_id
                JOIN `%s_run` run ON run.id = evt.run_id
                JOIN `%s_rungroup` rg ON rg.id = evt.rungroup_id
-               JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
-               JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
+               JOIN `%s_trial_rungroup` t_rg ON t_rg.rungroup_id = rg.id
+               JOIN `%s_trial` trial ON trial.id = t_rg.trial_id AND trial.id = evt.trial_id
                WHERE run.id IN %s
                      AND cell_bin.avg_intensity > 0
                      AND trial.id = %d

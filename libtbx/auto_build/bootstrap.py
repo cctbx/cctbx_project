@@ -2790,8 +2790,8 @@ class PhenixTNGBuilder(PhenixBuilder):
   Phenix with phasertng and c++11
   '''
   phasertng_modules = ['phasertng', 'phaser_voyager', 'voyager_regression']
-  CODEBASES = PhenixBuilder.CODEBASES + phasertng_modules
-  LIBTBX = PhenixBuilder.LIBTBX + phasertng_modules
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + phasertng_modules
+  LIBTBX_EXTRA = PhenixBuilder.LIBTBX_EXTRA + phasertng_modules
 
   def get_libtbx_configure(self):
     configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
@@ -2815,8 +2815,8 @@ class PhenixReleaseBuilder(PhenixTNGBuilder):
   '''
   extra_codebases = ['dials', 'iota', 'xia2']
   extra_libtbx = extra_codebases + ['prime']
-  CODEBASES = PhenixTNGBuilder.CODEBASES + extra_codebases
-  LIBTBX = PhenixTNGBuilder.LIBTBX + extra_libtbx
+  CODEBASES_EXTRA = PhenixTNGBuilder.CODEBASES_EXTRA + extra_codebases
+  LIBTBX_EXTRA = PhenixTNGBuilder.LIBTBX_EXTRA + extra_libtbx
 
 def set_builder_defaults(options):
   '''

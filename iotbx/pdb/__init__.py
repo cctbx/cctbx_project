@@ -1343,16 +1343,16 @@ class _():
       except ValueError: pass
     return result
 
-  def extract_tls_params(self, pdb_hierarchy):
+  def extract_tls_params(self, hierarchy):
     import iotbx.pdb.remark_3_interpretation
     remark_3_records = self.extract_remark_iii_records(3)
     chain_ids = []
-    for model in pdb_hierarchy.models():
+    for model in hierarchy.models():
       for chain in model.chains():
         chain_ids.append(chain.id)
     return iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
       remark_3_records = remark_3_records,
-      pdb_hierarchy    = pdb_hierarchy,
+      pdb_hierarchy    = hierarchy,
       chain_ids        = chain_ids)
 
   def extract_f_model_core_constants(self):

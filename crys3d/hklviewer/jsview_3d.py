@@ -543,16 +543,15 @@ class HKLview_3d:
     if self.params.viewer.scene_id is not None:
       if self.isnewfile:
         self.SetDefaultOrientation()
-        #time.sleep(5)
         if not self.autoview_sem.acquire(blocking=True, timeout=lock_timeout):
           self.mprint("Error! Timed out waiting for autoview_sem semaphore within %s seconds" %lock_timeout, verbose=1)
         self.mprint("set_volatile_params got autoview_sem", verbose="threadingmsg")
         self.autoview_sem.release()
         self.mprint("set_volatile_params released clipplane_msg_sem", verbose="threadingmsg")
 
-        if len(self.WBmessenger.clientmsgqueue):
-          self.mprint("set_volatile_params sleep", verbose=3)
-          time.sleep(3)
+        while len(self.WBmessenger.clientmsgqueue):
+          self.mprint("set_volatile_params sleep", verbose=1)
+          time.sleep(0.2)
 
       if self.params.viewer.fixorientation == "vector":
         self.orient_vector_to_screen(self.currentrotvec)
@@ -1859,23 +1858,28 @@ Distance: %s
           self.mprint("Could not open the default web browser")
           return False
       if self.UseOSBrowser != "default" and self.UseOSBrowser != "":
-        #os.system('"' + self.browserpath + '" ' + self.url + ' &')
-        subprocess.run('"' + self.browserpath + '" ' + self.url + ' &', shell=True,
-                       capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        #if not self.webctrl.open(self.url):
-        #  self.mprint("Could not open web browser, %s" %self.UseOSBrowser)
-        #  return False
+        subprocess.run('"' + self.browserpath + '" ' + self.url + ' &',
+                       shell=True,
+        # the following flags ensures external browser process doesn't hang during regression tests
+                       capture_output=False,  # regression test wants to capture stdout/stderr
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
       self.SendInfoToGUI({ "html_url": self.url } )
-      #self.browser_connect_sem.release() # only release if we succeeded
       return True
     return False
 
 
   def on_browser_connection(self):
-    self.mprint("on_browser_connection released browser_connect_sem", verbose="threadingmsg")
-    self.browser_connect_sem.release()
-    self.WBmessenger.browserisopen = True
-    self.mprint("Successfully connected to browser", verbose=1)
+    try:
+      self.browser_connect_sem.release()
+      self.mprint("on_browser_connection released browser_connect_sem", verbose="threadingmsg")
+      self.WBmessenger.browserisopen = True
+      self.mprint("Successfully connected to browser", verbose=1)
+    except ValueError as e:
+      self.mprint( "Trying to reload webpage in browser", verbose=0)
+      self.ReloadNGL()
+    except Exception as e:
+      self.mprint( to_str(e) + "\n" + traceback.format_exc(limit=10), verbose=0)
 
 
   def GetReflectionsInFrustum(self):
