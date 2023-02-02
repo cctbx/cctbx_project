@@ -77,6 +77,9 @@ hbond {
   output_restraint_file = True
     .type = bool
     .short_caption = Output geometry restraints edits file
+  output_skew_kurtosis_plot = True
+    .type = bool
+    .short_caption = Output skew-kurtosis plot with result in png format
 }
 '''
 

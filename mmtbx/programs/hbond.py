@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 from libtbx.program_template import ProgramTemplate
 import mmtbx.nci.hbond
+import mmtbx.nci.skew_kurt_plot
 from libtbx.utils import null_out
 
 # =============================================================================
@@ -43,6 +44,18 @@ Usage example:
       self.results.as_restraints(file_name='%s.eff' % prefix)
     #
     mmtbx.nci.hbond.stats(model = model, prefix="hbond_stats")
+    if self.params.hbond.output_skew_kurtosis_plot:
+      theta1_data = self.results.get_counts().theta_1
+      Rha_data = self.results.get_counts().d_HA
+      # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
+      # like in stats().
+      mmtbx.nci.skew_kurt_plot.make_figure(
+          file_name='hbond_skew_kurtosis',
+          theta1_coords=[theta1_data.skew, theta1_data.kurtosis],
+          Rha_coords=[Rha_data.skew, Rha_data.kurtosis],
+          type='all',
+          colorblind_friendly=False)
+
 
   # ---------------------------------------------------------------------------
   def get_results(self):
