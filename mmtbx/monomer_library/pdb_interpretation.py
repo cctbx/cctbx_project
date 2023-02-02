@@ -9,6 +9,7 @@ from mmtbx.monomer_library import conformation_dependent_restraints
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
 import mmtbx.geometry_restraints.torsion_restraints.utils
+from mmtbx.monomer_library.linking_mixins import linking_mixins
 # from mmtbx.secondary_structure.build import model_idealization_master_phil_str
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
@@ -19,7 +20,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
-from libtbx.utils import format_exception
+from libtbx.utils import format_exception, greek_time
 from libtbx import Auto, group_args, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
 import string
@@ -2690,7 +2691,6 @@ class build_chain_proxies(object):
                 i_seqs = [atom.i_seq for atom in atoms]
                 s1 = sites_cart[i_seqs[0]]
                 s2 = sites_cart[i_seqs[1]]
-                import math
                 link_distance = math.sqrt(
                   (s1[0]-s2[0])**2+(s1[1]-s2[1])**2+(s1[2]-s2[2])**2)
                 if(link_distance > link_distance_cutoff): result = False
@@ -3079,8 +3079,6 @@ class cif_output_holder:
     for cc in other.chem_comps:
       if cc not in self.chem_comps:
         self.chem_comps.append(cc)
-
-from mmtbx.monomer_library.linking_mixins import linking_mixins
 
 class selection_manager(object):
 
@@ -4073,7 +4071,6 @@ class build_all_chain_proxies(linking_mixins):
                   ):
     assert 0
     from mmtbx.monomer_library import linking_utils
-    from math import sqrt
     from mmtbx.monomer_library.cif_types import link_link_id, chem_comp
     from mmtbx.monomer_library.cif_types import chem_link_bond, chem_link_angle
     from mmtbx.monomer_library.bondlength_defaults import get_default_bondlength
@@ -4092,7 +4089,7 @@ class build_all_chain_proxies(linking_mixins):
                                                apply.atom2.element,
                                                )
       if bond.value_dist is None:
-        bond.value_dist = sqrt(linking_utils.get_distance2(apply.atom1,
+        bond.value_dist = math.sqrt(linking_utils.get_distance2(apply.atom1,
                                                            apply.atom2,
                                                            ))
         if verbose: print("bond will be maintained")
@@ -5527,7 +5524,6 @@ class build_all_chain_proxies(linking_mixins):
       restraints_source += ' + %s' % mmtbx.conformation_dependent_library.cdl_database.version
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
-      from libtbx import utils
       t0=time.time()
       cdl_proxies=setup_restraints(result)
       update_restraints(
@@ -5543,7 +5539,7 @@ class build_all_chain_proxies(linking_mixins):
       cdl_time = time.time()-t0
       print("""\
   Conformation dependent library (CDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_time), file=log)
+  """ % greek_time(cdl_time), file=log)
     #
     # need autodetect code
     #
@@ -5556,7 +5552,6 @@ class build_all_chain_proxies(linking_mixins):
       restraints_source += ' + omega-cdl'
       from mmtbx.conformation_dependent_library.omega import setup_restraints
       from mmtbx.conformation_dependent_library.omega import update_restraints
-      from libtbx import utils
       t0=time.time()
       cdl_proxies=setup_restraints(result)
       update_restraints(
@@ -5570,11 +5565,10 @@ class build_all_chain_proxies(linking_mixins):
       cdl_time = time.time()-t0
       print("""\
   omega-Conformation dependent library (o-CDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_time), file=log)
+  """ % greek_time(cdl_time), file=log)
     #
     if getattr(self.params.restraints_library, "rdl", False):
       from mmtbx.conformation_dependent_library import rotamers
-      from libtbx import utils
       t0=time.time()
       rdl_proxies=None #rotamers.setup_restraints(result)
       rotamers.update_restraints(
@@ -5589,10 +5583,9 @@ class build_all_chain_proxies(linking_mixins):
       rdl_time = time.time()-t0
       print("""\
   Rotamer dependent library (RDL) restraints added in %0.1f %sseconds
-  """ % utils.greek_time(rdl_time), file=log)
+  """ % greek_time(rdl_time), file=log)
     if getattr(self.params.restraints_library, "hpdl", False):
       from mmtbx.conformation_dependent_library import histidines
-      from libtbx import utils
       t0=time.time()
       histidines.update_restraints(
         self.pdb_hierarchy,
@@ -5603,10 +5596,9 @@ class build_all_chain_proxies(linking_mixins):
       hpr_time = time.time()-t0
       print("""\
   Histidine protonation dependent restraints added in %0.1f %sseconds
-  """ % utils.greek_time(hpr_time), file=log)
+  """ % greek_time(hpr_time), file=log)
     if self.params.restraints_library.cdl_nucleotides.enable:
       from mmtbx.conformation_dependent_library import nucleotides
-      from libtbx import utils
       factor =self.params.restraints_library.cdl_nucleotides.factor
       if factor>10 or factor<0.5:
         raise Sorry('should not change CDL esd by %s' % factor)
@@ -5625,7 +5617,7 @@ class build_all_chain_proxies(linking_mixins):
       if rc:
         print("""\
   Nucleotide conformation dependent restraints added in %0.1f %sseconds
-  """ % utils.greek_time(cdl_nucleotides_time), file=log)
+  """ % greek_time(cdl_nucleotides_time), file=log)
     #
     if self.pdb_inp and self.pdb_inp.used_amber_restraints():
       restraints_source = 'Amber'
