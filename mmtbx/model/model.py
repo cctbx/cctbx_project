@@ -3877,7 +3877,7 @@ class manager(object):
     return mmtbx.model.statistics.occupancy(
       hierarchy = self.get_hierarchy())
 
-  def adp_statistics(self):
+  def adp_statistics(self, use_z_scores=False):
     rm = self.restraints_manager
     if(self.ias_manager is not None):
       rm = None
@@ -3885,7 +3885,8 @@ class manager(object):
       pdb_hierarchy               = self.get_hierarchy(),
       xray_structure              = self.get_xray_structure(),
       use_hydrogens               = False, #XXX
-      geometry_restraints_manager = rm)
+      geometry_restraints_manager = rm,
+      use_z_scores                = use_z_scores)
 
   def show_adp_statistics(self,
                           out,

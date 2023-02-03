@@ -337,7 +337,6 @@ def create_omit_regions(xray_structure,
     if (not selection[i_seq]) : continue
     for mapping in mappings :
       site_cart = mapping.mapped_site()
-      print(site_cart)
       site_frac = unit_cell.fractionalize(site_cart=site_cart)
       sites_asu.append(site_frac)
       break
