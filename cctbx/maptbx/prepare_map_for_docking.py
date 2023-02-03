@@ -950,8 +950,8 @@ def add_ordered_volume_mask(
     map_id_out='ordered_volume_mask'):
   """
   Add map defining mask covering the volume of most ordered density required
-  to contain the specified content of protein and nucleic acid, judged by ratio
-  of local map variance and local noise variance.
+  to contain the specified content of protein and nucleic acid, judged by
+  local map variance.
 
   Compulsory arguments:
   mmm: map_model_manager containing input half-maps in default map_managers
@@ -986,36 +986,19 @@ def add_ordered_volume_mask(
   mc2_in = mm2.map_as_fourier_coefficients(d_min=d_work)
   mc1s, mc2s = auto_sharpen_isotropic(mc1_in, mc2_in)
   mcs_mean  = mc1s.customized_copy(data = (mc1s.data() + mc2s.data())/2)
-  mcs_delta = mc1s.customized_copy(data = (mc1s.data() - mc2s.data()) )
 
   add_local_squared_deviation_map(mmm, mcs_mean, radius, d_work,
       map_id_out='map_variance')
   mvmm = mmm.get_map_manager_by_id('map_variance')
-  add_local_squared_deviation_map(mmm, mcs_delta, radius, d_work,
-      map_id_out='noise_variance')
-  nvmm = mmm.get_map_manager_by_id('noise_variance')
-
-  # When maps are masked near the corners and edges, both signal and noise can
-  # approach zero. Avoid getting close to dividing zero by zero, by adding a
-  # small offset to the noise variance.
-  # At the same time, correct noise variance by factor of two for averaging
-  nvmm_min = min(flex.min(nvmm.map_data()) , 0.)
-  nvmm_max = flex.max(nvmm.map_data())
-  nvmm.set_map_data(map_data = (nvmm.map_data() - nvmm_min + nvmm_max/100.) / 2.)
-
-  # Compute square of Z-score where values much greater than 1 indicate signal
-  mm_Zscore_sqr = mvmm.customized_copy(
-      map_data = mvmm.map_data()/nvmm.map_data())
+  # mvmm.write_map("mvmm.map") # Uncomment to check intermediate result
 
   # Choose enough points in averaged squared density map to covered expected
   # ordered structure. An alternative that could be implemented is to assign
   # any parts of map unlikely to arise from noise as ordered density, without
-  # reference to expected content. This might require figuring out
-  # the effective number of independent points in the averaging sphere to
-  # calibrate the chi-square distribution.
+  # reference to expected content, possibly like the false discovery rate approach.
   map_volume = mmm.map_manager().unit_cell().volume()
-  Zscore_sqr_map_data = mm_Zscore_sqr.map_data()
-  numpoints = Zscore_sqr_map_data.size()
+  mvmm_map_data = mvmm.map_data()
+  numpoints = mvmm_map_data.size()
   # Convert content into volume using partial specific volumes
   target_volume = 0.
   if protein_mw is not None:
@@ -1031,17 +1014,16 @@ def add_ordered_volume_mask(
   # Find threshold for target number of masked points
   from cctbx.maptbx.segment_and_split_map import find_threshold_in_map
   threshold = find_threshold_in_map(target_points = target_points,
-      map_data = Zscore_sqr_map_data)
-  temp_bool_3D = (Zscore_sqr_map_data >=  threshold)
+      map_data = mvmm_map_data)
+  temp_bool_3D = (mvmm_map_data >=  threshold)
   # as_double method doesn't work for multidimensional flex.bool
   mask_shape = temp_bool_3D.all()
   overall_mask = temp_bool_3D.as_1d().as_double()
   overall_mask.reshape(flex.grid(mask_shape))
   new_mm = mmm.map_manager().customized_copy(map_data=overall_mask)
 
-  # Clean up temporary maps, then add ordered volume mask
+  # Clean up temporary map, then add ordered volume mask
   mmm.remove_map_manager_by_id('map_variance')
-  mmm.remove_map_manager_by_id('noise_variance')
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
 def get_grid_spacings(unit_cell, unit_cell_grid):
