@@ -16,6 +16,27 @@ import numpy as np # XXX See if I can avoid it!
 from mmtbx.secondary_structure import manager as ss_manager
 from mmtbx.secondary_structure import sec_str_master_phil_str
 
+def pymol_water_bonds(model):
+  def pymol_atom_selection(atom):
+    ag = atom.parent()
+    rg = ag.parent()
+    chain = rg.parent()
+    one = "chain %s and resi %s and name %s and alt '%s'" % (
+      chain.id, rg.resseq, atom.name, ag.altloc)
+    return one
+  #
+  ph=model.get_hierarchy()
+  outl = ''
+  for ag in ph.atom_groups():
+    if ag.resname!='HOH': continue
+    oxygen = None
+    for atom in ag.atoms():
+      if atom.element.strip()=='O': oxygen=atom
+      elif atom.element_is_hydrogen:
+        outl += 'bond %s, %s\n' % (pymol_atom_selection(oxygen),
+                                   pymol_atom_selection(atom))
+  return outl
+
 mcss = " or ".join(
     ["name %s"%i.strip() for i in iotbx.pdb.protein_atom_names_backbone])
 
@@ -55,8 +76,8 @@ def make_atom_id(atom, index):
     resseq = atom.parent().parent().resseq,
     altloc = atom.parent().altloc)
 
-def get_stats(data):
-  if(data.size()<10): return None
+def get_stats(data, min_data_size=10):
+  if(data.size()<min_data_size): return None
   mean=data.min_max_mean().mean
   sd=data.standard_deviation_of_the_sample()
   assert data.size(), 'no data - may mean no Hydrogen atoms'
@@ -513,7 +534,7 @@ class find(object):
       a_YAH = flex.double()
     return group_args(d_HA=d_HA, a_DHA=a_DHA, a_YAH=a_YAH)
 
-  def get_counts(self, b=None, occ=None):
+  def get_counts(self, b=None, occ=None, min_data_size=10):
     theta_1 = flex.double()
     theta_2 = flex.double()
     d_HA    = flex.double()
@@ -530,9 +551,9 @@ class find(object):
       d_HA   .append(r.d_HA)
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
-    theta_1 = get_stats(theta_1)
-    theta_2 = get_stats(theta_2)
-    d_HA    = get_stats(d_HA)
+    theta_1 = get_stats(theta_1, min_data_size=min_data_size)
+    theta_2 = get_stats(theta_2, min_data_size=min_data_size)
+    d_HA    = get_stats(d_HA, min_data_size=min_data_size)
     if([theta_1, theta_2, d_HA].count(None)>0): return None
     return group_args(
       theta_1 = theta_1,
@@ -576,6 +597,7 @@ class find(object):
     pdb_file_name = "%s.pdb"%prefix
     with open(pdb_file_name, "w") as of:
       print(self.model.model_as_pdb(), file=of)
+    water_bonds = pymol_water_bonds(self.model)
     with open("%s.pml"%prefix, "w") as of:
       print("load", "/".join([os.getcwd(), pdb_file_name]), file=of)
       for r in self.result:
@@ -587,6 +609,8 @@ class find(object):
         two = "chain %s and resi %s and name %s and alt '%s'"%(
           aj.chain, aj.resseq, aj.name, aj.altloc)
         print("dist %s, %s"%(one, two), file=of)
+      if water_bonds:
+        print(water_bonds, file=of)
 
   def as_restraints(self, file_name="hbond.eff", distance_ideal=None, sigma_dist=0.1,
        angle_ideal = None, sigma_angle=2, use_actual=True):

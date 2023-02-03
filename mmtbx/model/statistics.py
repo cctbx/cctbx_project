@@ -446,8 +446,9 @@ class adp(object):
                pdb_hierarchy,
                xray_structure,
                use_hydrogens=False,
-               geometry_restraints_manager=None):
-    if(not use_hydrogens):
+               geometry_restraints_manager=None,
+               use_z_scores=False):
+    if(not use_hydrogens) or use_z_scores:
       not_hd_sel = ~xray_structure.hd_selection()
       pdb_hierarchy  = pdb_hierarchy.select(not_hd_sel)
       xray_structure = xray_structure.select(not_hd_sel)
@@ -455,6 +456,7 @@ class adp(object):
         geometry_restraints_manager = \
           geometry_restraints_manager.select(not_hd_sel)
     b_isos = xray_structure.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+    if use_z_scores: mean = b_isos.as_z_scores()
     sites_cart = xray_structure.sites_cart()
     asc = pdb_hierarchy.atom_selection_cache()
     def get_stats(sel_str, rms_bonded=False):
