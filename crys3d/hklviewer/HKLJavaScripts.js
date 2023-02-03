@@ -575,36 +575,42 @@ function SetAutoviewNoAnim(mycomponent)
 
 async function ResolveAutoview(mycomponent, t)
 {
-  let zaim = mycomponent.getZoom();
-  zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
-  let dt = 50;
-  let sumt = 0;
-  while (isAutoviewing) 
-  {
-    // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
-    // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
-    // data size of mycomponent. It will have completed once the condition 
-    // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
-    // at that point in time
-    if (stage.viewer.camera.position.z == zaim && sumt > 0) 
+  try {
+    let zaim = mycomponent.getZoom();
+    zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
+    let dt = 50;
+    let sumt = 0;
+    while (isAutoviewing) 
     {
-      if (isAutoviewing==true) 
+      // A workaround for lack of a signal function fired when autoView() has finished. autoView() runs 
+      // asynchroneously in the background. Its completion time is at least t milliseconds and depends on the 
+      // data size of mycomponent. It will have completed once the condition 
+      // stage.viewer.camera.position.z == mycomponent.getZoom() is true. So fire our own signal 
+      // at that point in time
+      if (stage.viewer.camera.position.z == zaim && sumt > 0) 
       {
-        let m = stage.viewerControls.getOrientation();
-        let det = Math.pow(m.determinant(), 1/3);
-        m.multiplyScalar(-zaim/det);
-        stage.viewerControls.orient(m);
-        WebsockSendMsg('FinishedSetAutoView');
-        isAutoviewing = false;   
-        return true;
+        if (isAutoviewing==true) 
+        {
+          let m = stage.viewerControls.getOrientation();
+          let det = Math.pow(m.determinant(), 1/3);
+          m.multiplyScalar(-zaim/det);
+          stage.viewerControls.orient(m);
+          WebsockSendMsg('FinishedSetAutoView');
+          isAutoviewing = false;   
+          return true;
+        }
+        else // set by SetAutoviewNoAnim()
+          return;
       }
-      else // set by SetAutoviewNoAnim()
-        return;
+      await sleep(dt).then(()=> { 
+        sumt += dt; 
+        WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
+      } );   
     }
-    await sleep(dt).then(()=> { 
-      sumt += dt; 
-      WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
-    } );   
+  }
+  catch(err)
+  {
+    WebsockSendMsg('JavaScriptError: ' + err.stack );
   }
 };
 

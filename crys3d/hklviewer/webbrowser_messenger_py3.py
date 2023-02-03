@@ -79,6 +79,7 @@ class WBmessenger(object):
     self.listening_sem.release()
     self.mprint("WBmessenger released listening_sem", verbose="threadingmsg")
     self.websockeventloop.run_forever()
+    self.mprint("websockeventloop has run forever", verbose=1)
 
 
   def StartWebsocket(self):
