@@ -1,3 +1,74 @@
+author {
+  name = Adams PD
+  orcid = 0000-0001-9333-8219
+}
+
+author {
+  name = Afonine PV
+  orcid = 0000-0002-5052-991X
+}
+
+author {
+  name = Chen VB
+  orcid = 0000-0003-2492-979X
+}
+
+author {
+  name = Hintze B
+  orcid = 0000-0002-4871-2096
+}
+
+author {
+  name = Hung L-W
+  name = Hung LW
+  orcid = 0000-0001-6690-8458
+}
+
+author {
+  name = Liebschner D
+  orcid = 0000-0003-3921-3209
+}
+
+author {
+  name = Moriarty NW
+  orcid = 0000-0001-8857-9464
+}
+
+author {
+  name = Oeffner RD
+  orcid = 0000-0003-3107-2202
+}
+
+author {
+  name = Poon BK
+  orcid = 0000-0001-9633-6067
+}
+
+author {
+  name = Read RJ
+  orcid = 0000-0001-8273-0047
+}
+
+author {
+  name = Richardson JS
+  orcid = 0000-0002-3311-2944
+}
+
+author {
+  name = Sammito MD
+  orcid = 0000-0002-8346-9247
+}
+
+author {
+  name = Sobolev OV
+  orcid = 0000-0002-0623-3214
+}
+
+author {
+  name = Terwilliger TC
+  orcid = 0000-0001-6384-0320
+}
+
 journal {
   name = Acta Cryst. D
   name = Acta Crystallogr D Biol Crystallogr
@@ -622,6 +693,7 @@ citation {
   volume = 75
   pages = 861-877
   doi_id = "10.1107/S2059798319011471"
+  pmid = 31588918
 }
 
 citation {
