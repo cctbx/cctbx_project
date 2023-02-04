@@ -1778,10 +1778,12 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     np::dtype dt = np::dtype::get_builtin<double>();
     np::ndarray output = np::empty(shape,dt);
 
-    if (errors)
+    if (errors) {
         output = np::from_data(&first_deriv_imgs.Fhkl_hessian[0], dt, shape, stride, boost::python::object());
-    else
+    }
+    else {
         output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
+    }
     return output.copy();
 }
 

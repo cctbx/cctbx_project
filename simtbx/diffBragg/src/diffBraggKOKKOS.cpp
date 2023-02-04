@@ -235,6 +235,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
         transfer(m_Fhkl_channels, db_beam.Fhkl_channels);
         transfer(m_Fhkl_scale, d_image.Fhkl_scale);
+        ::Kokkos::deep_copy(m_Fhkl_scale_deriv, 0);
 
         // for (int i=0; i < d_image.Fhkl_scale.size(); i++){
             // cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
