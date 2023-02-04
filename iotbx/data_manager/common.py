@@ -170,9 +170,9 @@ class fmodel_mixins(object):
       models.append(self.get_model(filename))
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
-    if(len(models) > 1):
-      raise Sorry("More than one model of '%s' type found."%array_type)
     model = models[0]
+    if(len(models) > 1):
+      model = model.deep_copy().merge_other_models(models[1:])
     # Get reflection file server
     rfs = self.get_reflection_file_server(
       array_type       = array_type,

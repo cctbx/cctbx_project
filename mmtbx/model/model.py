@@ -3968,6 +3968,8 @@ class manager(object):
     except Exception as e:
       raise Sorry("Unable to merge models:\n%s" %(str(e)))
 
+    return self
+
   def merge_other_model(self, other, skip_check = False):
     """
     Merge other (another model object) in with this one
@@ -4000,6 +4002,7 @@ class manager(object):
     except Exception as e:
       raise Sorry("Unable to merge models:\n%s" %(str(e)))
 
+    return self
 
   def is_same_model(self, other):
     """
