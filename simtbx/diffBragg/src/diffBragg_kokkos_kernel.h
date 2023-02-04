@@ -134,21 +134,21 @@ void kokkos_sum_over_steps(
     bool refine_Icell,
     bool save_wavelenimage,
     int laue_group_num, int stencil_size,
-    bool Fhkl_gradient_mode, 
-    bool Fhkl_errors_mode, 
-    bool using_trusted_mask, 
-    bool Fhkl_channels_empty, 
+    bool Fhkl_gradient_mode,
+    bool Fhkl_errors_mode,
+    bool using_trusted_mask,
+    bool Fhkl_channels_empty,
     bool Fhkl_have_scale_factors,
     int Num_ASU,
-    const vector_cudareal_t data_residual, 
+    const vector_cudareal_t data_residual,
     const vector_cudareal_t data_variance,
-    const vector_int_t data_freq, 
+    const vector_int_t data_freq,
     const vector_bool_t data_trusted,
     const vector_int_t FhklLinear_ASUid,
     const vector_cudareal_t Fhkl_channels,
-    const vector_cudareal_t Fhkl_scale, 
+    const vector_cudareal_t Fhkl_scale,
     vector_cudareal_t Fhkl_scale_deriv
-    );    
+    );
 
 
 #endif

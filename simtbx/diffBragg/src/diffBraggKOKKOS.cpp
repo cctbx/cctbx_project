@@ -87,7 +87,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         if (db_flags.Fhkl_have_scale_factors){
             resize(m_data_residual, db_cu_flags.Npix_to_allocate);
             resize(m_data_variance, db_cu_flags.Npix_to_allocate);
-            resize(m_data_freq, db_cu_flags.Npix_to_allocate);            
+            resize(m_data_freq, db_cu_flags.Npix_to_allocate);
             resize(m_data_trusted, db_cu_flags.Npix_to_allocate);
             resize(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid.size());
             resize(m_Fhkl_scale, d_image.Fhkl_scale.size());
@@ -269,7 +269,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         if (db_flags.verbose > 1)
             printf("H2D sources\n");
     }
-     
+
     Kokkos::Tools::popRegion();
     //  END sources
 
@@ -447,7 +447,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
         m_d_diffuse_gamma_images, m_d_diffuse_sigma_images, db_flags.refine_diffuse,
         db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img,
-        db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode, 
+        db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
         db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
         db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
         m_data_residual, m_data_variance,
@@ -455,7 +455,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         m_FhklLinear_ASUid,
         m_Fhkl_channels,
         m_Fhkl_scale, m_Fhkl_scale_deriv
-        );        
+        );
 
     ::Kokkos::fence("after kernel call");
 
@@ -489,7 +489,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++)
                 d_image.Fhkl_scale_deriv[i]= m_Fhkl_scale_deriv(i);
         }
-    }    
+    }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0) {
         kokkostbx::transfer_kokkos2vector(d_image.Umat, m_d_Umat_images);
         kokkostbx::transfer_kokkos2vector(d2_image.Umat, m_d2_Umat_images);

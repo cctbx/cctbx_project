@@ -123,7 +123,7 @@ class diffBraggKOKKOS {
     // Fhkl_scale is dynamically copied each iteration
     // Fhkl_scale_deriv is set to 0 each iteration
     CUDAREAL_VIEW(m_Fhkl_scale);  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
-    CUDAREAL_VIEW(m_Fhkl_scale_deriv); // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)    
+    CUDAREAL_VIEW(m_Fhkl_scale_deriv); // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
 
    public:
     void diffBragg_sum_over_steps_kokkos(

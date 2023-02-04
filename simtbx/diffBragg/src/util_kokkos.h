@@ -59,7 +59,7 @@ struct kokkos_crystal {
     std::unordered_set<int> Fhkl_grad_idx_tracker;
     int num_Fhkl_channels=1;
     int laue_group_num=1;
-    int stencil_size=0;    
+    int stencil_size=0;
     KOKKOS_MAT3 anisoG;
     std::vector<KOKKOS_MAT3> dG_dgamma;
     std::vector<KOKKOS_MAT3> dU_dsigma;

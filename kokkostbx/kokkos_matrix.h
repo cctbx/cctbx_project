@@ -34,13 +34,13 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
     KOKKOS_FUNCTION NumType& get(size_t row, size_t col) {
         assert(row < rank);
         assert(col < rank);
-        return vector_base::data[row * rank + col]; 
+        return vector_base::data[row * rank + col];
     }
 
     KOKKOS_FUNCTION NumType get(size_t row, size_t col) const {
         assert(row < rank);
         assert(col < rank);
-        return vector_base::data[row * rank + col]; 
+        return vector_base::data[row * rank + col];
     }
 
     KOKKOS_FUNCTION NumType& operator()(size_t row, size_t col) {
@@ -60,7 +60,7 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
 
     KOKKOS_FUNCTION friend VectorType operator*(const Derived& lhs, const VectorType& rhs) {
         return lhs.dot(rhs);
-    }    
+    }
 
     KOKKOS_FUNCTION friend Derived operator*(const Derived& lhs, const NumType& rhs) {
         Derived prod = lhs;
@@ -70,18 +70,18 @@ struct matrix_base : public vector_base<matrix_base<Derived, NumType, rank>, Num
 
     KOKKOS_FUNCTION friend Derived operator*(const NumType& lhs, const Derived& rhs) {
         return rhs * lhs;
-    }   
+    }
 
     KOKKOS_FUNCTION void operator*=(const Derived& rhs) {
         Derived prod = this->dot(rhs);
         for (size_t i = 0; i < size; ++i) {
             vector_base::data[i] = prod[i];
         }
-    }  
+    }
 
     KOKKOS_FUNCTION void operator*=(const NumType& rhs) {
         vector_base::operator*=(rhs);
-    }    
+    }
 
     KOKKOS_FUNCTION VectorType dot(const VectorType v) const {
         static_assert(v.get_size() == get_rank(), "Vector length must be equal to matrix rank!");

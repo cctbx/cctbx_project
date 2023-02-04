@@ -136,21 +136,21 @@ void kokkos_sum_over_steps(
     bool gamma_miller_units,
     bool refine_Icell,
     bool save_wavelenimage,
-    int laue_group_num, 
+    int laue_group_num,
     int stencil_size,
-    bool Fhkl_gradient_mode, 
-    bool Fhkl_errors_mode, 
-    bool using_trusted_mask, 
-    bool Fhkl_channels_empty, 
+    bool Fhkl_gradient_mode,
+    bool Fhkl_errors_mode,
+    bool using_trusted_mask,
+    bool Fhkl_channels_empty,
     bool Fhkl_have_scale_factors,
     int Num_ASU,
-    const vector_cudareal_t data_residual, 
+    const vector_cudareal_t data_residual,
     const vector_cudareal_t data_variance,
-    const vector_int_t data_freq, 
+    const vector_int_t data_freq,
     const vector_bool_t data_trusted,
     const vector_int_t FhklLinear_ASUid,
     const vector_cudareal_t Fhkl_channels,
-    const vector_cudareal_t Fhkl_scale, 
+    const vector_cudareal_t Fhkl_scale,
     vector_cudareal_t Fhkl_scale_deriv) {  // BEGIN GPU kernel
 
     // int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -159,7 +159,7 @@ void kokkos_sum_over_steps(
     // __shared__ bool s_Fhkl_have_scale_factors;
     // __shared__ bool s_Fhkl_gradient_mode;
     // __shared__ bool s_Fhkl_errors_mode;
-    // __shared__ int s_Num_ASU;    
+    // __shared__ int s_Num_ASU;
     // __shared__ bool s_refine_Icell;
     // __shared__ bool s_use_diffuse;
     // __shared__ bool s_use_nominal_hkl;
@@ -311,7 +311,7 @@ void kokkos_sum_over_steps(
     Hmin << h_min, k_min, l_min;
     Hmax << h_max, k_max, l_max;
     dHH << dhh, dkk, dll;
-    Hrange << h_range, k_range, l_range;    
+    Hrange << h_range, k_range, l_range;
 
     const CUDAREAL overall_scale = r_e_sqr * spot_scale * fluence / Nsteps;
 
@@ -323,7 +323,7 @@ void kokkos_sum_over_steps(
             if (using_trusted_mask) {
                 if (!data_trusted(pixIdx))
                     return;
-            }                
+            }
             int _pid = panels_fasts_slows(pixIdx * 3);
             int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
             int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
@@ -338,7 +338,7 @@ void kokkos_sum_over_steps(
                 if (Fhkl_errors_mode) {
                     Fhkl_hessian_coef = -0.5*one_by_v*(one_by_v*Gterm - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)/data_freq(pixIdx);
                 }
-            }            
+            }
 
             // int fcell_idx=1;
             int nom_h, nom_k, nom_l;
@@ -514,7 +514,7 @@ void kokkos_sum_over_steps(
                                 CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                                 if (use_diffuse) {
                                     calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&FhklLinear(0),num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,refine_diffuse,&I0,step_diffuse_param);
-                                } // end s_use_diffuse outer                                    
+                                } // end s_use_diffuse outer
 
                                 CUDAREAL _F_cell = default_F;
                                 CUDAREAL _F_cell2 = 0;
@@ -614,7 +614,7 @@ void kokkos_sum_over_steps(
 
                                 CUDAREAL _I_cell = _F_cell;
                                 if (!refine_Icell)
-                                    _I_cell *= _F_cell;                                
+                                    _I_cell *= _F_cell;
                                 CUDAREAL hkl=1;
                                 int Fhkl_channel=0;
                                 if (! Fhkl_channels_empty)
