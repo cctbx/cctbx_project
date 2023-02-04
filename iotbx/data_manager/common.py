@@ -171,7 +171,6 @@ class fmodel_mixins(object):
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
     if(len(models) > 1):
-      ZZZ
       raise Sorry("More than one model of '%s' type found."%array_type)
     model = models[0]
     # Get reflection file server
