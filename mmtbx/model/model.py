@@ -3948,6 +3948,59 @@ class manager(object):
     else:
       return False
 
+  def merge_other_models(self, other_list):
+    """
+    Merge list of other (model objects) in with this one
+    Requirements:  other models must have same number of PDB 'model' objects and
+      there must be no duplicate chain/residue combinations
+
+    parameters:
+      other_list:  model objects to merge
+    """
+    if not other_list:
+      return
+    for other in other_list:
+      self.merge_other_model(other, skip_check = True)
+
+    # Make sure that we have no duplicate atoms by creating grm
+    try:
+      self.process()
+    except Exception as e:
+      raise Sorry("Unable to merge models:\n%s" %(str(e)))
+
+  def merge_other_model(self, other, skip_check = False):
+    """
+    Merge other (another model object) in with this one
+    Requirements:  other model must have same number of PDB 'model' objects and
+      there must be no duplicate chain/residue combinations
+
+    parameters:
+      other:  model object to merge
+      skip_check:  skip creating grm to check result
+    """
+    if not other:
+      return
+
+    ph = self.get_hierarchy()
+    other_ph = other.get_hierarchy()
+
+    if len(list(ph.models())) != len(list(other_ph.models())):
+      raise Sorry("Cannot merge models that have differing numbers of"+
+        " PDB 'model' entries")
+
+    for m_model, other_m_model in zip(ph.models(), other_ph.models()):
+      for chain in other_m_model.chains():
+        new_chain = chain.detached_copy()
+        m_model.append_chain(new_chain)
+    self.reset_after_changing_hierarchy()
+
+    # Make sure that we have no duplicate atoms by creating grm
+    try:
+      self.process()
+    except Exception as e:
+      raise Sorry("Unable to merge models:\n%s" %(str(e)))
+
+
   def is_same_model(self, other):
     """
     Return True if models are the same, False otherwise.
