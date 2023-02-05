@@ -229,30 +229,51 @@ def _DescribeMainchainResidue(r, group, prevC):
   the N for this residue if we're the first residue in a chain).
   # @todo Add C terminus OXT
   '''
-  # Find the atoms that we're going to use.
-  aN = [a for a in r.atoms() if a.name.strip().upper() == 'N'][0]
-  aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
-  aC = [a for a in r.atoms() if a.name.strip().upper() == 'C'][0]
-  aO = [a for a in r.atoms() if a.name.strip().upper() == 'O'][0]
 
-  # If we're at the N terminus, we won't have a previous C, so just re-use our N
-  if prevC is None:
-    prevC = aN
+  ret = ''
+  # Find the atoms that we're going to use and insert their records into
+  # the output. If we're missing an atom, skip its record and make sure that
+  # the first one we use has a P and the others have L.
+  try:
+    aN = [a for a in r.atoms() if a.name.strip().upper() == 'N'][0]
+    # If we're at the N terminus, we won't have a previous C, so just re-use our N
+    if prevC is None:
+      prevC = aN
+    ret += _AddPointOrLineTo(prevC, 'P', group) + ' ' + _AddPointOrLineTo(aN, 'L', group) + '\n'
+    tag = 'L'
+  except Exception:
+    tag = 'P'
+
+  try:
+    aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
+    ret += _AddPointOrLineTo(aCA, tag, group) + '\n'
+    tag = 'L'
+  except Exception:
+    tag = 'P'
+
+  try:
+    aC = [a for a in r.atoms() if a.name.strip().upper() == 'C'][0]
+    ret += _AddPointOrLineTo(aC, tag, group) + '\n'
+    tag = 'L'
+  except Exception:
+    tag = 'P'
+
+  try:
+    aO = [a for a in r.atoms() if a.name.strip().upper() == 'O'][0]
+    ret += _AddPointOrLineTo(aO, tag, group) + '\n'
+    tag = 'L'
+  except Exception:
+    tag = 'P'
 
   # If we're the C terminus, we'll have an OXT atom.  In this case, add
   # a point at the C and a line to OXT.
   try:
     aOXT = [a for a in r.atoms() if a.name.strip().upper() == 'OXT'][0]
-    cTerm = _AddPointOrLineTo(aC, 'P', group) + ' ' + _AddPointOrLineTo(aOXT, 'L', group) + '\n'
+    ret += _AddPointOrLineTo(aC, 'P', group) + ' ' + _AddPointOrLineTo(aOXT, 'L', group) + '\n'
   except Exception:
-    cTerm = ''
+    pass
 
-  return (
-    _AddPointOrLineTo(prevC, 'P', group) + ' ' + _AddPointOrLineTo(aN, 'L', group) + '\n' +
-    _AddPointOrLineTo(aCA, 'L', group) + '\n' +
-    _AddPointOrLineTo(aC, 'L', group) + '\n' +
-    _AddPointOrLineTo(aO, 'L', group) + cTerm + '\n'
-  )
+  return ret
 
 
 def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
