@@ -186,7 +186,7 @@ class _SingletonOptimizer(object):
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
     If this value is None, optimization will be run sequentially on every model in the
-    hierarchy.
+    hierarchy. This is 1-based, the first model is 1.
     :param altID: The conformer alternate location specifier to use.  The value "" will
     cause it to run on the first conformer found in each model.  If this is set to None,
     optimization will be run sequentially for every conformer in the model, starting with
@@ -286,8 +286,10 @@ class _SingletonOptimizer(object):
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
-      startModelIndex = modelIndex
-      stopModelIndex = modelIndex + 1
+      # The command-line parameter matches the name of the model in the model file, which
+      # starts with 1. The internal indexing starts with 0. So we subtract one.
+      startModelIndex = (modelIndex - 1)
+      stopModelIndex = (modelIndex - 1) + 1
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
@@ -897,7 +899,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
     If this value is None, optimization will be run sequentially on every model in the
-    hierarchy.
+    hierarchy. This is 1-based, the first model is 1.
     :param altID: The conformer alternate location specifier to use.  The value "" will
     cause it to run on the first conformer found in each model.  If this is set to None,
     optimization will be run sequentially for every conformer in the model, starting with
@@ -1025,7 +1027,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
     If this value is None, optimization will be run sequentially on every model in the
-    hierarchy.
+    hierarchy. This is 1-based, the first model is 1.
     :param altID: The conformer alternate location specifier to use.  The value "" will
     cause it to run on the first conformer found in each model.  If this is set to None,
     optimization will be run sequentially for every conformer in the model, starting with
@@ -1183,7 +1185,7 @@ class FastOptimizer(_CliqueOptimizer):
     useNeutronDistances parameter described below.
     :param modelIndex: Identifies which index from the hierarchy is to be selected.
     If this value is None, optimization will be run sequentially on every model in the
-    hierarchy.
+    hierarchy. This is 1-based, the first model is 1.
     :param altID: The conformer alternate location specifier to use.  The value "" will
     cause it to run on the first conformer found in each model.  If this is set to None
     (the default), optimization will be run sequentially for every conformer in the model, starting with

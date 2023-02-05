@@ -53,6 +53,10 @@ alt_id = None
   .type = str
   .short_caption = Alternate to optimize
   .help = Alternate to optimize.  The default is to optimize all of them.
+model_id = None
+  .type = int
+  .short_caption = Model ID to optimize
+  .help = Model ID to optimize.  The default is to optimize all of them.
 add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
@@ -101,6 +105,55 @@ citation {
 
 # ------------------------------------------------------------------------------
 
+class _MoverLocation(object):
+  # Holds information needed to identify a Mover within a model file.
+  def __init__(self, moverType, modelId, altId, chain, resName, resId):
+    self.moverType = moverType  # String indicating Mover type: AmideFlip or HisFlip
+    self.modelId = modelId      # Integer indicating the modelId that the entry corresponds to
+    self.altId = altId          # String indicating the altId that the entry corresponds to
+    self.chain = chain          # String Chain that the residue is in
+    self.resName = resName      # String Name of the residue
+    self.resId = resId          # Integer ID of the residue
+
+  def __str__(self):
+    return "{} {} '{}' {} {} {}".format(self.moverType, self.modelId, self.altId,
+      self.chain, self.resName, self.resId)
+  def __repr__(self):
+      return "_MoverLocation({})".format(str(self))
+
+
+def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
+      'NH3Rotator', 'AromaticMethylRotator', 'AmideFlip', 'HisFlip']):
+  '''Return a list of _MoverLocation items that include all of them found in the
+  output string from an Optimizer.
+  :param s: String returned from the getInfo() method on an optimizer.
+  :param moverTypes: List of names for the movertypes to find.
+  :return: List of _FlipMoverState objects indicating all flip Movers listed inside
+  any BEGIN...END REPORT block in the string, including whether they were marked as
+  flipped.
+  '''
+  ret = []
+  modelId = None
+  altId = None
+  inBlock = False
+  for line in s.splitlines():
+    words = line.split()
+    if inBlock:
+      if words[0:2] == ['END','REPORT']:
+        inBlock = False
+      elif words[0] in moverTypes:
+        ret.append(_MoverLocation(words[0], modelId, altId, words[3], words[4], int(words[5])))
+    else:
+      if words[0:2] == ['BEGIN','REPORT:']:
+        modelId = int(words[3])
+        # Remove the single-quote and colon characters from the AltId, possibly leaving it empty
+        trim = words[5].replace("'", "")
+        trim = trim.replace(":", "")
+        altId = trim
+        inBlock = True
+  return ret
+
+
 def _FindFlipsInOutputString(s, moverType):
   '''Return a list of _FlipMoverState items that include all of them found in the
   output string from an Optimizer.
@@ -130,6 +183,89 @@ def _FindFlipsInOutputString(s, moverType):
         trim = trim.replace(":", "")
         altId = trim
         inBlock = True
+  return ret
+
+
+def _AltFromFlipOutput(fo):
+  '''Return a string that describes the alternate from a record in _FindFlipsInOutputString()
+  output.  Reports ' ' for an empty alternate. Returns lower-case representation.
+  '''
+  if fo.altId in ["", ""]:
+    return ' '
+  return fo.altId.lower()
+
+
+def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
+  '''Return a string that forms the basis for a Flipkin file without the optional positions
+  for the specified movers.  This includes the views that will be used to look at them.
+  :param states: Return value from _FindFlipsInOutputString() indicating behavior of
+  each Mover.
+  :param views: List of viewpoints, one per entry in states.
+  :param fileName: Name of the optimized output file associated with this Flipkin.
+  :param fileBaseName: The base name of the file, without path or extension.
+  :param model: The model we're optimizing.
+  :param alts: A list of alternates, empty if there are none. Sorted in increasing order.
+  '''
+  ret = '@kinemage 1\n'
+  ret += '@caption\nfrom file: {}\n'.format(fileName)
+
+  # Compute the views for each Mover as the center of mass of all of the moving atoms and
+  # record them, indicating which are flipped in Reduce.
+  ret += ' views marked with * are for groups flipped by reduce\n'
+  for i, s in enumerate(states):
+    # See whether the state is flipped in Reduce and add a star if so
+    star = ' '
+    if s.flipped:
+      star = '*'
+
+    # Find out the type of the residue, used to determine the type of flip.
+    type = '?'
+    if s.resName == 'ASN':
+      type = 'N'
+    elif s.resName == 'GLN':
+      type = 'Q'
+    elif s.resName == 'HIS':
+      type = 'H'
+
+    ret += '@viewid {{{}{}{} {} {}}}\n'.format(star, type, s.resId, _AltFromFlipOutput(s), s.chain)
+    ret += '@span 12\n'
+    ret += '@zslab 100\n'
+    ret += '@center{:9.3f}{:9.3f}{:9.3f}\n'.format(views[i][0], views[i][1], views[i][2])
+
+  # Add the master descriptions
+  ret += '@master {mainchain}\n'
+  ret += '@master {sidechain}\n'
+  ret += "@master {H's}\n"
+  ret += '@master {hets}\n'
+  ret += '@master {water}\n'
+
+  # Add width and group description, which is the base name of the file without
+  # its extension
+  ret += '@onewidth\n'
+  ret += '@group {{{}}} dominant\n'.format(fileBaseName)
+
+  # Add the masters for the alternates if there are any. The sorted list always starts
+  # with '' and then adds the others in increasing order.
+  defaultAltSet = False
+  for a in alts:
+    # The first one is turned on and the others are turned off by default
+    if defaultAltSet:
+      state = 'off'
+    else:
+      defaultAltSet = True
+      state = 'on'
+    ret += "@pointmaster '{}' {{{}}} {}".format(a.lower(), 'alt'+a.lower(), state)
+
+  # Add the mainchain points and lines for atoms that are not part of any Mover (even
+  # Movers of the type we're not looking at right now). Add the point for each mainchain
+  # atom and lines to each @todo. Tag them with alternate if
+  # they are in one.
+  ret += '@subgroup {{mc {}}} dominant\n'.format(fileBaseName)
+  ret += '@vectorlist {mc} color= white  master= {mainchain}\n'
+
+
+  # @todo
+
   return ret
 
 # ------------------------------------------------------------------------------
@@ -207,6 +343,10 @@ NOTES:
     if self.params.output.description_file_name is None:
       raise Sorry("Must specify output.description_file_name")
 
+    # Check the model ID to make sure they didn't set it to 0
+    if self.params.model_id == 0:
+      raise Sorry("Model ID must be >=1 if specified (None means all models)")
+
     # Turn on profiling if we've been asked to in the Phil parameters
     if self.params.profile:
       import cProfile
@@ -227,6 +367,11 @@ NOTES:
 
     # Get our model.
     self.model = self.data_manager.get_model()
+
+    # Stores the initial coordinates for all of the atoms, including added hydrogens,
+    # for use in the Flipkins. Holds a list of tuples where the first is the atom
+    # record and the second is the 3-vector position of the atom.
+    initialAtomPositions = []
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     cs = self.model.crystal_symmetry()
@@ -272,10 +417,15 @@ NOTES:
       self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       doneInt = work_clock()
 
+      # Keep track of the initial atom positions after hydrogen placement but before
+      # optimization so that we can put things back before each Flipkin run.
+      for a in self.model.get_hierarchy().atoms():
+        initialAtomPositions.append( (a, a.xyz) )
+
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, probeRadius=0.25, altID=self.params.alt_id,
+        self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.non_flip_preference,
@@ -322,8 +472,6 @@ NOTES:
     # If we've been asked to make Flipkins, then make each of them.
     if self.params.add_flip_movers and self.params.output.flipkin_directory is not None:
 
-      make_sub_header('Generating Amide Flipkin', out=self.logger)
-
       # Find the base name of the two output files we will produce.
       inName = self.data_manager.get_default_model_name()
       suffix = os.path.splitext(os.path.basename(inName))[1]
@@ -331,17 +479,93 @@ NOTES:
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       flipkinBase = self.params.output.flipkin_directory + "/" + base
 
+      # Find the list of all Movers in the model, which will be used to segment
+      # it into parts for the Flipkin.
+      moverLocations = _FindMoversInOutputString(outString)
+      print('XXX Movers:', moverLocations)
+
+      # Find the list of all alternates in the model, ignoring empty ones.
+      # Sort them in increasing alphabetical order.
+      alts = Optimizers.AlternatesInModel(self.model)
+      alts.discard('')
+      alts.discard(' ')
+      alts = sorted(list(alts))
+
+      make_sub_header('Generating Amide Flipkin', out=self.logger)
+
       # Make list of Movers to lock in one flip orientation and then the other,
       # keeping track of which state they are in when Reduce was choosing.
       # We need a different list for the Amide Movers and the Histidine Movers
       # because we generate two different Flipkin files, one for each.
       amides = _FindFlipsInOutputString(outString, 'AmideFlip')
-      print('XXX Amide:', amides)
+
+      # Find the viewpoint locations for each Mover we're going to
+      # look at as the center of all atoms in the sidechain of the residue.
+      views = []
+      for a in amides:
+        # Fill in information needed to construct the Flipkin.
+        # As of 2/5/2023, the CCTBX selection returns no atoms on a file when the model
+        # clause is used unless there is a MODEL statement in the file.  The get_number_of_models()
+        # function returns 1 if there are 0 or 1 MODEL statements, so we check to see if there
+        # are 2 or more (indicating the need to select) before adding the clause.
+        # The model ID that the selection is looking for is 1-based, so we must add 1 to the
+        # model index.
+        if self.model.get_number_of_models() >= 2:
+          modelClause = 'model {} and '.format(a.modelId + 1)
+        else:
+          modelClause = ''
+        x = 0.0
+        y = 0.0
+        z = 0.0
+        if a.altId in ["", " "]:
+          selString = modelClause + "chain {} and resseq {} and sidechain".format(
+                a.chain, a.resId)
+        else:
+          selString = modelClause + "chain {} and altid '{}' and resseq {} and sidechain".format(
+                a.chain, a.altId, a.resId)
+        sel = self.model.selection(selString)
+        count = 0;
+        for a in self.model.get_hierarchy().atoms():
+          if sel[a.i_seq]:
+            x += a.xyz[0]
+            y += a.xyz[1]
+            z += a.xyz[2]
+            count += 1
+        if count > 0:
+          x /= count
+          y /= count
+          z /= count
+        views.append( (x, y, z) )
+
+      # Write the base information in the Flipkin, not including the moving atoms in
+      # the Movers that will be placed, or atoms bonded to the moving atoms.
+      flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model, alts)
+
+      # @todo Make two configurations, the one that Reduce picked and the one
+      # that it did not.
+      configurations = []
 
       # @todo Figure out how to run the optimization without fixup on the
       # original orientation of all flippers and again on the flipped orientation
       # for each and combine the info from both of them into the same Flipkin. This
       # is made complicated by the addition and deletion of atoms.
+      for i, c in enumerate(configurations):
+        # Put the atoms back to where they started before optimization.
+        for p in initialAtomPositions:
+          p[0].xyz = p[1]
+
+        # Run optimization, locking the specified Amides into each configuration.
+        # Don't do fixup.
+        # @todo
+
+        # Write the updates to the Flipkin for this configuration, showing the
+        # atoms for the amide in the Reduce configuration (i=0) or the other
+        # configuration (i=1).
+        # @todo
+
+      # Write the accumulated Flipkin string to the output file.
+      with open(flipkinBase+"-flipnq.kin", "w") as f:
+        f.write(flipkinText)
 
       make_sub_header('Generating Histidine Flipkin', out=self.logger)
       hists = _FindFlipsInOutputString(outString, 'HisFlip')
@@ -353,6 +577,9 @@ NOTES:
       # @todo Enabling setting the state (flipped or not) of each of the Movers
       # and passing a list of locked ones to the Optimizer in two passes for
       # each Flipkin file.
+      # @todo Figure out how to add the Hydrogens back that have been removed
+      # during Histidine placement.  The description will tell us which ones have
+      # not been placed (so were removed).
       # @todo
 
     # Report profiling info if we've been asked to in the Phil parameters
