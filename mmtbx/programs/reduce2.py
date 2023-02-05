@@ -29,6 +29,7 @@ from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
+from scitbx.array_family import flex
 
 version = "0.6.0"
 
@@ -194,6 +195,7 @@ def _AltFromFlipOutput(fo):
     return ' '
   return fo.altId.lower()
 
+
 def _AddPointOrLineTo(a, tag, group):
   '''Return a string that describes the point at or line to the specified atom.
   This is used when building Kinemages.  Reports the alternate only if it is not empty.
@@ -227,7 +229,6 @@ def _DescribeMainchainResidue(r, group, prevC):
   :param group: The dominant group name the point or line is part of.
   :param prevC: Atom that is the mainchain C for the previous residue (or
   the N for this residue if we're the first residue in a chain).
-  # @todo Add C terminus OXT
   '''
 
   ret = ''
@@ -275,8 +276,34 @@ def _DescribeMainchainResidue(r, group, prevC):
 
   return ret
 
+def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
+  '''Return a string that describes the mainchain for a specified residue.
+  Add the point for the first mainchain atom in the previous residue
+  (none for the first) and lines to the N, Ca, C, and O.
+  :param r: Residue to describe.
+  :param group: The dominant group name the point or line is part of.
+  :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+  structure that the atom from the first parameter interacts with that lists all of the
+  bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+  '''
 
-def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
+  ret = ''
+
+  # Find all of the Hydrogens in the residue
+  Hs = [a for a in r.atoms() if a.element_is_hydrogen()]
+  for h in Hs:
+    try:
+      n = bondedNeighborLists[h][0]
+      # If the hydrogen is bonded to a mainchain atom, add it
+      if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+        ret += _AddPointOrLineTo(n, 'P', group) + ' ' + _AddPointOrLineTo(h, 'L', group) + '\n'
+    except Exception:
+      pass
+
+  return ret
+
+
+def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNeighborLists):
   '''Return a string that forms the basis for a Flipkin file without the optional positions
   for the specified movers.  This includes the views that will be used to look at them.
   :param states: Return value from _FindFlipsInOutputString() indicating behavior of
@@ -286,6 +313,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
   :param fileBaseName: The base name of the file, without path or extension.
   :param model: The model we're optimizing.
   :param alts: A list of alternates, empty if there are none. Sorted in increasing order.
+  :param bondedNeighborLists: List of neighboring atoms bonded to each atom.
   '''
   ret = '@kinemage 1\n'
   ret += '@caption\nfrom file: {}\n'.format(fileName)
@@ -354,6 +382,12 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
       ret += _DescribeMainchainResidue(res, fileBaseName, prevC)
       prevC = [a for a in res.atoms() if a.name.strip().upper() == 'C'][0]
 
+  # Add the Hydrogens on the mainchain
+  ret += "@vectorlist {mc H} color= gray  master= {mainchain} master= {H's}\n"
+  for c in model.chains():
+    prevC = None
+    for res in c.residues():
+      ret += _DescribeMainchainResidueHydrogens(res, fileBaseName, bondedNeighborLists)
 
   # @todo
 
@@ -628,9 +662,22 @@ NOTES:
           z /= count
         views.append( (x, y, z) )
 
+      # Find out which atoms are bonded.
+      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      p.pdb_interpretation.allow_polymer_cross_special_position=True
+      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+      self.model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+      carts = flex.vec3_double()
+      for a in self.model.get_atoms():
+        carts.append(a.xyz)
+      bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+      bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+
       # Write the base information in the Flipkin, not including the moving atoms in
       # the Movers that will be placed, or atoms bonded to the moving atoms.
-      flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model, alts)
+      flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
+        alts, bondedNeighborLists)
 
       # @todo Make two configurations, the one that Reduce picked and the one
       # that it did not.
