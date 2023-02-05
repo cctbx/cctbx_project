@@ -194,6 +194,66 @@ def _AltFromFlipOutput(fo):
     return ' '
   return fo.altId.lower()
 
+def _AddPointOrLineTo(a, tag, group):
+  '''Return a string that describes the point at or line to the specified atom.
+  This is used when building Kinemages.  Reports the alternate only if it is not empty.
+  :param a: Atom to describe.
+  :param tag: 'P' for point, 'L' for line.
+  :param group: The dominant group name the point or line is part of.
+  '''
+  if a.parent().altloc in ['', ' ']:
+    altTag = ''
+  else:
+    altTag = " '{}'".format(a.parent().altloc)
+  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}} {}{} {:.3f}, {:.3f}, {:.3f}'.format(
+    a.name.strip().lower(),               # Atom name
+    a.parent().resname.strip().lower(),   # Residue name
+    a.parent().parent().parent().id,      # chain
+    a.parent().parent().resseq_as_int(),  # Residue number
+    a.b,                                  # B factor
+    group,                                # Dominant group name
+    tag,                                  # Tag (P or L)
+    altTag,                               # Alternate, if any
+    a.xyz[0],                             # location
+    a.xyz[1],
+    a.xyz[2]
+  )
+
+def _DescribeMainchainResidue(r, group, prevC):
+  '''Return a string that describes the mainchain for a specified residue.
+  Add the point for the first mainchain atom in the previous residue
+  (none for the first) and lines to the N, Ca, C, and O.
+  :param r: Residue to describe.
+  :param group: The dominant group name the point or line is part of.
+  :param prevC: Atom that is the mainchain C for the previous residue (or
+  the N for this residue if we're the first residue in a chain).
+  # @todo Add C terminus OXT
+  '''
+  # Find the atoms that we're going to use.
+  aN = [a for a in r.atoms() if a.name.strip().upper() == 'N'][0]
+  aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
+  aC = [a for a in r.atoms() if a.name.strip().upper() == 'C'][0]
+  aO = [a for a in r.atoms() if a.name.strip().upper() == 'O'][0]
+
+  # If we're at the N terminus, we won't have a previous C, so just re-use our N
+  if prevC is None:
+    prevC = aN
+
+  # If we're the C terminus, we'll have an OXT atom.  In this case, add
+  # a point at the C and a line to OXT.
+  try:
+    aOXT = [a for a in r.atoms() if a.name.strip().upper() == 'OXT'][0]
+    cTerm = _AddPointOrLineTo(aC, 'P', group) + ' ' + _AddPointOrLineTo(aOXT, 'L', group) + '\n'
+  except Exception:
+    cTerm = ''
+
+  return (
+    _AddPointOrLineTo(prevC, 'P', group) + ' ' + _AddPointOrLineTo(aN, 'L', group) + '\n' +
+    _AddPointOrLineTo(aCA, 'L', group) + '\n' +
+    _AddPointOrLineTo(aC, 'L', group) + '\n' +
+    _AddPointOrLineTo(aO, 'L', group) + cTerm + '\n'
+  )
+
 
 def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
   '''Return a string that forms the basis for a Flipkin file without the optional positions
@@ -227,10 +287,14 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
     elif s.resName == 'HIS':
       type = 'H'
 
-    ret += '@viewid {{{}{}{} {} {}}}\n'.format(star, type, s.resId, _AltFromFlipOutput(s), s.chain)
-    ret += '@span 12\n'
-    ret += '@zslab 100\n'
-    ret += '@center{:9.3f}{:9.3f}{:9.3f}\n'.format(views[i][0], views[i][1], views[i][2])
+    if i > 0:
+      indexString = str(i+1)
+    else:
+      indexString = ''
+    ret += '@{}viewid {{{}{}{} {} {}}}\n'.format(indexString, star, type, s.resId, _AltFromFlipOutput(s), s.chain)
+    ret += '@{}span 12\n'.format(indexString)
+    ret += '@{}zslab 100\n'.format(indexString)
+    ret += '@{}center{:9.3f}{:9.3f}{:9.3f}\n'.format(indexString, views[i][0], views[i][1], views[i][2])
 
   # Add the master descriptions
   ret += '@master {mainchain}\n'
@@ -256,12 +320,18 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts):
       state = 'on'
     ret += "@pointmaster '{}' {{{}}} {}".format(a.lower(), 'alt'+a.lower(), state)
 
-  # Add the mainchain points and lines for atoms that are not part of any Mover (even
-  # Movers of the type we're not looking at right now). Add the point for each mainchain
-  # atom and lines to each @todo. Tag them with alternate if
-  # they are in one.
+  # Add the mainchain points and lines for atoms all atoms (even
+  # Movers of the type we're looking at right now). Add the point for the first mainchain
+  # atom in the previous residue (None for the first).
+  # Tag them with alternate ID if they are in one.
   ret += '@subgroup {{mc {}}} dominant\n'.format(fileBaseName)
   ret += '@vectorlist {mc} color= white  master= {mainchain}\n'
+  for c in model.chains():
+    # @todo What to do about mainchains with alternate conformations?
+    prevC = None
+    for res in c.residues():
+      ret += _DescribeMainchainResidue(res, fileBaseName, prevC)
+      prevC = [a for a in res.atoms() if a.name.strip().upper() == 'C'][0]
 
 
   # @todo
