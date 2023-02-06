@@ -214,25 +214,30 @@ def _AltFromFlipOutput(fo):
   return fo.altId.lower()
 
 
-def _AddPointOrLineTo(a, tag, group):
-  '''Return a string that describes the point at or line to the specified atom.
+def _AddPosition(a, tag, group):
+  '''Return a string that describes the point at or line to the specified atom or just
+  a sphere location.
   This is used when building Kinemages.  Reports the alternate only if it is not empty.
   :param a: Atom to describe.
-  :param tag: 'P' for point, 'L' for line.
+  :param tag: 'P' for point, 'L' for line, '' for sphere location.
   :param group: The dominant group name the point or line is part of.
   '''
+  if len(tag) > 0:
+    tagString = ' {}'.format(tag)
+  else:
+    tagString = ''
   if a.parent().altloc in ['', ' ']:
     altTag = ''
   else:
-    altTag = " '{}'".format(a.parent().altloc)
-  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}} {}{} {:.3f}, {:.3f}, {:.3f}'.format(
+    altTag = " '{}'".format(a.parent().altloc.lower())
+  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
     a.name.strip().lower(),               # Atom name
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
     a.parent().parent().resseq_as_int(),  # Residue number
     a.b,                                  # B factor
     group,                                # Dominant group name
-    tag,                                  # Tag (P or L)
+    tagString,                            # Tag (P or L)
     altTag,                               # Alternate, if any
     a.xyz[0],                             # location
     a.xyz[1],
@@ -258,28 +263,28 @@ def _DescribeMainchainResidue(r, group, prevC):
     # If we're at the N terminus, we won't have a previous C, so just re-use our N
     if prevC is None:
       prevC = aN
-    ret += _AddPointOrLineTo(prevC, 'P', group) + ' ' + _AddPointOrLineTo(aN, 'L', group) + '\n'
+    ret += _AddPosition(prevC, 'P', group) + ' ' + _AddPosition(aN, 'L', group) + '\n'
     tag = 'L'
   except Exception:
     tag = 'P'
 
   try:
     aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
-    ret += _AddPointOrLineTo(aCA, tag, group) + '\n'
+    ret += _AddPosition(aCA, tag, group) + '\n'
     tag = 'L'
   except Exception:
     tag = 'P'
 
   try:
     aC = [a for a in r.atoms() if a.name.strip().upper() == 'C'][0]
-    ret += _AddPointOrLineTo(aC, tag, group) + '\n'
+    ret += _AddPosition(aC, tag, group) + '\n'
     tag = 'L'
   except Exception:
     tag = 'P'
 
   try:
     aO = [a for a in r.atoms() if a.name.strip().upper() == 'O'][0]
-    ret += _AddPointOrLineTo(aO, tag, group) + '\n'
+    ret += _AddPosition(aO, tag, group) + '\n'
     tag = 'L'
   except Exception:
     tag = 'P'
@@ -288,7 +293,7 @@ def _DescribeMainchainResidue(r, group, prevC):
   # a point at the C and a line to OXT.
   try:
     aOXT = [a for a in r.atoms() if a.name.strip().upper() == 'OXT'][0]
-    ret += _AddPointOrLineTo(aC, 'P', group) + ' ' + _AddPointOrLineTo(aOXT, 'L', group) + '\n'
+    ret += _AddPosition(aC, 'P', group) + ' ' + _AddPosition(aOXT, 'L', group) + '\n'
   except Exception:
     pass
 
@@ -312,7 +317,7 @@ def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
       if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
-        ret += _AddPointOrLineTo(n, 'P', group) + ' ' + _AddPointOrLineTo(h, 'L', group) + '\n'
+        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
     except Exception:
       pass
 
@@ -360,7 +365,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       # First entry on the list yielded no useful neightbors; remove it and check the next
       queued = queued[1:]
       continue
-    ret += _AddPointOrLineTo(last, 'P', group) + ' '
+    ret += _AddPosition(last, 'P', group) + ' '
     while len(links) != 0:
       # Put all but the first link into the list to be checked later.
       for a in links[1:]:
@@ -368,7 +373,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       # Add the description for our first one and keep chasing this path
       curr = links[0]
       described.append({last,curr})
-      ret += _AddPointOrLineTo(curr, 'L', group) + '\n'
+      ret += _AddPosition(curr, 'L', group) + '\n'
       links = [a for a in bondedNeighborLists[curr]
                 if (not {curr, a} in described) and not a.element_is_hydrogen()
                 and curr.parent() == a.parent()
@@ -394,7 +399,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
       if not n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
-        ret += _AddPointOrLineTo(n, 'P', group) + ' ' + _AddPointOrLineTo(h, 'L', group) + '\n'
+        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
     except Exception:
       pass
 
@@ -432,7 +437,7 @@ def _DescribeHet(r, group, bondedNeighborLists):
       # First entry on the list yielded no useful neightbors; remove it and check the next
       queued = queued[1:]
       continue
-    ret += _AddPointOrLineTo(last, 'P', group) + ' '
+    ret += _AddPosition(last, 'P', group) + ' '
     while len(links) != 0:
       # Put all but the first link into the list to be checked later.
       for a in links[1:]:
@@ -441,7 +446,7 @@ def _DescribeHet(r, group, bondedNeighborLists):
       # @todo Why are we chasing outside of the residue?
       curr = links[0]
       described.append({last,curr})
-      ret += _AddPointOrLineTo(curr, 'L', group) + '\n'
+      ret += _AddPosition(curr, 'L', group) + '\n'
       links = [a for a in bondedNeighborLists[curr]
                 if (not {curr, a} in described) and (not a.element_is_hydrogen())
                 and (curr.parent() == a.parent())
@@ -465,7 +470,7 @@ def _DescribeHetHydrogens(r, group, bondedNeighborLists):
   for h in Hs:
     try:
       n = bondedNeighborLists[h][0]
-      ret += _AddPointOrLineTo(n, 'P', group) + ' ' + _AddPointOrLineTo(h, 'L', group) + '\n'
+      ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
     except Exception:
       pass
 
@@ -566,6 +571,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _DescribeMainchainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add the sidechain non-hydrogen atoms for residues that do not have Movers
+  # @todo Why are we missing the sidechains that are in alternates on 1xso? (we have the hydrogens...)
   ret += '@subgroup {{sc {}}} dominant\n'.format(fileBaseName)
   ret += '@vectorlist {sc} color= cyan  master= {sidechain}\n'
   for c in model.chains():
@@ -592,15 +598,15 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
           and not _IsMover(n.parent().parent(), moverList)
           ):
         if {a,n} not in described:
-          ret += _AddPointOrLineTo(a, 'P', fileBaseName) + ' ' + _AddPointOrLineTo(n, 'L', fileBaseName) + '\n'
+          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName) + '\n'
           described.append({a,n})
 
-  # Add spheres for single-atom Het
+  # Add spheres for ions (was single-atom Het groups in original Flipkins?)
   ret += '@subgroup {het groups} dominant\n'
-  ret += '@balllist {het M} color= gray  radius= 0.5  master= {hets}\n'
+  ret += '@spherelist {het M} color= gray  radius= 0.5  nubutton master= {hets}\n'
   for a in model.get_atoms():
     if a.element_is_ion():
-      ret += _AddPointOrLineTo(a, 'P', fileBaseName) + '\n'
+      ret += _AddPosition(a, '', fileBaseName) + '\n'
 
   # Add bonded structures for het groups
   ret += '@vectorlist {het} color= orange  master= {hets}\n'
@@ -619,7 +625,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   ret += '@balllist {water O} color= pink  radius= 0.15  master= {water}\n'
   for a in model.get_atoms():
     if inWater[a]:
-      ret += _AddPointOrLineTo(a, 'P', fileBaseName) + '\n'
+      ret += _AddPosition(a, 'P', fileBaseName) + '\n'
 
   # @todo
 
