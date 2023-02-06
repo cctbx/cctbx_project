@@ -518,15 +518,22 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
           ret += _AddPointOrLineTo(a, 'P', fileBaseName) + ' ' + _AddPointOrLineTo(n, 'L', fileBaseName) + '\n'
           described.append({a,n})
 
-  # Add het groups (ions and bonded structures)
+  # Add spheres for ions
+  ret += '@subgroup {het groups} dominant\n'
+  ret += '@balllist {het M} color= gray  radius= 0.5  master= {hets}\n'
+  for a in model.get_atoms():
+    if a.element_is_ion():
+      ret += _AddPointOrLineTo(a, 'P', fileBaseName) + '\n'
+
+  # Add bonded structures for het groups
   # @todo
 
   # Add waters
-  ret += '@subgroup waters dominant\n'
+  ret += '@subgroup {waters} dominant\n'
   ret += '@balllist {water O} color= pink  radius= 0.15  master= {water}\n'
   for a in model.get_atoms():
     if inWater[a]:
-      ret += _AddPointOrLineTo(a, 'P', fileBaseName)
+      ret += _AddPointOrLineTo(a, 'P', fileBaseName) + '\n'
 
   # @todo
 
