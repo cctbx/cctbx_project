@@ -1,11 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import mmtbx.model
 import iotbx.pdb
-from cctbx.array_family import flex
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import approx_equal, show_diff
-from iotbx.regression.ncs.tst_ncs import pdb_str_5
-from libtbx.utils import null_out
 
 pdb_str_1 = """\
 CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
