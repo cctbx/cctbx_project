@@ -571,7 +571,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _DescribeMainchainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add the sidechain non-hydrogen atoms for residues that do not have Movers
-  # @todo Why are we missing the sidechains that are in alternates on 1xso? (we have the hydrogens...)
+  # @todo Why are we missing the sidechains that are in alternates on 3cp5? (we have the hydrogens...)
   ret += '@subgroup {{sc {}}} dominant\n'.format(fileBaseName)
   ret += '@vectorlist {sc} color= cyan  master= {sidechain}\n'
   for c in model.chains():
@@ -608,16 +608,16 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
     if a.element_is_ion():
       ret += _AddPosition(a, '', fileBaseName) + '\n'
 
-  # Add bonded structures for het groups
+  # Add bonded structures for het groups that are not Movers
   ret += '@vectorlist {het} color= orange  master= {hets}\n'
   for c in model.chains():
     for rg in c.residue_groups():
-      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and not _IsMover(rg, moverList):
          ret += _DescribeHet(rg, fileBaseName, bondedNeighborLists)
   ret += "@vectorlist {ht H} color= gray  master= {hets} master= {H's}\n"
   for c in model.chains():
     for rg in c.residue_groups():
-      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and not _IsMover(rg, moverList):
          ret += _DescribeHetHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add waters
@@ -962,7 +962,7 @@ NOTES:
         # configuration (i=1).
         # @todo
 
-        # Add hets that are Movers.
+        # Add internal bonds and hydrogens for Hets that are Movers.
         # @todo 3cp5
 
         # Add yellow bonds for atoms between residues where one of the residues
