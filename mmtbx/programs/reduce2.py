@@ -541,7 +541,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
     else:
       defaultAltSet = True
       state = 'on'
-    ret += "@pointmaster '{}' {{{}}} {}".format(a.lower(), 'alt'+a.lower(), state)
+    ret += "@pointmaster '{}' {{{}}} {}\n".format(a.lower(), 'alt'+a.lower(), state)
 
   # Add the mainchain (no hydrogens) for atoms all atoms (even Movers of the type
   # we're looking at right now). Add the point for the first mainchain
