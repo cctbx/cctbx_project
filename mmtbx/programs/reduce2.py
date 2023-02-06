@@ -353,7 +353,9 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
   while len(queued) > 0:
     last = queued[0]
     links = [a for a in bondedNeighborLists[last]
-              if (not {last, a} in described) and not a.element_is_hydrogen()]
+              if (not {last, a} in described) and (not a.element_is_hydrogen())
+                and (last.parent() == a.parent())
+            ]
     if len(links) == 0:
       # First entry on the list yielded no useful neightbors; remove it and check the next
       queued = queued[1:]
@@ -399,8 +401,79 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
   return ret
 
 
+def _DescribeHet(r, group, bondedNeighborLists):
+  '''Return a string that describes the bonds in a Hetatm structure.
+  :param r: Residue to describe.
+  :param group: The dominant group name the point or line is part of.
+  :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+  structure that the atom from the first parameter interacts with that lists all of the
+  bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+  '''
+  ret = ''
+
+  # Start with the first atom and no described links.
+  described = []   # A list of sets of two atoms that we have already described bonds between
+  queued = [r.atoms()[0]]
+
+  # Cycle through the list of queued atoms until we run out of them.
+  # For each, look for a non-hydrogen neighbor that we've not yet described a bond
+  # with.  If none are found, remove this entry from the list and cycle again.
+  # If one is found, add a point and then a line for the first neighbor found, adding
+  # that neighbor and all others to the queued list and continuing to chase to (line to
+  # the first, adding it and all others to the queued list) until we find no more links
+  # to atoms in the same residue.
+  while len(queued) > 0:
+    last = queued[0]
+    links = [a for a in bondedNeighborLists[last]
+              if (not {last, a} in described) and (not a.element_is_hydrogen())
+                and (last.parent() == a.parent())
+            ]
+    if len(links) == 0:
+      # First entry on the list yielded no useful neightbors; remove it and check the next
+      queued = queued[1:]
+      continue
+    ret += _AddPointOrLineTo(last, 'P', group) + ' '
+    while len(links) != 0:
+      # Put all but the first link into the list to be checked later.
+      for a in links[1:]:
+        queued.append(a)
+      # Add the description for our first one and keep chasing this path
+      # @todo Why are we chasing outside of the residue?
+      curr = links[0]
+      described.append({last,curr})
+      ret += _AddPointOrLineTo(curr, 'L', group) + '\n'
+      links = [a for a in bondedNeighborLists[curr]
+                if (not {curr, a} in described) and (not a.element_is_hydrogen())
+                and (curr.parent() == a.parent())
+              ]
+      last = curr
+  return ret
+
+
+def _DescribeHetHydrogens(r, group, bondedNeighborLists):
+  '''Return a string that describes the hydrogens for a specified residue.
+  :param r: Residue to describe.
+  :param group: The dominant group name the point or line is part of.
+  :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+  structure that the atom from the first parameter interacts with that lists all of the
+  bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+  '''
+  ret = ''
+
+  # Find all of the Hydrogens in the residue
+  Hs = [a for a in r.atoms() if a.element_is_hydrogen()]
+  for h in Hs:
+    try:
+      n = bondedNeighborLists[h][0]
+      ret += _AddPointOrLineTo(n, 'P', group) + ' ' + _AddPointOrLineTo(h, 'L', group) + '\n'
+    except Exception:
+      pass
+
+  return ret
+
+
 def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNeighborLists,
-    moverList, inSideChain, inWater):
+    moverList, inSideChain, inWater, inHet):
   '''Return a string that forms the basis for a Flipkin file without the optional positions
   for the specified movers.  This includes the views that will be used to look at them.
   :param states: Return value from _FindFlipsInOutputString() indicating behavior of
@@ -414,6 +487,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   :param moverList: List of Movers, which will be used to exclude residues.
   :param inSideChain: Dictionary looked up by atom telling whether it is in a side chain.
   :param inWater: Dictionary looked up by atom telling whether it is in water.
+  :param inHet: Dictionary looked up by atom telling whether it is a hetatm.
   '''
   ret = '@kinemage 1\n'
   ret += '@caption\nfrom file: {}\n'.format(fileName)
@@ -506,19 +580,22 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       if not _IsMover(rg, moverList):
         ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
-  # Describe links between atoms in two different sidechains where neither of the
+  # Describe links between atoms in a sidechain and another residue where neither of the
   # involved residues include Movers.  Don't repeat bonds that have already been
   # described.
   ret += '@vectorlist {SS} color= yellow  master= {sidechain}\n'
   described = []
   for a in model.get_atoms():
     for n in bondedNeighborLists[a]:
-      if a.parent().parent() != n.parent().parent() and inSideChain[a] and inSideChain[n]:
+      if (a.parent().parent() != n.parent().parent() and inSideChain[a]
+          and not _IsMover(a.parent().parent(), moverList)
+          and not _IsMover(n.parent().parent(), moverList)
+          ):
         if {a,n} not in described:
           ret += _AddPointOrLineTo(a, 'P', fileBaseName) + ' ' + _AddPointOrLineTo(n, 'L', fileBaseName) + '\n'
           described.append({a,n})
 
-  # Add spheres for ions
+  # Add spheres for single-atom Het
   ret += '@subgroup {het groups} dominant\n'
   ret += '@balllist {het M} color= gray  radius= 0.5  master= {hets}\n'
   for a in model.get_atoms():
@@ -526,7 +603,16 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _AddPointOrLineTo(a, 'P', fileBaseName) + '\n'
 
   # Add bonded structures for het groups
-  # @todo
+  ret += '@vectorlist {het} color= orange  master= {hets}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+         ret += _DescribeHet(rg, fileBaseName, bondedNeighborLists)
+  ret += "@vectorlist {ht H} color= gray  master= {hets} master= {H's}\n"
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+         ret += _DescribeHetHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add waters
   ret += '@subgroup {waters} dominant\n'
@@ -846,7 +932,7 @@ NOTES:
       # Write the base information in the Flipkin, not including the moving atoms in
       # the Movers that will be placed, or atoms bonded to the moving atoms.
       flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
-        alts, bondedNeighborLists, moverLocations, inSideChain, inWater)
+        alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
 
       # @todo Make two configurations, the one that Reduce picked and the one
       # that it did not.
@@ -869,6 +955,13 @@ NOTES:
         # atoms for the amide in the Reduce configuration (i=0) or the other
         # configuration (i=1).
         # @todo
+
+        # Add hets that are Movers.
+        # @todo 3cp5
+
+        # Add yellow bonds for atoms between residues where one of the residues
+        # is a Mover.
+        # @todo 3cp5
 
       # Write the accumulated Flipkin string to the output file.
       with open(flipkinBase+"-flipnq.kin", "w") as f:
