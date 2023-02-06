@@ -400,7 +400,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
 
 
 def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNeighborLists,
-    moverList, inSideChain):
+    moverList, inSideChain, inWater):
   '''Return a string that forms the basis for a Flipkin file without the optional positions
   for the specified movers.  This includes the views that will be used to look at them.
   :param states: Return value from _FindFlipsInOutputString() indicating behavior of
@@ -413,6 +413,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   :param bondedNeighborLists: List of neighboring atoms bonded to each atom.
   :param moverList: List of Movers, which will be used to exclude residues.
   :param inSideChain: Dictionary looked up by atom telling whether it is in a side chain.
+  :param inWater: Dictionary looked up by atom telling whether it is in water.
   '''
   ret = '@kinemage 1\n'
   ret += '@caption\nfrom file: {}\n'.format(fileName)
@@ -516,7 +517,16 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
         if {a,n} not in described:
           ret += _AddPointOrLineTo(a, 'P', fileBaseName) + ' ' + _AddPointOrLineTo(n, 'L', fileBaseName) + '\n'
           described.append({a,n})
+
+  # Add het groups (ions and bonded structures)
   # @todo
+
+  # Add waters
+  ret += '@subgroup waters dominant\n'
+  ret += '@balllist {water O} color= pink  radius= 0.15  master= {water}\n'
+  for a in model.get_atoms():
+    if inWater[a]:
+      ret += _AddPointOrLineTo(a, 'P', fileBaseName)
 
   # @todo
 
@@ -829,7 +839,7 @@ NOTES:
       # Write the base information in the Flipkin, not including the moving atoms in
       # the Movers that will be placed, or atoms bonded to the moving atoms.
       flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
-        alts, bondedNeighborLists, moverLocations, inSideChain)
+        alts, bondedNeighborLists, moverLocations, inSideChain, inWater)
 
       # @todo Make two configurations, the one that Reduce picked and the one
       # that it did not.
