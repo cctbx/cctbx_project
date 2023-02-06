@@ -852,6 +852,20 @@ class manager(object):
      shift_cart = shift_cart_to_apply,
      crystal_symmetry = self._unit_cell_crystal_symmetry)
 
+  def set_symmetry_and_shift_to_match_other(self, other):
+    ''' Transfer all symmetry and shift_cart from other to this model.
+        Does not change coordinates.
+
+        NOTE: You might use this method if you superimpose this model on
+        other and want this model to take on the symmetry and
+        shift_cart of other.
+    '''
+    self.set_shift_cart((0,0,0)) # Required to set crystal_symmetry
+    self.set_crystal_symmetry(crystal_symmetry = other.crystal_symmetry())
+    self.set_unit_cell_crystal_symmetry(
+        crystal_symmetry = other.unit_cell_crystal_symmetry())
+    self.set_shift_cart(other.shift_cart())
+
   def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
     '''
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
