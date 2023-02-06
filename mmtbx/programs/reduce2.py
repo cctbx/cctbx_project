@@ -559,7 +559,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
         pass
 
   # Add the Hydrogens on the mainchain
-  ret += "@vectorlist {mc H} color= gray  master= {mainchain} master= {H's}\n"
+  ret += "@vectorlist {mc H} color= gray  nobutton master= {mainchain} master= {H's}\n"
   for c in model.chains():
     prevC = None
     for rg in c.residue_groups():
@@ -574,7 +574,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
         ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
 
   # Add the Hydrogens on the sidechains for residues that do not have Movers
-  ret += "@vectorlist {mc H} color= gray  master= {sidechain} master= {H's}\n"
+  ret += "@vectorlist {sc H} color= gray  nobutton master= {sidechain} master= {H's}\n"
   for c in model.chains():
     for rg in c.residue_groups():
       if not _IsMover(rg, moverList):
