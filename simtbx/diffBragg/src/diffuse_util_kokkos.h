@@ -1,17 +1,10 @@
-#ifndef SIMTBX_DIFFBRAGG_DIFFUSE_UTIL
-#define SIMTBX_DIFFBRAGG_DIFFUSE_UTIL
+#ifndef SIMTBX_DIFFBRAGG_DIFFUSE_UTIL_KOKKOS
+#define SIMTBX_DIFFBRAGG_DIFFUSE_UTIL_KOKKOS
 
-#include <simtbx/diffBragg/src/util.h>
+#include <simtbx/diffBragg/src/util_kokkos.h>
 
-#define CUDA_COMPILE (defined(DIFFBRAGG_HAVE_CUDA) && defined(__CUDACC__))
-
-#define REAL double
-
-#if CUDA_COMPILE
-__device__ __host__
-#endif
-#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
-int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
+KOKKOS_FUNCTION
+int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
   if ( laue_group_num < 1 or laue_group_num > 14) {
     return 0;
   }
@@ -551,16 +544,9 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
   return 0;
 };
 
-#else
-int gen_laue_mats(int laue_group_num, MAT3 *lmats);
-#endif
-
-#if CUDA_COMPILE
-__device__ __host__
-#endif
-#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
-void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VEC3 Hrange, MAT3 Ainv, const REAL *FhklLinear, int num_laue_mats, MAT3 *laue_mats, MAT3 anisoG_local, MAT3 anisoU_local, MAT3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param){
-  REAL four_mpi_sq = 4.*M_PI*M_PI;
+KOKKOS_FUNCTION
+void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOKKOS_VEC3 Hmin, KOKKOS_VEC3 Hmax, KOKKOS_VEC3 Hrange, KOKKOS_MAT3 Ainv, const vector_cudareal_t FhklLinear, int num_laue_mats, const KOKKOS_MAT3 *laue_mats, KOKKOS_MAT3 anisoG_local, KOKKOS_MAT3 anisoU_local, const KOKKOS_MAT3 *dG_dgam, bool refine_diffuse, CUDAREAL *I0, CUDAREAL *step_diffuse_param){
+  CUDAREAL four_mpi_sq = 4.*M_PI*M_PI;
   // loop over laue matrices
   bool h_bounded= (H0[0]+dHH[0]<=Hmax[0]) && (H0[0]-dHH[0]>=Hmin[0]) ;
   bool k_bounded= (H0[1]+dHH[1]<=Hmax[1]) && (H0[1]-dHH[1]>=Hmin[1]) ;
@@ -568,58 +554,58 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
   if (h_bounded && k_bounded && l_bounded) {
     int Fhkl_linear_index_0 = (H0[0]-Hmin[0]) * Hrange[1] * Hrange[2]
       + (H0[1]-Hmin[1]) * Hrange[2] + (H0[2]-Hmin[2]);
-    REAL _F_cell_0 = FhklLinear[Fhkl_linear_index_0];
-    MAT3 Ginv = anisoG_local.inverse();
-    REAL anisoG_determ = anisoG_local.determinant();
+    CUDAREAL _F_cell_0 = FhklLinear(Fhkl_linear_index_0);
+    KOKKOS_MAT3 Ginv = anisoG_local.inverse();
+    CUDAREAL anisoG_determ = anisoG_local.determinant();
     for (int hh=-dHH[0]; hh <= dHH[0]; hh++){
       for (int kk=-dHH[1]; kk <= dHH[1]; kk++){
         for (int ll=-dHH[2]; ll <= dHH[2]; ll++){
-          REAL ID_this = 0;
-          REAL step_diffuse_param_this[6]  = {0,0,0,0,0,0};
+          CUDAREAL ID_this = 0;
+          CUDAREAL step_diffuse_param_this[6]  = {0,0,0,0,0,0};
           int Fhkl_linear_index_this = (H0[0]+hh-Hmin[0]) * Hrange[1] * Hrange[2]
             + (H0[1]+kk-Hmin[1]) * Hrange[2] + (H0[2]+ll-Hmin[2]);
-          REAL _F_cell_this = FhklLinear[Fhkl_linear_index_this];
-          REAL _this_diffuse_scale;
+          CUDAREAL _F_cell_this = FhklLinear(Fhkl_linear_index_this);
+          CUDAREAL _this_diffuse_scale;
           if (_F_cell_0 != 0.0)
             _this_diffuse_scale = _F_cell_this/_F_cell_0;
           else
             _this_diffuse_scale = 1.0;
 
-          _this_diffuse_scale *= _this_diffuse_scale/(REAL)num_laue_mats;
-          /* TODO: Apply discrete transformations to H0 and delta_H_offset
-             like the following to reorient G and recover calmodulin diffuse
-          MAT3 xform;
-          xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
-          */
+          _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats;
+          // TODO: Apply discrete transformations to H0 and delta_H_offset
+          //    like the following to reorient G and recover calmodulin diffuse
+          // KOKKOS_MAT3 xform;
+          // xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+          
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
-            VEC3 Q0 =Ainv*laue_mats[iL]*H0;
-            REAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
-            REAL dwf = exp(-exparg);
-            VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
-            VEC3 delta_H_offset = H_vec - H0_offset;
-            VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
-            VEC3 anisoG_q = anisoG_local*delta_Q;
+            KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*H0;
+            CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
+            CUDAREAL dwf = exp(-exparg);
+            KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
+            KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;
+            KOKKOS_VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
+            KOKKOS_VEC3 anisoG_q = anisoG_local*delta_Q;
 
-            REAL V_dot_V = anisoG_q.dot(anisoG_q);
-            REAL gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
+            CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
+            CUDAREAL gamma_portion_denom = (1.+ V_dot_V* four_mpi_sq);
             gamma_portion_denom *= gamma_portion_denom;
-            REAL gamma_portion = 8.*M_PI*anisoG_determ /
+            CUDAREAL gamma_portion = 8.*M_PI*anisoG_determ /
               gamma_portion_denom;
-            REAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
+            CUDAREAL this_I_latt_diffuse = dwf*exparg*gamma_portion;
 
             ID_this += this_I_latt_diffuse;
             if (refine_diffuse){ // add the contributions to diffuse scattering gradients here
               for (int i_gam=0; i_gam<3; i_gam++){
-                VEC3 dV = dG_dgam[i_gam]*delta_Q;
-                REAL V_dot_dV = anisoG_q.dot(dV);
-                REAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
+                KOKKOS_VEC3 dV = dG_dgam[i_gam]*delta_Q;
+                CUDAREAL V_dot_dV = anisoG_q.dot(dV);
+                CUDAREAL deriv = (Ginv*dG_dgam[i_gam]).trace() - 4.*four_mpi_sq*V_dot_dV/(1+four_mpi_sq*V_dot_V);
                 step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
               }
-              MAT3 dU_dsigma;
-              dU_dsigma << 0,0,0,0,0,0,0,0,0;
+              KOKKOS_MAT3 dU_dsigma;
+              // dU_dsigma << 0,0,0,0,0,0,0,0,0;
               for (int i_sig = 0;i_sig<3; i_sig++){
                 dU_dsigma(i_sig, i_sig) = 2.*sqrt(anisoU_local(i_sig,i_sig));
-                REAL dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
+                CUDAREAL dexparg = four_mpi_sq*Q0.dot(dU_dsigma*Q0);
                 dU_dsigma(i_sig, i_sig) = 0.;
                 step_diffuse_param_this[i_sig+3] += gamma_portion*dwf*dexparg*(1. - exparg);
               }
@@ -635,9 +621,5 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
     } // end hh loop
   } // end if bounded
 }
-
-#else
-void calc_diffuse_at_hkl(VEC3 Hvec, VEC3 H0vec, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VEC3 Hrange, MAT3 Ainv, const REAL *FhklLinear, int num_laue_mats, MAT3 *laue_mats, MAT3 anisoG_local, MAT3 anisoU_local, MAT3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param);
-#endif
 
 #endif

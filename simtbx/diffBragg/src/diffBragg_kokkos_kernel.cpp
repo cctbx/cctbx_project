@@ -1,6 +1,6 @@
 #include <cstdio>
 #include "diffBraggKOKKOS.h"
-#include <simtbx/diffBragg/src/diffuse_util.h>
+#include <simtbx/diffBragg/src/diffuse_util_kokkos.h>
 
 // using ::Kokkos::Experimental::exp;
 // using ::Kokkos::Experimental::sin;
@@ -513,7 +513,7 @@ void kokkos_sum_over_steps(
                                 // are we doing diffuse scattering
                                 CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                                 if (use_diffuse) {
-                                    calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,&FhklLinear(0),num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,refine_diffuse,&I0,step_diffuse_param);
+                                    calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,refine_diffuse,&I0,step_diffuse_param);
                                 } // end s_use_diffuse outer
 
                                 CUDAREAL _F_cell = default_F;
