@@ -941,6 +941,7 @@ def auto_sharpen_isotropic(mc1, mc2):
   # odd if stated d_min goes much beyond real signal.
 
   nref = mc1.size()
+  nref_check = 0
   num_per_bin = 1000
   max_bins = 50
   min_bins = 6
@@ -966,14 +967,15 @@ def auto_sharpen_isotropic(mc1, mc2):
     fsq = flex.pow2(flex.abs(mc1sel.data()))
     meanfsq = flex.mean_default(fsq, 0)
     y = math.log(meanfsq/(FSCref*FSCref))
-    w = fsq.size()
+    w = fsq.size() * FSCref
+    nref_check += fsq.size()
     sumw += w
     sumwx += w * x
     sumwy += w * y
     sumwx2 += w * x**2
     sumwxy += w * x * y
 
-  assert (nref == sumw) # Check no Fourier terms lost outside bins
+  assert (nref == nref_check) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
   b_sharpen = 2 * slope # Divided by 2 to apply to amplitudes
   all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
