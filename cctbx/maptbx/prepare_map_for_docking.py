@@ -900,7 +900,45 @@ def add_local_squared_deviation_map(
     offset = -min_map_value
     mm_out.set_map_data(map_data = mm_out.map_data() + offset)
 
+def auto_sharpen_by_FSC(mc1, mc2):
+  # Simply sharpen by bin-wise <F^2> and multiply by FSC
+  # This didn't work as well as auto_sharpen_isotropic, but may be worth trying
+  # again with a smooth curve over resolution instead of bins
+
+  mapCC = mc1.map_correlation(other=mc2)
+  assert (mapCC < 1.) # Ensure these are really independent half-maps
+  nref = mc1.size()
+  nref_check = 0
+  num_per_bin = 500
+  max_bins = 50
+  min_bins = 10
+  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
+  mc1.setup_binner(n_bins=n_bins)
+  mc2.use_binner_of(mc1)
+  mc1s = mc1.customized_copy(data = mc1.data())
+  mc2s = mc2.customized_copy(data = mc2.data())
+
+  for i_bin in mc1.binner().range_used():
+    sel = mc1.binner().selection(i_bin)
+    mc1sel = mc1.select(sel)
+    nref_check += mc1sel.size()
+    mc2sel = mc2.select(sel)
+    mapCC = mc1sel.map_correlation(other=mc2sel)
+    mapCC = max(mapCC,0.001) # Avoid zero or negative values
+    FSCref = math.sqrt(2./(1.+1./mapCC))
+    fsq = flex.pow2(flex.abs(mc1sel.data()))
+    meanfsq = flex.mean_default(fsq, 1.e-10)
+    mc1s.data().set_selected(sel, mc1.data().select(sel) * FSCref/math.sqrt(meanfsq))
+    mc2s.data().set_selected(sel, mc2.data().select(sel) * FSCref/math.sqrt(meanfsq))
+
+  assert (nref == nref_check) # Check no Fourier terms lost outside bins
+
+  return mc1s, mc2s
+
 def auto_sharpen_isotropic(mc1, mc2):
+  # Use Wilson plot in which <F^2> is divided by FSC^2, so that sharpening
+  # downweights data with poor FSC. Results of fit to Wilson plot could be
+  # odd if stated d_min goes much beyond real signal.
 
   nref = mc1.size()
   num_per_bin = 1000
