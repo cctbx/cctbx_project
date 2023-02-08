@@ -9,6 +9,34 @@ from scitbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx import easy_run
 
+def dist2(xyz1, xyz2):
+  d2=0
+  for i in range(3):
+    d2 += (xyz2[i]-xyz1[i])**2
+  return d2
+
+def get_internal_coordinate_value(atom1, atom2, atom3=None, atom4=None):
+  import math
+  from cctbx import geometry_restraints
+  if not atom3:
+    d2 = dist2(atom1.xyz, atom2.xyz)
+    return math.sqrt(d2)
+  elif not atom4:
+    sites = [atom1.xyz, atom2.xyz, atom3.xyz]
+    ang = geometry_restraints.angle(
+      sites=sites,
+      angle_ideal=109,
+      weight=1,
+      )
+    return ang.angle_model
+  sites = [atom1.xyz, atom2.xyz, atom3.xyz, atom4.xyz]
+  dih = geometry_restraints.dihedral(
+      sites=sites,
+      angle_ideal=0,
+      weight=1.,
+      periodicity=1)
+  return dih.angle_model
+
 def loop_over_file(filename):
   f=open(filename, 'r')
   lines = f.read()
@@ -202,9 +230,11 @@ class base_qm_manager(base_manager):
     f.write(outl)
     del f
 
-  def check_file_read_safe(self, optimise_ligand=True, optimise_h=True):
+  def check_file_read_safe(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
     outl = self.get_input_lines(optimise_ligand=optimise_ligand,
-                                optimise_h=optimise_h)
+                                optimise_h=optimise_h,
+                                constrain_torsions=constrain_torsions,
+                                )
     filename = self.get_input_filename()
     lines=''
     if os.path.exists(filename):
@@ -226,13 +256,16 @@ class base_qm_manager(base_manager):
         raise Sorry('something has changed making the QM input files different')
     return outl==lines
 
-  def opt_setup(self, optimise_ligand=True, optimise_h=True):
+  def opt_setup(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
     outl = self.get_input_lines(optimise_ligand=optimise_ligand,
-                                optimise_h=optimise_h)
+                                optimise_h=optimise_h,
+                                constrain_torsions=constrain_torsions,
+                                )
     self.write_input(outl)
 
   def get_opt(self,
               optimise_h=True,
+              constrain_torsions=False,
               cleanup=False,
               file_read=True,
               check_file_read_safe=True,
@@ -244,12 +277,15 @@ class base_qm_manager(base_manager):
       optimise_ligand=True
     # elif self.program_goal in ['energy']:
     #   optimise_ligand=False
+    constrain_torsions = self.exclude_torsions_from_optimisation
 
     coordinates = None
     rc=True
     if check_file_read_safe:
       rc = self.check_file_read_safe(optimise_ligand=optimise_ligand,
-                                     optimise_h=optimise_h)
+                                     optimise_h=optimise_h,
+                                     constrain_torsions=constrain_torsions,
+                                     )
     if file_read and rc:
       filename = self.get_coordinate_filename()
       if os.path.exists(filename):
@@ -259,7 +295,10 @@ class base_qm_manager(base_manager):
         print('  Reading coordinates from %s\n' % filename, file=log)
         coordinates = self.read_xyz_output()
     if coordinates is None:
-      self.opt_setup(optimise_ligand=optimise_ligand, optimise_h=optimise_h)
+      self.opt_setup(optimise_ligand=optimise_ligand,
+                     optimise_h=optimise_h,
+                     constrain_torsions=constrain_torsions,
+                     )
       self.run_cmd(redirect_output=redirect_output, log=log)
       coordinates = self.read_xyz_output()
     coordinates_buffer = coordinates
@@ -274,6 +313,7 @@ class base_qm_manager(base_manager):
 
   def get_energy(self,
                  optimise_h=True,
+                 constrain_torsions=False,
                  cleanup=False,
                  file_read=True,
                  redirect_output=False,
@@ -284,7 +324,9 @@ class base_qm_manager(base_manager):
     self.preamble += '_energy'
     optimise_ligand=False
     if file_read and self.check_file_read_safe(optimise_ligand=optimise_ligand,
-                                               optimise_h=optimise_h):
+                                               optimise_h=optimise_h,
+                                               constrain_torsions=constrain_torsions,
+                                               ):
       filename = self.get_log_filename()
       if os.path.exists(filename):
         if os.path.exists(filename):
@@ -293,7 +335,9 @@ class base_qm_manager(base_manager):
         energy, units = self.read_energy()
     if energy is None:
       outl = self.get_input_lines(optimise_ligand=optimise_ligand,
-                                  optimise_h=optimise_h)
+                                  optimise_h=optimise_h,
+                                  constrain_torsions=constrain_torsions,
+                                  )
       self.write_input(outl)
       self.run_cmd(redirect_output=redirect_output)
       energy, units = self.read_energy()
@@ -333,3 +377,32 @@ class base_qm_manager(base_manager):
       f+=' Energy : %0.6f' % energy
     return f
 
+  def guess_bonds(self):
+    bonds = []
+    for i, atom1 in enumerate(self.atoms):
+      bonds.append([])
+      for j, atom2 in enumerate(self.atoms):
+        if i==j: continue
+        d2 = dist2(atom1.xyz, atom2.xyz)
+        if d2<2.5:
+          bonds[i].append(j)
+    # for i, atom1 in enumerate(self.atoms):
+    #   print(i, atom1.quote())
+    #   for j in bonds[i]:
+    #     print('  - %s' % self.atoms[j].quote())
+    return bonds
+
+  def get_torsion(self, i):
+    if not hasattr(self, 'bonds'):
+      self.bonds = self.guess_bonds()
+    rc = [i]
+    next = i
+    while len(rc)<4:
+      j=0
+      next_i=self.bonds[i][j]
+      if next_i not in rc:
+        rc.append(next_i)
+        i=next_i
+      else:
+        j+=1
+    return rc

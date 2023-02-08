@@ -7,6 +7,8 @@ from mmtbx.geometry_restraints import base_qm_manager
 
 import libtbx.load_env
 
+from mmtbx.geometry_restraints.base_qm_manager import get_internal_coordinate_value
+
 def get_exe():
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
@@ -37,7 +39,11 @@ class mopac_manager(base_qm_manager.base_qm_manager):
      )
     return outl
 
-  def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, verbose=False):
+  def get_coordinate_lines(self,
+                           optimise_ligand=True,
+                           optimise_h=True,
+                           constrain_torsions=False,
+                           verbose=False):
     outl = ''
     for i, atom in enumerate(self.atoms):
       ligand_atom = self.ligand_atoms_array[i]
@@ -50,25 +56,52 @@ class mopac_manager(base_qm_manager.base_qm_manager):
         opt=0
       if optimise_h and atom.element in ['H', 'D']:
         opt=1
-      outl += ' %s %0.5f %d %0.5f %d %0.5f %d\n' % (
-        atom.element,
-        atom.xyz[0],
-        opt,
-        atom.xyz[1],
-        opt,
-        atom.xyz[2],
-        opt,
-        # atom.id_str(),
-        # i,
-        )
+      tmp = ''
+      if constrain_torsions:
+        if opt and atom.element not in ['H', 'D']:
+          torsions = self.get_torsion(i)
+          # C         1.5 0 120 1 180 1 2 5 3
+          tmp = ' %s %12.5f 1 %12.5f 1 %12.5f 0' % (
+            atom.element,
+            get_internal_coordinate_value(self.atoms[torsions[0]],
+                                          self.atoms[torsions[1]],
+                                          ),
+            get_internal_coordinate_value(self.atoms[torsions[0]],
+                                          self.atoms[torsions[1]],
+                                          self.atoms[torsions[2]],
+                                          ),
+            get_internal_coordinate_value(self.atoms[torsions[0]],
+                                          self.atoms[torsions[1]],
+                                          self.atoms[torsions[2]],
+                                          self.atoms[torsions[3]],
+                                          ),
+            )
+          for j in torsions[1:]: tmp += ' %s' % (j+1)
+          tmp += '\n'
+      if tmp:
+        outl += tmp
+      else:
+        outl += ' %s %0.5f %d %0.5f %d %0.5f %d\n' % (
+          atom.element,
+          atom.xyz[0],
+          opt,
+          atom.xyz[1],
+          opt,
+          atom.xyz[2],
+          opt,
+          # atom.id_str(),
+          # i,
+          )
       if verbose and ligand_atom: print(atom.quote())
     outl += '\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True):
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
     outl = self._input_header()
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
-                                      optimise_h=optimise_h)
+                                      optimise_h=optimise_h,
+                                      constrain_torsions=constrain_torsions,
+                                      )
     return outl
 
   def get_input_filename(self):
@@ -76,6 +109,30 @@ class mopac_manager(base_qm_manager.base_qm_manager):
 
   def read_xyz_output(self):
     filename = self.get_coordinate_filename()
+    filename = filename.replace('.arc', '.out')
+    if not os.path.exists(filename):
+      raise Sorry('QM output filename not found: %s' % filename)
+    f=open(filename, 'r')
+    lines = f.read()
+    del f
+    rc = flex.vec3_double()
+    read_xyz = False
+    i_done = 1e9
+    for i, line in enumerate(lines.splitlines()):
+      if i>i_done and not line.strip(): read_xyz=False
+      if read_xyz:
+        if line.find('NO.       ATOM           X           Y           Z')>-1: continue
+        tmp = line.split()
+        if len(tmp) in [5]:
+          rc.append((float(tmp[2]), float(tmp[3]), float(tmp[4])))
+      if line.find('CARTESIAN COORDINATES')>-1:
+        read_xyz=True
+        i_done=i+2
+    return rc
+
+  def read_xyz_output_old(self):
+    filename = self.get_coordinate_filename()
+    print(filename)
     if not os.path.exists(filename):
       raise Sorry('QM output filename not found: %s' % filename)
     f=open(filename, 'r')
@@ -84,9 +141,10 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     rc = flex.vec3_double()
     read_xyz = False
     for i, line in enumerate(lines.splitlines()):
+      print(i,line)
       if read_xyz:
         tmp = line.split()
-        if len(tmp)==7:
+        if len(tmp) in [7,10]:
           rc.append((float(tmp[1]), float(tmp[3]), float(tmp[5])))
       if line.find('FINAL GEOMETRY OBTAINED')>-1:
         read_xyz=True

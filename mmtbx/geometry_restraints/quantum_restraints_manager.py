@@ -6,8 +6,9 @@ from libtbx import Auto
 from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
-
+from libtbx import group_args
 from cctbx.geometry_restraints.manager import manager as standard_manager
+from cctbx.array_family import flex
 from mmtbx.geometry_restraints import quantum_interface
 from mmtbx.geometry_restraints import qm_manager
 from mmtbx.geometry_restraints import mopac_manager
@@ -143,7 +144,6 @@ def select_and_reindex(model,
                        selection_array=None,
                        reindex=True,
                        verbose=False):
-  from cctbx.array_family import flex
   from scitbx_array_family_flex_ext import reindexing_array
   def _reindexing(mod, sel, verbose=False):
     isel = sel.iselection()
@@ -426,7 +426,11 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']: continue
       ligand_selection[i]=True
-  if qmr.exclude_protein_main_chain_from_optimisation:
+  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+    for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
+      if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT', 'CB', 'CG']: # mostly for HIS...
+        ligand_selection[i]=False
+  elif qmr.exclude_protein_main_chain_from_optimisation:
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']:
         ligand_selection[i]=False
@@ -634,6 +638,8 @@ def setup_qm_jobs(model,
       print('    Skipping QM calculation : %s' % qmr.selection)
       continue
     qmm.preamble='%s_%s' % (prefix, preamble)
+    for attr in ['exclude_torsions_from_optimisation']:
+      setattr(qmm, attr, getattr(qmr, attr))
     objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   return objects
@@ -725,6 +731,7 @@ def update_restraints(model,
                       log=StringIO(),
                       ):
   t0 = time.time()
+  times=[]
   energy_only=False
   if not model.restraints_manager_available():
     model.log=null_out()
@@ -746,9 +753,11 @@ def update_restraints(model,
                                                 macro_cycle=macro_cycle,
                                                 nproc=nproc,
                                                 log=log)
+  times.append(time.time()-t0)
   #
   # update model restraints
   #
+  rmsds=[]
   prefix = get_prefix(params)
   for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
     zip(objects,
@@ -764,12 +773,15 @@ def update_restraints(model,
     #
     # update coordinates of ligand
     #
+    ligand_rmsd = None
     old = ligand_model.get_hierarchy().atoms().extract_xyz()
     if not (qmr.include_nearest_neighbours_in_optimisation or
-            qmr.exclude_protein_main_chain_from_optimisation):
-      rmsd = old.rms_difference(xyz)
-      if rmsd>5:
-        print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (rmsd),
+            qmr.exclude_protein_main_chain_to_delta_from_optimisation or
+            qmr.exclude_protein_main_chain_from_optimisation or
+            qmr.exclude_torsions_from_optimisation):
+      ligand_rmsd = old.rms_difference(xyz)
+      if ligand_rmsd>5:
+        print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (ligand_rmsd),
               file=log)
         print('  Check the QM minimisation for errors or incorrect protonation.',
               file=log)
@@ -779,6 +791,23 @@ def update_restraints(model,
     old = buffer_model.get_hierarchy().atoms().extract_xyz()
     # rmsd = old.rms_difference(xyz_buffer)
     buffer_model.get_hierarchy().atoms().set_xyz(xyz_buffer)
+    #
+    ligand_atoms = ligand_model.get_hierarchy().atoms()
+    ligand_i_seqs = []
+    for atom in ligand_atoms:
+      if atom.element.strip() in ['H', 'D']: continue
+      ligand_i_seqs.append(atom.id_str())
+    buffer_atoms = buffer_model.get_hierarchy().atoms()
+    new_old = flex.vec3_double()
+    new_new = flex.vec3_double()
+    for atom, told, tnew in zip(buffer_atoms,old,xyz_buffer):
+      if atom.id_str() in ligand_i_seqs:
+        new_old.append(told)
+        new_new.append(tnew)
+    rmsd = new_old.rms_difference(new_new)
+    rmsds.append([ligand_rmsd, rmsd])
+    print('    RMS difference in entire QM model : %9.3f' % (rmsd), file=log)
+    #
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle_and_dihedral(), file=log)
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
@@ -922,7 +951,11 @@ Restraints written by QMR process in phenix.refine
   print('\n  Total time for QM restaints: %0.1fs\n' % (time.time()-t0), file=log)
   print('%s%s' % ('/'*39, '\\'*40), file=log)
   print('%s%s' % ('\\'*39, '/'*40), file=log)
-  return energies, units
+  return group_args(energies=energies,
+                    units=units,
+                    rmsds=rmsds,
+                    times=times,
+                    )
 
 if __name__ == '__main__':
   print(quantum_chemistry_scope)

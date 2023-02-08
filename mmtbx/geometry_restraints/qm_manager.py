@@ -28,7 +28,7 @@ def qm_runner(qmm,
     # raise Sorry('Orca temporarily unsupported. Consider using MOPAC.')
   elif qmm.program=='mopac':
     func = get_func(mopac_manager.mopac_manager, qmm.program_goal)
-    coordinate_filename_ext='.arc'
+    coordinate_filename_ext='.arc' # maybe better from .out?
     log_filename_ext='.out'
     redirect_output=False
   else:

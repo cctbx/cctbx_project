@@ -145,7 +145,8 @@ end
                                        )
     return outl
 
-  def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True):
+  def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
+    assert not constrain_torsions
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for i, atom in enumerate(self.atoms):
       # if interest_only and self.ligand_atoms_array and not self.ligand_atoms_array[i]:
@@ -161,10 +162,13 @@ end
     outl += '*\n'
     return outl
 
-  def get_input_lines(self, optimise_ligand=True, optimise_h=True):
+  def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
+    assert not constrain_torsions
     outl = self._input_header()
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
-                                      optimise_h=optimise_h)
+                                      optimise_h=optimise_h,
+                                      constrain_torsions=constrain_torsions,
+                                      )
     freeze_outl = '''%geom
       Constraints
 '''

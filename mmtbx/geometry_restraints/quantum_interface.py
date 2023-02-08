@@ -102,6 +102,10 @@ qm_restraints
     .type = bool
   exclude_protein_main_chain_from_optimisation = False
     .type = bool
+  exclude_protein_main_chain_to_delta_from_optimisation = False
+    .type = bool
+  exclude_torsions_from_optimisation = False
+    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
   do_not_update_restraints = False
@@ -168,8 +172,12 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
     s+='_N'
-  if qmr.exclude_protein_main_chain_from_optimisation:
+  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+    s+='_D'
+  elif qmr.exclude_protein_main_chain_from_optimisation:
     s+='_S'
+  if qmr.exclude_torsions_from_optimisation:
+    s+='_T'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)
   if qmr.package.basis_set is not Auto and qmr.package.basis_set:
