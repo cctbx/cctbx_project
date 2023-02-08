@@ -530,6 +530,8 @@ Usage examples:
       argstuples.append([[filename,
                          '--quiet',
                          'output_pymol_file=True',
+                         'output_restraint_file=False',
+                         'output_skew_kurtosis_plot=False',
                          'prefix=%s_%s' % (prefix, preamble),
                          ]])
     def run_hbond(args):
