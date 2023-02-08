@@ -10,6 +10,7 @@ from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_restraints_manager import min_dist2
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
+from mmtbx.geometry_restraints.quantum_interface import classify_histidine
 
 import iotbx.pdb
 import iotbx.phil
@@ -410,6 +411,7 @@ Usage examples:
     selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
     hierarchy = selected_model.get_hierarchy()
+    original_ch = classify_histidine(hierarchy)
     # add all H atoms
     his_ag = add_histidine_H_atoms(hierarchy)
     for atom in hierarchy.atoms(): break
@@ -544,7 +546,8 @@ Usage examples:
     # print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
     i=0
     hbondss=[]
-    pymols = '\n\n'
+    rotamers=[]
+    pymols = ''
     for args, res, err_str in easy_mp.multi_core_run( run_hbond,
                                                       argstuples,
                                                       max(nproc,6),
@@ -559,10 +562,19 @@ Usage examples:
       f.write('show sticks, resn HIS\n')
       del f
       pymols += '  phenix.pymol %s &\n' % pf
+      from iotbx import pdb
+      hierarchy = pdb.input(pf.replace('.pml', '.pdb')).construct_hierarchy()
+      rc = classify_histidine(hierarchy)
+      rotamers.append(rc[0])
       i+=1
     #
     results = {}
     print('\n\nEnergies in units of %s\n' % units, file=log)
+    print('  %i. %-20s : rotamer "%s"' % (
+      0,
+      original_ch[1],
+      original_ch[0])
+    )
     for i, (pro, energy) in enumerate(zip(protonation, energies)):
       energy=te[i]
       prefix='iterate_histidine_%02d' % (i+1)
@@ -573,11 +585,11 @@ Usage examples:
       else:
         cmd += ' %s' % filename
       #
-      n = hbondss[i].get_counts().n
+      n = hbondss[i].get_counts(min_data_size=1).n
       #
       if units.lower() in ['hartree']:
         de = (energy-me)*627.503
-        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f' % (
+        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
           i+1,
           pro,
           energy,
@@ -585,10 +597,11 @@ Usage examples:
           de,
           n,
           rmsds[i],
+          rotamers[i],
           ), file=log)
       elif units.lower() in ['kcal/mol']:
         de = (energy-me)
-        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f' % (
+        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
           i+1,
           pro,
           energy,
@@ -596,6 +609,7 @@ Usage examples:
           de,
           n,
           rmsds[i],
+          rotamers[i],
           ), file=log)
       results.setdefault(pro, {})
       results[pro]['delta E'] = de

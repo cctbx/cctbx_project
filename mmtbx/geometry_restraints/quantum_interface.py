@@ -343,6 +343,31 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
         tmp[j].append(action)
   return tmp
 
+def classify_histidine(hierarchy):
+  from mmtbx.validation.rotalyze import rotalyze
+  result = rotalyze(
+      pdb_hierarchy=hierarchy,
+      # data_version="8000",#was 'params.data_version', no options currently
+      # show_errors=self.params.show_errors,
+      # outliers_only=self.params.outliers_only,
+      # use_parent=self.params.use_parent,
+      # out=self.logger,
+      quiet=False)
+  names = []
+  for rot in result.results:
+    if rot.resname!='HIS': continue
+    names.append(rot.rotamer_name)
+  hs=0
+  ha=None
+  for atom in hierarchy.atoms():
+    if atom.parent().resname!='HIS': continue
+    if atom.name.strip() in ['HD1', 'HE2']:
+      hs+=1
+      ha=atom.name.strip()
+  assert len(names)==1
+  if hs==2: ha = 'HD1, HE2'
+  return names[0], ha
+
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)
   assert active

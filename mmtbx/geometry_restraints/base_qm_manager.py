@@ -60,8 +60,8 @@ def process_qm_log_file(log_filename=None,
     #   conv = process_orca_convergence(last_ten)
       # if cycle%10==0:
         # print('  Opt. cycle %s %s %s %0.1fmin' % (cycle, conv, i, (time.time()-t0)/60))
-    # if line.find('OPTIMIZATION RUN DONE')>-1:
-    #   status = True
+    if line.find('FINAL HEAT OF FORMATION =')>-1:
+      status = True
     if line.find('ORCA TERMINATED NORMALLY')>-1:
       status = True
     if line.find('* JOB ENDED NORMALLY *')>-1:
