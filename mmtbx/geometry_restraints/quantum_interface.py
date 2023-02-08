@@ -158,6 +158,7 @@ def get_safe_filename(s):
   s=s.replace('*','_star_')
   s=s.replace('(','_lb_')
   s=s.replace(')','_rb_')
+  s=s.replace('=', '_equals_')
   return s
 
 def get_preamble(macro_cycle, i, qmr, old_style=False):
