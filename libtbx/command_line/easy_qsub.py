@@ -147,7 +147,7 @@ import os, sys
 
 def run(only_i=None):
   print("%s " % only_i)
-  f=file("test_%s.output" % only_i, "wb")
+  f=open("test_%s.output" % only_i, "w")
   f.write("Testing %s\\n" % only_i)
   f.close()
 
@@ -180,7 +180,7 @@ def test_easy_qsub():
     for i in range(number_of_cmds):
       outl += "echo %d\n" % (i+101)
     print(outl)
-    f=file("commands.txt", "wb")
+    f=open("commands.txt", "w")
     f.write(outl[:-1])
     f.close()
   def _wait():
@@ -201,7 +201,7 @@ def test_easy_qsub():
     for filename in os.listdir(os.getcwd()):
       if filename.startswith("commands") and filename.endswith(".out"):
         number_of_output_files-=1
-        f=file(filename, "rb")
+        f=open(filename, "r")
         lines=f.readlines()
         f.close()
         for line in lines:
@@ -344,7 +344,7 @@ def run(phenix_source=None,
   if not (commands or python_script):
     print('-'*80)
     print("\n  Generating a test run script and queuing 10 times\n")
-    f=file("easy_qsub_test_script.py", "wb")
+    f=open("easy_qsub_test_script.py", "w")
     f.write(test_run_script)
     f.close()
     commands = []
@@ -395,7 +395,7 @@ def run(phenix_source=None,
   if isinstance(commands, type([])):
     lines = commands
   elif commands is not None and os.path.exists(commands):
-    f=file(commands, "rb")
+    f=open(commands, "r")
     lines = f.readlines()
     f.close()
 
@@ -430,7 +430,7 @@ def run(phenix_source=None,
   if fake_queue:
     print('\nCreating fake queue with %s parallel nodes' % parallel_nodes)
     print(commands)
-    f=file(commands, 'rb')
+    f=open(commands, 'r')
     lines = f.readlines()
     f.close()
     from multiprocessing import Pool
@@ -451,7 +451,7 @@ def run(phenix_source=None,
     for queue_name in keys:
       if parallel_nodes<=details[queue_name][1]-details[queue_name][0]:
         # submit
-        f=file("qblock.csh", "wb")
+        f=open("qblock.csh", "w")
         f.write(qblock)
         f.close()
         os.chmod("qblock.csh", stat.S_IREAD|stat.S_IWRITE|stat.S_IXUSR)
