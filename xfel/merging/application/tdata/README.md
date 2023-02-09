@@ -18,8 +18,8 @@ cores=32
 
 export effective_params="dispatch.step_list=\"input tdata\" \
 input.path=${DIALS_OUTPUT}/r*/*/out \
-input.experiments_suffix=_integrated_experiments.json \
-input.reflections_suffix=_integrated.pickle \
+input.experiments_suffix=_integrated.expt \
+input.reflections_suffix=_integrated.refl \
 input.parallel_file_load.method=uniform \
 tdata.output_path=${TRIAL}_cells \
 output.prefix=${TRIAL} \
