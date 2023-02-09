@@ -143,7 +143,7 @@ cctbx_buttonsdeflist = [
 
 
 phenix_buttonsdeflist = [
-("INFO", "Reflections with information bits less than 0.35", """
+("INFO035", "INFO < 0.35 bits", """
         binning {
           scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
           binlabel = 'INFO'
@@ -164,6 +164,26 @@ phenix_buttonsdeflist = [
         }
  """),
 
+("InfoISigI05", "INFO > 0.2 bits and I/SigI < 0.5", """
+        miller_array_operation = "('ISigIarray = array2.deep_copy()\\nISigIarray._data = array2.data()/array2.sigmas()\\nnewarray = array1.select(ISigIarray.data()<0.5)', 'INFO_ISigI_0.5', ['INFO', None], ['IOBS,SIGIOBS', 'Intensity'])"
+        binning {
+          scene_bin_thresholds = -0.1 0.2 nan nan
+          binlabel = 'INFO_ISigI_0.5'
+          bin_opacity = 0 0
+          bin_opacity = 1 1
+          bin_opacity = 1 2
+          bin_opacity = 1 3
+          nbins = 4
+        }
+        viewer {
+          data_array {
+            label = "INFO_ISigI_0.5"
+            datatype = "Floating-point"
+          }
+        }
+ """),
+ # we omit datatype of INFO in miller_array_operation as to force validate_preset_buttons()
+ # only to match an array that is labelled INFO
   ("aniso4", "Rotate around one anisotropy principal axis:", """
         real_space_unit_cell_scale_fraction = 0.9
         binning {

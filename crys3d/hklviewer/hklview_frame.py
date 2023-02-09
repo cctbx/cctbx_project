@@ -876,10 +876,12 @@ class HKLViewFrame() :
         self.mprint("Creating %s data with array1 as %s through the operation:\n\n%s" \
                      %(label, millarr1.info().label_string(), operation))
         newarray = self.viewer.OperateOn1MillerArray(millarr1, operation)
+      if newarray.data().size()==0:
+        raise Sorry("No reflections in newly created array.")
     except Exception as e:
       self.mprint( str(e) + traceback.format_exc(limit=10), verbose=0)
 
-    if newarray is None:
+    if newarray is None or newarray.data().size()==0:
       # allow user to quickly amend his broken python code without having to enter a new column label
       self.params.miller_array_operation = "" # do this by resetting phil parameter to the master default value
       self.currentphil = master_phil.format(python_object = self.params)

@@ -443,6 +443,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.newlabelLabel.setText("Column label for new reflection dataset:")
     self.newlabeltxtbox = QLineEdit('')
     self.operationtxtbox = QTextEdit('')
+    self.operationtxtbox.setAcceptRichText(False)
     self.operationtxtbox.setPlaceholderText("""Example:
 dat = array1.data()/array1.sigmas() * array2.normalize().data()
 sigs = 2*flex.exp(1/array2.sigmas())
@@ -1306,7 +1307,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 btnlabel.setWordWrap(True)
                 btnlabel.setText(label)
                 if datalabel != "":
-                  pbutton.setToolTip("using the " + datalabel + " dataset")
+                  #pbutton.setToolTip("using the " + datalabel + " dataset")
                   btnlabel.setToolTip("using the " + datalabel + " dataset")
                 self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 
