@@ -343,7 +343,7 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
         tmp[j].append(action)
   return tmp
 
-def classify_histidine(hierarchy):
+def classify_histidine(hierarchy, resname='HIS'):
   from mmtbx.validation.rotalyze import rotalyze
   result = rotalyze(
       pdb_hierarchy=hierarchy,
@@ -355,12 +355,12 @@ def classify_histidine(hierarchy):
       quiet=False)
   names = []
   for rot in result.results:
-    if rot.resname!='HIS': continue
+    if rot.resname!=resname: continue
     names.append(rot.rotamer_name)
   hs=0
   ha=None
   for atom in hierarchy.atoms():
-    if atom.parent().resname!='HIS': continue
+    if atom.parent().resname!=resname: continue
     if atom.name.strip() in ['HD1', 'HE2']:
       hs+=1
       ha=atom.name.strip()

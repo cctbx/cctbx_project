@@ -216,6 +216,10 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def run(self, log=None):
     model = self.data_manager.get_model()
+    self.restraint_filenames = []
+    rc = self.data_manager.get_restraint_names()
+    for f in rc:
+      self.restraint_filenames.append(os.path.abspath(f))
     #
     # get selection
     #
@@ -503,12 +507,12 @@ Usage examples:
       assert 0
       i+=1
 
-    protonation = [ 'ND1,NE2',
-                    'ND1 only',
-                    'NE2 only',
-                    'ND1,NE2 flipped',
-                    'ND1 only flipped',
-                    'NE2 only flipped',
+    protonation = [ 'HD1, HE2',
+                    'HD1 only',
+                    'HE2 only',
+                    'HD1, HE2 flipped',
+                    'HD1 only flipped',
+                    'HE2 only flipped',
     ]
     cmd = '\n\n  phenix.start_coot'
     te=[]
@@ -516,7 +520,8 @@ Usage examples:
       if i in [0,3]:
         if units.lower() in ['kcal/mol']:
           # energy-=247.80642
-          energy-=156.9
+          # energy-=156.9
+          energy-=26.9295
         elif units.lower() in ['hartree']:
           energy+=0.5
       te.append(energy)
@@ -536,6 +541,8 @@ Usage examples:
                          'output_skew_kurtosis_plot=False',
                          'prefix=%s_%s' % (prefix, preamble),
                          ]])
+      if self.restraint_filenames:
+        argstuples[-1][-1]+=self.restraint_filenames
     def run_hbond(args):
       from iotbx.cli_parser import run_program
       from mmtbx.programs.hbond import Program
@@ -564,6 +571,9 @@ Usage examples:
       pymols += '  phenix.pymol %s &\n' % pf
       from iotbx import pdb
       hierarchy = pdb.input(pf.replace('.pml', '.pdb')).construct_hierarchy()
+      asc1 = hierarchy.atom_selection_cache()
+      sel = asc1.selection(selection)
+      hierarchy = hierarchy.select(sel)
       rc = classify_histidine(hierarchy)
       rotamers.append(rc[0])
       i+=1

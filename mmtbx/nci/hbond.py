@@ -92,13 +92,16 @@ master_phil_str = '''
 hbond {
   show_hbonds = True
     .type = bool
-  output_pymol_file = True
+  output_pymol_file = False
     .type = bool
     .short_caption = Output PyMOL files for visualisation
-  output_restraint_file = True
+  output_restraint_file = False
     .type = bool
     .short_caption = Output geometry restraints edits file
-  output_skew_kurtosis_plot = True
+  output_stats_pdf = False
+    .type = bool
+    .short_caption = Output stats in PDF
+  output_skew_kurtosis_plot = False
     .type = bool
     .short_caption = Output skew-kurtosis plot with result in png format
 }
