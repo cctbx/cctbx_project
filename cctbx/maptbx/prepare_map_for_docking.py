@@ -154,7 +154,8 @@ class RefineCryoemSignal(RefineBase):
       sumfsqr = self.sumfsqr_miller.data().select(sel)
       sigmaE_terms = sumfsqr/2 - f1f2cos
       # Make sure sigmaE is positive
-      min_sigE = sumfsqr/100000
+      mean_sumfsqr_bin = flex.mean_default(sumfsqr,0.)
+      min_sigE = mean_sumfsqr_bin/100000
       sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
       # Use local sphere fsc to compute relative weight of local vs global fitting
@@ -1751,7 +1752,8 @@ def assess_cryoem_errors(
     f1f2cos = f1f2cos_local_mean.data().select(sel)
     sumfsqr = sumfsqr_local_mean.data().select(sel)
     sigmaE_terms = sumfsqr/2 - f1f2cos
-    min_sigE = sumfsqr/100000
+    mean_sumfsqr_bin = flex.mean_default(sumfsqr,0.)
+    min_sigE = mean_sumfsqr_bin/100000
     sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
     # Compute the relative weight between the local statistics and the overall
