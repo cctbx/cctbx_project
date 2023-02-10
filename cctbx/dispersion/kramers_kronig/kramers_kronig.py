@@ -6,9 +6,9 @@ import torch
 from scipy.signal.windows import get_window
 from . import kramers_kronig_helper
 
-def hilbert(x, 
-            axis=-1):
-
+def get_hilbert_transform(x, 
+                          axis=-1):
+    """Perform the Hilbert transform"""
     N = x.shape[axis]
     if N <= 0:
         raise ValueError("N must be positive.")
@@ -50,7 +50,7 @@ def get_f_p(energy, # uniform spacing
     f_in = f_dp - known_response_f_dp_interp    
     f_in = apply_window(f_in, padn, trim=trim, window_type=window_type)
     
-    f_p_pred_padded = hilbert(f_in)
+    f_p_pred_padded = get_hilbert_transform(f_in)
     
     if padn != 0:
         f_p_pred = f_p_pred_padded[padn:-padn]
@@ -96,6 +96,10 @@ def apply_window(f_in, padn,
                  trim=0,
                  window_type='cosine'):
     """
+    Apply windowing to f_in
+    padn # of points are added to the beginning and end of f_in
+    trim # of points are modified at the beginning and end of f_in
+    
     Possible window_type:
     boxcar, triang, blackman, hamming, hann, bartlett, flattop, parzen, bohman,
     blackman, harris, nuttall, barthann, cosine, exponential, tukey, taylor,
@@ -121,11 +125,11 @@ def apply_window(f_in, padn,
     
     
     
-def penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
-            known_response_energy=None,
-            known_response_f_p=None,
-            known_response_f_dp=None,
-            ):
+def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
+                known_response_energy=None,
+                known_response_f_p=None,
+                known_response_f_dp=None,
+                ):
     """How close f' and f" are to obeying the Kramers Kronig relation?"""
     
     """Going from f_dp to f_p"""
@@ -158,7 +162,7 @@ def penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                                                               known_response_f_dp=known_response_f_dp,
                                                               )
     
-    # add back DC term
+    """Add back DC term"""
     F_dp_pred = torch.fft.fft(f_dp_pred_padded)
     F_dp_pred[0] = torch.fft.fft(f_dp)[0]
     f_dp_pred_padded = torch.fft.ifft(F_dp_pred).real
@@ -166,7 +170,7 @@ def penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     f_dp_pred_padded = f_dp_pred_padded[padn:len(f_dp_pred_padded)-padn]
     f_dp_pred = f_dp_pred_padded[trim:len(f_dp_pred_padded)-trim]
     
-    # trim f_dp
+    """trim f_dp"""
     f_dp = f_dp[trim:len(energy)-trim]
 
     mse = torch.mean((f_p - f_p_pred)**2) + torch.mean((f_dp - f_dp_pred)**2)

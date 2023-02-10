@@ -35,3 +35,10 @@ def test_parse_Fe3_end(Fe3):
                                                 [24903.0,0.237396106135, 0.405759333696],
                                                 [24904.0,0.220802089543, 0.377388435958],
                                                 [24905.0,0.18454034239, 0.315405661584]]))
+
+def test_interpolate(Fe3):
+    """Test that interpolate results in a uniform x array."""
+    Fe3 = Fe3[np.array([0,100,101,102,103,104]),:]
+    x_new, y_new = kramers_kronig_helper.interpolate(Fe3[:,0],Fe3[:,1])
+    dx_new = x_new[1:]-x_new[:-1]
+    np.testing.assert_equal(False,np.any(dx_new-dx_new[0]))

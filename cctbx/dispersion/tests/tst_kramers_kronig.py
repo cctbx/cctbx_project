@@ -65,7 +65,7 @@ def test_get_f_p_get_f_dp_Fe2(Fe2):
     np.testing.assert_allclose(f_dp, f_dp_pred, atol=1e-4, rtol=1e-4)
 
 
-def penalty(sf, padn=10):
+def get_penalty(sf, padn=10):
     """Helper for test that finding f_p and then calculating the penalty yields 0 penalty"""
     
     energy = torch.Tensor(sf[:,0])
@@ -76,21 +76,21 @@ def penalty(sf, padn=10):
                                                                                  padn=padn,
                                                                                  )
     
-    mse = kramers_kronig.penalty(energy_padded, f_p_pred_padded, 
-                                 f_dp_padded, 
-                                 padn=0, trim=0)
+    mse = kramers_kronig.get_penalty(energy_padded, f_p_pred_padded, 
+                                     f_dp_padded, 
+                                     padn=0, trim=0)
     return(mse)
 
 
-def test_penalty_Fe3(Fe3):
+def test_get_penalty_Fe3(Fe3):
     """Test that finding f_p and then calculating the penalty yields 0 penalty"""
-    mse = penalty(Fe3)
+    mse = get_penalty(Fe3)
     np.testing.assert_allclose(0,mse,atol=1e-8, rtol=1e-8)
     
     
-def test_penalty_Fe2(Fe2):
+def test_get_penalty_Fe2(Fe2):
     """Test that finding f_p and then calculating the penalty yields 0 penalty"""
-    mse = penalty(Fe2)
+    mse = get_penalty(Fe2)
     np.testing.assert_allclose(0,mse,atol=1e-8, rtol=1e-8)
 
     

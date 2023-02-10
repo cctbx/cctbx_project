@@ -58,15 +58,15 @@ def subsample(energy,
     f_dp = f_dp[inds]
     return(energy,f_p,f_dp,inds)
 
-def loss_fn(energy,
-            f_p_opt,
-            f_dp_opt,
-            f_p_noisy_ss,
-            f_dp_noisy_ss,
-            inds,
-            ):
+def get_loss(energy,
+             f_p_opt,
+             f_dp_opt,
+             f_p_noisy_ss,
+             f_dp_noisy_ss,
+             inds,
+             ):
     data_loss = torch.mean((f_p_opt[inds]-f_p_noisy_ss)**2 + (f_dp_opt[inds]-f_dp_noisy_ss)**2)
-    kk_loss = kramers_kronig.penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0)
+    kk_loss = kramers_kronig.get_penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0)
     
     return(data_loss + kk_loss)
 
@@ -117,13 +117,13 @@ def run_example_opt(width=5,
     loss_vec = []
     actual_loss_vec = []
     for i in range(num_iter):
-        loss = loss_fn(energy,
-                       f_p_opt,
-                       f_dp_opt,
-                       f_p_noisy_ss,
-                       f_dp_noisy_ss,
-                       inds,
-                       )
+        loss = get_loss(energy,
+                        f_p_opt,
+                        f_dp_opt,
+                        f_p_noisy_ss,
+                        f_dp_noisy_ss,
+                        inds,
+                        )
         actual_loss = torch.mean((f_p_opt-f_p)**2 + (f_dp_opt-f_dp)**2)
         loss_vec.append(loss)
         actual_loss_vec.append(actual_loss)

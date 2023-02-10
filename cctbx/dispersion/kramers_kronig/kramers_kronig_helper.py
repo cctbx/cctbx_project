@@ -22,5 +22,18 @@ def parse_data(path, remove_first_line=False):
     """Check energy spacing is constant"""
     energy = sf[:,0]
     denergy = energy[1:]-energy[:-1]
-    assert not(np.any(denergy-denergy[0])), "Energy spacing is not uniform."
+    if np.any(denergy-denergy[0]):
+        # interpolate
+        sf_0, sf_1 = interpolate(sf[:,0], sf[:,1])
+        sf_0, sf_2 = interpolate(sf[:,0], sf[:,2])
+        sf = np.stack([sf_0,sf_1,sf_2],axis=1)
     return(sf)
+
+def interpolate(x_original, y_original):
+    dx_original = x_original[1:]-x_original[:-1]
+    dx = np.min(dx_original)
+
+    x = np.arange(x_original[0],x_original[-1],dx)
+    interp = INTERP_FUNC(x_original, y_original)
+    y = interp(x) # interpolated f_dp
+    return(x,y)
