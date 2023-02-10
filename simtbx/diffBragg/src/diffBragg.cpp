@@ -2064,8 +2064,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         //     // cuda_pointers,
         //     TIMERS);
         // last_kernel_on_GPU=true;
+        if (!diffBragg_runner) {
+          diffBragg_runner = std::make_shared<diffBraggKOKKOS>();
+        }
 
-        diffBragg_runner.diffBragg_sum_over_steps_kokkos(
+        diffBragg_runner->diffBragg_sum_over_steps_kokkos(
             Npix_to_model, panels_fasts_slows_vec,
             image,
             first_deriv_imgs,
@@ -2194,7 +2197,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
-
 
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){

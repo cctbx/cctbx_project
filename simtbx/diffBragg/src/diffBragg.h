@@ -4,6 +4,7 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <simtbx/diffBragg/src/util.h>
 #include <vector>
+#include <memory>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
 #include <boost/python.hpp>
@@ -154,12 +155,10 @@ class diffBragg: public nanoBragg{
 
 #ifdef NANOBRAGG_HAVE_CUDA
     // diffBragg_cudaPointers cuda_pointers;
-    inline void gpu_free(){
-        // freedom(cuda_pointers);
-    }
+    void gpu_free() { diffBragg_runner.reset(); }
     // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
-    // std::unique_ptr<diffBraggKOKKOS> diffBragg_runner{};
-    diffBraggKOKKOS diffBragg_runner;
+    std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
+    // diffBraggKOKKOS diffBragg_runner;
 #endif
 
   // methods
