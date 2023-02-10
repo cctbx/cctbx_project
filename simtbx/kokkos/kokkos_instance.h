@@ -21,7 +21,7 @@ class kokkos_instance {
     static int m_instances;
     bool m_isFinalized = false;
     int m_deviceID = -1;
-    
+
 
 };
 } // Kokkos

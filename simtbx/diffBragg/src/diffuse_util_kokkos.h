@@ -576,7 +576,7 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOK
           //    like the following to reorient G and recover calmodulin diffuse
           // KOKKOS_MAT3 xform;
           // xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
-          
+
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
             KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*H0;
             CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);

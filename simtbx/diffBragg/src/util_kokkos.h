@@ -202,7 +202,9 @@ struct kokkos_crystal {
         for (auto& mat : T.dB2_Mats) {
             dB2_Mats.push_back(to_mat3(mat));
         }
+        printf("... init kokkos_crystal\n");
     }
+    ~kokkos_crystal() { printf("... delete kokkos_crystal\n"); }
 };
 
 struct kokkos_beam {
@@ -228,7 +230,8 @@ struct kokkos_beam {
           lambda0(T.lambda0),
           lambda1(T.lambda1),
           number_of_sources(T.number_of_sources),
-          polarization_axis(to_vec3(T.polarization_axis)){};
+          polarization_axis(to_vec3(T.polarization_axis)){ printf("... init kokkos_beam\n"); };
+    ~kokkos_beam() { printf("... delete kokkos_beam\n"); }
 };
 
 struct kokkos_detector {
@@ -260,7 +263,10 @@ struct kokkos_detector {
         for (auto& vec : T.dS_vecs) {
             dS_vecs.push_back(to_vec3(vec));
         }
+        printf("... init kokkos_detector\n");
     }
+
+    ~kokkos_detector() { printf("... delete kokkos_detector\n");  }
 };
 
 #endif
