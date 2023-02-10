@@ -1288,8 +1288,6 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 # since QRadioButton cannot wrap text the text for pbutton goes in
                 # btnlabel below which is a QLabel where text can be wrapped if needed
                 pbutton.setText("")
-                if datalabel != "":
-                  pbutton.setToolTip("using the " + datalabel + " dataset")
                 pbutton.setEnabled(isenabled)
                 pbutton.clicked.connect(self.onPresetbtn_click)
                 sizePolicy1 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
@@ -1305,10 +1303,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 sizePolicy2.setHeightForWidth(btnlabel.sizePolicy().hasHeightForWidth())
                 btnlabel.setSizePolicy(sizePolicy2)
                 btnlabel.setWordWrap(True)
-                btnlabel.setText(label)
-                if datalabel != "":
-                  #pbutton.setToolTip("using the " + datalabel + " dataset")
-                  btnlabel.setToolTip("using the " + datalabel + " dataset")
+                btnlabel.setText(label + " (using " + datalabel + ")")
                 self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 
                 if moniker != "" and len(veclabels):

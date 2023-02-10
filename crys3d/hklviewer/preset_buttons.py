@@ -62,7 +62,7 @@ cctbx_buttonsdeflist = [
           }
 """),
 
-("FoversigF", "F/SigF ( from miller_array.data()/miller_array.sigmas() )",
+("FoversigF", "F/SigF",
  """
           miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
           viewer {
@@ -74,7 +74,7 @@ cctbx_buttonsdeflist = [
 
  """),
 
-("IoverSigI", "I/SigI >= 2 ( from miller_array.data()/miller_array.sigmas() )",
+("IoverSigI", "I/SigI >= 2",
  """
         miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
         binning {
@@ -101,7 +101,7 @@ cctbx_buttonsdeflist = [
         }
  """),
 
-("Evalues", "E-values ( miller_array.normalize() )",
+("Evalues", "E-values",
  """
           miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
           viewer {
@@ -112,7 +112,7 @@ cctbx_buttonsdeflist = [
           }
  """),
 
-("Merged", "Merged Intensities ( miller_array.merge_equivalents() )",
+("Merged", "Merged Intensities",
  """
       miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())\\n', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
       viewer {
@@ -124,7 +124,7 @@ cctbx_buttonsdeflist = [
 
  """),
 
-("Multiplicities", "Multiplicities ( miller_array.merge_equivalents() )",
+("Multiplicities", "Multiplicities",
  """
       miller_array_operation = "('\\nfrom crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
       viewer {

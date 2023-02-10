@@ -1381,19 +1381,39 @@ class HKLViewFrame() :
                    "found in a dataset or by manually adding this vector." %(btnlabel, philveclabel), verbose=1)
         miller_array_operation_can_be_done = False
         if millaroperationstr:
+          datalabel1 = None
+          datalabel2 = ""
           for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
             if datalabel == arr1label:
-              miller_array_operation_can_be_done = True
+              datalabel1 = datalabel
               break
-          if not miller_array_operation_can_be_done:
+          if not datalabel1:
             for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
               if datatype == arr1type:
-                miller_array_operation_can_be_done = True
+                datalabel1 = datalabel
                 break
+          # if also using a second miller array for the operation then check a matching one is
+          # present in the datafile
+          if arr2label:
+            datalabel2 = None
+            for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+              if datalabel == arr2label:
+                datalabel2 = datalabel
+                break
+            if not datalabel2:
+              for _, _, _, datalabel, datatype, _, _ in self.viewer.hkl_scenes_infos:
+                if datatype == arr2type:
+                  datalabel2 = datalabel
+                  break
+          if datalabel1 is not None and datalabel2 is not None:
+            miller_array_operation_can_be_done = True
           if miller_array_operation_can_be_done and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn],True, datalabel, None))
+            if len(datalabel2)>0:
+              activebtns.append((self.allbuttonslist[ibtn],True, datalabel1 + " and " + datalabel2, None))
+            else:
+              activebtns.append((self.allbuttonslist[ibtn],True, datalabel1, None))
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
