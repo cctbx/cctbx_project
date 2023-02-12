@@ -362,7 +362,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
                 and (last.parent() == a.parent())
             ]
     if len(links) == 0:
-      # First entry on the list yielded no useful neightbors; remove it and check the next
+      # First entry on the list yielded no useful neighbors; remove it and check the next
       queued = queued[1:]
       continue
     ret += _AddPosition(last, 'P', group) + ' '
@@ -443,7 +443,6 @@ def _DescribeHet(r, group, bondedNeighborLists):
       for a in links[1:]:
         queued.append(a)
       # Add the description for our first one and keep chasing this path
-      # @todo Why are we chasing outside of the residue?
       curr = links[0]
       described.append({last,curr})
       ret += _AddPosition(curr, 'L', group) + '\n'
@@ -630,6 +629,91 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   # @todo
 
   return ret
+
+def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeighborLists,
+    moverList, inSideChain, inWater, inHet):
+  '''Return a string that describes the Movers and atoms that are bonded to them.
+  @todo Also add the bumps between the States and the rest of the model.
+  :param states: Return value from _FindFlipsInOutputString() indicating behavior of
+  each Mover.
+  :param fileBaseName: The base name of the file, without path or extension.
+  :param name: Name for the master group.
+  :param color: Color to use for the residues in states.
+  :param model: The model we're optimizing.
+  :param alts: A list of alternates, empty if there are none. Sorted in increasing order.
+  :param bondedNeighborLists: List of neighboring atoms bonded to each atom.
+  :param moverList: List of Movers, which will be used to exclude residues.
+  :param inSideChain: Dictionary looked up by atom telling whether it is in a side chain.
+  :param inWater: Dictionary looked up by atom telling whether it is in water.
+  :param inHet: Dictionary looked up by atom telling whether it is a hetatm.
+  '''
+  ret = '@group {'+name+'} animate\n'
+  ret += '@subgroup {sidechain} nobutton dominant\n'
+
+  # @todo Add the sky and red balls to indicate atoms in the Amides or Histidines
+
+  # Add the sidechain non-hydrogen atoms for the Movers that are in the states list.
+  # @todo Apply the same changes needed to handle alternates or whatever like on 3cp5
+  ret += '@vectorlist {sc} color= '+color+'  master= {sidechain}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, states):
+        ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
+
+  # Add the Hydrogens on the sidechains for residues that are in the states list
+  ret += "@vectorlist {sc H} color= gray  nobutton master= {sidechain} master= {H's}\n"
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, states):
+        ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
+
+  # Add the sidechain non-hydrogen atoms for the Movers that are not in the states list.
+  # @todo Apply the same changes needed to handle alternates or whatever like on 3cp5
+  ret += '@vectorlist {sc} color= cyan  master= {sidechain}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, moverList) and not _IsMover(rg, states):
+        ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
+
+  # Add the Hydrogens on the sidechains the Movers that are not in the states list
+  ret += "@vectorlist {sc H} color= gray  nobutton master= {sidechain} master= {H's}\n"
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, moverList) and not _IsMover(rg, states):
+        ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
+
+  # Describe links between atoms in a sidechain and another residue where one of the
+  # involved residues include Movers.  Don't repeat bonds that have already been
+  # described.
+  ret += '@vectorlist {SS} color= yellow  master= {sidechain}\n'
+  described = []
+  for a in model.get_atoms():
+    for n in bondedNeighborLists[a]:
+      if (a.parent().parent() != n.parent().parent() and inSideChain[a]
+          and (_IsMover(a.parent().parent(), moverList)
+          or _IsMover(n.parent().parent(), moverList))
+          ):
+        if {a,n} not in described:
+          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName) + '\n'
+          described.append({a,n})
+
+  # Add bonded structures for het groups that are Movers
+  ret += '@vectorlist {het} color= cyan  master= {hets}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
+         ret += _DescribeHet(rg, fileBaseName, bondedNeighborLists)
+  ret += "@vectorlist {ht H} color= gray  master= {hets} master= {H's}\n"
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
+         ret += _DescribeHetHydrogens(rg, fileBaseName, bondedNeighborLists)
+
+  # Add the dots, including their masters and submasters and caption.
+  # @todo
+
+  return ret
+
 
 # ------------------------------------------------------------------------------
 
@@ -942,7 +1026,8 @@ NOTES:
 
       # @todo Make two configurations, the one that Reduce picked and the one
       # that it did not.
-      configurations = []
+      configurations = ['reduce', 'flipNQ']
+      colors = ['sea', 'pink']
 
       # @todo Figure out how to run the optimization without fixup on the
       # original orientation of all flippers and again on the flipped orientation
@@ -960,6 +1045,8 @@ NOTES:
         # Write the updates to the Flipkin for this configuration, showing the
         # atoms for the amide in the Reduce configuration (i=0) or the other
         # configuration (i=1).
+        flipkinText += _AddFlipkinMovers(amides, base, c, colors[i], self.model, alts,
+          bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
         # @todo
 
         # Add internal bonds and hydrogens for Hets that are Movers.
