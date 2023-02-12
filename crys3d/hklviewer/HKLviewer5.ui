@@ -157,7 +157,7 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>448</width>
+                  <width>422</width>
                   <height>609</height>
                  </rect>
                 </property>
@@ -378,8 +378,8 @@
                  <property name="geometry">
                   <rect>
                    <x>0</x>
-                   <y>-102</y>
-                   <width>453</width>
+                   <y>0</y>
+                   <width>427</width>
                    <height>412</height>
                   </rect>
                  </property>
@@ -405,7 +405,7 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>4</number>
+                     <number>0</number>
                     </property>
                     <widget class="QWidget" name="tab">
                      <attribute name="title">
@@ -1219,14 +1219,30 @@
                          <property name="bottomMargin">
                           <number>3</number>
                          </property>
-                         <item row="0" column="0">
+                         <item row="1" column="1">
+                          <widget class="QPushButton" name="addDatasetBtn">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Provide a unique label to create a new dataset with the reflections that have opacity = 1.0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="text">
+                            <string>Add visible reflections as new dataset...</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
                           <widget class="QCheckBox" name="OpaqueAllCheckbox">
                            <property name="text">
                             <string>Show/hide all data</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="0">
+                         <item row="2" column="0" colspan="2">
                           <widget class="QTableWidget" name="binstable">
                            <property name="sizePolicy">
                             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -1297,57 +1313,6 @@
                          <property name="bottomMargin">
                           <number>3</number>
                          </property>
-                         <item row="1" column="0">
-                          <widget class="QTableWidget" name="vectortable2">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                             <horstretch>3</horstretch>
-                             <verstretch>3</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick checkboxes to draw the rotation axes defined by the space group.&lt;br/&gt;Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).&lt;br/&gt;To enter a new vector, first override the &amp;quot;new vector&amp;quot; name with a preferred name. Then enter the definition of the vector in either the &amp;quot;rotation&amp;quot;, the &amp;quot;as hkl&amp;quot; or the &amp;quot;as abc&amp;quot; column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                           </property>
-                           <property name="verticalScrollMode">
-                            <enum>QAbstractItemView::ScrollPerPixel</enum>
-                           </property>
-                           <property name="horizontalScrollMode">
-                            <enum>QAbstractItemView::ScrollPerPixel</enum>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>false</bool>
-                           </property>
-                           <property name="rowCount">
-                            <number>4</number>
-                           </property>
-                           <property name="columnCount">
-                            <number>4</number>
-                           </property>
-                           <attribute name="horizontalHeaderCascadingSectionResizes">
-                            <bool>true</bool>
-                           </attribute>
-                           <attribute name="horizontalHeaderDefaultSectionSize">
-                            <number>50</number>
-                           </attribute>
-                           <attribute name="verticalHeaderVisible">
-                            <bool>false</bool>
-                           </attribute>
-                           <attribute name="verticalHeaderMinimumSectionSize">
-                            <number>10</number>
-                           </attribute>
-                           <attribute name="verticalHeaderDefaultSectionSize">
-                            <number>24</number>
-                           </attribute>
-                           <row/>
-                           <row/>
-                           <row/>
-                           <row/>
-                           <column/>
-                           <column/>
-                           <column/>
-                           <column/>
-                          </widget>
-                         </item>
                          <item row="0" column="0">
                           <widget class="QCheckBox" name="ShowAllVectorsBtn">
                            <property name="text">
@@ -1537,6 +1502,57 @@
                              </widget>
                             </item>
                            </layout>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QTableWidget" name="vectortable2">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                             <horstretch>3</horstretch>
+                             <verstretch>3</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick checkboxes to draw the rotation axes defined by the space group.&lt;br/&gt;Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).&lt;br/&gt;To enter a new vector, first override the &amp;quot;new vector&amp;quot; name with a preferred name. Then enter the definition of the vector in either the &amp;quot;rotation&amp;quot;, the &amp;quot;as hkl&amp;quot; or the &amp;quot;as abc&amp;quot; column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="verticalScrollMode">
+                            <enum>QAbstractItemView::ScrollPerPixel</enum>
+                           </property>
+                           <property name="horizontalScrollMode">
+                            <enum>QAbstractItemView::ScrollPerPixel</enum>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>false</bool>
+                           </property>
+                           <property name="rowCount">
+                            <number>4</number>
+                           </property>
+                           <property name="columnCount">
+                            <number>4</number>
+                           </property>
+                           <attribute name="horizontalHeaderCascadingSectionResizes">
+                            <bool>true</bool>
+                           </attribute>
+                           <attribute name="horizontalHeaderDefaultSectionSize">
+                            <number>50</number>
+                           </attribute>
+                           <attribute name="verticalHeaderVisible">
+                            <bool>false</bool>
+                           </attribute>
+                           <attribute name="verticalHeaderMinimumSectionSize">
+                            <number>10</number>
+                           </attribute>
+                           <attribute name="verticalHeaderDefaultSectionSize">
+                            <number>24</number>
+                           </attribute>
+                           <row/>
+                           <row/>
+                           <row/>
+                           <row/>
+                           <column/>
+                           <column/>
+                           <column/>
+                           <column/>
                           </widget>
                          </item>
                         </layout>

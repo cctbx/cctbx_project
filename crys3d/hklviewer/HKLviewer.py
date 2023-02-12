@@ -20,7 +20,7 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
-    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit, QCloseEvent,
+    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QCloseEvent,
     QMainWindow, QMenu, QMenuBar, QMessageBox, QPalette, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
@@ -2416,6 +2416,13 @@ clip_plane {
     pass
 
 
+  def onAddDataset(self):
+    label, ok = QInputDialog().getText(self.window, "Enter a unique label",
+                                         "Create new dataset of visible reflection with this label:")
+    if ok and label:
+      self.send_message('visible_dataset_label = "%s"' %label)
+
+
   def createFileInfoBox(self):
     labels = ["Column label", "Type", "λ(Å)", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Anomalous", "Symmetry unique"]
@@ -2445,6 +2452,7 @@ clip_plane {
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
+    self.addDatasetBtn.clicked.connect(self.onAddDataset)
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)

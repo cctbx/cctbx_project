@@ -650,6 +650,10 @@ class HKLViewFrame() :
         self.SaveReflectionsFile(phl.savefilename)
       phl.savefilename = None # ensure the same action in succession can be executed
 
+      if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
+        self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
+      phl.visible_dataset_label = None # ensure the same action in succession can be executed
+
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
@@ -850,6 +854,14 @@ class HKLViewFrame() :
     self.guarded_process_PHIL_parameters()
 
 
+  def checkLabelNotInUse(self, label, is_preset_philstr=False):
+    for arr in self.procarrays:
+      if label in arr.info().label_string():
+        if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
+          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
+        raise Sorry("Provide a label for the new miller array that isn't already used.")
+
+
   def make_new_miller_array(self, is_preset_philstr=False):
     miller_array_operations_lst = eval(self.params.miller_array_operation)
     (operation, label, [labl1, type1], [labl2, type2]) = miller_array_operations_lst
@@ -858,12 +870,7 @@ class HKLViewFrame() :
     arrid2 = -1
     if labl2 != "":
       arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, type2)
-
-    for arr in self.procarrays:
-      if label in arr.info().label_string():
-        if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
-          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
-        raise Sorry("Provide a label for the new miller array that isn't already used.")
+    self.checkLabelNotInUse(label, is_preset_philstr)
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
@@ -888,62 +895,73 @@ class HKLViewFrame() :
       self.currentphil = master_phil.format(python_object = self.params)
       # and process_PHIL_parameters() won't bail out with a "No change in PHIL parameters" message
     else:
-      self.mprint("New dataset has %d reflections." %newarray.size())
-      newarray.set_info(millarr1._info )
-      newarray._info.labels = [ label ]
-      if isinstance( newarray.sigmas(), flex.double):
-        newarray._info.labels = [ label, "Sig" +label ]
-      procarray, procarray_info = self.process_miller_array(newarray)
-      self.procarrays.append(procarray)
-      self.viewer.proc_arrays = self.procarrays
-      self.viewer.has_new_miller_array = True
-
-      wrap_labels = 25
-      arrayinfo = ArrayInfo(procarray,wrap_labels)
-      info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )
-      self.viewer.array_info_format_tpl.append( info_fmt )
-      # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
-      self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
-      # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
-      # First create a superset of HKLs existing miller arrays and the new procarray.
-      hkls = self.origarrays["HKLs"]
-      m = miller.match_indices(procarray.indices(), hkls )
-      # get subset of indices in hkls matching procarray.indices()
-      indices_of_matched_hkls = m.pairs().column(1)
-      # pad hkls with the indices only present in procarray.indices()
-      hkls.extend(  procarray.indices().select( m.singles(0)) )
-      # hkls is now a superset of indices.
-      # Make temporary data array the size of hkls. This will be filled with datavalues
-      # from procarray matching the order of indices in hkls
-      datarr = flex.double(len(hkls), float("nan"))
-      # assign data values corresponding to matching indices to datarr
-      m = miller.match_indices(procarray.indices(), hkls )
-      # get single indices in hkls matching procarray.indices()
-      indices_of_matched_hkls = m.pairs().column(1)
-      for i,e in enumerate(indices_of_matched_hkls):
-        datarr[e] = procarray.data()[i]
-      # datarr is now a copy of data values in procarray but ordered to match the indices in hkls
-      # join datarr to dictionary so it can be tabulated together with other data sets
-      self.origarrays[newarray._info.labels[0]] = list(datarr)
-      # If we have Sigmas then also store values and label for these in origarrays
-      if isinstance( newarray.sigmas(), flex.double):
-        sigarr = flex.double(len(hkls), float("nan"))
-        for i,e in enumerate(indices_of_matched_hkls):
-          sigarr[e] = procarray.sigmas()[i]
-        self.origarrays[newarray._info.labels[1]] = list(sigarr)
-
-      self.arrayinfos.append(arrayinfo)
-      self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
-      mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
-                "ano_spg_tpls": self.ano_spg_tpls,
-                "NewHKLscenes" : True,
-                "NewMillerArray" : True
-                }
-      self.SendInfoToGUI(mydict)
-      self.validated_preset_buttons = False
-      self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
-      self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
+      self.AddDataset2ExistingOnes(newarray, label, millarr1.info())
     return len(self.viewer.hkl_scenes_infos)-1 # return scene_id of this new miller_array
+
+
+  def addCurrentVisibleMillerArray(self, label):
+    self.checkLabelNotInUse(label)
+    newarray = self.viewer.get_visible_current_miller_array()
+    from copy import deepcopy
+    self.AddDataset2ExistingOnes(newarray, label, deepcopy(self.viewer.miller_array.info()))
+
+
+  def AddDataset2ExistingOnes(self, newarray, label=None, info=None):
+    self.mprint("New dataset has %d reflections." %newarray.size())
+    if info is not None:
+      newarray.set_info(info )
+    if label is not None:
+      newarray._info.labels = [ label ]
+    if isinstance( newarray.sigmas(), flex.double):
+      newarray._info.labels = [ label, "Sig" +label ]
+    procarray, procarray_info = self.process_miller_array(newarray)
+    self.procarrays.append(procarray)
+    self.viewer.proc_arrays = self.procarrays
+    self.viewer.has_new_miller_array = True
+    wrap_labels = 25
+    arrayinfo = ArrayInfo(procarray,wrap_labels)
+    info_fmt, headerstr, infostr = arrayinfo.get_selected_info_columns_from_phil(self.params )
+    self.viewer.array_info_format_tpl.append( info_fmt )
+    # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
+    self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
+    # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
+    # First create a superset of HKLs existing miller arrays and the new procarray.
+    hkls = self.origarrays["HKLs"]
+    m = miller.match_indices(procarray.indices(), hkls )
+    # get subset of indices in hkls matching procarray.indices()
+    indices_of_matched_hkls = m.pairs().column(1)
+    # pad hkls with the indices only present in procarray.indices()
+    hkls.extend(  procarray.indices().select( m.singles(0)) )
+    # hkls is now a superset of indices.
+    # Make temporary data array the size of hkls. This will be filled with datavalues
+    # from procarray matching the order of indices in hkls
+    datarr = flex.double(len(hkls), float("nan"))
+    # assign data values corresponding to matching indices to datarr
+    m = miller.match_indices(procarray.indices(), hkls )
+    # get single indices in hkls matching procarray.indices()
+    indices_of_matched_hkls = m.pairs().column(1)
+    for i,e in enumerate(indices_of_matched_hkls):
+      datarr[e] = procarray.data()[i]
+    # datarr is now a copy of data values in procarray but ordered to match the indices in hkls
+    # join datarr to dictionary so it can be tabulated together with other data sets
+    self.origarrays[newarray._info.labels[0]] = list(datarr)
+    # If we have Sigmas then also store values and label for these in origarrays
+    if isinstance( newarray.sigmas(), flex.double):
+      sigarr = flex.double(len(hkls), float("nan"))
+      for i,e in enumerate(indices_of_matched_hkls):
+        sigarr[e] = procarray.sigmas()[i]
+      self.origarrays[newarray._info.labels[1]] = list(sigarr)
+    self.arrayinfos.append(arrayinfo)
+    self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
+    mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
+              "ano_spg_tpls": self.ano_spg_tpls,
+              "NewHKLscenes" : True,
+              "NewMillerArray" : True
+              }
+    self.SendInfoToGUI(mydict)
+    self.validated_preset_buttons = False
+    self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+    self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
 
 
   def run_external_cmd(self):
@@ -1967,6 +1985,9 @@ master_phil_str = """
   savefilename = None
     .type = path
     .help = "Name of file where the user wants to save datasets. Optionally used after making new datasets from existing ones"
+  visible_dataset_label = None
+    .type = path
+    .help = "User supplied label for a new dataset of visible reflections, i.e. those which have opacity=1"
   save_image_name = None
     .type = path
     .help = "Name of image file (PNG format) where the current displayed reflections will be saved to at the users request"

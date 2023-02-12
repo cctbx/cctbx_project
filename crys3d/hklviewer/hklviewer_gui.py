@@ -22,8 +22,6 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
-
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -138,7 +136,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 448, 609))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 422, 609))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -255,7 +253,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, -102, 453, 412))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 427, 412))
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_4.setSpacing(4)
         self.gridLayout_4.setContentsMargins(3, 3, 3, 3)
@@ -722,10 +720,17 @@ class Ui_MainWindow(object):
         self.gridLayout_12.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_12.setObjectName(u"gridLayout_12")
         self.gridLayout_12.setContentsMargins(3, 3, 3, 3)
+        self.addDatasetBtn = QPushButton(self.widget_6)
+        self.addDatasetBtn.setObjectName(u"addDatasetBtn")
+        sizePolicy10.setHeightForWidth(self.addDatasetBtn.sizePolicy().hasHeightForWidth())
+        self.addDatasetBtn.setSizePolicy(sizePolicy10)
+
+        self.gridLayout_12.addWidget(self.addDatasetBtn, 1, 1, 1, 1)
+
         self.OpaqueAllCheckbox = QCheckBox(self.widget_6)
         self.OpaqueAllCheckbox.setObjectName(u"OpaqueAllCheckbox")
 
-        self.gridLayout_12.addWidget(self.OpaqueAllCheckbox, 0, 0, 1, 1)
+        self.gridLayout_12.addWidget(self.OpaqueAllCheckbox, 1, 0, 1, 1)
 
         self.binstable = QTableWidget(self.widget_6)
         if (self.binstable.columnCount() < 4):
@@ -741,7 +746,7 @@ class Ui_MainWindow(object):
         self.binstable.setRowCount(5)
         self.binstable.setColumnCount(4)
 
-        self.gridLayout_12.addWidget(self.binstable, 1, 0, 1, 1)
+        self.gridLayout_12.addWidget(self.binstable, 2, 0, 1, 2)
 
 
         self.gridLayout_13.addWidget(self.widget_6, 1, 0, 1, 1)
@@ -767,30 +772,6 @@ class Ui_MainWindow(object):
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.gridLayout_8.setContentsMargins(3, 3, 3, 3)
-        self.vectortable2 = QTableWidget(self.RotationVectorsBox)
-        if (self.vectortable2.columnCount() < 4):
-            self.vectortable2.setColumnCount(4)
-        if (self.vectortable2.rowCount() < 4):
-            self.vectortable2.setRowCount(4)
-        self.vectortable2.setObjectName(u"vectortable2")
-        sizePolicy21 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        sizePolicy21.setHorizontalStretch(3)
-        sizePolicy21.setVerticalStretch(3)
-        sizePolicy21.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
-        self.vectortable2.setSizePolicy(sizePolicy21)
-        self.vectortable2.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.vectortable2.setWordWrap(False)
-        self.vectortable2.setRowCount(4)
-        self.vectortable2.setColumnCount(4)
-        self.vectortable2.horizontalHeader().setCascadingSectionResizes(True)
-        self.vectortable2.horizontalHeader().setDefaultSectionSize(50)
-        self.vectortable2.verticalHeader().setVisible(False)
-        self.vectortable2.verticalHeader().setMinimumSectionSize(10)
-        self.vectortable2.verticalHeader().setDefaultSectionSize(24)
-
-        self.gridLayout_8.addWidget(self.vectortable2, 1, 0, 1, 1)
-
         self.ShowAllVectorsBtn = QCheckBox(self.RotationVectorsBox)
         self.ShowAllVectorsBtn.setObjectName(u"ShowAllVectorsBtn")
         self.ShowAllVectorsBtn.setTristate(True)
@@ -799,11 +780,11 @@ class Ui_MainWindow(object):
 
         self.RotateAroundframe = QFrame(self.RotationVectorsBox)
         self.RotateAroundframe.setObjectName(u"RotateAroundframe")
-        sizePolicy22 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        sizePolicy22.setHorizontalStretch(1)
-        sizePolicy22.setVerticalStretch(0)
-        sizePolicy22.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
-        self.RotateAroundframe.setSizePolicy(sizePolicy22)
+        sizePolicy21 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        sizePolicy21.setHorizontalStretch(1)
+        sizePolicy21.setVerticalStretch(0)
+        sizePolicy21.setHeightForWidth(self.RotateAroundframe.sizePolicy().hasHeightForWidth())
+        self.RotateAroundframe.setSizePolicy(sizePolicy21)
         self.RotateAroundframe.setFrameShape(QFrame.StyledPanel)
         self.RotateAroundframe.setFrameShadow(QFrame.Raised)
         self.gridLayout_18 = QGridLayout(self.RotateAroundframe)
@@ -812,11 +793,11 @@ class Ui_MainWindow(object):
         self.gridLayout_18.setObjectName(u"gridLayout_18")
         self.rotavecangle_labeltxt = QLabel(self.RotateAroundframe)
         self.rotavecangle_labeltxt.setObjectName(u"rotavecangle_labeltxt")
-        sizePolicy23 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        sizePolicy23.setHorizontalStretch(0)
-        sizePolicy23.setVerticalStretch(0)
-        sizePolicy23.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy23)
+        sizePolicy22 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        sizePolicy22.setHorizontalStretch(0)
+        sizePolicy22.setVerticalStretch(0)
+        sizePolicy22.setHeightForWidth(self.rotavecangle_labeltxt.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_labeltxt.setSizePolicy(sizePolicy22)
         self.rotavecangle_labeltxt.setMinimumSize(QSize(120, 0))
         self.rotavecangle_labeltxt.setWordWrap(True)
 
@@ -824,11 +805,11 @@ class Ui_MainWindow(object):
 
         self.rotavecangle_slider = QSlider(self.RotateAroundframe)
         self.rotavecangle_slider.setObjectName(u"rotavecangle_slider")
-        sizePolicy24 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
-        sizePolicy24.setHorizontalStretch(0)
-        sizePolicy24.setVerticalStretch(0)
-        sizePolicy24.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
-        self.rotavecangle_slider.setSizePolicy(sizePolicy24)
+        sizePolicy23 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
+        sizePolicy23.setHorizontalStretch(0)
+        sizePolicy23.setVerticalStretch(0)
+        sizePolicy23.setHeightForWidth(self.rotavecangle_slider.sizePolicy().hasHeightForWidth())
+        self.rotavecangle_slider.setSizePolicy(sizePolicy23)
         self.rotavecangle_slider.setMinimumSize(QSize(120, 0))
         self.rotavecangle_slider.setMaximum(720)
         self.rotavecangle_slider.setPageStep(20)
@@ -866,8 +847,8 @@ class Ui_MainWindow(object):
 
         self.AnimaRotCheckBox = QCheckBox(self.RotateAroundframe)
         self.AnimaRotCheckBox.setObjectName(u"AnimaRotCheckBox")
-        sizePolicy24.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
-        self.AnimaRotCheckBox.setSizePolicy(sizePolicy24)
+        sizePolicy23.setHeightForWidth(self.AnimaRotCheckBox.sizePolicy().hasHeightForWidth())
+        self.AnimaRotCheckBox.setSizePolicy(sizePolicy23)
 
         self.gridLayout_18.addWidget(self.AnimaRotCheckBox, 3, 0, 1, 2)
 
@@ -891,6 +872,30 @@ class Ui_MainWindow(object):
 
 
         self.gridLayout_8.addWidget(self.RotateAroundframe, 0, 1, 2, 1)
+
+        self.vectortable2 = QTableWidget(self.RotationVectorsBox)
+        if (self.vectortable2.columnCount() < 4):
+            self.vectortable2.setColumnCount(4)
+        if (self.vectortable2.rowCount() < 4):
+            self.vectortable2.setRowCount(4)
+        self.vectortable2.setObjectName(u"vectortable2")
+        sizePolicy24 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy24.setHorizontalStretch(3)
+        sizePolicy24.setVerticalStretch(3)
+        sizePolicy24.setHeightForWidth(self.vectortable2.sizePolicy().hasHeightForWidth())
+        self.vectortable2.setSizePolicy(sizePolicy24)
+        self.vectortable2.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.vectortable2.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.vectortable2.setWordWrap(False)
+        self.vectortable2.setRowCount(4)
+        self.vectortable2.setColumnCount(4)
+        self.vectortable2.horizontalHeader().setCascadingSectionResizes(True)
+        self.vectortable2.horizontalHeader().setDefaultSectionSize(50)
+        self.vectortable2.verticalHeader().setVisible(False)
+        self.vectortable2.verticalHeader().setMinimumSectionSize(10)
+        self.vectortable2.verticalHeader().setDefaultSectionSize(24)
+
+        self.gridLayout_8.addWidget(self.vectortable2, 1, 0, 1, 1)
 
 
         self.gridLayout_14.addWidget(self.RotationVectorsBox, 0, 0, 1, 1)
@@ -1053,7 +1058,7 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
 
         self.tabWidget.setCurrentIndex(1)
-        self.functionTabWidget.setCurrentIndex(4)
+        self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
         self.tabText.setCurrentIndex(0)
@@ -1180,15 +1185,16 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(tooltip)
         self.Nbins_spinBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Select the number of bins for ordering the currently displayed data set. More than about 10-15 bins will slow down the HKLviewer when working with large datasets.<br/>The requested number of bins may not be created if there are zero reflections in some bins.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.addDatasetBtn.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Provide a unique label to create a new dataset with the reflections that have opacity = 1.0</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
+        self.addDatasetBtn.setText(QCoreApplication.translate("MainWindow", u"Add visible reflections as new dataset...", None))
         self.OpaqueAllCheckbox.setText(QCoreApplication.translate("MainWindow", u"Show/hide all data", None))
 #if QT_CONFIG(tooltip)
         self.binstable.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Change a bin threshold by entering a preferred value in the in the &quot;lower bin value&quot; column for a particular bin.<br/>Change visibility of bins either by ticking or unticking the check boxes or by entering opacity values between 0 and 1. Reflections with values less than 0.3 will not respond to mouse clicks.<br/></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Binning", None))
         self.RotationVectorsBox.setTitle(QCoreApplication.translate("MainWindow", u"Rotation Operators or Vector(s)", None))
-#if QT_CONFIG(tooltip)
-        self.vectortable2.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Tick checkboxes to draw the rotation axes defined by the space group.<br/>Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).<br/>To enter a new vector, first override the &quot;new vector&quot; name with a preferred name. Then enter the definition of the vector in either the &quot;rotation&quot;, the &quot;as hkl&quot; or the &quot;as abc&quot; column.</p></body></html>", None))
-#endif // QT_CONFIG(tooltip)
         self.ShowAllVectorsBtn.setText(QCoreApplication.translate("MainWindow", u"Show All", None))
         self.rotavecangle_labeltxt.setText(QCoreApplication.translate("MainWindow", u"Rotate Reflections around Vector with Angle", None))
 #if QT_CONFIG(tooltip)
@@ -1205,6 +1211,9 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.AnimaRotCheckBox.setText(QCoreApplication.translate("MainWindow", u"Rotate continuously", None))
         self.label_8.setText(QCoreApplication.translate("MainWindow", u"Speed", None))
+#if QT_CONFIG(tooltip)
+        self.vectortable2.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Tick checkboxes to draw the rotation axes defined by the space group.<br/>Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).<br/>To enter a new vector, first override the &quot;new vector&quot; name with a preferred name. Then enter the definition of the vector in either the &quot;rotation&quot;, the &quot;as hkl&quot; or the &quot;as abc&quot; column.</p></body></html>", None))
+#endif // QT_CONFIG(tooltip)
 #if QT_CONFIG(tooltip)
         self.ReciprocUnitCellgrp.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>The reciprocal unit cell spanning a*,b*,c* from (0,0,0) to (1,1,1) is located in the centre of the displayed reflections. and is therefore quite small. Adjust the slider to scale its outline to become compatible with the sphere of displayed reflections.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)

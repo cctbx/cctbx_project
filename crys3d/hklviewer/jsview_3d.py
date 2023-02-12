@@ -1557,6 +1557,18 @@ class HKLview_3d:
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
 
 
+  def get_visible_current_miller_array(self):
+    arrayidxs = []
+    if self.miller_array and self.params.binning.bin_opacity:
+      bin_opacitieslst = self.params.binning.bin_opacity
+      for alpha,bin in bin_opacitieslst:
+        if alpha==1.0:
+          arrayidxs.extend(self.spbufttips[int(bin)])
+    visarray = self.miller_array.select_indices(flex.miller_index(
+                          [ self.miller_array.indices()[i] for i in arrayidxs ] ))
+    return visarray.deep_copy()
+
+
   def release_all_semaphores(self):
     # avoid potential deadlock by releasing any pending sempahores
     self.clipplane_msg_sem.release()
