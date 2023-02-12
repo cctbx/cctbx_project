@@ -138,8 +138,8 @@ class WBmessenger(object):
     mywebsock.ondisconnect = self.OnDisconnectWebsocketClient
     mywebsock.onlostconnect = self.OnLostConnectWebsocketClient
     self.mywebsock = mywebsock
-    getmsgtask = asyncio.ensure_future(self.ReceiveMessage())
-    sendmsgtask = asyncio.ensure_future(self.WebBrowserMsgQueue())
+    getmsgtask = asyncio.ensure_future(self.ReceiveMsgQueue())
+    sendmsgtask = asyncio.ensure_future(self.SendMsgQueue())
     done, pending = await asyncio.wait( [getmsgtask, sendmsgtask],
       return_when=asyncio.FIRST_COMPLETED,
     )
@@ -149,7 +149,7 @@ class WBmessenger(object):
     self.ishandling = False
 
 
-  async def ReceiveMessage(self):
+  async def ReceiveMsgQueue(self):
     while True:
       await asyncio.sleep(self.sleeptime)
       if self.was_disconnected in [4242, # reload
@@ -160,6 +160,7 @@ class WBmessenger(object):
                                     1000
                                     ]:
         await self.mywebsock.wait_closed()
+        self.mprint("ReceiveMsgQueue shutdown", verbose=1)
         return # shutdown
       if self.websockclient is None or self.mywebsock.client_connected is None:
         await asyncio.sleep(self.sleeptime)
@@ -189,7 +190,7 @@ class WBmessenger(object):
       self.clientmsgqueue_sem.release()
 
 
-  async def WebBrowserMsgQueue(self):
+  async def SendMsgQueue(self):
     while True:
       try:
         nwait = 0.0
@@ -201,7 +202,7 @@ class WBmessenger(object):
                                       1005,
                                       1000
                                       ]:
-          self.mprint("WebBrowserMsgQueue shutdown", verbose=1)
+          self.mprint("SendMsgQueue shutdown", verbose=1)
           return # shutdown
         if self.parent.javascriptcleaned or self.was_disconnected == 4241: # or self.was_disconnected == 1001:
           return

@@ -103,7 +103,7 @@ cctbx_buttonsdeflist = [
 
 ("Evalues", "E-values",
  """
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -114,7 +114,7 @@ cctbx_buttonsdeflist = [
 
 ("Merged", "Merged Intensities",
  """
-      miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())\\n', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
+      miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
       viewer {
         data_array {
           label = "Imerge,SigImerge"
@@ -126,7 +126,7 @@ cctbx_buttonsdeflist = [
 
 ("Multiplicities", "Multiplicities",
  """
-      miller_array_operation = "('\\nfrom crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
+      miller_array_operation = "('from crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
       viewer {
         data_array {
           label = "multiplicity"
@@ -288,7 +288,7 @@ phenix_buttonsdeflist = [
             normal_vector = "TNCS_xtriage"
             clip_width = 0.380397231
           }
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -311,7 +311,7 @@ phenix_buttonsdeflist = [
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
             viewer {
               data_array {
                 label = "E-values"

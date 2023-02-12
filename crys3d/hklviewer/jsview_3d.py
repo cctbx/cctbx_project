@@ -407,7 +407,6 @@ class HKLview_3d:
                           "nth_power_scale_radii"
                      ):
                         self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
-                        self.params.miller_array_operation = ""
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,

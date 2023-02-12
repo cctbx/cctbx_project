@@ -1277,7 +1277,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 self.gridLayout_24.removeWidget(widgetToRemove)
                 widgetToRemove.setParent(None)
               # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
-              for i,((btnname, label, _), isenabled, datalabel, moniker_veclabels) in enumerate(self.buttonsdeflist):
+              for i,((btnname, label, _), datalabel, tooltip, moniker_veclabels) in enumerate(self.buttonsdeflist):
                 moniker = ""
                 veclabels = []
                 if moniker_veclabels:
@@ -1288,7 +1288,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 # since QRadioButton cannot wrap text the text for pbutton goes in
                 # btnlabel below which is a QLabel where text can be wrapped if needed
                 pbutton.setText("")
-                pbutton.setEnabled(isenabled)
+                pbutton.setToolTip(tooltip)
                 pbutton.clicked.connect(self.onPresetbtn_click)
                 sizePolicy1 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
                 sizePolicy1.setHorizontalStretch(0)
@@ -1303,6 +1303,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 sizePolicy2.setHeightForWidth(btnlabel.sizePolicy().hasHeightForWidth())
                 btnlabel.setSizePolicy(sizePolicy2)
                 btnlabel.setWordWrap(True)
+                btnlabel.setToolTip(tooltip)
                 btnlabel.setText(label + " (using " + datalabel + ")")
                 self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 

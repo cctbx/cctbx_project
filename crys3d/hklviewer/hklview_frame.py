@@ -537,7 +537,8 @@ class HKLViewFrame() :
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
         self.set_scene(phl.viewer.scene_id)
         phl.hkls.sigma_color_radius = False
-
+      else:
+        self.params.miller_array_operation = ""
       # preset phil usually comes with data_array.label, data_array.phasertng_tag or data_array.datatype.
       # Scene_id is then inferred from data_array and used throughout
       if jsview_3d.has_phil_path(diff_phil, "data_array"):
@@ -1341,7 +1342,6 @@ class HKLViewFrame() :
                 if rotlabel =="" or order==0:
                   self.mprint("\"%s\" is disabled because HKL operation, \"%s\", is not a rotation in space group %s" \
                    %(btnlabel, uvec.hkl_op, ma.space_group().info().symbol_and_number()), verbose=1)
-                  activebtns.append((self.allbuttonslist[ibtn],False, "", None))
                   button_fate_decided = True
                   break
               else:
@@ -1411,9 +1411,10 @@ class HKLViewFrame() :
             self.mprint("\"%s\" declared using %s and %s is assigned to data %s of type %s." \
                           %(btnlabel, arr1label, arr1type, datalabel, datatype), verbose=1)
             if len(datalabel2)>0:
-              activebtns.append((self.allbuttonslist[ibtn],True, datalabel1 + " and " + datalabel2, None))
+              activebtns.append((self.allbuttonslist[ibtn], datalabel1 + " and " + datalabel2,
+                                 millaroperationstr, None))
             else:
-              activebtns.append((self.allbuttonslist[ibtn],True, datalabel1, None))
+              activebtns.append((self.allbuttonslist[ibtn], datalabel1, millaroperationstr, None))
           else:
             self.mprint("\"%s\" declared using %s and %s is not assigned to any dataset." \
                             %(btnlabel, arr1label, arr1type), verbose=1)
@@ -1431,7 +1432,7 @@ class HKLViewFrame() :
           if labeltypefound and nvectorsfound >= len(philstr_showvectors):
             self.mprint("\"%s\" assigned to dataset %s of type %s." \
                           %(btnlabel + str(veclabels), datalabel, datatype), verbose=1)
-            activebtns.append((self.allbuttonslist[ibtn], True, datalabel, (philveclabel, veclabels) ))
+            activebtns.append((self.allbuttonslist[ibtn], datalabel, "", (philveclabel, veclabels) ))
           else:
             self.mprint("\"%s\" expecting dataset of type \"%s\" has not been assigned to any dataset." \
                               %(btnlabel, philstr_type), verbose=1)
