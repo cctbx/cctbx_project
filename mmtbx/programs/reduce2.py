@@ -500,6 +500,12 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   # record them, indicating which are flipped in Reduce.
   ret += ' views marked with * are for groups flipped by reduce\n'
   for i, s in enumerate(states):
+    # We only have views for the states in the first alternate tried, so we end up with
+    # more states than views.  They are repeats, so once we have done all views we are
+    # done.
+    if i >= len(views):
+      break;
+
     # See whether the state is flipped in Reduce and add a star if so
     star = ' '
     if s.flipped:
@@ -518,7 +524,10 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       indexString = str(i+1)
     else:
       indexString = ''
-    ret += '@{}viewid {{{}{}{} {} {}}}\n'.format(indexString, star, type, s.resId, _AltFromFlipOutput(s), s.chain)
+    # @todo The original Flipkin generation sometimes reported alternate conformations. We currently always
+    # report the average view over all conformations.
+    # ret += '@{}viewid {{{}{}{} {} {}}}\n'.format(indexString, star, type, s.resId, _AltFromFlipOutput(s), s.chain)
+    ret += '@{}viewid {{{}{}{} {} {}}}\n'.format(indexString, star, type, s.resId, ' ', s.chain)
     ret += '@{}span 12\n'.format(indexString)
     ret += '@{}zslab 100\n'.format(indexString)
     ret += '@{}center{:9.3f}{:9.3f}{:9.3f}\n'.format(indexString, views[i][0], views[i][1], views[i][2])
@@ -964,8 +973,11 @@ NOTES:
 
       # Find the viewpoint locations for each Mover we're going to
       # look at as the center of all atoms in the sidechain of the residue.
+      # We don't treat the separate alternates differently; we make a single
+      # view for all alternates for each Mover.
       views = []
-      for a in amides:
+      selStrings = []
+      for amide in amides:
         # Fill in information needed to construct the view.
         # As of 2/5/2023, the CCTBX selection returns no atoms on a file when the model
         # clause is used unless there is a MODEL statement in the file.  The get_number_of_models()
@@ -974,18 +986,25 @@ NOTES:
         # The model ID that the selection is looking for is 1-based, so we must add 1 to the
         # model index.
         if self.model.get_number_of_models() >= 2:
-          modelClause = 'model {} and '.format(a.modelId + 1)
+          modelClause = 'model {} and '.format(amide.modelId + 1)
         else:
           modelClause = ''
         x = 0.0
         y = 0.0
         z = 0.0
-        if a.altId in ["", " "]:
+        selString = modelClause + "chain {} and resseq {} and sidechain".format(
+              amide.chain, amide.resId)
+        if selString in selStrings:
+          break
+        selStrings.append(selString)
+        '''
+        if amide.altId in ["", " "]:
           selString = modelClause + "chain {} and resseq {} and sidechain".format(
-                a.chain, a.resId)
+                amide.chain, amide.resId)
         else:
           selString = modelClause + "chain {} and altid '{}' and resseq {} and sidechain".format(
-                a.chain, a.altId, a.resId)
+                amide.chain, amide.altId, amide.resId)
+        '''
         sel = self.model.selection(selString)
         count = 0;
         for a in self.model.get_hierarchy().atoms():
