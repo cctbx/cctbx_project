@@ -192,7 +192,7 @@ def exercise():
   # Now get results from assessment of signal and errors
   expectE = results.expectE
   mean_Esqr = flex.mean_default(flex.pow2(flex.abs(expectE.data())),0)
-  eps_mean_Esqr = 0.1
+  eps_mean_Esqr = 0.15
   if debug:
     print("\n\nRegression tests:")
     print("\nMean value of ideal E**2: ", mean_Esqr_ideal)

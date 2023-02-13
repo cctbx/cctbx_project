@@ -15,7 +15,8 @@ import sys
 
 class RefineCryoemSignal(RefineBase):
   # Set up refinement class for dtmin minimiser (based on Phaser minimiser)
-  def __init__(self, sumfsqr_lm, f1f2cos_lm, r_star, ssqr_bins, target_spectrum, start_x):
+  def __init__(self, sumfsqr_lm, f1f2cos_lm, deltafsqr_lm,
+               r_star, ssqr_bins, target_spectrum, start_x):
     RefineBase.__init__(self)
     # Prepare data that will be used repeatedly for fgh evaluation
     # Sample local mean with spacing derived from averaging radius
@@ -40,6 +41,8 @@ class RefineCryoemSignal(RefineBase):
     self.sumfsqr_miller.use_binning_of(sumfsqr_lm) # Matches subset
     self.f1f2cos_miller = f1f2cos_lm.select(sel)
     self.f1f2cos_miller.use_binner_of(self.sumfsqr_miller)
+    self.sigmaE_miller = (deltafsqr_lm.select(sel)) / 2. # Half of deltafsqr power
+    self.sigmaE_miller.use_binner_of(self.sumfsqr_miller)
 
     self.n_bins = self.sumfsqr_miller.binner().n_bins_used()  # Assume consistent binning
     self.ssqr_bins = ssqr_bins
@@ -134,34 +137,27 @@ class RefineCryoemSignal(RefineBase):
     h.reshape(flex.grid(self.nmp, self.nmp))
 
     # Loop over bins to accumulate target, gradient, Hessian
-    sumfsqr_miller = self.sumfsqr_miller
     i_bin_used = 0 # Keep track in case full range of bins not used
-    for i_bin in sumfsqr_miller.binner().range_used():
-      sel = sumfsqr_miller.binner().selection(i_bin)
-      sumfsqr_sel = sumfsqr_miller.select(sel)
+    for i_bin in self.sumfsqr_miller.binner().range_used():
+      sel = self.sumfsqr_miller.binner().selection(i_bin)
+      sumfsqr_miller_sel = self.sumfsqr_miller.select(sel)
+      sumfsqr = sumfsqr_miller_sel.data()
+      f1f2cos = self.f1f2cos_miller.data().select(sel)
+      sigmaE_terms = self.sigmaE_miller.data().select(sel)
 
       # Make Miller array as basis for computing aniso corrections in bin
       # Let u = A^2*sigmaT to simplify computation of derivatives
-      ones_array = flex.double(sumfsqr_sel.size(), 1)
-      all_ones = sumfsqr_sel.customized_copy(data=ones_array)
+      ones_array = flex.double(sumfsqr.size(), 1)
+      all_ones = sumfsqr_miller_sel.customized_copy(data=ones_array)
       beta_miller_Asqr = all_ones.apply_debye_waller_factors(
         u_star=adptbx.beta_as_u_star(asqr_beta))
       u_terms = (asqr_scale * sigmaT_bins[i_bin_used]
         * self.target_spectrum[i_bin_used]) * beta_miller_Asqr.data()
 
-      # Noise is total power minus signal, but make sure it is positive
-      f1f2cos = self.f1f2cos_miller.data().select(sel)
-      sumfsqr = self.sumfsqr_miller.data().select(sel)
-      sigmaE_terms = sumfsqr/2 - f1f2cos
-      # Make sure sigmaE is positive
-      mean_sumfsqr_bin = flex.mean_default(sumfsqr,0.)
-      min_sigE = mean_sumfsqr_bin/100000
-      sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
-
       # Use local sphere fsc to compute relative weight of local vs global fitting
       # Steepness of sigmoid controlled by factor applied to fsc.
       # Mean value of f1f2cos should dominate sigmaS_terms calculation when signal
-      # is good but should be completely determined by the anisotropic error model
+      # is good but it should be completely determined by the anisotropic error model
       # when there is little signal.
       # Keep some influence of anisotropic error model throughout for training.
       # wt_terms weight the anisotropy model in sigmaS calculation, with this
@@ -169,10 +165,13 @@ class RefineCryoemSignal(RefineBase):
       # Behaviour of wt as a function of fsc determined by steepness parameter for
       # the sigmoid function and the maximum fractional weight for the local
       # statistics. Values of local_weight near 1 seem to be better than lower
-      # values: setting it to 1 would probably be fine too.
+      # values.
       steep = 9.
       local_weight = 0.95
-      fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+      fsc = f1f2cos/(sumfsqr/2.)
+      # Make sure fsc is in range 0 to 1
+      fsc = (fsc + flex.abs(fsc)) / 2
+      fsc = (fsc + 1 - flex.abs(fsc - 1)) / 2
       wt_terms = flex.exp(steep*fsc)
       wt_terms = 1. - local_weight * (wt_terms/(math.exp(steep/2) + wt_terms))
       meanwt = flex.mean_default(wt_terms,0.)
@@ -202,7 +201,7 @@ class RefineCryoemSignal(RefineBase):
           dmLL_by_du_terms = wt_terms * dmLL_by_dsigmaS_terms
         if self.refine_Asqr_beta:
           h_as_double, k_as_double, l_as_double = (
-            sumfsqr_sel.indices().as_vec3_double().parts())
+            sumfsqr_miller_sel.indices().as_vec3_double().parts())
           hh = flex.pow2(h_as_double)
           kk = flex.pow2(k_as_double)
           ll = flex.pow2(l_as_double)
@@ -1020,7 +1019,7 @@ def add_ordered_volume_mask(
   # is enforced to explore next-nearest-neighbour density.
   radius = max(d_min*rad_factor, 5.)
 
-  d_work = (d_min + radius) / 2 # Save some time by lowering resolution
+  d_work = (d_min + radius) # Save some time by lowering resolution
   mm1 = mmm.map_manager_1()
   mc1_in = mm1.map_as_fourier_coefficients(d_min=d_work)
   mm2 = mmm.map_manager_2()
@@ -1046,9 +1045,9 @@ def add_ordered_volume_mask(
     target_volume += protein_mw*1.229
   if nucleic_mw is not None:
     target_volume += nucleic_mw*0.945
-  # Expand volume by amount needed for sphere expanded by d_min in radius
+  # Expand volume by amount needed for sphere expanded by 1.5*d_min in radius
   equivalent_radius = math.pow(target_volume / (4*math.pi/3.),1./3)
-  volume_factor = ((equivalent_radius+d_min)/equivalent_radius)**3
+  volume_factor = ((equivalent_radius+1.5*d_min)/equivalent_radius)**3
   expanded_target_volume = target_volume*volume_factor
   target_points = int(expanded_target_volume/map_volume * numpoints)
 
@@ -1178,7 +1177,7 @@ def get_ordered_volume_exact(mm_ordered_mask,sphere_center,sphere_radius):
 def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
   d_star_sq = f_array.d_star_sq().data()
   num_tot = d_star_sq.size()
-  n_bins = round(max(min(num_tot / num_per_bin, max_bins),min_bins))
+  n_bins = int(round(max(min(num_tot / num_per_bin, max_bins),min_bins)))
   d_star_sq_min = flex.min(d_star_sq)
   d_star_sq_max = flex.max(d_star_sq) * 1.00001
   d_star_sq_step = (d_star_sq_max - d_star_sq_min) / n_bins
@@ -1342,8 +1341,6 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   int_sharp = int_sharp.customized_copy(data = intensities.data()*b_terms_miller.data())
-  # Customized_copy loses binner
-  int_sharp.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
 
   # Turn intensity values into a spherical map inside a cube
   results = intensities_as_expanded_map(mm,int_sharp)
@@ -1571,17 +1568,15 @@ def assess_cryoem_errors(
   p2 = mc2.phases().data()
   sumfsqr = mc1.customized_copy(data = flex.pow2(f1) + flex.pow2(f2))
   f1f2cos = mc1.customized_copy(data = f1 * f2 * flex.cos(p2 - p1))
+  deltafsqr = mc1.customized_copy(data = flex.pow2(flex.abs(mc1.data()-mc2.data())))
 
   # Local mean calculations of covariance terms use data to extended resolution
   # but return results to desired resolution
-  sumfsqr_local_mean = local_mean_intensities(work_mm, d_min, sumfsqr, r_star)
+  # Calculating sumfsqr_local_mean from f1f2cos and deltafsqr local means turns out to have
+  # improved numerical stability, i.e. don't end up with negative or zero deltafsqr_local_mean
   f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos, r_star)
-
-  # Sum of f1^2 and f2^2 is always >= 2*f1*f2*cos(delta), but
-  # this may be violated by numerical errors in calculation of local mean
-  # Fix to avoid downstream numerical problems.
-  sumfsqr_local_mean = sumfsqr_local_mean.customized_copy(
-    data=get_flex_max(sumfsqr_local_mean.data(),2*f1f2cos_local_mean.data()))
+  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr, r_star)
+  sumfsqr_local_mean = f1f2cos_local_mean.customized_copy(data = 2*f1f2cos_local_mean.data() + deltafsqr_local_mean.data())
 
   # Trim starting data back to desired resolution limit, setup binning
   mc1 = mc1.select(mc1.d_spacings().data() >= d_min)
@@ -1609,38 +1604,23 @@ def assess_cryoem_errors(
     sel = sumfsqr.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
     mc2sel = mc2.select(sel)
+    if mc1sel.size() == 0:
+      continue
     mapCC = mc1sel.map_correlation(other=mc2sel)
     assert (mapCC < 1.) # Ensure these are really independent half-maps
     mapCC_bins.append(mapCC) # Store for before/after comparison
-    # Adjust very low sumfsqr_local_mean values, then divide sum by 2 to get mean)
     sumfsqsel = sumfsqr.select(sel)
-    mean_sumfsqr_bin = flex.mean_default(sumfsqsel.data(),0.)
-    sfsqlm_sel = sumfsqr_local_mean.select(sel)
-    min_sfsqlm_bin = mean_sumfsqr_bin / 10000
-    sfsqlm_sel = sfsqlm_sel.customized_copy(data =
-      (sfsqlm_sel.data()+min_sfsqlm_bin + flex.abs(sfsqlm_sel.data()-min_sfsqlm_bin))/2.)
-    sumfsqr_local_mean.data().set_selected(sel, sfsqlm_sel.data())
-
-    # # for debugging of local mean algorithm
-    # f1f2cos_sel = f1f2cos.select(sel)
-    # mean_f1f2cos_bin = flex.mean_default(f1f2cos_sel.data(),0.)
-    # f1f2cos_lm_sel = f1f2cos_local_mean.select(sel)
-    # mean_f1f2coslm_bin = flex.mean_default(f1f2cos_lm_sel.data(),0.)
-    # mean_sfsqlm_bin = flex.mean_default(sfsqlm_sel.data(),0.)
-    # print("Bin, mean(sumfsq), mean(local_mean), mean(f1f2cos), mean(local_mean): ",
-    #     i_bin, mean_sumfsqr_bin, mean_sfsqlm_bin, mean_f1f2cos_bin, mean_f1f2coslm_bin)
-
-    ssqr = sumfsqsel.d_star_sq().data()
+    meanfsq = flex.mean_default(sumfsqsel.data(),0.) / 2
+    ssqr = mc1sel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
     ssqr_bins.append(x)  # Save for later
-    meanfsq = mean_sumfsqr_bin / 2
     target_power = default_target_spectrum(x) # Could have a different target
     target_spectrum.append(target_power)
     if mapCC < 0.143: # Only fit initial signal estimate where clear overall
       continue
     signal = meanfsq * mapCC / target_power
     y = math.log(signal)
-    w = sumfsqsel.size()
+    w = mc1sel.size()
     sumw += w
     sumwx += w * x
     sumwy += w * y
@@ -1681,8 +1661,8 @@ def assess_cryoem_errors(
   # create instances of refine and minimizer
   refine_cryoem_signal = RefineCryoemSignal(
     sumfsqr_lm = sumfsqr_local_mean, f1f2cos_lm = f1f2cos_local_mean,
-    r_star = r_star, ssqr_bins = ssqr_bins, target_spectrum = target_spectrum,
-    start_x = start_params)
+    deltafsqr_lm = deltafsqr_local_mean, r_star = r_star, ssqr_bins = ssqr_bins,
+    target_spectrum = target_spectrum, start_x = start_params)
   minimizer = Minimizer(output_level=output_level)
 
   # Run minimizer
@@ -1748,19 +1728,19 @@ def assess_cryoem_errors(
     u_terms = (asqr_scale * sigmaT_bins[i_bin_used]
       * target_spectrum[i_bin_used]) * beta_miller_Asqr.data()
 
-    # Noise is total power minus signal, but make sure it is positive
+    # Noise is half of deltafsqr power
+    sigmaE_terms = (deltafsqr_local_mean.data().select(sel)) / 2.
     f1f2cos = f1f2cos_local_mean.data().select(sel)
     sumfsqr = sumfsqr_local_mean.data().select(sel)
-    sigmaE_terms = sumfsqr/2 - f1f2cos
-    mean_sumfsqr_bin = flex.mean_default(sumfsqr,0.)
-    min_sigE = mean_sumfsqr_bin/100000
-    sigmaE_terms = (sigmaE_terms+min_sigE + flex.abs(sigmaE_terms - min_sigE))/2
 
     # Compute the relative weight between the local statistics and the overall
     # anisotropic signal model, as in refinement code.
     steep = 9.
     local_weight = 0.95
-    fsc = f1f2cos/(f1f2cos + sigmaE_terms)
+    fsc = f1f2cos/(sumfsqr/2.)
+    # Make sure fsc is in range 0 to 1
+    fsc = (fsc + flex.abs(fsc)) / 2
+    fsc = (fsc + 1 - flex.abs(fsc - 1)) / 2
     wt_terms = flex.exp(steep*fsc)
     wt_terms = 1. - local_weight * (wt_terms/(math.exp(steep/2) + wt_terms))
     sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
@@ -1797,7 +1777,7 @@ def assess_cryoem_errors(
   sel = dobs.data() < 0.00001
   expectE.data().set_selected(sel,1.)
 
-  if make_intermediate_files:
+  if make_intermediate_files: # For debugging and investigating signal/noise
     # Write out sigmaS, sigmaE and Dobs both as mtz files and intensities-as-maps
 
     write_mtz(sigmaS,"sigmaS.mtz","sigmaS")
