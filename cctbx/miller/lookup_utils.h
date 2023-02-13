@@ -41,6 +41,20 @@ namespace lookup_utils{
     /*! Default constructor */
     lookup_tensor() {}
 
+    /* Create empty lookup, use add to pupulate - use for uniqueness checks */
+    lookup_tensor(
+      cctbx::sgtbx::space_group const& space_group,
+      bool const& anomalous_flag)
+      :
+      n_duplicates_(0),
+      n_indices_(0),
+      space_group_(space_group),
+      sgtype_(space_group_),
+      asu_choice_(sgtype_),
+      hkl_lookup_(),
+      anomalous_flag_(anomalous_flag)
+    {}
+
     /*! Constructor with a given list of of HKL's */
     lookup_tensor(
       scitbx::af::const_ref< cctbx::miller::index<> > const& hkl,
@@ -55,6 +69,7 @@ namespace lookup_utils{
       hkl_lookup_(),
       anomalous_flag_(anomalous_flag)
     {
+      // could use add, init n_indices_ with 0 then
       for (int ii=0;ii<hkl.size();ii++){
         cctbx::miller::asym_index asumap(space_group_,
                                          asu_choice_,
@@ -72,6 +87,23 @@ namespace lookup_utils{
         //l = hkl_lookup_.find( asu_target_hkl.h() );
         //CCTBX_ASSERT( l  != hkl_lookup_.end() );
       }
+    }
+
+    // returns true if the index is added and false if it is a duplicate
+    bool
+      add_hkl(cctbx::miller::index<> const& h)
+    {
+      cctbx::miller::asym_index asumap(space_group_, asu_choice_, h);
+      cctbx::miller::index_table_layout_adaptor asu_target_hkl = 
+        asumap.one_column(anomalous_flag_);
+      lookup_map_type::const_iterator l = hkl_lookup_.find(asu_target_hkl.h());
+      n_indices_++;
+      if (l == hkl_lookup_.end()) { // not in list
+        hkl_lookup_[asu_target_hkl.h()] = n_indices_-1;
+        return true;
+      }
+      n_duplicates_++;
+      return false;
     }
 
     long
@@ -417,13 +449,6 @@ namespace lookup_utils{
     FloatType average_number_of_neighbours_;
 
   };
-
-
-
-
-
-
-
 
 }}} // namespace cctbx::miller::lookup_utils
 #endif // CCTBX_MILLER_LOOKUP_UTILS_H

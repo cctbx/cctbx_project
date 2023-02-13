@@ -6,6 +6,7 @@
 #include <smtbx/refinement/least_squares_fc.h>
 #include <smtbx/ED/ed_data.h>
 #include <smtbx/refinement/constraints/reparametrisation.h>
+#include <scitbx/array_family/selections.h>
 
 namespace smtbx {  namespace refinement {
 namespace least_squares {
@@ -58,7 +59,7 @@ namespace least_squares {
         FrameInfo<FloatType>& frame = frames[i];
         frames_map.insert(std::make_pair(frame.id, &frame));
         frame.offset = offset;
-        offset += frame.beams.size();
+        offset += frame.strong_measured_beams.size();
         for (size_t hi = 0; hi < frame.indices.size(); hi++) {
           all_indices.push_back(frame.indices[hi]);
           for (size_t hj = hi+1; hj < frame.indices.size(); hj++) {
@@ -66,7 +67,8 @@ namespace least_squares {
           }
         }
         lookup_ptr_t mi_l(new lookup_t(
-          frame.indices.const_ref(),
+          af::select(frame.indices.const_ref(),
+            frame.strong_measured_beams.const_ref()).const_ref(),
           P1,
           false));
         frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
@@ -115,62 +117,113 @@ namespace least_squares {
         CIs(CIs)
       {}
 
-      void operator()() const {
-        const cart_t K = cart_t(0, 0, -parent.Kl);
-        if (parent.mat_type == 3) { // 2-beam
-          for (size_t i = 0; i < frame.beams.size(); i++) {
-            int ii = parent.mi_lookup.find_hkl(frame.beams[i].index);
-            complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
-            complex_t ci = utils<FloatType>::calc_amp_2beam(
-              frame.beams[i].index, parent.Fc2Ug * Fc,
-              thickness,
-              K, frame.RMf, frame.normal);
-            Is[frame.offset + i] = std::norm(ci);
+      void operator()() {
+        try {
+          const cart_t K = cart_t(0, 0, -parent.Kl);
+          if (parent.mat_type == 3) { // 2-beam
+            for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+              miller::index<> h = frame.indices[frame.strong_measured_beams[i]];
+              int ii = parent.mi_lookup.find_hkl(h);
+              complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+              complex_t ci = utils<FloatType>::calc_amp_2beam(
+                h, parent.Fc2Ug * Fc,
+                thickness,
+                K, frame.RMf, frame.normal);
+              Is[frame.offset + i] = std::norm(ci);
+              if (CIs.size() != 0) {
+                CIs[frame.offset + i] = ci;
+              }
+            }
+            return;
+          }
+          // modified Ug
+          if (parent.mat_type == 4) {
+            af::versa<complex_t, af::mat_grid> A;
+            af::shared<miller::index<> >
+              s = af::select(frame.indices.const_ref(), frame.strong_beams.const_ref());
+
+            utils<FloatType>::build_Ug_matrix(
+              A, Fcs_k,
+              parent.mi_lookup,
+              s,
+              parent.Fc2Ug
+            );
+
+            utils<FloatType>::modify_Ug_matrix(
+              A, s, Fcs_k,
+              parent.mi_lookup,
+              af::select(frame.indices.const_ref(), frame.weak_beams.const_ref()),
+              af::select(frame.excitation_errors.const_ref(), frame.weak_beams.const_ref()),
+              parent.Fc2Ug);
+
+            af::shared<FloatType> ExpDen;
+            utils<FloatType>::build_eigen_matrix_modified(
+              A, K, frame.normal,
+              af::select(frame.gs.const_ref(), frame.strong_beams.const_ref()),
+              af::select(frame.excitation_errors.const_ref(), frame.strong_beams.const_ref()),
+              ExpDen);
+
+            af::shared<complex_t> amps =
+              utils<FloatType>::calc_amps_modified(A, ExpDen, thickness,
+                frame.strong_measured_beams.size());
+
+            for (size_t i = 0; i < amps.size(); i++) {
+              Is[frame.offset + i] = std::norm(amps[i]);
+              if (CIs.size() != 0) {
+                CIs[frame.offset + i] = amps[i];
+              }
+            }
+            return;
+          }
+          af::versa<complex_t, af::mat_grid> A;
+          af::shared<miller::index<> >
+            strong_indices = af::select(frame.indices.const_ref(),
+              frame.strong_beams.const_ref());
+          utils<FloatType>::build_Ug_matrix(
+            A, Fcs_k,
+            parent.mi_lookup,
+            strong_indices,
+            parent.Fc2Ug
+          );
+          af::shared<complex_t> amps;
+          // 2013
+          if (parent.mat_type == 0) {
+            af::shared<FloatType> ExpDen;
+            utils<FloatType>::build_eigen_matrix_2013(A, strong_indices, K,
+              frame.RMf, frame.normal, ExpDen, parent.Fc2Ug
+            );
+            amps = utils<FloatType>::calc_amps_2013(A, ExpDen,
+              thickness, frame.strong_measured_beams.size());
+          }
+          else if (parent.mat_type == 1) { // 2015
+            af::shared<FloatType> M;
+            utils<FloatType>::build_eigen_matrix_2015(A, strong_indices, K,
+              frame.RMf, frame.normal, M, parent.Fc2Ug
+            );
+            const FloatType Kn = -frame.normal[2] * parent.Kl;
+            amps = utils<FloatType>::calc_amps_2015(A, M,
+              thickness, Kn, frame.strong_measured_beams.size());
+          }
+          else if (parent.mat_type == 2) { // ReciPro
+            af::shared<FloatType> Pgs;
+            utils<FloatType>::build_eigen_matrix_recipro(A, strong_indices, K,
+              frame.RMf, frame.normal, Pgs, parent.Fc2Ug
+            );
+            amps = utils<FloatType>::calc_amps_recipro(A, Pgs, parent.Kvac,
+              thickness, frame.strong_measured_beams.size());
+          }
+          for (size_t i = 0; i < amps.size(); i++) {
+            Is[frame.offset + i] = std::norm(amps[i]);
             if (CIs.size() != 0) {
-              CIs[frame.offset + i] = ci;
+              CIs[frame.offset + i] = amps[i];
             }
           }
-          return;
         }
-        af::versa<complex_t, af::mat_grid> A;
-        utils<FloatType>::build_Ug_matrix(
-          A, Fcs_k,
-          parent.mi_lookup,
-          frame.indices,
-          parent.Fc2Ug
-        );
-        af::shared<complex_t> amps;
-        // 2013
-        if (parent.mat_type == 0) {
-          af::shared<FloatType> ExpDen;
-          utils<FloatType>::build_eigen_matrix_2013(A, frame.indices, K,
-            frame.RMf, frame.normal, ExpDen, parent.Fc2Ug
-          );
-          amps = utils<FloatType>::calc_amps_2013(A, ExpDen,
-            thickness, frame.beams.size());
+        catch (smtbx::error const& e) {
+          exception_.reset(new smtbx::error(e));
         }
-        else if (parent.mat_type == 1) { // 2015
-          af::shared<FloatType> M;
-          utils<FloatType>::build_eigen_matrix_2015(A, frame.indices, K,
-            frame.RMf, frame.normal, M, parent.Fc2Ug
-          );
-          const FloatType Kn = -frame.normal[2] * parent.Kl;
-          amps = utils<FloatType>::calc_amps_2015(A, M,
-            thickness, Kn, frame.beams.size());
-        }
-        else if (parent.mat_type == 2) { // ReciPro
-          af::shared<FloatType> Pgs;
-          utils<FloatType>::build_eigen_matrix_recipro(A, frame.indices, K,
-            frame.RMf, frame.normal, Pgs, parent.Fc2Ug
-          );
-          amps = utils<FloatType>::calc_amps_recipro(A, Pgs, parent.Kvac,
-            thickness, frame.beams.size());
-        }
-        for (size_t i = 0; i < frame.beams.size(); i++) {
-          Is[frame.offset + i] = std::norm(amps[i]);
-          if (CIs.size() != 0) {
-            CIs[frame.offset + i] = amps[i];
-          }
+        catch (std::exception const& e) {
+          exception_.reset(new smtbx::error(e.what()));
         }
       }
       ed_n_shared_data const& parent;
@@ -179,6 +232,7 @@ namespace least_squares {
       const af::shared<complex_t>& Fcs_k;
       af::shared<FloatType>& Is;
       af::shared<complex_t>& CIs;
+      boost::scoped_ptr<smtbx::error> exception_;
     };
 
     void process_frames_mt(af::shared<FloatType> &Is_,
@@ -211,6 +265,11 @@ namespace least_squares {
           to++;
         }
         pool.join_all();
+        for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
+          if (accumulators[thread_idx]->exception_) {
+            throw* accumulators[thread_idx]->exception_.get();
+          }
+        }
       }
     }
 
@@ -228,7 +287,7 @@ namespace least_squares {
           size_t offset = 0;
           for (size_t i = 0; i < frames.size(); i++) {
             const af::shared<miller::index<> >& fidx = frames[i].indices;
-            size_t measured = frames[i].beams.size();
+            size_t measured = frames[i].strong_measured_beams.size();
             for (size_t i = 0; i < measured; i++) {
               long idx = mi_lookup.find_hkl(fidx[i]);
               Fcs[offset + i] = Fcs_k[idx];
