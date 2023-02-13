@@ -854,14 +854,6 @@ class HKLViewFrame() :
     self.guarded_process_PHIL_parameters()
 
 
-  def checkLabelNotInUse(self, label, is_preset_philstr=False):
-    for arr in self.procarrays:
-      if label in arr.info().label_string():
-        if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
-          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
-        raise Sorry("Provide a label for the new miller array that isn't already used.")
-
-
   def make_new_miller_array(self, is_preset_philstr=False):
     miller_array_operations_lst = eval(self.params.miller_array_operation)
     (operation, label, [labl1, type1], [labl2, type2]) = miller_array_operations_lst
@@ -870,7 +862,12 @@ class HKLViewFrame() :
     arrid2 = -1
     if labl2 != "":
       arrid2 = self.viewer.get_scene_id_from_label_or_type(labl2, type2)
-    self.checkLabelNotInUse(label, is_preset_philstr)
+    for arr in self.procarrays:
+      if label in arr.info().label_string():
+        if is_preset_philstr: # miller_array created by a preset  button. Just return the scene_id
+          return self.viewer.get_scene_id_from_label_or_type( arr.info().label_string() )
+        raise Sorry("Provide a label for the new miller array that isn't already used.")
+
     from copy import deepcopy
     millarr1 = deepcopy(self.procarrays[arrid1])
     newarray = None
@@ -900,7 +897,9 @@ class HKLViewFrame() :
 
 
   def addCurrentVisibleMillerArray(self, label):
-    self.checkLabelNotInUse(label)
+    for arr in self.procarrays:
+      if label in arr.info().label_string():
+        raise Sorry("Provide a label for the new miller array that isn't already used.")
     newarray = self.viewer.get_visible_current_miller_array()
     from copy import deepcopy
     self.AddDataset2ExistingOnes(newarray, label, deepcopy(self.viewer.miller_array.info()))
