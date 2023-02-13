@@ -56,6 +56,45 @@ namespace smtbx { namespace ED {
         }
       }
     }
+
+    // considers the original matrix Hermitian
+    static void modify_Ug_matrix(
+      af::versa<complex_t, af::mat_grid>& A,
+      af::shared<miller::index<> > const& s_indices, // matrix beams
+      af::shared<complex_t> const& Fcs_k,
+      lookup_t const& mi_lookup,
+      af::shared<miller::index<> > const& w_indices, // weak beams for pertubation
+      af::shared<FloatType> const& Exitations, // 2KSg for w_indices
+      FloatType Fc2Ug)
+    {
+      const size_t n_beams = A.accessor().n_columns();
+      FloatType k = Fc2Ug * Fc2Ug;
+      for (size_t i = 1; i < n_beams; i++) {
+        miller::index<> h_i = s_indices[i - 1];
+        complex_t d_mod = 0, u_mod = 0;
+        for (size_t j = 0; j < w_indices.size(); j++) {
+          miller::index<> h_j = w_indices[j - 1];
+          int i_j = mi_lookup.find_hkl(h_j);
+          complex_t Fc_j = i_j != -1 ? Fcs_k[i_j] : 0;
+          int i_m_j = mi_lookup.find_hkl(h_i - h_j);
+          complex_t Fc_i_m_j = 0;
+          if (i_m_j < 0) {
+            int j_m_i = mi_lookup.find_hkl(h_j - h_i);
+            if (j_m_i >= 0) {
+              Fc_i_m_j = std::conj(Fcs_k[j_m_i]);
+            }
+          }
+          else {
+            Fc_i_m_j = Fcs_k[i_m_j];
+          }
+          u_mod += Fc_i_m_j * Fc_j / Exitations[j];
+          d_mod += Fc_i_m_j * std::conj(Fc_i_m_j) / Exitations[j];
+        }
+        A(i, i) -= k * d_mod;
+        A(i, 0) -= k * u_mod;
+      }
+    }
+
     /* Acta Cryst. (2013). A69, 171–188 */
     static void build_eigen_matrix_2013(
       af::versa<complex_t, af::mat_grid>& A, // Ug matrix
@@ -144,6 +183,24 @@ namespace smtbx { namespace ED {
           }
           A(i, j) /= Pg;
         }
+      }
+    }
+
+    static void build_eigen_matrix_modified(
+      af::versa<complex_t, af::mat_grid>& A, // Ug matrix modified
+      cart_t const& K,
+      cart_t const& N,
+      af::shared<cart_t> const& gs,
+      af::shared<FloatType> const& excitation_errors,
+      af::shared<FloatType>& ExpDen)
+    {
+      const FloatType Kn = N * K, Kl = K.length();
+      const size_t n_beams = A.accessor().n_columns();
+      ExpDen.resize(n_beams);
+      ExpDen[0] = Kn; //for g0
+      for (size_t i = 1; i < n_beams; i++) {
+        A(i, i) += excitation_errors[i - 1];
+        ExpDen[i] = (K + gs[i - 1]) * N;
       }
     }
 
@@ -258,6 +315,50 @@ namespace smtbx { namespace ED {
       return rv;
     }
 
+    static af::shared<complex_t> calc_amps_modified(
+      af::versa<complex_t, af::mat_grid>& A,
+      const af::shared<FloatType>& ExpDen,
+      FloatType thickness,
+      size_t num)
+    {
+      using namespace fast_linalg;
+      const size_t n_beams = A.accessor().n_columns();
+
+      // eigenvalues, this is for generic matrix
+      af::shared<complex_t> ev(n_beams);
+      // right eigenvectors
+      af::versa<complex_t, af::c_grid<2> > B(af::c_grid<2>(n_beams, n_beams));
+      lapack_int info = geev(LAPACK_ROW_MAJOR, 'N', 'V', n_beams,
+        A.begin(), n_beams, ev.begin(), 0, n_beams, B.begin(), n_beams);
+      SMTBX_ASSERT(!info)(info);
+      af::versa<complex_t, af::mat_grid> Bi = B.deep_copy();
+      // invert Bi now
+      {
+        af::shared<lapack_int> pivots(n_beams);
+        info = getrf(LAPACK_ROW_MAJOR, n_beams, n_beams, Bi.begin(),
+          n_beams, pivots.begin());
+        SMTBX_ASSERT(!info)(info);
+        info = getri(LAPACK_ROW_MAJOR, n_beams, Bi.begin(),
+          n_beams, pivots.begin());
+        SMTBX_ASSERT(!info)(info);
+      }
+
+      const complex_t exp_k(0, scitbx::constants::pi * thickness);
+      af::shared<complex_t> im(n_beams);
+      for (size_t i = 0; i < n_beams; i++) {
+        im[i] = std::exp(ev[i] * exp_k / ExpDen[i]) * Bi(i, 0);
+      }
+      af::shared<complex_t> res = af::matrix_multiply(B.const_ref(), im.const_ref());
+      af::shared<complex_t> rv;
+      for (size_t i = 1; i < n_beams; i++) {
+        rv.push_back(res[i]);
+        if (rv.size() >= num) {
+          break;
+        }
+      }
+      return rv;
+    }
+
     // Assumes A(0,0)=0, replaces A with column egein vecs
     //https://quantumcomputing.stackexchange.com/questions/22222/how-to-find-the-eigenstates-of-a-general-2-times-2-hermitian-matrix
     static void two_beam_eigen(af::versa<complex_t, af::mat_grid> &A,
@@ -287,15 +388,16 @@ namespace smtbx { namespace ED {
       FloatType s_2k = Kl * Kl - K_g.length_sq();
 
       af::versa<complex_t, af::mat_grid> A(af::mat_grid(2,2));
+      A(0, 0) = 0;
       A(1, 0) = Ug;
       A(0, 1) = std::conj(Ug);
       A(1, 1) = s_2k;
       af::shared<FloatType> ev(2);
-      two_beam_eigen(A, ev);
+      //two_beam_eigen(A, ev);
       // heev replaces A with column-wise eigenvectors
-//      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, 2,
-//        A.begin(), 2, ev.begin());
-//      SMTBX_ASSERT(!info)(info);
+      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, 2,
+        A.begin(), 2, ev.begin());
+      SMTBX_ASSERT(!info)(info);
       const complex_t exp_k(0, scitbx::constants::pi * thickness);
       af::shared<complex_t> im(2);
       FloatType ExpDen = K_g * N;
@@ -343,11 +445,11 @@ namespace smtbx { namespace ED {
     * The indices are will fulfil the MaxSg and MaxG parameters and sorted by
     * FoM from ReciPro
     */
-    static af::shared<ExcitedBeam> generate_index_set(
+    static std::vector<ExcitedBeam> generate_index_set(
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
       FloatType Kl,
       FloatType min_d,
-      FloatType MaxSg, FloatType MaxG, FloatType PAngle,
+      FloatType MaxG,
       uctbx::unit_cell const& unit_cell)
     {
       using namespace cctbx::miller;
@@ -357,22 +459,19 @@ namespace smtbx { namespace ED {
         min_d, true);
 
       miller::index<> h;
-      af::shared<ExcitedBeam> all;
-      const FloatType max_f_sq = MaxG * MaxG,
-        p_ang_sq = PAngle*PAngle;
+      std::vector<ExcitedBeam> all;
+      
+      const FloatType max_f_sq = MaxG * MaxG;
       while (!(h = h_generator.next()).is_zero()) {
         cart_t g = RMf * cart_t(h[0], h[1], h[2]);
         FloatType g_sq = g.length_sq();
-        if (g_sq > max_f_sq || g_sq * p_ang_sq > 1.0) {
+        if (g_sq > max_f_sq) {
           continue;
         }
         cart_t Kg(g[0], g[1], g[2] - Kl);
         FloatType Kg_sq = Kg.length_sq();
         FloatType s = Kl * Kl - Kg_sq;
         FloatType Sg = std::abs(s / (2 * Kl));
-        if (Sg > MaxSg) {
-          continue;
-        }
         FloatType w = s * s * Kg_sq;
         all.push_back(ExcitedBeam(h, g, w, Sg));
       }

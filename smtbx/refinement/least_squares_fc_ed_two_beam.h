@@ -29,6 +29,7 @@ namespace least_squares {
       af::shared<FloatType> const& params)
       : data(data),
       space_group(space_group),
+      frames(frames),
       Kl(params[0]),
       Fc2Ug(params[1]),
       thickness(thickness),
@@ -53,6 +54,7 @@ namespace least_squares {
       space_group(other.space_group),
       Kl(other.Kl),
       Fc2Ug(other.Fc2Ug),
+      frames(other.frames),
       frames_map(other.frames_map),
       thickness(other.thickness),
       mi_lookup(other.mi_lookup),
@@ -206,6 +208,7 @@ namespace least_squares {
   private:
     data_t const& data;
     sgtbx::space_group const& space_group;
+    af::shared<FrameInfo<FloatType> > frames;
     FloatType Kl, Fc2Ug;
     cctbx::xray::thickness<FloatType> const& thickness;
     af::shared<std::complex<FloatType> > f_calc;
