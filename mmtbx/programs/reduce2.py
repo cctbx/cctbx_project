@@ -650,7 +650,23 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
   ret = '@group {'+name+'} animate\n'
   ret += '@subgroup {sidechain} nobutton dominant\n'
 
-  # @todo Add the sky and red balls to indicate atoms in the Amides or Histidines
+  # Add balls on the nitrogens and oxygens in the Movers in the states so that
+  # we can tell their orientations.  Nitrogens are sky colored and Oxygens are
+  # red.
+  ret += '@balllist {sc N} color= sky radius= 0.1000  nobutton master= {sidechain}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, states):
+        for a in rg.atoms():
+          if a.element == 'N' and inSideChain[a]:
+            ret += _AddPosition(a, 'P', fileBaseName) + '\n'
+  ret += '@balllist {sc N} color= red radius= 0.1000  nobutton master= {sidechain}\n'
+  for c in model.chains():
+    for rg in c.residue_groups():
+      if _IsMover(rg, states):
+        for a in rg.atoms():
+          if a.element == 'O' and inSideChain[a]:
+            ret += _AddPosition(a, 'P', fileBaseName) + '\n'
 
   # Add the sidechain non-hydrogen atoms for the Movers that are in the states list.
   # @todo Apply the same changes needed to handle alternates or whatever like on 3cp5
