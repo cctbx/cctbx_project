@@ -45,14 +45,21 @@ namespace boost_python {
         .add_property("omega", &wt::omega)
         .add_property("angle", &wt::angle)
         .add_property("scale", &wt::scale)
-        .add_property("indices", make_getter(&wt::indices, rbv), &wt::indices)
-        .add_property("beams", make_getter(&wt::beams, rbv), &wt::beams)
+        .add_property("indices", make_getter(&wt::indices, rbv))
+        .add_property("beams", make_getter(&wt::beams, rbv))
+        .add_property("strong_beams", make_getter(&wt::strong_beams, rbv))
+        .add_property("strong_measured_beams", make_getter(&wt::strong_measured_beams, rbv))
+        .add_property("weak_beams", make_getter(&wt::weak_beams, rbv))
+        .add_property("weak_measured_beams", make_getter(&wt::weak_measured_beams, rbv))
         .def("is_excited_index", &wt::is_excited_index)
         .def("is_excited_beam", &wt::is_excited_beam)
         .def("is_fully_covered", &wt::is_excited_beam)
         .def("add_beam", &wt::add_beam)
+        .def("set_beams", &wt::set_beams)
         .def("top_up", &wt::top_up)
+        .def("unify", &wt::unify)
         .def("add_indices", &wt::add_indices)
+        .def("analyse_strength", &wt::analyse_strength)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
@@ -89,7 +96,7 @@ namespace boost_python {
         .add_property("g", &wt::g)
         ;
       typedef return_internal_reference<> rir_t;
-      scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_info");
+      scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_excited_beams");
     }
 
     static void wrap_utils() {
