@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>1047</width>
-    <height>701</height>
+    <height>746</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -157,8 +157,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>344</width>
-                  <height>509</height>
+                  <width>368</width>
+                  <height>554</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -262,7 +262,7 @@
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                   <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
+                  <verstretch>2</verstretch>
                  </sizepolicy>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_5">
@@ -360,6 +360,9 @@
                 <property name="horizontalScrollBarPolicy">
                  <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
+                <property name="sizeAdjustPolicy">
+                 <enum>QAbstractScrollArea::AdjustToContents</enum>
+                </property>
                 <property name="readOnly">
                  <bool>true</bool>
                 </property>
@@ -374,7 +377,7 @@
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
+                  <verstretch>2</verstretch>
                  </sizepolicy>
                 </property>
                 <property name="widgetResizable">
@@ -385,7 +388,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>349</width>
+                   <width>373</width>
                    <height>395</height>
                   </rect>
                  </property>
@@ -1192,6 +1195,28 @@
                          <property name="bottomMargin">
                           <number>3</number>
                          </property>
+                         <item row="1" column="1">
+                          <widget class="QPushButton" name="addDatasetBtn">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>200</width>
+                             <height>0</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Provide a unique label to create a new dataset with the reflections that have opacity = 1.0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="text">
+                            <string>Add visible reflections as new dataset...</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="1" column="0">
                           <widget class="QCheckBox" name="OpaqueAllCheckbox">
                            <property name="sizePolicy">
@@ -1217,7 +1242,13 @@
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change a bin threshold by entering a preferred value in the in the &amp;quot;lower bin value&amp;quot; column for a particular bin.&lt;br/&gt;Change visibility of bins either by ticking or unticking the check boxes or by entering opacity values between 0 and 1. Reflections with values less than 0.3 will not respond to mouse clicks.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="sizeAdjustPolicy">
-                            <enum>QAbstractScrollArea::AdjustToContents</enum>
+                            <enum>QAbstractScrollArea::AdjustIgnored</enum>
+                           </property>
+                           <property name="verticalScrollMode">
+                            <enum>QAbstractItemView::ScrollPerPixel</enum>
+                           </property>
+                           <property name="horizontalScrollMode">
+                            <enum>QAbstractItemView::ScrollPerPixel</enum>
                            </property>
                            <property name="rowCount">
                             <number>5</number>
@@ -1225,6 +1256,24 @@
                            <property name="columnCount">
                             <number>4</number>
                            </property>
+                           <attribute name="horizontalHeaderCascadingSectionResizes">
+                            <bool>false</bool>
+                           </attribute>
+                           <attribute name="horizontalHeaderDefaultSectionSize">
+                            <number>80</number>
+                           </attribute>
+                           <attribute name="horizontalHeaderStretchLastSection">
+                            <bool>false</bool>
+                           </attribute>
+                           <attribute name="verticalHeaderMinimumSectionSize">
+                            <number>10</number>
+                           </attribute>
+                           <attribute name="verticalHeaderDefaultSectionSize">
+                            <number>24</number>
+                           </attribute>
+                           <attribute name="verticalHeaderHighlightSections">
+                            <bool>true</bool>
+                           </attribute>
                            <row/>
                            <row/>
                            <row/>
@@ -1234,28 +1283,6 @@
                            <column/>
                            <column/>
                            <column/>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QPushButton" name="addDatasetBtn">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="minimumSize">
-                            <size>
-                             <width>0</width>
-                             <height>0</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Provide a unique label to create a new dataset with the reflections that have opacity = 1.0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                           </property>
-                           <property name="text">
-                            <string>Add visible reflections as new dataset...</string>
-                           </property>
                           </widget>
                          </item>
                         </layout>
@@ -1401,7 +1428,7 @@
                       <item row="0" column="0">
                        <widget class="QGroupBox" name="RotationVectorsBox">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
@@ -1450,9 +1477,9 @@
                          <item row="0" column="1" rowspan="2">
                           <widget class="QFrame" name="RotateAroundframe">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                              <horstretch>1</horstretch>
-                             <verstretch>0</verstretch>
+                             <verstretch>1</verstretch>
                             </sizepolicy>
                            </property>
                            <property name="frameShape">
@@ -1649,16 +1676,22 @@
                          <item row="1" column="0">
                           <widget class="QTableWidget" name="vectortable2">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                              <horstretch>3</horstretch>
-                             <verstretch>3</verstretch>
+                             <verstretch>1</verstretch>
                             </sizepolicy>
                            </property>
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick checkboxes to draw the rotation axes defined by the space group.&lt;br/&gt;Enter additional vectors from origin defined either as axes of rotation operators, plain reciprocal coordinates (as hkl) or plain real space fractional coordinates (as abc).&lt;br/&gt;To enter a new vector, first override the &amp;quot;new vector&amp;quot; name with a preferred name. Then enter the definition of the vector in either the &amp;quot;rotation&amp;quot;, the &amp;quot;as hkl&amp;quot; or the &amp;quot;as abc&amp;quot; column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
+                           <property name="verticalScrollBarPolicy">
+                            <enum>Qt::ScrollBarAsNeeded</enum>
+                           </property>
                            <property name="sizeAdjustPolicy">
-                            <enum>QAbstractScrollArea::AdjustToContents</enum>
+                            <enum>QAbstractScrollArea::AdjustIgnored</enum>
+                           </property>
+                           <property name="dragEnabled">
+                            <bool>false</bool>
                            </property>
                            <property name="verticalScrollMode">
                             <enum>QAbstractItemView::ScrollPerPixel</enum>
@@ -1667,16 +1700,16 @@
                             <enum>QAbstractItemView::ScrollPerPixel</enum>
                            </property>
                            <property name="wordWrap">
-                            <bool>false</bool>
+                            <bool>true</bool>
                            </property>
                            <property name="rowCount">
-                            <number>4</number>
+                            <number>5</number>
                            </property>
                            <property name="columnCount">
                             <number>4</number>
                            </property>
                            <attribute name="horizontalHeaderCascadingSectionResizes">
-                            <bool>true</bool>
+                            <bool>false</bool>
                            </attribute>
                            <attribute name="horizontalHeaderDefaultSectionSize">
                             <number>50</number>
@@ -1690,6 +1723,7 @@
                            <attribute name="verticalHeaderDefaultSectionSize">
                             <number>24</number>
                            </attribute>
+                           <row/>
                            <row/>
                            <row/>
                            <row/>
