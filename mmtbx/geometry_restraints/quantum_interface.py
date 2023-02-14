@@ -102,6 +102,10 @@ qm_restraints
     .type = bool
   exclude_protein_main_chain_from_optimisation = False
     .type = bool
+  exclude_protein_main_chain_to_delta_from_optimisation = False
+    .type = bool
+  exclude_torsions_from_optimisation = False
+    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
   do_not_update_restraints = False
@@ -154,6 +158,7 @@ def get_safe_filename(s):
   s=s.replace('*','_star_')
   s=s.replace('(','_lb_')
   s=s.replace(')','_rb_')
+  s=s.replace('=', '_equals_')
   return s
 
 def get_preamble(macro_cycle, i, qmr, old_style=False):
@@ -168,8 +173,12 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
     s+='_N'
-  if qmr.exclude_protein_main_chain_from_optimisation:
+  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+    s+='_D'
+  elif qmr.exclude_protein_main_chain_from_optimisation:
     s+='_S'
+  if qmr.exclude_torsions_from_optimisation:
+    s+='_T'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)
   if qmr.package.basis_set is not Auto and qmr.package.basis_set:
@@ -333,6 +342,31 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
       for action in actions:
         tmp[j].append(action)
   return tmp
+
+def classify_histidine(hierarchy, resname='HIS'):
+  from mmtbx.validation.rotalyze import rotalyze
+  result = rotalyze(
+      pdb_hierarchy=hierarchy,
+      # data_version="8000",#was 'params.data_version', no options currently
+      # show_errors=self.params.show_errors,
+      # outliers_only=self.params.outliers_only,
+      # use_parent=self.params.use_parent,
+      # out=self.logger,
+      quiet=False)
+  names = []
+  for rot in result.results:
+    if rot.resname!=resname: continue
+    names.append(rot.rotamer_name)
+  hs=0
+  ha=None
+  for atom in hierarchy.atoms():
+    if atom.parent().resname!=resname: continue
+    if atom.name.strip() in ['HD1', 'HE2']:
+      hs+=1
+      ha=atom.name.strip()
+  assert len(names)==1
+  if hs==2: ha = 'HD1, HE2'
+  return names[0], ha
 
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)

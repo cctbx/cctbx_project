@@ -70,27 +70,45 @@ sort_by_res = \
       "direction": "asc"
     }
 
+def add_nodes_to_query_if_needed_in_place(query_json):
+  if "nodes" not in query_json["query"].keys():
+    query_json["query"]["type"] = "group"
+    query_json["query"]["logical_operator"] = "and"
+    del query_json["query"]["service"]
+    query_json["query"]["nodes"] = []
 
-def post_query(query_json, xray_only=True, d_max=None, d_min=None,
+def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, log=None,
     sort_by_resolution=False):
-  """
-  Generate the full XML for a multi-part query with generic search options,
-  starting from the basic query passed by another function, post it to the
-  RCSB's web service, and return a list of matching PDB IDs.
+  """  Make request to RCSB search API and return list of PDB ids, optionally with
+  chain IDs. If query_json is not supplied, generic one will be used which
+  searches for everything in PDB. It will be enhanced according to other parameters.
 
-  Parameters
-  ----------
-  query_xml : str or None
-  xray_only : bool, optional
-  d_max : float, optional
-  d_min : float, optional
-  protein_only : bool, optional
-  data_only : bool, optional
-  log : file, optional
-  sort_by_resolution : bool, optional
+
+  Args:
+      query_json (dict, optional): _description_. Defaults to None.
+      xray_only (bool, optional): Return only xray structures. Defaults to True.
+      d_max (_type_, optional): Max resolution. Defaults to None.
+      d_min (_type_, optional): Min resolution. Defaults to None.
+      protein_only (bool, optional): Return only protein entries. Defaults to False.
+      data_only (bool, optional): Return only entries with experimental data. Defaults to False.
+      log (_type_, optional): Handler for log. Defaults to None.
+      sort_by_resolution (bool, optional): Sort by entry resolution. Defaults to False.
+
+  Returns:
+      list: PDB ids
   """
-  assert query_json is not None
+  if query_json is None:
+    query_json = {
+        "query": {
+          "type": "terminal",
+          "service": "text"
+        },
+        "return_type": "entry",
+        "request_options": {
+          "return_all_hits": True,
+        }
+      }
   if d_max is not None and d_min is not None:
     assert d_max > d_min
 
@@ -99,19 +117,27 @@ def post_query(query_json, xray_only=True, d_max=None, d_min=None,
   print("Setting up RCSB server query:", file=log)
   if (xray_only):
     print("  limiting to X-ray structures", file=log)
+    add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(xray_only_filter)
     if (data_only):
+      add_nodes_to_query_if_needed_in_place(query_json)
       query_json["query"]["nodes"].append(data_only_filter)
   if d_max is not None:
+    add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(resolution_filter("less", d_max))
   if d_min is not None:
+    add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(resolution_filter("greater", d_min))
   if (protein_only):
+    add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(polymeric_type_filter("Protein (only)"))
   if (sort_by_resolution):
+    if "sort" not in query_json["request_options"].keys():
+      query_json["request_options"]["sort"] = []
     query_json["request_options"]["sort"].append(sort_by_res)
     print("  will sort by resolution", file=log)
   print("  executing HTTP request...", file=log)
+  # print(json.dumps(query_json, indent=4))
   r = requests.post(search_base_url, json=query_json)
   res_ids = []
   # print('r.status_code', r.status_code)

@@ -435,7 +435,7 @@ namespace xray {
         long where_line_number) const
       {
         char buf[512];
-        std::sprintf(buf,
+        std::snprintf(buf, sizeof(buf),
           "Negative u_iso: scatterer label=%s, u_iso=%.6g (%s, line %ld)",
           label.c_str(), u_iso, where_file_name, where_line_number);
         return std::string(buf);
@@ -449,34 +449,34 @@ namespace xray {
       {
         std::string result;
         char buf[512];
-        std::sprintf(buf, "%sscatterer label: %s\n",
+        std::snprintf(buf, sizeof(buf), "%sscatterer label: %s\n",
           prefix, label.c_str()); result += buf;
-        std::sprintf(buf, "%sscattering type: %s\n",
+        std::snprintf(buf, sizeof(buf), "%sscattering type: %s\n",
           prefix, scattering_type.c_str()); result += buf;
-        std::sprintf(buf, "%sfractional coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sizeof(buf), "%sfractional coordinates: %.6f %.6f %.6f\n",
           prefix, site[0], site[1], site[2]); result += buf;
         cctbx::cartesian<FloatType> cart = unit_cell.orthogonalize(site);
-        std::sprintf(buf, "%scartesian coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sizeof(buf), "%scartesian coordinates: %.6f %.6f %.6f\n",
           prefix, cart[0], cart[1], cart[2]); result += buf;
         if (flags.use_u_iso()) {
-          std::sprintf(buf, "%su_iso: %.6g\n",
+          std::snprintf(buf, sizeof(buf), "%su_iso: %.6g\n",
             prefix, u_iso); result += buf;
-          std::sprintf(buf, "%sb_iso: %.6g\n",
+          std::snprintf(buf, sizeof(buf), "%sb_iso: %.6g\n",
             prefix, adptbx::u_as_b(u_iso)); result += buf;
         }
         if (flags.use_u_aniso()) {
           scitbx::sym_mat3<FloatType> u = u_star;
-          std::sprintf(buf, "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sizeof(buf), "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
           u = adptbx::u_star_as_u_cart(unit_cell, u_star);
-          std::sprintf(buf, "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sizeof(buf), "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
         }
-        std::sprintf(buf, "%soccupancy: %.6g\n",
+        std::snprintf(buf, sizeof(buf), "%soccupancy: %.6g\n",
           prefix, occupancy); result += buf;
-        std::sprintf(buf, "%sf-prime: %.6g\n",
+        std::snprintf(buf, sizeof(buf), "%sf-prime: %.6g\n",
           prefix, fp); result += buf;
-        std::sprintf(buf, "%sf-double-prime: %.6g",
+        std::snprintf(buf, sizeof(buf), "%sf-double-prime: %.6g",
           prefix, fdp); result += buf;
         return result;
       }

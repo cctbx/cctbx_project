@@ -62,7 +62,7 @@ cctbx_buttonsdeflist = [
           }
 """),
 
-("FoversigF", "F/SigF ( from miller_array.data()/miller_array.sigmas() )",
+("FoversigF", "F/SigF",
  """
           miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
           viewer {
@@ -74,7 +74,7 @@ cctbx_buttonsdeflist = [
 
  """),
 
-("IoverSigI", "I/SigI >= 2 ( from miller_array.data()/miller_array.sigmas() )",
+("IoverSigI", "I/SigI >= 2",
  """
         miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
         binning {
@@ -101,9 +101,9 @@ cctbx_buttonsdeflist = [
         }
  """),
 
-("Evalues", "E-values ( miller_array.normalize() )",
+("Evalues", "E-values",
  """
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -112,9 +112,9 @@ cctbx_buttonsdeflist = [
           }
  """),
 
-("Merged", "Merged Intensities ( miller_array.merge_equivalents() )",
+("Merged", "Merged Intensities",
  """
-      miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())\\n', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
+      miller_array_operation = "('from crys3d.hklviewer import display2\\nnewarray = display2.MergeData( array1, show_anomalous_pairs=False)[0]\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type( observation_types.intensity())', 'Imerge', ['I,SIGI','Intensity'], ['', ''])"
       viewer {
         data_array {
           label = "Imerge,SigImerge"
@@ -124,9 +124,9 @@ cctbx_buttonsdeflist = [
 
  """),
 
-("Multiplicities", "Multiplicities ( miller_array.merge_equivalents() )",
+("Multiplicities", "Multiplicities",
  """
-      miller_array_operation = "('\\nfrom crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
+      miller_array_operation = "('from crys3d.hklviewer import display2\\nmultiplicities = display2.MergeData( array1, show_anomalous_pairs=False)[1]\\n# use double to avoid being interpreted as R-free\\nnewarray._data = multiplicities.data().as_double()\\nnewarray._indices = multiplicities.indices()\\nnewarray._sigmas = None\\nfrom cctbx.xray import observation_types\\nnewarray.set_observation_type(None)', 'multiplicity', ['I,SIGI','Intensity'], ['', ''])"
       viewer {
         data_array {
           label = "multiplicity"
@@ -143,7 +143,7 @@ cctbx_buttonsdeflist = [
 
 
 phenix_buttonsdeflist = [
-("INFO", "Reflections with information bits less than 0.35", """
+("INFO035", "INFO < 0.35 bits", """
         binning {
           scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
           binlabel = 'INFO'
@@ -164,6 +164,26 @@ phenix_buttonsdeflist = [
         }
  """),
 
+("InfoISigI05", "INFO > 0.2 bits and I/SigI < 0.5", """
+        miller_array_operation = "('ISigIarray = array2.deep_copy()\\nISigIarray._data = array2.data()/array2.sigmas()\\nnewarray = array1.select(ISigIarray.data()<0.5)', 'INFO_ISigI_0.5', ['INFO', None], ['IOBS,SIGIOBS', 'Intensity'])"
+        binning {
+          scene_bin_thresholds = -0.1 0.2 nan nan
+          binlabel = 'INFO_ISigI_0.5'
+          bin_opacity = 0 0
+          bin_opacity = 1 1
+          bin_opacity = 1 2
+          bin_opacity = 1 3
+          nbins = 4
+        }
+        viewer {
+          data_array {
+            label = "INFO_ISigI_0.5"
+            datatype = "Floating-point"
+          }
+        }
+ """),
+ # we omit datatype of INFO in miller_array_operation as to force validate_preset_buttons()
+ # only to match an array that is labelled INFO
   ("aniso4", "Rotate around one anisotropy principal axis:", """
         real_space_unit_cell_scale_fraction = 0.9
         binning {
@@ -268,7 +288,7 @@ phenix_buttonsdeflist = [
             normal_vector = "TNCS_xtriage"
             clip_width = 0.380397231
           }
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -291,7 +311,7 @@ phenix_buttonsdeflist = [
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()\\n', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
             viewer {
               data_array {
                 label = "E-values"

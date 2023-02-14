@@ -53,8 +53,8 @@ def all_expected_in_found(found = None, expected = None):
 def check_args(text, method,expected_args,group_text,
        allow_extra_in_found=None):
     found_args = getfullargspec(method).args
-    expected_args.sort()
-    found_args.sort()
+    expected_args = sorted(expected_args)
+    found_args = sorted(found_args)
     print ("\n%s :\nExpected :%s \nFound   : %s" %(
        text,str(expected_args),str(found_args)))
     if expected_args == found_args:
@@ -91,18 +91,21 @@ def test_01():
   method_args_dict = {
     'with_bounds': ['lower_bounds', 'upper_bounds',
     'model_can_be_outside_bounds',
-    'stay_inside_current_map', 'use_cubic_boxing'],
+    'stay_inside_current_map', 'use_cubic_boxing','require_match_unit_cell_crystal_symmetry'],
     'around_model':[ 'box_cushion','model_can_be_outside_bounds',
       'stay_inside_current_map', 'use_cubic_boxing',
       'require_match_unit_cell_crystal_symmetry'],
     'around_density':[ 'box_cushion','threshold', 'get_half_height_width',
        'stay_inside_current_map', 'use_cubic_boxing',
-       'model_can_be_outside_bounds'],
+       'model_can_be_outside_bounds',
+      'require_match_unit_cell_crystal_symmetry',],
     'around_mask':[ 'box_cushion','model_can_be_outside_bounds',
-      'stay_inside_current_map', 'use_cubic_boxing'],
+      'stay_inside_current_map', 'use_cubic_boxing',
+      'require_match_unit_cell_crystal_symmetry'],
     'around_unique':['box_cushion', 'target_ncs_au_model',
         'stay_inside_current_map', 'use_cubic_boxing',
         'use_symmetry_in_extract_unique', 'regions_to_keep',
+         'require_match_unit_cell_crystal_symmetry',
     'residues_per_region','keep_this_region_only',
         'solvent_content', 'resolution', 'sequence', 'molecular_mass',
          'symmetry', 'chain_type', 'keep_low_density', 'soft_mask',

@@ -407,7 +407,6 @@ class HKLview_3d:
                           "nth_power_scale_radii"
                      ):
                         self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
-                        self.params.miller_array_operation = ""
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,
@@ -1556,6 +1555,18 @@ class HKLview_3d:
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
          "current_labels": self.get_label_type_from_scene_id( self.params.viewer.scene_id)[0] } )
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
+
+
+  def get_visible_current_miller_array(self):
+    arrayidxs = []
+    if self.miller_array and self.params.binning.bin_opacity:
+      bin_opacitieslst = self.params.binning.bin_opacity
+      for alpha,bin in bin_opacitieslst:
+        if alpha==1.0:
+          arrayidxs.extend(self.spbufttips[int(bin)])
+    visarray = self.miller_array.select_indices(flex.miller_index(
+                          [ self.miller_array.indices()[i] for i in arrayidxs ] ))
+    return visarray.deep_copy()
 
 
   def release_all_semaphores(self):

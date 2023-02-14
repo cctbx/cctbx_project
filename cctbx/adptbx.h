@@ -423,7 +423,7 @@ namespace cctbx {
     if (arg > arg_limit) {
       if (!truncate_exp_arg) {
         char buf[256];
-        std::sprintf(buf,
+        std::snprintf(buf, sizeof(buf),
           "cctbx::adptbx::debye_waller_factor_exp:"
           " arg_limit exceeded (%s):"
           " arg = %.6g"

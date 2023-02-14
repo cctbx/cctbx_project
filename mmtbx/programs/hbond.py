@@ -15,7 +15,7 @@ Usage example:
   phenix.hbond model.pdb
   '''
 
-  datatypes = ['model', 'phil']
+  datatypes = ['model', 'phil', 'restraint']
 
   master_phil_str = mmtbx.nci.hbond.master_phil_str
 
@@ -43,8 +43,9 @@ Usage example:
     if self.params.hbond.output_restraint_file:
       self.results.as_restraints(file_name='%s.eff' % prefix)
     #
-    mmtbx.nci.hbond.stats(model = model, prefix="hbond_stats")
-    if self.params.hbond.output_skew_kurtosis_plot:
+    if self.params.hbond.output_stats_pdf:
+      mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix)
+    if self.params.hbond.output_skew_kurtosis_plot and self.results.get_counts():
       theta1_data = self.results.get_counts().theta_1
       Rha_data = self.results.get_counts().d_HA
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,

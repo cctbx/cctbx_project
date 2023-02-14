@@ -17,7 +17,7 @@ namespace scitbx {
     if (v.numerator() == 0) return std::string("0");
     char buf[128];
     if (decimal) {
-      std::sprintf(buf, "%.6g", double(v.numerator()) / v.denominator());
+      std::snprintf(buf, sizeof(buf), "%.6g", double(v.numerator()) / v.denominator());
       char* cp = buf;
       if (*cp == '-') cp++;
       if (*cp == '0') {
@@ -25,11 +25,11 @@ namespace scitbx {
       }
     }
     else if (v.denominator() == 1) {
-      std::sprintf(buf, "%ld", static_cast<long>(v.numerator()));
+      std::snprintf(buf, sizeof(buf), "%ld", static_cast<long>(v.numerator()));
     }
     else {
-      std::sprintf(buf, "%ld/%ld", static_cast<long>(v.numerator()),
-                                   static_cast<long>(v.denominator()));
+      std::snprintf(buf, sizeof(buf), "%ld/%ld", static_cast<long>(v.numerator()),
+                                                 static_cast<long>(v.denominator()));
     }
     return std::string(buf);
   }

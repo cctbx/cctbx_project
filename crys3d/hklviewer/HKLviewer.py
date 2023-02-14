@@ -20,7 +20,7 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1'
 
 from .qt import Qt, QtCore, QCoreApplication, QEvent, QItemSelectionModel, QSize, QSettings, QTimer, QUrl
 from .qt import (  QAction, QAbstractScrollArea, QCheckBox, QColorDialog, QComboBox, QDialog, QDoubleSpinBox,
-    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QLabel, QLineEdit, QCloseEvent,
+    QFileDialog, QFrame, QGridLayout, QGroupBox, QHeaderView, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QCloseEvent,
     QMainWindow, QMenu, QMenuBar, QMessageBox, QPalette, QPlainTextEdit, QProgressBar, QPushButton, QRadioButton, QRect,
     QScrollBar, QSizePolicy, QSlider, QSpinBox, QSplitter, QStyleFactory, QStatusBar, QTableView, QTableWidget,
     QTableWidgetItem, QTabWidget, QTextEdit, QTextBrowser, QWidget )
@@ -443,6 +443,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.newlabelLabel.setText("Column label for new reflection dataset:")
     self.newlabeltxtbox = QLineEdit('')
     self.operationtxtbox = QTextEdit('')
+    self.operationtxtbox.setAcceptRichText(False)
     self.operationtxtbox.setPlaceholderText("""Example:
 dat = array1.data()/array1.sigmas() * array2.normalize().data()
 sigs = 2*flex.exp(1/array2.sigmas())
@@ -1276,7 +1277,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 self.gridLayout_24.removeWidget(widgetToRemove)
                 widgetToRemove.setParent(None)
               # programmatically create preset buttons on the self.gridLayout_24 from the QtDesigner
-              for i,((btnname, label, _), isenabled, datalabel, moniker_veclabels) in enumerate(self.buttonsdeflist):
+              for i,((btnname, label, _), datalabel, tooltip, moniker_veclabels) in enumerate(self.buttonsdeflist):
                 moniker = ""
                 veclabels = []
                 if moniker_veclabels:
@@ -1287,9 +1288,7 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 # since QRadioButton cannot wrap text the text for pbutton goes in
                 # btnlabel below which is a QLabel where text can be wrapped if needed
                 pbutton.setText("")
-                if datalabel != "":
-                  pbutton.setToolTip("using the " + datalabel + " dataset")
-                pbutton.setEnabled(isenabled)
+                pbutton.setToolTip(tooltip)
                 pbutton.clicked.connect(self.onPresetbtn_click)
                 sizePolicy1 = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
                 sizePolicy1.setHorizontalStretch(0)
@@ -1304,10 +1303,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
                 sizePolicy2.setHeightForWidth(btnlabel.sizePolicy().hasHeightForWidth())
                 btnlabel.setSizePolicy(sizePolicy2)
                 btnlabel.setWordWrap(True)
-                btnlabel.setText(label)
-                if datalabel != "":
-                  pbutton.setToolTip("using the " + datalabel + " dataset")
-                  btnlabel.setToolTip("using the " + datalabel + " dataset")
+                btnlabel.setToolTip(tooltip)
+                btnlabel.setText(label + " (using " + datalabel + ")")
                 self.gridLayout_24.addWidget(btnlabel, i, 1, 1, 1)
 
                 if moniker != "" and len(veclabels):
@@ -2419,6 +2416,13 @@ clip_plane {
     pass
 
 
+  def onAddDataset(self):
+    label, ok = QInputDialog().getText(self.window, "Enter a unique label",
+                                         "Create new dataset of visible reflection with this label:")
+    if ok and label:
+      self.send_message('visible_dataset_label = "%s"' %label)
+
+
   def createFileInfoBox(self):
     labels = ["Column label", "Type", "λ(Å)", "# HKLs", "Span of HKLs",
        "Min Max data", "Min Max sigmas", "d_min, d_max (Å)", "Anomalous", "Symmetry unique"]
@@ -2448,6 +2452,7 @@ clip_plane {
     self.binstable.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.Nbins_spinBox.valueChanged.connect(self.onNbinsChanged)
     self.OpaqueAllCheckbox.clicked.connect(self.onOpaqueAll)
+    self.addDatasetBtn.clicked.connect(self.onAddDataset)
     self.binstable.itemChanged.connect(self.onBinsTableItemChanged  )
     self.binstable.itemPressed.connect(self.onBinsTableitemPressed  )
     self.BinDataComboBox.activated.connect(self.onBindataComboSelchange)

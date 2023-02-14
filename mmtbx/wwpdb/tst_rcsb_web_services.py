@@ -72,6 +72,21 @@ def exercise_2():
       )
   assert len(di1_examples) == 0
 
+def exercise_3():
+  # Direct test of post_query
+  r = rcsb_web_services.post_query(xray_only=False)
+  assert len(r) > 1
+  r = rcsb_web_services.post_query()
+  assert len(r) > 1
+  r = rcsb_web_services.post_query(data_only=True)
+  assert len(r) > 1
+  r = rcsb_web_services.post_query(d_max=1)
+  assert len(r) > 1
+  r = rcsb_web_services.post_query(d_min=5)
+  assert len(r) > 1
+  r = rcsb_web_services.post_query(sort_by_resolution=True)
+  assert len(r) > 1
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   # check if internet and rcsb are available
@@ -84,6 +99,7 @@ if (__name__ == "__main__"):
   if not exception_occured and r.ok and len(r.text) > 100:
     exercise()
     exercise_2()
+    exercise_3()
     print("OK")
   else:
     print("OK but skipped.")

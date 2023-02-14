@@ -1082,6 +1082,7 @@ class map_model_manager(object):
      soft_mask_radius = None,
      stay_inside_current_map = True,
      use_cubic_boxing = False,
+     require_match_unit_cell_crystal_symmetry = None,
      model_can_be_outside_bounds = None):
     '''
       Runs box_all_maps_with_bounds_and_shift_origin with extract_box=True
@@ -1095,6 +1096,8 @@ class map_model_manager(object):
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       stay_inside_current_map = stay_inside_current_map,
       use_cubic_boxing = use_cubic_boxing,
+      require_match_unit_cell_crystal_symmetry =
+        require_match_unit_cell_crystal_symmetry,
       extract_box = True)
 
   def box_all_maps_with_bounds_and_shift_origin(self,
@@ -1106,6 +1109,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      stay_inside_current_map = True,
      use_cubic_boxing = False,
+     require_match_unit_cell_crystal_symmetry = False,
      extract_box = False):
     '''
        Box all maps using specified bounds, shift origin of maps, model
@@ -1133,6 +1137,8 @@ class map_model_manager(object):
        If use_cubic_box, make a cubic box (in grid units). If also
         stay_inside_current_map is set, keep the cubic box inside current map
 
+       If require_match_unit_cell_crystal_symmetry is False, do not require
+       unit_cell crystal symmetry to match.
 
     '''
     assert lower_bounds is not None and upper_bounds is not None
@@ -1165,6 +1171,8 @@ class map_model_manager(object):
       model_can_be_outside_bounds = model_can_be_outside_bounds,
       stay_inside_current_map = stay_inside_current_map,
       use_cubic_boxing = use_cubic_boxing,
+      require_match_unit_cell_crystal_symmetry =
+         require_match_unit_cell_crystal_symmetry,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
 
@@ -1320,6 +1328,7 @@ class map_model_manager(object):
      soft_mask_around_edges = None,
      soft_mask_radius = None,
      stay_inside_current_map = True,
+     require_match_unit_cell_crystal_symmetry = None,
      use_cubic_boxing = False,
      map_id = 'map_manager'):
     '''
@@ -1335,6 +1344,8 @@ class map_model_manager(object):
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       stay_inside_current_map = stay_inside_current_map,
+      require_match_unit_cell_crystal_symmetry =
+        require_match_unit_cell_crystal_symmetry,
       use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
@@ -1349,6 +1360,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      stay_inside_current_map = None,
      use_cubic_boxing = False,
+     require_match_unit_cell_crystal_symmetry = False,
      extract_box = False):
     '''
        Box all maps around the density in map_id map (default is map_manager)
@@ -1381,6 +1393,9 @@ class map_model_manager(object):
 
        If use_cubic_box, make a cubic box (in grid units). If also
         stay_inside_current_map is set, keep the cubic box inside current map
+
+       If require_match_unit_cell_crystal_symmetry is False, do not require
+       unit_cell crystal symmetry to match.
     '''
     assert box_cushion is not None
 
@@ -1405,6 +1420,8 @@ class map_model_manager(object):
       get_half_height_width = get_half_height_width,
       model_can_be_outside_bounds = model_can_be_outside_bounds,
       stay_inside_current_map = stay_inside_current_map,
+      require_match_unit_cell_crystal_symmetry =
+         require_match_unit_cell_crystal_symmetry,
       use_cubic_boxing = use_cubic_boxing,
       wrapping    = self._force_wrapping)
 
@@ -1427,6 +1444,7 @@ class map_model_manager(object):
      soft_mask_around_edges = None,
      soft_mask_radius = None,
      stay_inside_current_map = True,
+     require_match_unit_cell_crystal_symmetry = None,
      use_cubic_boxing = False,
      mask_id = 'mask'):
     '''
@@ -1440,6 +1458,8 @@ class map_model_manager(object):
       soft_mask_around_edges = soft_mask_around_edges,
       boundary_to_smoothing_ratio = boundary_to_smoothing_ratio,
       stay_inside_current_map = stay_inside_current_map,
+      require_match_unit_cell_crystal_symmetry =
+        require_match_unit_cell_crystal_symmetry,
       use_cubic_boxing = use_cubic_boxing,
       extract_box = True)
 
@@ -1452,6 +1472,7 @@ class map_model_manager(object):
      boundary_to_smoothing_ratio = 2.,
      stay_inside_current_map = True,
      use_cubic_boxing = False,
+     require_match_unit_cell_crystal_symmetry = False,
      extract_box = False):
     '''
        Box all maps around specified mask, shift origin of maps, model
@@ -1473,6 +1494,9 @@ class map_model_manager(object):
 
        If use_cubic_box, make a cubic box (in grid units). If also
         stay_inside_current_map is set, keep the cubic box inside current map
+
+       If require_match_unit_cell_crystal_symmetry is False, do not require
+       unit_cell crystal symmetry to match.
     '''
     assert isinstance(self.model(), model_manager)
     assert box_cushion is not None
@@ -1506,6 +1530,8 @@ class map_model_manager(object):
       model_can_be_outside_bounds = model_can_be_outside_bounds,
       stay_inside_current_map = stay_inside_current_map,
       use_cubic_boxing = use_cubic_boxing,
+      require_match_unit_cell_crystal_symmetry =
+         require_match_unit_cell_crystal_symmetry,
       wrapping = self._force_wrapping,
       log = self.log)
     # Now box is a copy of map_manager and model that is boxed
@@ -1530,6 +1556,7 @@ class map_model_manager(object):
      box_cushion = 5,
      target_ncs_au_model = None,
      regions_to_keep = None,
+     require_match_unit_cell_crystal_symmetry = None,
      keep_low_density = True,
      symmetry = None,
      boundary_to_smoothing_ratio = 2.,
@@ -1555,6 +1582,8 @@ class map_model_manager(object):
       box_cushion = box_cushion,
       target_ncs_au_model = target_ncs_au_model,
       regions_to_keep = regions_to_keep,
+      require_match_unit_cell_crystal_symmetry =
+        require_match_unit_cell_crystal_symmetry,
       keep_low_density = keep_low_density,
       keep_this_region_only = keep_this_region_only,
       residues_per_region = residues_per_region,
@@ -1589,7 +1618,8 @@ class map_model_manager(object):
      use_symmetry_in_extract_unique = True,
      stay_inside_current_map = True,
      use_cubic_boxing = False,
-     extract_box = False):
+     extract_box = False,
+     require_match_unit_cell_crystal_symmetry = False):
     '''
        Box all maps using bounds obtained with around_unique,
        shift origin of maps, model, and mask around unique region
@@ -1640,6 +1670,8 @@ class map_model_manager(object):
                             region (regions_to_keep=1) or a few
          residues_per_region:  Try to segment with this many residues per region
          keep_this_region_only:  Keep just this region (first one is 0 not 1)
+         require_match_unit_cell_crystal_symmetry: require model unit_cell_
+           crystal_symmetry to match when extracting.
 
     '''
     from cctbx.maptbx.box import around_unique
@@ -1680,6 +1712,8 @@ class map_model_manager(object):
       mask_expand_ratio = mask_expand_ratio,
       stay_inside_current_map = stay_inside_current_map,
       use_cubic_boxing = use_cubic_boxing,
+      require_match_unit_cell_crystal_symmetry =
+          require_match_unit_cell_crystal_symmetry,
       log = self.log)
 
     info = box.info()
@@ -1743,7 +1777,8 @@ class map_model_manager(object):
     # Apply the box to all the other models
     for id in model_info.other_model_id_list:
       other._model_dict[id] = box.apply_to_model(
-          self._model_dict[id].deep_copy())
+          self._model_dict[id].deep_copy(),
+         )
 
     # Copy default information over
     name = '%s_boxed' %(self.name)

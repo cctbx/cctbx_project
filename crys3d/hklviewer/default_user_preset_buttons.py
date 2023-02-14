@@ -9,17 +9,18 @@ from __future__ import absolute_import, division, print_function
 
 
 buttonsdeflist = [
- # simple button displaying sigmas of an intensity dataset
- ("ShowSigmaI", "Show SigI", """
-                            viewer {
-                              data_array {
-                                label = "IOBS,SIGIOBS"
-                                datatype = "Intensity"
-                              }
-                            }
-                            hkls {
-                              sigma_color_radius = True
-                            }
-  """
-  ),
+# Simple button displaying sigmas of an intensity dataset. Uncomment lines below to take effect
+#
+# ("ShowSigmaI", "Show SigI", """
+#                            viewer {
+#                              data_array {
+#                                label = "IOBS,SIGIOBS"
+#                                datatype = "Intensity"
+#                              }
+#                            }
+#                            hkls {
+#                              sigma_color_radius = True
+#                            }
+#  """
+#  ),
 ]

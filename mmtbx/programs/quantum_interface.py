@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.development.qi
 from __future__ import absolute_import, division, print_function
 import os
+import time
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
@@ -9,6 +10,7 @@ from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_restraints_manager import min_dist2
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
+from mmtbx.geometry_restraints.quantum_interface import classify_histidine
 
 import iotbx.pdb
 import iotbx.phil
@@ -185,6 +187,8 @@ Usage examples:
       .type = str
     iterate_histidine = False
       .type = bool
+    only_i = None
+      .type = int
     iterate_metals = None
       .type = str
     each_amino_acid = False
@@ -212,6 +216,10 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def run(self, log=None):
     model = self.data_manager.get_model()
+    self.restraint_filenames = []
+    rc = self.data_manager.get_restraint_names()
+    for f in rc:
+      self.restraint_filenames.append(os.path.abspath(f))
     #
     # get selection
     #
@@ -366,8 +374,8 @@ Usage examples:
                                 never_write_restraints=True,
                                 # never_run_strain=True,
                                 log=arg_log)
-        energies.append(res[0][0])
-        units=res[1]
+        energies.append(res[2][0])
+        units=res[3]
         # print('    Energy %s %s' % (energies[-1],units), file=log)
       else:
         import copy
@@ -407,17 +415,20 @@ Usage examples:
     selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
     hierarchy = selected_model.get_hierarchy()
+    original_ch = classify_histidine(hierarchy)
     # add all H atoms
     his_ag = add_histidine_H_atoms(hierarchy)
     for atom in hierarchy.atoms(): break
     rg_resseq = atom.parent().parent().resseq
     chain_id = atom.parent().parent().parent().id
     energies = []
+    rmsds = []
     argstuples = []
     # logs = []
     buffer_selection = ''
     buffer = self.params.qi.qm_restraints[0].buffer
     buffer *= buffer
+    t0=time.time()
     for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
       model = self.data_manager.get_model()
       if nproc>1: model=model.deep_copy()
@@ -449,6 +460,10 @@ Usage examples:
         assert buffer_selection
         buffer_selection = buffer_selection[:-3]
       self.params.qi.qm_restraints[0].buffer_selection=buffer_selection
+      #
+      if self.params.qi.only_i is not None and self.params.qi.only_i!=i+1:
+        continue
+      #
       if nproc==1:
         print('  Running HIS flip %d' % (i+1), file=log)
         res = update_restraints(model,
@@ -456,9 +471,13 @@ Usage examples:
                                 never_write_restraints=True,
                                 # never_run_strain=True,
                                 log=arg_log)
-        energies.append(res[0][0])
-        units=res[1]
-        print('    Energy %s %s' % (energies[-1],units), file=log)
+        energies.append(res.energies[0])
+        units=res.units
+        rmsds.append(res.rmsds[0][1])
+        if 0:
+          print('    Energy : %s %s' % (energies[-1],units), file=log)
+          print('    Time   : %ds' % (time.time()-t0), file=log)
+          print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
       else:
         import copy
         params = copy.deepcopy(self.params)
@@ -473,7 +492,8 @@ Usage examples:
     from libtbx import easy_mp
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
-    print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
+    if nproc>1:
+      print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
     i=0
     for args, res, err_str in easy_mp.multi_core_run( update_restraints,
                                                       argstuples,
@@ -481,30 +501,90 @@ Usage examples:
                                                       keep_input_order=True):
       assert not err_str, '\n\nDebug in serial :\n%s' % err_str
       print('  Running HIS flip %d' % (i+1), file=log)
-      energies.append(res[0][0])
-      units = res[1]
-      print('    Energy %s %s' % (energies[-1],units), file=log)
+      # energies.append(res[0][0])
+      # units = res[1]
+      # print('    Energy %s %s' % (energies[-1],units), file=log)
+      assert 0
       i+=1
 
-    protonation = [ 'ND1,NE2',
-                    'ND1 only',
-                    'NE2 only',
-                    'ND1,NE2 flipped',
-                    'ND1 only flipped',
-                    'NE2 only flipped',
+    protonation = [ 'HD1, HE2',
+                    'HD1 only',
+                    'HE2 only',
+                    'HD1, HE2 flipped',
+                    'HD1 only flipped',
+                    'HE2 only flipped',
     ]
     cmd = '\n\n  phenix.start_coot'
-    print('\n\nEnergies in units of %s\n' % units, file=log)
     te=[]
     for i, (pro, energy) in enumerate(zip(protonation, energies)):
       if i in [0,3]:
         if units.lower() in ['kcal/mol']:
           # energy-=247.80642
-          energy-=156.9
+          # energy-=156.9
+          energy-=26.9295
         elif units.lower() in ['hartree']:
           energy+=0.5
       te.append(energy)
     me=min(te)
+    #
+    # parallel HBond
+    #
+    argstuples = []
+    for i, (pro, energy) in enumerate(zip(protonation, energies)):
+      prefix='iterate_histidine_%02d' % (i+1)
+      filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
+      assert os.path.exists(filename), '"%s"' % filename
+      argstuples.append([[filename,
+                         '--quiet',
+                         'output_pymol_file=True',
+                         'output_restraint_file=False',
+                         'output_skew_kurtosis_plot=False',
+                         'prefix=%s_%s' % (prefix, preamble),
+                         ]])
+      if self.restraint_filenames:
+        argstuples[-1][-1]+=self.restraint_filenames
+    def run_hbond(args):
+      from iotbx.cli_parser import run_program
+      from mmtbx.programs.hbond import Program
+      hbonds = run_program(program_class=Program,
+                           args=tuple(args),
+                           )
+      return hbonds
+    # print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
+    i=0
+    hbondss=[]
+    rotamers=[]
+    pymols = ''
+    for args, res, err_str in easy_mp.multi_core_run( run_hbond,
+                                                      argstuples,
+                                                      max(nproc,6),
+                                                      keep_input_order=True):
+      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
+      hbondss.append(res)
+      prefix='iterate_histidine_%02d' % (i+1)
+      pf = '%s_%s.pml' % (prefix, preamble)
+      f=open(pf, 'a')
+      f.write('\n')
+      # f.write('zoom resn HIS\n')
+      f.write('show sticks, resn HIS\n')
+      del f
+      pymols += '  phenix.pymol %s &\n' % pf
+      from iotbx import pdb
+      hierarchy = pdb.input(pf.replace('.pml', '.pdb')).construct_hierarchy()
+      asc1 = hierarchy.atom_selection_cache()
+      sel = asc1.selection(selection)
+      hierarchy = hierarchy.select(sel)
+      rc = classify_histidine(hierarchy)
+      rotamers.append(rc[0])
+      i+=1
+    #
+    results = {}
+    print('\n\nEnergies in units of %s\n' % units, file=log)
+    print('  %i. %-20s : rotamer "%s"' % (
+      0,
+      original_ch[1],
+      original_ch[0])
+    )
     for i, (pro, energy) in enumerate(zip(protonation, energies)):
       energy=te[i]
       prefix='iterate_histidine_%02d' % (i+1)
@@ -514,36 +594,45 @@ Usage examples:
         cmd += ' %s' % os.path.join(self.params.qi.run_directory, filename)
       else:
         cmd += ' %s' % filename
-      # run hbond
-      from iotbx.cli_parser import run_program
-      from mmtbx.programs.hbond import Program
-      hbonds = run_program(program_class=Program,
-                           args=[filename,'--quiet']
-                           )
-      n = hbonds.get_counts().n
+      #
+      n = hbondss[i].get_counts(min_data_size=1).n
       #
       if units.lower() in ['hartree']:
-        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d' % (
+        de = (energy-me)*627.503
+        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
           i+1,
           pro,
           energy,
           units,
-          (energy-me)*627.503,
+          de,
           n,
+          rmsds[i],
+          rotamers[i],
           ), file=log)
       elif units.lower() in ['kcal/mol']:
-        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d' % (
+        de = (energy-me)
+        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
           i+1,
           pro,
           energy,
           units,
-          (energy-me),
+          de,
           n,
+          rmsds[i],
+          rotamers[i],
           ), file=log)
+      results.setdefault(pro, {})
+      results[pro]['delta E'] = de
+      results[pro]['H bonds'] = n
+      results[pro]['rmsd'] = rmsds[i]
+
+    # d = dict(sorted(results.items(), key=lambda item: item[1]['delta E']))
+    # for i, (key, item) in enumerate(d.items()):
+    #   print('%-20s %s' % (key,item))
 
     cmd += '\n\n'
     print(cmd)
-    # run clashscore
+    print(pymols)
 
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
@@ -565,8 +654,6 @@ Usage examples:
                             self.params,
                             log=log,
                             )
-    # if qmr.calculate_final_strain:
-    #   assert 0
 
   def get_single_qm_restraints_scope(self, selection):
     qi_phil_string = get_qm_restraints_scope()
@@ -620,8 +707,10 @@ Usage examples:
                                               'ignore_x_h_distance_protein = True')
       # qi_phil_string = qi_phil_string.replace('write_restraints = True',
       #                                         'write_restraints = False')
-      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
-                                              'exclude_protein_main_chain_from_optimisation = True')
+      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
+                                              'exclude_protein_main_chain_to_delta_from_optimisation = True')
+      # qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
+      #                                         'exclude_protein_main_chain_from_optimisation = True')
 
     if iterate_metals:
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',

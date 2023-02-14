@@ -313,7 +313,7 @@ namespace fem {
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
-          int n = std::sprintf(buf, "%4d", static_cast<int>(val));
+          int n = std::snprintf(buf, sizeof(buf), "%4d", static_cast<int>(val));
           to_stream_star(buf, n);
           prev_was_string = false;
         }
@@ -335,7 +335,7 @@ namespace fem {
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
-          int n = std::sprintf(buf, "%6d", static_cast<int>(val));
+          int n = std::snprintf(buf, sizeof(buf), "%6d", static_cast<int>(val));
           to_stream_star(buf, n);
           prev_was_string = false;
         }
@@ -357,7 +357,7 @@ namespace fem {
         }
         else if (io_mode == io_list_directed) {
           char buf[64];
-          int n = std::sprintf(buf, "%11d", val);
+          int n = std::snprintf(buf, sizeof(buf), "%11d", val);
           to_stream_star(buf, n);
           prev_was_string = false;
         }
@@ -372,12 +372,12 @@ namespace fem {
             fmt[n] = 'd';
             fmt[n+1] = '\0';
             char buf[64];
-            n = std::sprintf(buf, fmt, val);
+            n = std::snprintf(buf, sizeof(buf), fmt, val);
             to_stream_fmt(buf, n);
           }
           else {
             char buf[64];
-            int n = std::sprintf(buf, " %d", val);
+            int n = std::snprintf(buf, sizeof(buf), " %d", val);
             to_stream_fmt(buf, n);
           }
         }
@@ -424,7 +424,7 @@ namespace fem {
             fmt[n] = 'f';
             fmt[n+1] = '\0';
             char buf[64];
-            n = std::sprintf(buf, fmt, val);
+            n = std::snprintf(buf, sizeof(buf), fmt, val);
             to_stream_fmt(buf, n);
           }
           else if ((ed[0] == 'd' || ed[0] == 'e') && ed.size() > 1) {
@@ -444,7 +444,7 @@ namespace fem {
           }
           else {
             char buf[64];
-            int n = std::sprintf(buf, " %.6g", val);
+            int n = std::snprintf(buf, sizeof(buf), " %.6g", val);
             to_stream_fmt(buf, n);
           }
         }

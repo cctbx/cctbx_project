@@ -33,7 +33,7 @@ xermsg(
 {
   if (level < 2) return;
   if (slatec_error_ptr == NULL) {
-    sprintf(slatec_error_buf, "%s: %s: %s (nerr=%d, level=%d)",
+    snprintf(slatec_error_buf, sizeof(slatec_error_buf), "%s: %s: %s (nerr=%d, level=%d)",
       librar, subrou, messg, nerr, level);
     slatec_error_ptr = slatec_error_buf;
   }

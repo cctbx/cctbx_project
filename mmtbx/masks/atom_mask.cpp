@@ -898,11 +898,11 @@ namespace mmtbx { namespace masks {
       {
 #if !defined(BOOST_MSVC)
         s = buf;
-        std::sprintf(buf, fmt, val);
+        std::snprintf(buf, sizeof(buf), fmt, val);
         if (*(s + Width)) throw_error();
 #else
         s = buf + 1;
-        std::sprintf(s, fmt, val);
+        std::snprintf(s, sizeof(s), fmt, val);
         char* p = s + Width;
         if (*p) {
           p++;

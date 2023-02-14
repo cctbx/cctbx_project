@@ -69,7 +69,7 @@ namespace lbfgs {
     public:
       static std::string itoa(unsigned long i) {
         char buf[80];
-        sprintf(buf, "%lu", i); // FUTURE: use C++ facility
+        snprintf(buf, sizeof(buf), "%lu", i); // FUTURE: use C++ facility
         return std::string(buf);
       }
 #endif

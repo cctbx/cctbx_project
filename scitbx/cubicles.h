@@ -23,7 +23,7 @@ namespace scitbx {
       unsigned long max_number_of_bytes)
     {
       char buf[512];
-      std::sprintf(buf,
+      std::snprintf(buf, sizeof(buf),
         "%s\n"
         "  This may be due to unreasonable parameters:\n"
         "    cubicle_edge=%.6g\n"

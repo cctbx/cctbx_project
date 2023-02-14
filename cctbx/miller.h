@@ -102,7 +102,7 @@ namespace cctbx {
       {
         char buf[128];
         buf[127] = '\0';
-        std::sprintf(buf, "(%ld,%ld,%ld)",
+        std::snprintf(buf, sizeof(buf), "(%ld,%ld,%ld)",
           static_cast<long>(this->elems[0]),
           static_cast<long>(this->elems[1]),
           static_cast<long>(this->elems[2]));

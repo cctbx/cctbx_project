@@ -87,6 +87,7 @@ general_tests = [
   "$D/regression/model/tst_model_remove_alternative_conformations.py",
   "$D/regression/model/tst_model_get_vdw_radii.py",
   "$D/regression/model/tst_model_dedeuterate.py",
+  "$D/regression/model/tst_model_utils_merge_models.py",
   #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",

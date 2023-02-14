@@ -85,12 +85,12 @@ namespace cctbx { namespace geometry_restraints {
               params = params_dict->find(i);
               char buf[256];
               if (params == params_dict->end()) {
-                std::sprintf(buf,
+                std::snprintf(buf, sizeof(buf),
                   "Unknown bond parameters (incomplete bond_params_table):"
                   " i_seq=%d, j_seq=%d", i, j);
               }
               else {
-                std::sprintf(buf,
+                std::snprintf(buf, sizeof(buf),
                   "Improper bond_params_table (requirement i_seq <= j_seq):"
                   " i_seq=%d, j_seq=%d", j, i);
               }

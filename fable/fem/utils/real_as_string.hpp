@@ -37,7 +37,7 @@ namespace fem { namespace utils {
         if (av < 1e6) cfmt = "%10.1f    ";
         else          cfmt = "%9.0f.    ";
       }
-      n = std::sprintf(begin, cfmt, val);
+      n = std::snprintf(begin, sizeof(begin), cfmt, val);
 #if defined(_MSC_VER)
       if (cfmt == cfmte && n == 15 && begin[12] == '0') {
         begin[12] = begin[13];
@@ -94,7 +94,7 @@ namespace fem { namespace utils {
       }
       else if (av < 1e14) cfmt = "%18.1f     ";
       else if (av < 1e15) cfmt = "%17.0f.     ";
-      n = std::sprintf(buffer, cfmt, val);
+      n = std::snprintf(buffer, sizeof(buffer), cfmt, val);
       if (n == 23 && cfmt == cfmte) {
         char c = buffer[20];
         if ((c == '+' || c == '-') && buffer[0] == ' ') {

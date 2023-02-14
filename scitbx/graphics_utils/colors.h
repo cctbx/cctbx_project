@@ -217,14 +217,14 @@ namespace scitbx { namespace graphics_utils {
       char fstr[ndigits];
       strcpy(fstr, "%");
       char fstr1[ndigits];
-      sprintf(fstr1, "%d.", precision);
+      snprintf(fstr1, sizeof(fstr1), "%d.", precision);
       strcat(fstr, fstr1);
-      sprintf(fstr1, "%d", precision);
+      snprintf(fstr1, sizeof(fstr1), "%d", precision);
       strcat(fstr, fstr1);
       strcat(fstr, "e");
 
       char fstr2[ndigits];
-      sprintf(fstr2, fstr, val);
+      snprintf(fstr2, sizeof(fstr2), fstr, val);
       return atof(fstr2);
     }
     return round2(val, precision);
