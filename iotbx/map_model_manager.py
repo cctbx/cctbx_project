@@ -1712,7 +1712,7 @@ class map_model_manager(object):
       mask_expand_ratio = mask_expand_ratio,
       stay_inside_current_map = stay_inside_current_map,
       use_cubic_boxing = use_cubic_boxing,
-      require_match_unit_cell_crystal_symmetry = 
+      require_match_unit_cell_crystal_symmetry =
           require_match_unit_cell_crystal_symmetry,
       log = self.log)
 
