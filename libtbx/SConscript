@@ -440,6 +440,11 @@ libtbx.scons: Warning: compiling with /MDd:
       env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
+    # handle std::snprintf for some dependencies that may need this macro
+    # https://github.com/python/cpython/issues/80201
+    if sys.version_info.major == 3 and sys.version_info.minor <= 8:
+      env_etc.ccflags_base.append('/DHAVE_SNPRINTF')
+      env_etc.cxxflags_base.append('/DHAVE_SNPRINTF')
   elif (env_etc.compiler == "win32_icc"):
     cl_exe = full_command_path("icl.exe")
     if (cl_exe is None):
