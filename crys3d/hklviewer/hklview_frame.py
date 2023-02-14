@@ -630,9 +630,10 @@ class HKLViewFrame() :
           arrayinfo = ArrayInfo(array,wrap_labels)
           info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
           self.viewer.array_info_format_tpl.append( info_fmt )
-          for philname,selected in list(self.params.selected_info.__dict__.items()):
-            if not philname.startswith("__"):
-              colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
+          if len(colnames_select_lst) == 0:
+            for philname,selected in list(self.params.selected_info.__dict__.items()):
+              if not philname.startswith("__"):
+                colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
         self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl,
                             "colnames_select_lst": colnames_select_lst })
 
