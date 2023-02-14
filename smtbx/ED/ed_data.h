@@ -48,7 +48,7 @@ public:
     FloatType MaxG
   ) const;
 
-  void top_up(FloatType Kl,
+  void top_up(cart_t const& Kl,
     size_t num, FloatType min_d,
     FloatType MaxSg, FloatType MaxG,
     uctbx::unit_cell const& unit_cell,
@@ -148,7 +148,7 @@ void FrameInfo<FloatType>::add_indices(
 
 template <typename FloatType>
 void FrameInfo<FloatType>::top_up(
-  FloatType Kl,
+  cart_t const& K,
   size_t num, FloatType min_d,
   FloatType MaxSg, FloatType MaxG,
   uctbx::unit_cell const& unit_cell,
@@ -159,9 +159,9 @@ void FrameInfo<FloatType>::top_up(
   }
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
-  std::vector<typename utils<FloatType>::ExcitedBeam> ebeams =
-    utils<FloatType>::generate_index_set(RMf, Kl, min_d,
-      MaxG, unit_cell);
+  af::shared<typename utils<FloatType>::ExcitedBeam> ebeams =
+    utils<FloatType>::generate_index_set(RMf, K, min_d,
+      MaxG, MaxSg, unit_cell);
 
   lookup_t existing = lookup_t(
     indices.const_ref(),

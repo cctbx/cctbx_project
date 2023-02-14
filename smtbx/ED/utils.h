@@ -73,7 +73,7 @@ namespace smtbx { namespace ED {
         miller::index<> h_i = s_indices[i - 1];
         complex_t d_mod = 0, u_mod = 0;
         for (size_t j = 0; j < w_indices.size(); j++) {
-          miller::index<> h_j = w_indices[j - 1];
+          miller::index<> h_j = w_indices[j];
           int i_j = mi_lookup.find_hkl(h_j);
           complex_t Fc_j = i_j != -1 ? Fcs_k[i_j] : 0;
           int i_m_j = mi_lookup.find_hkl(h_i - h_j);
@@ -407,20 +407,20 @@ namespace smtbx { namespace ED {
       return res[1];
     }
 
-    static bool is_excited_g(cart_t const& g_,
-      FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
+    static bool is_excited_g(cart_t const& g,
+      cart_t const& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
-      FloatType gl = g_.length();
-      cart_t Kg(g_[0], g_[1], g_[2] - Kl);
+      FloatType gl = g.length(), Kl = K.length();
+      cart_t Kg = K + g;
       FloatType Sg = std::abs((Kl * Kl - Kg.length_sq()) / (2 * Kl));
       return Sg < MaxSg && gl < MaxG && Sg / (gl * precession_angle) < 1.0;
     }
 
     static bool is_excited_h(miller::index<> const& index,
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
-      FloatType Kl, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
+      cart_t const& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
-      return is_excited_g(RMf * cart_t(index[0], index[1], index[2]), Kl,
+      return is_excited_g(RMf * cart_t(index[0], index[1], index[2]), K,
         MaxSg, MaxG, precession_angle);
     }
 
@@ -445,11 +445,11 @@ namespace smtbx { namespace ED {
     * The indices are will fulfil the MaxSg and MaxG parameters and sorted by
     * FoM from ReciPro
     */
-    static std::vector<ExcitedBeam> generate_index_set(
+    static af::shared<ExcitedBeam> generate_index_set(
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
-      FloatType Kl,
+      cart_t K,
       FloatType min_d,
-      FloatType MaxG,
+      FloatType MaxG, FloatType MaxSg,
       uctbx::unit_cell const& unit_cell)
     {
       using namespace cctbx::miller;
@@ -459,19 +459,23 @@ namespace smtbx { namespace ED {
         min_d, true);
 
       miller::index<> h;
-      std::vector<ExcitedBeam> all;
+      af::shared<ExcitedBeam> all;
       
-      const FloatType max_f_sq = MaxG * MaxG;
+      const FloatType max_f_sq = MaxG * MaxG,
+        Kl = K.length(),
+        Kl_sq = Kl * Kl;
       while (!(h = h_generator.next()).is_zero()) {
         cart_t g = RMf * cart_t(h[0], h[1], h[2]);
         FloatType g_sq = g.length_sq();
         if (g_sq > max_f_sq) {
           continue;
         }
-        cart_t Kg(g[0], g[1], g[2] - Kl);
-        FloatType Kg_sq = Kg.length_sq();
-        FloatType s = Kl * Kl - Kg_sq;
+        FloatType Kg_sq = (K + g).length_sq();
+        FloatType s = Kl_sq - Kg_sq;
         FloatType Sg = std::abs(s / (2 * Kl));
+        if (MaxSg > 0 && Sg > MaxSg) {
+          continue;
+        }
         FloatType w = s * s * Kg_sq;
         all.push_back(ExcitedBeam(h, g, w, Sg));
       }
