@@ -39,6 +39,8 @@ class with_bounds(object):
       this option should not be used with with_bounds because the bounds should
       be directly specified.
   Note: stay_inside_current_map applies only when using cubic boxing
+  If require_match_unit_cell_crystal_symmetry:  require that unit_cell
+    crystal symmetry of map and model match
 
   """
   def __init__(self,
@@ -50,7 +52,11 @@ class with_bounds(object):
      model_can_be_outside_bounds = False,
      stay_inside_current_map = True,
      use_cubic_boxing = False,
+     require_match_unit_cell_crystal_symmetry = False,
      log = sys.stdout):
+
+    self.require_match_unit_cell_crystal_symmetry = \
+       require_match_unit_cell_crystal_symmetry
     self.lower_bounds = lower_bounds
     self.upper_bounds = upper_bounds
     self._map_manager = map_manager
@@ -570,6 +576,8 @@ class around_unique(with_bounds):
          keep_this_region_only: Allows choosing any specific region (first region is 0 not 1)
          residues_per_region: Allows setting threshold to try and get about this many
                               residues in each region. Default is 50.
+        If require_match_unit_cell_crystal_symmetry:  require that unit_cell
+           crystal symmetry of map and model match
 
   '''
 
@@ -593,8 +601,13 @@ class around_unique(with_bounds):
     wrapping = None,
     use_cubic_boxing = False,
     stay_inside_current_map = True,
+    require_match_unit_cell_crystal_symmetry = False,
     log = None):
 
+
+    self.require_match_unit_cell_crystal_symmetry = \
+       require_match_unit_cell_crystal_symmetry
+  
     self.model_can_be_outside_bounds = None  # not used but required to be set
     self.use_cubic_boxing = use_cubic_boxing
     self._map_manager = map_manager
@@ -772,6 +785,8 @@ class around_mask(with_bounds):
   Note: stay_inside_current_map applies only when using cubic boxing
   if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
       if this conflicts with stay_inside_current_map, make box smaller
+  If require_match_unit_cell_crystal_symmetry:  require that unit_cell
+    crystal symmetry of map and model match
 
   """
   def __init__(self, map_manager,
@@ -782,8 +797,11 @@ class around_mask(with_bounds):
      use_cubic_boxing = False,
      model_can_be_outside_bounds = False,
      stay_inside_current_map = True,
+     require_match_unit_cell_crystal_symmetry = False,
      log = sys.stdout):
 
+    self.require_match_unit_cell_crystal_symmetry = \
+       require_match_unit_cell_crystal_symmetry
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
@@ -883,6 +901,8 @@ class around_density(with_bounds):
    if use_cubic_boxing, adjust bounds to make a cubic box by making box bigger.
    Note: stay_inside_current_map applies only when using cubic boxing
    if this conflicts with stay_inside_current_map, make box smaller
+  If require_match_unit_cell_crystal_symmetry:  require that unit_cell
+    crystal symmetry of map and model match
 
   """
   def __init__(self, map_manager,
@@ -894,8 +914,11 @@ class around_density(with_bounds):
      model_can_be_outside_bounds = False,
      use_cubic_boxing = False,
      stay_inside_current_map = True,
+     require_match_unit_cell_crystal_symmetry = False,
      log = sys.stdout):
 
+    self.require_match_unit_cell_crystal_symmetry = \
+       require_match_unit_cell_crystal_symmetry
     self._map_manager = map_manager
     self._model = model
     self.model_can_be_outside_bounds = model_can_be_outside_bounds
