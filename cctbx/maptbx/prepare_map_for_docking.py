@@ -1174,15 +1174,6 @@ def get_ordered_volume_exact(mm_ordered_mask,sphere_center,sphere_radius):
   ordered_volume = (ordered_in_sphere.size()/om_data.size()) * unit_cell.volume()
   return ordered_volume
 
-def get_d_star_sq_step(f_array, num_per_bin = 1000, max_bins = 50, min_bins = 6):
-  d_star_sq = f_array.d_star_sq().data()
-  num_tot = d_star_sq.size()
-  n_bins = int(round(max(min(num_tot / num_per_bin, max_bins),min_bins)))
-  d_star_sq_min = flex.min(d_star_sq)
-  d_star_sq_max = flex.max(d_star_sq) * 1.00001
-  d_star_sq_step = (d_star_sq_max - d_star_sq_min) / n_bins
-  return d_star_sq_step
-
 def get_flex_max(a,b):
   c = a.deep_copy()
   sel = (b>a)
@@ -1334,9 +1325,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
 
   # Sharpen intensities to reduce dynamic range for numerical stability
   # Save the overall B to put back at end
-  d_star_sq_step = get_d_star_sq_step(intensities, max_bins=100)
   int_sharp = intensities.customized_copy(data = intensities.data())
-  int_sharp.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
+  int_sharp.setup_binner_d_star_sq_bin_size()
   b_sharpen = get_sharpening_b(int_sharp)
   all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
@@ -1578,14 +1568,13 @@ def assess_cryoem_errors(
   deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr, r_star)
   sumfsqr_local_mean = f1f2cos_local_mean.customized_copy(data = 2*f1f2cos_local_mean.data() + deltafsqr_local_mean.data())
 
-  # Trim starting data back to desired resolution limit, setup binning
+  # Trim starting sumfsqr back to desired resolution limit, setup binning
+  # NB: f1f2cos and deltafsqr aren't used any more
   mc1 = mc1.select(mc1.d_spacings().data() >= d_min)
   assert (mc1.size() == sumfsqr_local_mean.size())
   mc2 = mc2.select(mc2.d_spacings().data() >= d_min)
   sumfsqr = sumfsqr.select(sumfsqr.d_spacings().data() >= d_min)
-  # f1f2cos = f1f2cos.select(f1f2cos.d_spacings().data() >= d_min)
-  d_star_sq_step = get_d_star_sq_step(mc1)
-  mc1.setup_binner_d_star_sq_step(d_star_sq_step=d_star_sq_step)
+  mc1.setup_binner_d_star_sq_bin_size()
   mc2.use_binner_of(mc1)
   sumfsqr.use_binner_of(mc1)
   sumfsqr_local_mean.use_binner_of(mc1)
@@ -1730,20 +1719,20 @@ def assess_cryoem_errors(
 
     # Noise is half of deltafsqr power
     sigmaE_terms = (deltafsqr_local_mean.data().select(sel)) / 2.
-    f1f2cos = f1f2cos_local_mean.data().select(sel)
-    sumfsqr = sumfsqr_local_mean.data().select(sel)
+    f1f2cos_terms = f1f2cos_local_mean.data().select(sel)
+    sumfsqr_terms = sumfsqr_local_mean.data().select(sel)
 
     # Compute the relative weight between the local statistics and the overall
     # anisotropic signal model, as in refinement code.
     steep = 9.
     local_weight = 0.95
-    fsc = f1f2cos/(sumfsqr/2.)
+    fsc = f1f2cos_terms/(sumfsqr_terms/2.)
     # Make sure fsc is in range 0 to 1
     fsc = (fsc + flex.abs(fsc)) / 2
     fsc = (fsc + 1 - flex.abs(fsc - 1)) / 2
     wt_terms = flex.exp(steep*fsc)
     wt_terms = 1. - local_weight * (wt_terms/(math.exp(steep/2) + wt_terms))
-    sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos
+    sigmaS_terms = wt_terms*u_terms + (1.-wt_terms)*f1f2cos_terms
     # Make sure sigmaS is non-negative
     sigmaS_terms = (sigmaS_terms + flex.abs(sigmaS_terms))/2
     scale_terms = 1./flex.sqrt(sigmaS_terms + sigmaE_terms/2.)
