@@ -3,10 +3,10 @@
 #define SIMTBX_DIFFBRAGG_UTIL
 
 #include <Eigen/Dense>
-#include<Eigen/StdVector>
-#include<vector>
-#include<unordered_map>
-#include<unordered_set>
+#include <Eigen/StdVector>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
 #include <string>
 
 #ifndef CUDAREAL
@@ -151,17 +151,17 @@ struct crystal{
     CUDAREAL spot_scale; // factor applied to intensity
     int h_range, k_range, l_range;
     int h_max, h_min, k_max, k_min, l_max, l_min;
-    double dmin; //res
+    CUDAREAL dmin; //res
     std::vector<double> dspace_bins;
-    std::vector<double> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
+    std::vector<CUDAREAL> FhklLinear, Fhkl2Linear; // structure factor amps magnitude (or real, image of complex)
     std::vector<double> ASU_dspace, ASU_Fcell;
     std::vector<int> FhklLinear_ASUid;
     std::unordered_map<std::string, int> ASUid_map;
     int Num_ASU;
     std::string hall_symbol =" P 4nw 2abw";
-    std::vector<double> fpfdp; // fprim fdblprime
-    std::vector<double> fpfdp_derivs; // fprime fdblprime deriv
-    std::vector<double> atom_data; // heavy atom data
+    std::vector<CUDAREAL> fpfdp; // fprim fdblprime
+    std::vector<CUDAREAL> fpfdp_derivs; // fprime fdblprime deriv
+    std::vector<CUDAREAL> atom_data; // heavy atom data
     std::vector<int> nominal_hkl; // h,k,l of the pixel (expected)
     CUDAREAL default_F; // place holder amplitude
     CUDAREAL r_e_sqr; // electron rad
@@ -190,10 +190,12 @@ struct crystal{
 struct beam{
     Eigen::Vector3d polarization_axis;
     std::vector<int> Fhkl_channels; // if refining scale factors for wavelength dependent structure factor intensities
-    double fluence; // total fluence
-    double kahn_factor; // polarization factor
-    double *source_X, *source_Y, *source_Z, *source_lambda, *source_I;   // beam vectors, wavelenths, intensities
-    double lambda0,lambda1; // affine correction to spectra
+    CUDAREAL fluence; // total fluence
+    CUDAREAL kahn_factor; // polarization factor
+    CUDAREAL *source_X, *source_Y, *source_Z; // beam vectors
+    CUDAREAL *source_lambda; // wavelengths
+    CUDAREAL *source_I; // intensities
+    CUDAREAL lambda0,lambda1; // affine correction to spectra
     int number_of_sources; // number of beams
 };
 

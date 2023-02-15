@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
-#include<Eigen/StdVector>
+#include <Eigen/StdVector>
 #include <boost/python/numpy.hpp>
 
 #ifdef NANOBRAGG_HAVE_CUDA

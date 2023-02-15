@@ -28,7 +28,7 @@ namespace simtbx { namespace Kokkos {
                               af::shared<double> linear_amplitudes){
     double * raw_ptr = linear_amplitudes.begin();
     vector_cudareal_t device_this_channel = d_channel_Fhkl[ichannel];
-    transfer_shared2kokkos(device_this_channel, linear_amplitudes);
+    kokkostbx::transfer_shared2kokkos(device_this_channel, linear_amplitudes);
   }
 
   void

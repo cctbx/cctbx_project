@@ -197,7 +197,7 @@ namespace simtbx { namespace Kokkos {
   kokkos_detector::get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
     //return the data array for the multipanel detector case, but only for whitelist pixels
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
-    transfer_shared2kokkos(active_pixel_selection, selection);
+    kokkostbx::transfer_shared2kokkos(active_pixel_selection, selection);
 
     size_t output_pixel_size = selection.size();
     vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
