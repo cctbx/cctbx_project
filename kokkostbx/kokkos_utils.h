@@ -46,15 +46,6 @@ void transfer_kokkos2X(T& dst, const view_1d_t<U>& src) {
 // math functions
 //*******************************************************************
 
-template <typename T, typename U>
-void
-add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
-  Kokkos::parallel_for("add_arrays", lhs.span(), KOKKOS_LAMBDA(const int& i) {
-    lhs( i ) = lhs( i ) + (T)rhs( i );
-    rhs( i ) = 0;
-  });
-}
-
 namespace kokkostbx {
 
 namespace af = scitbx::af;
