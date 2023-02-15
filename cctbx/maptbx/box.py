@@ -607,7 +607,7 @@ class around_unique(with_bounds):
 
     self.require_match_unit_cell_crystal_symmetry = \
        require_match_unit_cell_crystal_symmetry
-  
+
     self.model_can_be_outside_bounds = None  # not used but required to be set
     self.use_cubic_boxing = use_cubic_boxing
     self._map_manager = map_manager
