@@ -365,32 +365,16 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
   return outl
 
 def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()):
-  def default_defaults(qmr):
-    if qmr.package.basis_set is Auto:
-      qmr.package.basis_set=''
-    if qmr.package.solvent_model is Auto:
-      qmr.package.solvent_model=''
-    if qmr.package.multiplicity is Auto:
-      qmr.package.multiplicity=1
-    if qmr.package.charge is Auto:
-      qmr.package.charge=0
   program = qmr.package.program
   if program=='test':
     qmm = qm_manager.base_qm_manager.base_qm_manager
   elif program=='orca':
     qmm = orca_manager.orca_manager
-    default_defaults(qmr)
-    if qmr.package.method is Auto:
-      qmr.package.method='AM1'
-      # qmr.package.method='PBEh-3c'
   elif program=='mopac':
     qmm = mopac_manager.mopac_manager
-    default_defaults(qmr)
-    if qmr.package.method is Auto:
-      qmr.package.method='PM7'
-      qmr.package.method='PM6-D3H4'
   else:
     assert 0
+  qmr = quantum_interface.populate_qmr_defaults(qmr)
 
   electron_model = None
   if program_goal in ['energy', 'strain']:
