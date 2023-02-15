@@ -78,6 +78,25 @@ def process_qm_log_file(log_filename=None,
     raise Sorry('QM does not seem to have converged. Check %s' % log_filename)
   return status
 
+def run_command(command):
+    """
+    execute <command> in a subprocess and check error code
+    taken from ASE
+    """
+    from subprocess import Popen, PIPE, STDOUT
+    if command == '':
+        raise RuntimeError('no command for run_command :(')
+    proc = Popen([command], shell=True, stderr=PIPE)
+    proc.wait()
+    exitcode = proc.returncode
+    if exitcode != 0:
+        error='%s exited with error code %i in %s' % (
+                       command,exitcode,self.calc_dir)
+        stdout,stderr = proc.communicate()
+        print('shell output: ',stdout,stderr)
+        raise RuntimeError(error)
+    return 0
+
 def run_qm_cmd(cmd,
                log_filename,
                error_lines=None,
@@ -406,3 +425,33 @@ class base_qm_manager(base_manager):
       else:
         j+=1
     return rc
+
+def main():
+  # test different run methods
+  from mmtbx.geometry_restraints import mopac_manager
+  dat = ''' AM1 XYZ GEO-OK
+ HOH.dat
+
+ O -23.081267 1 18.356610 1 -21.628018 1
+ H -22.165708 1 18.441448 1 -21.593653 1
+ H -23.452909 1 18.384220 1 -20.699162 1
+
+'''
+  f=open('HOH.dat', 'w')
+  f.write(dat)
+  del f
+  cmd = '%s HOH.dat' % mopac_manager.get_exe()
+  print(cmd)
+  for i, func in enumerate([os.system, run_command, run_qm_cmd]):
+    print(func)
+    if i==2:
+      func(cmd, 'HOH.out', redirect_output=False)
+    else:
+      func(cmd)
+    f=open('HOH.out', 'r')
+    lines=f.read()
+    del f
+    print(lines[-150:])
+
+if __name__ == '__main__':
+  main()
