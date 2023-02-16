@@ -1567,9 +1567,13 @@ class HKLview_3d:
     if self.miller_array and self.params.binning.bin_opacity:
       bin_opacitieslst = self.params.binning.bin_opacity
       for alpha,bin in bin_opacitieslst:
+        ibin = int(bin)
+        if ibin > self.nbinvalsboundaries:
+          continue
         if alpha==1.0:
-          arrayidxs.extend(self.spbufttips[int(bin)])
+          arrayidxs.extend(self.spbufttips[ibin])
     visarray = self.miller_array.select_indices(flex.miller_index(
+      # has to be a better way of doing this
                           [ self.miller_array.indices()[i] for i in arrayidxs ] ))
     return visarray.deep_copy()
 
