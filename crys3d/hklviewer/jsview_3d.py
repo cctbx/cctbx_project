@@ -2885,7 +2885,7 @@ ngl_philstr = """
   tooltip_alpha = 0.80
     .type = float
     .help = "Opacity of tooltips showing data values of reflections when clicking or hovering the mouse on reflections"
-  vector_width = 2.0
+  vector_width = 5
     .type = int(value_min=1, value_max=30)
     .help = "Thickness of vectors and axes"
   fontsize = 9
