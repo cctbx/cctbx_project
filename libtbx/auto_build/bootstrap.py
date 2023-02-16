@@ -2352,13 +2352,13 @@ class PhenixBuilder(CCIBuilder):
     'reduce',
     'probe',
     'king',
-    # 'dials',
-    # 'xia2',
     'phaser',
     'phasertng',
     'phaser_regression',
     'voyager_regression',
     'phaser_voyager',
+    # 'dials',
+    # 'xia2',
     # 'iota',
   ]
   LIBTBX_EXTRA = [
@@ -2368,28 +2368,33 @@ class PhenixBuilder(CCIBuilder):
     'phenix_regression',
     'phenix_examples',
     'phenix_pathwalker',
+    'Colabs',
     'solve_resolve',
     'reel',
     'phaser',
+    'phasertng',
     'phaser_regression',
+    'voyager_regression',
     'phaser_voyager',
     'labelit',
     'elbow',
     'amber_adaptbx',
     'reduce',
     'probe',
+    'cootbx',
+    'qttbx',
     # 'dials',
     # 'xia2',
     # 'prime',
-    'cootbx',
-    'qttbx',
-    'Colabs',
   ]
 
   # select dials-3.8 branch
   def _add_git(self, module, parameters, destination=None):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
-    if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
+    if module == 'boost':
+      workdir = ['modules', module]
+      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
+    elif (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
       if module == 'dxtbx':
         self.add_step(self.shell(command=['git', 'remote', 'set-url', 'origin', 'https://github.com/dials/dxtbx.git'], workdir=workdir))
@@ -2488,19 +2493,20 @@ in your path. """)
 
   def add_install(self):
     Builder.add_install(self)
-    #self.rebuild_docs()
-
 
   def get_libtbx_configure(self):
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
-    if not self.isPlatformWindows():
-      if 'phasertng' not in configlst:
-        configlst.insert(0, 'phasertng')
-      configlst.append('--cxxstd=c++11')
+    if '--enable_cxx11' in configlst:
+      configlst.remove('--enable_cxx11')
+    set_std = ['cxxstd' in conf for conf in configlst]
+    if set_std.count(True) == 0:
+      if platform.mac_ver()[-1] == 'arm64':
+        configlst.append('--cxxstd=c++14')
+      else:
+        configlst.append('--cxxstd=c++11')
     if not self.isPlatformMacOSX():
       configlst.append("--enable_openmp_if_possible=True")
     return configlst
-
 
   def rebuild_docs(self):
     self.add_command('phenix_html.rebuild_docs')
@@ -2785,38 +2791,14 @@ class QRBuilder(PhenixBuilder):
       environment[env] = dirs
     return environment
 
-class PhenixTNGBuilder(PhenixBuilder):
-  '''
-  Phenix with phasertng and c++11
-  '''
-  phasertng_modules = ['phasertng', 'phaser_voyager', 'voyager_regression']
-  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + phasertng_modules
-  LIBTBX_EXTRA = PhenixBuilder.LIBTBX_EXTRA + phasertng_modules
-
-  def get_libtbx_configure(self):
-    configlst = super(PhenixTNGBuilder, self).get_libtbx_configure()
-    if '--enable_cxx11' in configlst:
-      configlst.remove('--enable_cxx11')
-    set_std = ['cxxstd' in conf for conf in configlst]
-    if set_std.count(True) == 0:
-      configlst.append('--cxxstd=c++11')
-    return configlst
-
-  # select Boost 1.74
-  def _add_git(self, module, parameters, destination=None):
-    super(PhenixTNGBuilder, self)._add_git(module, parameters, destination)
-    if module == 'boost':
-      workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
-
-class PhenixReleaseBuilder(PhenixTNGBuilder):
+class PhenixReleaseBuilder(PhenixBuilder):
   '''
   Phenix with DIALS
   '''
   extra_codebases = ['dials', 'iota', 'xia2']
   extra_libtbx = extra_codebases + ['prime']
-  CODEBASES_EXTRA = PhenixTNGBuilder.CODEBASES_EXTRA + extra_codebases
-  LIBTBX_EXTRA = PhenixTNGBuilder.LIBTBX_EXTRA + extra_libtbx
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + extra_codebases
+  LIBTBX_EXTRA = PhenixBuilder.LIBTBX_EXTRA + extra_libtbx
 
 def set_builder_defaults(options):
   '''
@@ -2828,6 +2810,13 @@ def set_builder_defaults(options):
       # restore default for CentOS 7
       if sys.platform.startswith('linux') and '.el7.' in platform.platform():
         options.no_boost_src = False
+  if options.builder == 'phenix_voyager' or options.builder == 'phenix':
+    # Apple Silicon uses Boost 1.78 in environment, Python 3.9
+    if platform.mac_ver()[-1] == 'arm64':
+      options.no_boost_src = True
+      options.python = '39'
+    if not options.no_boost_src:
+      options.no_boost_src = True
     if options.python == '27':
       options.python = '37'
     if options.use_conda is None:
@@ -2840,7 +2829,7 @@ def run(root=None):
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
-    'phenix_voyager': PhenixTNGBuilder,
+    'phenix_voyager': PhenixBuilder,
     'phenix_release': PhenixReleaseBuilder,
     'xfellegacy': XFELLegacyBuilder,
     'xfel': XFELBuilder,
