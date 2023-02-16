@@ -29,6 +29,9 @@ if not env_etc.no_boost_python:
      "cctbx"])
   env_etc.enable_more_warnings(env=env_simtbx)
   env_simtbx.SConscript("nanoBragg/SConscript",exports={ 'env' : env_simtbx })
+  # only build if kokkos is enabled
+  if env_etc.enable_kokkos:
+    env_simtbx.SConscript("../kokkostbx/SConscript")
   if (
       libtbx.env.build_options.enable_cxx11
       or libtbx.env.build_options.cxxstd == "c++14"
@@ -37,6 +40,6 @@ if not env_etc.no_boost_python:
   env_simtbx.SConscript("gpu/SConscript",exports={ 'env' : env_simtbx })
   env_simtbx.SConscript("pixel/SConscript",exports={ 'env' : env_simtbx })
 
-  # only build kokkos on linux and if kokkos is enabled
-  if sys.platform.startswith('linux') and env_etc.enable_kokkos:
+  # only build if kokkos is enabled
+  if env_etc.enable_kokkos:
     env_simtbx.SConscript("kokkos/SConscript",exports={ 'env' : env_simtbx })
