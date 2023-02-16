@@ -479,6 +479,7 @@ class HKLview_3d:
                       "use_provided_miller_arrays",
                       "binning",
                       "fontsize",
+                      "vector_width",
                       "data_array",
                       "miller_array_operation",
                       "mouse_sensitivity",
@@ -500,6 +501,9 @@ class HKLview_3d:
       #self.show_rotation_axes()
       self.realSpaceMag = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
       self.recipSpaceMag = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
+
+      if has_phil_path(diff_phil, "vector_width"):
+        self.SetVectorWidth(self.params.NGL.vector_width)
 
       if has_phil_path(diff_phil, "show_vector",
                                   "real_space_unit_cell_scale_fraction",
@@ -1536,6 +1540,7 @@ class HKLview_3d:
     if not blankscene: # and self.webgl_OK:
       self.RemoveStageObjects()
       self.SetFontSize(self.params.NGL.fontsize)
+      self.SetVectorWidth(self.params.NGL.vector_width)
       for ibin in range(self.nbinvalsboundaries+1):
         nreflsinbin = len(self.radii2[ibin])
         self.DefineHKL_Axes(str(Hstararrowstart), str(Hstararrowend),
@@ -2012,7 +2017,7 @@ Distance: %s
 
 
   def draw_vector(self, s1, s2, s3, t1, t2, t3, isreciprocal=True, label="",
-                  r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8, autozoom = True):
+                  r=0, g=0, b=0, name="", radius=1.0, labelpos=0.8, autozoom = True):
     """
     Place vector from [s1, s2, s3] to [t1, t2, t3] with colour r,g,b and label
     If name=="" creation is deferred until draw_vector is eventually called with name != ""
@@ -2041,10 +2046,11 @@ Distance: %s
 
 
   def draw_cartesian_vector(self, s1, s2, s3, t1, t2, t3, label="",
-                            r=0, g=0, b=0, name="", radius = 0.15, labelpos=0.8, autozoom = True ):
+                            r=0, g=0, b=0, name="", radius = 1.0, labelpos=0.8, autozoom = True ):
     self.mprint("cartesian vector is: %s to %s" %(str(roundoff([s1, s2, s3])), str(roundoff([t1, t2, t3]))), verbose="vector")
+    rad = radius #self.params.NGL.vector_width
     self.AddToBrowserMsgQueue("DrawVector", "%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s;;%s" \
-         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, radius, labelpos, autozoom) )
+         %(s1, s2, s3, t1, t2, t3, r, g, b, label, name, rad, labelpos, autozoom) )
     if name=="":
       self.mprint("deferred rendering vector from (%s, %s, %s) to (%s, %s, %s)" %(s1, s2, s3, t1, t2, t3), verbose=2)
 
@@ -2276,7 +2282,7 @@ in the space group %s\nwith unit cell %s""" \
       self.currentrotvec = [mag*self.currentrotvec[0], mag*self.currentrotvec[1], mag*self.currentrotvec[2]]
       self.draw_cartesian_vector(0, 0, 0, self.currentrotvec[0], self.currentrotvec[1],
                                   self.currentrotvec[2], r=0.1, g=0.1,b=0.1,
-                                  label=label, name=name, radius=0.2, labelpos=1.0, autozoom=autozoom)
+                                  label=label, name=name, radius=0.8, labelpos=1.0, autozoom=autozoom)
     else:
       self.RemovePrimitives(name)
     self.RemovePrimitives("sym_HKLs") # delete other symmetry hkls from a previous rotation operator if any
@@ -2290,10 +2296,10 @@ in the space group %s\nwith unit cell %s""" \
         hklstr = "H,K,L: %d,%d,%d" %thkl
         if i < len(self.visual_symHKLs)-1:
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, r=0.5, g=0.3, b=0.3,
-                           radius=0.1, labelpos=1.0, autozoom = False)
+                           radius=0.8, labelpos=1.0, autozoom = False)
         else: # supplying a name for the vector last graphics primitive draws them all
           self.draw_vector(0,0,0, hkl[0],hkl[1],hkl[2], isreciprocal=True, label=hklstr, name="sym_HKLs",
-                           r=0.5, g=0.3, b=0.3, radius=0.1, labelpos=1.0, autozoom = False)
+                           r=0.5, g=0.3, b=0.3, radius=0.8, labelpos=1.0, autozoom = False)
 
 
   def show_hkl(self, bigwireframe=True):
@@ -2388,7 +2394,7 @@ in the space group %s\nwith unit cell %s""" \
       self.RemovePrimitives("unitcell")
       self.mprint( "Removing real space unit cell", verbose=2)
       return
-    rad = 0.2 # scale # * 0.05 #  1000/ uc.volume()
+    rad = 0.8 # scale # * 0.05 #  1000/ uc.volume()
     self.draw_vector(0,0,0, self.realSpaceMag,0,0, False, label="a", r=0.5, g=0.8, b=0.8, radius=rad)
     self.draw_vector(0,0,0, 0,self.realSpaceMag,0, False, label="b", r=0.8, g=0.5, b=0.8, radius=rad)
     self.draw_vector(0,0,0, 0,0,self.realSpaceMag, False, label="c", r=0.8, g=0.8, b=0.5, radius=rad)
@@ -2410,7 +2416,7 @@ in the space group %s\nwith unit cell %s""" \
       self.RemovePrimitives("reciprocal_unitcell")
       self.mprint( "Removing reciprocal unit cell", verbose=2)
       return
-    rad = 0.2 # 0.05 * scale
+    rad = 0.8 # 0.05 * scale
     self.draw_vector(0,0,0, self.recipSpaceMag,0,0, label="a*", r=0.5, g=0.3, b=0.3, radius=rad)
     self.draw_vector(0,0,0, 0,self.recipSpaceMag,0, label="b*", r=0.3, g=0.5, b=0.3, radius=rad)
     self.draw_vector(0,0,0, 0,0,self.recipSpaceMag, label="c*", r=0.3, g=0.3, b=0.5, radius=rad)
@@ -2593,6 +2599,11 @@ in the space group %s\nwith unit cell %s""" \
   def SetFontSize(self, fontsize):
     msg = str(fontsize)
     self.AddToBrowserMsgQueue("SetFontSize", msg)
+
+
+  def SetVectorWidth(self, vecwidth):
+    msg = str(vecwidth)
+    self.AddToBrowserMsgQueue("SetVectorWidth", msg)
 
 
   def UseWireFrame(self, iswireframe):
@@ -2874,9 +2885,12 @@ ngl_philstr = """
   tooltip_alpha = 0.80
     .type = float
     .help = "Opacity of tooltips showing data values of reflections when clicking or hovering the mouse on reflections"
+  vector_width = 2.0
+    .type = int(value_min=1, value_max=30)
+    .help = "Thickness of vectors and axes"
   fontsize = 9
     .type = int
-    .help = "Font size for window displaying reflections"
+    .help = "Font size for browser window displaying reflections"
   background_colour = 'rgb(127, 127, 127)'
     .type = str
     .help = "String of RGB colour values for the background of the browser"

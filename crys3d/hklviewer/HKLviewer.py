@@ -130,16 +130,18 @@ class SettingsForm(QDialog):
     layout.addWidget(parent.fontspinBox,             1, 4, 1, 1)
     layout.addWidget(parent.BrowserFontsize_labeltxt, 2, 0, 1, 1)
     layout.addWidget(parent.browserfontspinBox,      2, 4, 1, 1)
-    layout.addWidget(parent.cameraPerspectCheckBox,  3, 0, 1, 1)
-    layout.addWidget(parent.bufsize_labeltxt,        4, 0, 1, 1)
-    layout.addWidget(parent.bufsizespinBox,          4, 4, 1, 1)
-    layout.addWidget(parent.clearbufbtn,             5, 0, 1, 1)
-    layout.addWidget(parent.wraptextbtn,             5, 2, 1, 2)
-    layout.addWidget(parent.ttiplabeltxt,            6, 0, 1, 1)
-    layout.addWidget(parent.ttipClickradio,          6, 1, 1, 1)
-    layout.addWidget(parent.ttipHoverradio,          6, 2, 1, 1)
-    layout.addWidget(parent.ttipalphalabeltxt,       6, 3, 1, 1)
-    layout.addWidget(parent.ttipalpha_spinBox,       6, 4, 1, 1)
+    layout.addWidget(parent.vectorWidth_labeltxt,    3, 0, 1, 1)
+    layout.addWidget(parent.vectorWidthspinBox,      3, 4, 1, 1)
+    layout.addWidget(parent.cameraPerspectCheckBox,  4, 0, 1, 1)
+    layout.addWidget(parent.bufsize_labeltxt,        5, 0, 1, 1)
+    layout.addWidget(parent.bufsizespinBox,          5, 4, 1, 1)
+    layout.addWidget(parent.clearbufbtn,             6, 0, 1, 1)
+    layout.addWidget(parent.wraptextbtn,             6, 2, 1, 2)
+    layout.addWidget(parent.ttiplabeltxt,            7, 0, 1, 1)
+    layout.addWidget(parent.ttipClickradio,          7, 1, 1, 1)
+    layout.addWidget(parent.ttipHoverradio,          7, 2, 1, 1)
+    layout.addWidget(parent.ttipalphalabeltxt,       7, 3, 1, 1)
+    layout.addWidget(parent.ttipalpha_spinBox,       7, 4, 1, 1)
 
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
@@ -231,6 +233,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
   def __init__(self, thisapp, isembedded=False): #, cctbxpython=None):
     self.datatypedict = { }
     self.browserfontsize = None
+    self.vectorwidth = None
     self.mousespeedscale = 2000
     self.isembedded = isembedded
     self.philfname = "" # for regression tests
@@ -352,6 +355,14 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.browserfontspinBox.valueChanged.connect(self.onBrowserFontsizeChanged)
     self.BrowserFontsize_labeltxt = QLabel()
     self.BrowserFontsize_labeltxt.setText("Browser font size:")
+
+    self.vectorWidthspinBox = QDoubleSpinBox()
+    self.vectorWidthspinBox.setSingleStep(1)
+    self.vectorWidthspinBox.setRange(1, 10)
+    self.vectorWidthspinBox.setValue(self.vectorwidth)
+    self.vectorWidthspinBox.valueChanged.connect(self.onVectorWidthChanged)
+    self.vectorWidth_labeltxt = QLabel()
+    self.vectorWidth_labeltxt.setText("Thickness of vectors and axes:")
 
     self.cameraPerspectCheckBox = QCheckBox()
     self.cameraPerspectCheckBox.setText("Perspective camera")
@@ -940,9 +951,10 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
           self.cctbxpythonversion = msgstr
           self.send_message("""NGL {
   fontsize = %s
+  vector_width = %s
   show_tooltips = %s
 }
-""" %(self.browserfontsize, self.ttip_click_invoke) )
+""" %(self.browserfontsize, self.vectorwidth, self.ttip_click_invoke) )
 
           if self.cctbxpythonversion == 'cctbx.python.version: 2':
             # use NGL's download feature for images since websocket_server fails to handle large streams
@@ -1626,6 +1638,11 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
   def onBrowserFontsizeChanged(self, val):
     self.browserfontsize = val
     self.send_message("NGL.fontsize = %d" %val)
+
+
+  def onVectorWidthChanged(self, val):
+    self.vectorwidth = val
+    self.send_message("NGL.vector_width = %d" %val)
 
 
   def onClearTextBuffer(self):
@@ -2647,6 +2664,7 @@ clip_plane {
     self.settings.setValue("MouseSpeed", self.mousespeed )
     self.settings.setValue("TextBufferSize", self.textinfosize )
     self.settings.setValue("BrowserFontSize", self.browserfontsize )
+    self.settings.setValue("VectorWidth", self.vectorwidth )
     self.settings.setValue("ttip_click_invoke", self.ttip_click_invoke)
     self.settings.setValue("geometry", self.window.saveGeometry())
     self.settings.setValue("windowstate", self.window.saveState())
@@ -2746,6 +2764,7 @@ clip_plane {
     bcol = eval(self.settings.value("BackgroundColour", "(127,127,127,255)"))
     self.backgroundcolour = QColor(*bcol)
     self.browserfontsize = float(self.settings.value("BrowserFontSize", 9))
+    self.vectorwidth = float(self.settings.value("VectorWidth", 2.0))
     self.ttip_click_invoke = self.settings.value("ttip_click_invoke", None)
     self.geometry = self.settings.value("geometry", None)
     self.windowstate = self.settings.value("windowstate", None)
@@ -2807,6 +2826,9 @@ clip_plane {
     if self.browserfontsize is not None:
       self.onBrowserFontsizeChanged(int(self.browserfontsize))
       self.browserfontspinBox.setValue(int(self.browserfontsize))
+    if self.vectorwidth is not None:
+      self.onVectorWidthChanged(int(self.vectorwidth))
+      self.vectorWidthspinBox.setValue(int(self.vectorwidth))
     if self.ttip_click_invoke is not None:
       self.onShowTooltips(self.ttip_click_invoke)
       self.ttipClickradio.setChecked(self.ttip_click_invoke == "click")

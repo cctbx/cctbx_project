@@ -1723,11 +1723,6 @@ class HKLViewFrame() :
     return True
 
 
-  def SetFontSize(self, val):
-    self.params.NGL.fontsize = val
-    self.viewer.SetFontSize(val)
-
-
   def list_vectors(self):
     self.viewer.calc_rotation_axes(ma=self.procarrays[0] )
     self.viewer.all_vectors = self.viewer.rotation_operators[:]
