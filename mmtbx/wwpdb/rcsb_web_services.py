@@ -284,6 +284,41 @@ def post_report_query_with_pdb_list(query, pdb_ids):
   r = requests.post(report_base_url, json={"query":request})
   return r.json()
 
+def get_r_work_rfree_for_structures(pdb_ids):
+  """ Get Rwork and Rfree for list of pdb ids
+  Args:
+      pdb_ids (list): pdb ids
+  Returns:
+      list: [[pdb_id, rwork, rfree], [pdb_id, rwork, rfree], ...]
+  """
+  query = """
+  {{
+    entries(entry_ids: {pdb_list} )
+    {{
+      rcsb_id
+      refine
+      {{
+        ls_R_factor_R_free,
+        ls_R_factor_R_work,
+      }}
+    }}
+  }}"""
+  r_json = post_report_query_with_pdb_list(query, pdb_ids)
+  result = []
+  for res in r_json["data"]["entries"]:
+    pdb_id = str(res["rcsb_id"])
+    rwork = None
+    rfree = None
+    if res["refine"] is not None:
+      rwork = res["refine"][0]["ls_R_factor_R_work"]
+      if rwork is not None:
+        rwork = float(rwork)
+      rfree = res["refine"][0]["ls_R_factor_R_free"]
+      if rfree is not None:
+        rfree = float(rfree)
+    result.append([pdb_id, rwork, rfree])
+  return result
+
 def get_high_resolution_and_residue_count_for_structures(pdb_ids):
   query = """
   {{
