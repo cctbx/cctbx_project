@@ -74,17 +74,11 @@ def exercise_omegalyze_json():
   assert approx_equal(omjson_dict['flat_results'][8]['omega'], 8.043663329121266), "tst_omegalyze json output last calculated omega dihedral angle not matching previous value"
   assert omjson_dict['flat_results'][8]['omega_type']=='Cis', "tst_omegalyze json output last omega_type not matching previous value"
 
+  from mmtbx.validation import test_utils
   #assert count(omjson_dict['hierarchical_results'], "PRO")==3, "tst_omegalyze json hierarchical output number of Pro omega outliers changed"
-  assert count(omjson_dict['hierarchical_results'], "omega")==9, "tst_omegalyze json hierarchical output total number of omega outliers changed"
+  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Cis")==5, "tst_omegalyze json hierarchical output total number of omega Cis outliers changed"
+  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Twisted")==4, "tst_omegalyze json hierarchical output total number of omega Twisted outliers changed"
 
-def count(prod, count_key, c=0):
-  for mykey in prod:
-    if mykey == count_key:
-      c += 1    
-    if isinstance(prod[mykey], dict):
-      # calls repeatedly
-      c = count(prod[mykey], count_key, c)
-  return c
 
 def run():
   exercise_omegalyze()

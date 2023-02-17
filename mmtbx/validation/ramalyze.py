@@ -15,6 +15,7 @@ from mmtbx.rotamer import ramachandran_eval
 from mmtbx.validation.fav_lists import fav_tables
 from six.moves import range
 from iotbx.pdb.hybrid_36 import hy36decode
+import json
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0
@@ -110,6 +111,20 @@ class ramachandran(residue):
 #      self.c_alphas[2].xyz)
 #    return ram_out
     return self.markup
+
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if s != 'markup' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict["rama_type"] = rama_types[slots_as_dict["rama_type"]]
+    res_type_index = slots_as_dict['res_type']
+    slots_as_dict['res_type'] = res_types[res_type_index]
+    slots_as_dict['res_type_label'] = res_type_labels[res_type_index]
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   # GUI output
   def as_table_row_phenix(self):
@@ -484,14 +499,32 @@ class ramalyze(validation):
     return data
 
   def as_JSON(self):
-    #unfinished
     data = {"validation_type": "ramalyze"}
-    results_list = []
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
     for result in self.results:
-      result_dict = {}
-      result_dict["chain_id"] = result.chain_id
-      results.append(result_dict)
-    return data
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = {"num_favored" : self.n_favored, 
+    "num_allowed" : self.n_allowed, 
+    "num_outliers" : self.n_outliers, 
+    "num_residues" : self.n_total, 
+    "outlier_percentage" : self.out_percent, 
+    "outlier_goal" : self.get_outliers_goal(),
+    "favored_percentage" : self.fav_percent, 
+    "favored_goal" : self.get_favored_goal()
+    }
+    #{summary: {"summary_text": "74 Favored, 0 Allowed, 0 Outlier out of 74 residues (altloc A where applicable)"}
+    #           "info": {"res_count": 74,
+    #                    "favored": 74,}
+                #}
+    #filebase = os.path.basename(self.data_manager.get_model_names()[0])
+    return json.dumps(data, indent=2)
 
 def get_matching_atom_group(residue_group, altloc):
   match = None

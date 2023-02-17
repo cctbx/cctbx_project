@@ -439,7 +439,7 @@ class omegalyze(validation):
     for result in self.results:
       flat_results.append(json.loads(result.as_JSON()))
       hier_result = json.loads(result.as_hierarchical_JSON())
-      hierarchical_results = self.merge(hierarchical_results, hier_result)
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
 
     data['flat_results'] = flat_results
     data['hierarchical_results'] = hierarchical_results
@@ -452,21 +452,6 @@ class omegalyze(validation):
     "num_general" : self.n_general(), 
     }
     return json.dumps(data, indent=2)
-
-  def merge(self, a, b, path=None):
-    "merges b into a"
-    if path is None: path = []
-    for key in b:
-        if key in a:
-            if isinstance(a[key], dict) and isinstance(b[key], dict):
-                self.merge(a[key], b[key], path + [str(key)])
-            elif a[key] == b[key]:
-                pass # same leaf value
-            else:
-                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
-        else:
-            a[key] = b[key]
-    return a
 
   def show_summary(self, out=sys.stdout, prefix=""):
     print(prefix + 'SUMMARY: %i cis prolines out of %i PRO' % (

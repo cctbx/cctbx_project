@@ -1,12 +1,15 @@
 
 from __future__ import absolute_import, division, print_function
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import show_diff, approx_equal
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
 import os.path
 from mmtbx.validation import ramalyze
+from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
+from iotbx.data_manager import DataManager
 import time
+import json
 
 def exercise_ramalyze():
   from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
@@ -228,10 +231,41 @@ def exercise_constants():
   assert ramalyze.RAMALYZE_ANY == 3
   assert ramalyze.RAMALYZE_NOT_FAVORED == 4
 
+def exercise_ramalyze_json():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/jcm.pdb",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print("Skipping exercise_ramalyze(): input pdb (jcm.pdb) not available")
+    return
+  if (find_rotarama_data_dir(optional=True) is None):
+    print("Skipping exercise_ramalyze(): rotarama_data directory not available")
+    return
+  dm = DataManager()
+  m = dm.get_model(regression_pdb)
+  ramalyze_json = ramalyze.ramalyze(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
+  rmjson_dict = json.loads(ramalyze_json)
+  import pprint
+  #pprint.pprint(rmjson_dict)
+  assert len(rmjson_dict['flat_results'])==100, "tst_ramalyze json output not returning correct number of values"
+  assert approx_equal(rmjson_dict['flat_results'][0]['phi'], 50.51521639791719), "tst_ramalyze json output first calculated phi dihedral angle not matching previous value"
+  assert approx_equal(rmjson_dict['flat_results'][0]['psi'], -80.04604513007598), "tst_ramalyze json output first calculated psi dihedral angle not matching previous value"
+  assert rmjson_dict['flat_results'][0]['rama_type']=='OUTLIER', "tst_ramalyze json output first rama_type not matching previous value"
+  assert approx_equal(rmjson_dict['flat_results'][99]['phi'], 60.09378543010022), "tst_ramalyze json output last calculated phi dihedral angle not matching previous value"
+  assert approx_equal(rmjson_dict['flat_results'][99]['psi'], -80.26327714086905), "tst_ramalyze json output last calculated psi dihedral angle not matching previous value"
+  assert rmjson_dict['flat_results'][99]['rama_type']=='OUTLIER', "tst_ramalyze json output last rama_type not matching previous value"
+  from mmtbx.validation import test_utils
+  assert test_utils.count_dict_values(rmjson_dict['hierarchical_results'], "OUTLIER")==100, "tst_ramalyze json hierarchical output total number of rama outliers changed"
+  assert rmjson_dict['summary_results']['num_allowed'] == 162, "tst_ramalyze json output summary total num_allowed not matching previous value"
+  assert rmjson_dict['summary_results']['num_favored'] == 463, "tst_ramalyze json output summary total num_favored not matching previous value"
+  assert rmjson_dict['summary_results']['num_outliers'] == 100, "tst_ramalyze json output summary total num_outliers not matching previous value"
+  assert rmjson_dict['summary_results']['num_residues'] == 725, "tst_ramalyze json output summary total num_residues not matching previous value"
+
 if (__name__ == "__main__"):
   t0=time.time()
   exercise_ramalyze()
   exercise_favored_regions()
   exercise_constants()
+  exercise_ramalyze_json()
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")

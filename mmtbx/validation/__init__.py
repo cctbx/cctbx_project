@@ -534,6 +534,24 @@ class validation(slots_getstate_setstate):
         return True
     return False
 
+  def merge_dict(self, a, b, path=None):
+    """
+    Recursive function for merging two dicts, merges b into a
+    Mainly used to build hierarchical JSON outputs
+    """
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                self.merge_dict(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a
+
   def find_residue(self, other=None, residue_id_str=None):
     assert ([other, residue_id_str].count(None) == 1)
     if (other is not None):
@@ -574,6 +592,20 @@ class validation(slots_getstate_setstate):
     if (i_res is not None):
       return self.results[i_res]
     return None
+
+class test_utils(object):
+
+  def count_dict_values(prod, count_key, c=0):
+    """
+    for counting hierarchical values for testing hierarchical jsons
+    """
+    for mykey in prod:
+      if prod[mykey] == count_key:
+        c += 1
+      if isinstance(prod[mykey], dict):
+        # calls repeatedly
+        c = test_utils.count_dict_values(prod[mykey], count_key, c)
+    return c
 
 class dummy_validation(object):
   """
