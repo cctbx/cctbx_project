@@ -1848,7 +1848,8 @@ self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotatio
         newval = float(item.text())
         self.binstable.item(row,col).setText(str(newval))
         self.lowerbinvals[row] = newval
-        allbinvals = self.lowerbinvals + [ self.upperbinvals[-1] ]
+        upperbinvalsnonan = [e for e in self.upperbinvals if not math.isnan(e)]
+        allbinvals = self.lowerbinvals + [ upperbinvalsnonan[-1] ]
         self.send_message("binning.scene_bin_thresholds = %s" %" ".join([ str(e) for e in allbinvals]))
     except Exception as e:
       print( str(e)  +  traceback.format_exc(limit=10) )

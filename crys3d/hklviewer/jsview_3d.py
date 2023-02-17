@@ -1375,20 +1375,20 @@ class HKLview_3d:
         self.bindata = self.MatchBinArrayToSceneArray()
         if ( len(self.binvalsboundaries)==0 or len(self.params.binning.scene_bin_thresholds) > 0):
           dummy, self.binvalsboundaries = self.get_matched_binarray(self.params.binning.binner_idx)
-          # binvals derived from scene_bin_thresholds must be sorted
-          # if minimum or maximum of binvals are smaller or bigger than lower or
-          # upper bounds then use those values instead
-          self.binvals.sort()
-          vals = self.binvals[:]
-          # ignoring nan values add binvalsboundaries if these are smaller or bigger than values in binvals
-          nonanbinvals = [e for e in self.binvals if not math.isnan(e)]
-          if nonanbinvals[0] > self.binvalsboundaries[0]:
-            vals[0] = self.binvalsboundaries[0]
-          if nonanbinvals[-1] < self.binvalsboundaries[1]:
-            vals[-1] = self.binvalsboundaries[-1]
-          # if nan values are present then sort with nan being the last value
-          vals = list(set( vals)) # no duplicates
-          self.binvalsboundaries = sorted(vals, key= lambda e: sys.maxsize if math.isnan(e) else e)
+        # binvals derived from scene_bin_thresholds must be sorted
+        # if minimum or maximum of binvals are smaller or bigger than lower or
+        # upper bounds then use those values instead
+        self.binvals.sort()
+        vals = self.binvals[:]
+        # ignoring nan values add binvalsboundaries if these are smaller or bigger than values in binvals
+        nonanbinvals = [e for e in self.binvals if not math.isnan(e)]
+        if nonanbinvals[0] > self.binvalsboundaries[0]:
+          vals[0] = self.binvalsboundaries[0]
+        if nonanbinvals[-1] < self.binvalsboundaries[1]:
+          vals[-1] = self.binvalsboundaries[-1]
+        # if nan values are present then sort with nan being the last value
+        vals = list(set( vals)) # no duplicates
+        self.binvalsboundaries = sorted(vals, key= lambda e: sys.maxsize if math.isnan(e) else e)
 
     self.nbinvalsboundaries = len(self.binvalsboundaries)
     # avoid resetting opacities of bins unless we change the number of bins
