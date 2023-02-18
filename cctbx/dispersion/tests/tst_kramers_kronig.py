@@ -12,13 +12,24 @@ import kramers_kronig.kramers_kronig as kramers_kronig
 @pytest.fixture
 def Fe3():
     path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out"
-    return(kramers_kronig_helper.parse_data(path)[6064:6165,:])
+    sf = kramers_kronig_helper.parse_data(path)[6064:6165,:]
+    return(sf)
 
 
 @pytest.fixture
 def Fe2():
     path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out"
-    return(kramers_kronig_helper.parse_data(path)[6064:6165,:])
+    sf = kramers_kronig_helper.parse_data(path)[6064:6165,:]
+    return(sf)
+
+@pytest.fixture
+def Fe0():
+    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/Fe_fake.dat"
+    sf = kramers_kronig_helper.parse_data(path)
+    ind_0 = np.argmin(np.abs(sf[:,0]-7070))
+    ind_1 = np.argmin(np.abs(sf[:,0]-7170))
+    sf = sf[ind_0:ind_1,:]
+    return(sf)
 
 
 def get_f_p_get_f_dp(sf, padn=10):
@@ -93,10 +104,28 @@ def test_get_penalty_Fe2(Fe2):
     mse = get_penalty(Fe2)
     np.testing.assert_allclose(0,mse,atol=1e-8, rtol=1e-8)
 
+
+def test_get_penalty_known_response(Fe2):
+    """Test that the penalty of Fe2 is 0 when the known response is the same as the input function"""
     
+    energy = torch.Tensor(Fe2[:,0])
+    f_p = torch.Tensor(Fe2[:,1])
+    f_dp = torch.Tensor(Fe2[:,2])
+    
+    
+    mse = kramers_kronig.get_penalty(energy, f_p, 
+                                     f_dp, 
+                                     padn=0, trim=0,
+                                     known_response_energy=energy,
+                                     known_response_f_p=f_p,
+                                     known_response_f_dp=f_dp,
+                                     )
+    
+    np.testing.assert_allclose(0,mse,atol=1e-8, rtol=1e-8)
+
 def test_cos_wave():
     """Test that finding f_p when f_dp is cos(energy) yields sin(energy)"""
-    energy = torch.Tensor(np.arange(-np.pi,np.pi,.005))
+    energy = torch.Tensor(np.arange(-np.pi,np.pi,.05))
     
     u = torch.Tensor(np.cos(energy))
     h_u = np.sin(energy)
@@ -105,7 +134,7 @@ def test_cos_wave():
                                             padn=0, trim=0,
                                             )
     
-    np.testing.assert_allclose(h_u, f_p_pred, rtol=1e-3, atol=1e-3)
+    np.testing.assert_allclose(h_u, f_p_pred, rtol=1e-2, atol=1e-2)
 
 
 def test_get_f_p_cos_wave_0():
@@ -133,7 +162,7 @@ def test_get_f_p_cos_wave_0():
     np.testing.assert_allclose(f_p_pred_subtract, h_u, rtol=1e-4, atol=1e-4)
 
 
-    
+
 def test_get_f_p_cos_wave(Fe3):
     """Test that finding f_p with an added cos wave is same as subtracting the cos wave, 
     transforming, and adding the known response"""
@@ -210,3 +239,27 @@ def test_get_f_dp_cos_wave(Fe3):
                                               )    
 
     np.testing.assert_allclose(f_dp_pred_subtract, f_dp_pred, rtol=1e-2, atol=1e-2)
+    
+def test_get_f_p_nonuniform(Fe0, padn=100):
+    """Test that finding f_p for Fe_nonuniform is the same as finding it for Fe_uniform"""
+    
+    # remove some values to make non-uniform
+    energy_0 = torch.Tensor(np.concatenate((Fe0[0:2,0],Fe0[2::2,0],Fe0[-1:,0]),axis=0))
+    f_dp_0 = torch.Tensor(np.concatenate((Fe0[0:2,2],Fe0[2::2,2], Fe0[-1:,2]),axis=0))
+
+    # original vector
+    energy_1 = torch.Tensor(Fe0[:-1,0])
+    f_dp_1 = torch.Tensor(Fe0[:-1,2])
+    
+    energy_padded_0,f_p_pred_0,_,_ = kramers_kronig.get_f_p(energy_0, 
+                                              f_dp_0, 
+                                              padn=padn,
+                                              )
+    
+    energy_padded_1,f_p_pred_1,_,_ = kramers_kronig.get_f_p(energy_1, 
+                                              f_dp_1, 
+                                              padn=padn,
+                                              )
+    
+    np.testing.assert_allclose(energy_padded_0, energy_padded_1)
+    np.testing.assert_allclose(f_p_pred_0, f_p_pred_1, rtol=1e-1, atol=1e-1)

@@ -1,6 +1,5 @@
 """
-Functions to create example optimization with a kramers-kronig penalty.
-These functions are meant to be used as exploration of the 
+Functions to create test optimizations with a kramers-kronig penalty.
 """
 
 import numpy as np
@@ -15,9 +14,15 @@ def create_f(width=10,
              trim=0,
              slope = 1,
              padn=5000,
+             uniform_energy=True
              ):
 
-    energy = np.arange(-width,width,dE)
+    if uniform_energy:
+        energy = np.arange(-width,width,dE)
+    else:
+        energy_0 = np.arange(-width,0,dE)
+        energy_1 = np.arange(0,width, 2*dE)
+        energy = np.concatenate((energy_0, energy_1))
 
     """ramp/unit step function for f" to emulate a simple K-edge"""
     ramp = energy*slope
@@ -25,9 +30,10 @@ def create_f(width=10,
     ramp_end = np.argmin(np.abs(ramp-1))
     ramp_size = ramp_end-ramp_start
     f_dp = np.heaviside(energy, 0.5)
-    mid_ind = len(f_dp)//2
+    mid_ind = np.argmin(np.abs(energy))
     f_dp[mid_ind:mid_ind+ramp_size] = ramp[ramp_start:ramp_end]
     
+    energy = torch.Tensor(energy)
     f_dp = torch.Tensor(f_dp)
     
     """get f' from the Hilbert transform"""
@@ -64,9 +70,16 @@ def get_loss(energy,
              f_p_noisy_ss,
              f_dp_noisy_ss,
              inds,
+             known_response_energy=None,
+             known_response_f_p=None,
+             known_response_f_dp=None,
              ):
     data_loss = torch.mean((f_p_opt[inds]-f_p_noisy_ss)**2 + (f_dp_opt[inds]-f_dp_noisy_ss)**2)
-    kk_loss = kramers_kronig.get_penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0)
+    kk_loss = kramers_kronig.get_penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0,
+                                         known_response_energy=known_response_energy,
+                                         known_response_f_p=known_response_f_p,
+                                         known_response_f_dp=known_response_f_dp,
+                                         )
     
     return(data_loss + kk_loss)
 
@@ -78,6 +91,10 @@ def run_example_opt(width=5,
                     noise_scale=[1e-1,1e-1],
                     learning_rate=1e-1,
                     num_iter=10000,
+                    uniform_energy=True,
+                    known_response_energy=None,
+                    known_response_f_p=None,
+                    known_response_f_dp=None,
                     ):
     """
     Run an example optimization with the following steps:
@@ -91,7 +108,8 @@ def run_example_opt(width=5,
     
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
-                               trim=trim)
+                               trim=trim,
+                               uniform_energy=uniform_energy)
     
     f_p_noisy,f_dp_noisy = sample(f_p,f_dp,
                                   loc=noise_loc,
@@ -123,6 +141,9 @@ def run_example_opt(width=5,
                         f_p_noisy_ss,
                         f_dp_noisy_ss,
                         inds,
+                        known_response_energy=known_response_energy,
+                        known_response_f_p=known_response_f_p,
+                        known_response_f_dp=known_response_f_dp,
                         )
         actual_loss = torch.mean((f_p_opt-f_p)**2 + (f_dp_opt-f_dp)**2)
         loss_vec.append(loss)

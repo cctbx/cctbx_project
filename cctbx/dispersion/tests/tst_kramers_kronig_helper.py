@@ -4,6 +4,7 @@ import sys
 
 import pytest
 import numpy as np
+import torch
 
 sys.path.append("..")
 import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
@@ -36,9 +37,33 @@ def test_parse_Fe3_end(Fe3):
                                                 [24904.0,0.220802089543, 0.377388435958],
                                                 [24905.0,0.18454034239, 0.315405661584]]))
 
-def test_interpolate(Fe3):
-    """Test that interpolate results in a uniform x array."""
+def test_interpolate_scipy(Fe3):
+    """Test that interpolate with scipy mode results in a uniform x array."""
     Fe3 = Fe3[np.array([0,100,101,102,103,104]),:]
-    x_new, y_new = kramers_kronig_helper.interpolate(Fe3[:,0],Fe3[:,1])
+    x_new, y_new = kramers_kronig_helper.interpolate(Fe3[:,0],Fe3[:,1], mode="scipy")
     dx_new = x_new[1:]-x_new[:-1]
     np.testing.assert_equal(False,np.any(dx_new-dx_new[0]))
+
+def test_interpolate_torch_uniformity(Fe3):
+    """Test that interpolate with torch mode results in a uniform x array."""
+    Fe3 = Fe3[np.array([0,100,101,102,103,104]),:]
+    x_new, y_new = kramers_kronig_helper.interpolate(torch.tensor(Fe3[:,0]),torch.tensor(Fe3[:,1]), mode="torch")
+    dx_new = x_new[1:]-x_new[:-1]
+    np.testing.assert_equal(False,np.any(np.array(dx_new-dx_new[0])))
+    
+def test_interpolate_torch_0(Fe3):
+    """Test that interpolate_torch yields correct result on linear example."""
+    x_original = torch.tensor([1,5,10])
+    y_original = torch.tensor([2,10,20])
+    x_new = torch.tensor([4,7])
+    y_new = kramers_kronig_helper.interpolate_torch(x_original, y_original, x_new)
+    np.testing.assert_equal(np.array(y_new),np.array([8,14]))
+
+def test_interpolate_torch_1(Fe3):
+    """Test that interpolate_torch yields correct result on linear example."""
+    x_original = torch.tensor([1,2,3,4,5,6,7,8,9,10])
+    y_original = 2*torch.tensor([1,2,3,4,5,6,7,8,9,10])
+    x_new = torch.tensor([4,7])
+    y_new = kramers_kronig_helper.interpolate_torch(x_original, y_original, x_new)
+    np.testing.assert_equal(np.array(y_new),np.array([8,14]))
+    
