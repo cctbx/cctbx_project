@@ -55,6 +55,7 @@ var shapebufs = [];
 var expansion_shapebufs = [];
 var nrots = 0;
 var fontsize = 9;
+var vectorwidth = 2
 var postrotmxflag = false;
 var cvorient = new NGL.Matrix4();
 var oldmsg = "";
@@ -233,8 +234,8 @@ function createDivElement(label, rgb)
 {
   let elm = createElement("div", { innerText: label },
     {
-      color: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", 1.0)",
-      backgroundColor: "rgba(255, 255, 255, " + div_annotation_opacity + ")",
+      color: "rgba(255, 255, 255, 255, 1.0)",    
+      backgroundColor: "rgba(" + rgb[0] + ", " + rgb[1] + ", " + rgb[2] + ", " + div_annotation_opacity + ")",
       padding: "4px"
     }, fontsize
   );
@@ -271,7 +272,6 @@ function CreateWebSocket()
   catch(err)
   {
     alert('JavaScriptError: ' + err.stack );
-    //addDivBox("Error!", window.innerHeight - 50, 20, 40, 20, "rgba(100, 100, 100, 0.0)");
   }
 }
 
@@ -577,7 +577,15 @@ async function ResolveAutoview(mycomponent, t)
 {
   try {
     let zaim = mycomponent.getZoom();
-    zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
+    //zoomanis = mycomponent.stage.animationControls.zoomMove(mycomponent.getCenter(), zaim, t);
+    let center = new NGL.Vector3();
+    center.x=0;
+    center.y=0;
+    center.z=0;
+    zaim = zaim*1.5;
+    // with HKL axes now part of vectorshape and not shape getCenter no longer returns (0,0,0)
+    // and zaim often is too small. Work around this with explicit center at 0,0,0 and doubling zaim
+    zoomanis = mycomponent.stage.animationControls.zoomMove(center, zaim, t);
     let dt = 50;
     let sumt = 0;
     while (isAutoviewing) 
@@ -1266,56 +1274,12 @@ function onMessage(e)
         r2[j] = parseFloat(val2[j+3]);
         rgb[j]= parseFloat(val2[j+6]);
       }
-      let radius = parseFloat(val2[11]);
-
-      if (vectorshape == null)
-        vectorshape = new NGL.Shape('vectorshape');
-
-      vectorshape.addArrow(r1, r2, [rgb[0], rgb[1], rgb[2]], radius);
+      let labelpos = parseFloat(val2[12]);
       let label = val2[9].trim();
-      if (label !== "")
-      {
-        let labelpos = parseFloat(val2[12]);
-        let pos = new NGL.Vector3()
-        let txtR = [
-          r1[0] * (1.0 - labelpos) + r2[0] * labelpos,
-          r1[1] * (1.0 - labelpos) + r2[1] * labelpos,
-          r1[2] * (1.0 - labelpos) + r2[2] * labelpos
-        ];
-        pos.x = txtR[0];
-        pos.y = txtR[1];
-        pos.z = txtR[2];
-
-        let elm = createDivElement(label, rgb)
-        annodivs.push([elm, pos]);  // store until we get a representation name
-      }
-      // if reprname is supplied with a vector then make a representation named reprname
-      // of this and all pending vectors stored in vectorshape and render them.
-      // Otherwise just accummulate the new vector
+      let radius = parseFloat(val2[11])* vectorwidth;
       let reprname = val2[10].trim();
       let autozoom = val2[13];
-      if (reprname != "")
-      {
-        let wasremoved = DeletePrimitives(reprname); // delete any existing vectors with the same name
-        let cmp = stage.addComponentFromObject(vectorshape);
-        for (let i = 0; i < annodivs.length; i++)
-        {
-          let elm = annodivs[i][0];
-          let pos = annodivs[i][1];
-          cmp.addAnnotation(pos, elm);
-        }
-        vectorshapeComps.push(cmp);
-        annodivs = [];
-        vectorreprs.push(
-          vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
-                                                                      { name: reprname} )
-        );
-        if (autozoom == "True" && !wasremoved) // don't animate if adding a vector that was just removed above
-          vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
-          //SetAutoviewTimeout(vectorshapeComps[vectorshapeComps.length - 1], 500);
-        vectorshape = null;
-        RenderRequest();
-      }
+      DrawVector(r1, r2, rgb, radius, label, labelpos, reprname, autozoom);
     }
 
     if (msgtype === "RemovePrimitives")
@@ -1346,6 +1310,13 @@ function onMessage(e)
       MakeColourChart();
       MakeButtons();
       MakePlusMinusButtons();
+    }
+
+    if (msgtype === "SetVectorWidth")
+    {
+      vectorwidth = parseFloat(val[0]);
+      MakeHKL_Axis();
+      RenderRequest();
     }
 
     if (msgtype === "GetReflectionsInFrustum")
@@ -1669,6 +1640,65 @@ Object.assign(tooltip.style, {
 });
 
 
+function DrawVector(r1, r2, rgb, radius, label, labelpos, reprname, autozoom)
+{
+  if (vectorshape == null)
+    vectorshape = new NGL.Shape('vectorshape');
+
+  let rad = radius*0.05;
+  vectorshape.addArrow(r1, r2, [rgb[0], rgb[1], rgb[2]], rad);
+  if (label !== "")
+  {
+    let pos = new NGL.Vector3()
+    let txtR = [
+      r1[0] * (1.0 - labelpos) + r2[0] * labelpos,
+      r1[1] * (1.0 - labelpos) + r2[1] * labelpos,
+      r1[2] * (1.0 - labelpos) + r2[2] * labelpos
+    ];
+    pos.x = txtR[0];
+    pos.y = txtR[1];
+    pos.z = txtR[2];
+
+    let r = parseInt(255*rgb[0]).toString();
+    let g = parseInt(255*rgb[1]).toString();
+    let b = parseInt(255*rgb[2]).toString();
+
+    let elm = createDivElement(label, [r,g,b]);
+    elm.style.color = "white";
+    elm.style.fontSize = fontsize.toString() + "pt";
+    elm.style.padding = "4px"
+
+    annodivs.push([elm, pos]);  // store until we get a representation name
+  }
+  // if reprname is supplied with a vector then make a representation named reprname
+  // of this and all pending vectors stored in vectorshape and render them.
+  // Otherwise just accummulate the new vector
+  if (reprname != "")
+  {
+    let wasremoved = DeletePrimitives(reprname); // delete any existing vectors with the same name
+    let cmp = stage.addComponentFromObject(vectorshape);
+    for (let i = 0; i < annodivs.length; i++)
+    {
+      let elm = annodivs[i][0];
+      let pos = annodivs[i][1];
+      cmp.addAnnotation(pos, elm);
+    }
+    vectorshapeComps.push(cmp);
+    annodivs = [];
+    vectorreprs.push(
+      vectorshapeComps[vectorshapeComps.length-1].addRepresentation('vecbuf',
+                                                                  { name: reprname} )
+    );
+    if (autozoom == "True" && !wasremoved) // don't animate if adding a vector that was just removed above
+      vectorshapeComps[vectorshapeComps.length - 1].autoView(500) // half a second animation
+      //SetAutoviewTimeout(vectorshapeComps[vectorshapeComps.length - 1], 500);
+    vectorshape = null;
+    RenderRequest();
+  }
+
+}
+
+
 function DefineHKL_Axes(hstart, hend, kstart, kend, 
                  lstart, lend, hlabelpos, klabelpos, llabelpos)
 {
@@ -1700,45 +1730,11 @@ function MakeHKL_Axis()
     || Lstarstart == null || Lstarend == null)
     return;
   //blue-x
-  shape.addArrow( Hstarstart, Hstarend , [ 0, 0, 1 ], 0.1);
+  DrawVector(Hstarstart, Hstarend , [ 0, 0, 1 ], vectorwidth, "h", 1.05, "Haxis", false);
   //green-y
-  shape.addArrow( Kstarstart, Kstarend, [ 0, 1, 0 ], 0.1);
+  DrawVector(Kstarstart, Kstarend, [ 0, 1, 0 ], vectorwidth, "k", 1.05, "Kaxis", false);
   //red-z
-  shape.addArrow( Lstarstart, Lstarend, [ 1, 0, 0 ], 0.1);
-
-  if (Helm != null) {
-    stage.compList[0].removeAnnotation(Helm);
-    stage.compList[0].removeAnnotation(Kelm);
-    stage.compList[0].removeAnnotation(Lelm);
-    Helm.remove();
-    Kelm.remove();
-    Lelm.remove();
-  }
-
-  Helm = document.createElement("div");
-  Helm.innerText = "h";
-  Helm.style.color = "white";
-  Helm.style.backgroundColor = "rgba(0, 0, 255, " + div_annotation_opacity + ")";
-  Helm.style.fontSize = fontsize.toString() + "pt";
-  Helm.style.padding = "4px"
-
-  Kelm = document.createElement("div");
-  Kelm.innerText = "k";
-  Kelm.style.color = "white";
-  Kelm.style.backgroundColor = "rgba(0, 255, 0, " + div_annotation_opacity + ")";
-  Kelm.style.fontSize = fontsize.toString() + "pt";
-  Kelm.style.padding = "4px"
-
-  Lelm = document.createElement("div");
-  Lelm.innerText = "l";
-  Lelm.style.color = "white";
-  Lelm.style.backgroundColor = "rgba(255, 0, 0, " + div_annotation_opacity + ")";
-  Lelm.style.fontSize = fontsize.toString() + "pt";
-  Lelm.style.padding = "4px"
-  
-  stage.compList[0].addAnnotation(Hlabelvec, Helm);
-  stage.compList[0].addAnnotation(Klabelvec, Kelm);
-  stage.compList[0].addAnnotation(Llabelvec, Lelm);
+  DrawVector( Lstarstart, Lstarend, [ 1, 0, 0 ], vectorwidth, "l", 1.05, "Laxis", false);
 };
 
 

@@ -30,7 +30,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       nproc_str=''
     else:
       nproc_str='THREADS=%s' % self.nproc
-    outl = '%s %s %s %s \n%s\n\n' % (
+    outl = '%s %s %s %s DISP \n%s\n\n' % (
      self.method,
      self.basis_set,
      self.solvent_model,
@@ -157,7 +157,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
       )
     return cmd
 
-  def run_cmd(self, redirect_output=True, log=None):
+  def run_cmd(self, redirect_output=False, log=None):
     t0=time.time()
     cmd = self.get_cmd()
     base_qm_manager.run_qm_cmd(cmd,
@@ -172,7 +172,7 @@ class mopac_manager(base_qm_manager.base_qm_manager):
   def read_energy(self):
     filename = self.get_log_filename()
     f=open(filename, 'r')
-    lines=f.readlines()
+    lines=f.read()
     del f
     '''FINAL HEAT OF FORMATION =       -132.17152 KCAL/MOL =    -553.00562 KJ/MOL
 
@@ -181,13 +181,13 @@ class mopac_manager(base_qm_manager.base_qm_manager):
 
 
           TOTAL ENERGY            =      -1356.82771 EV'''
-    for line in lines:
-      if line.find('FINAL HEAT OF FORMATION')>-1:
+    for line in lines.splitlines():
+      if line.find('FINAL HEAT OF FORMATION = ')>-1:
         self.energy = float(line.split()[5])
         self.units = line.split()[6]
-      # if line.find('TOTAL ENERGY            =')>-1:
-      #   self.energy = float(line.split()[3])
-      #   self.units = line.split()[4]
+      if line.find('TOTAL ENERGY            =')>-1:
+        self.energy = float(line.split()[3])
+        self.units = line.split()[4]
     return self.energy, self.units
 
   def cleanup(self, level=None, verbose=False):

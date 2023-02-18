@@ -10,7 +10,10 @@ from mmtbx.geometry_restraints.quantum_restraints_manager import run_energies
 from mmtbx.geometry_restraints.quantum_restraints_manager import update_restraints
 from mmtbx.geometry_restraints.quantum_restraints_manager import min_dist2
 from mmtbx.geometry_restraints.quantum_interface import get_qm_restraints_scope
-from mmtbx.geometry_restraints.quantum_interface import classify_histidine
+from mmtbx.geometry_restraints.qi_utils import classify_histidine
+from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
+from mmtbx.geometry_restraints.qi_utils import get_hbonds_via_filenames
+from mmtbx.geometry_restraints.qi_utils import get_rotamers_via_filenames
 
 import iotbx.pdb
 import iotbx.phil
@@ -227,7 +230,7 @@ Usage examples:
     # if self.data_manager.has_restraints():
     #   cif_object = self.data_manager.get_restraint()
     if (not self.params.qi.selection and
-        self.params.qi.iterate_histidine is None and
+        self.params.qi.iterate_histidine is False and
         len(self.params.qi.qm_restraints)==0 and
         not self.params.qi.each_amino_acid):
       rc = get_selection_from_user(model.get_hierarchy())
@@ -255,7 +258,7 @@ Usage examples:
       for rg in hierarchy.residue_groups():
         if len(rg.atom_groups())!=1: continue
         gc = get_class(rg.atom_groups()[0].resname)
-        if gc not in ['common_amino_acid']: continue
+        if gc not in ['common_amino_acid', 'modified_amino_acid']: continue
         selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
         qi_phil_string = self.get_single_qm_restraints_scope(selection)
         qi_phil_string = self.set_all_write_to_true(qi_phil_string)
@@ -317,6 +320,14 @@ Usage examples:
 
     if self.params.qi.iterate_metals:
       self.iterate_metals()
+
+  def get_selected_hierarchy(self):
+    selection = self.params.qi.qm_restraints[0].selection
+    model = self.data_manager.get_model()
+    selection_array = model.selection(selection)
+    selected_model = model.select(selection_array)
+    hierarchy = selected_model.get_hierarchy()
+    return hierarchy
 
   def iterate_metals(self, log=None):
     if len(self.params.qi.qm_restraints)<1:
@@ -404,34 +415,30 @@ Usage examples:
       print('    Energy %s %s' % (energies[-1],units), file=log)
       i+=1
 
-  def iterate_histidine(self, log=None):
+  def iterate_NQH(self, nq_or_h, classify_nqh, add_nqh_H_atoms, generate_flipping, log=None):
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_histidine=True)
       print('Restart command with PHIL file')
       return
-    selection = self.params.qi.qm_restraints[0].selection
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
     nproc = self.params.qi.nproc
-    model = self.data_manager.get_model()
-    selection_array = model.selection(selection)
-    selected_model = model.select(selection_array)
-    hierarchy = selected_model.get_hierarchy()
-    original_ch = classify_histidine(hierarchy)
+    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
+    hierarchy = self.get_selected_hierarchy()
+    original_ch = classify_nqh(hierarchy)
     # add all H atoms
-    his_ag = add_histidine_H_atoms(hierarchy)
+    his_ag = add_nqh_H_atoms(hierarchy)
     for atom in hierarchy.atoms(): break
     rg_resseq = atom.parent().parent().resseq
     chain_id = atom.parent().parent().parent().id
-    energies = []
-    rmsds = []
-    argstuples = []
-    # logs = []
     buffer_selection = ''
     buffer = self.params.qi.qm_restraints[0].buffer
     buffer *= buffer
     t0=time.time()
-    for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
+    argstuples = []
+    filenames = []
+    for i, flipping_his in enumerate(generate_flipping(his_ag)):
       model = self.data_manager.get_model()
-      if nproc>1: model=model.deep_copy()
+      model=model.deep_copy()
       hierarchy = model.get_hierarchy()
       for chain in hierarchy.chains():
         if chain.id!=chain_id: continue
@@ -441,7 +448,8 @@ Usage examples:
           assert j==0
           rg.remove_atom_group(ag)
           rg.insert_atom_group(0, flipping_his)
-      self.params.output.prefix='iterate_histidine_%02d' % (i+1)
+      self.params.output.prefix='iterate_%s_%02d' % (nq_or_h, i+1)
+      # self.params.output.prefix='iterate_histidine_%02d' % (i+1)
       arg_log=null_out()
       if self.params.qi.verbose:
         arg_log=log
@@ -463,9 +471,11 @@ Usage examples:
       #
       if self.params.qi.only_i is not None and self.params.qi.only_i!=i+1:
         continue
+      filenames.append('%s_cluster_final_%s.pdb' % (self.params.output.prefix,
+                                                   preamble))
       #
-      if nproc==1:
-        print('  Running HIS flip %d' % (i+1), file=log)
+      if nproc==-1:
+        print('  Running %s flip %d' % (nq_or_h, i+1), file=log)
         res = update_restraints(model,
                                 self.params,
                                 never_write_restraints=True,
@@ -474,10 +484,9 @@ Usage examples:
         energies.append(res.energies[0])
         units=res.units
         rmsds.append(res.rmsds[0][1])
-        if 0:
-          print('    Energy : %s %s' % (energies[-1],units), file=log)
-          print('    Time   : %ds' % (time.time()-t0), file=log)
-          print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
+        print('    Energy : %s %s' % (energies[-1],units), file=log)
+        print('    Time   : %ds' % (time.time()-t0), file=log)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
       else:
         import copy
         params = copy.deepcopy(self.params)
@@ -486,26 +495,59 @@ Usage examples:
                             None, # macro_cycle=None,
                             True, #never_write_restraints=False,
                             1, # nproc=1,
-                            null_out(),
+                            None, #null_out(),
                             ))
+    results = run_serial_or_parallel(update_restraints, argstuples, nproc)
+    for i, filename in enumerate(filenames):
+      assert os.path.exists(filename), ' Output %s missing' % filename
+      results[i].filename = filename
+    return results
 
-    from libtbx import easy_mp
-    from mmtbx.geometry_restraints.quantum_interface import get_preamble
-    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
-    if nproc>1:
-      print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
-    i=0
-    for args, res, err_str in easy_mp.multi_core_run( update_restraints,
-                                                      argstuples,
-                                                      nproc,
-                                                      keep_input_order=True):
-      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      print('  Running HIS flip %d' % (i+1), file=log)
-      # energies.append(res[0][0])
-      # units = res[1]
-      # print('    Energy %s %s' % (energies[-1],units), file=log)
-      assert 0
-      i+=1
+  def _process_energies(self, energies, units, resname='HIS'):
+    te=[]
+    adjust = []
+    if resname=='HIS': adjust=[0,3]
+    for i, energy in enumerate(energies):
+      if i in adjust:
+        if units.lower() in ['kcal/mol']:
+          # energy-=247.80642
+          # energy-=156.9
+          energy-=26.9295
+          assert 0
+        elif units.lower() in ['hartree']:
+          energy+=0.5
+        elif units.lower() in ['ev']:
+          energy+=13.61
+        else:
+          assert 0
+      te.append(energy)
+    return energies
+
+  def iterate_histidine(self, log=None):
+    rc=self.iterate_NQH('HIS',
+                        classify_histidine,
+                        add_histidine_H_atoms,
+                        generate_flipping_his,
+                        log=log)
+
+
+    energies = []
+    units = None
+    rmsds = []
+    rotamers = []
+    filenames = []
+    for i, res in enumerate(rc):
+      energies.append(res.energies[0])
+      units=res.units
+      rmsds.append(res.rmsds[0][1])
+      filenames.append(res.filename)
+
+    rc=get_hbonds_via_filenames(filenames,
+                              'HIS',
+                              restraint_filenames=self.restraint_filenames)
+    hbondss, pymols = rc
+    selection = self.params.qi.qm_restraints[0].selection
+    rotamers=get_rotamers_via_filenames(filenames, selection)
 
     protonation = [ 'HD1, HE2',
                     'HD1 only',
@@ -514,81 +556,25 @@ Usage examples:
                     'HD1 only flipped',
                     'HE2 only flipped',
     ]
+
+    energies = self._process_energies(energies, units)
+    me=min(energies)
     cmd = '\n\n  phenix.start_coot'
-    te=[]
-    for i, (pro, energy) in enumerate(zip(protonation, energies)):
-      if i in [0,3]:
-        if units.lower() in ['kcal/mol']:
-          # energy-=247.80642
-          # energy-=156.9
-          energy-=26.9295
-        elif units.lower() in ['hartree']:
-          energy+=0.5
-      te.append(energy)
-    me=min(te)
     #
-    # parallel HBond
-    #
-    argstuples = []
-    for i, (pro, energy) in enumerate(zip(protonation, energies)):
-      prefix='iterate_histidine_%02d' % (i+1)
-      filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
-      assert os.path.exists(filename), '"%s"' % filename
-      argstuples.append([[filename,
-                         '--quiet',
-                         'output_pymol_file=True',
-                         'output_restraint_file=False',
-                         'output_skew_kurtosis_plot=False',
-                         'prefix=%s_%s' % (prefix, preamble),
-                         ]])
-      if self.restraint_filenames:
-        argstuples[-1][-1]+=self.restraint_filenames
-    def run_hbond(args):
-      from iotbx.cli_parser import run_program
-      from mmtbx.programs.hbond import Program
-      hbonds = run_program(program_class=Program,
-                           args=tuple(args),
-                           )
-      return hbonds
-    # print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
-    i=0
-    hbondss=[]
-    rotamers=[]
-    pymols = ''
-    for args, res, err_str in easy_mp.multi_core_run( run_hbond,
-                                                      argstuples,
-                                                      max(nproc,6),
-                                                      keep_input_order=True):
-      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      hbondss.append(res)
-      prefix='iterate_histidine_%02d' % (i+1)
-      pf = '%s_%s.pml' % (prefix, preamble)
-      f=open(pf, 'a')
-      f.write('\n')
-      # f.write('zoom resn HIS\n')
-      f.write('show sticks, resn HIS\n')
-      del f
-      pymols += '  phenix.pymol %s &\n' % pf
-      from iotbx import pdb
-      hierarchy = pdb.input(pf.replace('.pml', '.pdb')).construct_hierarchy()
-      asc1 = hierarchy.atom_selection_cache()
-      sel = asc1.selection(selection)
-      hierarchy = hierarchy.select(sel)
-      rc = classify_histidine(hierarchy)
-      rotamers.append(rc[0])
-      i+=1
-    #
-    results = {}
+    # results = {}
+    hierarchy = self.get_selected_hierarchy()
+    original_ch = classify_histidine(hierarchy)
     print('\n\nEnergies in units of %s\n' % units, file=log)
     print('  %i. %-20s : rotamer "%s"' % (
       0,
       original_ch[1],
       original_ch[0])
     )
-    for i, (pro, energy) in enumerate(zip(protonation, energies)):
-      energy=te[i]
-      prefix='iterate_histidine_%02d' % (i+1)
-      filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
+    #
+    outl = '  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"'
+    for i, filename in enumerate(filenames):
+      # prefix='iterate_histidine_%02d' % (i+1)
+      # filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
       assert os.path.exists(filename), '"%s"' % filename
       if self.params.qi.run_directory:
         cmd += ' %s' % os.path.join(self.params.qi.run_directory, filename)
@@ -596,35 +582,29 @@ Usage examples:
         cmd += ' %s' % filename
       #
       n = hbondss[i].get_counts(min_data_size=1).n
+      energy = energies[i]
       #
       if units.lower() in ['hartree']:
         de = (energy-me)*627.503
-        print('  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
-          i+1,
-          pro,
-          energy,
-          units,
-          de,
-          n,
-          rmsds[i],
-          rotamers[i],
-          ), file=log)
       elif units.lower() in ['kcal/mol']:
         de = (energy-me)
-        print('  %i. %-20s : %7.2f %s ~> %7.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"' % (
-          i+1,
-          pro,
-          energy,
-          units,
-          de,
-          n,
-          rmsds[i],
-          rotamers[i],
-          ), file=log)
-      results.setdefault(pro, {})
-      results[pro]['delta E'] = de
-      results[pro]['H bonds'] = n
-      results[pro]['rmsd'] = rmsds[i]
+      elif units.lower() in ['ev']:
+        de = (energy-me)*23.0605
+      args = (
+        i+1,
+        protonation[i],
+        energy,
+        units,
+        de,
+        n,
+        rmsds[i],
+        rotamers[i],
+        )
+      print(outl % args, file=log)
+      # results.setdefault(pro, {})
+      # results[pro]['delta E'] = de
+      # results[pro]['H bonds'] = n
+      # results[pro]['rmsd'] = rmsds[i]
 
     # d = dict(sorted(results.items(), key=lambda item: item[1]['delta E']))
     # for i, (key, item) in enumerate(d.items()):

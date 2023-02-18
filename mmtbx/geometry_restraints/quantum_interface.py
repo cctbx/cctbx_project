@@ -161,7 +161,35 @@ def get_safe_filename(s):
   s=s.replace('=', '_equals_')
   return s
 
+def populate_qmr_defaults(qmr):
+  def default_defaults(qmr):
+    if qmr.package.basis_set is Auto:
+      qmr.package.basis_set=''
+    if qmr.package.solvent_model is Auto:
+      qmr.package.solvent_model=''
+    if qmr.package.multiplicity is Auto:
+      qmr.package.multiplicity=1
+    if qmr.package.charge is Auto:
+      qmr.package.charge=0
+  program = qmr.package.program
+  if program=='test':
+    pass
+  elif program=='orca':
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='AM1'
+      # qmr.package.method='PBEh-3c'
+  elif program=='mopac':
+    default_defaults(qmr)
+    if qmr.package.method is Auto:
+      qmr.package.method='PM7'
+      qmr.package.method='PM6-D3H4'
+  else:
+    assert 0
+  return qmr
+
 def get_preamble(macro_cycle, i, qmr, old_style=False):
+  qmr = populate_qmr_defaults(qmr)
   s=''
   if macro_cycle is not None:
     s+='%02d_' % macro_cycle
@@ -342,31 +370,6 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
       for action in actions:
         tmp[j].append(action)
   return tmp
-
-def classify_histidine(hierarchy, resname='HIS'):
-  from mmtbx.validation.rotalyze import rotalyze
-  result = rotalyze(
-      pdb_hierarchy=hierarchy,
-      # data_version="8000",#was 'params.data_version', no options currently
-      # show_errors=self.params.show_errors,
-      # outliers_only=self.params.outliers_only,
-      # use_parent=self.params.use_parent,
-      # out=self.logger,
-      quiet=False)
-  names = []
-  for rot in result.results:
-    if rot.resname!=resname: continue
-    names.append(rot.rotamer_name)
-  hs=0
-  ha=None
-  for atom in hierarchy.atoms():
-    if atom.parent().resname!=resname: continue
-    if atom.name.strip() in ['HD1', 'HE2']:
-      hs+=1
-      ha=atom.name.strip()
-  assert len(names)==1
-  if hs==2: ha = 'HD1, HE2'
-  return names[0], ha
 
 def digester(model, geometry, params, log=None):
   active, choice = is_quantum_interface_active(params)

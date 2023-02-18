@@ -58,13 +58,15 @@ Usage examples:
     print('Validating inputs', file=self.logger)
     self.data_manager.has_models(expected_n=2, exact_count=True, raise_sorry=True)
     model_1, model_2 = self._get_models()
+    model_1.add_crystal_symmetry_if_necessary()
+    model_2.add_crystal_symmetry_if_necessary()
     # Filter out what you are not interested in
     s1 = model_1.selection(string="protein")
     s2 = model_2.selection(string="protein")
     model_1 = model_1.select(selection = s1)
     model_2 = model_2.select(selection = s2)
     #
-    assert model_1.get_hierarchy().is_similar_hierarchy(model_2.get_hierarchy())
+    # assert model_1.get_hierarchy().is_similar_hierarchy(model_2.get_hierarchy())
     for m in [model_1, model_2]:
       assert m.get_hierarchy().models_size() == 1
 

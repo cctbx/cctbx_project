@@ -679,9 +679,9 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
       if python is not None:
-        if python not in ['27', '36', '37', '38', '39']:
+        if python not in ['27', '37', '38', '39', '310']:
           raise RuntimeError(
-            """Only Python 2.7, 3.6, 3.7, 3.8, and 3.9 are currently supported.""")
+            """Only Python 2.7, 3.7, 3.8, 3.9, and 3.10 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
     else:
       filename = os.path.abspath(filename)
@@ -1006,7 +1006,7 @@ Example usage:
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
     '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '36', '37', '38', '39'],
+    choices=['27', '37', '38', '39', '310'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(
