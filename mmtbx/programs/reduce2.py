@@ -31,6 +31,9 @@ from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class
+from mmtbx.programs import probe2
+import copy
+import tempfile
 
 version = "0.6.0"
 
@@ -739,7 +742,6 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
   return ret
 
-
 # ------------------------------------------------------------------------------
 
 class Program(ProgramTemplate):
@@ -795,6 +797,68 @@ NOTES:
   For additional information and help, see http://kinemage.biochem.duke.edu/software/reduce
   and http://molprobity.biochem.duke.edu
   '''
+
+  # ------------------------------------------------------------------------------
+
+  def _MakeProbePhil(self, movers_to_check, temp_output_file_name):
+    # Determine the source and target selections based on the Movers
+    # that we are checking being tested against everything else.
+    # @todo
+    source_selection = 'sidechain and ('
+    for i, m in enumerate(movers_to_check):
+      if i > 0:
+        term = 'or ('
+      else:
+        term = ' ('
+      term += 'chain {} and resid {}) '.format(m.chain, m.resId)
+      source_selection += term
+    source_selection += ')'
+    target_selection = 'all'
+
+    # @todo Can we set default parameters and then only overwrite the ones we need?
+    newParams = copy.deepcopy(self.params)
+    newParams.__inject__('source_selection', source_selection)      # Not default
+    newParams.__inject__('target_selection', target_selection)      # Not default
+    newParams.approach = 'both'                                     # Not default
+    newParams.__inject__('excluded_bond_chain_length', 4)
+    newParams.__inject__('minimum_water_hydrogen_occupancy', 0.66)  # Not default
+    newParams.__inject__('maximum_water_hydrogen_b', 40.0)          # Not default
+    newParams.__inject__('include_mainchain_mainchain', True)
+    newParams.__inject__('include_water_water', False)
+    newParams.__inject__('keep_unselected_atoms', True)
+    newParams.__inject__('atom_radius_scale', 1.0)
+    newParams.__inject__('atom_radius_offset', 0.0)
+    newParams.__inject__('minimum_occupancy', 0.01)                 # Not default
+    newParams.__inject__('overlap_scale_factor', 0.5)
+    newParams.__inject__('ignore_lack_of_explicit_hydrogens', True)
+
+    newParams.output.filename = temp_output_file_name               # Not default
+    newParams.output.__inject__('dump_file_name', None)
+    newParams.output.__inject__('format', 'kinemage')
+    newParams.output.__inject__('contact_summary', False)
+    newParams.output.__inject__('condensed', False)
+    newParams.output.__inject__('count_dots', False)
+    newParams.output.__inject__('hydrogen_bond_output', True)
+    newParams.output.__inject__('record_added_hydrogens', False)
+    newParams.output.__inject__('report_hydrogen_bonds', True)
+    newParams.output.__inject__('report_clashes', True)
+    newParams.output.__inject__('report_vdws', True)
+    newParams.output.__inject__('separate_worse_clashes', False)
+    newParams.output.__inject__('group_name', '')
+    newParams.output.__inject__('add_group_name_master_line', False)
+    newParams.output.__inject__('add_group_line', False)            # Not default
+    newParams.output.__inject__('add_kinemage_keyword', False)
+    newParams.output.__inject__('add_lens_keyword', False)
+    newParams.output.__inject__('color_by_na_base', False)
+    newParams.output.__inject__('color_by_gap', True)
+    newParams.output.__inject__('group_label', '')
+    newParams.output.__inject__('bin_gaps', False)
+    newParams.output.__inject__('merge_contacts', True)
+    newParams.output.__inject__('only_report_bad_clashes', False)
+    newParams.output.__inject__('atoms_are_masters', False)
+    newParams.output.__inject__('default_point_color', 'gray')
+    newParams.output.__inject__('compute_scores', True)
+    return newParams
 
 # ------------------------------------------------------------------------------
 
@@ -954,7 +1018,6 @@ NOTES:
       # Find the list of all Movers in the model, which will be used to segment
       # it into parts for the Flipkin.
       moverLocations = _FindMoversInOutputString(outString)
-      print('XXX Movers:', moverLocations)
 
       # Find the list of all alternates in the model, ignoring empty ones.
       # Sort them in increasing alphabetical order.
@@ -1020,11 +1083,16 @@ NOTES:
         views.append( (x, y, z) )
 
       # Find out which atoms are bonded.
+
+      # Interpret the model, adding Hydrogens to it so that
+      # all of the needed fieafterlds are filled in when we use them below.
+      # @todo Remove this once place_hydrogens() does all the interpretation we need.
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.allow_polymer_cross_special_position=True
       p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
       p.pdb_interpretation.proceed_with_excessive_length_bonds=True
       self.model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
       carts = flex.vec3_double()
       for a in self.model.get_atoms():
         carts.append(a.xyz)
@@ -1082,14 +1150,26 @@ NOTES:
         # configuration (i=1).
         flipkinText += _AddFlipkinMovers(amides, base, c, colors[i], self.model, alts,
           bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
-        # @todo
 
-        # Add internal bonds and hydrogens for Hets that are Movers.
-        # @todo 3cp5
+        # Compute the dots in both 1->2 and 2->1 directions using probe2.
+        # @todo Consider adding methods to probe2 that let us inject the various
+        # computed quantities -- neighbor lists and extra atom info and such --
+        # before calling the run() method so it does not have to recompute them.
 
-        # Add yellow bonds for atoms between residues where one of the residues
-        # is a Mover.
-        # @todo 3cp5
+        # @todo Modify the parameters that are passed to include the ones for
+        # the harnessed program, including the source and target atom selections.
+        # @todo Specify a temporary file for the output of Probe2, which we'll
+        # delete after running.
+        tempName = tempfile.mktemp()
+        newParams = self._MakeProbePhil(amides, tempName)
+
+        # Run the program and append its Kinemage output to ours, deleting
+        # the temporary file that it produced.
+        p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
+          logger=self.logger)
+        dots, kinString = p2.run()
+        flipkinText += kinString
+        os.unlink(tempName)
 
       # Write the accumulated Flipkin string to the output file.
       with open(flipkinBase+"-flipnq.kin", "w") as f:
