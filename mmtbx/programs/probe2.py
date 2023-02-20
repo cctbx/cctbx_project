@@ -747,7 +747,7 @@ Note:
 
   def _generate_interaction_dots(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists):
     '''
-      Find all interaction dots for the specified atom.
+      Find all interaction dots for the specified atoms.
       This does not include locations where the probe is inside a bonded neighbor.
       :param sourceAtoms: Sorted list of atoms that can be the source of an interaction.
       :param targetSet: Set of atoms that are targets; others will block dots but not interact
@@ -2416,8 +2416,8 @@ Note:
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
 
-    # Return the results object that has all of the dots.
-    return self._results
+    # Return the results object that has all of the dots and the output string.
+    return self._results, outString
 
 # ------------------------------------------------------------------------------
 
