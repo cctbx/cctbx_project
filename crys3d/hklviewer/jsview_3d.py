@@ -2172,7 +2172,7 @@ in the space group %s\nwith unit cell %s""" \
       order = int(roundoff(2*math.pi/theta, 0)) # how many times to rotate before its the identity operator
       forder = roundoff(2*math.pi/theta, 2)
       label = "%s-fold" %str(order)
-    return tuple((rotaxis)[0]), theta, label, order
+    return list((rotaxis)[0]), theta, label, order
 
 
   def calc_rotation_axes(self, ma=None):
@@ -2185,6 +2185,10 @@ in the space group %s\nwith unit cell %s""" \
       for i,op in enumerate(unique_rot_ops): # skip the last op for javascript drawing purposes
         (cartvec, a, label, order) = self.GetVectorAndAngleFromRotationMx( rot=op.r(), ma=ma )
         if label != "":
+          vs = 1+len(self.rotation_operators)/20
+          cartvec[0] *= vs
+          cartvec[1] *= vs
+          cartvec[2] *= vs
           self.mprint( str(i) + ": " + str(roundoff(cartvec)) + ", " + label, verbose=1)
           veclength = math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
           self.rotation_operators.append( (label + "#%d"%i, order , cartvec, op.r().as_hkl(), "", "", veclength) )

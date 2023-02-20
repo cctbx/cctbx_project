@@ -2435,8 +2435,8 @@ clip_plane {
 
 
   def onAddDataset(self):
-    label, ok = QInputDialog().getText(self.window, "Enter a unique label",
-                                         "Create new dataset of visible reflection with this label:")
+    label, ok = QInputDialog().getText(self.window, "Enter a unique label for the new dataset",
+                                         "Create new dataset of visible reflections with this label:")
     if ok and label:
       self.send_message('visible_dataset_label = "%s"' %label)
 
