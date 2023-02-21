@@ -30,6 +30,69 @@ class ChimeraXViewer(ModelViewer):
   viewer_name = 'ChimeraX'
 
   # ---------------------------------------------------------------------------
+  def is_available(self):
+    '''
+    Function for determining if ChimeraX is available
+
+    Parameters
+    ----------
+      Nothing
+
+    Returns
+    -------
+      True if ChimeraX is available
+    '''
+    self.find_viewer()
+    if self.command:
+      return True
+    else:
+      return False
+
+  def find_viewer(self):
+    '''
+    Function for finding ChimeraX
+
+    Parameters
+    ----------
+      Nothing
+
+    Returns
+    -------
+      Command for running ChimeraX
+    '''
+
+    if self.command is not None:
+      return self.command  # no work to do
+
+    search_paths = os.getenv('PATH')
+    search_command = self.viewer_name
+    if search_paths is not None:
+      if sys.platform == 'win32':
+        search_paths = search_paths.split(';')
+      else:
+        search_paths = search_paths.split(':')
+
+    # /Applications/ChimeraX<version>.app
+    if sys.platform == 'darwin':
+      known_paths = glob.glob('/Applications/ChimeraX*.app/Contents/MacOS')
+      known_paths.sort(reverse=True)
+      search_paths += known_paths
+    # /usr/bin/chimerax
+    elif sys.platform.startswith('linux'):
+      search_paths += ['/usr/bin']
+      search_command = 'chimerax'
+    # C:\Program Files\ChimeraX <version>\bin
+    elif sys.platform == 'win32':
+      known_paths = glob.glob('C:\\Program Files\\ChimeraX*\\bin')
+      known_paths.sort(reverse=True)
+      search_paths += known_paths
+      search_command = 'ChimeraX.exe'
+
+    if len(search_paths) > 0:
+      self.command = self.find_command(cmd=search_command, path=search_paths)
+
+    return self.command
+
   def start_viewer(self, timeout=60):
     '''
     Function for starting the ChimeraX REST server
@@ -48,32 +111,7 @@ class ChimeraXViewer(ModelViewer):
     # append some standard search locations for each platform
     # the existing $PATH is searched first
     if self.command is None:
-      search_paths = os.getenv('PATH')
-      search_command = self.viewer_name
-      if search_paths is not None:
-        if sys.platform == 'win32':
-          search_paths = search_paths.split(';')
-        else:
-          search_paths = search_paths.split(':')
-
-      # /Applications/ChimeraX<version>.app
-      if sys.platform == 'darwin':
-        known_paths = glob.glob('/Applications/ChimeraX*.app/Contents/MacOS')
-        known_paths.sort(reverse=True)
-        search_paths += known_paths
-      # /usr/bin/chimerax
-      elif sys.platform.startswith('linux'):
-        search_paths += ['/usr/bin']
-        search_command = 'chimerax'
-      # C:\Program Files\ChimeraX <version>\bin
-      elif sys.platform == 'win32':
-        known_paths = glob.glob('C:\\Program Files\\ChimeraX*\\bin')
-        known_paths.sort(reverse=True)
-        search_paths += known_paths
-        search_command = 'ChimeraX.exe'
-
-      if len(search_paths) > 0:
-        self.command = self.find_command(cmd=search_command, path=search_paths)
+      self.find_viewer()
 
     # randomly select port
     if self.port is None:
