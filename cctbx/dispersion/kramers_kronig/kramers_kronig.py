@@ -39,9 +39,9 @@ def get_f_p(energy,
             known_response_f_dp=None,
             ):
     """Derive f' from f" """
-    breakpoint()
+    # breakpoint()
     denergy = energy[1:]-energy[:-1]
-    if torch.any(torch.abs(denergy-denergy[0])>1e-5):
+    if torch.any(torch.abs(denergy-denergy[0])>1e-3):
         """Energy spacing is not constant."""
         print("Energy spacing is not const")
         energy, f_dp = kramers_kronig_helper.interpolate(energy, f_dp, mode="torch")
@@ -53,11 +53,11 @@ def get_f_p(energy,
         known_response_f_p_interp = torch.zeros_like(f_dp)
         known_response_f_dp_interp = torch.zeros_like(f_dp)
     
-    f_in = f_dp - known_response_f_dp_interp    
+    f_in = f_dp - torch.Tensor(known_response_f_dp_interp)    
     f_in = apply_window(f_in, padn, trim=trim, window_type=window_type)
     
     f_p_pred_padded = get_hilbert_transform(f_in)
-    f_p_pred_padded[padn:len(f_p_pred_padded)-padn] += known_response_f_p_interp
+    f_p_pred_padded[padn:len(f_p_pred_padded)-padn] += torch.Tensor(known_response_f_p_interp)
     
     if padn != 0:
         f_p_pred = f_p_pred_padded[padn:-padn]
