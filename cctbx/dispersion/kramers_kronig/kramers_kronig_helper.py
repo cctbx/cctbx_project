@@ -53,7 +53,10 @@ def interpolate(x_original, y_original, mode="scipy"):
 
 def interpolate_torch(x_original, y_original, x_new):
     """Linearly interpolate y_original(x_original), returning y = y_original(x_new)"""
-
+    
+    if x_original[-1]==x_new[-1]:
+      x_new = x_new[:-1]
+      
     x_new_upper_position = torch.searchsorted(x_original, x_new)
     x_new_lower_position = x_new_upper_position - 1
     
@@ -65,6 +68,9 @@ def interpolate_torch(x_original, y_original, x_new):
     
     y_new = y_original[x_new_upper_position]*x_new_dist_upper_position_norm + y_original[x_new_lower_position]*x_new_dist_lower_position_norm
     
+    if x_original[-1]==x_new[-1]:
+      y_new = torch.concat((y_new,y_original[-1]))
+      
     return(y_new)
     
     

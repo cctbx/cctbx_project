@@ -41,7 +41,7 @@ def get_f_p(energy,
     """Derive f' from f" """
     
     denergy = energy[1:]-energy[:-1]
-    if torch.any((denergy-denergy[0])>0):
+    if torch.any(torch.abs(denergy-denergy[0])>1e-5):
         """Energy spacing is not constant."""
         print("Energy spacing is not const")
         energy, f_dp = kramers_kronig_helper.interpolate(energy, f_dp, mode="torch")
