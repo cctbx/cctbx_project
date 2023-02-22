@@ -63,7 +63,10 @@ def get_f_p(energy,
         f_p_pred = f_p_pred_padded[padn:-padn]
         dE = energy[1] - energy[0]
         start_energy = energy[0]-padn*dE
-        end_energy = energy[-1]+(padn+1)*dE
+        if len(energy)%2: # odd
+            end_energy = energy[-1]+(padn+1)*dE
+        else:
+            end_energy = energy[-1]+(padn+0)*dE
         energy_padded = torch.arange(start_energy,end_energy,dE)
     else:
         f_p_pred = f_p_pred_padded

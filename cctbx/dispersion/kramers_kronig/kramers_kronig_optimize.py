@@ -16,7 +16,6 @@ def create_f(width=10,
              padn=5000,
              uniform_energy=True
              ):
-
     if uniform_energy:
         energy = np.arange(-width,width,dE)
     else:
@@ -41,7 +40,6 @@ def create_f(width=10,
     kramers_kronig.get_f_p(energy, f_dp, padn=padn,
                            trim=trim,
                            )
-    
     return(energy_padded,f_p_padded,f_dp_padded)
 
 def sample(f_p,
@@ -58,6 +56,7 @@ def subsample(energy,
               f_p,
               f_dp,
               spacing=2):
+
     inds = np.arange(0,len(energy),spacing)
     energy = energy[inds]
     f_p = f_p[inds]
@@ -105,7 +104,7 @@ def run_example_opt(width=5,
     5. Compare the optimized model to the initial ground truth. 
     6. Show result in matplotlib.
     """
-    
+
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
                                trim=trim,
