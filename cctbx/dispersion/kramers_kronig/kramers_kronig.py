@@ -39,7 +39,7 @@ def get_f_p(energy,
             known_response_f_dp=None,
             ):
     """Derive f' from f" """
-    
+    breakpoint()
     denergy = energy[1:]-energy[:-1]
     if torch.any(torch.abs(denergy-denergy[0])>1e-5):
         """Energy spacing is not constant."""
