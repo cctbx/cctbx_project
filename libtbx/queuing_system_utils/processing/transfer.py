@@ -7,7 +7,7 @@ class TemporaryFile(object):
   Sends data by writing out a temporary file
   """
 
-  SCRIPT= "( target, args, kwargs ) = pickle.load( open( \"%s\" ) )"
+  SCRIPT= "( target, args, kwargs ) = pickle.load( open( \"%s\", \"rb\") )"
 
   def __init__(self, name, target, args, kwargs):
 

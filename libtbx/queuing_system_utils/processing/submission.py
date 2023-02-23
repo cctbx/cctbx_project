@@ -130,9 +130,8 @@ class AsynchronousCmdLine(Submission):
 
     ( process, outfile, errfile ) = self.create( name = name )
 
-    ( out, err ) = process.communicate(
-      input = self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd )
-      )
+    input = self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd )
+    ( out, err ) = process.communicate(input=input.encode())
 
     if process.poll():
       message = "Submission error: '%s' exited abnormally (code %s, message %s)" % (
