@@ -3,12 +3,14 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.validation import rotalyze
 from iotbx import pdb
-from libtbx.test_utils import show_diff, Exception_expected
+from libtbx.test_utils import show_diff, Exception_expected, approx_equal
 from libtbx.utils import Sorry
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
+from iotbx.data_manager import DataManager
 import os.path
+import json
 from six.moves import zip
 
 def exercise_rotalyze():
@@ -288,7 +290,38 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
         results.append(cur_rot)
   assert results == ['Cg_exo', 'OUTLIER', 'OUTLIER']
 
+def exercise_rotalyze_json():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/jcm.pdb",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print("Skipping exercise_rotalyze(): input pdb (jcm.pdb) not available")
+    return
+  if (find_rotarama_data_dir(optional=True) is None):
+    print("Skipping exercise_rotalyze(): rotarama_data directory not available")
+    return
+  dm = DataManager()
+  m = dm.get_model(regression_pdb)
+  rotalyze_json = rotalyze.rotalyze(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
+  rtjson_dict = json.loads(rotalyze_json)
+  import pprint
+  #pprint.pprint(rtjson_dict)
+  assert len(rtjson_dict['flat_results'])==123, "tst_rotalyze json output not returning correct number of values"
+  assert approx_equal(rtjson_dict['flat_results'][0]['chi_angles'][0], 229.02299329063914), "tst_rotalyze json output first calculated chi dihedral angle not matching previous value"
+  assert rtjson_dict['flat_results'][0]['rotamer_name']=='OUTLIER', "tst_rotalyze json output first rotamer_name not matching previous value"
+  assert approx_equal(rtjson_dict['flat_results'][122]['chi_angles'][0], 328.0085051658891), "tst_rotalyze json output last calculated first chi dihedral angle not matching previous value"
+  assert approx_equal(rtjson_dict['flat_results'][122]['chi_angles'][1], 352.23811983072466), "tst_rotalyze json output last calculated second chi dihedral angle not matching previous value"
+  assert rtjson_dict['flat_results'][122]['rotamer_name']=='OUTLIER', "tst_rotalyze json output last rotamer_name not matching previous value"
+  from mmtbx.validation import test_utils
+  assert test_utils.count_dict_values(rtjson_dict['hierarchical_results'], "OUTLIER")==246, "tst_rotalyze json hierarchical output total number of rota outliers changed"
+  assert rtjson_dict['summary_results']['num_allowed'] == 116, "tst_rotalyze json output summary total num_allowed not matching previous value"
+  assert rtjson_dict['summary_results']['num_favored'] == 404, "tst_rotalyze json output summary total num_favored not matching previous value"
+  assert rtjson_dict['summary_results']['num_outliers'] == 123, "tst_rotalyze json output summary total num_outliers not matching previous value"
+  assert rtjson_dict['summary_results']['num_residues'] == 643, "tst_rotalyze json output summary total num_residues not matching previous value"
+
+
 if (__name__ == "__main__"):
   exercise_rotalyze()
   exercise_2()
+  exercise_rotalyze_json()
   print("OK")

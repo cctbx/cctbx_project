@@ -6,6 +6,7 @@ from iotbx.pdb import aa_utils
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import operator
+import json
 import os, sys
 
 OUTLIER_THRESHOLD = 0.003
@@ -21,6 +22,7 @@ class rotamer(residue):
     "rotamer_name",
     "chi_angles",
     "incomplete",
+    "model_id"
   ]
   __slots__ = residue.__slots__ + __rotamer_attr__
 
@@ -63,6 +65,17 @@ class rotamer(residue):
     return "%s:%s:%s:%s:%s:%s" % (self.id_str(), s_occ, s_score,
       self.format_chi_angles(pad=True, sep=":"),
       self.evaluation,self.rotamer_name)
+
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    #slots_as_dict["rama_type"] = rama_types[slots_as_dict["rama_type"]]
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   # GUI output
   def as_table_row_phenix(self):
@@ -141,6 +154,7 @@ class rotalyze(validation):
             resname = atom_group.resname
             occupancy = get_occupancy(atom_group)
             kwargs = {
+              "model_id" : model.id,
               "chain_id" : chain_id,
               "resseq" : rg.resseq,
               "icode" : rg.icode,
@@ -248,6 +262,26 @@ class rotalyze(validation):
       parent=parent, title=title, validation=self)
     frame.Show()
     return frame
+
+  def as_JSON(self):
+    data = {"validation_type": "rotalyze"}
+    flat_results = []
+    hierarchical_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = {"num_favored" : self.n_favored, 
+    "num_allowed" : self.n_allowed, 
+    "num_outliers" : self.n_outliers, 
+    "num_residues" : self.n_total, 
+    "outlier_percentage" : self.out_percent, 
+    "outlier_goal" : self.get_outliers_goal()
+    }
+    return json.dumps(data, indent=2)
 
   def as_coot_data(self):
     data = []
