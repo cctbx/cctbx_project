@@ -215,8 +215,9 @@ class manager(object):
       if jobid in self.process_data_for:
         self.finish_job( jobid = jobid )
 
-      self.waiting_results.remove( jobid )
-      self.completed_results.append( ( jobid, res ) )
+      if jobid in self.waiting_results:
+        self.waiting_results.remove( jobid )
+        self.completed_results.append( ( jobid, res ) )
 
     # Submit new jobs
     while ( not self.capacity.is_full( njobs = self.process_count() )
