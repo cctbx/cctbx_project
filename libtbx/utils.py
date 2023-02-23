@@ -801,7 +801,11 @@ def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
     if (is_done()): continue
     out.write(msg)
     flush = getattr(out, "flush", None)
-    if (flush is not None): flush()
+    if (flush is not None):
+      try:
+        flush()
+      except Exception as e:
+        pass # can happen if stale file handle
     done.append(out)
   return msg
 

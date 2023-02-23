@@ -3082,8 +3082,9 @@ class map_model_manager(object):
     if residue_names_must_match:
       ca_residue_names = target_model_ca.as_sequence(as_string = True)
       cb_residue_names = matching_model_ca.as_sequence(as_string = True)
-      assert len(ca_residue_names) == target_model_ca.get_sites_cart().size()
-      assert len(cb_residue_names) == matching_model_ca.get_sites_cart().size()
+      if ((len(ca_residue_names) != target_model_ca.get_sites_cart().size()) or
+         (len(cb_residue_names) != matching_model_ca.get_sites_cart().size())):
+        return [] # cannot match up due to something going wrong
     else:
       ca_residue_names = None
       cb_residue_names = None
