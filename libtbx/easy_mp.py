@@ -497,7 +497,7 @@ class posi_and_kwargs(object):
 def parallel_map(
     func,
     iterable,
-    iterable_type = single_argument,
+    iterable_type=single_argument,
     params=None,
     processes=1,
     method="multiprocessing",
@@ -507,8 +507,9 @@ def parallel_map(
     preserve_order=True,
     preserve_exception_message=False,
     use_manager=False,
-    stacktrace_handling = "ignore",
-    break_condition = None):
+    stacktrace_handling="ignore",
+    break_condition=None,
+    include=None):
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -577,6 +578,7 @@ def parallel_map(
       technology = philgen.cluster(
         asynchronous = asynchronous,
         capture_stderr = preserve_exception_message,
+        include = include,
         )
 
       assert method in technology.platforms # perhaps something less intrusive
