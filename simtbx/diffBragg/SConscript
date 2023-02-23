@@ -113,4 +113,4 @@ env_simtbx.SharedLibrary(
   target="#lib/simtbx_diffBragg_ext",
   source=[diffBragg_obj],
   LIBPATH=env_simtbx['LIBPATH'] + libpath,
-  LIBS=['simtbx_diffBraggKOKKOS'] + env_simtbx['LIBS'] + libs)
+  LIBS=['simtbx_diffBraggKOKKOS']*env_etc.enable_kokkos + env_simtbx['LIBS'] + libs)
