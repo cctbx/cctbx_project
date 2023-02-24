@@ -103,6 +103,7 @@ if (env_etc.enable_kokkos):
 
   if 'Cuda' in os.getenv("KOKKOS_DEVICES"):
     libpath += [os.path.join(os.environ['CUDA_HOME'], 'lib64')]
+    libpath += [os.path.join(os.environ['CUDA_HOME'], 'lib64/stubs')]
     libpath += [os.path.join(os.environ['CUDA_HOME'], 'compat')]
     libs += ["cudart", "cuda"]
   elif 'HIP' in os.getenv('KOKKOS_DEVICES'):

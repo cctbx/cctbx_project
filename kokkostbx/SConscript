@@ -25,7 +25,7 @@ if env_etc.enable_kokkos:
 
   library_flags = "-Llib"
   if use_cuda:
-    library_flags += " -L$(CUDA_HOME)/lib64"
+    library_flags += " -L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/lib64/stubs"
     if os.getenv('CUDA_COMPATIBILITY'):
       library_flags += " -L$(CUDA_HOME)/compat"
   os.environ['LDFLAGS'] = library_flags
