@@ -1499,8 +1499,6 @@ def enable_kokkos_if_possible():
   if (libtbx.env.build_options.enable_kokkos):
     if sys.version_info.major == 2:
       raise RuntimeError('Kokkos is not available on Python 2')
-    if not sys.platform.startswith('linux'):
-      raise RuntimeError('Kokkos is only available on linux platforms')
     env_etc.enable_kokkos = True
 
 enable_openmp_if_possible()
