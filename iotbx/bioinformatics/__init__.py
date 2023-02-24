@@ -1951,9 +1951,9 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None,
     if remove_duplicates and sequence.sequence in simple_sequence_list:
       continue # it is a duplicate
     elif remove_unknowns: # remove any X and take it
-      simple_sequence_list.append(sequence.sequence.replace("X",""))
+      simple_sequence_list.append(sequence.sequence.upper().replace("X",""))
     else: # take it
-      simple_sequence_list.append(sequence.sequence)
+      simple_sequence_list.append(sequence.sequence.upper())
   return simple_sequence_list
 
 #####################################################################
