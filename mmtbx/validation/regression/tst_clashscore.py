@@ -4,11 +4,14 @@ from iotbx import pdb
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 from libtbx.easy_pickle import loads, dumps
+from iotbx.data_manager import DataManager
 import libtbx.load_env
 import time
+import json
 
 #protein
 pdb_str_1 = """
+MODEL        1
 ATOM    556  N   LEU A  71      32.763  35.831  23.090  1.00 12.71           N
 ATOM    557  CA  LEU A  71      34.145  35.472  23.481  1.00 16.06           C
 ATOM    558  C   LEU A  71      34.239  35.353  24.979  1.00 18.09           C
@@ -47,6 +50,7 @@ ATOM    590  NE  ARG A  74      43.311  29.735  30.563  0.45 41.13           N
 ATOM    591  CZ  ARG A  74      44.174  29.905  29.554  0.45 41.91           C
 ATOM    592  NH1 ARG A  74      43.754  30.312  28.356  0.45 42.75           N
 ATOM    593  NH2 ARG A  74      45.477  29.726  29.763  0.45 41.93           N
+ENDMDL
 END
 """
 
@@ -135,6 +139,22 @@ def exercise_fast_clashscore():
       c_score = cs.get_clashscore()
       assert approx_equal(c_score, 58.82, eps=0.01)
 
+def exercise_clashscore_json():
+  dm = DataManager()
+  #print(help(dm))
+  dm.process_model_str("1",pdb_str_1)
+  m = dm.get_model("1")
+  cs = clashscore.clashscore(pdb_hierarchy=m.get_hierarchy())
+  csjson_dict = json.loads(cs.as_JSON())
+  import pprint
+  pprint.pprint(csjson_dict)
+  assert len(csjson_dict['flat_results']) == 3, "tst_clashscore json output not returning correct number of clashes"
+  assert approx_equal(csjson_dict['flat_results'][0]["overlap"], -1.038), "tst_clashscore json output first overlap value changed"
+  from mmtbx.validation import test_utils
+  assert test_utils.count_dict_values(csjson_dict['hierarchical_results'], "bo")==3, "tst_clashscore json hierarchical output total number of clashes changed"
+  assert csjson_dict['summary_results']["   1"]["num_clashes"] == 3, "tst_clashscore json summary output total number of clashes changed"
+  assert approx_equal(csjson_dict['summary_results']["   1"]["clashscore"], 35.294117647058826), "tst_clashscore json summary output total number of clashes changed"
+
 if (__name__ == "__main__"):
   if (not libtbx.env.has_module(name="probe")):
     print("Skipping exercise_clashscore(): probe not configured")
@@ -143,4 +163,5 @@ if (__name__ == "__main__"):
     t0 = time.time()
     exercise_clashscore()
     exercise_fast_clashscore()
+    exercise_clashscore_json()
     print("OK. Time: %8.3f"%(time.time()-t0))

@@ -284,7 +284,7 @@ class atoms(entity):
       except AttributeError:
         upper_dict[getattr(self.atoms_info[0], next_level)] = self.nest_dict(level_list[1:], inner_dict)
     else:
-      return json.loads(self.as_JSON())
+      return [json.loads(self.as_JSON())]
     return upper_dict
 
 class atom_base(slots_getstate_setstate):
@@ -300,6 +300,7 @@ class atom_base(slots_getstate_setstate):
     "symop",
     "occupancy",
     "b_iso",
+    "model_id"
   ]
   __atom_slots__ = __residue_attr__ + __atom_attr__
   # XXX __slots__ should be left empty here
@@ -316,6 +317,7 @@ class atom_base(slots_getstate_setstate):
 
     if (pdb_atom is not None):
       labels = pdb_atom.fetch_labels()
+      self.model_id = labels.model_id
       self.chain_id = labels.chain_id
       self.resseq = labels.resseq
       self.icode = labels.icode
@@ -327,6 +329,10 @@ class atom_base(slots_getstate_setstate):
       self.occupancy = pdb_atom.occ
       self.b_iso = pdb_atom.b
       self.element = pdb_atom.element
+
+  @property
+  def resid(self):
+    return "%4s%1s" % (self.resseq, self.icode)
 
   def __cmp__(self, other):
     return cmp(self.id_str(), other.id_str())
@@ -389,6 +395,7 @@ def get_atoms_info(pdb_atoms, iselection,
     info = atom_info(
       name=atom.name,
       element=atom.element,
+      model_id=labels.model_id,
       chain_id=chain_id,
       resseq=labels.resseq,
       icode=labels.icode,
@@ -547,7 +554,10 @@ class validation(slots_getstate_setstate):
             elif a[key] == b[key]:
                 pass # same leaf value
             else:
-                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                #raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                # should only get called for JSONs that have a list 
+                # of different validations for a residue (e.g. clashes)
+                a[key] = a[key]+b[key]
         else:
             a[key] = b[key]
     return a
@@ -605,6 +615,10 @@ class test_utils(object):
       if isinstance(prod[mykey], dict):
         # calls repeatedly
         c = test_utils.count_dict_values(prod[mykey], count_key, c)
+      elif isinstance(prod[mykey], list):
+        for d in prod[mykey]:
+          if isinstance(d, dict):
+            c = test_utils.count_dict_values(d, count_key, c)
     return c
 
 class dummy_validation(object):
