@@ -1079,7 +1079,7 @@ class HKLViewFrame() :
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       self.update_space_group_choices(0) # get the default spacegroup choice
       mydict = { "info": self.infostr,
-                  "bin_infotpls": self.viewer.bin_infotpls,
+                  #"bin_infotpls": self.viewer.bin_infotpls,
                   "ano_spg_tpls": self.ano_spg_tpls,
                   "html_url": self.viewer.url,
                   "tncsvec": self.tncsvec,
@@ -1616,12 +1616,12 @@ class HKLViewFrame() :
 
   def set_scene_bin_thresholds(self, thresholds = None, binner_idx = 0,  nbins = 6):
     nuniquevalues = -1
-    if not thresholds:
+    if thresholds is None or thresholds == []:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     else:
       # put nan value at the end as not to mess up binvals since nan values cannot be sorted
       binvals = [e for e in thresholds if not math.isnan(e)] + [float("nan")]
-    if binvals and binner_idx == 0: # binner_idx=0 is for binning against resolution
+    if thresholds and binner_idx == 0: # binner_idx=0 is for binning against resolution
       binvals = list( 1.0/flex.double(binvals) )
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
 
