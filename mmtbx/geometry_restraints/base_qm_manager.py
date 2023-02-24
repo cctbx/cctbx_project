@@ -83,7 +83,7 @@ def run_command(command):
     execute <command> in a subprocess and check error code
     taken from ASE
     """
-    from subprocess import Popen, PIPE, STDOUT
+    from subprocess import Popen, PIPE
     if command == '':
         raise RuntimeError('no command for run_command :(')
     proc = Popen([command], shell=True, stderr=PIPE)

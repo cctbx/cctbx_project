@@ -44,6 +44,8 @@ def exercise():
   report = rcsb_web_services.get_high_resolution_and_residue_count_for_structures(atp_binding)
   assert (len(report) == len(atp_binding)) and (len(report[0]) == 3)
   # print (report)
+  report = rcsb_web_services.get_r_work_rfree_for_structures(['1ucs', '1yjp'])
+  assert report == [['1UCS', 0.133, 0.155], ['1YJP', 0.18086, 0.19014]]
   ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
   # print (ligand_info)
   reference_ligand_info = [

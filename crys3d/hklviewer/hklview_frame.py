@@ -1619,7 +1619,8 @@ class HKLViewFrame() :
     if not thresholds:
       binvals, nuniquevalues = self.viewer.calc_bin_thresholds(binner_idx, nbins)
     else:
-      binvals = thresholds[:]
+      # put nan value at the end as not to mess up binvals since nan values cannot be sorted
+      binvals = [e for e in thresholds if not math.isnan(e)] + [float("nan")]
     if binvals and binner_idx == 0: # binner_idx=0 is for binning against resolution
       binvals = list( 1.0/flex.double(binvals) )
     self.viewer.UpdateBinValues(binner_idx, binvals, nuniquevalues)
@@ -1721,11 +1722,6 @@ class HKLViewFrame() :
       self.__exit__() # releases javascript resources
       return False
     return True
-
-
-  def SetFontSize(self, val):
-    self.params.NGL.fontsize = val
-    self.viewer.SetFontSize(val)
 
 
   def list_vectors(self):

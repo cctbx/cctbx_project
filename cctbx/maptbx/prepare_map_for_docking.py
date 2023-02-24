@@ -1011,6 +1011,11 @@ def add_ordered_volume_mask(
   assert (protein_mw is not None) or (nucleic_mw is not None)
   assert mmm.map_manager().unit_cell_grid == mmm.map_manager().map_data().all()
 
+  if d_min is None or d_min <= 0:
+    spacings = get_grid_spacings(mmm.map_manager().unit_cell(),
+                                 mmm.map_manager().unit_cell_grid)
+    d_min = 2.5 * max(spacings)
+
   # Compute local average of squared density, using a sphere that will cover a
   # sufficient number of independent points. A rad_factor of 2 should yield
   # 4*Pi/3 * (2*2)^3 or about 270 independent points for the average; fewer
@@ -1473,6 +1478,17 @@ def assess_cryoem_errors(
   sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
   sphere_cent = flex.double(sphere_cent)
 
+  # Set first guess of d_min if no value provided
+  # The majority of cryo-EM deposits have a ratio of nominal resolution to pixel
+  # size between 2.5 and 3.5. If the correct ratio is higher than the 2.5 used
+  # here, this will waste some time, but if the ratio is lower the highest
+  # resolution consistent with Shannon sampling (ratio of 2) will be tested below.
+  if d_min is None or d_min <= 0.:
+    guess_d_min = True
+    d_min = 2.5 * max(spacings)
+  else:
+    guess_d_min = False
+
   if determine_ordered_volume:
     ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
     total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
@@ -1545,12 +1561,28 @@ def assess_cryoem_errors(
   work_mm = working_mmm.map_manager()
   v_star = 1./wuc.volume()
   r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
+  minimum_possible_d_min = 2.*max(spacings)
+  d_min = max(d_min, minimum_possible_d_min)
   d_min_extended = 1./(1./d_min + r_star)
-  map_sampling = flex.max(flex.double(wuc.parameters()[:3])/flex.double(work_mm.map_data().all()))
-  d_min_extended = max(d_min_extended, 2*map_sampling)
-
   mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
   mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+
+  success = False
+  while guess_d_min and not success:
+    # Check whether signal goes to higher resolution than initial guess
+    d_min_from_fsc = mc1.d_min_from_fsc(other=mc2, bin_width=1000, fsc_cutoff=0.05).d_min
+    # d_min_from_fsc returns None if the fsc_cutoff has not been passed by resolution limit
+    if d_min_from_fsc is not None:
+      d_min = max(d_min_from_fsc,minimum_possible_d_min)
+      success = True
+    else:
+      if d_min > minimum_possible_d_min: # Set d_min to highest possible value and repeat
+        d_min = minimum_possible_d_min
+      else:
+        success = True # d_min is already highest possible value
+    d_min_extended = 1./(1./d_min + r_star)
+    mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
+    mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
 
   f1 = flex.abs(mc1.data())
   f2 = flex.abs(mc2.data())

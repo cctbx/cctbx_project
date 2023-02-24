@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 pdb_string = '''
 CRYST1   74.120  110.220   88.210  90.00 111.08  90.00 P 1 21 1
 SCALE1      0.013492  0.000000  0.005201        0.00000
@@ -153,7 +155,7 @@ from libtbx import easy_run
 def main(run_mopac=None):
   try:
     run_mopac=int(run_mopac)
-  except:
+  except Exception:
     run_mopac=True
   preamble = 'tst_flipping_his'
   selection = 'chain A and resid 62 and resname HIS'

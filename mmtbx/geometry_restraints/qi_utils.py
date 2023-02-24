@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 import os
 
 def classify_histidine(hierarchy, resname='HIS'):
@@ -101,4 +102,3 @@ def get_rotamers_via_filenames(filenames, selection):
     rotamers.append(rc[0])
     i+=1
   return rotamers
-
