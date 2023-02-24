@@ -1673,56 +1673,6 @@ class TargetFunc:
         self.g = g
         return f
 
-    def callback(self, x, verbose=True):
-        xall = self.x0.copy()
-        xall[self.vary] = x
-        rescaled_vals = np.zeros_like(xall)
-        all_perc_change = []
-        for name in self.SIM.P:
-            p = self.SIM.P[name]
-
-            if not p.refine:
-                continue
-            xpos = p.xpos
-            val = p.get_val(xall[xpos])
-            log_s = "Iter %d: %s = %1.2g ."  %(self.iteration, name, val)
-            if name.startswith("scale_roi") and p.misc_data is not None:
-                reso, (h,k,l) = p.misc_data
-                log_s += "reso=%1.3f Ang. (h,k,l)=%d,%d,%d ." %(reso, h,k,l)
-            rescaled_vals[xpos] = val
-            if self.prev_iter_vals is not None:
-                prev_val = self.prev_iter_vals[xpos]
-                if val - prev_val == 0 and prev_val == 0:
-                    val_percent_diff = 0
-                elif prev_val == 0:
-                    val_percent_diff = np.abs(val - prev_val) / val *100.
-                else:
-                    val_percent_diff = np.abs(val - prev_val) / prev_val *100.
-                log_s += " Percent change = %1.2f%%" % val_percent_diff
-                all_perc_change.append(val_percent_diff)
-
-            if verbose:
-                MAIN_LOGGER.debug(log_s)
-
-        if all_perc_change:
-            all_perc_change = np.abs(all_perc_change)
-            ave_perc_change = np.mean(all_perc_change)
-            num_perc_change_small = np.sum(all_perc_change < self.percent_change_of_converged)
-            max_perc_change = np.max(all_perc_change)
-            if num_perc_change_small == len(all_perc_change):
-                self.all_converged_params += 1
-            else:
-                self.all_converged_params = 0
-            if verbose:
-                MAIN_LOGGER.info("Iter %d: Mean percent change = %1.2f%%. Num param with %%-change < %1.2f: %d/%d. Max %%-change=%1.2f%%"
-                                  % (self.iteration, ave_perc_change, self.percent_change_of_converged,
-                                     num_perc_change_small, len(all_perc_change), max_perc_change))
-
-        self.prev_iter_vals = rescaled_vals
-        if self.terminate_after_n_converged_iterations is not None and self.all_converged_params >= self.terminate_after_n_converged_iterations:
-            # at this point prev_iter_vals are the converged parameters!
-            raise StopIteration()  # Refinement has reached convergence!
-
 
 def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
     pfs = mod.pan_fast_slow
