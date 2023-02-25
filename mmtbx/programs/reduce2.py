@@ -1149,11 +1149,13 @@ NOTES:
       # is made complicated by the addition and deletion of atoms.
       for i, c in enumerate(configurations):
         # Put the atoms back to where they started before optimization.
+        # @todo We may also need to place hydrogens and such, basically redoing the
+        # entire optimization
         for p in initialAtomPositions:
           p[0].xyz = p[1]
 
         # Run optimization, locking the specified Amides into each configuration.
-        # Don't do fixup.
+        # Don't do fixup on the ones that are locked down.
         # @todo
 
         # Write the updates to the Flipkin for this configuration, showing the
