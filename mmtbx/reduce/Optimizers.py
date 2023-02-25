@@ -117,8 +117,8 @@ def _ResNameAndID(a):
 
 class FlipMoverState(object):
   # Holds information needed to identify a flip Mover within a model file and
-  # whether or not it is flipped.
-  def __init__(self, moverType, modelId, altId, chain, resName, resIdWithICode, flipped):
+  # whether or not it is flipped and has its angles adjusted.
+  def __init__(self, moverType, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp):
     self.moverType = moverType  # String indicating Mover type: AmideFlip or HisFlip
     self.modelId = modelId      # Integer indicating the modelId that the entry corresponds to
     self.altId = altId          # String indicating the altId that the entry corresponds to
@@ -131,10 +131,11 @@ class FlipMoverState(object):
       self.resId = int(resIdWithICode[:-1])
       self.iCode = resIdWithICode[-1]
     self.flipped = flipped      # Boolean Whether the Mover is flipped in this configuration
+    self.fixedUp = fixedUp      # Boolean Whether the fixup has been done on the angles
 
   def __str__(self):
-    return "{} {} '{}' {} {} {}{} {}".format(self.moverType, self.modelId, self.altId,
-      self.chain, self.resName, self.resId, self.iCode, self.flipped)
+    return "{} {} '{}' {} {} {}{} {} {}".format(self.moverType, self.modelId, self.altId,
+      self.chain, self.resName, self.resId, self.iCode, self.flipped, self.fixedUp)
   def __repr__(self):
       return "Optimizers.FlipMoverState({})".format(str(self))
 
@@ -171,6 +172,7 @@ class _SingletonOptimizer(object):
                 preferenceMagnitude,
                 nonFlipPreference,
                 skipBondFixup,
+                flipStates,
                 verbosity
               ):
     """Constructor for _SingletonOptimizer.  This is the base class for all optimizers and
@@ -212,7 +214,20 @@ class _SingletonOptimizer(object):
     them from being flipped unless their score is significantly better than in the original position.
     :param skipBondFixup: Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
     removal and fixup for Histidines that are not placed as Movers, but for flips that
-    are Movers we don't adjust the bond angles.
+    are Movers we don't adjust the bond angles.  This is overridden for Flips that are
+    specified in flipStates.
+    :param flipStates: String with comma-separated entries. Each entry has the form
+    (without the single quotes) '1 . A HIS 11H Flipped AnglesAdjusted'. These are space-separated values.
+    The first word is the model number, starting with 1. The second is the lower-case alternate, or
+    '.' for all alternates (also use this when there are no alternates in the file).
+    The third is the chain ID. The fourth is the residue name. The fifth is the residue id,
+    which may include an insertion code as its last character. The sixth is either Flipped or Unflipped.
+    If it is Flipped, then another word is added -- AnglesAdjusted or AnglesNotAdjusted,
+    specifying whether to do the three-point dock to adjust the bond angles after the flip.
+    An example with several entries is (again, no quotes are included:
+    '1 a A HIS 11H Unflipped,1 b A ASN 15 Flipped AnglesNotAdjusted,1 . B GLN 27 Flipped AnglesAdjusted'. Any
+    Flip Movers that would be placed at the specified location are instead locked in the
+    specified configuration.
     :param verbosity: Default value of 1 reports standard information.
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
@@ -230,6 +245,7 @@ class _SingletonOptimizer(object):
     self._preferenceMagnitude = preferenceMagnitude
     self._nonFlipPreference = nonFlipPreference
     self._skipBondFixup = skipBondFixup
+    self._flipStates = flipStates
     self._verbosity = verbosity
 
     ################################################################################
@@ -288,6 +304,7 @@ class _SingletonOptimizer(object):
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
     allRotatableHydrogens = model.rotatable_hd_selection(iselection=True)
+    self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
@@ -375,11 +392,10 @@ class _SingletonOptimizer(object):
         # The list of rotatable hydrogens comes from the global model, not just the current
         # model index.  However, we only place on atoms that are also in self._atoms, which
         # only includes those from the current model index.
-        self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
         ret = _PlaceMovers(self._atoms, allRotatableHydrogens,
                            bondedNeighborLists, h_parameterization, self._spatialQuery,
                            self._extraAtomInfo, self._maximumVDWRadius, addFlipMovers,
-                           self._nonFlipPreference, self._verbosity)
+                           self._nonFlipPreference, self._flipStates, self._verbosity)
         self._infoString += ret.infoString
         self._movers = ret.moverList
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
@@ -887,6 +903,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
                 preferenceMagnitude,
                 nonFlipPreference,
                 skipBondFixup,
+                flipStates,
                 verbosity
               ):
     """Constructor for _BruteForceOptimizer.  This tries all combinations of Mover positions
@@ -926,6 +943,18 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :param skipBondFixup: Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
     removal and fixup for Histidines that are not placed as Movers, but for flips that
     are Movers we don't adjust the bond angles.
+    :param flipStates: String with comma-separated entries. Each entry has the form
+    (without the single quotes) '1 . A HIS 11H Flipped AnglesAdjusted'. These are space-separated values.
+    The first word is the model number, starting with 1. The second is the lower-case alternate, or
+    '.' for all alternates (also use this when there are no alternates in the file).
+    The third is the chain ID. The fourth is the residue name. The fifth is the residue id,
+    which may include an insertion code as its last character. The sixth is either Flipped or Unflipped.
+    If it is Flipped, then another word is added -- AnglesAdjusted or AnglesNotAdjusted,
+    specifying whether to do the three-point dock to adjust the bond angles after the flip.
+    An example with several entries is (again, no quotes are included:
+    '1 a A HIS 11H Unflipped,1 b A ASN 15 Flipped AnglesNotAdjusted,1 . B GLN 27 Flipped AnglesAdjusted'. Any
+    Flip Movers that would be placed at the specified location are instead locked in the
+    specified configuration.
     :param verbosity: Default value of 1 reports standard information.
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
@@ -936,7 +965,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
-                verbosity = verbosity)
+                flipStates = flipStates, verbosity = verbosity)
 
   def _optimizeCliqueCoarse(self, clique):
     """
@@ -1010,6 +1039,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
                 preferenceMagnitude,
                 nonFlipPreference,
                 skipBondFixup,
+                flipStates,
                 verbosity
               ):
     """Constructor for _CliqueOptimizer.  This uses a recursive algorithm to break down the total
@@ -1054,6 +1084,18 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :param skipBondFixup: Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
     removal and fixup for Histidines that are not placed as Movers, but for flips that
     are Movers we don't adjust the bond angles.
+    :param flipStates: String with comma-separated entries. Each entry has the form
+    (without the single quotes) '1 . A HIS 11H Flipped AnglesAdjusted'. These are space-separated values.
+    The first word is the model number, starting with 1. The second is the lower-case alternate, or
+    '.' for all alternates (also use this when there are no alternates in the file).
+    The third is the chain ID. The fourth is the residue name. The fifth is the residue id,
+    which may include an insertion code as its last character. The sixth is either Flipped or Unflipped.
+    If it is Flipped, then another word is added -- AnglesAdjusted or AnglesNotAdjusted,
+    specifying whether to do the three-point dock to adjust the bond angles after the flip.
+    An example with several entries is (again, no quotes are included:
+    '1 a A HIS 11H Unflipped,1 b A ASN 15 Flipped AnglesNotAdjusted,1 . B GLN 27 Flipped AnglesAdjusted'. Any
+    Flip Movers that would be placed at the specified location are instead locked in the
+    specified configuration.
     :param verbosity: Default value of 1 reports standard information.
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
@@ -1064,7 +1106,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
-                verbosity = verbosity)
+                flipStates = flipStates, verbosity = verbosity)
 
   def _optimizeCliqueCoarse(self, clique):
     """
@@ -1170,6 +1212,7 @@ class FastOptimizer(_CliqueOptimizer):
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
+                flipStates = '',
                 verbosity = 1
               ):
     """Constructor for FastOptimizer.  This uses the same algorithm as the
@@ -1212,6 +1255,18 @@ class FastOptimizer(_CliqueOptimizer):
     :param skipBondFixup: Should we do fixup on Movers or just leave them flipped?  We always do Hydrogen
     removal and fixup for Histidines that are not placed as Movers, but for flips that
     are Movers we don't adjust the bond angles.
+    :param flipStates: String with comma-separated entries. Each entry has the form
+    (without the single quotes) '1 . A HIS 11H Flipped AnglesAdjusted'. These are space-separated values.
+    The first word is the model number, starting with 1. The second is the lower-case alternate, or
+    '.' for all alternates (also use this when there are no alternates in the file).
+    The third is the chain ID. The fourth is the residue name. The fifth is the residue id,
+    which may include an insertion code as its last character. The sixth is either Flipped or Unflipped.
+    If it is Flipped, then another word is added -- AnglesAdjusted or AnglesNotAdjusted,
+    specifying whether to do the three-point dock to adjust the bond angles after the flip.
+    An example with several entries is (again, no quotes are included:
+    '1 a A HIS 11H Unflipped,1 b A ASN 15 Flipped AnglesNotAdjusted,1 . B GLN 27 Flipped AnglesAdjusted'. Any
+    Flip Movers that would be placed at the specified location are instead locked in the
+    specified configuration.
     :param verbosity: Default value of 1 reports standard information.
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
@@ -1229,7 +1284,7 @@ class FastOptimizer(_CliqueOptimizer):
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
-                verbosity = verbosity)
+                flipStates = flipStates, verbosity = verbosity)
 
   def _initializeAlternate(self):
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
@@ -1292,16 +1347,61 @@ class _PlaceMoversReturn(object):
   # failed Mover placements due to missing Hydrogens, etc.).  Also returns a list of
   # atoms that should be deleted as a result of situations determined during the
   # placement.  Also returns a dictionary mapping from Movers to strings describing each Mover.
-  # @todo Make this a method of the base Optimizer so we're not passing things in and
-  # out and immediately reassigning them to member variables.
   def __init__(self, moverList, infoString, deleteAtoms, moverInfo):
     self.moverList = moverList
     self.infoString = infoString
     self.deleteAtoms = deleteAtoms
     self.moverInfo = moverInfo
 
+def _ParseFlipStates(fs):
+  """Produce a list of FlipMoverState objects by parsing a comma-separated flipStates
+  string.
+  """
+  ret = []
+  if fs is not None:
+    for state in fs.split(','):
+      words = state.split()
+      if len(words) == 7:
+        modelId = int(words[0]) + 1
+        altId = words[1].lower()
+        if altId == '.':
+          altId = ''
+        chain = words[2].upper()
+        resName = words[3].upper()
+        if resName == 'HIS':
+          t = 'HisFlip'
+        else:
+          t = 'AmideFlip'
+        resIdWithICode = words[4]
+        flipped = words[5] == 'Flipped'
+        fixedUp = words[6] == 'AnglesAdjusted'
+        ret.append(FlipMoverState(t, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp))
+  return ret
+
+def _FindFlipState(rg, flipStates):
+  '''Is a residue group in the list of residues that have flip states? If so, return the associated state
+  :param rg: residue group
+  :param flipStates: List of FlipMoverState objects
+  :return: FlipMoverState if the residue is in the list, None if not
+  '''
+  for fs in flipStates:
+    chain = rg.parent()
+    modelId = chain.parent().id
+    # We must offset the index of the model by 1 to get to the 1-based model ID
+    if ( (modelId == fs.modelId + 1 or modelId == '') and
+         (chain.id == fs.chain) and
+         (rg.resseq_as_int() == fs.resId) and
+         (rg.icode.strip() == fs.iCode.strip())
+       ):
+      return fs
+  return None
+
+
+# @todo Make this a method of the base Optimizer so we're not passing things in and
+# out and immediately reassigning them to member variables.
 def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, spatialQuery,
-                  extraAtomInfo, maxVDWRadius, addFlipMovers, nonFlipPreference, verbosity):
+                  extraAtomInfo, maxVDWRadius, addFlipMovers, nonFlipPreference, flipStates,
+                  verbosity):
   """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
   :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
   Movers present in the structure already.
@@ -1319,11 +1419,26 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
   which atoms may be acceptors.
   :param maxVDWRadius: Maximum VdW radius of the atoms.
   :param addFlipMovers: Do we add flip Movers along with other types?
+  :param flipStates: String with comma-separated entries. Each entry has the form
+  (without the single quotes) '1 . A HIS 11H Flipped AnglesAdjusted'. These are space-separated values.
+  The first word is the model number, starting with 1. The second is the lower-case alternate, or
+  '.' for all alternates (also use this when there are no alternates in the file).
+  The third is the chain ID. The fourth is the residue name. The fifth is the residue id,
+  which may include an insertion code as its last character. The sixth is either Flipped or Unflipped.
+  If it is Flipped, then another word is added -- AnglesAdjusted or AnglesNotAdjusted,
+  specifying whether to do the three-point dock to adjust the bond angles after the flip.
+  An example with several entries is (again, no quotes are included:
+  '1 a A HIS 11H Unflipped,1 b A ASN 15 Flipped AnglesNotAdjusted,1 . B GLN 27 Flipped AnglesAdjusted'. Any
+  Flip Movers that would be placed at the specified location are instead locked in the
+  specified configuration.
   :param verbosity: Sets the level of verbosity: unsigned integer with larger being more verbose
   :return: _PlaceMoversReturn giving the list of Movers found in the conformation and
   an error string that is empty if no errors are found during the process and which
   has a printable message in case one or more errors are found.
   """
+
+  # Parse the flipStates parameter to get a list of FlipMoverState objects.
+  fs = _ParseFlipStates(flipStates)
 
   # List of Movers to return
   movers = []
@@ -1489,9 +1604,31 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
 
       if not foundIon:
         try:
-          movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference))
-          infoString += _VerboseCheck(verbosity, 1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
-          moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
+          # Check to see if the state of this Mover has been specified. If so, place it in
+          # the requested state and don't insert the Mover. If not, then insert the Mover.
+          s = _FindFlipState(a.parent().parent(), fs)
+          if s is not None:
+            # @todo
+            '''
+            print('XXX Locking down', s)
+            infoString += _VerboseCheck(verbosity, 1,"Setting MoverAmideFlip for "+resNameAndID+": flipped = "+
+              str(s.flipped)+", angles adjusted = "+str(s.fixedUp)+"\n")
+            flip = Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference)
+            cp = flip.CoarsePositions()
+            if s.flipped:
+              index = 1
+            else:
+              index = 0
+            self._setMoverState(cp, index)
+            if s.fixedUp:
+              self._doFixup(index)
+            print('  XXX Locked down', s)
+            '''
+            print('XXX @todo Implement lockdown')
+          else:
+            movers.append(Movers.MoverAmideFlip(a, "CA", bondedNeighborLists, nonFlipPreference))
+            infoString += _VerboseCheck(verbosity, 1,"Added MoverAmideFlip "+str(len(movers))+" to "+resNameAndID+"\n")
+            moverInfo[movers[-1]] = "AmideFlip at "+resNameAndID+" "+aName
         except Exception as e:
           infoString += _VerboseCheck(verbosity, 0,"Could not add MoverAmideFlip to "+resNameAndID+": "+str(e)+"\n")
 
@@ -1589,6 +1726,10 @@ def _PlaceMovers(atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters, 
 
           infoString += _VerboseCheck(verbosity, 1,"Set MoverHisFlip on "+resNameAndID+" to state "+str(bondedConfig)+"\n")
         elif addFlipMovers: # Add a Histidine flip Mover if we're adding flip Movers
+          # Check to see if the state of this Mover has been specified. If so, place it in
+          # the requested state and insert the Mover as a non-flipping Histidine.
+          # If not, then insert the Histidine flip Mover.
+          # @todo
           movers.append(hist)
           infoString += _VerboseCheck(verbosity, 1,"Added MoverHisFlip "+str(len(movers))+" to "+resNameAndID+"\n")
           moverInfo[movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
@@ -1863,7 +2004,7 @@ END
   # Place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   ret = _PlaceMovers(atoms, model.rotatable_hd_selection(iselection=True),
-                     bondedNeighborLists, None, sq, extra, maxVDWRad, True, 0.5, 1)
+                     bondedNeighborLists, None, sq, extra, maxVDWRad, True, 0.5, '', 1)
   movers = ret.moverList
   if len(movers) != 0:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
@@ -1935,6 +2076,7 @@ END
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
+                flipStates = '',
                 verbosity = 1)
   print('Testing _CliqueOptimizer')
   opt = _CliqueOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
@@ -1945,9 +2087,13 @@ END
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
+                flipStates = '',
                 verbosity = 1)
   print('Testing FastOptimizer')
   opt = FastOptimizer(probePhil, True, model,probeRadius=0.25)
+
+  # Test specifying the flip states.
+  # @todo
 
   # Write debugging output if we've been asked to
   if dumpAtoms:
