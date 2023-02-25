@@ -48,9 +48,14 @@ def fetch_icon_bitmap(*args, **kwds):
   icon_path = find_crystal_icon(*args, **kwds)
   if icon_path is None :
     return wx.NullBitmap
-  return load_png_as_bitmap(icon_path, scale=kwds.get("scale", None))
+  icon_size = kwds.get("icon_size", None)
+  if icon_size:
+    scale = (icon_size, icon_size)
+  else:
+    scale = kwds.get("scale", None)
+  return load_png_as_bitmap(icon_path, scale=scale)
 
-def find_custom_icon(name, ext=".png", scale=None):
+def find_custom_icon(name, ext=".png", scale=None, icon_size=None):
   if icon_lib is not None :
     icon_path = os.path.join(icon_lib, "custom", name + ext)
     if os.path.isfile(icon_path):
@@ -61,4 +66,9 @@ def fetch_custom_icon_bitmap(*args, **kwds):
   icon_path = find_custom_icon(*args, **kwds)
   if icon_path is None :
     return wx.NullBitmap
-  return load_png_as_bitmap(icon_path, scale=kwds.get("scale", None))
+  icon_size = kwds.get("icon_size", None)
+  if icon_size:
+    scale = (icon_size, icon_size)
+  else:
+    scale = kwds.get("scale", None)
+  return load_png_as_bitmap(icon_path, scale=scale)
