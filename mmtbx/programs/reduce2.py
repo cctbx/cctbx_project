@@ -138,7 +138,7 @@ def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
   output string from an Optimizer.
   :param s: String returned from the getInfo() method on an optimizer.
   :param moverTypes: List of names for the movertypes to find.
-  :return: List of Optimizers.FlipMoverState objects indicating all flip Movers listed inside
+  :return: List of _MoverLocation objects indicating all flip Movers listed inside
   any BEGIN...END REPORT block in the string, including whether they were marked as
   flipped.
   '''
@@ -165,7 +165,7 @@ def _FindMoversInOutputString(s, moverTypes = ['SingleHydrogenRotator',
 
 
 def _FindFlipsInOutputString(s, moverType):
-  '''Return a list of _FlipMoverState items that include all of them found in the
+  '''Return a list of Optimizers.FlipMoverState items that include all of them found in the
   output string from an Optimizer.
   :param s: String returned from the getInfo() method on an optimizer.
   :param moverType: Either AmideFlip or HisFlip, selects the flip type to report.
@@ -199,7 +199,7 @@ def _FindFlipsInOutputString(s, moverType):
 def _IsMover(rg, movers):
   '''Is a residue group in the list of residues that have Movers?
   :param rg: residue group
-  :param movers: List of Optimizers.FlipMoverState objects
+  :param movers: List of _MoverLocation or Optimizers.FlipMoverState objects
   :return: True if the residue is in the list, False if not
   '''
   for m in movers:
