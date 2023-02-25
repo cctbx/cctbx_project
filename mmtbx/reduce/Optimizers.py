@@ -604,7 +604,7 @@ class _SingletonOptimizer(object):
           return score, clash
 
         def _printPose(self, m):
-          description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m])
+          description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m], not self._skipBondFixup)
 
           # If the Mover is a flip of some kind, then the substring "lipped" will be present
           # in the description (Flipped and Unflipped both have this subtring).

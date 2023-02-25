@@ -97,6 +97,7 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #  - str PoseDescription: (
 #       int coarseIndex,   # Coarse position index
 #       int fineIndex      # Fine position index
+#       bool fixedUp       # Did we do fixup on Movers that have this?
 #    )
 #     Returns a human-readible description of the state.  This must have the same
 #       number of words in all cases for all Movers to make things easier for a
@@ -170,12 +171,12 @@ class MoverNull(object):
   def FixUp(self, coarseIndex):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
-  def PoseDescription(self, coarseIndex, fineIndex):
+  def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state ."
+      return "Unrecognized state . ."
     else:
-      return "Original location ."
+      return "Original location . ."
 
 ##################################################################################
 class _MoverRotator(object):
@@ -362,15 +363,15 @@ class _MoverRotator(object):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
 
-  def PoseDescription(self, coarseIndex, fineIndex):
+  def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state ."
+      return "Unrecognized state . ."
     else:
       angle = self._offset + self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex]
       while angle > 180: angle -= 360
       while angle < -180: angle += 360
-      return "Angle {:.1f} deg".format(angle)
+      return "Angle {:.1f} deg .".format(angle)
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
@@ -903,14 +904,21 @@ class MoverAmideFlip(object):
     # Return the appropriate fixup
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex], [], [])
 
-  def PoseDescription(self, coarseIndex, fineIndex):
+  def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
+    if coarseIndex == 1:
+      if fixedUp:
+        fString = 'AnglesAdjusted'
+      else:
+        fString = 'AnglesNotAdjusted'
+    else:
+      fString = '.'
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state ."
     elif coarseIndex == 0:
-      return "Unflipped . ."
+      return "Unflipped . . {}".format(fString)
     else:
-      return "Flipped . ."
+      return "Flipped . . {}".format(fString)
 
 ##################################################################################
 class MoverHisFlip(object):
@@ -1168,10 +1176,10 @@ class MoverHisFlip(object):
     return FixUpReturn(self._atoms, self._fixUpPositions[coarseIndex],
       self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
-  def PoseDescription(self, coarseIndex, fineIndex):
+  def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if coarseIndex >= len(self.CoarsePositions().positions) or (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state ."
+      return "Unrecognized state . ."
     elif coarseIndex < 4:
       ret = "Unflipped"
     else:
@@ -1184,6 +1192,14 @@ class MoverHisFlip(object):
       ret += " HE2Placed"
     else:
       ret += " HE2NotPlaced"
+    # @todo When we're placed as a Hydrogen-adjuster only, fixup is never done, so print .
+    if coarseIndex >= len(self._coarsePositions) / 2:
+      if fixedUp:
+        ret += ' AnglesAdjusted'
+      else:
+        ret += ' AnglesNotAdjusted'
+    else:
+      ret += ' .'
     return ret
 
 ##################################################################################
@@ -1419,12 +1435,12 @@ def Test():
     fixUp = m.FixUp(0)
     if len(fixUp.atoms) != 0:
       return "Movers.Test() MoverNull: Expected 0 atoms for FixUp, got "+str(len(fixUp.atoms))
-    if m.PoseDescription(0,0) != "Original location .":
-      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,0)
-    if m.PoseDescription(1,0) != "Unrecognized state .":
-      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(1,0)
-    if m.PoseDescription(0,1) != "Unrecognized state .":
-      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,1)
+    if m.PoseDescription(0,0, False) != "Original location . .":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,0, False)
+    if m.PoseDescription(1,0, False) != "Unrecognized state . .":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(1,0, False)
+    if m.PoseDescription(0,1, False) != "Unrecognized state . .":
+      return "Movers.Test() MoverNull: Unexpected results for PoseDescription, got "+m.PoseDescription(0,1, False)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
     # the Mover has been constructed.
@@ -1529,13 +1545,13 @@ def Test():
       return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1) != "Angle -28.0 deg":
-      return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1)
+    if rot.PoseDescription(1,1, False) != "Angle -28.0 deg .":
+      return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1, False)
 
     # Test setting an offset and counterbalancing dihedral.
     rot = _MoverRotator(atoms,axis, -10, 10, 180, fineStepDegrees = 2)
-    if rot.PoseDescription(1,1) != "Angle -18.0 deg":
-      return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1)
+    if rot.PoseDescription(1,1, False) != "Angle -18.0 deg .":
+      return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1, False)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
     # the Mover has been constructed.
@@ -2221,8 +2237,8 @@ def Test():
       return "Movers.Test() MoverAmideFlip basic: Bad pivot hydrogen motion: "+str(dHydrogen)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Flipped . .":
-      return "Movers.Test() MoverAmideFlip basic: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,1)
+    if mover.PoseDescription(1, 0, True) != "Flipped . . AnglesAdjusted":
+      return "Movers.Test() MoverAmideFlip basic: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,1, True)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
     # the Mover has been constructed.
@@ -2391,8 +2407,12 @@ def Test():
       return "Movers.Test() MoverAmideFlip linked: Bad nitrogen-hydrogen motion: "+str(dHydrogen-oldDHydrogen)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Flipped . .":
-      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription, got "+mover.PoseDescription(1,0)
+    if mover.PoseDescription(0, 0, True) != "Unflipped . . .":
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 0T, got "+mover.PoseDescription(0,0, True)
+    if mover.PoseDescription(1, 0, False) != "Flipped . . AnglesNotAdjusted":
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1F, got "+mover.PoseDescription(1,0, False)
+    if mover.PoseDescription(1, 0, True) != "Flipped . . AnglesAdjusted":
+      return "Movers.Test() MoverAmideFlip: Unexpected results for PoseDescription 1T, got "+mover.PoseDescription(1,0, True)
 
   except Exception as e:
     return "Movers.Test() MoverAmideFlip linked: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -2664,14 +2684,14 @@ def Test():
           return "Movers.Test() MoverHisFlip: fixup Unexpected ND1 hydrygen deletion, pos "+str(i)
 
     # Test the PoseDescription
-    if mover.PoseDescription(1,0) != "Unflipped HD1Placed HE2NotPlaced":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0)
-    if mover.PoseDescription(2,0) != "Unflipped HD1NotPlaced HE2Placed":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0)
-    if mover.PoseDescription(3,0) != "Unflipped HD1NotPlaced HE2NotPlaced":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(3,0)
-    if mover.PoseDescription(4,0) != "Flipped HD1Placed HE2Placed":
-      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0)
+    if mover.PoseDescription(1,0, False) != "Unflipped HD1Placed HE2NotPlaced .":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 1, got "+mover.PoseDescription(1,0, False)
+    if mover.PoseDescription(2,0, False) != "Unflipped HD1NotPlaced HE2Placed .":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 2, got "+mover.PoseDescription(2,0, False)
+    if mover.PoseDescription(3,0, False) != "Unflipped HD1NotPlaced HE2NotPlaced .":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 3, got "+mover.PoseDescription(3,0, False)
+    if mover.PoseDescription(4,0, True) != "Flipped HD1Placed HE2Placed AnglesAdjusted":
+      return "Movers.Test() MoverHisFlip: Unexpected results for PoseDescription 4, got "+mover.PoseDescription(4,0, True)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
     # the Mover has been constructed.
