@@ -112,17 +112,22 @@ citation {
 
 class _MoverLocation(object):
   # Holds information needed to identify a Mover within a model file.
-  def __init__(self, moverType, modelId, altId, chain, resName, resId):
+  def __init__(self, moverType, modelId, altId, chain, resName, resIdWithICode):
     self.moverType = moverType  # String indicating Mover type: AmideFlip or HisFlip
     self.modelId = modelId      # Integer indicating the modelId that the entry corresponds to
     self.altId = altId          # String indicating the altId that the entry corresponds to
     self.chain = chain          # String Chain that the residue is in
     self.resName = resName      # String Name of the residue
-    self.resId = resId          # Integer ID of the residue
+    try:                        # String holding the integer ID of the residue and any insertion code
+      self.resId = int(resIdWithICode)
+      self.iCode = ''
+    except Exception:
+      self.resId = int(resIdWithICode[:-1])
+      self.iCode = resIdWithICode[-1]
 
   def __str__(self):
-    return "{} {} '{}' {} {} {}".format(self.moverType, self.modelId, self.altId,
-      self.chain, self.resName, self.resId)
+    return "{} {} '{}' {} {} {}{}".format(self.moverType, self.modelId, self.altId,
+      self.chain, self.resName, self.resId, self.iCode)
   def __repr__(self):
       return "_MoverLocation({})".format(str(self))
 
@@ -203,7 +208,8 @@ def _IsMover(rg, movers):
     # We must offset the index of the model by 1 to get to the 1-based model ID
     if ( (modelId == m.modelId + 1 or modelId == '') and
          (chain.id == m.chain) and
-         (rg.resseq_as_int() == m.resId)
+         (rg.resseq_as_int() == m.resId) and
+         (rg.icode.strip() == m.iCode.strip())
        ):
       return True
   return False
@@ -703,7 +709,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
       if _IsMover(rg, moverList) and not _IsMover(rg, states):
         ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
 
-  # Add the Hydrogens on the sidechains the Movers that are not in the states list
+  # Add the Hydrogens on the sidechains for the Movers that are not in the states list
   ret += "@vectorlist {sc H} color= gray  nobutton master= {sidechain} master= {H's}\n"
   for c in model.chains():
     for rg in c.residue_groups():
