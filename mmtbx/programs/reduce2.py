@@ -184,7 +184,7 @@ def _FindFlipsInOutputString(s, moverType):
         inBlock = False
       elif words[0] == moverType:
         ret.append(Optimizers.FlipMoverState(moverType, modelId, altId, words[3], words[4],
-                                   int(words[5]), words[14] == 'Flipped') )
+                                   words[5], words[14] == 'Flipped', words[15] == 'AnglesAdjusted') )
     else:
       if words[0:2] == ['BEGIN','REPORT:']:
         modelId = int(words[3])
