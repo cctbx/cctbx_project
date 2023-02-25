@@ -970,7 +970,7 @@ NOTES:
         self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         nonFlipPreference=self.params.non_flip_preference,
-        skipBondFixup=self.params.non_flip_preference,
+        skipBondFixup=self.params.skip_bond_fix_up,
         verbosity=3)
       doneOpt = work_clock()
       outString += opt.getInfo()
