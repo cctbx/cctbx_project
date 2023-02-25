@@ -118,23 +118,23 @@ def _ResNameAndID(a):
 class FlipMoverState(object):
   # Holds information needed to identify a flip Mover within a model file and
   # whether or not it is flipped.
-  def __init__(self, moverType, modelId, altId, chain, resName, resIdWithIcode, flipped):
+  def __init__(self, moverType, modelId, altId, chain, resName, resIdWithICode, flipped):
     self.moverType = moverType  # String indicating Mover type: AmideFlip or HisFlip
     self.modelId = modelId      # Integer indicating the modelId that the entry corresponds to
     self.altId = altId          # String indicating the altId that the entry corresponds to
     self.chain = chain          # String Chain that the residue is in
     self.resName = resName      # String Name of the residue
     try:                        # String holding the integer ID of the residue and any insertion code
-      self.resId = int(resIdWithIcode)
+      self.resId = int(resIdWithICode)
       self.iCode = ''
     except Exception:
-      self.resId = int(resIdWithIcode[:-1])
-      self.iCode = resIdWithIcode[-1]
+      self.resId = int(resIdWithICode[:-1])
+      self.iCode = resIdWithICode[-1]
     self.flipped = flipped      # Boolean Whether the Mover is flipped in this configuration
 
   def __str__(self):
-    return "{} {} '{}' {} {} {} {}".format(self.moverType, self.modelId, self.altId,
-      self.chain, self.resName, self.resId, self.flipped)
+    return "{} {} '{}' {} {} {}{} {}".format(self.moverType, self.modelId, self.altId,
+      self.chain, self.resName, self.resId, self.iCode, self.flipped)
   def __repr__(self):
       return "Optimizers.FlipMoverState({})".format(str(self))
 
