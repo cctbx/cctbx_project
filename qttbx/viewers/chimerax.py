@@ -209,6 +209,11 @@ class ChimeraXViewer(ModelViewer):
     return self._run_command(params)
 
   # ---------------------------------------------------------------------------
+  def send_command(self, cmds=None):
+    params = {'command': "+".join(cmds)}
+    return self._run_command(params)
+
+  # ---------------------------------------------------------------------------
   def load_model(self, filename=None):
     return self._load_file(filename)
 
