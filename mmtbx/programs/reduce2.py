@@ -271,6 +271,9 @@ def _DescribeMainchainResidue(r, group, prevC):
   # Find the atoms that we're going to use and insert their records into
   # the output. If we're missing an atom, skip its record and make sure that
   # the first one we use has a P and the others have L.
+  # @todo This runs through the first set of alternates found for all of the atoms,
+  # which means that in cases with two alternates we are missing bonds for some of
+  # the atoms.
   try:
     aN = [a for a in r.atoms() if a.name.strip().upper() == 'N'][0]
     # If we're at the N terminus, we won't have a previous C, so just re-use our N
@@ -353,11 +356,12 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
   queued = []
   try:
     # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
-    aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
-    queued.append(aCA)
-    known = [a for a in bondedNeighborLists[aCA] if a.name.strip().upper() in ['N','C']]
-    for a in known:
-      described.append({aCA, a})
+    # Do this for all CAs found because there may be multiple atom groups (alts)
+    for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
+      queued.append(aCA)
+      known = [a for a in bondedNeighborLists[aCA] if a.name.strip().upper() in ['N','C']]
+      for a in known:
+        described.append({aCA, a})
   except Exception as e:
     pass
 
@@ -372,7 +376,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
     last = queued[0]
     links = [a for a in bondedNeighborLists[last]
               if (not {last, a} in described) and (not a.element_is_hydrogen())
-                and (last.parent() == a.parent())
+                and (last.parent().parent() == a.parent().parent())
             ]
     if len(links) == 0:
       # First entry on the list yielded no useful neighbors; remove it and check the next
@@ -389,7 +393,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       ret += _AddPosition(curr, 'L', group) + '\n'
       links = [a for a in bondedNeighborLists[curr]
                 if (not {curr, a} in described) and not a.element_is_hydrogen()
-                and curr.parent() == a.parent()
+                and curr.parent().parent() == a.parent().parent()
               ]
       last = curr
   return ret
@@ -589,23 +593,25 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
   for c in model.chains():
     prevC = None
     for rg in c.residue_groups():
-      ret += _DescribeMainchainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
+      if not inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+        ret += _DescribeMainchainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add the sidechain non-hydrogen atoms for residues that do not have Movers
-  # @todo Why are we missing the sidechains that are in alternates on 3cp5? (we have the hydrogens...)
   ret += '@subgroup {{sc {}}} dominant\n'.format(fileBaseName)
   ret += '@vectorlist {sc} color= cyan  master= {sidechain}\n'
   for c in model.chains():
     for rg in c.residue_groups():
-      if not _IsMover(rg, moverList):
-        ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
+      if not inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+        if not _IsMover(rg, moverList):
+          ret += _DescribeSidechainResidue(rg, fileBaseName, bondedNeighborLists)
 
   # Add the Hydrogens on the sidechains for residues that do not have Movers
   ret += "@vectorlist {sc H} color= gray  nobutton master= {sidechain} master= {H's}\n"
   for c in model.chains():
     for rg in c.residue_groups():
-      if not _IsMover(rg, moverList):
-        ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
+      if not inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
+        if not _IsMover(rg, moverList):
+          ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Describe links between atoms in a sidechain and another residue where neither of the
   # involved residues include Movers.  Don't repeat bonds that have already been
@@ -691,7 +697,6 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
             ret += _AddPosition(a, 'P', fileBaseName) + '\n'
 
   # Add the sidechain non-hydrogen atoms for the Movers that are in the states list.
-  # @todo Apply the same changes needed to handle alternates or whatever like on 3cp5
   ret += '@vectorlist {sc} color= '+color+'  master= {sidechain}\n'
   for c in model.chains():
     for rg in c.residue_groups():
@@ -706,7 +711,6 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
         ret += _DescribeSidechainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
 
   # Add the sidechain non-hydrogen atoms for the Movers that are not in the states list.
-  # @todo Apply the same changes needed to handle alternates or whatever like on 3cp5
   ret += '@vectorlist {sc} color= cyan  master= {sidechain}\n'
   for c in model.chains():
     for rg in c.residue_groups():
