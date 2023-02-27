@@ -546,7 +546,16 @@ class process_arrays(object):
       if (default_label is not None):
         output_labels = None
       else :
-        default_label = 2 * string.ascii_uppercase[i]
+        if i <= 25:
+          default_label = 2 * string.ascii_uppercase[i]
+        else:
+          i1 = int(i//25)
+          i2 = i - i1 * 25
+          if i2 > 25:
+            raise Sorry("Maximum of 625 columns in reflection file editor")
+
+          default_label = 2 * string.ascii_uppercase[i1]  + \
+             2* string.ascii_uppercase[i2]
       column_types = None
       import iotbx.mtz
       default_types = iotbx.mtz.default_column_types(output_array)
@@ -806,6 +815,21 @@ class process_arrays(object):
               label = label[0:-3] + ("_%d" % (used[label]+1)) + label[-3:]
             else :
               label += "_%d" % (used[labels[i]] + 1)
+            if used.get(label,None) is not None:  # this was already there
+              found = False
+              for k in range(1,10000):
+                if label.endswith("(+)") or label.endswith("(-)"):
+                  new_label = \
+                     label[0:-3] + ("_%d" % (used[label]+k)) + label[-3:]
+                else :
+                  new_label = label + "_%d" % (used[labels[i]] + k)
+                if used.get(new_label,None) is None: # got it
+                  label = new_label
+                  used[label] = 0
+                  found = True
+                  break
+              if not found:
+                raise Sorry("Unable to resolve multiple similar labels")
             self.label_changes.append((label_files[i], labels[i], label))
           else :
             raise Sorry(("Duplicate column label '%s'.  Specify "+
@@ -1375,8 +1399,8 @@ def generate_params(file_name, miller_array, include_resolution=False):
 def validate_params(params):
   if (len(params.mtz_file.miller_array) == 0):
     raise Sorry("No Miller arrays have been selected for the output file.")
-  elif len(params.mtz_file.miller_array) > 25 :
-    raise Sorry("Only 25 or fewer arrays may be used.")
+  elif len(params.mtz_file.miller_array) > 625 :
+    raise Sorry("Only 625 or fewer arrays may be used.")
   if None in [params.mtz_file.crystal_symmetry.space_group,
               params.mtz_file.crystal_symmetry.unit_cell] :
     raise Sorry("Missing or incomplete symmetry information.")
