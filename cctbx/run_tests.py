@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env
+from libtbx.test_utils.pytest import discover
 
 tst_list = [
   "$D/regression/tst_sf_low_res_accuracy.py",
@@ -155,6 +156,8 @@ tst_list = [
    "$D/regression/tst_prepare_map_for_docking.py",
    "$D/regression/tst_wavelength_units.py",
   ]
+
+tst_list = tst_list + discover()
 
 tst_list_expected_unstable = [
   "$D/regression/tst_fcalc_fft_stability.py",

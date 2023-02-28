@@ -1,6 +1,13 @@
 """
-Example optimization using functions in kramers_kronig_optimze.
-This script is meant to test importing and running the functions.
+Example optimization using functions in kramers_kronig_optimze.py.
+In this script, the following is completed:
+1. f" is simulated based on a very simple model of the K-edge (a ramp function that saturates).
+2. The Hilbert tranform is used to calculate f'.
+3. f" and f' are contaminated with Gaussian noise.
+4. f" and f' are subsampled.
+5. The optimization attempts to determine f" and f' trying to match the subsampled values and minimize a penalty 
+   that restrains f" and f' to be the Hilbert transform and negative Hilbert transform of each other respectively.
+6. The final results are plotted in matplotlib.
 """
 from __future__ import division
 
