@@ -2,6 +2,7 @@
 Example optimization using functions in kramers_kronig_optimze.
 This script is meant to test importing and running the functions.
 """
+from __future__ import division
 
 import kramers_kronig.kramers_kronig_optimize as kramers_kronig_optimize
 
