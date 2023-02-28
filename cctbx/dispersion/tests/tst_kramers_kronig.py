@@ -1,4 +1,6 @@
-"""Tests for kramkron core_functions"""
+"""Tests for kramers_kroning.py"""
+
+from __future__ import division
 
 import sys
 import pytest

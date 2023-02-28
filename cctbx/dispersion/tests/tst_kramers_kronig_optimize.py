@@ -1,5 +1,7 @@
 """Tests for optimizations using the kramkron API"""
 
+from __future__ import division
+
 import sys
 import numpy as np
 

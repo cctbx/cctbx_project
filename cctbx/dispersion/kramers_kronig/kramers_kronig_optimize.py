@@ -1,6 +1,6 @@
-"""
-Functions to create test optimizations with a kramers-kronig penalty.
-"""
+"""Functions to create test optimizations with a kramers-kronig penalty."""
+
+from __future__ import division
 
 import numpy as np
 import torch

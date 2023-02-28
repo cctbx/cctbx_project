@@ -1,5 +1,7 @@
 """Penalty for f' and f" violating Kramers Kronig relations"""
 
+from __future__ import division
+
 import os
 import pathlib
 import numpy as np
@@ -24,8 +26,7 @@ def parse_data(path, remove_first_line=False):
     """Check if energy spacing is constant"""
     energy = sf[:,0]
     denergy = energy[1:]-energy[:-1]
-    if np.any(denergy-denergy[0]):
-        print("Energy spacing is not constant.")
+
     return(sf)
 
 def interpolate(x_original, y_original, mode="scipy"):

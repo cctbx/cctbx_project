@@ -1,5 +1,7 @@
 """Penalty for f' and f" violating Kramers Kronig relations, written in PyTorch"""
 
+from __future__ import division
+
 import numpy as np
 import torch
 
