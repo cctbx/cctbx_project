@@ -31,10 +31,10 @@ def create_f(width=10,
     f_dp = np.heaviside(energy, 0.5)
     mid_ind = np.argmin(np.abs(energy))
     f_dp[mid_ind:mid_ind+ramp_size] = ramp[ramp_start:ramp_end]
-    
+
     energy = torch.Tensor(energy)
     f_dp = torch.Tensor(f_dp)
-    
+
     """get f' from the Hilbert transform"""
     energy_padded,_,f_p_padded,f_dp_padded = \
     kramers_kronig.get_f_p(energy, f_dp, padn=padn,
@@ -79,7 +79,7 @@ def get_loss(energy,
                                          known_response_f_p=known_response_f_p,
                                          known_response_f_dp=known_response_f_dp,
                                          )
-    
+
     return(data_loss + kk_loss)
 
 def run_example_opt(width=5,
@@ -101,7 +101,7 @@ def run_example_opt(width=5,
     2. Use the dispersion relations to calculate f′.
     3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
     4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
-    5. Compare the optimized model to the initial ground truth. 
+    5. Compare the optimized model to the initial ground truth.
     6. Show result in matplotlib.
     """
 
@@ -109,28 +109,28 @@ def run_example_opt(width=5,
                                padn=padn,
                                trim=trim,
                                uniform_energy=uniform_energy)
-    
+
     f_p_noisy,f_dp_noisy = sample(f_p,f_dp,
                                   loc=noise_loc,
                                   scale=noise_scale,
                                   )
     energy_ss,f_p_noisy_ss,f_dp_noisy_ss,inds = subsample(energy,f_p_noisy,f_dp_noisy,
                                                           spacing=spacing)
-    
 
-    
+
+
 
     """From energy_ss,f_p_noisy_ss,f_dp_noisy_ss determine f_p and f_dp, energy is given"""
-    
+
     f_p_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_p_noisy_ss)(energy)
     f_dp_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_dp_noisy_ss)(energy)
-    
+
     f_p_opt = torch.tensor(f_p_pred_0,requires_grad=True)
     f_dp_opt = torch.tensor(f_dp_pred_0, requires_grad=True)
-    
+
 
     optimizer = torch.optim.SGD([f_p_opt,f_dp_opt],lr=learning_rate)
-    
+
     loss_vec = []
     actual_loss_vec = []
     for i in range(num_iter):
@@ -147,11 +147,11 @@ def run_example_opt(width=5,
         actual_loss = torch.mean((f_p_opt-f_p)**2 + (f_dp_opt-f_dp)**2)
         loss_vec.append(loss)
         actual_loss_vec.append(actual_loss)
-        
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
+
     return(energy,
            f_p,
            f_dp,
@@ -179,7 +179,7 @@ def visualize(energy,
               loss_vec,
               actual_loss_vec,
               ):
-    
+
     plt.figure()
     plt.title("Subsampled curves with noise")
     plt.plot(energy,f_dp,energy_ss,f_dp_noisy_ss,'.')
@@ -192,17 +192,17 @@ def visualize(energy,
     plt.plot(energy,f_dp,energy,f_dp_pred_0,'.')
     plt.plot(energy,f_p,energy,f_p_pred_0,'.')
     plt.xlim([energy[0],energy[-1]])
-     
+
     plt.figure()
     plt.title('Final Guess for actual curves')
     plt.plot(energy,f_dp,energy,f_dp_opt.detach().numpy(),'.')
     plt.plot(energy,f_p,energy,f_p_opt.detach().numpy(),'.')
     plt.xlim([energy[0],energy[-1]])
-    
+
     plt.figure()
     plt.title('Objective Loss')
     plt.plot([loss.detach().numpy() for loss in loss_vec])
-    
+
     plt.figure()
     plt.title('Ground Truth Loss')
     plt.plot([actual_loss.detach().numpy() for actual_loss in actual_loss_vec])

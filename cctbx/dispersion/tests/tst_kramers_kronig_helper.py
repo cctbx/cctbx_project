@@ -29,7 +29,7 @@ def test_parse_Fe3_beginning(Fe3):
                                                [1008.0, -3.33235759037, 10.1156545543],
                                                [1009.0, -3.56113395273, 10.8295300422]]))
 
-    
+
 def test_parse_Fe3_end(Fe3):
     """Test that input is parsed properly."""
     np.testing.assert_equal(Fe3[-4:], np.array([[24902.0,0.244888423888, 0.418575531827],
@@ -50,7 +50,7 @@ def test_interpolate_torch_uniformity(Fe3):
     x_new, y_new = kramers_kronig_helper.interpolate(torch.tensor(Fe3[:,0]),torch.tensor(Fe3[:,1]), mode="torch")
     dx_new = x_new[1:]-x_new[:-1]
     np.testing.assert_equal(False,np.any(np.array(dx_new-dx_new[0])))
-    
+
 def test_interpolate_torch_0(Fe3):
     """Test that interpolate_torch yields correct result on linear example."""
     x_original = torch.tensor([1,5,10])
@@ -66,4 +66,3 @@ def test_interpolate_torch_1(Fe3):
     x_new = torch.tensor([4,7])
     y_new = kramers_kronig_helper.interpolate_torch(x_original, y_original, x_new)
     np.testing.assert_equal(np.array(y_new),np.array([8,14]))
-    

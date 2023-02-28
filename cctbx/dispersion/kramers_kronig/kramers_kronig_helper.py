@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 
 INTERP_FUNC = lambda x,y: interp1d(x,y,fill_value="extrapolate")
 
-SAMPLE_DATA_PATH = USER = os.getenv("MODULES") + "/ls49_big_data/data_sherrell"    
+SAMPLE_DATA_PATH = USER = os.getenv("MODULES") + "/ls49_big_data/data_sherrell"
 
 def parse_data(path, remove_first_line=False):
     """Load and parse input."""
@@ -20,7 +20,7 @@ def parse_data(path, remove_first_line=False):
     else:
         start_ind=0
     sf = np.array([[float(p) for p in line.split()] for line in lines[start_ind:]])
-    
+
     """Check if energy spacing is constant"""
     energy = sf[:,0]
     denergy = energy[1:]-energy[:-1]
@@ -33,12 +33,12 @@ def interpolate(x_original, y_original, mode="scipy"):
     Interpolate y_original onto a uniform grid, matching the smallest spacing of x_original
     mode can be "scipy" or "torch", torch allows for automatic differentiation to propagate
     """
-    
+
     if mode=="scipy":
         numerical_package = np
     elif mode=="torch":
         numerical_package = torch
-    
+
     dx_original = x_original[1:]-x_original[:-1]
     dx = numerical_package.min(dx_original)
 
@@ -53,27 +53,25 @@ def interpolate(x_original, y_original, mode="scipy"):
 
 def interpolate_torch(x_original, y_original, x_new):
     """Linearly interpolate y_original(x_original), returning y = y_original(x_new)"""
-    
+
     if torch.abs(x_original[-1]-x_new[-1])<1e-5:
       x_new = x_new[:-1]
       same_end = True
     else:
       same_end = False
-      
+
     x_new_upper_position = torch.searchsorted(x_original, x_new)
     x_new_lower_position = x_new_upper_position - 1
-    
+
     x_new_dist_lower_position = x_new - x_original[x_new_lower_position]
     x_new_dist_upper_position = x_original[x_new_upper_position] - x_new
-    
+
     x_new_dist_lower_position_norm = x_new_dist_upper_position / (x_new_dist_lower_position + x_new_dist_upper_position)
     x_new_dist_upper_position_norm = x_new_dist_lower_position / (x_new_dist_lower_position + x_new_dist_upper_position)
-    
+
     y_new = y_original[x_new_upper_position]*x_new_dist_upper_position_norm + y_original[x_new_lower_position]*x_new_dist_lower_position_norm
-    
+
     if same_end:
       y_new = torch.concat((y_new,y_original[-1].expand(1)))
-      
+
     return(y_new)
-    
-    
