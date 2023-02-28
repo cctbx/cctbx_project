@@ -2817,6 +2817,8 @@ def set_builder_defaults(options):
       options.python = '39'
     if not options.no_boost_src:
       options.no_boost_src = True
+      if sys.platform.startswith('linux') and '.el7.' in platform.platform():
+        options.no_boost_src = False
     if options.use_conda is None:
       options.use_conda = ''
 
