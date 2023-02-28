@@ -703,11 +703,7 @@ class HKLview_3d:
     array_info = self.miller_array.info()
     # capture the currently selected spacegroup if not the default
     self.sg = self.proc_arrays[self.scene_id_to_array_id(self.params.viewer.scene_id)].space_group()
-    #self.sg = self.miller_array.space_group()
     self.symops = list(self.sg.all_ops())
-    if len(self.binvals) == 0:
-      self.binvals = [ 1.0/self.miller_array.d_max_min()[0], 1.0/self.miller_array.d_max_min()[1]  ]
-    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     uc = "a=%g b=%g c=%g angles=%g,%g,%g" % self.miller_array.unit_cell().parameters()
     self.mprint( "Data: %s %s, %d reflections in space group: %s, unit Cell: %s" \
       % (array_info.label_string(), details, self.miller_array.indices().size(), \
@@ -751,9 +747,6 @@ class HKLview_3d:
 
   def make_visual_symHKLs(self, id, sym_id):
     symid = sym_id
-    # if a user operator was added then iterate until we find it
-    #while self.currentsymop != self.symops[symid]:
-    #  symid += 1
     rothkl, dummy = self.get_rothkl_from_IDs(id, symid) # and use it
     if self.visual_symmxs:
       # if a list of symmetry matrices have been deduced from a selected rotation operator

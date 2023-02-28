@@ -177,6 +177,11 @@ class dials_cl_cosym_subclass (dials_cl_cosym_wrapper):
             self._experiments, self._reflections = select_datasets_on_identifiers(
                 self._experiments, self._reflections, exclude_datasets=exclude
             )
+            assert len(cb_ops) == len(self.uuid_cache)
+            self.uuid_cache = [
+                x for i, x in enumerate(self.uuid_cache)
+                if cb_ops[i] is not None
+            ]
             cb_ops = list(filter(None, cb_ops))
 
         ex_cb_ops = len(cb_ops)

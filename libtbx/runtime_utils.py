@@ -260,14 +260,20 @@ class detached_process_server(detached_base):
     if data.accumulate :
       self._accumulated_callbacks.append(data)
       self.wait_for_lock_to_vanish()
-      touch_file(self.info_lock)
-      easy_pickle.dump(self.info_file, self._accumulated_callbacks)
-      os.remove(self.info_lock)
+      try:
+        touch_file(self.info_lock)
+        easy_pickle.dump(self.info_file, self._accumulated_callbacks)
+        os.remove(self.info_lock)
+      except Exception as e:
+        pass # failed, can happen if user deletes directory
     else :
       self.wait_for_lock_to_vanish()
-      touch_file(self.state_lock)
-      easy_pickle.dump(self.state_file, data)
-      os.remove(self.state_lock)
+      try:
+        touch_file(self.state_lock)
+        easy_pickle.dump(self.state_file, data)
+        os.remove(self.state_lock)
+      except Exception as e:
+        pass # failed, can happen if user deletes directory
 
   def cleanup(self):
     self._stdout.flush()

@@ -2817,8 +2817,6 @@ def set_builder_defaults(options):
       options.python = '39'
     if not options.no_boost_src:
       options.no_boost_src = True
-    if options.python == '27':
-      options.python = '37'
     if options.use_conda is None:
       options.use_conda = ''
 
@@ -2944,7 +2942,7 @@ def run(root=None):
                     default=False)
   python_args = parser.add_mutually_exclusive_group(required=False)
   python_args.add_argument('--python',
-                    default='27', type=str, nargs='?', const='27',
+                    default='37', type=str, nargs='?', const='37',
                     choices=['27', '37', '38', '39', '310'],
                     help="""When set, a specific Python version of the
 conda environment will be used. This only affects environments selected with
