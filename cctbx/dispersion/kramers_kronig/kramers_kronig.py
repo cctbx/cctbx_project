@@ -43,7 +43,6 @@ def get_f_p(energy,
     denergy = energy[1:]-energy[:-1]
     if torch.any(torch.abs(denergy-denergy[0])>1e-3):
         """Energy spacing is not constant."""
-        print("Energy spacing is not const")
         energy, f_dp = kramers_kronig_helper.interpolate(energy, f_dp, mode="torch")
     
     if known_response_energy is not None:
