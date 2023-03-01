@@ -185,24 +185,28 @@ def visualize(energy,
     plt.plot(energy,f_dp,energy_ss,f_dp_noisy_ss,'.')
     plt.plot(energy,f_p,energy_ss,f_p_noisy_ss,'.')
     plt.xlim([energy[0],energy[-1]])
-
+    plt.show()
 
     plt.figure()
     plt.title('Initial Guess for actual curves')
     plt.plot(energy,f_dp,energy,f_dp_pred_0,'.')
     plt.plot(energy,f_p,energy,f_p_pred_0,'.')
     plt.xlim([energy[0],energy[-1]])
+    plt.show()
 
     plt.figure()
     plt.title('Final Guess for actual curves')
     plt.plot(energy,f_dp,energy,f_dp_opt.detach().numpy(),'.')
     plt.plot(energy,f_p,energy,f_p_opt.detach().numpy(),'.')
     plt.xlim([energy[0],energy[-1]])
+    plt.show()
 
     plt.figure()
     plt.title('Objective Loss')
     plt.plot([loss.detach().numpy() for loss in loss_vec])
+    plt.show()
 
     plt.figure()
     plt.title('Ground Truth Loss')
     plt.plot([actual_loss.detach().numpy() for actual_loss in actual_loss_vec])
+    plt.show()
