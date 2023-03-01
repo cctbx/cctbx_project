@@ -41,7 +41,7 @@ def get_f_p(energy,
             known_response_f_dp=None,
             ):
     """Derive f' from f" """
-    # breakpoint()
+
     denergy = energy[1:]-energy[:-1]
     if torch.any(torch.abs(denergy-denergy[0])>1e-3):
         """Energy spacing is not constant."""
@@ -73,11 +73,10 @@ def get_f_p(energy,
         f_p_pred = f_p_pred_padded
         energy_padded = energy
 
-    # f_p_pred = f_p_pred + known_response_f_p_interp
     return(energy_padded,f_p_pred,f_p_pred_padded,f_in)
 
 
-def get_f_dp(energy, # uniform spacing
+def get_f_dp(energy,
              f_p,
              padn=5000,
              trim=0,

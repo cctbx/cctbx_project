@@ -1,4 +1,4 @@
-"""Tests for optimizations using the kramkron API"""
+"""Tests for optimizations using the kramers_kronig_optimize.py"""
 
 from __future__ import division
 

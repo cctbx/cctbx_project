@@ -23,10 +23,6 @@ def parse_data(path, remove_first_line=False):
         start_ind=0
     sf = np.array([[float(p) for p in line.split()] for line in lines[start_ind:]])
 
-    """Check if energy spacing is constant"""
-    energy = sf[:,0]
-    denergy = energy[1:]-energy[:-1]
-
     return(sf)
 
 def interpolate(x_original, y_original, mode="scipy"):
