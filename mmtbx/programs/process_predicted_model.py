@@ -12,8 +12,6 @@ except ImportError:
 # =============================================================================
 class Program(ProgramTemplate):
   description = '''
-Process Predicted Model
-
 Replace values in B-factor field with estimated B values.
 Optionally remove low-confidence residues and split into domains.
 
