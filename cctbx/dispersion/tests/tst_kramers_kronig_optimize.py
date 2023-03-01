@@ -76,6 +76,6 @@ def run():
     test_run_example_opt_params_2()
     test_run_example_opt_params_3()
     print("OK")
-    
+
 if __name__ == '__main__':
     run()

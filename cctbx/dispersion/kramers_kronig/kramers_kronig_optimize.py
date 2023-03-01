@@ -17,7 +17,7 @@ def create_f(width=10,
              uniform_energy=True
              ):
     """Create a simulated absorption edge"""
-    
+
     if uniform_energy:
         energy = np.arange(-width,width,dE)
     else:
@@ -77,7 +77,7 @@ def get_loss(energy,
              known_response_f_p=None,
              known_response_f_dp=None,
              ):
-    """Optimization loss is the MSE of the match to the noisy subsampled data summed with the penalty for 
+    """Optimization loss is the MSE of the match to the noisy subsampled data summed with the penalty for
     violating the Kramers-Kronig relations"""
     data_loss = torch.mean((f_p_opt[inds]-f_p_noisy_ss)**2 + (f_dp_opt[inds]-f_dp_noisy_ss)**2)
     kk_loss = kramers_kronig.get_penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0,
@@ -183,7 +183,7 @@ def visualize(energy,
               loss_vec,
               actual_loss_vec,
               ):
-  
+
     """Compare the optimized model to the initial ground truth
     and show result in matplotlib."""
 

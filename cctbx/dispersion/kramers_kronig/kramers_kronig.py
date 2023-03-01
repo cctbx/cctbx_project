@@ -20,9 +20,9 @@ def get_hilbert_transform(x,
     scipy returns a complex vector where the real part is the input and the imaginary part is the same as
     the output of this function.
     Saying that the real and imaginary part of a function are related by Kramers-Kronig is the same as saying
-    that the imaginary part of a function is the Hilbert transform of the real part. 
+    that the imaginary part of a function is the Hilbert transform of the real part.
     """
-    
+
     N = x.shape[axis]
     if N <= 0:
         raise ValueError("N must be positive.")
@@ -53,10 +53,10 @@ def get_f_p(energy,
             known_response_f_dp=None,
             ):
     """
-    This function calculates f' (f_p) from f" (f_dp). 
+    This function calculates f' (f_p) from f" (f_dp).
     The input is f" as a function of energy. If the function is not on a uniform grid, f"
     is interpolated, using the smallest spacing of the given nonuniform grid.
-    The Hilbert transform is linear. Thus, if a pair of f' and f" has already been calculated from the 
+    The Hilbert transform is linear. Thus, if a pair of f' and f" has already been calculated from the
     Hilbert transform, the known f" can be subtracted off of the input f". After f' is calculated from the input f"
     through the Hilbert transform, the known f' can be added back to the calculated f' for the final value.
     The Hilbert transform requires knowledge of the function at all energies. As we generally only have a truncated
@@ -203,7 +203,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     f_dp_pred_padded = f_dp_pred_padded[padn:len(f_dp_pred_padded)-padn]
     f_dp_pred = f_dp_pred_padded[trim:len(f_dp_pred_padded)-trim]
 
-    """trim f_p and f_dp as the start and endpoints (of number trim) are 
+    """trim f_p and f_dp as the start and endpoints (of number trim) are
     windowed during computation of the Hilbert transform"""
     f_p = f_p[trim:len(energy)-trim]
     f_dp = f_dp[trim:len(energy)-trim]

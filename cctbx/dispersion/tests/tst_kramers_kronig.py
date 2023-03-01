@@ -271,6 +271,6 @@ def run():
     test_get_f_dp_cos_wave(Fe3)
     test_get_f_p_nonuniform(Fe0, padn=100)
     print("OK")
-    
+
 if __name__ == '__main__':
     run()

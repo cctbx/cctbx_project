@@ -69,9 +69,6 @@ def run():
     test_interpolate_torch_0(Fe3)
     test_interpolate_torch_1(Fe3)
     print("OK")
-    
+
 if __name__ == '__main__':
     run()
-
-    
-  
