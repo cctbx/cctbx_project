@@ -699,7 +699,7 @@ class HKLViewFrame() :
     mydict = { "current_phil_strings": philstrvalsdict }
     self.SendInfoToGUI(mydict)
     if self.viewer.params.viewer.scene_id is not None:
-      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_from_dict().nth_power_scale_radii })
+      self.SendInfoToGUI({ "used_nth_power_scale_radii": self.viewer.HKLscene_dict_val().scene.nth_power_scale_radii })
 
 
   def detect_Rfree(self, array):
@@ -776,7 +776,7 @@ class HKLViewFrame() :
       self.params.using_space_subgroup:
       return
     if col is None:
-      current_miller_array_idx = self.viewer.HKLInfo_from_dict()[1]
+      current_miller_array_idx = self.viewer.HKLscene_dict_val().arrayinfo[1]
     else:
       current_miller_array_idx = col
     matching_valid_array = self.procarrays[ current_miller_array_idx ]
