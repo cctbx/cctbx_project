@@ -68,4 +68,3 @@ def test_interpolate_torch_1(Fe3):
     x_new = torch.tensor([4,7])
     y_new = kramers_kronig_helper.interpolate_torch(x_original, y_original, x_new)
     np.testing.assert_equal(np.array(y_new),np.array([8,14]))
-  
