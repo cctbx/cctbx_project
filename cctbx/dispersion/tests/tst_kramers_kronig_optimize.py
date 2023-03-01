@@ -2,11 +2,12 @@
 
 from __future__ import division
 
-import sys
 import numpy as np
+import cctbx.dispersion.kramers_kronig.kramers_kronig_optimize as kramers_kronig_optimize
 
-sys.path.append("..")
-import kramers_kronig.kramers_kronig_optimize as kramers_kronig_optimize
+# import sys
+# sys.path.append("..")
+# import kramers_kronig.kramers_kronig_optimize as kramers_kronig_optimize
 
 def test_run_example_opt_params_0():
     """Test optimization with Kramers-Kronig penalty yields decreasing actual loss"""

@@ -2,13 +2,16 @@
 
 from __future__ import division
 
-import sys
 import numpy as np
 import torch
 
-sys.path.append("..")
-import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
-import kramers_kronig.kramers_kronig as kramers_kronig
+import cctbx.dispersion.kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
+import cctbx.dispersion.kramers_kronig.kramers_kronig as kramers_kronig
+
+# import sys
+# sys.path.append("..")
+# import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
+# import kramers_kronig.kramers_kronig as kramers_kronig
 
 
 Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")[6064:6165,:]
