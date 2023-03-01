@@ -422,6 +422,7 @@ class HKLview_3d:
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
+
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
 
@@ -435,9 +436,11 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "nth_power_scale_radii"):
       self.add_nth_power_scale_radii_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "scale"):
       self.add_radii_scale_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
