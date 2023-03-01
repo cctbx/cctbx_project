@@ -3,7 +3,6 @@
 from __future__ import division
 
 import sys
-import pytest
 import numpy as np
 import torch
 
@@ -11,27 +10,17 @@ sys.path.append("..")
 import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 import kramers_kronig.kramers_kronig as kramers_kronig
 
-@pytest.fixture
-def Fe3():
-    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out"
-    sf = kramers_kronig_helper.parse_data(path)[6064:6165,:]
-    return(sf)
 
+Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")[6064:6165,:]
+Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")[6064:6165,:]
 
-@pytest.fixture
-def Fe2():
-    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out"
-    sf = kramers_kronig_helper.parse_data(path)[6064:6165,:]
-    return(sf)
+path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/Fe_fake.dat"
+sf = kramers_kronig_helper.parse_data(path)
+ind_0 = np.argmin(np.abs(sf[:,0]-7070))
+ind_1 = np.argmin(np.abs(sf[:,0]-7170))
+sf = sf[ind_0:ind_1,:]
+Fe0 = sf
 
-@pytest.fixture
-def Fe0():
-    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/Fe_fake.dat"
-    sf = kramers_kronig_helper.parse_data(path)
-    ind_0 = np.argmin(np.abs(sf[:,0]-7070))
-    ind_1 = np.argmin(np.abs(sf[:,0]-7170))
-    sf = sf[ind_0:ind_1,:]
-    return(sf)
 
 
 def get_f_p_get_f_dp(sf, padn=10):
@@ -265,3 +254,20 @@ def test_get_f_p_nonuniform(Fe0, padn=100):
 
     np.testing.assert_allclose(energy_padded_0, energy_padded_1)
     np.testing.assert_allclose(f_p_pred_0, f_p_pred_1, rtol=1e-1, atol=1e-1)
+
+
+def run():
+    test_get_f_p_get_f_dp_Fe3(Fe3)
+    test_get_f_p_get_f_dp_Fe2(Fe2)
+    test_get_penalty_Fe3(Fe3)
+    test_get_penalty_Fe2(Fe2)
+    test_get_penalty_known_response(Fe2)
+    test_cos_wave()
+    test_get_f_p_cos_wave_0()
+    test_get_f_p_cos_wave(Fe3)
+    test_get_f_dp_cos_wave(Fe3)
+    test_get_f_p_nonuniform(Fe0, padn=100)
+    print("OK")
+    
+if __name__ == '__main__':
+    run()

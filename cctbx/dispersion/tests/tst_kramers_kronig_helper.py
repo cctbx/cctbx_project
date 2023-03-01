@@ -4,25 +4,14 @@ from __future__ import division
 
 import sys
 
-import pytest
 import numpy as np
 import torch
 
 sys.path.append("..")
 import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 
-@pytest.fixture
-def Fe3():
-    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out"
-    return(kramers_kronig_helper.parse_data(path))
-
-
-@pytest.fixture
-def Fe2():
-    path = kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out"
-    return(kramers_kronig_helper.parse_data(path))
-
-
+Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")
+Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")
 
 def test_parse_Fe3_beginning(Fe3):
     """Test that input is parsed properly."""
@@ -68,3 +57,18 @@ def test_interpolate_torch_1(Fe3):
     x_new = torch.tensor([4,7])
     y_new = kramers_kronig_helper.interpolate_torch(x_original, y_original, x_new)
     np.testing.assert_equal(np.array(y_new),np.array([8,14]))
+
+def run():
+    test_parse_Fe3_beginning(Fe3)
+    test_parse_Fe3_end(Fe3)
+    test_interpolate_scipy(Fe3)
+    test_interpolate_torch_uniformity(Fe3)
+    test_interpolate_torch_0(Fe3)
+    test_interpolate_torch_1(Fe3)
+    print("OK")
+    
+if __name__ == '__main__':
+    run()
+
+    
+  

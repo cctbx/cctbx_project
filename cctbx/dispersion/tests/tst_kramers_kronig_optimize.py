@@ -67,3 +67,13 @@ def test_run_example_opt_params_3():
                                                                uniform_energy=False,
                                                                )
     np.testing.assert_array_less(actual_loss_vec[-1].detach().numpy(),actual_loss_vec[0].detach().numpy())
+
+def run():
+    test_run_example_opt_params_0()
+    test_run_example_opt_params_1()
+    test_run_example_opt_params_2()
+    test_run_example_opt_params_3()
+    print("OK")
+    
+if __name__ == '__main__':
+    run()
