@@ -170,21 +170,25 @@ class PolygonFrame(wx.Frame):
     wx.Frame.__init__(self, parent, -1, "POLYGON", size=(1024,720))
     self.SetMinSize((800,500))
     adopt_init_args(self, locals())
-    self.renderer = wx_renderer(histogram_data, structure_stats,
-      center=(0.5, 0.475))
-    self.setup_toolbar()
-    main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.SetSizer(main_sizer)
-    self.main_sizer = main_sizer
-    self.info_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.main_sizer.Add(self.info_sizer, 0, wx.ALL|wx.EXPAND)
-    self.draw_top_panel()
-    self.label_panel = None
-    self.draw_color_key()
-    self.polygon_panel = PolygonPanel(self, self.renderer)
-    main_sizer.Add(self.polygon_panel, 1, wx.ALL|wx.EXPAND)
-    self.Bind(wx.EVT_CLOSE, self.OnClose)
-    self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
+    # XXX The 'if' below fixes the case when arrays in histogram_data are too
+    # XXX small or empty. In this the POLYGON picture will not be drawn and
+    # XXX the pop up window will be just a blanc window.
+    if histogram_data[0][1].size() > 3:
+      self.renderer = wx_renderer(histogram_data, structure_stats,
+        center=(0.5, 0.475))
+      self.setup_toolbar()
+      main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.SetSizer(main_sizer)
+      self.main_sizer = main_sizer
+      self.info_sizer = wx.BoxSizer(wx.VERTICAL)
+      self.main_sizer.Add(self.info_sizer, 0, wx.ALL|wx.EXPAND)
+      self.draw_top_panel()
+      self.label_panel = None
+      self.draw_color_key()
+      self.polygon_panel = PolygonPanel(self, self.renderer)
+      main_sizer.Add(self.polygon_panel, 1, wx.ALL|wx.EXPAND)
+      self.Bind(wx.EVT_CLOSE, self.OnClose)
+      self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
   def setup_toolbar(self):
     self.toolbar = None

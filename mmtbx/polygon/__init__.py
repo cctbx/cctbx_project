@@ -139,6 +139,7 @@ def apply_default_filter(database_dict, d_min, key = "high_resolution"):
   for key in result.keys():
     if(key in ["high_resolution"]): continue
     vals = result[key]
+    if vals.size()==0: continue
     if(key == "bond_rmsd"):
       sel &= vals < 0.05
     elif(key == "angle_rmsd"):
