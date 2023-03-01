@@ -989,7 +989,7 @@ class HKLview_3d:
       # This yields approximately the same number of reflections in each bin
       binvals = [bindata_sorted[0]] * (nbins+1) #
       for i,e in enumerate(bindata_sorted):
-        idiv = int( (nbins+1)*float(i)/len(bindata_sorted))
+        idiv = int( (nbins)*float(i)/len(bindata_sorted))
         binvals[idiv] = e
       # If this didn't yield enough bins with different binvalues, say a multiplicity dataset
       # with values between [1;6] but 95% reflections having multiplcity=2 then assign
@@ -1398,7 +1398,8 @@ class HKLview_3d:
          and nreflsinbin == 0:
           continue
 
-        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
+        if nreflsinbin > 0 and not math.isnan(bin1) and not math.isnan(bin2):
+          self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=1)
         cntbin += 1
