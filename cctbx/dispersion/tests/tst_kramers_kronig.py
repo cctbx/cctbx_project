@@ -13,7 +13,7 @@ import cctbx.dispersion.kramers_kronig.kramers_kronig as kramers_kronig
 # import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 # import kramers_kronig.kramers_kronig as kramers_kronig
 
-
+# Get constants
 Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")[6064:6165,:]
 Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")[6064:6165,:]
 
@@ -23,7 +23,6 @@ ind_0 = np.argmin(np.abs(sf[:,0]-7070))
 ind_1 = np.argmin(np.abs(sf[:,0]-7170))
 sf = sf[ind_0:ind_1,:]
 Fe0 = sf
-
 
 
 def get_f_p_get_f_dp(sf, padn=10):
@@ -260,6 +259,7 @@ def test_get_f_p_nonuniform(Fe0, padn=100):
 
 
 def run():
+    """Run all tests"""
     test_get_f_p_get_f_dp_Fe3(Fe3)
     test_get_f_p_get_f_dp_Fe2(Fe2)
     test_get_penalty_Fe3(Fe3)

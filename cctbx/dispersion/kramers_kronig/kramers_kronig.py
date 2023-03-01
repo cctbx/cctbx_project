@@ -1,4 +1,4 @@
-"""Penalty for f' and f" violating Kramers Kronig relations, written in PyTorch"""
+"""Functions to compute penalty for f' and f" violating Kramers Kronig relations, written in PyTorch"""
 
 from __future__ import division
 
@@ -10,7 +10,19 @@ from . import kramers_kronig_helper
 
 def get_hilbert_transform(x,
                           axis=-1):
-    """Perform the Hilbert transform"""
+    """
+    Perform the Hilbert transform on a real-valued input.
+    This is a PyTorch implementation of the Hilbert transform in scipy.signal
+    Reference: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.hilbert.html
+    Like the scipy version, this version takes as input a real-valued function.
+    Assuming the function is analytic, the full complex function is computed.
+    Unlike the scipy version, this version only returns the imaginary part of the analytic function.
+    scipy returns a complex vector where the real part is the input and the imaginary part is the same as
+    the output of this function.
+    Saying that the real and imaginary part of a function are related by Kramers-Kronig is the same as saying
+    that the imaginary part of a function is the Hilbert transform of the real part. 
+    """
+    
     N = x.shape[axis]
     if N <= 0:
         raise ValueError("N must be positive.")
@@ -40,7 +52,19 @@ def get_f_p(energy,
             known_response_f_p=None,
             known_response_f_dp=None,
             ):
-    """Derive f' from f" """
+    """
+    This function calculates f' (f_p) from f" (f_dp). 
+    The input is f" as a function of energy. If the function is not on a uniform grid, f"
+    is interpolated, using the smallest spacing of the given nonuniform grid.
+    The Hilbert transform is linear. Thus, if a pair of f' and f" has already been calculated from the 
+    Hilbert transform, the known f" can be subtracted off of the input f". After f' is calculated from the input f"
+    through the Hilbert transform, the known f' can be added back to the calculated f' for the final value.
+    The Hilbert transform requires knowledge of the function at all energies. As we generally only have a truncated
+    region, this subtraction and addition procedure allows the user to make the tails of the input function go to zero
+    at the edges, getting a better approximation of the Hilbert transform.
+    The subtracted input function is padded by zeros (of number padn) and windowed by a window of window_type.
+    A number of start and endpoints of the input function (of number trim) are included in this window.
+    """
 
     denergy = energy[1:]-energy[:-1]
     if torch.any(torch.abs(denergy-denergy[0])>1e-3):
@@ -86,7 +110,7 @@ def get_f_dp(energy,
              known_response_f_dp=None,
              ):
 
-    """Derive f" from f' """
+    """Derive f" from f'. This is calculated from the negative of the Hilbert transform."""
 
     if known_response_f_p is not None:
         known_response_f_p = -known_response_f_p
@@ -151,7 +175,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                                                           known_response_f_dp=known_response_f_dp,
                                                           )
 
-    """Add back DC term"""
+    """The Hilbert transform filters out any DC term. We add back the DC term."""
     F_p_pred = torch.fft.fft(f_p_pred_padded)
     F_p_pred[0] = torch.fft.fft(f_p)[0]
     f_p_pred_padded = torch.fft.ifft(F_p_pred).real
@@ -179,8 +203,8 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     f_dp_pred_padded = f_dp_pred_padded[padn:len(f_dp_pred_padded)-padn]
     f_dp_pred = f_dp_pred_padded[trim:len(f_dp_pred_padded)-trim]
 
-    """trim f_p and f_dp"""
-    # trim f_p
+    """trim f_p and f_dp as the start and endpoints (of number trim) are 
+    windowed during computation of the Hilbert transform"""
     f_p = f_p[trim:len(energy)-trim]
     f_dp = f_dp[trim:len(energy)-trim]
     mse = torch.mean((f_p - f_p_pred)**2) + torch.mean((f_dp - f_dp_pred)**2)

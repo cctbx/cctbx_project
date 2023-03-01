@@ -5,8 +5,9 @@ In this script, the following is completed:
 2. The Hilbert tranform is used to calculate f'.
 3. f" and f' are contaminated with Gaussian noise.
 4. f" and f' are subsampled.
-5. The optimization attempts to determine f" and f' trying to match the subsampled values and minimize a penalty
-   that restrains f" and f' to be the Hilbert transform and negative Hilbert transform of each other respectively.
+5. The optimization attempts to determine f" and f' by both trying to match the subsampled values and 
+    minimize a penalty that restrains f" and f' to be the Hilbert transform and negative Hilbert transform 
+    of each other respectively.
 6. The final results are plotted in matplotlib.
 """
 from __future__ import division

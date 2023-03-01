@@ -28,7 +28,7 @@ def parse_data(path, remove_first_line=False):
 def interpolate(x_original, y_original, mode="scipy"):
     """
     Interpolate y_original onto a uniform grid, matching the smallest spacing of x_original
-    mode can be "scipy" or "torch", torch allows for automatic differentiation to propagate
+    mode can be "scipy" or "torch", torch allows for automatic differentiation to propagate by using PyTorch
     """
 
     if mode=="scipy":
@@ -49,7 +49,7 @@ def interpolate(x_original, y_original, mode="scipy"):
     return(x,y)
 
 def interpolate_torch(x_original, y_original, x_new):
-    """Linearly interpolate y_original(x_original), returning y = y_original(x_new)"""
+    """Linearly interpolate y_original(x_original), returning y = y_original(x_new), using PyTorch"""
 
     if torch.abs(x_original[-1]-x_new[-1])<1e-5:
       x_new = x_new[:-1]

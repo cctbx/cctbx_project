@@ -16,6 +16,8 @@ def create_f(width=10,
              padn=5000,
              uniform_energy=True
              ):
+    """Create a simulated absorption edge"""
+    
     if uniform_energy:
         energy = np.arange(-width,width,dE)
     else:
@@ -47,6 +49,7 @@ def sample(f_p,
            loc=[0,0],
            scale=[1e-3,1e-3],
            ):
+    """Add Gaussian noise to the f' and f" curves and sample"""
     f_p_dist = torch.distributions.normal.Normal(f_p + loc[0], scale[0])
     f_dp_dist = torch.distributions.normal.Normal(f_dp + loc[1], scale[1])
     return(f_p_dist.sample(),f_dp_dist.sample())
@@ -55,8 +58,9 @@ def sample(f_p,
 def subsample(energy,
               f_p,
               f_dp,
-              spacing=2):
-
+              spacing=2,
+              ):
+    """Subsample the f' and f" curves at an input spacing"""
     inds = np.arange(0,len(energy),spacing)
     energy = energy[inds]
     f_p = f_p[inds]
@@ -73,6 +77,8 @@ def get_loss(energy,
              known_response_f_p=None,
              known_response_f_dp=None,
              ):
+    """Optimization loss is the MSE of the match to the noisy subsampled data summed with the penalty for 
+    violating the Kramers-Kronig relations"""
     data_loss = torch.mean((f_p_opt[inds]-f_p_noisy_ss)**2 + (f_dp_opt[inds]-f_dp_noisy_ss)**2)
     kk_loss = kramers_kronig.get_penalty(energy, f_p_opt, f_dp_opt, padn=0, trim=0,
                                          known_response_energy=known_response_energy,
@@ -101,8 +107,6 @@ def run_example_opt(width=5,
     2. Use the dispersion relations to calculate f′.
     3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
     4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
-    5. Compare the optimized model to the initial ground truth.
-    6. Show result in matplotlib.
     """
 
     energy,f_p,f_dp = create_f(width=width,
@@ -179,6 +183,9 @@ def visualize(energy,
               loss_vec,
               actual_loss_vec,
               ):
+  
+    """Compare the optimized model to the initial ground truth
+    and show result in matplotlib."""
 
     plt.figure()
     plt.title("Subsampled curves with noise")

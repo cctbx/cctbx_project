@@ -70,6 +70,7 @@ def test_run_example_opt_params_3():
     np.testing.assert_array_less(actual_loss_vec[-1].detach().numpy(),actual_loss_vec[0].detach().numpy())
 
 def run():
+    """Run all tests"""
     test_run_example_opt_params_0()
     test_run_example_opt_params_1()
     test_run_example_opt_params_2()

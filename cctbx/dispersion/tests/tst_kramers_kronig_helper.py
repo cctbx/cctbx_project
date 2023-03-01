@@ -11,6 +11,7 @@ import cctbx.dispersion.kramers_kronig.kramers_kronig_helper as kramers_kronig_h
 # sys.path.append("..")
 # import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 
+# Get constants
 Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")
 Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")
 
@@ -60,6 +61,7 @@ def test_interpolate_torch_1(Fe3):
     np.testing.assert_equal(np.array(y_new),np.array([8,14]))
 
 def run():
+    """Run all tests"""
     test_parse_Fe3_beginning(Fe3)
     test_parse_Fe3_end(Fe3)
     test_interpolate_scipy(Fe3)
