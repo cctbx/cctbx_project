@@ -1,3 +1,11 @@
+2023.2
+======
+
+* Improved modeling of histidine protonation states
+* Improved tool for merging models
+* Added resolution estimation for map docking (prepare_map_for_docking)
+* Bug fixes and improvements to cctbx.HKLviewer
+
 2023.1
 ======
 

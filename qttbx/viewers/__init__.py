@@ -89,8 +89,7 @@ class ModelViewer(object):
         f = os.path.join(p, cmd)
         if os.path.isfile(f):
           return f
-        else:
-          return None
+      return None
 
   def start_viewer(self):
     raise NotImplementedError

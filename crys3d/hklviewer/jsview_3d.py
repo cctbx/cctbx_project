@@ -8,6 +8,7 @@ from cctbx import miller, sgtbx
 from scitbx import graphics_utils
 from scitbx import matrix
 import scitbx.math
+from libtbx import group_args
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, to_str
 import threading, math, sys, cmath
@@ -422,6 +423,7 @@ class HKLview_3d:
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
+
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
 
@@ -435,9 +437,11 @@ class HKLview_3d:
 
     if has_phil_path(diff_phil, "nth_power_scale_radii"):
       self.add_nth_power_scale_radii_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "scale"):
       self.add_radii_scale_to_dict()
+      self.sceneisdirty = True
 
     if has_phil_path(diff_phil, "camera_type"):
       self.set_camera_type()
@@ -494,11 +498,10 @@ class HKLview_3d:
                       "use_wireframe",
                       "viewer") and self.params.viewer.scene_id is not None:
        # any change to parameters in the master phil in display2.py
-      self.scene = self.HKLscene_from_dict(self.params.viewer.scene_id)
+      self.scene = self.HKLscene_dict_val(self.params.viewer.scene_id).scene
       self.DrawNGLJavaScript()
       self.mprint( "Rendered %d reflections" % self.scene.points.size(), verbose=1)
       #time.sleep(25) # for debugging
-      #self.show_rotation_axes()
       self.realSpaceMag = (self.realspace_scale - 1.0)*self.params.real_space_unit_cell_scale_fraction + 1.0
       self.recipSpaceMag = (self.reciproc_scale - 1.0)*self.params.reciprocal_unit_cell_scale_fraction + 1.0
 
@@ -692,8 +695,8 @@ class HKLview_3d:
     if scene_id is not None:
       self.params.viewer.scene_id = scene_id
     if self.params.hkls and self.params.viewer.scene_id is not None and self.params.viewer.scene_id >= 0:
-      self.miller_array = self.HKLscene_from_dict().miller_array
-      self.scene = self.HKLscene_from_dict()
+      self.miller_array = self.HKLscene_dict_val().scene.miller_array
+      self.scene = self.HKLscene_dict_val().scene
     self.merge = merge
     if (self.miller_array is None):
       return
@@ -807,32 +810,16 @@ class HKLview_3d:
 
 
   def get_col_fomcol(self, idx):
-    if len(self.HKLInfo_from_dict()) == 0:
+    if len(self.HKLscene_dict_val().arrayinfo) == 0:
       return -1, -1
-    return self.HKLInfo_from_dict(idx)[6], self.HKLInfo_from_dict(idx)[7]
+    return self.HKLscene_dict_val(idx).arrayinfo[6], self.HKLscene_dict_val(idx).arrayinfo[7]
 
 
   def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
     sceneid = scene_id
     if len(self.proc_arrays) == 0:
       return False
-
-    self.HKLsceneKey = (curphilparam.spacegroup_choice,
-                         curphilparam.using_space_subgroup,
-                         self.params.hkls.expand_anomalous,
-                         self.params.hkls.expand_to_p1,
-                         self.params.hkls.slice_axis,
-                         self.params.hkls.slice_index,
-                         self.params.hkls.show_missing,
-                         self.params.hkls.show_only_missing,
-                         self.params.hkls.show_systematic_absences,
-                         self.params.hkls.sigma_color_radius,
-                         self.params.hkls.color_scheme,
-                         self.params.hkls.color_powscale,
-                         sceneid,
-                         self.params.hkls.scale,
-                         self.params.hkls.nth_power_scale_radii
-                         )
+    self.HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
       if self.HKLscene:
@@ -852,33 +839,20 @@ class HKLview_3d:
                      self.renderscale, copy.deepcopy(self.params.hkls), self.mprint )
     for i,inf in enumerate(scenearrayinfos):
       self.mprint("%d, %s" %(idx+i+1, inf[3]), verbose=1)
-      self.HKLsceneKey = (curphilparam.spacegroup_choice,
-                            curphilparam.using_space_subgroup,
-                            self.params.hkls.expand_anomalous,
-                            self.params.hkls.expand_to_p1,
-                            self.params.hkls.slice_axis,
-                            self.params.hkls.slice_index,
-                            self.params.hkls.show_missing,
-                            self.params.hkls.show_only_missing,
-                            self.params.hkls.show_systematic_absences,
-                            self.params.hkls.sigma_color_radius,
-                            self.params.hkls.color_scheme,
-                            self.params.hkls.color_powscale,
-                            sceneid,
-                            self.params.hkls.scale,
-                            self.params.hkls.nth_power_scale_radii
-                            )
-      self.HKLscenedict[self.HKLsceneKey] =  ( hklscenes[i], scenemaxdata[i],
-        scenemindata[i], scenemaxsigmas[i], sceneminsigmas[i], inf )
+      self.HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
+      self.HKLscenedict[self.HKLsceneKey] =  group_args(scene = hklscenes[i],
+                                                        maxdata = scenemaxdata[i],
+                                                        mindata = scenemindata[i],
+                                                        maxsigma = scenemaxsigmas[i],
+                                                        minsigma = sceneminsigmas[i],
+                                                        arrayinfo = inf)
       sceneid += 1
-    (
-      self.HKLscene,
-      self.HKLscenesMaxdata,
-      self.HKLscenesMindata,
-      self.HKLscenesMaxsigmas,
-      self.HKLscenesMinsigmas,
-      self.hkl_scenes_info
-    ) =  self.HKLscenedict[self.HKLsceneKey]
+    self.HKLscene = self.HKLscenedict[self.HKLsceneKey].scene
+    self.HKLscenesMaxdata = self.HKLscenedict[self.HKLsceneKey].maxdata
+    self.HKLscenesMindata = self.HKLscenedict[self.HKLsceneKey].mindata
+    self.HKLscenesMaxsigmas = self.HKLscenedict[self.HKLsceneKey].maxsigma
+    self.HKLscenesMinsigmas = self.HKLscenedict[self.HKLsceneKey].minsigma
+    self.hkl_scenes_info = self.HKLscenedict[self.HKLsceneKey].arrayinfo
     self.sceneisdirty = True
     self.has_new_miller_array = False
     self.mprint("Done constructing HKL scenes", verbose=1)
@@ -904,58 +878,13 @@ class HKLview_3d:
                       )
 
 
-  def HKLscene_from_dict(self, sceneid=None):
+  def HKLscene_dict_val(self, sceneid=None):
     if sceneid is None:
       sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
       self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][0]
-
-
-  def HKLMaxData_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.params.viewer.scene_id
-    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][1]
-
-
-  def HKLMinData_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.params.viewer.scene_id
-    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][2]
-
-
-  def HKLMaxSigmas_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.params.viewer.scene_id
-    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][3]
-
-
-  def HKLMinSigmas_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.params.viewer.scene_id
-    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][4]
-
-
-  def HKLInfo_from_dict(self, sceneid=None):
-    if sceneid is None:
-      sceneid = self.params.viewer.scene_id
-    HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
-    if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
-    return self.HKLscenedict[HKLsceneKey][5]
+    return self.HKLscenedict[HKLsceneKey]
 
 
   def identify_suitable_fomsarrays(self):
@@ -1033,10 +962,10 @@ class HKLview_3d:
     binscenelabel = self.bin_labels_type_idxs[binner_idx][0]
     self.mprint("Using %s for binning" %binscenelabel)
     if binscenelabel=="Resolution":
-      warray = self.HKLscene_from_dict().work_array
-      dres = self.HKLscene_from_dict().dres
+      warray = self.HKLscene_dict_val().scene.work_array
+      dres = self.HKLscene_dict_val().scene.dres
       uc = warray.unit_cell()
-      indices = self.HKLscene_from_dict().indices
+      indices = self.HKLscene_dict_val().scene.indices
       dmax,dmin = warray.d_max_min(d_max_is_highest_defined_if_infinite=True) # to avoid any F000 reflection
       if dmax == dmin: # say if only one reflection
         binvals = [dres[0]-0.1, dmin +0.1]
@@ -1085,7 +1014,7 @@ class HKLview_3d:
                        1.0/(self.miller_array.d_max_min()[1]*0.999) ]
     if nuniquevalues == -1:
       if binner_idx==0: # i.e. the resolution array of the hkls
-        nuniquevalues = len(set(list( self.HKLscene_from_dict().dres )))
+        nuniquevalues = len(set(list( self.HKLscene_dict_val().scene.dres )))
       elif binner_idx==1:  # i.e. singletons
         binvals = [ -0.1, 0.1 ] # if this dataset hasn't got any singletons
         if len(set(list(self.scene.singletonsiness))) == 3: # symmetry unique anomalous data with some singletons
@@ -1099,20 +1028,20 @@ class HKLview_3d:
 
   def get_matched_binarray(self, binner_idx):
     binscenelabel, datatype, sceneid = self.bin_labels_type_idxs[binner_idx]
-    label = self.HKLscene_from_dict(sceneid).work_array.info().label_string()
+    label = self.HKLscene_dict_val(sceneid).scene.work_array.info().label_string()
     if datatype == "hassigmas" and binscenelabel == "Sigmas of " + label:
-      bindata = self.HKLscene_from_dict(sceneid).sigmas.deep_copy()
-      binvalsboundaries = [ self.HKLMinSigmas_from_dict(sceneid) - 0.1 , self.HKLMaxSigmas_from_dict(sceneid) + 0.1 ]
+      bindata = self.HKLscene_dict_val(sceneid).scene.sigmas.deep_copy()
+      binvalsboundaries = [ self.HKLscene_dict_val(sceneid).minsigma - 0.1 , self.HKLscene_dict_val(sceneid).maxsigma + 0.1 ]
     elif datatype in "Map coeffs" and "Phases of " + label in binscenelabel:
-      bindata = self.HKLscene_from_dict(sceneid).phases.deep_copy()
+      bindata = self.HKLscene_dict_val(sceneid).scene.phases.deep_copy()
       # preselect centric reflections, i.e. those with phi = 0 or 180
       binvalsboundaries = [-0.01, 0.01, 179.99, 180.01, 359.99, 360]
     elif datatype in "Map coeffs" and "Amplitudes of " + label in binscenelabel:
-      bindata = self.HKLscene_from_dict(sceneid).ampl.deep_copy()
-      binvalsboundaries = [ self.HKLMinData_from_dict(sceneid) - 0.1 , self.HKLMaxData_from_dict(sceneid) + 0.1 ]
+      bindata = self.HKLscene_dict_val(sceneid).scene.ampl.deep_copy()
+      binvalsboundaries = [ self.HKLscene_dict_val(sceneid).mindata - 0.1 , self.HKLscene_dict_val(sceneid).maxdata + 0.1 ]
     else:
-      bindata = self.HKLscene_from_dict(sceneid).data.deep_copy()
-      binvalsboundaries = [ self.HKLMinData_from_dict(sceneid) - 0.1 , self.HKLMaxData_from_dict(sceneid) + 0.1 ]
+      bindata = self.HKLscene_dict_val(sceneid).scene.data.deep_copy()
+      binvalsboundaries = [ self.HKLscene_dict_val(sceneid).mindata - 0.1 , self.HKLscene_dict_val(sceneid).maxdata + 0.1 ]
     return bindata, binvalsboundaries
 
 
@@ -1121,12 +1050,12 @@ class HKLview_3d:
     if self.bin_labels_type_idxs[self.params.binning.binner_idx][0] == "Resolution":
       return 1.0/self.scene.dres
     binarraydata, dummy = self.get_matched_binarray(self.params.binning.binner_idx)
-    scenearraydata = self.HKLscene_from_dict().data
+    scenearraydata = self.HKLscene_dict_val().scene.data
     binlabel, _, ibinarray = self.bin_labels_type_idxs[self.params.binning.binner_idx]
-    if len(set(self.HKLscene_from_dict(ibinarray).indices)) < self.HKLscene_from_dict(ibinarray).indices.size():
+    if len(set(self.HKLscene_dict_val(ibinarray).scene.indices)) < self.HKLscene_dict_val(ibinarray).scene.indices.size():
       raise Sorry("Error: The HKL indices in %s are not unique. Use a merged dataset instead!" %binlabel)
-    matchindices = miller.match_multi_indices(self.HKLscene_from_dict(ibinarray).indices,
-                               self.HKLscene_from_dict().indices )
+    matchindices = miller.match_multi_indices(self.HKLscene_dict_val(ibinarray).scene.indices,
+                               self.HKLscene_dict_val().scene.indices )
     matched_binarray = binarraydata.select( matchindices.pairs().column(0) )
     # patch the bin array so its sequence matches the scene array
     patched_binarraydata = []
@@ -1253,11 +1182,11 @@ class HKLview_3d:
         self.params.hkls.scale = self.get_colour_map_radii_power()
 
       # Make colour gradient array used for drawing a bar of colours next to associated values on the rendered html
-      mincolourscalar = self.HKLMinData_from_dict()
-      maxcolourscalar = self.HKLMaxData_from_dict()
+      mincolourscalar = self.HKLscene_dict_val().mindata
+      maxcolourscalar = self.HKLscene_dict_val().maxdata
       if self.params.hkls.sigma_color_radius:
-        mincolourscalar = self.HKLMinSigmas_from_dict()
-        maxcolourscalar = self.HKLMaxSigmas_from_dict()
+        mincolourscalar = self.HKLscene_dict_val(sceneid).minsigma
+        maxcolourscalar = self.HKLscene_dict_val(sceneid).maxsigma
       span = maxcolourscalar - mincolourscalar
       ln = 120
       incr = span/ln
@@ -1268,7 +1197,7 @@ class HKLview_3d:
       for j,sc in enumerate(range(ln)):
         val += incr
         colourscalararray.append( val )
-      if self.HKLscene_from_dict().miller_array.is_complex_array():
+      if self.HKLscene_dict_val().scene.miller_array.is_complex_array():
         # When displaying phases from map coefficients together with fom values
         # compute colour map chart as a function of fom and phase values (x,y axis)
         incr = 360.0/ln
@@ -1283,7 +1212,7 @@ class HKLview_3d:
         COL = display.MplColorHelper(self.params.hkls.color_scheme, 0, 360)
         rgbcolarray = flex.vec3_double( [ COL.get_rgb(d)[0:3] for d in colourscalararray ] )
 
-        if self.HKLscene_from_dict().isUsingFOMs():
+        if self.HKLscene_dict_val().scene.isUsingFOMs():
           fomln = 50
           fom = 1.0
           fomdecr = 1.0/(fomln-1.0)
@@ -1321,8 +1250,8 @@ class HKLview_3d:
           )
 
         colourgradarrays.append(arr*256)
-      colors = self.HKLscene_from_dict().colors
-      radii = self.HKLscene_from_dict().radii
+      colors = self.HKLscene_dict_val().scene.colors
+      radii = self.HKLscene_dict_val().scene.radii
       self.meanradius = flex.mean(radii)
 
     bin_labels_type_idx = self.bin_labels_type_idxs[self.params.binning.binner_idx]
@@ -1344,11 +1273,11 @@ class HKLview_3d:
       colstr = "Singleton"
     else:
       if not blankscene:
-        colstr = self.HKLscene_from_dict(bin_labels_type_idx[2]).work_array.info().label_string()
+        colstr = self.HKLscene_dict_val(bin_labels_type_idx[2]).scene.work_array.info().label_string()
     data = self.scene.data
     if not blankscene:
-      colourlabel = self.HKLscene_from_dict().colourlabel
-      fomlabel = self.HKLscene_from_dict().fomlabel
+      colourlabel = self.HKLscene_dict_val().scene.colourlabel
+      fomlabel = self.HKLscene_dict_val().scene.fomlabel
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     assert (colors.size() == radii.size() == nrefls)
     self.colours = []
@@ -2308,9 +2237,9 @@ in the space group %s\nwith unit cell %s""" \
     Draw a wireframe sphere around a reflection selected with a double click in
     the millerarraytable in the GUI
     """
-    rad = self.HKLscene_from_dict().max_radius*1.5
+    rad = self.HKLscene_dict_val().scene.max_radius*1.5
     if not bigwireframe:
-      rad = self.HKLscene_from_dict().min_radius*0.9
+      rad = self.HKLscene_dict_val().scene.min_radius*0.9
     self.RemovePrimitives("highlight_HKL")
     if self.params.viewer.show_hkl != "deselect":
       hkl = eval(self.params.viewer.show_hkl)
