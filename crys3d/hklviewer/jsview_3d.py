@@ -407,7 +407,7 @@ class HKLview_3d:
                           "scale",
                           "nth_power_scale_radii"
                      ):
-                        self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
+                        self.ConstructReciprocalSpace(scene_id=self.params.viewer.scene_id )
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,
@@ -815,7 +815,7 @@ class HKLview_3d:
     return self.HKLscene_dict_val(idx).arrayinfo[6], self.HKLscene_dict_val(idx).arrayinfo[7]
 
 
-  def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
+  def ConstructReciprocalSpace(self, scene_id=None):
     sceneid = scene_id
     if len(self.proc_arrays) == 0:
       return False
@@ -883,7 +883,7 @@ class HKLview_3d:
       sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
+      self.ConstructReciprocalSpace(scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey]
 
 
