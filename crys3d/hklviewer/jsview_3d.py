@@ -407,7 +407,7 @@ class HKLview_3d:
                           "scale",
                           "nth_power_scale_radii"
                      ):
-                        self.ConstructReciprocalSpace(curphilparam, scene_id=self.params.viewer.scene_id )
+                        self.ConstructReciprocalSpace(scene_id=self.params.viewer.scene_id )
     msg = ""
     if self.params.viewer.scene_id is not None and \
        has_phil_path(diff_phil,
@@ -815,7 +815,7 @@ class HKLview_3d:
     return self.HKLscene_dict_val(idx).arrayinfo[6], self.HKLscene_dict_val(idx).arrayinfo[7]
 
 
-  def ConstructReciprocalSpace(self, curphilparam, scene_id=None):
+  def ConstructReciprocalSpace(self, scene_id=None):
     sceneid = scene_id
     if len(self.proc_arrays) == 0:
       return False
@@ -883,7 +883,7 @@ class HKLview_3d:
       sceneid = self.params.viewer.scene_id
     HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if not self.HKLscenedict.get(HKLsceneKey, False):
-      self.ConstructReciprocalSpace(self.params, scene_id=sceneid)
+      self.ConstructReciprocalSpace(scene_id=sceneid)
     return self.HKLscenedict[HKLsceneKey]
 
 
@@ -989,7 +989,7 @@ class HKLview_3d:
       # This yields approximately the same number of reflections in each bin
       binvals = [bindata_sorted[0]] * (nbins+1) #
       for i,e in enumerate(bindata_sorted):
-        idiv = int( (nbins+1)*float(i)/len(bindata_sorted))
+        idiv = int( (nbins)*float(i)/len(bindata_sorted))
         binvals[idiv] = e
       # If this didn't yield enough bins with different binvalues, say a multiplicity dataset
       # with values between [1;6] but 95% reflections having multiplcity=2 then assign
@@ -1185,8 +1185,8 @@ class HKLview_3d:
       mincolourscalar = self.HKLscene_dict_val().mindata
       maxcolourscalar = self.HKLscene_dict_val().maxdata
       if self.params.hkls.sigma_color_radius:
-        mincolourscalar = self.HKLscene_dict_val(sceneid).minsigma
-        maxcolourscalar = self.HKLscene_dict_val(sceneid).maxsigma
+        mincolourscalar = self.HKLscene_dict_val().minsigma
+        maxcolourscalar = self.HKLscene_dict_val().maxsigma
       span = maxcolourscalar - mincolourscalar
       ln = 120
       incr = span/ln
@@ -1398,7 +1398,8 @@ class HKLview_3d:
          and nreflsinbin == 0:
           continue
 
-        self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
+        if nreflsinbin > 0 and not math.isnan(bin1) and not math.isnan(bin2):
+          self.bin_infotpls.append( roundoff((nreflsinbin, bin1, bin2 ), precision) )
         self.binstrs.append(mstr)
         self.mprint(mstr, verbose=1)
         cntbin += 1

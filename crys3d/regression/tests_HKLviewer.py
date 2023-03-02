@@ -77,7 +77,7 @@ reflections2match2 = set(  [(-8, 4, 3), (-8, 4, 2), (-8, 3, 4), (-8, 4, 1), (-8,
  )
 
 
-# create an array of F/SigF values, make 6 bins of reflections sorted with values and
+# Create an array of F/SigF values, make 6 bins of reflections of equal size sorted with values and
 # select only reflections from the two bins with the lowest F/SigF values
 philstr3 = """
 miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
@@ -113,11 +113,10 @@ hkls {
 # These are the indices of visible reflections of phaser_1.mtz of the F/SigF dataset created on the fly
 # where the sphere of reflections have been sliced with a clip plane at l=9 and only reflections
 # with F/SigF<=1 are displayed
-reflections2match3 = set([(-3, 2, 9), (-2, 4, 9), (0, -1, 9), (0, -2, 9), (1, 2, 9), (-4, -1, 9), (0, 3, 9),
-  (-5, -2, 9), (-5, -1, 9), (-3, 1, 9), (-2, 1, 9), (-5, 1, 9), (2, -1, 9), (1, -2, 9), (2, -2, 9),
-  (-2, -1, 9), (-3, -1, 9), (-3, -2, 9), (2, 1, 9), (-2, -3, 9), (-1, -3, 9), (0, 4, 9), (-5, 2, 9),
-  (2, 2, 9), (0, -4, 9), (-4, 1, 9), (0, 1, 9), (-2, 3, 9), (-1, 3, 9), (-3, 0, 9), (0, 2, 9), (-5, 0, 9),
-  (-2, 0, 9), (-1, 0, 9), (0, -3, 9), (-2, -4, 9)]
+reflections2match3 = set([(-5, -2, 9), (2, 1, 9), (-3, -1, 9), (-3, -2, 9), (-2, 4, 9), (-3, 0, 9),
+   (-5, 0, 9), (-5, 2, 9), (-4, 1, 9), (-1, 0, 9), (-3, 2, 9), (-1, -3, 9), (-2, -3, 9), (0, -4, 9),
+   (-2, 1, 9), (1, -2, 9), (-2, 3, 9), (-1, 3, 9), (2, -1, 9), (2, -2, 9), (-4, -1, 9), (-3, 1, 9),
+   (0, 4, 9), (-2, -4, 9), (-2, -1, 9), (2, 2, 9), (1, 2, 9), (-2, 0, 9)]
 )
 
 closetime = 150 # about half the maximum time each test will run
