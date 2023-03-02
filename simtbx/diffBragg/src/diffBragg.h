@@ -13,7 +13,10 @@
 #include <boost/python/numpy.hpp>
 
 #ifdef NANOBRAGG_HAVE_CUDA
-// #include "diffBraggCUDA.h"
+#include "diffBraggCUDA.h"
+#endif
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
 #include "diffBraggKOKKOS.h"
 #endif
 
@@ -152,10 +155,16 @@ class diffBragg: public nanoBragg{
   cuda_flags db_cu_flags;
   detector db_det;
 
-
 #ifdef NANOBRAGG_HAVE_CUDA
+    diffBragg_cudaPointers device_pointers;
+    inline void cuda_free(){
+        freedom(device_pointers);
+    }
+#endif
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
     // diffBragg_cudaPointers cuda_pointers;
-    void gpu_free() { diffBragg_runner.reset(); }
+    void kokkos_free() { diffBragg_runner.reset(); }
     // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
     std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
     // diffBraggKOKKOS diffBragg_runner;

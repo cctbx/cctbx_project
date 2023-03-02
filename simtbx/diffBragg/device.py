@@ -8,21 +8,25 @@ if DIFFBRAGG_HAS_KOKKOS:
     from simtbx.diffBragg import initialize_kokkos, finalize_kokkos
 
 import os
-USE_KOKKOS_GPU = DIFFBRAGG_HAS_KOKKOS and ("DIFFBRAGG_USE_CUDA" in os.environ)
+USE_KOKKOS_GPU = DIFFBRAGG_HAS_KOKKOS and ("DIFFBRAGG_USE_KOKKOS" in os.environ)
 
 
 class DeviceWrapper:
 
-    def __init__(self, gpu_id):
+    def __init__(self, gpu_id, force=False):
+        """
+
+        :param gpu_id: gpu device id  (int from 0 to Ngpu-1)
+        :param force: force initialization of kokkos, otherwise, the os.environ will be searched for DIFFBRAGG_USE_KOKKOS
+        """
         self.gpu_id = gpu_id
-        self.instance = None
+        self.force_kokkos_init = force
 
     def __enter__(self):
-        if USE_KOKKOS_GPU:
+        if USE_KOKKOS_GPU or self.force_kokkos_init:
             initialize_kokkos(self.gpu_id)
         return self
 
     def __exit__(self, tp, val, tbk):
-        # TODO check for diffbragg instances
-        if USE_KOKKOS_GPU:
+        if USE_KOKKOS_GPU or self.force_kokkos_init:
             finalize_kokkos()

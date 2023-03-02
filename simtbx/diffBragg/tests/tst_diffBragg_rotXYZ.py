@@ -1,17 +1,18 @@
 from __future__ import division
-from simtbx.kokkos import gpu_instance
-kokkos_run = gpu_instance(deviceId = 0)
+##from simtbx.kokkos import gpu_instance
+#kokkos_run = gpu_instance(deviceId = 0)
 
 from argparse import ArgumentParser
 parser = ArgumentParser("diffBragg tests")
 parser.add_argument("--plot", action='store_true')
-parser.add_argument("--cuda", action="store_true")
+parser.add_argument("--kokkos", action="store_true")
 args = parser.parse_args()
-if args.cuda:
+if args.kokkos:
     import os
-    os.environ["DIFFBRAGG_USE_CUDA"]="1"
+    os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
+from simtbx.diffBragg.utils import find_diffBragg_instances
 
-
+    
 def main():
     import numpy as np
     from simtbx.diffBragg.utils import get_diffBragg_instance
@@ -23,7 +24,7 @@ def main():
     print (angles_XYZ*180 / np.pi)
 
     D = get_diffBragg_instance()
-    D.use_cuda = args.cuda
+    D.use_cuda = args.kokkos
 
     rotX, rotY, rotZ = 0, 1, 2
     D.refine(rotX)  # rotX
@@ -58,7 +59,7 @@ def main():
         D.Umatrix = U.elems
         D.verbose = 1
         D.add_diffBragg_spots()
-        if args.cuda:
+        if args.kokkos:
             D.gpu_free()
         imgA = D.raw_pixels.as_numpy_array()
 
@@ -69,7 +70,7 @@ def main():
         D.set_value(rotZ, thetaZ)
         D.Umatrix = Uorig
         D.add_diffBragg_spots()
-        if args.cuda:
+        if args.kokkos:
             D.gpu_free()
         imgB = D.raw_pixels.as_numpy_array()
         if args.plot:
@@ -85,8 +86,11 @@ def main():
 
         assert(np.allclose(imgA, imgB, atol=1e-4))
         print("OK (%d / %d)" % (i_ang+1, len(angles_XYZ)))
+        for name in find_diffBragg_instances(globals()): del globals()[name]
 
-
+    
 if __name__ == "__main__":
-    main()
+    from simtbx.diffBragg.device import DeviceWrapper
+    with DeviceWrapper(0) as _:
+        main()
     print("OK")

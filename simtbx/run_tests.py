@@ -14,7 +14,7 @@ nb_tst_list = [
 
 db_tst_list_nonCuda = ["$D/diffBragg/tests/tst_diffBragg_utils.py",
                        "$D/diffBragg/tests/tst_diffBragg_structure_factors.py"]
-db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --cuda"]]
+db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--perturb eta --kokkos"]]
 
 db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
@@ -92,13 +92,13 @@ if OPT.enable_kokkos and sys.platform.startswith('linux'):
      ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
      ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
    ]
-if OPT.enable_cuda:
+if OPT.enable_kokkos:
   if OPT.enable_cxx11 and sys.platform != 'win32':
       for tst in db_tst_list:
           if isinstance(tst, str):
-              par_tst = [tst, "--cuda"]
+              par_tst = [tst, "--kokkos"]
           else:
-              par_tst = tst + ["--cuda"]
+              par_tst = tst + ["--kokkos"]
           tst_list_parallel.append(par_tst)
 
       tst_list_parallel += db_tst_list_onlyCuda

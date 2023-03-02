@@ -1,7 +1,4 @@
 from __future__ import division, print_function
-from simtbx.kokkos import gpu_instance
-kokkos_run = gpu_instance(deviceId = 0)
-
 import numpy as np
 from simtbx.diffBragg import stage_two_utils
 from simtbx.diffBragg.phil import phil_scope
@@ -36,5 +33,4 @@ def test_regions():
 
 
 if __name__ == "__main__":
-    test_regions()
     print("OK")

@@ -5,8 +5,8 @@ These unit tests check our functon update_dxtbx_geoms which allows
 one to update those models for beam/detector post-instantiation
 """
 from __future__ import division
-from simtbx.kokkos import gpu_instance
-kokkos_run = gpu_instance(deviceId = 0)
+##from simtbx.kokkos import gpu_instance
+#kokkos_run = gpu_instance(deviceId = 0)
 
 import numpy as np
 from simtbx.nanoBragg import sim_data
@@ -77,3 +77,7 @@ assert np.allclose(img4, img5)
 assert np.allclose(det[0].get_beam_centre(B.get_s0()), SIM.D.beam_center_mm)
 
 print("OK!")
+from simtbx.diffBragg.utils import find_diffBragg_instances
+from simtbx.diffBragg.device import DeviceWrapper
+with DeviceWrapper(0) as _:
+    for name in find_diffBragg_instances(globals()): del globals()[name]

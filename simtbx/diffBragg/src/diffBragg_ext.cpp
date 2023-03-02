@@ -447,17 +447,17 @@ namespace boost_python { namespace {
         return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes);
   }
 
-  //TODO make optional for when kokkos is not built
+#ifdef DIFFBRAGG_HAVE_KOKKOS
   void finalize_kokkos(){
     Kokkos::finalize();
   }
 
-  //TODO make optional for when kokkos is not built
   void initialize_kokkos(int dev){
     Kokkos::InitArguments kokkos_init;
     kokkos_init.device_id = dev;
     Kokkos::initialize(kokkos_init);
   }
+#endif
 
   void diffBragg_init_module() {
     Py_Initialize();
@@ -468,13 +468,13 @@ namespace boost_python { namespace {
     typedef default_call_policies dcp;
     typedef return_internal_reference<> rir;
 
-  //TODO make optional for when kokkos is not built
+#ifdef DIFFBRAGG_HAVE_KOKKOS
     def("finalize_kokkos", finalize_kokkos,
         "calls Kokkos::finalize()");
 
-  //TODO make optional for when kokkos is not built
     def("initialize_kokkos", initialize_kokkos,
         "the sole argument `dev` (an int from 0 to Ngpu-1) is passed to Kokkos::initialize()");
+#endif
 
     class_<simtbx::nanoBragg::diffBragg, bases<simtbx::nanoBragg::nanoBragg> >
             ("diffBragg", no_init)
@@ -611,7 +611,11 @@ namespace boost_python { namespace {
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
 #ifdef NANOBRAGG_HAVE_CUDA
-      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
+#endif
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+      .def("kokkos_gpu_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
 #endif
 
       .def("set_mosaic_blocks_prime",

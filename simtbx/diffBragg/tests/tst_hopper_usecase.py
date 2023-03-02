@@ -8,12 +8,12 @@ from simtbx.diffBragg import diffBragg
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--ngpu", type=int, default=1)
-parser.add_argument("--cuda", action="store_true")
+parser.add_argument("--kokkos", action="store_true")
 args = parser.parse_args()
 NGPU_PER_NODE = args.ngpu
-if args.cuda:
+if args.kokkos:
     import os
-    os.environ["DIFFBRAGG_USE_CUDA"] = "1"
+    os.environ["DIFFBRAGG_USE_KOKKOS"] = "1"
 
 GPU_ID = COMM.rank % NGPU_PER_NODE
 beam = BeamFactory.from_dict(beam_descr)
@@ -25,9 +25,8 @@ with DeviceWrapper(GPU_ID) as wrapper:
         if i % COMM.size != COMM.rank:
             continue
         D = diffBragg(det, beam)
-
+        D.verbose = 1
         D.vectorize_umats()
-
         for _ in range(5):
             D.add_diffBragg_spots()
 

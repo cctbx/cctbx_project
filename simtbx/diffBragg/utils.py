@@ -1690,3 +1690,16 @@ def load_Fhkl_model_from_params_and_expt(params, expt):
         miller_data = open_mtz(sf.mtz_name, sf.mtz_column)
 
     return miller_data
+
+
+def find_diffBragg_instances(globe_objs):
+    """find any instances of diffbragg in globals
+        globe_objs is a return value of globals() (dict)
+    """
+    inst_names = []
+    for name,obj in globe_objs.items():
+        if "simtbx.nanoBragg.sim_data.SimData" in str(obj):
+            inst_names.append(name)
+        if "simtbx_diffBragg_ext.diffBragg" in str(obj):
+            inst_names.append(name)
+    return inst_names
