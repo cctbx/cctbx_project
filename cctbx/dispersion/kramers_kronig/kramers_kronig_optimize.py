@@ -6,8 +6,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-import kramers_kronig
-import kramers_kronig_helper
+from . import kramers_kronig
+from . import kramers_kronig_helper
 
 def create_f(width=10,
              dE=.1,

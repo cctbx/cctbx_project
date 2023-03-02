@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from scipy.signal.windows import get_window
-import kramers_kronig_helper
+from . import kramers_kronig_helper
 
 def get_hilbert_transform(x, axis=-1):
     """
