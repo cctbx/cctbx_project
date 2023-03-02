@@ -2223,6 +2223,9 @@ class sharpening_info:
       }
     print("\nSummary of sharpening:\n", file = out)
 
+    if not hasattr(self, 'sharpening_method'):
+      return # backwards compatibility
+
     print("Sharpening method used:         %s\n" %(
        method_summary_dict.get(self.sharpening_method)), file = out)
 
