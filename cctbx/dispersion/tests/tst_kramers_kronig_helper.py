@@ -7,10 +7,6 @@ import torch
 
 import cctbx.dispersion.kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 
-# import sys
-# sys.path.append("..")
-# import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
-
 # Get constants
 Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")
 Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")
@@ -21,7 +17,6 @@ def test_parse_Fe3_beginning(Fe3):
                                                [1007.0, -2.81223119888, 8.52503033764],
                                                [1008.0, -3.33235759037, 10.1156545543],
                                                [1009.0, -3.56113395273, 10.8295300422]]))
-
 
 def test_parse_Fe3_end(Fe3):
     """Test that input is parsed properly."""

@@ -54,7 +54,6 @@ def sample(f_p,
     f_dp_dist = torch.distributions.normal.Normal(f_dp + loc[1], scale[1])
     return(f_p_dist.sample(),f_dp_dist.sample())
 
-
 def subsample(energy,
               f_p,
               f_dp,
@@ -108,7 +107,7 @@ def run_example_opt(width=5,
     3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
     4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
     """
-
+    
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
                                trim=trim,
@@ -121,17 +120,12 @@ def run_example_opt(width=5,
     energy_ss,f_p_noisy_ss,f_dp_noisy_ss,inds = subsample(energy,f_p_noisy,f_dp_noisy,
                                                           spacing=spacing)
 
-
-
-
-    """From energy_ss,f_p_noisy_ss,f_dp_noisy_ss determine f_p and f_dp, energy is given"""
-
+    """From energy_ss,f_p_noisy_ss, and f_dp_noisy_ss, determine f_p and f_dp, energy is given"""
     f_p_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_p_noisy_ss)(energy)
     f_dp_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_dp_noisy_ss)(energy)
 
     f_p_opt = torch.tensor(f_p_pred_0,requires_grad=True)
     f_dp_opt = torch.tensor(f_dp_pred_0, requires_grad=True)
-
 
     optimizer = torch.optim.SGD([f_p_opt,f_dp_opt],lr=learning_rate)
 

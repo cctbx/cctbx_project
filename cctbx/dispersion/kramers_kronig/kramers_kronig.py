@@ -8,8 +8,7 @@ import torch
 from scipy.signal.windows import get_window
 import kramers_kronig_helper
 
-def get_hilbert_transform(x,
-                          axis=-1):
+def get_hilbert_transform(x, axis=-1):
     """
     Perform the Hilbert transform on a real-valued input.
     This is a PyTorch implementation of the Hilbert transform in scipy.signal
@@ -99,7 +98,6 @@ def get_f_p(energy,
 
     return(energy_padded,f_p_pred,f_p_pred_padded,f_in)
 
-
 def get_f_dp(energy,
              f_p,
              padn=5000,
@@ -125,7 +123,6 @@ def get_f_dp(energy,
                                                             )
     return(energy_padded,f_dp_pred,f_dp_pred_padded,f_in)
 
-
 def apply_window(f_in, padn,
                  trim=0,
                  window_type='cosine'):
@@ -144,7 +141,6 @@ def apply_window(f_in, padn,
     window = window[0:padn+trim]
     window = torch.tensor(np.expand_dims(window, 0))
 
-
     window_start = f_in[0]*torch.ones(padn+trim)
     window_start[padn:]=f_in[0:trim]
 
@@ -157,14 +153,12 @@ def apply_window(f_in, padn,
 
     return(windowed_func)
 
-
-
 def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                 known_response_energy=None,
                 known_response_f_p=None,
                 known_response_f_dp=None,
                 ):
-    """How close f' and f" are to obeying the Kramers Kronig relation?"""
+    """How close are f' and f" are to obeying the Kramers Kronig relation?"""
 
     """Going from f_dp to f_p"""
 
@@ -182,10 +176,6 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
 
     f_p_pred_padded = f_p_pred_padded[padn:len(f_p_pred_padded)-padn]
     f_p_pred = f_p_pred_padded[trim:len(f_p_pred_padded)-trim]
-
-
-
-
 
     """Going from f_p to f_dp"""
     energy_padded,f_dp_pred,f_dp_pred_padded, f_in = get_f_dp(energy, f_p, trim=trim, padn=padn,

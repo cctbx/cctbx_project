@@ -8,11 +8,6 @@ import torch
 import cctbx.dispersion.kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
 import cctbx.dispersion.kramers_kronig.kramers_kronig as kramers_kronig
 
-# import sys
-# sys.path.append("..")
-# import kramers_kronig.kramers_kronig_helper as kramers_kronig_helper
-# import kramers_kronig.kramers_kronig as kramers_kronig
-
 # Get constants
 Fe3 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-ox_fftkk.out")[6064:6165,:]
 Fe2 = kramers_kronig_helper.parse_data(kramers_kronig_helper.SAMPLE_DATA_PATH + "/pf-rd-red_fftkk.out")[6064:6165,:]
@@ -187,14 +182,11 @@ def test_get_f_p_cos_wave(Fe3):
                                             known_response_f_dp=None,
                                             )
 
-
     _,f_p_pred_subtract,_,_ = kramers_kronig.get_f_p(energy, u, padn=padn,
                                                       known_response_energy=energy,
                                                       known_response_f_p=h_u,
                                                       known_response_f_dp=u,
                                                       )
-
-
 
     _,f_p_pred,_,_ = kramers_kronig.get_f_p(energy, u, padn=padn,
                                             known_response_energy=None,
@@ -203,7 +195,6 @@ def test_get_f_p_cos_wave(Fe3):
                                             )
 
     np.testing.assert_allclose(f_p_pred_subtract, f_p_pred, rtol=1e-4, atol=1e-4)
-
 
 def test_get_f_dp_cos_wave(Fe3):
     """Test that finding f_dp with an added cos wave is same as subtracting the cos wave,
@@ -223,7 +214,6 @@ def test_get_f_dp_cos_wave(Fe3):
                                                        known_response_f_p=h_u,
                                                        known_response_f_dp=u,
                                                        )
-
 
     _,f_dp_pred,_,_ = kramers_kronig.get_f_dp(energy, f_p+h_u, padn=padn,
                                               known_response_energy=None,
@@ -256,7 +246,6 @@ def test_get_f_p_nonuniform(Fe0, padn=100):
 
     np.testing.assert_allclose(energy_padded_0, energy_padded_1)
     np.testing.assert_allclose(f_p_pred_0, f_p_pred_1, rtol=1e-1, atol=1e-1)
-
 
 def run():
     """Run all tests"""
