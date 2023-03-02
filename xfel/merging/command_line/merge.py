@@ -45,7 +45,6 @@ class Script(object):
   def __init__(self):
     self.mpi_helper = mpi_helper()
     self.mpi_logger = mpi_logger()
-    self.common_store = dict(foo="hello") # always volatile, no serialization, no particular dict keys guaranteed
 
   def __del__(self):
     self.mpi_helper.finalize()
@@ -166,7 +165,6 @@ class Script(object):
     # Perform phil validation up front
     for worker in workers:
       worker.validate()
-      worker.__dict__["common_store"] = self.common_store
     self.mpi_logger.log_step_time("CREATE_WORKERS", True)
 
     # Do the work
