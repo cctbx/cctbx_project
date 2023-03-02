@@ -1185,8 +1185,8 @@ class HKLview_3d:
       mincolourscalar = self.HKLscene_dict_val().mindata
       maxcolourscalar = self.HKLscene_dict_val().maxdata
       if self.params.hkls.sigma_color_radius:
-        mincolourscalar = self.HKLscene_dict_val(sceneid).minsigma
-        maxcolourscalar = self.HKLscene_dict_val(sceneid).maxsigma
+        mincolourscalar = self.HKLscene_dict_val().minsigma
+        maxcolourscalar = self.HKLscene_dict_val().maxsigma
       span = maxcolourscalar - mincolourscalar
       ln = 120
       incr = span/ln
