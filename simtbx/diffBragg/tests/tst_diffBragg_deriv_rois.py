@@ -9,9 +9,9 @@ if "--kokkos" in sys.argv:
 from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(0) as _:
-    
+
     import numpy as np
-    
+
     print ("Instantiating diffBragg")
     D = get_diffBragg_instance()
     D.vectorize_umats()

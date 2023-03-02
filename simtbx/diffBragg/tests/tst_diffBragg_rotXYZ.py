@@ -12,7 +12,7 @@ if args.kokkos:
     os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
 from simtbx.diffBragg.utils import find_diffBragg_instances
 
-    
+
 def main():
     import numpy as np
     from simtbx.diffBragg.utils import get_diffBragg_instance
@@ -88,7 +88,7 @@ def main():
         print("OK (%d / %d)" % (i_ang+1, len(angles_XYZ)))
         for name in find_diffBragg_instances(globals()): del globals()[name]
 
-    
+
 if __name__ == "__main__":
     from simtbx.diffBragg.device import DeviceWrapper
     with DeviceWrapper(0) as _:

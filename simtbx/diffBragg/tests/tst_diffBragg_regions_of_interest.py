@@ -32,7 +32,7 @@ def main():
         assert np.allclose(diff_roi_pixels, nano_roi_pixels, atol=1e-9)
         for name in find_diffBragg_instances(globals()): del globals()[name]
 
-    
+
 if __name__ == "__main__":
     import sys
     if "--kokkos" in sys.argv:

@@ -20,19 +20,19 @@ with DeviceWrapper(0) as _:
     if args.plot:
         import pylab as plt
     from simtbx.nanoBragg.sim_data import SimData
-    
+
     from simtbx.nanoBragg.nanoBragg_crystal import NBcrystal
     import numpy as np
     from scitbx.matrix import sqr
     from cctbx import uctbx
     from dxtbx.model import Crystal
     from scipy import stats
-    
+
     rot_idx = args.rotidx
-    
+
     ucell = (70, 60, 50, 90.0, 110, 90.0)
     symbol = "C121"
-    
+
     a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
     C = Crystal(a_real, b_real, c_real, symbol)
     # make a nanoBragg crystal to pass to diffBragg
@@ -41,20 +41,20 @@ with DeviceWrapper(0) as _:
     nbcryst.n_mos_domains = 1
     nbcryst.thick_mm = 0.01
     nbcryst.Ncells_abc = (7, 7, 7)
-    
+
     # make an instance of diffBRagg, use the simData wrapper
     SIM = SimData(use_default_crystal=True)
     # overwrite the default detector with a smaller pixels one
     SIM.detector = SimData.simple_detector(220, 0.1, (1000, 1000))
     SIM.crystal = nbcryst
-    
+
     SIM.instantiate_diffBragg(oversample=0, verbose=0, interpolate=0, default_F=1e3,auto_set_spotscale=True)
     # D is an instance of diffBragg with reasonable parameters
     # and our dxtbx crystal created above
     D = SIM.D
     if args.curvatures:
         D.compute_curvatures = True
-    
+
     # STEP 1: simulate the un-perturbed image:
     D.refine(rot_idx)
     D.initialize_managers()
@@ -68,21 +68,21 @@ with DeviceWrapper(0) as _:
         plt.title("Scattering from crystal")
         plt.imshow(img0)
         plt.show()
-    
+
     deriv = D.get_derivative_pixels(rot_idx).as_numpy_array()
     if args.curvatures:
         second_deriv = D.get_second_derivative_pixels(rot_idx).as_numpy_array()
-    
+
     error_vals = []
     error_vals2 = []
     delta_h = []
     delta_h2 = []
     theta_vals = [0.0005 + i*0.0005 for i in range(8)]   # 0.01, 0.02048, 0.04096, 0.08192, 0.16384, 0.32768, 0.65536, 1.31072, 2.62144
-    
+
     for theta_degrees in theta_vals:
         theta = theta_degrees * np.pi / 180
         D.set_value(rot_idx, theta)
-    
+
         # simulate the scattering in the rotated crystal:
         D.raw_pixels_roi *= 0
         D.add_diffBragg_spots()
@@ -94,11 +94,11 @@ with DeviceWrapper(0) as _:
             img_minus = D.raw_pixels_roi.as_numpy_array()
             finite_second_diff = (img_plus-2*img0 + img_minus) / theta / theta
             delta_h2.append(theta**2)
-    
+
         # STEP3 : compute finite differenceL
         finite_diff = (img_plus-img0)/theta
         delta_h.append(theta)
-    
+
         if args.plotimages:
             plt.subplot(121)
             plt.imshow(finite_diff)
@@ -120,11 +120,11 @@ with DeviceWrapper(0) as _:
                 plt.suptitle("Theta = %f deg. " % theta_degrees)
                 plt.draw()
                 plt.pause(0.2)
-    
+
         error_image = abs(deriv[bragg]-finite_diff[bragg])
         error = error_image.mean()
         error_vals.append(error)
-    
+
         if args.curvatures:
             error_image2 = abs(second_deriv[bragg]-finite_second_diff[bragg])
             error2 = error_image2.mean()
@@ -134,7 +134,7 @@ with DeviceWrapper(0) as _:
         else:
             print("Theta = %.4f deg, 1st error = %2.7g" %
                   (theta_degrees, error))
-    
+
     if args.plot:
         plt.close()
         plt.plot(delta_h, error_vals, '.')
@@ -152,7 +152,7 @@ with DeviceWrapper(0) as _:
             plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
             plt.subplots_adjust(left=0.12)
             plt.show()
-    
+
     l = stats.linregress(delta_h, error_vals)
     assert l.rvalue > .9999, "%2.7g" % l.rvalue
     assert l.slope > 0, "%2.7g" % l.slope

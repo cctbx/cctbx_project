@@ -15,7 +15,7 @@ if args.kokkos:
 from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(0) as _:
-    
+
     from dxtbx.model.crystal import Crystal
     from cctbx import uctbx
     from scitbx.matrix import rec, col
@@ -26,24 +26,24 @@ with DeviceWrapper(0) as _:
     from simtbx.nanoBragg.sim_data import SimData
     from simtbx.diffBragg.utils import fcalc_from_pdb
     import pylab as plt
-    
-    
+
+
     ucell = (79, 79, 38, 90, 90, 90)
     symbol = "P43212"
     N_MOS_DOMAINS = 100
     MOS_SPREAD = 1
     ANISO_MOS_SPREAD = 0.5, 0.75, 1
     eta_diffBragg_id = 19
-    
+
     miller_array_GT = fcalc_from_pdb(resolution=2, wavelength=1, algorithm='fft', ucell=ucell, symbol=symbol)
     Ncells_gt = 15, 15, 15
-    
+
     np.random.seed(3142019)
     # generate a random rotation
     rotation = Rotation.random(num=1, random_state=100)[0]
     Q = rec(rotation.as_quat(), n=(4, 1))
     rot_ang, rot_axis = Q.unit_quaternion_as_axis_and_angle()
-    
+
     a_real, b_real, c_real = sqr(uctbx.unit_cell(ucell).orthogonalization_matrix()).transpose().as_list_of_lists()
     x = col((-1, 0, 0))
     y = col((0, -1, 0))
@@ -58,7 +58,7 @@ with DeviceWrapper(0) as _:
     c_real = M * col(c_real)
     C = Crystal(a_real, b_real, c_real, symbol)
     C.rotate_around_origin(rot_axis, rot_ang)
-    
+
     # Setup the simulation and create a realistic image
     # with background and noise
     # <><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -72,14 +72,14 @@ with DeviceWrapper(0) as _:
       assert nbcryst.has_anisotropic_mosaicity
     else:
       assert not nbcryst.has_anisotropic_mosaicity
-    
+
     nbcryst.n_mos_domains = N_MOS_DOMAINS
     nbcryst.miller_array = miller_array_GT
     print("Ground truth ncells = %f" % (nbcryst.Ncells_abc[0]))
-    
+
     # ground truth detector
     DET_gt = SimData.simple_detector(150, 0.177, (600, 600))
-    
+
     # initialize the simulator
     SIM = SimData()
     if args.aniso is None:
@@ -102,28 +102,28 @@ with DeviceWrapper(0) as _:
     SIM.D.use_cuda = args.kokkos
     SIM.D.compute_curvatures = args.curvatures
     SIM.D.add_diffBragg_spots()
-    
+
     if args.aniso is None:
       deriv = SIM.D.get_derivative_pixels(eta_diffBragg_id).as_numpy_array()
     else:
       deriv = SIM.D.get_aniso_eta_deriv_pixels()[args.aniso].as_numpy_array()
-    
+
     if args.curvatures:
       if args.aniso is None:
         deriv2 = SIM.D.get_second_derivative_pixels(eta_diffBragg_id).as_numpy_array()
       else:
         deriv2 = SIM.D.get_aniso_eta_second_deriv_pixels()[args.aniso].as_numpy_array()
     SPOTS = SIM.D.raw_pixels_roi.as_numpy_array()
-    
+
     SIM.D.readout_noise_adu = 1
     SIM._add_background()
     SIM._add_noise()
-    
+
     # This is the ground truth image:
     img = SIM.D.raw_pixels.as_numpy_array()
     SIM.D.raw_pixels_roi *= 0
     SIM.D.raw_pixels *= 0
-    
+
     all_errors = []
     all_shifts = []
     all_errors2 = []
@@ -131,7 +131,7 @@ with DeviceWrapper(0) as _:
     for finite_diff_step in [1, 2, 4, 8, 16]:
       # update Umats to do finite difference test
       delta_eta = 0.001*finite_diff_step
-    
+
       if args.aniso is not None:
         eta_update = list(ANISO_MOS_SPREAD)
         eta_update[args.aniso] = eta_update[args.aniso]+ delta_eta
@@ -139,10 +139,10 @@ with DeviceWrapper(0) as _:
       else:
         eta_update = MOS_SPREAD + delta_eta
         crystal = None
-    
+
       SIM.update_umats_for_refinement(eta_update)
       SIM.D.add_diffBragg_spots()
-    
+
       img_forward = SIM.D.raw_pixels_roi.as_numpy_array()
       SIM.D.raw_pixels_roi *= 0
       SIM.D.raw_pixels *= 0
@@ -152,7 +152,7 @@ with DeviceWrapper(0) as _:
       all_errors.append(error)
       all_shifts.append(delta_eta)
       if args.curvatures:
-    
+
         if args.aniso is not None:
           eta_update = list(ANISO_MOS_SPREAD)
           eta_update[args.aniso] = eta_update[args.aniso] - delta_eta
@@ -160,26 +160,26 @@ with DeviceWrapper(0) as _:
         else:
           eta_update = MOS_SPREAD - delta_eta
           crystal= None
-    
+
         SIM.update_umats_for_refinement(eta_update)
-    
+
         all_shifts2.append(delta_eta ** 2)
-    
+
         SIM.D.raw_pixels_roi *= 0
         SIM.D.raw_pixels *= 0
         SIM.D.add_diffBragg_spots()
         img_backward = SIM.D.raw_pixels_roi.as_numpy_array()
-    
+
         fdiff2 = (img_forward - 2*SPOTS + img_backward) / delta_eta/ delta_eta
-    
+
         second_deriv = deriv2
         error2 = (np.abs(fdiff2[bragg] - second_deriv[bragg]) / 1).mean()
         all_errors2.append(error2)
-    
+
       print("\n\n<><><><><><><><>\n\tError:", error, "shift:", delta_eta)
       if args.curvatures:
         print("\terror2=%f, step=%f\n<><><><><><><><>\n\n" % (error2, delta_eta))
-    
+
     from scipy.stats import linregress
     l = linregress(all_shifts, all_errors)
     print("finite diff l.rvalue=%10.7g" % l.rvalue)
@@ -192,7 +192,7 @@ with DeviceWrapper(0) as _:
         plt.title("second finite diff error")
         plt.xlabel("delta eta")
         plt.show()
-    
+
     assert l.rvalue > .99, "%f" % l.rvalue
     assert l.slope > 0, "%f" % l.slope
     assert l.pvalue < 1e-6, "%f" % l.pvalue
