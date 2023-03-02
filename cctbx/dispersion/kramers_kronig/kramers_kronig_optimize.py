@@ -107,7 +107,7 @@ def run_example_opt(width=5,
     3. Sample both of these curves with Gaussian noise to simulate experimental measurement of the two curves.
     4. Use restraint to optimize the parameters. Use automatic differentiation for first-derivatives.
     """
-    
+
     energy,f_p,f_dp = create_f(width=width,
                                padn=padn,
                                trim=trim,
