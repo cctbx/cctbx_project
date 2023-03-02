@@ -50,8 +50,8 @@ namespace smtbx { namespace refinement { namespace constraints {
                     bool,
                     wt::scatterer_type *>
                ((arg("occupancy"),
-                 arg("multiplier"),
                  arg("original_multiplier"),
+                 arg("multiplier"),
                  arg("as_one"),
                  arg("scatterer"))))
           .add_property("occupancy", make_function(&wt::reference, rir))

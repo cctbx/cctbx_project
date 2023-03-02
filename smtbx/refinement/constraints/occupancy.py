@@ -90,7 +90,7 @@ class dependent_occupancy(object):
         original_multiplier = original_mult,
         multiplier = sc[1],
         as_one = True,
-        scatterer = reparametrisation.structure.scatterers()[sc[0]])
+        scatterer = scatterers[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
       reparametrisation.shared_occupancies[sc[0]] = occupancy
     as_one = len(self.as_var) == 0  # only if both lists are not empty
@@ -102,7 +102,7 @@ class dependent_occupancy(object):
         original_multiplier = original_mult,
         multiplier = sc[1],
         as_one = as_one,
-        scatterer = reparametrisation.structure.scatterers()[sc[0]])
+        scatterer = scatterers[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
       reparametrisation.shared_occupancies[sc[0]] = occupancy
     self.value = occupancy
