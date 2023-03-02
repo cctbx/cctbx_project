@@ -926,7 +926,7 @@ def run_all(params=None,
 def write_summary(params=None,file_list=None,rv_list=None,
     max_dist=None,write_header=True,full_rows=True,out=sys.stdout):
 
-  if params and max_dist is None:
+  if params and max_dist is None and hasattr(params.comparison,'max_dist'):
      max_dist=params.comparison.max_dist
   if max_dist is None: max_dist=3.
 
