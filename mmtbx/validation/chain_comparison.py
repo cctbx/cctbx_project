@@ -228,6 +228,9 @@ class rmsd_values:
     self.n_fragments_list.append(n_fragments)
 
   def get_n_fragments(self,id=None):
+    for x in ['id_list','n_fragments_list']:
+      if not getattr(self,x,None):
+        return 0
     for local_id,local_n_fragments in zip(
        self.id_list,self.n_fragments_list):
       if id==local_id:
@@ -235,6 +238,9 @@ class rmsd_values:
     return 0
 
   def get_match_percent(self,id=None):
+    for x in ['id_list','match_percent_list']:
+      if not getattr(self,x,None):
+        return 0
     for local_id,local_match_percent in zip(
        self.id_list,self.match_percent_list):
       if id==local_id:
@@ -261,6 +267,9 @@ class rmsd_values:
       return 0.
 
   def get_values(self,id=None):
+    for x in ['id_list','rmsd_list','n_list']:
+      if not getattr(self,x,None):
+        return 0,0
     for local_id,local_rmsd,local_n in zip(
        self.id_list,self.rmsd_list,self.n_list):
       if id==local_id:
@@ -971,8 +980,8 @@ def write_summary(params=None,file_list=None,rv_list=None,
     unaligned_rmsd,unaligned_n=rv.get_values('unaligned')
     match_percent=rv.get_match_percent('close')
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
-    incorrect_connections = rv.incorrect_connections
-    input_fragments = rv.input_fragments
+    incorrect_connections = getattr(rv,'incorrect_connections',None)
+    input_fragments = getattr(rv,'input_fragments',None)
     mean_length=close_n/max(1,fragments if fragments is not None else 0)
     if full_rows:
       print("%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f %10s %15s" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
