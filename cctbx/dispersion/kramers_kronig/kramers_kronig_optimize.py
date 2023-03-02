@@ -25,7 +25,7 @@ def create_f(width=10,
         energy_1 = np.arange(0,width, 2*dE)
         energy = np.concatenate((energy_0, energy_1))
 
-    """ramp/unit step function for f" to emulate a simple K-edge"""
+    # ramp/unit step function for f" to emulate a simple K-edge
     ramp = energy*slope
     ramp_start = np.argmin(np.abs(ramp))
     ramp_end = np.argmin(np.abs(ramp-1))
@@ -37,7 +37,7 @@ def create_f(width=10,
     energy = torch.Tensor(energy)
     f_dp = torch.Tensor(f_dp)
 
-    """get f' from the Hilbert transform"""
+    # get f' from the Hilbert transform
     energy_padded,_,f_p_padded,f_dp_padded = \
     kramers_kronig.get_f_p(energy, f_dp, padn=padn,
                            trim=trim,
@@ -120,7 +120,7 @@ def run_example_opt(width=5,
     energy_ss,f_p_noisy_ss,f_dp_noisy_ss,inds = subsample(energy,f_p_noisy,f_dp_noisy,
                                                           spacing=spacing)
 
-    """From energy_ss,f_p_noisy_ss, and f_dp_noisy_ss, determine f_p and f_dp, energy is given"""
+    # From energy_ss,f_p_noisy_ss, and f_dp_noisy_ss, determine f_p and f_dp, energy is given
     f_p_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_p_noisy_ss)(energy)
     f_dp_pred_0 = kramers_kronig_helper.INTERP_FUNC(energy_ss,f_dp_noisy_ss)(energy)
 

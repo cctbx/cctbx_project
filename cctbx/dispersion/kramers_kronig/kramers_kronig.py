@@ -66,8 +66,7 @@ def get_f_p(energy,
     """
 
     denergy = energy[1:]-energy[:-1]
-    if torch.any(torch.abs(denergy-denergy[0])>1e-3):
-        """Energy spacing is not constant."""
+    if torch.any(torch.abs(denergy-denergy[0])>1e-3): # Energy spacing is not constant.
         energy, f_dp = kramers_kronig_helper.interpolate(energy, f_dp, mode="torch")
 
     if known_response_energy is not None:
@@ -160,7 +159,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                 ):
     """How close are f' and f" are to obeying the Kramers Kronig relation?"""
 
-    """Going from f_dp to f_p"""
+    #Going from f_dp to f_p
 
     energy_padded,f_p_pred,f_p_pred_padded,f_in = get_f_p(energy, f_dp, trim=trim, padn=padn,
                                                           window_type=window_type,
@@ -169,7 +168,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                                                           known_response_f_dp=known_response_f_dp,
                                                           )
 
-    """The Hilbert transform filters out any DC term. We add back the DC term."""
+    # The Hilbert transform filters out any DC term. We add back the DC term.
     F_p_pred = torch.fft.fft(f_p_pred_padded)
     F_p_pred[0] = torch.fft.fft(f_p)[0]
     f_p_pred_padded = torch.fft.ifft(F_p_pred).real
@@ -177,7 +176,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     f_p_pred_padded = f_p_pred_padded[padn:len(f_p_pred_padded)-padn]
     f_p_pred = f_p_pred_padded[trim:len(f_p_pred_padded)-trim]
 
-    """Going from f_p to f_dp"""
+    # Going from f_p to f_dp
     energy_padded,f_dp_pred,f_dp_pred_padded, f_in = get_f_dp(energy, f_p, trim=trim, padn=padn,
                                                               window_type=window_type,
                                                               known_response_energy=known_response_energy,
@@ -185,7 +184,7 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
                                                               known_response_f_dp=known_response_f_dp,
                                                               )
 
-    """Add back DC term"""
+    # Add back DC term
     F_dp_pred = torch.fft.fft(f_dp_pred_padded)
     F_dp_pred[0] = torch.fft.fft(f_dp)[0]
     f_dp_pred_padded = torch.fft.ifft(F_dp_pred).real
@@ -193,8 +192,8 @@ def get_penalty(energy, f_p, f_dp, trim=0, padn=5000,window_type='cosine',
     f_dp_pred_padded = f_dp_pred_padded[padn:len(f_dp_pred_padded)-padn]
     f_dp_pred = f_dp_pred_padded[trim:len(f_dp_pred_padded)-trim]
 
-    """trim f_p and f_dp as the start and endpoints (of number trim) are
-    windowed during computation of the Hilbert transform"""
+    # trim f_p and f_dp as the start and endpoints (of number trim) are
+    # windowed during computation of the Hilbert transform
     f_p = f_p[trim:len(energy)-trim]
     f_dp = f_dp[trim:len(energy)-trim]
     mse = torch.mean((f_p - f_p_pred)**2) + torch.mean((f_dp - f_dp_pred)**2)
