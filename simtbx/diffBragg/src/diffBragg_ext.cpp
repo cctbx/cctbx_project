@@ -484,7 +484,7 @@ namespace boost_python { namespace {
                 int>(
         (arg_("detector"),
          arg_("beam"),
-         arg_("verbose")=0),// , arg_("has_kokkos")=false),
+         arg_("verbose")=0),
         "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
       /* function for doing some differentiation */
@@ -837,11 +837,6 @@ namespace boost_python { namespace {
             make_function(&get_hall,rbv()),
             make_function(&set_hall,dcp()),
             "an internal map that specifies the ASU miller index for each entry in FhklLinear")
-
-      //.add_property("device_Id",
-      //               make_function(&get_dev,rbv()),
-      //               make_function(&get_dev,dcp()),
-      //               "Which GPU device to simulate on (only relevant for kokkos/cuda enabled builds). ")
 
       .add_property("dspace_bins",
             make_function(&get_dspace_bins,rbv()),
