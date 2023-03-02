@@ -19,6 +19,7 @@ db_tst_list_onlyCuda =[["$D/diffBragg/tests/tst_diffBragg_hopper_refine.py", "--
 db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_hopper_refine_Fhkl.py", "--scale .2"],
     "$D/diffBragg/tests/tst_diffBragg_Fhkl_complex.py",
+    "$D/diffBragg/tests/tst_hopper_usecase.py",
     "$D/diffBragg/tests/tst_diffBragg_change_of_basis.py",
     "$D/diffBragg/tests/tst_diffBragg_update_dxtbx_geoms.py",
     "$D/diffBragg/tests/tst_diffBragg_deriv_rois.py",

@@ -939,9 +939,6 @@ refiner {
   force_unit_cell = None
     .type = ints(size=6)
     .help = a unit cell tuple to use
-  randomize_devices = True
-    .type = bool
-    .help = randomly select a device Id
   num_devices = 1
     .type = int
     .help = number of cuda devices on current node
