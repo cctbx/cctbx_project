@@ -65,6 +65,7 @@ steps:
 #  displayName: Build local channel
 
 - script: |
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge mamba
@@ -75,6 +76,7 @@ steps:
 
 # build
 - script: |
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
