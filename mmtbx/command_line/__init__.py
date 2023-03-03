@@ -449,9 +449,12 @@ class load_model_and_data(object):
       self.f_obs = self.f_obs.customized_copy(
         crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.f_obs.info())
-      self.r_free_flags = self.r_free_flags.customized_copy(
+      if self.r_free_flags:
+        self.r_free_flags = self.r_free_flags.customized_copy(
         crystal_symmetry=self.crystal_symmetry).eliminate_sys_absent().set_info(
           self.r_free_flags.info())
+      else:
+        self.r_free_flags = None
     # PDB INPUT
     self.unknown_residues_flag = False
     self.unknown_residues_error_message = False
