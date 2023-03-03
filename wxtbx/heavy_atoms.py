@@ -61,7 +61,8 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
       self.SetStringItem(item, 3, "%.3f" % atom.xyz[1])
       self.SetStringItem(item, 4, "%.3f" % atom.xyz[2])
       self.SetStringItem(item, 5, "%.2f" % atom.occ)
-      self.CheckItem(item)
+      if hasattr(self,'CheckItem'):  # XXX Python 3 fix
+        self.CheckItem(item)
 
   def SetSymmetry(self, symmetry):
     self._symm = symmetry
