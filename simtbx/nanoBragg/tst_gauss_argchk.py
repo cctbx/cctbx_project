@@ -231,6 +231,7 @@ if __name__=="__main__":
   SIM.to_smv_format(fileout="test_full_001.img", intfile_scale=output_scale)
   assert approx_equal(SIM.raw_pixels, SIM2.raw_pixels)
   SIM.to_cbf("test_full_001.cbf", intfile_scale=output_scale)
+  SIM.to_nexus_nxmx("test_full_001.h5", intfile_scale=output_scale)
 
   if runmode=="GPU":
     bragg_engine = nanoBragg.add_nanoBragg_spots_cuda
