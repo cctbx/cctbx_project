@@ -18,7 +18,6 @@ import os
 
 if args.kokkos:
     os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
-from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(0) as _:
 
@@ -210,18 +209,19 @@ with DeviceWrapper(0) as _:
     if not args.nolog:
         h = logging.StreamHandler(sys.stdout)
         logging.basicConfig(level=logging.DEBUG, handlers=[h])
+    #del SIM.D
 
     P.outdir="_temp_fhkl_refine"
     if args.maxiter is not None:
         P.lbfgs_maxiter = args.maxiter
-    Eopt,_, Mod,SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
+    Eopt,_, Mod,SIM_from_hopper, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
 
     logging.disable()
     print("\nResults\n<><><><><><>")
 
     Mod.exper_name = "dummie.expt"
     Mod.refl_name = "dummie.refl"
-    Mod.save_up(x, SIM)
+    Mod.save_up(x, SIM_from_hopper)
 
     # we can track the dominant hkls in each shoebox occuring within the diffBragg model
     #count_stats = utils.track_fhkl(Mod)
@@ -349,6 +349,7 @@ with DeviceWrapper(0) as _:
     r1 = ma_common.r1_factor(opt_common)
     assert r1 < 0.04
 
+    del SIM.D
     del modelers.SIM.D
+    del SIM_from_hopper.D
     print("OK")
-    for name in find_diffBragg_instances(globals()): del globals()[name]
