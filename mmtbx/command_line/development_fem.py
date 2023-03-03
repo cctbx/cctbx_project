@@ -81,6 +81,9 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
   xray_structure = cmdline.xray_structure
   f_obs = cmdline.f_obs
   r_free_flags = cmdline.r_free_flags
+  if not r_free_flags:
+    from libtbx.utils import Sorry
+    raise Sorry("Please supply a file with r_free flags for FEM")
   manage_random_seed(random_seed=params.random_seed)
   cs=f_obs.crystal_symmetry()
   mask_params = mmtbx.masks.mask_master_params.extract()
