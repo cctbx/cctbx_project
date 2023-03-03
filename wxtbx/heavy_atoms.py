@@ -106,10 +106,12 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
 
   def OnSaveSites(self, event):
     from iotbx import file_reader
+    # XXX Python 3 fix needed here (flags and wildcard not allowed)
     wildcards = file_reader.get_wildcard_strings(["pdb"])
     file_name = wx.FileSelector(
       flags=wx.FD_SAVE,
-      wildcard=wildcards)
+      wildcard=wildcards,
+      )
     if (file_name != ""):
       self.SaveSites(file_name)
 
