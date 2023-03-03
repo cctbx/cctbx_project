@@ -85,7 +85,15 @@ def load(file_name, faster_but_using_more_memory=True):
     if six.PY2:
       with _open(file_name, "rb") as f:
         s = f.read()
-      return pickle.loads(s)
+      try:
+        return pickle.loads(s)
+      except ValueError as e:
+        from libtbx.utils import Sorry
+        import sys
+        raise Sorry(
+         "The file %s " %(file_name) + "was saved with a version of Python "+
+         "is not supported in this version (%s): %s" %( sys.version, str(e)))
+
     with _open(file_name, "rb") as f:
       s = f.read()
     return pickle.loads(s, encoding='bytes')
