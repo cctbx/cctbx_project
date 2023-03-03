@@ -82,6 +82,35 @@ def nth_power_scale(dataarray, nth_power, is_sigmas=False):
   return datascaled, nth_power
 
 
+def nth_power_scale2(dataarray, nth_power, m=10.0, is_sigmas=False):
+  """
+  set nth_power to a number for dampening or enhancing the
+  difference between the smallest and the largest values.
+  A negative number means that a large data value is rendered with a smaller radius than
+  a small data value. For nth_power=0 all data values are rendered with the same radius
+  For nth_power=1 data values are rendered with radii proportional to the data values.
+  If nth_power=NaN then an automatic value is computed that maps the smallest
+  values to 0.1 of the largest values
+  """
+  if type(dataarray) == flex.complex_double:
+    dataarray = flex.abs( dataarray)
+  maxdat = flex.max(dataarray)
+  mindat = flex.min(dataarray)
+  offset = mindat - 0.001 # avoid log(0)
+  offsetmin = mindat - offset
+  offsetmax = maxdat - offset
+  offsetarr = dataarray.as_double() - offset
+  offsetarr = offsetarr/(maxdat - mindat)
+  # only autoscale for sensible values of maxdat and mindat
+  if math.isnan(nth_power) and maxdat > mindat : # amounts to automatic scale
+    nth_power = math.log(10)/(math.log(offsetmax) - math.log(offsetmin))
+    if is_sigmas:
+      nth_power *= -1.0 # want small sigmas to have larger radii and large sigmas to have smaller radii
+  datascaled = flex.pow(offsetarr, nth_power)
+  datascaled = (datascaled + (1.0/(m-1.0))) * ((m-1.0)/m)
+  return datascaled, nth_power
+
+
 def ExtendMillerArray(miller_array, nsize, indices=None ):
   millarray = miller_array.deep_copy()
   if indices:
@@ -369,10 +398,10 @@ class scene(object):
     min_radius = 0.05 * self.min_dist
     max_radius = 0.5 * self.min_dist
     if (settings.sigma_color_radius) and sigmas is not None:
-      data_for_radii, self.nth_power_scale_radii = nth_power_scale(sigmas.as_double().deep_copy(),
-                                       settings.nth_power_scale_radii, True)
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale2(sigmas.as_double().deep_copy(),
+                                       settings.nth_power_scale_radii, is_sigmas=True)
     else :
-      data_for_radii, self.nth_power_scale_radii = nth_power_scale(data.deep_copy(),
+      data_for_radii, self.nth_power_scale_radii = nth_power_scale2(data.deep_copy(),
                                        settings.nth_power_scale_radii)
     if (settings.slice_mode):
       data = data.select(self.slice_selection)

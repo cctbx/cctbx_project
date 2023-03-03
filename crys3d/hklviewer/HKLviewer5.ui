@@ -128,7 +128,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="usesScrollButtons">
             <bool>true</bool>
@@ -157,8 +157,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>368</width>
-                  <height>554</height>
+                  <width>372</width>
+                  <height>542</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -388,8 +388,8 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>373</width>
-                   <height>395</height>
+                   <width>377</width>
+                   <height>412</height>
                   </rect>
                  </property>
                  <property name="sizePolicy">
@@ -420,7 +420,7 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>2</number>
                     </property>
                     <widget class="QWidget" name="tab">
                      <attribute name="title">
@@ -1148,7 +1148,7 @@
                             </sizepolicy>
                            </property>
                            <property name="text">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &lt;span style=&quot; font-weight:600;&quot;&gt;User defined power scaling&lt;/span&gt; box for chosing a &lt;span style=&quot; font-weight:600;&quot;&gt;Power scale factor&lt;/span&gt;. Untick this box to get an &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale factor.&lt;/span&gt;&lt;br/&gt;An &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale&lt;/span&gt; factor will size the reflections so that the reflection with the smallest data value is rendered about 10 times smaller than the reflection with the largest data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 1&lt;/span&gt; will size the reflections proportional to their data value. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 0&lt;/span&gt; causes all reflections to have the same size regardless of their data values. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor &amp;lt; 0&lt;/span&gt; will correlate the sizes of reflections negatively to their data values. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick the &lt;span style=&quot; font-weight:600;&quot;&gt;User defined power scaling&lt;/span&gt; box for chosing a &lt;span style=&quot; font-weight:600;&quot;&gt;Power scale factor&lt;/span&gt;. Untick this box to get an &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale factor.&lt;/span&gt;&lt;br/&gt;An &lt;span style=&quot; font-weight:600;&quot;&gt;automatic power scale&lt;/span&gt; factor will scale reflections to make them all visible and still convey their relative magnitude, with the smallest reflection never drawn smaller than one tenth of the size of the largest reflection.&lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 1&lt;/span&gt; will size the reflections proportional to their data value offset by the smallest data value.&lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor = 0&lt;/span&gt; causes all reflections to have the same size regardless of their data values. &lt;br/&gt;A &lt;span style=&quot; font-weight:600;&quot;&gt;power scale factor &amp;lt; 0&lt;/span&gt; will correlate the sizes of reflections negatively to their data values. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="textFormat">
                             <enum>Qt::RichText</enum>
@@ -2036,6 +2036,11 @@
    </property>
    <property name="toolTip">
     <string>change colour of the background</string>
+   </property>
+  </action>
+  <action name="actionNGLmousebindings">
+   <property name="text">
+    <string>Mouse Bindings help</string>
    </property>
   </action>
  </widget>
