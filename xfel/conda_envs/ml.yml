@@ -1,0 +1,11 @@
+channels:
+ - pytorch
+ - nvidia
+ - conda-forge
+ - defaults
+
+dependencies:
+ - pytorch #==1.13.1 
+ - torchvision 
+ - torchaudio 
+ - pytorch-cuda=11.7 
