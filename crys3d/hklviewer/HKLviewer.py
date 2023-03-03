@@ -280,6 +280,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
       self.menuHelp.addAction(self.actionLocal_Help)
       self.menuHelp.addAction(self.actionHKLviewer_Tutorial)
       self.menuHelp.addAction(self.actionCCTBXwebsite)
+      self.menuHelp.addAction(self.actionNGLmousebindings)
       self.menuHelp.addAction(self.actionAbout)
       self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
       self.menuHelp.setTitle(QCoreApplication.translate("MainWindow", u"Help", None))
@@ -557,6 +558,7 @@ newarray._sigmas = sigs
       self.actionLocal_Help.triggered.connect(self.onOpenHelpFile)
       self.actionHKLviewer_Tutorial.triggered.connect(self.onOpenTutorialHelpFile)
       self.actionCCTBXwebsite.triggered.connect(self.onOpenCCTBXwebsite)
+      self.actionNGLmousebindings.triggered.connect(self.onNGLmouseControlswebsite)
       self.actiondebug.triggered.connect(self.DebugInteractively)
       self.actionSave_Current_Image.triggered.connect(self.onSaveImage)
       self.actionSave_Current_Image.setDisabled(True)
@@ -584,6 +586,10 @@ newarray._sigmas = sigs
 
   def onOpenCCTBXwebsite(self):
     QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
+
+
+  def onNGLmouseControlswebsite(self):
+    QDesktopServices.openUrl("http://nglviewer.org/ngl/api/manual/interaction-controls.html#controls")
 
 
   def onPresetbtn_click(self):

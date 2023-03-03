@@ -424,6 +424,9 @@ class HKLview_3d:
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
 
+    if has_phil_path(diff_phil, "sigma_color_radius"):
+      self.sceneisdirty = True
+
     if has_phil_path(diff_phil, "scene_bin_thresholds"):
       self.sceneisdirty = True
 

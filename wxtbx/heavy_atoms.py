@@ -61,7 +61,8 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
       self.SetStringItem(item, 3, "%.3f" % atom.xyz[1])
       self.SetStringItem(item, 4, "%.3f" % atom.xyz[2])
       self.SetStringItem(item, 5, "%.2f" % atom.occ)
-      self.CheckItem(item)
+      if hasattr(self,'CheckItem'):  # XXX Python 3 fix
+        self.CheckItem(item)
 
   def SetSymmetry(self, symmetry):
     self._symm = symmetry
@@ -105,10 +106,12 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
 
   def OnSaveSites(self, event):
     from iotbx import file_reader
+    # XXX Python 3 fix needed here (flags and wildcard not allowed)
     wildcards = file_reader.get_wildcard_strings(["pdb"])
     file_name = wx.FileSelector(
       flags=wx.FD_SAVE,
-      wildcard=wildcards)
+      wildcard=wildcards,
+      )
     if (file_name != ""):
       self.SaveSites(file_name)
 

@@ -46,6 +46,8 @@ multiple residues."
   line_height = 16
   line_indent = 16
   start_offset = 0
+  char_w = 10 # XXX Python 3 Fix
+  char_h = 10 # XXX Python 3 Fix
 
   def __init__(self, *args, **kwds):
     wx.PyPanel.__init__(self, *args, **kwds)
@@ -97,7 +99,7 @@ multiple residues."
   def paint_sequence(self, gc):
     gc.SetBrush(wx.TRANSPARENT_BRUSH)
     gc_txt_font = gc.CreateFont(self.txt_font, (0,0,0))
-    gc.SetFont(gc_txt_font)
+    if hasattr(gc,'SetFont'): gc.SetFont(gc_txt_font) #  #  XXX Python 3 fix
     black_pen = wx.Pen((0,0,0), 1)
     (char_w, char_h) = self.get_char_size(gc)
     if (self._style & WXTBX_SEQ_SHOW_SELECTIONS):
@@ -132,9 +134,9 @@ multiple residues."
           i_seq = i+j
           if i_seq in self.highlights :
             color = self.highlight_colors[self.highlights.index(i_seq)]
-            gc.SetFont(gc.CreateFont(self.txt_font, color))
+            if hasattr(gc,'SetFont'): gc.SetFont(gc.CreateFont(self.txt_font, color)) #  XXX Python 3 fix
           gc.DrawText(char, xpos, ypos + v_offset)
-          gc.SetFont(gc_txt_font)
+          if hasattr(gc,'SetFont'): gc.SetFont(gc_txt_font) #  XXX Python 3 fix
           xpos += char_w
         i += self.line_width
         ypos += self.get_line_spacing()
@@ -162,7 +164,7 @@ multiple residues."
   def DoGetBestSize(self):
     #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
     dc = create_measuring_context()
-    dc.SetFont(self.txt_font)
+    if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
     i = 0
     (panel_w, panel_h) = (32, 32)
     char_w, char_h = self.get_char_size(dc)
@@ -170,7 +172,11 @@ multiple residues."
     if (self._style & WXTBX_SEQ_SHOW_LABELS):
       line_w += self.get_label_width(dc)
     elif (self._style & WXTBX_SEQ_SHOW_LINE_NUMBERS):
-      line_w += dc.GetTextExtent("X" * 16)[0]
+      if hasattr(dc, 'GetTextExtent'): #  XXX Python 3 fix
+        line_w += dc.GetTextExtent("X" * 16)[0]
+      else:
+        line_w += self.char_w * 16
+
     panel_w += line_w
     n_lines = int(math.ceil(self.sequence_length() / self.line_width))
     panel_h += n_lines * self.get_line_spacing()
@@ -235,14 +241,20 @@ multiple residues."
       n_chars = 6
     else :
       n_chars = 0
-    return dc.GetTextExtent("X" * (n_chars + 2))[0]
+    if hasattr(dc, 'GetTextExtent'): #  XXX Python 3 fix
+      return dc.GetTextExtent("X" * (n_chars + 2))[0]
+    else:
+      return self.char_w * (n_chars+2)
 
   def get_char_size(self, dc=None):
     if dc is None :
       #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
       dc = create_measuring_context()
-      dc.SetFont(self.txt_font)
-    line_w, char_h = dc.GetTextExtent("X" * 50)
+      if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
+    if hasattr(dc, 'GetTextExtent'): #  XXX Python 3 fix
+      line_w, char_h = dc.GetTextExtent("X" * 50)
+    else:
+      line_w, char_h = self.char_w * 50, self.char_h
     if wx.Platform == '__WXGTK__' :
       char_w = max(12, line_w / 50)
     elif wx.Platform == '__WXMAC__' :
@@ -257,7 +269,7 @@ multiple residues."
   def build_boxes(self):
     #dc = wx.GraphicsContext.CreateMeasuringContext() #ClientDC(self)
     dc = create_measuring_context()
-    dc.SetFont(self.txt_font)
+    if hasattr(dc,'SetFont'): dc.SetFont(self.txt_font) #  #  XXX Python 3 fix
     char_w, char_h = self.get_char_size(dc)
     x_start = 16
     x_start += self.get_label_width(dc)

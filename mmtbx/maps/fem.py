@@ -205,6 +205,12 @@ class run(object):
     assert approx_equal(b_iso_min, 0, 1.e-3)
 
   def prepare_f_obs_and_flags(self):
+    if not self.f_obs:
+      from libtbx.utils import Sorry
+      raise Sorry("No FOBS available?")
+    if not self.r_free_flags:
+      from libtbx.utils import Sorry
+      raise Sorry("No r_free_flags (test set) available?")
     sel = self.f_obs.data()>0
     self.f_obs = self.f_obs.select(sel)
     self.r_free_flags = self.r_free_flags.select(sel)

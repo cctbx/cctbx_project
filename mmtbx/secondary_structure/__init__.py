@@ -220,6 +220,8 @@ class manager(object):
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
 
+    if not pdb_hierarchy:
+      pdb_hierarchy = iotbx.pdb.hierarchy.root()
     atoms = pdb_hierarchy.atoms()
     i_seqs = atoms.extract_i_seq()
     if (i_seqs.all_eq(0)):
