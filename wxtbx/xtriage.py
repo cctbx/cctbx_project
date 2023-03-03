@@ -103,7 +103,7 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
       label=text)
     font = wx_txt.GetFont()
     font2 = wx.Font(font.GetPointSize(), wx.FONTFAMILY_MODERN, wx.NORMAL,
-      wx.FONTWEIGHT_NORMAL, face="Courier")
+      wx.FONTWEIGHT_NORMAL) #  Python 3 Fix  , face="Courier")
     # FIXME this seems not to work on wxPython 3/Mac OS 10.9
     wx_txt.SetFont(font2)
     self._current_sizer.Add(wx_txt, 0, wx.ALL, 5)
@@ -200,7 +200,7 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
   def show_text_columns(self, rows, indent=0):
     prefix = " "*indent
     n_cols = len(rows[0])
-    sizer = wx.FlexGridSizer(rows=len(rows), cols=n_cols)
+    sizer = wx.FlexGridSizer(cols=n_cols) # Remove rows Python 3 fix
     self._current_sizer.Add(sizer)
     for row in rows :
       assert (len(row) == n_cols)
@@ -244,7 +244,7 @@ class wx_output_base(mmtbx.scaling.xtriage_output):
     indicating severity.  Each item is a button that links to the appropriate
     results section (if defined).
     """
-    grid = wx.FlexGridSizer(rows=len(issues), cols=1, vgap=4)
+    grid = wx.FlexGridSizer(cols=1) # Remove rows Python 3 fix
     self._current_sizer.Add(grid, 0, wx.ALL, 10)
     for severity, message, linkto in issues :
       ctrl = DrawStatusLightControl(parent=self._current_panel,
