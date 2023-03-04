@@ -377,10 +377,17 @@ class validation(object):
       for i in range(len(self.chains)):
         alignments_and_names.append(self.align_chain(i))
     else:
-      alignments_and_names = easy_mp.pool_map(
-        fixed_func=self.align_chain,
-        args=range(len(self.chains)),
-        processes=nproc)
+      try:
+        alignments_and_names = easy_mp.pool_map(
+          fixed_func=self.align_chain,
+          args=range(len(self.chains)),
+          processes=nproc)
+      except Exception as e:
+        # retry without mp
+        print("Failed to get alignments with multiprocessing, retrying")
+        alignments_and_names = []
+        for i in range(len(self.chains)):
+          alignments_and_names.append(self.align_chain(i))
     assert (len(alignments_and_names) == len(self.chains) == len(pdb_chains))
     for i, c in enumerate(self.chains):
       alignment, seq_name, seq_id = alignments_and_names[i]
