@@ -540,7 +540,7 @@ common compilers provided by conda. Please update your version with
         format(install_dir=install_dir)
       command_list = ['"' + filename + '"', flags]
     else:
-      flags = '-b -u -p "{install_dir}"'.format(install_dir=install_dir)
+      flags = '-b -p "{install_dir}"'.format(install_dir=install_dir)
       command_list = ['/bin/sh', filename, flags]
     print('Installing miniconda to "{install_dir}"'.format(
       install_dir=install_dir), file=self.log)
