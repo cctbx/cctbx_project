@@ -1194,10 +1194,22 @@ class _SingletonOptimizer(object):
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
             # If not, then insert the Histidine flip Mover.
-            # @todo
-            self._movers.append(hist)
-            self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
-            self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
+            s = _FindFlipState(a.parent().parent(), fs)
+            if s is not None:
+              if s.flipped:
+                enabledFlips = 2
+              else:
+                enabledFlips = 1
+              hist = Movers.MoverHisFlip(a, bondedNeighborLists, self._extraAtomInfo, self._nonFlipPreference,
+                enabledFlips, s.fixedUp)
+              self._movers.append(hist)
+              self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisPlace "+str(len(self._movers))+" to "+resNameAndID+"\n")
+              # Name is HisPlace rather than HisFlip, so we don't try and report uncertain or clash about it.
+              self._moverInfo[self._movers[-1]] = "HisPlace at "+resNameAndID+" "+aName;
+            else:
+              self._movers.append(hist)
+              self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
+              self._moverInfo[self._movers[-1]] = "HisFlip at "+resNameAndID+" "+aName;
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 

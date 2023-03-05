@@ -922,7 +922,8 @@ class MoverAmideFlip(object):
 
 ##################################################################################
 class MoverHisFlip(object):
-  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap, nonFlipPreference):
+  def __init__(self, ne2Atom, bondedNeighborLists, extraAtomInfoMap, nonFlipPreference,
+               enabledFlipStates = 3, enableFixup = True):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
@@ -937,11 +938,17 @@ class MoverHisFlip(object):
        obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
        :param nonFlipPreference: Score amount by which the original orientation is preferred
        over the flipped orientation.  This will bias things so that the flipped orientation
-       is not chosen unless it is this much better than the original.
+       :param enabledFlipStates: Which flip states are enabled? A value of 3 enables both,
+       a value of 1 enables non-flipped and a value of 2 enables flipped. If only one state
+       is enabled.
+       :param enableFixup: This allows the constructor to disable fixup by making it the same
+       as not fixed up. This is used by the FlipKin generation code.
     """
 
     # Store away our constructor arguments that we need for later.
     self._nonFlipPreference = nonFlipPreference
+    self._enabledFlipStates = enabledFlipStates
+    self._enableFixup = enableFixup
 
     # Verify that we've been run on a valid structure and get a list of all of the
     # atoms up to and including the pivot atom.
@@ -1098,6 +1105,7 @@ class MoverHisFlip(object):
     # Compute the list of positions for all of the atoms. This consists of the original
     # location and the flipped location where we swap the locations of the two pairs of heavy atoms
     # and bring the Hydrogens along for the ride.
+    # We only put the options in place for the enabled flip states.
 
     startPos = []
     for a in self._atoms:
@@ -1113,7 +1121,13 @@ class MoverHisFlip(object):
     newPos[6] = nd1Atom.xyz   # cd2 moved to this location
     newPos[7] = cd2HNew
 
-    self._coarsePositions = [ startPos, startPos, startPos, startPos, newPos, newPos, newPos, newPos ]
+    self._coarsePositions = []
+    if self._enabledFlipStates & 1:
+      for i in range(4):
+        self._coarsePositions.append(startPos)
+    if self._enabledFlipStates & 2:
+      for i in range(4):
+        self._coarsePositions.append(newPos)
 
     #########################
     # Compute the list of Fixup returns.
@@ -1123,7 +1137,16 @@ class MoverHisFlip(object):
     fixedUp = _rotateHingeDock(self._atoms, hingeIndex, firstDockIndex, secondDockIndex, caAtom)
 
     # No fix-up for coarse positions 0-3, do the above adjustment for position3 4-7
-    self._fixUpPositions = [ [], [], [], [], fixedUp, fixedUp, fixedUp, fixedUp ]
+    self._fixUpPositions = [ ]
+    if self._enabledFlipStates & 1:
+      for i in range(4):
+        self._fixUpPositions.append([])
+    if self._enabledFlipStates & 2:
+      for i in range(4):
+        if enableFixup:
+          self._fixUpPositions.append(fixedUp)
+        else:
+          self._fixUpPositions.append([])
 
     #########################
     # Compute the ExtraAtomInfo and deleteMe values.  They are all as provided and False
@@ -1132,7 +1155,7 @@ class MoverHisFlip(object):
     # We make copies of each by constructing new ones so we can independently change them.
     self._extras = []
     self._deleteMes = []
-    for i in range(8):
+    for i in range(len(self._coarsePositions)):
       # Copy the initial values
       extras = []
       deleteMes = []
@@ -1153,6 +1176,18 @@ class MoverHisFlip(object):
       self._extras.append(extras)
       self._deleteMes.append(deleteMes)
 
+    #########################
+    # Compute the preference energies.
+    self._preferenceEnergies = []
+    if self._enabledFlipStates & 1:
+      self._preferenceEnergies.extend([ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0])
+    if self._enabledFlipStates & 2:
+      self._preferenceEnergies.extend([
+        -self._nonFlipPreference - 0.05,
+        -self._nonFlipPreference,
+        -self._nonFlipPreference,
+        -self._nonFlipPreference - 1.0])
+
   def CoarsePositions(self):
     # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference
     # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
@@ -1160,12 +1195,7 @@ class MoverHisFlip(object):
     # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
     # score is this much better we leave it alone.
     return PositionReturn(self._atoms, self._coarsePositions,
-      self._extras, self._deleteMes,
-      [ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0,
-       -self._nonFlipPreference - 0.05,
-       -self._nonFlipPreference,
-       -self._nonFlipPreference,
-       -self._nonFlipPreference - 1.0])
+      self._extras, self._deleteMes, self._preferenceEnergies)
 
   def FinePositions(self, coarseIndex):
     # returns: No fine positions for any coarse position.
@@ -1177,13 +1207,21 @@ class MoverHisFlip(object):
       self._extras[coarseIndex], self._deleteMes[coarseIndex])
 
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
-        fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
-      return "Unrecognized state . ."
-    elif coarseIndex < 4:
+    if self._enabledFlipStates == 3:
+      if coarseIndex >= len(self.CoarsePositions().positions) or (
+          fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
+        return "Unrecognized state . ."
+      elif coarseIndex < 4:
+        ret = "Unflipped"
+      else:
+        ret = "Flipped"
+    elif self._enabledFlipStates == 1:
       ret = "Unflipped"
-    else:
+    elif self._enabledFlipStates == 2:
       ret = "Flipped"
+    else:
+      return "Unrecognized flip states ."
+
     if coarseIndex % 4 == 0 or coarseIndex % 4 == 1:
       ret += " HD1Placed"
     else:
@@ -1192,9 +1230,14 @@ class MoverHisFlip(object):
       ret += " HE2Placed"
     else:
       ret += " HE2NotPlaced"
-    # @todo When we're placed as a Hydrogen-adjuster only, fixup is never done, so print .
-    if coarseIndex >= len(self._coarsePositions) / 2:
-      if fixedUp:
+    # First, check to see if we are in a state where fixup might occur; this is when we
+    # have been locked into the flipped state or when we are allowed to choose either state
+    # and we're in the uppper half of the coarse positions. If not, we just print '.'
+    # because fixup was never an option. If we are, check whether fixup is enabled and if
+    # so and we've been told above to fix up, then report angles adjusted.
+    if (self._enabledFlipStates == 2) or (
+       (self._enabledFlipStates == 3) and (coarseIndex >= len(self._coarsePositions) / 2)):
+      if self._enableFixup and fixedUp:
         ret += ' AnglesAdjusted'
       else:
         ret += ' AnglesNotAdjusted'
@@ -2697,6 +2740,32 @@ def Test():
     # the Mover has been constructed.
     if not _StableUnderAtomMotion(mover, ne2):
       return "Movers.Test() MoverHisFlip: Positions not stable when atom moved"
+
+    # Try locking down the state to only non-flipped and then only flipped and make sure we get
+    # the expected number of states and behavior.
+    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5, 1, True)
+    if len(mover.CoarsePositions().positions) != 4:
+      return "Movers.Test() MoverHisFlip: Unexpected position count for Unflipped, got "+len(mover.CoarsePositions().positions)
+    if 'Unflipped' not in mover.PoseDescription(0, 0, False):
+      return "Movers.Test() MoverHisFlip: Unexpected PoseDescription for Unflipped, got "+mover.PoseDescription(0, 0, False)
+    if '.' != mover.PoseDescription(0, 0, True).split()[-1]:
+      return "Movers.Test() MoverHisFlip: Unexpected angle description Unflipped, got "+mover.PoseDescription(0, 0, False)
+    mover = MoverHisFlip(ne2, bondedNeighborLists, extrasMap, 0.5, 2, True)
+    if len(mover.CoarsePositions().positions) != 4:
+      return "Movers.Test() MoverHisFlip: Unexpected position count for Flipped, got "+len(mover.CoarsePositions().positions)
+    if 'Flipped' not in mover.PoseDescription(0, 0, True):
+      return "Movers.Test() MoverHisFlip: Unexpected PoseDescription for Flipped, got "+mover.PoseDescription(0, 0, False)
+    if 'AnglesAdjusted' != mover.PoseDescription(0, 0, True).split()[-1]:
+      return "Movers.Test() MoverHisFlip: Unexpected angle description Flipped, got "+mover.PoseDescription(0, 0, True)
+    if 'AnglesNotAdjusted' != mover.PoseDescription(0, 0, False).split()[-1]:
+      return "Movers.Test() MoverHisFlip: Unexpected angle description Flipped, got "+mover.PoseDescription(0, 0, False)
+
+    # Test whether Hydrogen placement optimization is happening when we do only flipped or only
+    # not flipped.
+    # @todo
+
+    # Test whether we can control fixup behavior when locking down in flipped state.
+    # @todo
 
   except Exception as e:
     return "Movers.Test() MoverHisFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
