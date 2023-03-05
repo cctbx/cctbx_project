@@ -620,14 +620,14 @@ class _SingletonOptimizer(object):
         def _printPose(self, m):
           description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m], not self._skipBondFixup)
 
-          # If the Mover is a flip of some kind, then the substring "lipped" will be present
-          # in the description (Flipped and Unflipped both have this subtring).
+          # If the Mover is a flip of some kind, then the substring "Flip " will be present
+          # in the description (AmideFlip and HisFlip both have this subtring, but HisPlace does not).
           # When that happens, we check the final state and the other flip state
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
           # easier for a program to parse.
-          if "lipped" in description:
+          if "Flip " in description:
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
             final = self._coarseLocations[m]
@@ -1204,8 +1204,11 @@ class _SingletonOptimizer(object):
                 enabledFlips, s.fixedUp)
               self._movers.append(hist)
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisPlace "+str(len(self._movers))+" to "+resNameAndID+"\n")
-              # Name is HisPlace rather than HisFlip, so we don't try and report uncertain or clash about it.
+              # Name is HisPlace rather than HisFlip, so we don't try and report uncertain or clash for it.
               self._moverInfo[self._movers[-1]] = "HisPlace at "+resNameAndID+" "+aName;
+              # Set the position to the first coarse position, which will cause a flip if required
+              coarse = hist.CoarsePositions()
+              self._setMoverState(coarse, 0)
             else:
               self._movers.append(hist)
               self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverHisFlip "+str(len(self._movers))+" to "+resNameAndID+"\n")
