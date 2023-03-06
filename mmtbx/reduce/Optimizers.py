@@ -316,6 +316,16 @@ class _SingletonOptimizer(object):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
 
+      ################################################################################
+      # Store the states (position and extra atom info) of all of the atoms in this model
+      # so that we can restore it for atoms in a given alternate configuration before optimizing
+      # each new alternate.
+      initialAtomPositions = {}
+      initialExtraAtomInfos = {}
+      for a in myModel.atoms():
+        initialAtomPositions[a] = a.xyz;
+        initialExtraAtomInfos[a] = probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a))
+
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
       # in reverse order so we finalize all non-alternate ones to match the first.
@@ -332,19 +342,19 @@ class _SingletonOptimizer(object):
 
       # Clear the Movers list for each model.  It will be retained from one alternate to the next.
       self._movers = []
+      firstAlt = True
       for alt in alts:
-        # If we are doing the second or later alternate, place all Movers that are in a compatible alternate
+        # If we are doing the second or later alternate, place all atoms that are in a compatible alternate
         # back into their initial configuration so we start from the same state we would have if this were
         # the only alternate being tested.  This will ensure that we get compatible outputs when run either
-        # way (we may end up with equivalent but different results, like 120 degree rotations for 3 hydrogens).
-        for m in self._movers:
-          coarse = m.CoarsePositions()
-          if coarse.atoms[0].parent().altloc in ['', ' ', alt]:
-            self._setMoverState(coarse, 0)
-
-            # Apply any location and information fixups needed for the initial configuration.
-            # This will in all cases put things back into their original configuration.
-            self._doFixup(m.FixUp(0))
+        # way.
+        if firstAlt:
+          firstAlt = False
+        else:
+          for a in myModel.atoms():
+            if a.parent().altloc in ['', ' ', alt]:
+              a.xyz = initialAtomPositions[a]
+              self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a])
 
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(self._verbosity, 1,"Running Reduce optimization on model index "+str(mi)+
