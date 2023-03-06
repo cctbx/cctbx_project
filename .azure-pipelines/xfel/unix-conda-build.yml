@@ -70,10 +70,16 @@ steps:
     #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda install -y -c conda-forge mamba
     mamba create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
-    mamba env update -n $(PYTHON_VERSION) --file=$(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/ml.yml
     mamba install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
     mamba install -y -c conda-forge cmake pandas distro -n $(PYTHON_VERSION)
   displayName: Create conda environment
+
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    mamba env update -n $(PYTHON_VERSION) --file=$(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/ml.yml
+  displayName: Create conda environment
+  condition: eq('${{ parameters.distribution }}', 'centos')
 
 # build
 - script: |
