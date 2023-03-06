@@ -118,7 +118,12 @@ def update_libtbx_env(default_dir=None):
   env.set_derived_paths()
   env.exe_path = env.bin_path
   env.pythonpath = list()
-  env.python_exe = env.as_relocatable_path(sys.executable)
+  sys_executable = sys.executable
+  if sys_executable.endswith('cross-python'):
+    parts = list(os.path.split(sys_executable))
+    parts[-1] = 'python'
+    sys_executable = os.path.join(*parts)
+  env.python_exe = env.as_relocatable_path(sys_executable)
   env.no_bin_python = True
   site_packages_path = None
   for path in sys.path:
