@@ -7,11 +7,13 @@ import pathlib
 import numpy as np
 import torch
 
+import libtbx.load_env
+
 from scipy.interpolate import interp1d
 
 INTERP_FUNC = lambda x,y: interp1d(x,y,fill_value="extrapolate")
 
-SAMPLE_DATA_PATH = USER = os.getenv("MODULES") + "/ls49_big_data/data_sherrell"
+SAMPLE_DATA_PATH = USER = os.path.join(libtbx.env.find_in_repositories('ls49_big_data'), 'data_sherrell')
 
 def parse_data(path, remove_first_line=False):
     """Load and parse input."""
