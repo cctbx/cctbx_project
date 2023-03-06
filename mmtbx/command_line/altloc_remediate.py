@@ -28,8 +28,10 @@ altloc_remediate
   {
     correct_alt_loc = True
       .type = bool
+      .help = General improvement
     spread_alt_loc = False
       .type = bool
+      .help = expand the alt. loc.
     use_geometry_as_spread_criteria = True
       .type = bool
     block_alt_loc = False

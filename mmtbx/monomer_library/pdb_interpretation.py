@@ -3347,6 +3347,7 @@ class build_all_chain_proxies(linking_mixins):
       if self.params.flip_symmetric_amino_acids:
         self.pdb_hierarchy.flip_symmetric_amino_acids()
     self.pdb_hierarchy.merge_atoms_at_end_to_residues()
+    self.pdb_hierarchy.format_correction_for_H()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()

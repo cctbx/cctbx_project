@@ -1640,6 +1640,14 @@ class _():
         else:
           residues[key] = ag
 
+  def format_correction_for_H(self, verbose=True): # remove 1-JUL-2024
+    for atom in self.atoms():
+      if atom.element_is_hydrogen():
+        if len(atom.name.strip())<4:
+          if atom.name.find(atom.name.strip())==0:
+            atom.name=' %-3s' % atom.name.strip()
+            if verbose: print('corrected PDB format of %s' % atom.quote())
+
   def flip_symmetric_amino_acids(self):
     import time
     from scitbx.math import dihedral_angle

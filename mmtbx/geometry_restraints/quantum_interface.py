@@ -138,6 +138,7 @@ qm_restraints
   return qm_restraints_scope
 
 def electrons(model, log=None):
+  from libtbx.utils import Sorry
   from elbow.quantum import electrons
   atom_valences = electrons.electron_distribution(
     model.get_hierarchy(), # needs to be altloc free
@@ -145,8 +146,16 @@ def electrons(model, log=None):
     log=log,
     verbose=False,
   )
-  atom_valences.validate(ignore_water=True,
-                         raise_if_error=False)
+  rc = atom_valences.validate(ignore_water=True,
+                              raise_if_error=False)
+  # rc = atom_valences.report(ignore_water)
+  if rc:
+    print(atom_valences)
+    for key, item in rc.items():
+      print('  %s' % key, file=log)
+      for i in item:
+        print('    %s' % i[0], file=log)
+    # raise Sorry('Unusual charges found')
   charged_atoms = atom_valences.get_charged_atoms()
   return atom_valences.get_total_charge()
 
