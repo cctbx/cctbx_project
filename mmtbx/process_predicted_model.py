@@ -28,7 +28,7 @@ master_phil_str = """
 
     remove_low_confidence_residues = True
       .type = bool
-      .help = Remove low-confidence residues (based on minimum lddt or \
+      .help = Remove low-confidence residues (based on minimum plddt or \
              maximum_rmsd, whichever is specified)
       .short_caption = Remove low-confidence residues
       .expert_level = 3
@@ -78,37 +78,37 @@ master_phil_str = """
                segment is written to the remainder sequence file.
       .short_caption = Minimum remainder sequence length
 
-    b_value_field_is = *lddt rmsd b_value
+    b_value_field_is = *plddt rmsd b_value
       .type = choice
-      .help = The B-factor field in predicted models can be LDDT \
+      .help = The B-factor field in predicted models can be pLDDT \
              (confidence, 0-1 or 0-100) or rmsd (A) or a B-factor
       .short_caption = Contents of B-value field for input models
       .expert_level = 3
 
-    input_lddt_is_fractional = None
+    input_plddt_is_fractional = None
       .type = bool
-      .help = You can specify if the input lddt values (in B-factor field) \
+      .help = You can specify if the input plddt values (in B-factor field) \
                 are fractional (0-1) or not (0-100). By default if all  \
                values are between 0 and 1 it is fractional.
-      .short_caption = Input lddt is fractional
+      .short_caption = Input plddt is fractional
 
-    minimum_lddt = None
+    minimum_plddt = None
       .type = float
       .help = If low-confidence residues are removed, the cutoff is defined by \
-          minimum_lddt or maximum_rmsd, whichever is defined (you cannot \
-          define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
-          of 1.5.  Minimum lddt values are fractional or not depending on \
-          the value of input_lddt_is_fractional.
-      .short_caption = Minimum lddt
+          minimum_plddt or maximum_rmsd, whichever is defined (you cannot \
+          define both).  A minimum plddt of 0.70 corresponds to a maximum rmsd \
+          of 1.5.  Minimum plddt values are fractional or not depending on \
+          the value of input_plddt_is_fractional.
+      .short_caption = Minimum plddt
 
 
     maximum_rmsd = 1.5
       .type = float
       .help = If low-confidence residues are removed, the cutoff is defined by \
-          minimum_lddt or maximum_rmsd, whichever is defined (you cannot \
-          define both).  A minimum lddt of 0.70 corresponds to a maximum rmsd \
-          of 1.5.  Minimum lddt values are fractional or not depending on \
-          the value of input_lddt_is_fractional.
+          minimum_plddt or maximum_rmsd, whichever is defined (you cannot \
+          define both).  A minimum plddt of 0.70 corresponds to a maximum rmsd \
+          of 1.5.  Minimum plddt values are fractional or not depending on \
+          the value of input_plddt_is_fractional.
       .short_caption = Maximum rmsd
 
     default_maximum_rmsd = 1.5
@@ -214,23 +214,23 @@ def process_predicted_model(
            Normally contains a single chain.   If multiple chains, process
            each separately.
 
-    b_value_field_is:  'lddt' or 'rmsd' or 'b_value'.  For AlphaFold models
-                        the b-value field is a value of LDDT (confidence)
+    b_value_field_is:  'plddt' or 'rmsd' or 'b_value'.  For AlphaFold models
+                        the b-value field is a value of pLDDT (confidence)
                         on scale of 0-1 or 0-100
                         For RoseTTAFold, the B-value field is rmsd (A)
                         If b_value... it is left as is.
 
-    input_lddt_is_fractional:  if True, input lddt is scale of 0 to 1,
+    input_plddt_is_fractional:  if True, input plddt is scale of 0 to 1,
         otherwise 0 - 100
-       If None, set to True if all lddt are from 0 to 1
+       If None, set to True if all plddt are from 0 to 1
     remove_low_confidence_residues: remove residues with low confidence
-        (lddt or rmsd as set below)
-    minimum_lddt: minimum lddt to keep residues (on same scale as b_value_field,
+        (plddt or rmsd as set below)
+    minimum_plddt: minimum plddt to keep residues (on same scale as b_value_field,
       if not set, calculated from maximum_rmsd).
     maximum_rmsd: alternative specification of minimum confidence based on rmsd.
-        If not set, calculated from minimum_lddt.
+        If not set, calculated from minimum_plddt.
     default_maximum_rmsd:  used as default if nothing specified for
-         maximum_rmsd or minimum_lddt .Default is 1.5 A,
+         maximum_rmsd or minimum_plddt .Default is 1.5 A,
     split_model_by_compact_regions: split resulting model into compact regions
       and return a list of models in the group_arg return object
     pae_matrix:  matrix of predicted aligned errors (e.g., from AlphaFold2), NxN
@@ -273,7 +273,7 @@ def process_predicted_model(
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
       model_list:  list of models representing domains
-      lddt_list: one lddt on scale of 0 to 1 for each residue in input model.
+      plddt_list: one plddt on scale of 0 to 1 for each residue in input model.
       vrms_list: one vrms estimate (rms model error in A for each model)
 
   How to get the parameters object set up:
@@ -306,21 +306,21 @@ def process_predicted_model(
   # Decide what to do
   p = params.process_predicted_model
 
-  # Determine if input lddt is fractional and get b values
+  # Determine if input plddt is fractional and get b values
 
   b_value_field = model.get_hierarchy().atoms().extract_b()
-  if p.b_value_field_is == 'lddt':
-    if p.input_lddt_is_fractional is None:
+  if p.b_value_field_is == 'plddt':
+    if p.input_plddt_is_fractional is None:
       sel = (b_value_field < 0) | (b_value_field > 1)
-      p.input_lddt_is_fractional = (sel.count(True) == 0)
+      p.input_plddt_is_fractional = (sel.count(True) == 0)
 
-    b_values = get_b_values_from_lddt(b_value_field,
-       input_lddt_is_fractional = p.input_lddt_is_fractional)
+    b_values = get_b_values_from_plddt(b_value_field,
+       input_plddt_is_fractional = p.input_plddt_is_fractional)
 
-    if p.input_lddt_is_fractional:
-      print("B-value field interpreted as LDDT %s" %("(0 - 1)"), file = log)
+    if p.input_plddt_is_fractional:
+      print("B-value field interpreted as pLDDT %s" %("(0 - 1)"), file = log)
     else:
-      print("B-value field interpreted as LDDT %s" %("(0 - 100)"), file = log)
+      print("B-value field interpreted as pLDDT %s" %("(0 - 100)"), file = log)
 
   elif p.b_value_field_is == 'rmsd':
     b_values = get_b_values_rmsd(b_value_field)
@@ -330,20 +330,20 @@ def process_predicted_model(
     b_values = b_value_field
     print("B-value field interpreted as b_values", file = log)
   else:
-    raise AssertionError("Please set b_value_field_is to either lddt or rmsd")
+    raise AssertionError("Please set b_value_field_is to either plddt or rmsd")
 
-  if (not p.input_lddt_is_fractional):
-    if p.minimum_lddt is not None: # convert to fractional
-      p.minimum_lddt = p.minimum_lddt * 0.01
-      print("Minimum LDDT converted to %.2f" %(p.minimum_lddt), file = log)
+  if (not p.input_plddt_is_fractional):
+    if p.minimum_plddt is not None: # convert to fractional
+      p.minimum_plddt = p.minimum_plddt * 0.01
+      print("Minimum pLDDT converted to %.2f" %(p.minimum_plddt), file = log)
 
-  # From here on we work only with fractional lddt
+  # From here on we work only with fractional plddt
 
   # Get confidence cutoff if needed
   if p.remove_low_confidence_residues:
     maximum_b_value = get_cutoff_b_value(
       p.maximum_rmsd,
-      p.minimum_lddt,
+      p.minimum_plddt,
       default_maximum_rmsd = p.default_maximum_rmsd,
       log = log)
   else:
@@ -492,7 +492,7 @@ def get_vrms_list(p, model_list):
     s = m.as_sequence(as_string = True)
     b_values = m.apply_selection_string(
        '(name ca or name P) and not element ca').get_b_iso()
-    rmsd = get_rmsd_from_lddt(get_lddt_from_b(b_values)).min_max_mean().mean
+    rmsd = get_rmsd_from_plddt(get_plddt_from_b(b_values)).min_max_mean().mean
     vrms = rmsd * p.vrms_from_rmsd_slope + p.vrms_from_rmsd_intercept
     vrms_list.append(vrms)
   return vrms_list
@@ -549,33 +549,33 @@ def split_model_by_chainid(m, chainid_list,
 
 def get_cutoff_b_value(
     maximum_rmsd,
-    minimum_lddt,
+    minimum_plddt,
     default_maximum_rmsd = None,
     log = sys.stdout):
 
   # Get B-value cutoff
 
-  if maximum_rmsd is None and minimum_lddt is None:
+  if maximum_rmsd is None and minimum_plddt is None:
     maximum_rmsd = default_maximum_rmsd
     assert maximum_rmsd is not None
 
   if maximum_rmsd is not None:
     print("Maximum rmsd of %.2f A used" %(maximum_rmsd), file = log)
-  elif minimum_lddt:
+  elif minimum_plddt:
     print("Minimum confidence level is %.2f" %(
-      minimum_lddt), file = log)
-    if minimum_lddt< 0 or \
-      minimum_lddt> 1:
-      raise Sorry("minimum_lddt must "+
+      minimum_plddt), file = log)
+    if minimum_plddt< 0 or \
+      minimum_plddt> 1:
+      raise Sorry("minimum_plddt must "+
          "be between 0 and 1")
-    maximum_rmsd = get_rmsd_from_lddt(
-           flex.double(1,minimum_lddt),
+    maximum_rmsd = get_rmsd_from_plddt(
+           flex.double(1,minimum_plddt),
            is_fractional = True)[0]
     print("Maximum rmsd set to %.2f A based on confidence cutoff of %.2f" %(
-       maximum_rmsd, minimum_lddt), file = log)
+       maximum_rmsd, minimum_plddt), file = log)
   else:
      raise Sorry( "Need to set either maximum_rmsd or " +
-          "minimum_lddt")
+          "minimum_plddt")
 
   maximum_b_value = get_b_values_rmsd(
      flex.double(1,maximum_rmsd))[0]
@@ -588,14 +588,14 @@ def get_cutoff_b_value(
 
 
 ################################################################################
-####################   get_b_values_from_lddt  ################################
+####################   get_b_values_from_plddt  ################################
 ################################################################################
 
-def get_b_values_from_lddt(lddt_values,
-    input_lddt_is_fractional = True):
+def get_b_values_from_plddt(plddt_values,
+    input_plddt_is_fractional = True):
   """
-  get_b_values_from_lddt:
-  Purpose:  AlphaFold models are supplied with values of LDDT (predicted
+  get_b_values_from_plddt:
+  Purpose:  AlphaFold models are supplied with values of pLDDT (predicted
    local-distance difference test) in the B-value field.  This routine
    uses the formula from:
 
@@ -614,31 +614,31 @@ def get_b_values_from_lddt(lddt_values,
 
 
   Inputs:
-    lddt_values: flex array of lddt values
-    input_lddt_is_fractional: if False, convert by multiplying * 0.01
+    plddt_values: flex array of plddt values
+    input_plddt_is_fractional: if False, convert by multiplying * 0.01
   Outputs:
     flex array of B-values
   """
 
-  if input_lddt_is_fractional:
-    rmsd = get_rmsd_from_lddt(lddt_values) # usual
+  if input_plddt_is_fractional:
+    rmsd = get_rmsd_from_plddt(plddt_values) # usual
   else:
-    rmsd = get_rmsd_from_lddt(0.01 * lddt_values)
+    rmsd = get_rmsd_from_plddt(0.01 * plddt_values)
   b_values = get_b_values_rmsd(rmsd)
 
   return b_values
 
 ################################################################################
-####################   get_lddt_from_b          ################################
+####################   get_plddt_from_b          ################################
 ################################################################################
 
-def get_lddt_from_b(b_values, input_lddt_is_fractional = True):
-  """  Inverse of get_b_values_from_lddt
+def get_plddt_from_b(b_values, input_plddt_is_fractional = True):
+  """  Inverse of get_b_values_from_plddt
   Inputs:
     flex array of B-values
-    input_lddt_is_fractional: if False, convert by multiplying * 100 at end
+    input_plddt_is_fractional: if False, convert by multiplying * 100 at end
   Outputs:
-    lddt_values: flex array of lddt values
+    plddt_values: flex array of plddt values
   """
   if not b_values:
     return None
@@ -646,28 +646,28 @@ def get_lddt_from_b(b_values, input_lddt_is_fractional = True):
   # b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
   rmsd = flex.sqrt( b_values/ ((8 * (3.14159 ** 2)) / 3.0))
 
-  # rmsd  = 1.5 * flex.exp(4*(0.7-lddt))
-  lddt = 0.7 - 0.25 * flex.log(rmsd/1.5)
+  # rmsd  = 1.5 * flex.exp(4*(0.7-plddt))
+  plddt = 0.7 - 0.25 * flex.log(rmsd/1.5)
 
 
-  if not input_lddt_is_fractional:
-    lddt = lddt * 100
+  if not input_plddt_is_fractional:
+    plddt = plddt * 100
 
-  return lddt
+  return plddt
 
 
 ################################################################################
-####################   get_rmsd_from_lddt  ################################
+####################   get_rmsd_from_plddt  ################################
 ################################################################################
 
-def get_rmsd_from_lddt(lddt_values, is_fractional = None):
+def get_rmsd_from_plddt(plddt_values, is_fractional = None):
   """
-  get_rmsd_from_lddt:
-  Purpose:  AlphaFold models come with predicted LDDT values in the B-value
+  get_rmsd_from_plddt:
+  Purpose:  AlphaFold models come with predicted pLDDT values in the B-value
    field to indicate confidence.  This routine uses a formula provided in the
    supplementary material of the RoseTTAFold paper to convert these values
    to error estimates.
-  NOTE: lddt_values can be fractional (0 to 1) or percentage (0 to 100)
+  NOTE: plddt_values can be fractional (0 to 1) or percentage (0 to 100)
   If is_fractional is not set, assume fractional if all between 0 and 1
   rmsd_est = 1.5 * flex.exp(4*(0.7-fractional_values))
 
@@ -677,18 +677,18 @@ def get_rmsd_from_lddt(lddt_values, is_fractional = None):
 
 
   Inputs:
-    lddt_values: flex array of lddt values
+    plddt_values: flex array of plddt values
   Outputs:
     flex array of error estimates (A)
   """
   if is_fractional is None:
-    is_fractional = ( lddt_values.min_max_mean().min >= 0  and
-      lddt_values.min_max_mean().max <= 1 )
+    is_fractional = ( plddt_values.min_max_mean().min >= 0  and
+      plddt_values.min_max_mean().max <= 1 )
 
   if is_fractional:
-    fractional_values = lddt_values.deep_copy()
+    fractional_values = plddt_values.deep_copy()
   else:
-    fractional_values = lddt_values * 0.01
+    fractional_values = plddt_values * 0.01
 
   fractional_values.set_selected((fractional_values < 0), 0)
   fractional_values.set_selected((fractional_values > 1), 1)
@@ -848,6 +848,7 @@ def split_model_with_pae(
     for model in new_m.get_hierarchy().models()[:1]: # only one model
       for chain in model.chains()[:1]: # only allowing one chain
         chain.id = region_name_dict[region_number]
+    new_m._update_atom_selection_cache() # changed chain IDs...
     if full_new_model:
       full_new_model = add_model(full_new_model, new_m)
     else:
@@ -1572,7 +1573,7 @@ if __name__ == "__main__":
     if len(args) > 2:
        p.b_value_field_is = args[2]
     else:
-       p.b_value_field_is = 'lddt'
+       p.b_value_field_is = 'plddt'
     if len(args) > 3:
        p.domain_size = float(args[3])
     else:

@@ -18,8 +18,8 @@ pae_data_dir = libtbx.env.under_dist(
 from iotbx.data_manager import DataManager
 from mmtbx.process_predicted_model import split_model_into_compact_units, \
    get_cutoff_b_value, \
-   get_b_values_from_lddt, get_rmsd_from_lddt, \
-   process_predicted_model, master_phil_str, get_lddt_from_b
+   get_b_values_from_plddt, get_rmsd_from_plddt, \
+   process_predicted_model, master_phil_str, get_plddt_from_b
 
 from mmtbx.domains_from_pae import parse_pae_file
 master_phil = iotbx.phil.parse(master_phil_str)
@@ -33,9 +33,9 @@ pae_file=os.path.join(pae_data_dir,'pae.json')
 def tst_01(log = sys.stdout):
 
 
-  # Check calculations of conversion between rmsd, lddt , and B values
-  print("\nChecking conversions between rmsd, lddt and B-values", file = log)
-  for maximum_rmsd, minimum_lddt, target_b in [
+  # Check calculations of conversion between rmsd, plddt , and B values
+  print("\nChecking conversions between rmsd, plddt and B-values", file = log)
+  for maximum_rmsd, minimum_plddt, target_b in [
        (1.5, None, 59.2175263686),
        (None,0.7,59.2175263686),
        (1.5,0.7,59.2175263686),
@@ -44,16 +44,16 @@ def tst_01(log = sys.stdout):
     print()
     cutoff_b = get_cutoff_b_value(
       maximum_rmsd,
-      minimum_lddt,
+      minimum_plddt,
       log = log)
-    print("maximum_rmsd: %s min lddt %s Cutoff B:  %.2f" %(
-     maximum_rmsd, minimum_lddt,
+    print("maximum_rmsd: %s min plddt %s Cutoff B:  %.2f" %(
+     maximum_rmsd, minimum_plddt,
      cutoff_b), file = log)
     assert approx_equal(cutoff_b, target_b)
 
 
-  # Read in alphafold model and get LDDT from B-value field
-  print("\nReading in alphafold model with lddt values in B-value field",
+  # Read in alphafold model and get pLDDT from B-value field
+  print("\nReading in alphafold model with plddt values in B-value field",
     file = log)
 
   dm = DataManager()
@@ -62,35 +62,35 @@ def tst_01(log = sys.stdout):
   pae_m = dm.get_model(pae_model_file)
   pae_matrix = parse_pae_file(pae_file)
 
-  lddt_values = m.get_hierarchy().atoms().extract_b().deep_copy()
-  print("\nLDDT mean:",lddt_values.min_max_mean().mean)
-  assert approx_equal(lddt_values.min_max_mean().mean, 82.5931111111)
+  plddt_values = m.get_hierarchy().atoms().extract_b().deep_copy()
+  print("\npLDDT mean:",plddt_values.min_max_mean().mean)
+  assert approx_equal(plddt_values.min_max_mean().mean, 82.5931111111)
 
-  # Multiply lddt_values by 0.01 (fractional)
-  fractional_lddt = lddt_values * 0.01
+  # Multiply plddt_values by 0.01 (fractional)
+  fractional_plddt = plddt_values * 0.01
 
-  #  Convert lddt to b
-  b_values = get_b_values_from_lddt(lddt_values)
+  #  Convert plddt to b
+  b_values = get_b_values_from_plddt(plddt_values)
   print("B-value mean:",b_values.min_max_mean().mean)
   assert approx_equal(b_values.min_max_mean().mean, 24.7254093338)
 
-  # Convert b to lddt
-  lddt = get_lddt_from_b(b_values)
-  assert approx_equal(lddt,fractional_lddt)
-  lddt = get_lddt_from_b(b_values, input_lddt_is_fractional=False)
-  assert approx_equal(lddt,lddt_values)
+  # Convert b to plddt
+  plddt = get_plddt_from_b(b_values)
+  assert approx_equal(plddt,fractional_plddt)
+  plddt = get_plddt_from_b(b_values, input_plddt_is_fractional=False)
+  assert approx_equal(plddt,plddt_values)
 
-  # Convert  lddt to rmsd
-  rmsd_values = get_rmsd_from_lddt(lddt_values)
+  # Convert  plddt to rmsd
+  rmsd_values = get_rmsd_from_plddt(plddt_values)
   print("RMSD mean:",rmsd_values.min_max_mean().mean)
   assert approx_equal(rmsd_values.min_max_mean().mean, 0.93559254135)
 
-  # use process_predicted_model to convert lddt or rmsd to B return with
+  # use process_predicted_model to convert plddt or rmsd to B return with
   #  mark_atoms_to_ignore_with_occ_zero
 
-  print("\nConverting lddt to B values and using mark_atoms_to_ignore_with_occ_zero", file = log)
+  print("\nConverting plddt to B values and using mark_atoms_to_ignore_with_occ_zero", file = log)
   params.process_predicted_model.maximum_fraction_close = 0.5
-  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.b_value_field_is = 'plddt'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 1.5
   params.process_predicted_model.split_model_by_compact_regions = True
@@ -104,14 +104,14 @@ def tst_01(log = sys.stdout):
     assert model_occ_values.count(0) == n2
     assert approx_equal(vrms, target_vrms, eps=0.01)
 
-  # use process_predicted_model to convert lddt or rmsd to B
+  # use process_predicted_model to convert plddt or rmsd to B
 
-  print("\nConverting lddt to B values", file = log)
+  print("\nConverting plddt to B values", file = log)
   params.process_predicted_model.maximum_fraction_close = 0.5
-  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.b_value_field_is = 'plddt'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
-  params.process_predicted_model.input_lddt_is_fractional = None
+  params.process_predicted_model.input_plddt_is_fractional = None
 
   model_info = process_predicted_model(m, params)
   model = model_info.model
@@ -119,16 +119,16 @@ def tst_01(log = sys.stdout):
   assert approx_equal(b_values, model_b_values, eps = 0.02) # come back rounded
 
 
-  print("\nConverting fractional lddt to B values", file = log)
+  print("\nConverting fractional plddt to B values", file = log)
   ph = model.get_hierarchy().deep_copy()
-  ph.atoms().set_b(fractional_lddt)
+  ph.atoms().set_b(fractional_plddt)
   test_model = model.as_map_model_manager().model_from_hierarchy(ph,
      return_as_model = True)
   params.process_predicted_model.maximum_fraction_close = 0.5
-  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.b_value_field_is = 'plddt'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
-  params.process_predicted_model.input_lddt_is_fractional = None
+  params.process_predicted_model.input_plddt_is_fractional = None
   model_info = process_predicted_model(test_model, params)
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
@@ -144,7 +144,7 @@ def tst_01(log = sys.stdout):
   params.process_predicted_model.b_value_field_is = 'rmsd'
   params.process_predicted_model.remove_low_confidence_residues = False
   params.process_predicted_model.split_model_by_compact_regions = False
-  params.process_predicted_model.input_lddt_is_fractional = None
+  params.process_predicted_model.input_plddt_is_fractional = None
   model_info = process_predicted_model(test_model, params)
   model = model_info.model
   model_b_values = model.get_hierarchy().atoms().extract_b()
@@ -159,7 +159,7 @@ def tst_01(log = sys.stdout):
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 1.5
   params.process_predicted_model.split_model_by_compact_regions = False
-  params.process_predicted_model.input_lddt_is_fractional = None
+  params.process_predicted_model.input_plddt_is_fractional = None
 
   model_info = process_predicted_model(test_model, params)
   model = model_info.model
@@ -180,7 +180,7 @@ def tst_01(log = sys.stdout):
   print("\nProcessing and splitting model into domains", file = log)
 
   params.process_predicted_model.maximum_fraction_close = 0.5
-  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.b_value_field_is = 'plddt'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 1.5
   params.process_predicted_model.split_model_by_compact_regions = True
@@ -214,7 +214,7 @@ def tst_01(log = sys.stdout):
 
 
   params.process_predicted_model.maximum_fraction_close = 0.5
-  params.process_predicted_model.b_value_field_is = 'lddt'
+  params.process_predicted_model.b_value_field_is = 'plddt'
   params.process_predicted_model.remove_low_confidence_residues = True
   params.process_predicted_model.maximum_rmsd = 0.7
   params.process_predicted_model.split_model_by_compact_regions = True
