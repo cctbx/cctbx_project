@@ -132,7 +132,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.spintimer_id = 100 # any number
     self.spintimer_maxfps = 30
     self.spintimer = wx.Timer(self, self.spintimer_id)
-    self.spintimer.Start(1000 / self.spintimer_maxfps)
+    self.spintimer.Start(1000 // self.spintimer_maxfps)
 
     self.w, self.h = self.GetClientSize()
 
