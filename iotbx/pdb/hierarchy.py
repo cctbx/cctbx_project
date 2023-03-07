@@ -1644,7 +1644,8 @@ class _():
     for atom in self.atoms():
       if atom.element_is_hydrogen():
         if len(atom.name.strip())<4:
-          if atom.name.find(atom.name.strip())==0:
+          if (atom.name.find(atom.name.strip())==0 and
+              atom.name[0] not in ['1', '2', '3']):
             atom.name=' %-3s' % atom.name.strip()
             if verbose: print('corrected PDB format of %s' % atom.quote())
 
