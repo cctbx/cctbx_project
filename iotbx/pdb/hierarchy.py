@@ -1640,7 +1640,7 @@ class _():
         else:
           residues[key] = ag
 
-  def format_correction_for_H(self, verbose=True): # remove 1-JUL-2024
+  def format_correction_for_H(self, verbose=False): # remove 1-JUL-2024
     for atom in self.atoms():
       if atom.element_is_hydrogen():
         if len(atom.name.strip())<4:

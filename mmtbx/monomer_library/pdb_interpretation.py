@@ -3851,6 +3851,12 @@ class build_all_chain_proxies(linking_mixins):
       pdb_hierarchy             = self.pdb_hierarchy,
       special_position_settings = self.special_position_settings,
       atom_selection_cache      = None)
+    self._check_for_capitalised_element()
+
+  def _check_for_capitalised_element(self):
+    for atom in self.pdb_hierarchy.atoms():
+      if atom.element==atom.element.upper():
+        atom.element=atom.element.upper()
 
   def __getstate__(self):
     indexer = dict( ( a, i) for ( i, a ) in enumerate( self.pdb_hierarchy.atoms() ) )
