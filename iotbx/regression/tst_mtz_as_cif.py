@@ -162,6 +162,14 @@ def exercise():
     assert approx_equal(iobs_cif.data(), iobs_mtz.data())
     assert approx_equal(iobs_cif.sigmas(), iobs_mtz.sigmas())
 
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1aba_test.mtz",
+    test=os.path.isfile)
+  if file_name is None:
+    print("Skipping 1aba_test.mtz test: input file not available")
+  else:
+    mtz_as_cif.run(
+      args=[file_name])
 
 def run():
   exercise()
