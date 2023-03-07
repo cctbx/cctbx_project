@@ -257,10 +257,9 @@ class rna_puckers(rna_geometry):
     from iotbx.pdb.rna_dna_detection import residue_analysis
     for model in pdb_hierarchy.models():
       for chain in model.chains():
+        first_altloc = [conformer.altloc for conformer in chain.conformers()][0]
+        #can skip some calculations on later altlocs
         for conformer in chain.conformers():
-          altloc = conformer.altloc
-          if altloc == "":
-            altloc = " "
           residues = conformer.residues()
           for i_residue,residue in enumerate(residues):
             def _get_next_residue():
@@ -278,6 +277,14 @@ class rna_puckers(rna_geometry):
               residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
             if (get_res_class(residue.resname) != "common_rna_dna"):
               continue
+            if conformer.altloc.strip() == '':
+              local_altloc = ''
+            else:
+              local_altloc = self.local_altloc_from_atoms(ra1.deoxy_ribo_atom_dict, ra1.c1p_outbound_atom, residue_2_p_atom)
+            if local_altloc == '' and local_altloc != conformer.altloc and conformer.altloc != first_altloc:
+              #if the pucker atoms contain no alternates, then the calculation can be skipped if this isn't the first
+              #  conformer to be encountered
+              continue
             ana = rna_sugar_pucker_analysis.evaluate(
               params=params,
               residue_1_deoxy_ribo_atom_dict=ra1.deoxy_ribo_atom_dict,
@@ -293,7 +300,7 @@ class rna_puckers(rna_geometry):
                 chain_id=chain.id,
                 resseq=residue.resseq,
                 icode=residue.icode,
-                altloc=conformer.altloc,
+                altloc=local_altloc, #'' if none
                 resname=residue.resname,
                 delta_angle=ana.delta,
                 is_delta_outlier=ana.is_delta_outlier,
@@ -316,6 +323,24 @@ class rna_puckers(rna_geometry):
     else :
       print(prefix + "%d/%d pucker outliers present" % (self.n_outliers,
         self.n_total), file=out)
+
+  def local_altloc_from_atoms(self, residue_1_deoxy_ribo_atom_dict, residue_1_c1p_outbound_atom, residue_2_p_atom):
+    #conformer.altloc masks whether a residue has true alternate conformations
+    #only run this if conformer.altloc != ''
+    #atom.id_str() looks like 'pdb=" C1'B  G B  -3 "' for a B alternate
+    #this format may change with mmCIF
+    for atom in [residue_1_c1p_outbound_atom, residue_2_p_atom]:
+      if atom is None: continue
+      altloc = atom.id_str()[9:10]
+      if altloc != " ":
+        return altloc
+    for atom in residue_1_deoxy_ribo_atom_dict.values():
+      if atom is None: continue
+      altloc = atom.id_str()[9:10]
+      if altloc != " ":
+        return altloc
+    return ""
+
 
 class rna_suites(rna_geometry):
   output_header = "#suiteID:suite:suiteness:triaged_angle"
