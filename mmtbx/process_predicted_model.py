@@ -330,7 +330,7 @@ def process_predicted_model(
     b_values = b_value_field
     print("B-value field interpreted as b_values", file = log)
   else:
-    raise Sorry("Please set b_value_field_is to either plddt or rmsd")
+    raise Sorry("Please set b_value_field_is to b_value, plddt or rmsd")
 
   if (not p.input_plddt_is_fractional):
     if p.minimum_plddt is not None: # convert to fractional
