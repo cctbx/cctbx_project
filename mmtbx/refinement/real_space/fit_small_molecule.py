@@ -152,7 +152,7 @@ def macro_cycle(
     target_map = target_map,
     log        = log)
   weights = flex.double()
-  sampling_range = [0, 90, 180, 270]
+  sampling_range = range(0, 370, 50)   #[0, 90, 180, 270]
   for the in sampling_range:
     for psi in sampling_range:
       for phi in sampling_range:
