@@ -1,13 +1,6 @@
 mmtbx.building package
 ======================
 
-Subpackages
------------
-
-.. toctree::
-
-    mmtbx.building.alternate_conformations
-
 Submodules
 ----------
 
