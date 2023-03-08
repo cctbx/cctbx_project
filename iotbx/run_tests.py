@@ -134,6 +134,7 @@ tst_list_base = [
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   "$D/bioinformatics/pdb_info.py",
   "$D/regression/tst_cif_as_pdb_1atom.py",
+  "$D/regression/tst_cif_1.py",
   "$D/regression/tst_split_data_cif.py",
   "$D/regression/tst_all_chain_ids.py",
   "$D/regression/tst_extract_xtal_data.py",
