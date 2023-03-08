@@ -2579,7 +2579,8 @@ class map_model_manager(object):
      soft_mask_radius = None,
      boundary_radius = None,
      boundary_to_smoothing_ratio = 2.,
-     mask_id = 'mask' ):
+     mask_id = 'mask',
+     minimum_mask_radius_ratio = 0.25 ):
 
     '''
       Generate spherical mask with radius mask_radius around the
@@ -2620,6 +2621,9 @@ class map_model_manager(object):
 
       # Back off by boundary_radius
       mask_radius -= boundary_radius
+      mask_radius = max(mask_radius,
+         minimum_mask_radius_ratio * boundary_radius)
+
 
     if mask_radius <= 0:
       print("\nUnable to auto-generate a mask radius for spherical mask",
