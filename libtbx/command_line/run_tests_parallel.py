@@ -26,6 +26,8 @@ verbosity = 1
   .type = int
 stderr = False
   .type = bool
+skip_missing = False
+  .type = bool
 run_in_tmp_dir = False
   .type = bool
 max_time = 180
@@ -91,13 +93,17 @@ def run(args,
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name,
        slow_tests = params.slow_tests,
-       python_keyword_text=python_keyword_text)
+       python_keyword_text=python_keyword_text,
+        skip_missing = params.skip_missing)
     fail_tests = libtbx.test_utils.parallel.\
-      get_module_expected_test_failures(module_name)
+      get_module_expected_test_failures(module_name,
+        skip_missing = params.skip_missing)
     unstable_tests = libtbx.test_utils.\
-      parallel.get_module_expected_unstable_tests(module_name)
+      parallel.get_module_expected_unstable_tests(module_name,
+        skip_missing = params.skip_missing)
     parallel_tests = libtbx.test_utils.parallel.\
-      get_module_parallel_tests(module_name)
+      get_module_parallel_tests(module_name,
+        skip_missing = params.skip_missing)
     all_tests.extend(module_tests)
     all_tests.extend(fail_tests)
     all_tests.extend(unstable_tests)
