@@ -1567,7 +1567,11 @@ class multi_out(object):
   def flush(self):
     for file_object in self.file_objects:
       flush = getattr(file_object, "flush", None)
-      if (flush is not None): flush()
+      if (flush is not None):
+        try:
+          flush()
+        except Exception as e:
+          pass # was closed
 
   def write(self, str):
     for file_object in self.file_objects:
