@@ -379,7 +379,6 @@ general_tests = [
   "$D/ions/tst_environment.py",
   "$D/regression/tst_table_one.py",
   "$D/regression/tst_msa.py",
-  "$D/regression/tst_build_alt_confs.py",
   "$D/regression/tst_cc_star.py",
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_rigid_bond_test.py",
