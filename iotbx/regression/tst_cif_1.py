@@ -7,6 +7,10 @@ from libtbx.utils import null_out
 # ------------------------------------------------------------------------------
 
 def run():
+  """
+  Test that MTRIX matrix is not applied if it is referred to as
+  "given" and it is not under loop_.
+  """
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   #inp = iotbx.pdb.input('5aj2_test.cif')
   m = mmtbx.model.manager(model_input = inp,log = null_out())
