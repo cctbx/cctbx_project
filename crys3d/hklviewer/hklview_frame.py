@@ -613,27 +613,7 @@ class HKLViewFrame() :
           make_new_info_tuples=True
 
       if jsview_3d.has_phil_path(diff_phil, "selected_info", "openfilename") or make_new_info_tuples:
-        self.viewer.array_info_format_tpl = []
-        colnames_select_lst = []
-        for array in self.procarrays:
-          if type(array.data()) == flex.std_string: # in case of status array from a cif file
-            uniquestrings = list(set(array.data()))
-            info = array.info()
-            array = array.customized_copy(data=flex.int([uniquestrings.index(d) for d in array.data()]))
-            array.set_info(info)
-          if array.space_group() is None:
-            array._unit_cell = uc
-            array._space_group_info = spg.info()
-            self.mprint("""No unit cell or space group info present in the %d. miller array.
-    Borrowing them from the first miller array""" %i)
-          wrap_labels = 25
-          arrayinfo = ArrayInfo(array,wrap_labels)
-          info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
-          self.viewer.array_info_format_tpl.append( info_fmt )
-          if len(colnames_select_lst) == 0:
-            for philname,selected in list(self.params.selected_info.__dict__.items()):
-              if not philname.startswith("__"):
-                colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
+        colnames_select_lst, _ = self.update_arrayinfos()
         self.SendInfoToGUI({"array_infotpls": self.viewer.array_info_format_tpl,
                             "colnames_select_lst": colnames_select_lst })
 
@@ -655,11 +635,16 @@ class HKLViewFrame() :
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
       phl.visible_dataset_label = None # ensure the same action in succession can be executed
 
+      if jsview_3d.has_phil_path(diff_phil, "commit_subgroup_datasets"):
+        self.commitSubgroupDatasets()
+        self.params.commit_subgroup_datasets = False # allow us to save another subgroup
+        self.params.using_space_subgroup = False
+      phl.visible_dataset_label = None # ensure the same action in succession can be executed
+
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
-      #if jsview_3d.has_phil_path(diff_phil, "openfilename", "scene_id", "spacegroup_choice", "data_array"):
-      if jsview_3d.has_phil_path(diff_phil, "openfilename"):
+      if jsview_3d.has_phil_path(diff_phil, "openfilename", "commit_subgroup_datasets"):
         self.list_vectors()
         self.validated_preset_buttons = False
 
@@ -744,37 +729,23 @@ class HKLViewFrame() :
     return array, array_info
 
 
-  def process_all_miller_arrays(self, col):
+  def process_all_miller_arrays(self, valid_arrays): #, col):
     #self.mprint("Processing reflection data")
     self.procarrays = []
     if self.params.merge_data == False:
       self.hkls.expand_to_p1 = False
       self.hkls.expand_anomalous = False
-    for c,arr in enumerate(self.valid_arrays):
+    for c,arr in enumerate(valid_arrays):
       procarray, procarray_info = self.process_miller_array(arr)
       self.procarrays.append(procarray)
-      if c==col:
-        array_info = procarray_info
-        self.viewer.miller_array = procarray
-    if col is None:
-      array_info = procarray_info
-    return array_info
-
-
-  def set_miller_array(self, col=None) :
-    if col is not None and col >= len(self.viewer.hkl_scenes_info ):
-      return
-    array_info = self.process_all_miller_arrays(col)
-    self.viewer.proc_arrays = self.procarrays
-    self.viewer.identify_suitable_fomsarrays()
-    self.viewer.set_miller_array(col, merge=array_info.merge,
-       details=array_info.details_str)
+    return procarray_info
 
 
   def update_space_group_choices(self, col=None) :
     if (self.viewer.miller_array is None and col is None) or \
       self.params.using_space_subgroup:
-      return
+      if not self.params.commit_subgroup_datasets:
+        return
     if col is None:
       current_miller_array_idx = self.viewer.HKLscene_dict_val().arrayinfo[1]
     else:
@@ -785,9 +756,10 @@ class HKLViewFrame() :
     sg_info = matching_valid_array.space_group_info()
     subgrs = subgroups(sg_info).groups_parent_setting()
     self.spacegroup_choices = []
-    for i,subgroup in enumerate(subgrs) :
+    for i,subgroup in enumerate(subgrs):
       subgroup_info = sgtbx.space_group_info(group=subgroup)
       self.spacegroup_choices.append(subgroup_info)
+
     for i,e in enumerate(self.spacegroup_choices):
       c = None
       if str(sg_info) == str(e):
@@ -799,7 +771,11 @@ class HKLViewFrame() :
       self.spacegroup_choices.insert(c, sg_info)
       self.current_spacegroup = sg_info
     #self.params.spacegroup_choice = c
-    spglst = [e.symbol_and_number() for e in self.spacegroup_choices] + ["original spacegroup"]
+    origspgidx = [e.symbol_and_number() for e in self.spacegroup_choices].index(sg_info.symbol_and_number())
+    origspg = self.spacegroup_choices[origspgidx]
+    self.spacegroup_choices.remove(origspg)
+    self.spacegroup_choices = [origspg] + self.spacegroup_choices
+    spglst = [e.symbol_and_number() for e in self.spacegroup_choices]
     mydict = { "spacegroups": spglst }
     self.SendInfoToGUI(mydict)
 
@@ -807,26 +783,24 @@ class HKLViewFrame() :
   def set_spacegroup_choice(self, n) :
     if (self.viewer.miller_array is None) :
       raise Sorry("No data loaded!")
-    if n == len(self.spacegroup_choices): # selected the unmerged "original spacegroup" in the list
-      self.viewer.proc_arrays = self.procarrays
-      self.params.using_space_subgroup = False
-    else:
-      self.current_spacegroup = self.spacegroup_choices[n]
-      from cctbx import crystal
-      symm = crystal.symmetry(
-        space_group_info= self.current_spacegroup,
-        unit_cell=self.viewer.miller_array.unit_cell())
-      othervalidarrays = []
-      for validarray in self.procarrays:
-        # TODO: check if array is unmerged i.e. not symmetry unique
-        arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
-        arr = arr.merge_equivalents().array().set_info(validarray.info())
-        arr = self.detect_Rfree(arr)
-        othervalidarrays.append( arr )
-
-      self.mprint( "MERGING 2", verbose=2)
-      self.viewer.proc_arrays = othervalidarrays
-      self.params.using_space_subgroup = True
+    #if n == len(self.spacegroup_choices): # selected the "original spacegroup" in the list
+    #  self.viewer.proc_arrays = self.procarrays[:]
+    #  self.params.using_space_subgroup = False
+    #else:
+    self.current_spacegroup = self.spacegroup_choices[n]
+    from cctbx import crystal
+    symm = crystal.symmetry(
+      space_group_info= self.current_spacegroup,
+      unit_cell=self.viewer.miller_array.unit_cell())
+    othervalidarrays = []
+    for validarray in self.procarrays:
+      # TODO: check if array is unmerged i.e. not symmetry unique
+      arr = validarray.expand_to_p1().customized_copy(crystal_symmetry=symm)
+      arr = arr.merge_equivalents().array().set_info(validarray.info())
+      arr = self.detect_Rfree(arr)
+      othervalidarrays.append( arr )
+    self.viewer.proc_arrays = othervalidarrays
+    self.params.using_space_subgroup = True
     self.viewer.set_miller_array()
     for i,e in enumerate(self.spacegroup_choices):
       self.mprint("%d, %s" %(i,e.symbol_and_number()) , verbose=0)
@@ -843,9 +817,9 @@ class HKLViewFrame() :
 
 
   def set_default_spacegroup(self):
-    self.viewer.proc_arrays = self.procarrays
+    #self.viewer.proc_arrays = self.procarrays
     self.viewer.set_miller_array()
-    self.viewer.identify_suitable_fomsarrays()
+    #self.viewer.identify_suitable_fomsarrays()
 
 
   def MakeNewMillerArrayFrom(self, operation, label, arrid1, arrid2=None):
@@ -906,6 +880,68 @@ class HKLViewFrame() :
     self.AddDataset2ExistingOnes(newarray, label, deepcopy(self.viewer.miller_array.info()))
 
 
+  def update_arrayinfos(self):
+    self.viewer.array_info_format_tpl = []
+    colnames_select_lst = []
+    for array in self.procarrays:
+      if type(array.data()) == flex.std_string: # in case of status array from a cif file
+        uniquestrings = list(set(array.data()))
+        info = array.info()
+        array = array.customized_copy(data=flex.int([uniquestrings.index(d) for d in array.data()]))
+        array.set_info(info)
+      if array.space_group() is None:
+        array._unit_cell = uc
+        array._space_group_info = spg.info()
+        self.mprint("""No unit cell or space group info present in the %d. miller array.
+Borrowing them from the first miller array""" %i)
+      wrap_labels = 25
+      arrayinfo = ArrayInfo(array,wrap_labels)
+      info_fmt, dummy, dummy2 = arrayinfo.get_selected_info_columns_from_phil(self.params )
+      self.viewer.array_info_format_tpl.append( info_fmt )
+      if len(colnames_select_lst) == 0:
+        for philname,selected in list(self.params.selected_info.__dict__.items()):
+          if not philname.startswith("__"):
+            colnames_select_lst.append((philname, arrayinfo.caption_dict[philname], selected))
+    return colnames_select_lst, arrayinfo
+
+
+  def commitSubgroupDatasets(self):
+    if self.params.commit_subgroup_datasets==False:
+      return
+    self.procarrays = self.viewer.proc_arrays[:] # assuming these are expanded to a subgroup
+    procarray, procarray_info = self.process_miller_array(self.viewer.miller_array)
+    _, arrayinfo = self.update_arrayinfos()
+    # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
+    self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
+    # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
+    # First create a superset of HKLs existing miller arrays and the new procarray.
+    self.origarrays["HKLs"] = procarray.indices()[:]
+    for arr in self.procarrays:
+      if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
+        if arr.sigmas() == None:
+          self.origarrays[arr.info().label_string()] = arr.data()
+        else:
+          self.origarrays[arr.info().labels[0]] = arr.data()
+          self.origarrays[arr.info().labels[1]] = arr.sigmas()
+
+    self.update_space_group_choices(0) # get the default spacegroup choice
+    self.arrayinfos.append(arrayinfo)
+    self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
+    mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
+              "ano_spg_tpls": self.ano_spg_tpls,
+              "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
+              "spacegroup_info": arrayinfo.spginf,
+              "unitcell_info": [arrayinfo.ucellinf],
+              "NewHKLscenes" : True,
+              "NewMillerArray" : True,
+              "file_name": self.loaded_file_name + " expanded"
+              }
+    self.SendInfoToGUI(mydict)
+    self.validated_preset_buttons = False
+    self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
+    self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
+
+
   def AddDataset2ExistingOnes(self, newarray, label=None, info=None):
     self.mprint("New dataset has %d reflections." %newarray.size())
     if info is not None:
@@ -916,7 +952,7 @@ class HKLViewFrame() :
       newarray._info.labels = [ label, "Sig" +label ]
     procarray, procarray_info = self.process_miller_array(newarray)
     self.procarrays.append(procarray)
-    self.viewer.proc_arrays = self.procarrays
+    self.viewer.proc_arrays = self.procarrays[:]
     self.viewer.has_new_miller_array = True
     wrap_labels = 25
     arrayinfo = ArrayInfo(procarray,wrap_labels)
@@ -991,7 +1027,7 @@ class HKLViewFrame() :
     self.viewer.isnewfile = True
     self.params.viewer.scene_id = None
     self.viewer.match_valarrays = []
-    self.viewer.proc_arrays = {}
+    self.viewer.proc_arrays = []
     self.spacegroup_choices = []
     self.origarrays = {}
     display.reset_settings()
@@ -1075,11 +1111,17 @@ class HKLViewFrame() :
       self.mprint(msg)
       self.NewFileLoaded=False
     elif (len(valid_arrays) >= 1):
-      self.set_miller_array()
+      #self.set_miller_array()
+
+      array_info = self.process_all_miller_arrays(valid_arrays)
+      self.viewer.proc_arrays = self.procarrays[:]
+      self.viewer.identify_suitable_fomsarrays()
+      self.viewer.set_miller_array(None, merge=array_info.merge,
+         details=array_info.details_str)
+
       self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
       self.update_space_group_choices(0) # get the default spacegroup choice
       mydict = { "info": self.infostr,
-                  #"bin_infotpls": self.viewer.bin_infotpls,
                   "ano_spg_tpls": self.ano_spg_tpls,
                   "html_url": self.viewer.url,
                   "tncsvec": self.tncsvec,
@@ -1996,6 +2038,9 @@ master_phil_str = """
             "in the loaded data file. The CCTBX API is used for this"
   spacegroup_choice = None
     .type = int
+  commit_subgroup_datasets = False
+    .type = bool
+    .help = "Replaces current datasets (irreversibly) with the datasets expanded to a selected subgroup. Datasets can then be saved as a new reflection file"
   using_space_subgroup = False
     .type = bool
     .help = "internal flag"

@@ -803,6 +803,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if "_xtricorder.mtz" in self.currentfileName:
       self.AddAlertsText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
       return
+    if "expanded" in self.currentfileName:
+      self.AddAlertsText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtricorder\n")
+      return
     from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
     firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
@@ -864,6 +867,9 @@ shutil.rmtree("%s")
     if not self.current_labels:
       QMessageBox.warning(self.window, "HKLviewer",
         "To run Xtriage you must first display an observation dataset", buttons=QMessageBox.Ok)
+      return
+    if "expanded" in self.currentfileName:
+      self.AddAlertsText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtriage\n")
       return
     if self.currentfileName:
       firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
@@ -2001,6 +2007,8 @@ viewer.user_vector {
     self.expandP1checkbox.clicked.connect(self.ExpandToP1)
     self.expandAnomalouscheckbox.clicked.connect(self.ExpandAnomalous)
     self.ExpandReflsGroupBox.clicked.connect(self.ExpandRefls)
+    self.commitSubgroupExpansionBtn.clicked.connect(self.onCommitSubgroupExpansion)
+    self.commitSubgroupExpansionBtn.setEnabled(False)
     self.sysabsentcheckbox.clicked.connect(self.showSysAbsent)
     self.missingcheckbox.clicked.connect(self.showMissing)
     self.onlymissingcheckbox.clicked.connect(self.showOnlyMissing)
@@ -2440,11 +2448,20 @@ clip_plane {
     pass
 
 
+  def onCommitSubgroupExpansion(self):
+    ret = QMessageBox.warning(self.window, "Expand datasets to selected subgroup",
+                              "This will irreversibly expand all datasets to the selected subgroup\nAre you sure?",
+                              buttons=QMessageBox.Yes|QMessageBox.No, defaultButton=QMessageBox.No)
+    if ret == QMessageBox.Yes:
+      self.send_message('commit_subgroup_datasets = True')
+      self.commitSubgroupExpansionBtn.setEnabled(False)
+
+
   def onAddDataset(self):
     label, ok = QInputDialog().getText(self.window, "Enter a unique label for the new dataset",
                                          "Create new dataset of visible reflections with this label:")
     if ok and label:
-      self.send_message('visible_dataset_label = "%s"' %label)
+       self.send_message('visible_dataset_label = "%s"' %label)
 
 
   def createFileInfoBox(self):
@@ -2562,6 +2579,10 @@ clip_plane {
 
   def onSpacegroupSelchange(self,i):
     self.send_message("spacegroup_choice = %d" %i)
+    if i==0:
+      self.commitSubgroupExpansionBtn.setEnabled(False)
+    else:
+      self.commitSubgroupExpansionBtn.setEnabled(True)
 
 
   def find_free_port(self):

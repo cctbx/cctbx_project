@@ -8,11 +8,11 @@
     <x>0</x>
     <y>0</y>
     <width>1047</width>
-    <height>746</height>
+    <height>860</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -157,8 +157,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>372</width>
-                  <height>542</height>
+                  <width>460</width>
+                  <height>629</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -388,8 +388,8 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>377</width>
-                   <height>412</height>
+                   <width>461</width>
+                   <height>425</height>
                   </rect>
                  </property>
                  <property name="sizePolicy">
@@ -411,7 +411,7 @@
                   <property name="bottomMargin">
                    <number>0</number>
                   </property>
-                  <item row="0" column="0">
+                  <item row="1" column="0">
                    <widget class="QTabWidget" name="functionTabWidget">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
@@ -420,20 +420,16 @@
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>2</number>
+                     <number>0</number>
                     </property>
-                    <widget class="QWidget" name="tab">
+                    <widget class="QWidget" name="expansion_tab">
+                     <property name="toolTipDuration">
+                      <number>5</number>
+                     </property>
                      <attribute name="title">
                       <string>Expansion</string>
                      </attribute>
                      <layout class="QGridLayout" name="gridLayout_28">
-                      <item row="1" column="0" alignment="Qt::AlignTop">
-                       <widget class="QCheckBox" name="sysabsentcheckbox">
-                        <property name="text">
-                         <string>Show Systematic Absences</string>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="0" column="0" colspan="3" alignment="Qt::AlignTop">
                        <widget class="QGroupBox" name="ExpandReflsGroupBox">
                         <property name="sizePolicy">
@@ -487,6 +483,39 @@
                         </layout>
                        </widget>
                       </item>
+                      <item row="1" column="0" alignment="Qt::AlignTop">
+                       <widget class="QCheckBox" name="sysabsentcheckbox">
+                        <property name="text">
+                         <string>Show Systematic Absences</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1" colspan="2" alignment="Qt::AlignTop">
+                       <widget class="QComboBox" name="SpaceGroupComboBox">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0" alignment="Qt::AlignTop">
+                       <widget class="QLabel" name="SpacegroupLabel">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="text">
+                         <string>Space Subgroups</string>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="1" column="1" colspan="2" alignment="Qt::AlignTop">
                        <widget class="QWidget" name="widget_3" native="true">
                         <property name="sizePolicy">
@@ -508,6 +537,13 @@
                          <property name="bottomMargin">
                           <number>0</number>
                          </property>
+                         <item row="2" column="0">
+                          <widget class="QCheckBox" name="onlymissingcheckbox">
+                           <property name="text">
+                            <string>Only</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="0" column="0" rowspan="2" colspan="2">
                           <widget class="QCheckBox" name="missingcheckbox">
                            <property name="toolTip">
@@ -518,45 +554,44 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QCheckBox" name="onlymissingcheckbox">
-                           <property name="text">
-                            <string>Only</string>
-                           </property>
-                          </widget>
-                         </item>
                         </layout>
                        </widget>
                       </item>
-                      <item row="2" column="0" alignment="Qt::AlignTop">
-                       <widget class="QLabel" name="SpacegroupLabel">
+                      <item row="8" column="0" colspan="3">
+                       <widget class="QFrame" name="dummyframe">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                           <horstretch>0</horstretch>
                           <verstretch>2</verstretch>
                          </sizepolicy>
                         </property>
-                        <property name="text">
-                         <string>Space Subgroups</string>
+                        <property name="frameShape">
+                         <enum>QFrame::StyledPanel</enum>
+                        </property>
+                        <property name="frameShadow">
+                         <enum>QFrame::Raised</enum>
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1" colspan="2" alignment="Qt::AlignTop">
-                       <widget class="QComboBox" name="SpaceGroupComboBox">
+                      <item row="7" column="1" colspan="2">
+                       <widget class="QPushButton" name="commitSubgroupExpansionBtn">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
                           <horstretch>0</horstretch>
-                          <verstretch>2</verstretch>
+                          <verstretch>0</verstretch>
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Selected subgroup is applied to expand all datasets in the reflection datafile. These can then be saved as a new reflection datafile.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Commit subgroup expansion of all datasets...</string>
                         </property>
                        </widget>
                       </item>
                      </layout>
                     </widget>
-                    <widget class="QWidget" name="tab_2">
+                    <widget class="QWidget" name="slicing_tab">
                      <attribute name="title">
                       <string>Slicing</string>
                      </attribute>
@@ -1015,7 +1050,7 @@
                       </item>
                      </layout>
                     </widget>
-                    <widget class="QWidget" name="tab_3">
+                    <widget class="QWidget" name="sizing_tab">
                      <attribute name="title">
                       <string>Sizing</string>
                      </attribute>
@@ -1169,7 +1204,7 @@
                       </item>
                      </layout>
                     </widget>
-                    <widget class="QWidget" name="tab_4">
+                    <widget class="QWidget" name="bining_tab">
                      <attribute name="title">
                       <string>Binning</string>
                      </attribute>
@@ -1344,7 +1379,7 @@
                       </item>
                      </layout>
                     </widget>
-                    <widget class="QWidget" name="tab_5">
+                    <widget class="QWidget" name="vectors_tab">
                      <attribute name="title">
                       <string>Vectors</string>
                      </attribute>
@@ -1405,13 +1440,6 @@
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="0">
-                          <widget class="QCheckBox" name="DrawReciprocUnitCellBox">
-                           <property name="text">
-                            <string>Show Unit Cell</string>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="0" column="2" rowspan="2">
                           <widget class="QLabel" name="label_4">
                            <property name="text">
@@ -1419,6 +1447,13 @@
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="DrawReciprocUnitCellBox">
+                           <property name="text">
+                            <string>Show Unit Cell</string>
                            </property>
                           </widget>
                          </item>
