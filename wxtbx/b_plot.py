@@ -106,28 +106,28 @@ class analyze(object):
         altconf_val = max(min([ resi.avg_b for resi in residues ]) - 2, 0)
         resid_start = ("%d%s" % (residues[0].resseq,residues[0].icode)).strip()
         resid_end = ("%d%s" % (residues[-1].resseq,residues[-1].icode)).strip()
-        chain_vals = [] #numpy.array([])
-        is_altconf = [] #numpy.array([])
-        is_partocc = [] #numpy.array([])
+        chain_vals = numpy.array([])
+        is_altconf = numpy.array([])
+        is_partocc = numpy.array([])
         labels = []
         last_resseq = None
         for residue in residues :
           if (last_resseq is not None):
             if (residue.resseq > (last_resseq + 1)):
               gap_size = residue.resseq - last_resseq
-              chain_vals.extend([numpy.NaN]* gap_size)
-              is_altconf.extend([numpy.NaN] * gap_size)
-              is_partocc.extend([numpy.NaN] * gap_size)
+              chain_vals = numpy.append(chain_vals,[numpy.NaN]* gap_size)
+              is_altconf = numpy.append(is_altconf,[numpy.NaN] * gap_size)
+              is_partocc = numpy.append(is_partocc,[numpy.NaN] * gap_size)
               labels.extend([None] * gap_size)
           if (residue.has_altconf):
-            is_altconf.append(altconf_val)
+            is_altconf = numpy.append(is_altconf, altconf_val)
           else :
-            is_altconf.append(numpy.NaN)
+            is_altconf = numpy.append(is_altconf, numpy.NaN)
           if (residue.has_partocc):
-            is_partocc.append(altconf_val)
+            is_partocc = numpy.append(is_partocc, altconf_val)
           else :
-            is_partocc.append(numpy.NaN)
-          chain_vals.append(residue.avg_b)
+            is_partocc = numpy.append(is_partocc, numpy.NaN)
+          chain_vals = numpy.append(chain_vals,residue.avg_b)
           labels.append(("%d%s" % (residue.resseq, residue.icode)).strip())
           last_resseq = residue.resseq
         chain_label = "Chain '%s' (%s - %s)" % (chain, resid_start, resid_end)
