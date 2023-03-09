@@ -9,11 +9,6 @@ API documentation
 Input methods and objects
 -------------------------
 
-.. autoclass:: iotbx.pdb.hierarchy.input
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 .. autofunction:: iotbx.pdb.input
 
 .. autoclass:: iotbx.pdb.ext.input
