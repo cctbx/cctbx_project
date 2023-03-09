@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
-from libtbx.utils import import_python_object, Sorry, multi_out
+from libtbx.utils import import_python_object, multi_out
 from libtbx import group_args, Auto
 from multiprocessing import Pool, cpu_count
 from six.moves import cStringIO as StringIO
