@@ -128,14 +128,15 @@ def exercise_combine_symmetry():
   """
   from mmtbx.regression import model_1yjp
   import mmtbx.command_line
-  import iotbx.pdb.hierarchy
+  import iotbx.pdb
   from cctbx import sgtbx
   from cctbx import uctbx
   # 1yjp, as usual
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
-  xrs = pdb_in.input.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
+  hierarchy = pdb_in.construct_hierarchy()
+  xrs = pdb_in.xray_structure_simple()
   f = open("tst_combine_symmetry.pdb", "w")
-  f.write(pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+  f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
   f_calc = abs(xrs.structure_factors(d_min=1.5).f_calc())
   # Make up slightly more exact unit cell, but set SG to P2
@@ -251,7 +252,7 @@ def exercise_load_unmerged():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_load_unmerged"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
   xrs = pdb_in.xray_structure_simple()
   xrs.set_inelastic_form_factors(
     photon=1.54,

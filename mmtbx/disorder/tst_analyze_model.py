@@ -2,15 +2,15 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.disorder import analyze_model
 from mmtbx.validation import molprobity
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from libtbx.utils import null_out
 import libtbx.load_env
 import mmtbx.model
 from six.moves import cStringIO as StringIO
 
 def analyze_fragment(pdb_str):
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
-  model = mmtbx.model.manager(pdb_in.input)
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(pdb_in)
   validation = molprobity.molprobity(model, outliers_only=False)
   result = analyze_model.process_pdb_hierarchy(
     pdb_hierarchy=model.get_hierarchy(),

@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.disorder import backbone
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from six.moves import cStringIO as StringIO
 
 pdb_raw = """
@@ -103,11 +103,11 @@ END
 """
 
 def exercise():
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
+  hierarchy = iotbx.pdb.input(source_info=None, lines=pdb_raw).construct_hierarchy()
   with open("tmp.pdb", "w") as f:
-    f.write(pdb_in.hierarchy.as_pdb_string())
+    f.write(hierarchy.as_pdb_string())
   backrubs = backbone.find_backrubs(
-    pdb_hierarchy=pdb_in.hierarchy)
+    pdb_hierarchy=hierarchy)
   assert (len(backrubs) == 1)
   out = StringIO()
   backrubs[0].show(out=out)

@@ -75,8 +75,8 @@ these steps::
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      pdb_obj.construct_hierarchy().overall_counts().show()
 
   if (__name__ == "__main__"):
     run(sys.argv[1:])
@@ -104,8 +104,8 @@ us exactly where the error originates. This is often extremely helpful.
 
 The meat of the script is in these two lines::
 
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      pdb_obj.construct_hierarchy().overall_counts().show()
 
 The first line executes the two steps outline above. This is really
 all we need, but the second line produces output that is useful to
@@ -206,14 +206,15 @@ as found in `v1_loop_over_atoms.py`_::
   from __future__ import division
   import iotbx.pdb
   import sys
-  
+
   def run(args):
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
-      for model in pdb_obj.hierarchy.models():
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_obj.construct_hierarchy()
+      hierarchy.overall_counts().show()
+      for model in hierarchy.models():
         for chain in model.chains():
           for rg in chain.residue_groups():
             print 'resid: "%s"' % rg.resid()
@@ -221,7 +222,7 @@ as found in `v1_loop_over_atoms.py`_::
               print '  altloc: "%s", resname: "%s"' % (ag.altloc, ag.resname)
               for atom in ag.atoms():
                 print '    ', atom.name
-  
+
   if (__name__ == "__main__"):
     run(sys.argv[1:])
 
@@ -300,16 +301,17 @@ The complete source for this script::
   import iotbx.pdb
   import iotbx.pdb.amino_acid_codes
   import sys
-  
+
   def run(args):
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
     ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
-      for model in pdb_obj.hierarchy.models():
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_obj.construct_hierarchy()
+      hierarchy.overall_counts().show()
+      for model in hierarchy.models():
         for chain in model.chains():
           for rg in chain.residue_groups():
             for ag in rg.atom_groups():
@@ -318,8 +320,8 @@ The complete source for this script::
                   if (atom.name not in ala_atom_names):
                     ag.remove_atom(atom=atom)
       output_pdb = "v2_truncated_to_ala_"+file_name
-      pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
-  
+      hierarchy.write_pdb_file(file_name=output_pdb)
+
   if (__name__ == "__main__"):
     run(sys.argv[1:])
 
@@ -423,16 +425,17 @@ The complete source for this script::
   import iotbx.pdb
   import iotbx.pdb.amino_acid_codes
   import sys
-  
+
   def run(args):
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
     ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
-      for model in pdb_obj.hierarchy.models():
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_obj.construct_hierarchy()
+      hierarchy.overall_counts().show()
+      for model in hierarchy.models():
         for chain in model.chains():
           for rg in chain.residue_groups():
             def have_amino_acid():
@@ -446,8 +449,8 @@ The complete source for this script::
                   if (atom.name not in ala_atom_names):
                     ag.remove_atom(atom=atom)
       output_pdb = "v3_truncated_to_ala_"+file_name
-      pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
-  
+      hierarchy.write_pdb_file(file_name=output_pdb)
+
   if (__name__ == "__main__"):
     run(sys.argv[1:])
 
@@ -516,7 +519,7 @@ There are three more small enhancements compared to the
     working directory, not the directory of the input file (which
     may be in another user's directory or a system directory)
 
-  - ``iotbx.pdb.hierarchy.input`` is able to open `.gz` files
+  - ``iotbx.pdb.input`` is able to open `.gz` files
     directly (e.g. compressed files as downloaded from the PDB).
     However, the ``.write_pdb_file()`` method always writes plain
     (non-compressed) files. Therefore the ``.gz`` extension has to be
@@ -535,19 +538,20 @@ Full source::
   import iotbx.pdb
   import iotbx.pdb.amino_acid_codes
   import sys, os
-  
+
   def run(args):
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
     ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_obj.construct_hierarchy()
+      hierarchy.overall_counts().show()
       n_amino_acid_residues = 0
       n_other_residues = 0
       n_atoms_removed = 0
-      for model in pdb_obj.hierarchy.models():
+      for model in hierarchy.models():
         for chain in model.chains():
           for rg in chain.residue_groups():
             def have_amino_acid():
@@ -571,12 +575,12 @@ Full source::
         output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
         if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
         print "Writing file:", output_pdb
-        pdb_obj.hierarchy.write_pdb_file(
+        hierarchy.write_pdb_file(
           file_name=output_pdb,
-          crystal_symmetry=pdb_obj.input.crystal_symmetry(),
+          crystal_symmetry=pdb_obj.crystal_symmetry(),
           append_end=True)
       print
-  
+
   if (__name__ == "__main__"):
     run(sys.argv[1:])
 

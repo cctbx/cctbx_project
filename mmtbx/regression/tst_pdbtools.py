@@ -6,13 +6,11 @@ from libtbx.utils import remove_files
 from mmtbx import utils
 from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
   show_diff
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from scitbx.array_family import flex
 from cctbx import adptbx
 import mmtbx.model
-import iotbx.pdb
-from six.moves import cStringIO as StringIO
-from six.moves import zip
+from six.moves import cStringIO as StringIO, zip
 from libtbx import easy_run
 
 full_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -562,13 +560,12 @@ END
   print(cmd)
   run_command(command=cmd)
   gly_atom_names = [" N  ", " CA ", " C  ", " O  ", " CB "]
-  pdb_inp = iotbx.pdb.hierarchy.input(
+  pdb_inp = iotbx.pdb.input(
     file_name="exercise_exercise_truncate_to_polyala_modified.pdb")
-  for a in pdb_inp.hierarchy.atoms_with_labels():
+  for a in pdb_inp.construct_hierarchy().atoms_with_labels():
     assert a.name in gly_atom_names
 
 def exercise_set_charge():
-  from iotbx import file_reader
   input_pdb = """
 ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
 END
@@ -578,8 +575,8 @@ END
   cmd='phenix.pdbtools tmp_cl.pdb charge_selection="element Cl" charge=-1'
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pdb_in = file_reader.any_file("tmp_cl_modified.pdb").file_object
-  hierarchy = pdb_in.hierarchy
+  pdb_in = iotbx.pdb.input("tmp_cl_modified.pdb")
+  hierarchy = pdb_in.construct_hierarchy()
   xrs = pdb_in.xray_structure_simple()
   assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
   assert (hierarchy.atoms()[0].charge == '1-')

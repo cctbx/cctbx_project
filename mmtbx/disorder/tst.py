@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx import disorder
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
@@ -58,8 +58,8 @@ ATOM      2  CA  ARG A  74      35.915   7.291  10.970  0.01 13.55           C
 ATOM      3  CA  LYS A  75      37.173   3.719  10.662  0.01 13.28           C
 ENDMDL
 """
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
-  hierarchy = pdb_in.hierarchy
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  hierarchy = pdb_in.construct_hierarchy()
   disorder.set_ensemble_b_factors_to_xyz_displacement(
     pdb_hierarchy=hierarchy,
     method="rmsf",
