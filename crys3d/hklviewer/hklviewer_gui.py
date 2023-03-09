@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'HKLviewer5.ui'
+## Form generated from reading UI file 'HKLviewer6.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.15.2
 ##
@@ -22,12 +22,11 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1047, 860)
+        MainWindow.resize(1047, 857)
         sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -72,6 +71,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setSpacing(4)
         self.gridLayout_2.setContentsMargins(3, 3, 3, 3)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
         self.widget = QWidget(self.centralwidget)
         self.widget.setObjectName(u"widget")
         sizePolicy1.setHeightForWidth(self.widget.sizePolicy().hasHeightForWidth())
@@ -139,7 +139,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 460, 629))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 367, 607))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -265,7 +265,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 461, 425))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 368, 425))
         sizePolicy6.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
         self.scrollAreaWidgetContents.setSizePolicy(sizePolicy6)
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
@@ -1055,7 +1055,24 @@ class Ui_MainWindow(object):
 
         self.tabWidget.addTab(self.tabDetails, "")
         self.splitter_2.addWidget(self.tabWidget)
-        self.tabText = QTabWidget(self.splitter_2)
+
+        self.gridLayout_31.addWidget(self.splitter_2, 0, 0, 1, 1)
+
+
+        self.gridLayout_9.addWidget(self.widget_2, 0, 0, 1, 1)
+
+        self.dockWidget.setWidget(self.dockControls)
+        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget)
+        self.dockWidget_2 = QDockWidget(MainWindow)
+        self.dockWidget_2.setObjectName(u"dockWidget_2")
+        self.dockWidgetContents = QWidget()
+        self.dockWidgetContents.setObjectName(u"dockWidgetContents")
+        self.gridLayout_33 = QGridLayout(self.dockWidgetContents)
+        self.gridLayout_33.setSpacing(0)
+        self.gridLayout_33.setContentsMargins(3, 3, 3, 3)
+        self.gridLayout_33.setObjectName(u"gridLayout_33")
+        self.gridLayout_33.setContentsMargins(0, 0, 0, 0)
+        self.tabText = QTabWidget(self.dockWidgetContents)
         self.tabText.setObjectName(u"tabText")
         sizePolicy1.setHeightForWidth(self.tabText.sizePolicy().hasHeightForWidth())
         self.tabText.setSizePolicy(sizePolicy1)
@@ -1113,15 +1130,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.textAlerts, 0, 0, 1, 1)
 
         self.tabText.addTab(self.tabWarnings, "")
-        self.splitter_2.addWidget(self.tabText)
 
-        self.gridLayout_31.addWidget(self.splitter_2, 0, 0, 1, 1)
+        self.gridLayout_33.addWidget(self.tabText, 0, 0, 1, 1)
 
-
-        self.gridLayout_9.addWidget(self.widget_2, 0, 0, 1, 1)
-
-        self.dockWidget.setWidget(self.dockControls)
-        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget)
+        self.dockWidget_2.setWidget(self.dockWidgetContents)
+        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget_2)
 
         self.retranslateUi(MainWindow)
 
@@ -1303,6 +1316,7 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.vectors_tab), QCoreApplication.translate("MainWindow", u"Vectors", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabDetails), QCoreApplication.translate("MainWindow", u"Details", None))
+        self.dockWidget_2.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi
