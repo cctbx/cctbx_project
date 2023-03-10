@@ -197,15 +197,15 @@ class SegmentedControl(wx.Control):
         (txt_x, txt_y) = (self._padding + 1, self._padding + 1)
         if self._style & SEGBTN_VERTICAL :
           if i > 0 :
-            dc.DrawLine(self._border, current_y, w + self._border - 1,
-              current_y)
+            dc.DrawLine(int(self._border), int(current_y), int(w + self._border - 1),
+              int(current_y))
             current_y += 1
           txt_y += current_y
           txt_x += self._border
         else :
           if i > 0 :
-            dc.DrawLine(current_x, self._border + 1, current_x,
-              h + self._border - 1)
+            dc.DrawLine(int(current_x), int(self._border + 1), int(current_x),
+              int(h + self._border - 1))
             current_x += 1
           txt_x += current_x
           txt_y += self._border
@@ -219,9 +219,9 @@ class SegmentedControl(wx.Control):
           rgc.SetBrush(brush)
           gc.SetPen(wx.TRANSPARENT_PEN)
           if self._style & SEGBTN_ROUNDED_CORNERS and (i == 0 or i == n_seg):
-            gc.DrawRoundedRectangle(current_x, current_y, seg_w, seg_h, 1)
+            gc.DrawRoundedRectangle(int(current_x), int(current_y), int(seg_w), int(seg_h), 1)
           else :
-            gc.DrawRectangle(current_x, current_y, seg_w, seg_h)
+            gc.DrawRectangle(int(current_x), int(current_y), int(seg_w), int(seg_h))
           #gc.DrawRectangle(current_x, current_y, total_w, total_h)
         rgc.SetBrush(gradient_brush)
         gc.SetBrush(wx.TRANSPARENT_BRUSH)
@@ -254,7 +254,7 @@ class SegmentedControl(wx.Control):
           extra_h = seg_h - label_h - (self._padding*2)
           if extra_h > 0 :
             txt_y += extra_h / 2
-          gc.DrawText(label, txt_x, txt_y)
+          gc.DrawText(label, int(txt_x), int(txt_y))
         if self._style & SEGBTN_VERTICAL :
           current_y += seg_h
         else :
