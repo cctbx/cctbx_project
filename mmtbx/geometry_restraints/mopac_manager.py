@@ -12,10 +12,13 @@ from mmtbx.geometry_restraints.base_qm_manager import get_internal_coordinate_va
 def get_exe():
   bin_dir = libtbx.env.under_base('bin')
   exe_path = os.path.join(bin_dir, 'mopac')
+  win_exe_path = os.path.join(bin_dir, 'mopac.exe')
   if os.environ.get('PHENIX_MOPAC', False):
     return os.environ['PHENIX_MOPAC']
   elif os.path.exists(exe_path):
     return exe_path
+  elif os.path.exists(win_exe_path):
+    return win_exe_path
   return False
 
 class mopac_manager(base_qm_manager.base_qm_manager):
