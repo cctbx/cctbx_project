@@ -789,17 +789,17 @@ class pdb_header_info(slots_getstate_setstate):
     for name in self.__slots__ :
       setattr(self, name, None)
     if (pdb_file is not None):
-      import iotbx.pdb.hierarchy
+      import iotbx.pdb
       from iotbx.pdb import extract_rfactors_resolutions_sigma
-      pdb_in = iotbx.pdb.hierarchy.input(file_name=pdb_file)
+      pdb_in = iotbx.pdb.input(file_name=pdb_file)
       published_results = extract_rfactors_resolutions_sigma.extract(
-        file_lines=pdb_in.input.remark_section(), file_name=None)
+        file_lines=pdb_in.remark_section(), file_name=None)
       if (published_results is not None):
         self.r_work = published_results.r_work
         self.r_free = published_results.r_free
         self.d_min = published_results.high
         self.d_max = published_results.low
-      self.refinement_program = pdb_in.input.get_program_name()
+      self.refinement_program = pdb_in.get_program_name()
       # XXX phenix.refine hack, won't work for other programs
       with open(pdb_file) as f:
         lines = f.readlines()
@@ -810,7 +810,7 @@ class pdb_header_info(slots_getstate_setstate):
           self.rms_angles = float(fields[-1])
           break
       if (pdb_hierarchy is not None):
-        tls_groups = pdb_in.input.extract_tls_params(pdb_hierarchy).tls_params
+        tls_groups = pdb_in.extract_tls_params(pdb_hierarchy).tls_params
         if (tls_groups is not None):
           self.n_tls_groups = len(tls_groups)
 

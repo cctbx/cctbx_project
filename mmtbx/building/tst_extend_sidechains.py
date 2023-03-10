@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 import os.path
+import iotbx.pdb.hierarchy
+
 from six.moves import zip
 
 def exercise_model_only():
   from mmtbx.building import extend_sidechains
-  import iotbx.pdb.hierarchy
   import mmtbx.monomer_library
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""
 ATOM     65  N   LYS A   7       6.033   4.704   1.582  1.00 17.49           N
 ATOM     66  CA  LYS A   7       5.159   5.427   2.499  1.00 18.23           C
 ATOM     67  C   LYS A   7       4.673   4.437   3.507  1.00 14.78           C
@@ -17,10 +18,11 @@ ATOM     70  CG  LYS A   7       4.345   7.215   0.830  1.00 33.58           C
 ATOM     71  CD  LYS A   7       3.213   7.570  -0.123  1.00 41.39           C
 ATOM     72  CE  LYS A   7       2.976   6.471  -1.165  1.00 48.81           C
 """)
+  h = pdb_in.construct_hierarchy()
   extend_sidechains.extend_protein_model(
-    pdb_hierarchy=pdb_in.hierarchy,
+    pdb_hierarchy=h,
     mon_lib_srv=mmtbx.monomer_library.server.server())
-  assert (pdb_in.hierarchy.as_pdb_string() == """\
+  assert (h.as_pdb_string() == """\
 ATOM      1  N   LYS A   7       6.033   4.704   1.582  1.00 17.49           N
 ATOM      2  CA  LYS A   7       5.159   5.427   2.499  1.00 18.23           C
 ATOM      3  C   LYS A   7       4.673   4.437   3.507  1.00 14.78           C
@@ -36,15 +38,15 @@ TER
 def exercise_cmdline():
   from mmtbx.command_line import extend_sidechains
   from mmtbx.regression import model_1yjp
-  import iotbx.pdb.hierarchy
   pdb_file = "tst_extend_sidechains.pdb"
   mtz_file = "tst_extend_sidechains.mtz"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
-  xrs = pdb_in.input.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
+  xrs = pdb_in.xray_structure_simple()
+  h_in = pdb_in.construct_hierarchy()
   f_calc = abs(xrs.structure_factors(d_min=1.5).f_calc())
-  sel = pdb_in.hierarchy.atom_selection_cache().selection(
+  sel = h_in.atom_selection_cache().selection(
     "not (resname TYR and not (name c or name o or name n or name oxt or name ca or name cb))")
-  hierarchy = pdb_in.hierarchy.select(sel)
+  hierarchy = h_in.select(sel)
   f = open(pdb_file, "w")
   f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f.close()
@@ -61,9 +63,10 @@ def exercise_cmdline():
     out=out)
   assert ("1 sidechains extended." in out.getvalue()), out.getvalue()
   from mmtbx.validation import rotalyze
-  pdb_new = iotbx.pdb.hierarchy.input(file_name=pdb_out)
-  r1 = rotalyze.rotalyze(pdb_hierarchy=pdb_in.hierarchy, outliers_only=False)
-  r2 = rotalyze.rotalyze(pdb_hierarchy=pdb_new.hierarchy, outliers_only=False)
+  pdb_new = iotbx.pdb.input(file_name=pdb_out)
+  h_new = pdb_new.construct_hierarchy()
+  r1 = rotalyze.rotalyze(pdb_hierarchy=h_in, outliers_only=False)
+  r2 = rotalyze.rotalyze(pdb_hierarchy=h_new, outliers_only=False)
   for o1, o2 in zip(r1.results, r2.results):
     assert o1.rotamer_name == o2.rotamer_name
   # Part 2: with sequence corrections
@@ -79,20 +82,19 @@ def exercise_cmdline():
 def exercise_correct_sequence():
   from mmtbx.building import extend_sidechains
   from mmtbx.regression import model_1yjp
-  import iotbx.pdb.hierarchy
   import iotbx.bioinformatics
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
+  hierarchy = iotbx.pdb.input(source_info=None, lines=model_1yjp).construct_hierarchy()
   sequences = [ iotbx.bioinformatics.sequence("GNDQQNY") ]
   out = StringIO()
   n_changed = extend_sidechains.correct_sequence(
-    pdb_hierarchy=pdb_in.hierarchy.deep_copy(),
+    pdb_hierarchy=hierarchy.deep_copy(),
     sequences=sequences,
     out=out)
   assert (n_changed == 1)
   assert ("  chain 'A'    3  ASP --> ASP (1 atoms removed)" in out.getvalue())
   out = StringIO()
   n_changed = extend_sidechains.correct_sequence(
-    pdb_hierarchy=pdb_in.hierarchy.deep_copy(),
+    pdb_hierarchy=hierarchy.deep_copy(),
     sequences=sequences,
     truncate_to_cbeta=True,
     out=out)

@@ -121,7 +121,7 @@ class clashscore(validation):
         print("\nUsing electron cloud x-H distances and vdW radii")
       else:
         print("\nUsing nuclear cloud x-H distances and vdW radii")
-    import iotbx.pdb.hierarchy
+    import iotbx.pdb
     from scitbx.array_family import flex
     from mmtbx.validation import utils
     n_models = len(pdb_hierarchy.models())
@@ -151,8 +151,8 @@ class clashscore(validation):
         use_segids=use_segids,
         verbose=verbose)
       if (save_modified_hierarchy):
-        self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
-          pdb_string=self.probe_clashscore_manager.h_pdb_string).hierarchy
+        self.pdb_hierarchy = iotbx.pdb.input(
+          pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
                                            clashscore_b_cutoff

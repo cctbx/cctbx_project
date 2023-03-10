@@ -5,7 +5,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import cc_star
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from cctbx import sgtbx
 from cctbx import uctbx
 from scitbx.array_family import flex
@@ -17,7 +17,7 @@ def exercise_space_group_handling():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_cc_star_space_group"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
   xrs = pdb_in.xray_structure_simple()
   xrs.set_inelastic_form_factors(
     photon=1.54,

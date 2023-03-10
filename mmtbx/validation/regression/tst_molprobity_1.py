@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import molprobity
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -200,8 +200,8 @@ END
 
 # test for corner cases (synthetic data okay)
 def exercise_synthetic():
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw_0)
-  xrs = pdb_in.input.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_raw_0)
+  xrs = pdb_in.xray_structure_simple()
   fc = abs(xrs.structure_factors(d_min=1.5).f_calc())
   flags = fc.resolution_filter(d_min=1.6).generate_r_free_flags()
   ls = fc.lone_set(other=flags)
@@ -238,7 +238,7 @@ def exercise_synthetic():
   # case 3: multi-MODEL structure
   # XXX This is not a very sophisticated test - it only ensures that the
   # program does not crash.  We need a test for expected output...
-  hierarchy = pdb_in.hierarchy
+  hierarchy = pdb_in.construct_hierarchy()
   model2 = hierarchy.only_model().detached_copy()
   hierarchy.append_model(model2)
   hierarchy.models()[0].id = "1"

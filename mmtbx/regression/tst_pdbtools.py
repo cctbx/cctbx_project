@@ -788,9 +788,9 @@ END
   s2 = ph_in.atoms_size()
   f = s2*100./s1
   #
-  # UNSTABLE 2x
+  # UNSTABLE 3x
   #
-  assert f>77 and f<100, f # was getting 79.16 on anaconda t96
+  assert f>77 and f<100, f # was getting 79.16, 70.8333 on anaconda t96,
 
 def exercise_change_of_basis():
   with open("tmp_pdbtools_cb_op.pdb", "w") as f:
