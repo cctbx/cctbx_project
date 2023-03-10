@@ -112,7 +112,10 @@ class slots_getstate_setstate(object):
     return dict([(name, getattr(self, name)) for name in mnames])
 
   def __setstate__(self, state):
-    for name,value in state.items(): setattr(self, name, value)
+    for name,value in state.items():
+      if isinstance(name, bytes):
+        name = name.decode('utf8')
+      setattr(self, name, value)
 
 class mutable(slots_getstate_setstate):
   __slots__ = ["value"]
