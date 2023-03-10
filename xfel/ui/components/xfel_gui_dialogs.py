@@ -1031,7 +1031,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
     # Processing back-ends
     self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.back_ends = ['cctbx.xfel (standard mode)', 'Small cell', 'custom']
+    self.back_ends = ['cctbx.xfel', 'Small cell', 'custom']
     self.dispatchers = ['cctbx.xfel.process', 'cctbx.xfel.small_cell_process', 'custom']
     # Legacy dispatchers disabled 12/14/22
     #self.back_ends = ['cctbx.xfel (LCLS mode)', 'cctbx.xfel (standalone mode)', 'Ha14', 'Small cell', 'custom']
@@ -2164,28 +2164,6 @@ class RunBlockDialog(BaseDialog):
                                  ctr_value=str(block.extra_format_str))
       self.format_sizer.Add(self.format, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Image format choice
-    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
-        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
-      if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
-        image_choices = ['pickle']
-      else:
-        image_choices = ['cbf','pickle']
-      self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
-                                        label='Image Format:',
-                                        label_size=(100, -1),
-                                        ctrl_size=(150, -1),
-                                        choices=image_choices)
-      if block.format:
-        try:
-          format_idx = image_choices.index(block.format)
-        except ValueError:
-          format_idx = 0 #in case of selecting an unavailable default
-      else:
-        format_idx = 0
-      self.img_format.ctr.SetSelection(format_idx)
-      self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
-
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
 
     self.runblocks_start = gctr.SpinCtrl(self.runblock_panel,
@@ -2242,9 +2220,6 @@ class RunBlockDialog(BaseDialog):
     if self.is_lcls:
       items = [('binning', block.binning),
                ('energy', block.energy)]
-      if self.parent.trial.app.params.dispatcher == "cctbx.xfel.xtc_process":
-        items.append(('gain_mask_level', block.gain_mask_level))
-
       self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
                                           name='rg_bin_nrg_gain',
                                           ctrl_size=(80, -1),
@@ -2288,48 +2263,6 @@ class RunBlockDialog(BaseDialog):
     self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
-        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
-      # Calibration folder
-      self.calib_dir = gctr.TextButtonCtrl(self.runblock_panel,
-                                           label='Calibration:',
-                                           label_style='normal',
-                                           label_size=(100, -1),
-                                           big_button=True,
-                                           value=str(block.calib_dir))
-      self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
-                              border=10)
-
-      # Dark average path (pickle only)
-      self.dark_avg_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                               label='Dark Average:',
-                                               label_style='normal',
-                                               label_size=(100, -1),
-                                               big_button=True,
-                                               value=str(block.dark_avg_path))
-      self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
-                              border=10)
-
-      # Dark stddev path (pickle only)
-      self.dark_stddev_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                                  label='Dark StdDev:',
-                                                  label_style='normal',
-                                                  label_size=(100, -1),
-                                                  big_button=True,
-                                                  value=str(block.dark_stddev_path))
-      self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
-                              border=10)
-
-      # Dark map path (pickle only)
-      self.gain_map_path = gctr.TextButtonCtrl(self.runblock_panel,
-                                               label='Gain Map:',
-                                               label_style='normal',
-                                               label_size=(100, -1),
-                                               big_button=True,
-                                               value=str(block.gain_map_path))
-      self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
-                              border=10)
-
     # Comment
     self.comment = gctr.TextButtonCtrl(self.runblock_panel,
                                        label='Comment:',
@@ -2360,18 +2293,6 @@ class RunBlockDialog(BaseDialog):
       self.Bind(wx.EVT_BUTTON, self.onImportFormat, self.format.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onUntrustedBrowse,
               id=self.untrusted_path.btn_big.GetId())
-    if self.is_lcls and self.parent.trial.app.params.dispatcher in \
-        ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
-      self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
-                id=self.dark_avg_path.btn_big.GetId())
-      self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
-      self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
-      self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
-                id=self.gain_map_path.btn_big.GetId())
-      self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
-                id=self.dark_stddev_path.btn_big.GetId())
-      self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse,
-                id=self.calib_dir.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
 
@@ -2486,14 +2407,6 @@ class RunBlockDialog(BaseDialog):
       rg_dict['beamy']=self.beam_xyz.Y.GetValue()
       rg_dict['energy']=self.bin_nrg_gain.energy.GetValue()
       rg_dict['wavelength_offset']=self.wavelength_offset.wavelength_offset.GetValue()
-      if self.parent.trial.app.params.dispatcher in \
-          ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
-        rg_dict['format']=self.img_format.ctr.GetStringSelection()
-        rg_dict['dark_avg_path']=self.dark_avg_path.ctr.GetValue()
-        rg_dict['dark_stddev_path']=self.dark_stddev_path.ctr.GetValue()
-        rg_dict['gain_map_path']=self.gain_map_path.ctr.GetValue()
-        rg_dict['gain_mask_level']=self.bin_nrg_gain.gain_mask_level.GetValue()
-        rg_dict['calib_dir']=self.calib_dir.ctr.GetValue()
       rg_dict['binning']=self.bin_nrg_gain.binning.GetValue()
       rg_dict['detector_address']=self.address.ctr.GetValue()
       rg_dict['config_str']=self.config.ctr.GetValue()
@@ -2561,13 +2474,6 @@ class RunBlockDialog(BaseDialog):
         self.wavelength_offset.wavelength_offset.SetValue(str(last.wavelength_offset))
         self.spectrum_calibration.spectrum_eV_per_pixel.SetValue(str(last.spectrum_eV_per_pixel))
         self.spectrum_calibration.spectrum_eV_offset.SetValue(str(last.spectrum_eV_offset))
-        if self.parent.trial.app.params.dispatcher in \
-            ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
-          self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
-          self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
-          self.gain_map_path.ctr.SetValue(str(last.gain_map_path))
-          self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
-          self.calib_dir.ctr.SetValue(str(last.calib_dir))
       self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
       self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
@@ -2925,12 +2831,8 @@ class TrialDialog(BaseDialog):
 
       # Parameter validation
       dispatcher = self.db.params.dispatcher
-      if dispatcher == 'cxi.xtc_process': #LABELIT
-        from spotfinder.applications.xfel import cxi_phil
-        phil_scope = cxi_phil.cxi_versioned_extract().persist.phil_scope
-      else:
-        from xfel.ui import load_phil_scope_from_dispatcher
-        phil_scope = load_phil_scope_from_dispatcher(dispatcher)
+      from xfel.ui import load_phil_scope_from_dispatcher
+      phil_scope = load_phil_scope_from_dispatcher(dispatcher)
 
       from iotbx.phil import parse
       msg = None
