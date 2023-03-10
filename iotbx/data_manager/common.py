@@ -279,7 +279,8 @@ class map_model_mixins(object):
         raise Sorry(
           'If from_phil is set to True, model_file and map_files must be None.')
 
-      params = self._program.params
+      from copy import deepcopy
+      params = deepcopy(self._program.params)
       if hasattr(params, 'map_model'):
         map_model = params.map_model
       elif hasattr(params, 'input_files') and hasattr(
@@ -288,7 +289,7 @@ class map_model_mixins(object):
       else:
         raise Sorry('Program does not have the "map_model" PHIL scope.')
 
-      model_file = map_model.model
+      model_file = getattr(map_model,'model', None)
 
       map_files = []
       full_map = getattr(map_model, 'full_map', None)
