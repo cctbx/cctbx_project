@@ -56,6 +56,8 @@ SUMMARY: 6 C-beta deviations >= 0.25 Angstrom (Goal: 0)
       assert (len(outlier.xyz) == 3)
     assert (validation.n_outliers == 6)
     assert (len(validation.results) == 51)
+    assert validation.percent_outliers > 0.
+    assert validation.percent_outliers==10.
     out = StringIO()
     validation.show_old_output(out=out, verbose=True)
     assert not show_diff(out.getvalue(), """\
@@ -161,5 +163,36 @@ ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  
   assert keys_3 == [[' C  ', ' CA ', ' CB ', ' N  ']]
   print("OK")
 
+def exercise_cbetadev_d_peptide():
+  from iotbx import pdb
+  from mmtbx.validation import cbetadev
+  hierarchy = pdb.input(source_info=None, lines='''
+HETATM  566  N   DAL A  11      17.834  32.465  30.842  1.00  5.31           N
+HETATM  567  CA  DAL A  11      16.839  31.829  29.896  1.00  4.19           C
+HETATM  568  CB  DAL A  11      16.047  30.735  30.590  1.00  5.94           C
+HETATM  569  C   DAL A  11      17.623  31.302  28.726  1.00  3.99           C
+HETATM  570  O   DAL A  11      18.770  30.854  28.916  1.00  5.73           O''').construct_hierarchy()
+  validation = cbetadev.cbetadev(
+    pdb_hierarchy=hierarchy,
+    outliers_only=True)
+  # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
+  for unpickle in [False, True] :
+    if unpickle :
+      validation = loads(dumps(validation))
+    assert (validation.n_outliers == len(validation.results) == 1)
+    assert ([ cb.id_str() for cb in validation.results ] ==
+      [' A  11  DAL'])
+    assert approx_equal([ cb.deviation for cb in validation.results ],
+      [2.4024791534406025])
+    print(validation.percent_outliers)
+    assert validation.percent_outliers>0.
+    out = StringIO()
+    validation.show_old_output(out=out, verbose=True)
+    print(out.getvalue())
+    for cb in validation.results:
+      print(cb.id_str(), cb.deviation)
+      assert cb.deviation<1.
+
 if (__name__ == "__main__"):
   exercise_cbetadev()
+  exercise_cbetadev_d_peptide()

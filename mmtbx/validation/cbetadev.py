@@ -103,7 +103,7 @@ class cbeta(residue):
              self.deviation, self.dihedral_NABB ]
 
 class cbetadev(validation):
-  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
+  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",'percent_outliers']
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -134,6 +134,7 @@ class cbetadev(validation):
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
+    n_residues=0
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         if use_segids:
@@ -148,6 +149,7 @@ class cbetadev(validation):
               is_first = (i_cf == 0)
               is_alt_conf = False
               relevant_atoms = {}
+              n_residues+=1
               for atom in residue.atoms():
                 if (atom.name in relevant_atom_names):
                   relevant_atoms[atom.name] = atom
@@ -221,6 +223,8 @@ class cbetadev(validation):
          self.n_outliers,
          total_residues,
         ))
+
+    self.percent_outliers=self.n_outliers/n_residues*100
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
