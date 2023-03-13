@@ -199,7 +199,6 @@ def _FindFlipsInOutputString(s, moverType):
         inBlock = True
   return ret
 
-
 def _IsMover(rg, movers):
   '''Is a residue group in the list of residues that have Movers?
   :param rg: residue group
@@ -876,6 +875,107 @@ NOTES:
 
 # ------------------------------------------------------------------------------
 
+  def _AddHydrogens(self):
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model = self.model,
+      use_neutron_distances=self.params.use_neutron_distances,
+      n_terminal_charge=self.params.n_terminal_charge,
+      exclude_water=True,
+      stop_for_unknowns=True,
+      keep_existing_H=False
+    )
+    reduce_add_h_obj.run()
+    reduce_add_h_obj.show(None)
+    missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
+    if len(missed_residues) > 0:
+      bad = ""
+      for res in missed_residues:
+        bad += " " + res
+      raise Sorry("Restraints were not found for the following residues:"+bad)
+    self.model = reduce_add_h_obj.get_model()
+
+# ------------------------------------------------------------------------------
+
+  def _ReinterpretModel(self, make_restraints=True):
+    self.model.get_hierarchy().sort_atoms_in_place()
+    self.model.get_hierarchy().atoms().reset_serial()
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
+    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    #p.pdb_interpretation.sort_atoms=True
+    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p) # make restraints
+
+# ------------------------------------------------------------------------------
+
+  def _GetAtomCharacteristics(self, bondedNeighborLists):
+    '''Determine additional characteristics needed to determine probe dots.
+    :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
+    structure that the atom from the first parameter interacts with that lists all of the
+    bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
+    :return: Tuple of maps to Booleans for whether the atom is in water, in Hetatm
+    group, in the main chain, and in a side chain.
+    '''
+    inWater = {}
+    inHet = {}
+    inMainChain = {}
+    inSideChain = {}
+    hetatm_sel = self.model.selection("hetatm")
+    mainchain_sel = self.model.selection("backbone")  # Will NOT include Hydrogen atoms on the main chain
+    sidechain_sel = self.model.selection("sidechain") # Will include Hydrogen atoms on the side chain
+    for a in self.model.get_atoms():
+      inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
+      inHet[a] = hetatm_sel[a.i_seq]
+      if not a.element_is_hydrogen():
+        inMainChain[a] = mainchain_sel[a.i_seq]
+      else:
+        # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
+        if len(bondedNeighborLists[a]) != 1:
+          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
+                      str(len(bondedNeighborLists[a])))
+        else:
+          inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
+      inSideChain[a] = sidechain_sel[a.i_seq]
+    return (inWater, inHet, inMainChain, inSideChain)
+
+# ------------------------------------------------------------------------------
+
+  def _DescribeLockdown(self, flipMover, invertFlip, fixedUp):
+    '''Produce a flip-state string describing how to lock down the specified flip mover.
+    :param flipMover: The Optimizers.FlipMoverState object being locked down.
+    :param invertFlip: Do we want to invert the flip state relative to the one described
+    in the mover state?
+    :param fixedUp: Should the Fixup be applied after flipping?
+    :return: String description suitable for use in the --flip_states command-line option.
+    For example: 1 . A HIS 11H Flipped AnglesAdjusted
+    '''
+    if fixedUp:
+      adjustedString = 'AnglesAdjusted'
+    else:
+      adjustedString = 'AnglesNotAdjusted'
+    flipped = flipMover.flipped
+    if invertFlip:
+      flipped = not flipped
+    if flipped:
+      flipStateString = 'Flipped'
+    else:
+      flipStateString = 'Unflipped'
+    # @todo How to handle cases where the different alternates resulted in different placement
+    # for the flip Movers?  Presumably, we want to do them in backwards order and replace all of
+    # the alternates with '.' so that they always get handled and the last one is the one that
+    # is set.
+    '''
+    altId = flipMover.altId
+    if altId.strip() == '':
+      altId = '.'
+    '''
+    altId = '.'
+    return '{} {} {} {} {}{} {} {}'.format(flipMover.modelId+1, altId.lower(), flipMover.chain,
+      flipMover.resName, flipMover.resId, flipMover.iCode, flipStateString, adjustedString)
+
+# ------------------------------------------------------------------------------
+
   def validate(self):
     # Set the default output file name if one has not been given.
     if self.params.output.filename is None:
@@ -918,37 +1018,20 @@ NOTES:
     # Get our model.
     self.model = self.data_manager.get_model()
 
-    # Stores the initial coordinates for all of the atoms, including added hydrogens,
-    # for use in the Flipkins. Holds a list of tuples where the first is the atom
-    # record and the second is the 3-vector position of the atom.
-    initialAtomPositions = []
-
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
 
+    # Stores the initial coordinates for all of the atoms and the rest of the information
+    # about the original model for use by Kinemages.
+    initialModel = self.model.deep_copy()
+
     if self.params.approach == 'add':
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
       startAdd = work_clock()
-      reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-        model = self.model,
-        use_neutron_distances=self.params.use_neutron_distances,
-        n_terminal_charge=self.params.n_terminal_charge,
-        exclude_water=True,
-        stop_for_unknowns=True,
-        keep_existing_H=False
-      )
-      reduce_add_h_obj.run()
-      reduce_add_h_obj.show(None)
-      missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
-      if len(missed_residues) > 0:
-        bad = ""
-        for res in missed_residues:
-          bad += " " + res
-        raise Sorry("Restraints were not found for the following residues:"+bad)
-      self.model = reduce_add_h_obj.get_model()
+      self._AddHydrogens()
       doneAdd = work_clock()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
@@ -956,21 +1039,8 @@ NOTES:
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
       startInt = work_clock()
-      self.model.get_hierarchy().sort_atoms_in_place()
-      self.model.get_hierarchy().atoms().reset_serial()
-      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      p.pdb_interpretation.allow_polymer_cross_special_position=True
-      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-      p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-      #p.pdb_interpretation.sort_atoms=True
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      self._ReinterpretModel()
       doneInt = work_clock()
-
-      # Keep track of the initial atom positions after hydrogen placement but before
-      # optimization so that we can put things back before each Flipkin run.
-      for a in self.model.get_hierarchy().atoms():
-        initialAtomPositions.append( (a, a.xyz) )
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = work_clock()
@@ -1001,7 +1071,7 @@ NOTES:
     # bonded.  Don't make restraints during the reprocessing.
     # We had to do this to keep from crashing on a call to pair_proxies when generating
     # mmCIF files, so we always do it for safety.
-    self.model.process(make_restraints=False, pdb_interpretation_params=p)
+    self._ReinterpretModel(False)
 
     make_sub_header('Writing output', out=self.logger)
 
@@ -1041,6 +1111,7 @@ NOTES:
       alts.discard(' ')
       alts = sorted(list(alts))
 
+      # ===========================================================================
       make_sub_header('Generating Amide Flipkin', out=self.logger)
 
       # Make list of Movers to lock in one flip orientation and then the other,
@@ -1097,16 +1168,8 @@ NOTES:
           z /= count
         views.append( (x, y, z) )
 
-      # Find out which atoms are bonded.
-
-      # Interpret the model, adding Hydrogens to it so that
-      # all of the needed fieafterlds are filled in when we use them below.
-      # @todo Remove this once place_hydrogens() does all the interpretation we need.
-      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      p.pdb_interpretation.allow_polymer_cross_special_position=True
-      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-      self.model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+      # Interpret the model to fill in things we need for determining the neighbor list.
+      self._ReinterpretModel()
 
       carts = flex.vec3_double()
       for a in self.model.get_atoms():
@@ -1116,51 +1179,75 @@ NOTES:
 
       ################################################################################
       # Get the other characteristics we need to know about each atom to do our work.
-      inWater = {}
-      inHet = {}
-      inMainChain = {}
-      inSideChain = {}
-      hetatm_sel = self.model.selection("hetatm")
-      mainchain_sel = self.model.selection("backbone")  # Will NOT include Hydrogen atoms on the main chain
-      sidechain_sel = self.model.selection("sidechain") # Will include Hydrogen atoms on the side chain
-      for a in self.model.get_atoms():
-        inWater[a] = common_residue_names_get_class(name=a.parent().resname) == "common_water"
-        inHet[a] = hetatm_sel[a.i_seq]
-        if not a.element_is_hydrogen():
-          inMainChain[a] = mainchain_sel[a.i_seq]
-        else:
-          # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-          if len(bondedNeighborLists[a]) != 1:
-            raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                        str(len(bondedNeighborLists[a])))
-          else:
-            inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
-        inSideChain[a] = sidechain_sel[a.i_seq]
+      inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
 
       # Write the base information in the Flipkin, not including the moving atoms in
       # the Movers that will be placed, or atoms bonded to the moving atoms.
       flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
         alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
 
-      # @todo Make two configurations, the one that Reduce picked and the one
+      # Make two configurations, the one that Reduce picked and the one
       # that it did not.
       configurations = ['reduce', 'flipNQ']
       colors = ['sea', 'pink']
 
-      # @todo Figure out how to run the optimization without fixup on the
-      # original orientation of all flippers and again on the flipped orientation
-      # for each and combine the info from both of them into the same Flipkin. This
-      # is made complicated by the addition and deletion of atoms.
+      # Run the optimization without fixup on the original orientation of all flippers and
+      # again on the flipped orientation for each and combine the info from both of them
+      # into the same Flipkin. Handle the re-initialization of atom coordinates before
+      # each optimization, remembering the addition and deletion of atoms during placement
+      # and optimization.
       for i, c in enumerate(configurations):
-        # Put the atoms back to where they started before optimization.
-        # @todo We may also need to place hydrogens and such, basically redoing the
-        # entire optimization
-        for p in initialAtomPositions:
-          p[0].xyz = p[1]
+        # Restore the model to the state it had before we started adjusting it.
+        self.model = initialModel.deep_copy()
+
+        # Rerun hydrogen placement.
+        self._AddHydrogens()
+        # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
+        self._ReinterpretModel()
 
         # Run optimization, locking the specified Amides into each configuration.
-        # Don't do fixup on the ones that are locked down.
-        # @todo
+        # Don't do fixup on the ones that are locked down.  Make sure that we can
+        # avoid adding a comma on the first flip state that is added.
+        flipStates = self.params.set_flip_states
+        if flipStates is None:
+          flipStates = ''
+        if flipStates.strip() != '':
+          flipStates += ','
+        if i == 0:
+          # For the first configuration, set all Amides to the orientation that Reduce decided
+          # on, adding these to the list of locked-down flips.
+          for ai, amide in enumerate(amides):
+            flipStates += self._DescribeLockdown(amide, invertFlip=False, fixedUp=False)
+            if ai < len(amides) - 1:
+              flipStates += ','
+        else:
+          # For the second configuration, set all Amides to the orientation that Reduce did not
+          # decide on, adding these to the list of locked-down flips.
+          for ai, amide in enumerate(amides):
+            flipStates += self._DescribeLockdown(amide, invertFlip=True, fixedUp=False)
+            if ai < len(amides) - 1:
+              flipStates += ','
+
+        # Optimize the model and then reinterpret it so that we can get all of the information we
+        # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
+        opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+          self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+          preferenceMagnitude=self.params.preference_magnitude,
+          nonFlipPreference=self.params.non_flip_preference,
+          skipBondFixup=self.params.skip_bond_fix_up,
+          flipStates = flipStates,
+          verbosity=3)
+        self._ReinterpretModel()
+
+        # Get the other characteristics we need to know about each atom to do our work.
+        # We must do this again here because the atoms change after Hydrogen addition.
+        # We also need to re-generate the bonded-neighbor lists for the same reason.
+        carts = flex.vec3_double()
+        for a in self.model.get_atoms():
+          carts.append(a.xyz)
+        bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+        inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
 
         # Write the updates to the Flipkin for this configuration, showing the
         # atoms for the amide in the Reduce configuration (i=0) or the other
@@ -1192,6 +1279,7 @@ NOTES:
       with open(flipkinBase+"-flipnq.kin", "w") as f:
         f.write(flipkinText)
 
+      # ===========================================================================
       make_sub_header('Generating Histidine Flipkin', out=self.logger)
       hists = _FindFlipsInOutputString(outString, 'HisFlip')
       print('XXX His:', hists)
