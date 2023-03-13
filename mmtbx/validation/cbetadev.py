@@ -103,7 +103,8 @@ class cbeta(residue):
              self.deviation, self.dihedral_NABB ]
 
 class cbetadev(validation):
-  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",'percent_outliers']
+  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats",
+                                      'percent_outliers', 'new_outliers', 'outliers_removed']
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -118,6 +119,7 @@ class cbetadev(validation):
       collect_ideal=False,
       apply_phi_psi_correction=False,
       display_phi_psi_correction=False,
+      exclude_d_peptides=False,
       quiet=False):
     validation.__init__(self)
     self._outlier_i_seqs = flex.size_t()
@@ -127,6 +129,8 @@ class cbetadev(validation):
                             n_weighted_results = 0,
                             n_weighted_outliers = 0)
     total_residues = 0
+    new_outliers = None
+    outliers_removed = None
     if apply_phi_psi_correction:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
       new_outliers = 0
@@ -181,11 +185,14 @@ class cbetadev(validation):
                       )
                     if rc:
                       dev, dihedralNABB, start, finish = rc
+                      # if start or finish: print(id_str,dev,dihedralNABB,start,finish)
                       if start and not finish:
                         outliers_removed += 1
                       elif not start and finish:
                         new_outliers += 1
-                if(dev >=0.25 or outliers_only==False):
+                if(exclude_d_peptides and dev>=2.):
+                  pass
+                elif(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
                     self.stats.n_weighted_outliers += resCB.occ
@@ -221,6 +228,8 @@ class cbetadev(validation):
          self.n_outliers,
          total_residues,
         ))
+    self.new_outliers=new_outliers
+    self.outliers_removed=outliers_removed
     if total_residues:
       self.percent_outliers=self.n_outliers/total_residues*100
 
