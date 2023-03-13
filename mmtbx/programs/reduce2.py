@@ -811,7 +811,52 @@ NOTES:
   and http://molprobity.biochem.duke.edu
   '''
 
-  # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+  def _GetViews(self, movers):
+    '''Produce a list of views that will center the sidechains of the specified Movers.
+    It ignores the alternate and averages over all of them.  It only makes one entry
+    if the same Mover is in more than one alternate.
+    :param movers: Movers returned by _FindFlipsInOutputString().
+    :return: List of 3-tuples of centers of the sidechains.
+    '''
+    views = []
+    selStrings = []
+    for mover in movers:
+      # Fill in information needed to construct the view.
+      # As of 2/5/2023, the CCTBX selection returns no atoms on a file when the model
+      # clause is used unless there is a MODEL statement in the file.  The get_number_of_models()
+      # function returns 1 if there are 0 or 1 MODEL statements, so we check to see if there
+      # are 2 or more (indicating the need to select) before adding the clause.
+      # The model ID that the selection is looking for is 1-based, so we must add 1 to the
+      # model index.
+      if self.model.get_number_of_models() >= 2:
+        modelClause = 'model {} and '.format(mover.modelId + 1)
+      else:
+        modelClause = ''
+      x = 0.0
+      y = 0.0
+      z = 0.0
+      selString = modelClause + "chain {} and resseq {} and sidechain".format(
+            mover.chain, mover.resId)
+      if selString in selStrings:
+        break
+      selStrings.append(selString)
+      sel = self.model.selection(selString)
+      count = 0;
+      for a in self.model.get_hierarchy().atoms():
+        if sel[a.i_seq]:
+          x += a.xyz[0]
+          y += a.xyz[1]
+          z += a.xyz[2]
+          count += 1
+      if count > 0:
+        x /= count
+        y /= count
+        z /= count
+      views.append( (x, y, z) )
+    return views
+# ------------------------------------------------------------------------------
 
   def _MakeProbePhil(self, movers_to_check, temp_output_file_name):
     # Determine the source and target selections based on the Movers
@@ -1112,189 +1157,251 @@ NOTES:
       alts = sorted(list(alts))
 
       # ===========================================================================
-      make_sub_header('Generating Amide Flipkin', out=self.logger)
 
-      # Make list of Movers to lock in one flip orientation and then the other,
+      # Make list of Amides to lock in one flip orientation and then the other,
       # keeping track of which state they are in when Reduce was choosing.
       # We need a different list for the Amide Movers and the Histidine Movers
       # because we generate two different Flipkin files, one for each.
       amides = _FindFlipsInOutputString(outString, 'AmideFlip')
 
-      # Find the viewpoint locations for each Mover we're going to
-      # look at as the center of all atoms in the sidechain of the residue.
-      # We don't treat the separate alternates differently; we make a single
-      # view for all alternates for each Mover.
-      views = []
-      selStrings = []
-      for amide in amides:
-        # Fill in information needed to construct the view.
-        # As of 2/5/2023, the CCTBX selection returns no atoms on a file when the model
-        # clause is used unless there is a MODEL statement in the file.  The get_number_of_models()
-        # function returns 1 if there are 0 or 1 MODEL statements, so we check to see if there
-        # are 2 or more (indicating the need to select) before adding the clause.
-        # The model ID that the selection is looking for is 1-based, so we must add 1 to the
-        # model index.
-        if self.model.get_number_of_models() >= 2:
-          modelClause = 'model {} and '.format(amide.modelId + 1)
-        else:
-          modelClause = ''
-        x = 0.0
-        y = 0.0
-        z = 0.0
-        selString = modelClause + "chain {} and resseq {} and sidechain".format(
-              amide.chain, amide.resId)
-        if selString in selStrings:
-          break
-        selStrings.append(selString)
-        '''
-        if amide.altId in ["", " "]:
-          selString = modelClause + "chain {} and resseq {} and sidechain".format(
-                amide.chain, amide.resId)
-        else:
-          selString = modelClause + "chain {} and altid '{}' and resseq {} and sidechain".format(
-                amide.chain, amide.altId, amide.resId)
-        '''
-        sel = self.model.selection(selString)
-        count = 0;
-        for a in self.model.get_hierarchy().atoms():
-          if sel[a.i_seq]:
-            x += a.xyz[0]
-            y += a.xyz[1]
-            z += a.xyz[2]
-            count += 1
-        if count > 0:
-          x /= count
-          y /= count
-          z /= count
-        views.append( (x, y, z) )
+      if len(amides) > 0:
+        make_sub_header('Generating Amide Flipkin', out=self.logger)
 
-      # Interpret the model to fill in things we need for determining the neighbor list.
-      self._ReinterpretModel()
+        # Find the viewpoint locations for each Mover we're going to
+        # look at.
+        views = self._GetViews(amides)
 
-      carts = flex.vec3_double()
-      for a in self.model.get_atoms():
-        carts.append(a.xyz)
-      bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
-      bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
-
-      ################################################################################
-      # Get the other characteristics we need to know about each atom to do our work.
-      inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
-
-      # Write the base information in the Flipkin, not including the moving atoms in
-      # the Movers that will be placed, or atoms bonded to the moving atoms.
-      flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
-        alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
-
-      # Make two configurations, the one that Reduce picked and the one
-      # that it did not.
-      configurations = ['reduce', 'flipNQ']
-      colors = ['sea', 'pink']
-
-      # Run the optimization without fixup on the original orientation of all flippers and
-      # again on the flipped orientation for each and combine the info from both of them
-      # into the same Flipkin. Handle the re-initialization of atom coordinates before
-      # each optimization, remembering the addition and deletion of atoms during placement
-      # and optimization.
-      for i, c in enumerate(configurations):
-        # Restore the model to the state it had before we started adjusting it.
-        self.model = initialModel.deep_copy()
-
-        # Rerun hydrogen placement.
-        self._AddHydrogens()
-        # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
+        # Interpret the model to fill in things we need for determining the neighbor list.
         self._ReinterpretModel()
 
-        # Run optimization, locking the specified Amides into each configuration.
-        # Don't do fixup on the ones that are locked down.  Make sure that we can
-        # avoid adding a comma on the first flip state that is added.
-        flipStates = self.params.set_flip_states
-        if flipStates is None:
-          flipStates = ''
-        if flipStates.strip() != '':
-          flipStates += ','
-        if i == 0:
-          # For the first configuration, set all Amides to the orientation that Reduce decided
-          # on, adding these to the list of locked-down flips.
-          for ai, amide in enumerate(amides):
-            flipStates += self._DescribeLockdown(amide, invertFlip=False, fixedUp=False)
-            if ai < len(amides) - 1:
-              flipStates += ','
-        else:
-          # For the second configuration, set all Amides to the orientation that Reduce did not
-          # decide on, adding these to the list of locked-down flips.
-          for ai, amide in enumerate(amides):
-            flipStates += self._DescribeLockdown(amide, invertFlip=True, fixedUp=False)
-            if ai < len(amides) - 1:
-              flipStates += ','
-
-        # Optimize the model and then reinterpret it so that we can get all of the information we
-        # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-        opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-          self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
-          preferenceMagnitude=self.params.preference_magnitude,
-          nonFlipPreference=self.params.non_flip_preference,
-          skipBondFixup=self.params.skip_bond_fix_up,
-          flipStates = flipStates,
-          verbosity=3)
-        self._ReinterpretModel()
-
-        # Get the other characteristics we need to know about each atom to do our work.
-        # We must do this again here because the atoms change after Hydrogen addition.
-        # We also need to re-generate the bonded-neighbor lists for the same reason.
         carts = flex.vec3_double()
         for a in self.model.get_atoms():
           carts.append(a.xyz)
         bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
         bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+
+        # Get the other characteristics we need to know about each atom to do our work.
         inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
 
-        # Write the updates to the Flipkin for this configuration, showing the
-        # atoms for the amide in the Reduce configuration (i=0) or the other
-        # configuration (i=1).
-        flipkinText += _AddFlipkinMovers(amides, base, c, colors[i], self.model, alts,
-          bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
+        # Write the base information in the Flipkin, not including the moving atoms in
+        # the Movers that will be placed, or atoms bonded to the moving atoms.
+        flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
+          alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
 
-        # Compute the dots in both 1->2 and 2->1 directions using probe2.
-        # @todo Consider adding methods to probe2 that let us inject the various
-        # computed quantities -- neighbor lists and extra atom info and such --
-        # before calling the run() method so it does not have to recompute them.
+        # Make two configurations, the one that Reduce picked and the one
+        # that it did not.
+        configurations = ['reduce', 'flipNQ']
+        colors = ['sea', 'pink']
 
-        # @todo Modify the parameters that are passed to include the ones for
-        # the harnessed program, including the source and target atom selections.
-        # @todo Specify a temporary file for the output of Probe2, which we'll
-        # delete after running.
-        tempName = tempfile.mktemp()
-        newParams = self._MakeProbePhil(amides, tempName)
+        # Run the optimization without fixup on the original orientation of all flippers and
+        # again on the flipped orientation for each and combine the info from both of them
+        # into the same Flipkin. Handle the re-initialization of atom coordinates before
+        # each optimization, remembering the addition and deletion of atoms during placement
+        # and optimization.
+        for i, c in enumerate(configurations):
+          # Restore the model to the state it had before we started adjusting it.
+          self.model = initialModel.deep_copy()
 
-        # Run the program and append its Kinemage output to ours, deleting
-        # the temporary file that it produced.
-        p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
-          logger=self.logger)
-        p2.overrideModel(self.model)
-        dots, kinString = p2.run()
-        flipkinText += kinString
-        os.unlink(tempName)
+          # Rerun hydrogen placement.
+          self._AddHydrogens()
+          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
+          self._ReinterpretModel()
 
-      # Write the accumulated Flipkin string to the output file.
-      with open(flipkinBase+"-flipnq.kin", "w") as f:
-        f.write(flipkinText)
+          # Run optimization, locking the specified Amides into each configuration.
+          # Don't do fixup on the ones that are locked down.  Make sure that we can
+          # avoid adding a comma on the first flip state that is added.
+          flipStates = self.params.set_flip_states
+          if flipStates is None:
+            flipStates = ''
+          if flipStates.strip() != '':
+            flipStates += ','
+          if i == 0:
+            # For the first configuration, set all Amides to the orientation that Reduce decided
+            # on, adding these to the list of locked-down flips.
+            for ai, amide in enumerate(amides):
+              flipStates += self._DescribeLockdown(amide, invertFlip=False, fixedUp=False)
+              if ai < len(amides) - 1:
+                flipStates += ','
+          else:
+            # For the second configuration, set all Amides to the orientation that Reduce did not
+            # decide on, adding these to the list of locked-down flips.
+            for ai, amide in enumerate(amides):
+              flipStates += self._DescribeLockdown(amide, invertFlip=True, fixedUp=False)
+              if ai < len(amides) - 1:
+                flipStates += ','
+
+          # Optimize the model and then reinterpret it so that we can get all of the information we
+          # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
+          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            preferenceMagnitude=self.params.preference_magnitude,
+            nonFlipPreference=self.params.non_flip_preference,
+            skipBondFixup=self.params.skip_bond_fix_up,
+            flipStates = flipStates,
+            verbosity=3)
+          self._ReinterpretModel()
+
+          # Get the other characteristics we need to know about each atom to do our work.
+          # We must do this again here because the atoms change after Hydrogen addition.
+          # We also need to re-generate the bonded-neighbor lists for the same reason.
+          carts = flex.vec3_double()
+          for a in self.model.get_atoms():
+            carts.append(a.xyz)
+          bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+          inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
+
+          # Write the updates to the Flipkin for this configuration, showing the
+          # atoms for the amide in the Reduce configuration (i=0) or the other
+          # configuration (i=1).
+          flipkinText += _AddFlipkinMovers(amides, base, c, colors[i], self.model, alts,
+            bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
+
+          # Compute the dots in both 1->2 and 2->1 directions using probe2.
+          # @todo Consider adding methods to probe2 that let us inject the various
+          # computed quantities -- neighbor lists and extra atom info and such --
+          # before calling the run() method so it does not have to recompute them.
+
+          # Modify the parameters that are passed to include the ones for
+          # the harnessed program, including the source and target atom selections.
+          # Specify a temporary file for the output of Probe2, which we'll
+          # delete after running.
+          tempName = tempfile.mktemp()
+          newParams = self._MakeProbePhil(amides, tempName)
+
+          # Run the program and append its Kinemage output to ours, deleting
+          # the temporary file that it produced.
+          p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
+            logger=self.logger)
+          p2.overrideModel(self.model)
+          dots, kinString = p2.run()
+          flipkinText += kinString
+          os.unlink(tempName)
+
+        # Write the accumulated Flipkin string to the output file.
+        with open(flipkinBase+"-flipnq.kin", "w") as f:
+          f.write(flipkinText)
 
       # ===========================================================================
-      make_sub_header('Generating Histidine Flipkin', out=self.logger)
       hists = _FindFlipsInOutputString(outString, 'HisFlip')
-      print('XXX His:', hists)
 
-      # @todo Enable subsetting the states of a Histidine so that it will try
-      # all four protenations at a specific flip orientation, so that we can
-      # ask it to do each set separately.
-      # @todo Enabling setting the state (flipped or not) of each of the Movers
-      # and passing a list of locked ones to the Optimizer in two passes for
-      # each Flipkin file.
-      # @todo Figure out how to add the Hydrogens back that have been removed
-      # during Histidine placement.  The description will tell us which ones have
-      # not been placed (so were removed).
-      # @todo
+      if len(hists) > 0:
+        make_sub_header('Generating Histidine Flipkin', out=self.logger)
+
+        # Find the viewpoint locations for each Mover we're going to
+        # look at.
+        views = self._GetViews(hists)
+
+        # Interpret the model to fill in things we need for determining the neighbor list.
+        self._ReinterpretModel()
+
+        carts = flex.vec3_double()
+        for a in self.model.get_atoms():
+          carts.append(a.xyz)
+        bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+        bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+
+        # Get the other characteristics we need to know about each atom to do our work.
+        inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
+
+        # Write the base information in the Flipkin, not including the moving atoms in
+        # the Movers that will be placed, or atoms bonded to the moving atoms.
+        flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
+          alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
+
+        # Make two configurations, the one that Reduce picked and the one
+        # that it did not.
+        configurations = ['reduce', 'flipH']
+        colors = ['sea', 'pink']
+
+        # Run the optimization without fixup on the original orientation of all flippers and
+        # again on the flipped orientation for each and combine the info from both of them
+        # into the same Flipkin. Handle the re-initialization of atom coordinates before
+        # each optimization, remembering the addition and deletion of atoms during placement
+        # and optimization.
+        for i, c in enumerate(configurations):
+          # Restore the model to the state it had before we started adjusting it.
+          self.model = initialModel.deep_copy()
+
+          # Rerun hydrogen placement.
+          self._AddHydrogens()
+          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
+          self._ReinterpretModel()
+
+          # Run optimization, locking the specified Amides into each configuration.
+          # Don't do fixup on the ones that are locked down.  Make sure that we can
+          # avoid adding a comma on the first flip state that is added.
+          flipStates = self.params.set_flip_states
+          if flipStates is None:
+            flipStates = ''
+          if flipStates.strip() != '':
+            flipStates += ','
+          if i == 0:
+            # For the first configuration, set all Histidines to the orientation that Reduce decided
+            # on, adding these to the list of locked-down flips.
+            for ai, hist in enumerate(hists):
+              flipStates += self._DescribeLockdown(hist, invertFlip=False, fixedUp=False)
+              if ai < len(hists) - 1:
+                flipStates += ','
+          else:
+            # For the second configuration, set all HIstidines to the orientation that Reduce did not
+            # decide on, adding these to the list of locked-down flips.
+            for hi, hist in enumerate(hists):
+              flipStates += self._DescribeLockdown(hist, invertFlip=True, fixedUp=False)
+              if hi < len(hists) - 1:
+                flipStates += ','
+
+          # Optimize the model and then reinterpret it so that we can get all of the information we
+          # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
+          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            preferenceMagnitude=self.params.preference_magnitude,
+            nonFlipPreference=self.params.non_flip_preference,
+            skipBondFixup=self.params.skip_bond_fix_up,
+            flipStates = flipStates,
+            verbosity=3)
+          self._ReinterpretModel()
+
+          # Get the other characteristics we need to know about each atom to do our work.
+          # We must do this again here because the atoms change after Hydrogen addition.
+          # We also need to re-generate the bonded-neighbor lists for the same reason.
+          carts = flex.vec3_double()
+          for a in self.model.get_atoms():
+            carts.append(a.xyz)
+          bondProxies = self.model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+          bondedNeighborLists = Helpers.getBondedNeighborLists(self.model.get_atoms(), bondProxies)
+          inWater, inHet, inMainChain, inSideChain = self._GetAtomCharacteristics(bondedNeighborLists)
+
+          # Write the updates to the Flipkin for this configuration, showing the
+          # atoms for the Histidines in the Reduce configuration (i=0) or the other
+          # configuration (i=1).
+          flipkinText += _AddFlipkinMovers(hists, base, c, colors[i], self.model, alts,
+            bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
+
+          # Compute the dots in both 1->2 and 2->1 directions using probe2.
+          # @todo Consider adding methods to probe2 that let us inject the various
+          # computed quantities -- neighbor lists and extra atom info and such --
+          # before calling the run() method so it does not have to recompute them.
+
+          # Modify the parameters that are passed to include the ones for
+          # the harnessed program, including the source and target atom selections.
+          # Specify a temporary file for the output of Probe2, which we'll
+          # delete after running.
+          tempName = tempfile.mktemp()
+          newParams = self._MakeProbePhil(hists, tempName)
+
+          # Run the program and append its Kinemage output to ours, deleting
+          # the temporary file that it produced.
+          p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
+            logger=self.logger)
+          p2.overrideModel(self.model)
+          dots, kinString = p2.run()
+          flipkinText += kinString
+          os.unlink(tempName)
+
+        # Write the accumulated Flipkin string to the output file.
+        with open(flipkinBase+"-fliphis.kin", "w") as f:
+          f.write(flipkinText)
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
