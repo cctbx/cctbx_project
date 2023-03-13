@@ -422,7 +422,11 @@ options are {options}.\
     '''
     self._set_datatype(datatype)
     if filename not in self._get_current_storage().keys():
-      raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
+      if os.path.isfile(filename):
+        raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
+      else:
+        raise Sorry('Cannot find the file "%s" (data type of %s).' %(
+         filename, datatype))
     else:
       setattr(self, self._current_default, filename)
 
@@ -446,7 +450,11 @@ options are {options}.\
       except Sorry:
         ok = False
       if not ok:
-        raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
+        if os.path.isfile(filename):
+          raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
+        else:
+          raise Sorry('Cannot find the file "%s" (data type of %s).' %(
+           filename, datatype))
     else:
       return self._get_current_storage()[filename]
 
