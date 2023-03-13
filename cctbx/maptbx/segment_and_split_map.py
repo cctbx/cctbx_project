@@ -2483,7 +2483,7 @@ def scale_map(map, scale_rms = 1.0, out = sys.stdout):
 def scale_map_coeffs(map_coeffs, scale_max = None, out = sys.stdout):
   f_array, phases = map_coeffs_as_fp_phi(map_coeffs)
   max_value = f_array.data().min_max_mean().max
-  if scale_max:
+  if scale_max and max_value is not None:
     scale = scale_max/max(1.e-10, max_value)
   else:
     scale = 1.0
@@ -2731,6 +2731,9 @@ def get_f_phases_from_map(
     map_coeffs = mm.map_as_fourier_coefficients(d_min = d_min_use,
        d_max = d_max if d_min_use is not None else None)
 
+    if map_coeffs.data().size() < 1:
+      raise Sorry("No map coefficients found in calculation of map at "+
+         "resolution of %.2f A." %( d_min_use))
     if origin_frac and tuple(origin_frac) !=  (0., 0., 0.):  # shift origin
       map_coeffs = map_coeffs.translational_shift(origin_frac, deg = False)
 
@@ -4963,7 +4966,6 @@ def get_params(args, map_data = None, crystal_symmetry = None,
       tracking_data.set_full_crystal_symmetry(
          ccp4_map.unit_cell_crystal_symmetry())
       tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
-      print("ZZA cs from ",params.input_files.map_file,crystal_symmetry)
     map_data = ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
