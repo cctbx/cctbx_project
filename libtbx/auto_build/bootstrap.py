@@ -1002,10 +1002,10 @@ class xia2_module(SourceModule):
 
 class kokkos_module(SourceModule):
   module = 'kokkos'
-  anonymous = ['git',
+  anonymous = ['git', '-b 3.7.01',
                'git@github.com:kokkos/kokkos.git',
                'https://github.com/kokkos/kokkos.git',
-               'https://github.com/kokkos/kokkos/archive/master.zip']
+               'https://github.com/kokkos/kokkos/archive/refs/tags/3.7.01.zip']
 
 class kokkos_kernels_module(SourceModule):
   module = 'kokkos-kernels'
