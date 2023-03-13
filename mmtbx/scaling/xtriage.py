@@ -238,6 +238,7 @@ input {
        l_test_dhkl = None
           .type = ints(size=3)
           .short_caption = Reciprocal-space vector for L-test
+          .help="Offsets for hkl in applying L-test. Defaults to 2,2,2 but should be changed for commensurate modulation (tNCS) involving shifts other than 1/2 along x,y,z"
           .expert_level = 2
        apply_basic_filters_prior_to_twin_analysis=True
          .type=bool
