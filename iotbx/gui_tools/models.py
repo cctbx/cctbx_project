@@ -138,9 +138,9 @@ class model_handler(iotbx.gui_tools.manager):
     if (len(file_names) == 0):
       raise Sorry("No PDB files loaded.")
     pdb_str = self.combine_pdb_files(file_names)
-    import iotbx.pdb.hierarchy
-    pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
-    hierarchy = pdb_in.hierarchy
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    hierarchy = pdb_in.construct_hierarchy()
     xray_structure = pdb_in.xray_structure_simple()
     return (hierarchy, xray_structure)
 
