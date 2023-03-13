@@ -1009,10 +1009,10 @@ class kokkos_module(SourceModule):
 
 class kokkos_kernels_module(SourceModule):
   module = 'kokkos-kernels'
-  anonymous = ['git',
+  anonymous = ['git', '-b 3.7.01',
                'git@github.com:kokkos/kokkos-kernels.git',
                'https://github.com/kokkos/kokkos-kernels.git',
-               'https://github.com/kokkos/kokkos-kernels/archive/master.zip']
+               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/3.7.01.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
