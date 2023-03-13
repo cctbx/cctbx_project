@@ -1271,6 +1271,7 @@ NOTES:
         # the temporary file that it produced.
         p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
           logger=self.logger)
+        p2.overrideModel(self.model)
         dots, kinString = p2.run()
         flipkinText += kinString
         os.unlink(tempName)

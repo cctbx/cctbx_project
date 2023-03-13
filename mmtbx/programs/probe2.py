@@ -1788,6 +1788,15 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def overrideModel(self, model):
+    '''This is a hack to let another program harness probe2 without having to write a
+    new model file for it to read. After initializing probe2, but before calling
+    run(), call this function to override the model that it should use.
+    '''
+    self.model = model
+
+# ------------------------------------------------------------------------------
+
   def run(self):
     # String that will be output to the specified file.
     outString = ''
@@ -1798,13 +1807,15 @@ Note:
 
     make_sub_header('Interpret Model', out=self.logger)
 
-    # Get our model.
-    self.model = self.data_manager.get_model()
+    # Allow the model to be overridden using the overrideModel() method.
+    if not hasattr(self, 'model'):
+      # Get our model.
+      self.model = self.data_manager.get_model()
 
-    # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-    cs = self.model.crystal_symmetry()
-    if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model)
+      # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+      cs = self.model.crystal_symmetry()
+      if (cs is None) or (cs.unit_cell() is None):
+        self.model = shift_and_box_model(model = self.model)
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
