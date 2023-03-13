@@ -126,15 +126,14 @@ class cbetadev(validation):
     self.stats = group_args(n_results=0,
                             n_weighted_results = 0,
                             n_weighted_outliers = 0)
+    total_residues = 0
     if apply_phi_psi_correction:
       phi_psi_angles = get_phi_psi_dict(pdb_hierarchy)
       new_outliers = 0
       outliers_removed = 0
-      total_residues = 0
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
-    n_residues=0
     for model in pdb_hierarchy.models():
       for chain in model.chains():
         if use_segids:
@@ -149,7 +148,6 @@ class cbetadev(validation):
               is_first = (i_cf == 0)
               is_alt_conf = False
               relevant_atoms = {}
-              n_residues+=1
               for atom in residue.atoms():
                 if (atom.name in relevant_atom_names):
                   relevant_atoms[atom.name] = atom
@@ -170,8 +168,8 @@ class cbetadev(validation):
                   altchar = cf.altloc
                 else:
                   altchar = " "
+                total_residues+=1
                 if apply_phi_psi_correction:
-                  total_residues+=1
                   id_str = '|%s:%s|' % (residue.id_str(), altchar)
                   phi_psi = phi_psi_angles.get(id_str, None)
                   if phi_psi:
@@ -223,8 +221,7 @@ class cbetadev(validation):
          self.n_outliers,
          total_residues,
         ))
-
-    self.percent_outliers=self.n_outliers/n_residues*100
+    self.percent_outliers=self.n_outliers/total_residues*100
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
