@@ -6,6 +6,14 @@ import sys
 
 class CCTBXApp(wx.App):
   def __init__(self, *args, **kwds):
+
+    # hide GTK messages
+    if kwds.pop('gtk_suppress_diagnostics', True):
+      try:
+        wx.App.GTKSuppressDiagnostics()
+      except AttributeError:
+        pass
+
     wx.App.__init__(self, *args, **kwds)
 
   def OnInit(self):
