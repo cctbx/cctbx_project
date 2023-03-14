@@ -226,13 +226,16 @@ def _AltFromFlipOutput(fo):
   return fo.altId.lower()
 
 
-def _AddPosition(a, tag, group):
+def _AddPosition(a, tag, group, partner=None):
   '''Return a string that describes the point at or line to the specified atom or just
   a sphere location.
   This is used when building Kinemages.  Reports the alternate only if it is not empty.
   :param a: Atom to describe.
   :param tag: 'P' for point, 'L' for line, '' for sphere location.
   :param group: The dominant group name the point or line is part of.
+  :param partner: Lines connect two atoms, and the alternate of either of them
+  causes the line to be in that alternate.  This provides a way to tell about
+  a second atom whose alternate should be checked as well.
   '''
   if len(tag) > 0:
     tagString = ' {}'.format(tag)
@@ -242,6 +245,8 @@ def _AddPosition(a, tag, group):
     altTag = ''
   else:
     altTag = " '{}'".format(a.parent().altloc.lower())
+  if (partner is not None) and not (partner.parent().altloc in ['', ' ']):
+    altTag = " '{}'".format(partner.parent().altloc.lower())
   return '{{{:.4s} {} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
     a.name.strip().lower(),               # Atom name
     a.parent().resname.strip().lower(),   # Residue name
@@ -264,6 +269,8 @@ def _DescribeMainchainLink(a0s, a1s, group):
   :param a0s: Alternates of first atom.
   :param a1s: Alternates of second atom.
   :param group: The dominant group name the point or line is part of.
+  @todo When we have alternates that end at a common atom, that atom's
+  alternative is used for the line, making it appear in both alts.
   '''
   ret = ''
   if (a0s is None) or (a1s is None):
@@ -271,7 +278,7 @@ def _DescribeMainchainLink(a0s, a1s, group):
   for a0 in a0s:
     for a1 in a1s:
       if Helpers.compatibleConformations(a0, a1):
-        ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group) + '\n'
+        ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
 
@@ -321,7 +328,7 @@ def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
       if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
-        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
+        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
 
@@ -378,7 +385,7 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       # Add the description for our first one and keep chasing this path
       curr = links[0]
       described.append({last,curr})
-      ret += _AddPosition(curr, 'L', group) + '\n'
+      ret += _AddPosition(curr, 'L', group, last) + '\n'
       links = [a for a in bondedNeighborLists[curr]
                 if (not {curr, a} in described) and not a.element_is_hydrogen()
                 and curr.parent().parent() == a.parent().parent()
@@ -404,7 +411,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
       if not n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
-        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
+        ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
 
@@ -450,7 +457,7 @@ def _DescribeHet(r, group, bondedNeighborLists):
       # Add the description for our first one and keep chasing this path
       curr = links[0]
       described.append({last,curr})
-      ret += _AddPosition(curr, 'L', group) + '\n'
+      ret += _AddPosition(curr, 'L', group, last) + '\n'
       links = [a for a in bondedNeighborLists[curr]
                 if (not {curr, a} in described) and (not a.element_is_hydrogen())
                 and (curr.parent() == a.parent())
@@ -474,7 +481,7 @@ def _DescribeHetHydrogens(r, group, bondedNeighborLists):
   for h in Hs:
     try:
       n = bondedNeighborLists[h][0]
-      ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group) + '\n'
+      ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
 
@@ -611,7 +618,7 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
           and not _IsMover(n.parent().parent(), moverList)
           ):
         if {a,n} not in described:
-          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName) + '\n'
+          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName, a) + '\n'
           described.append({a,n})
 
   # Add spheres for ions (was single-atom Het groups in original Flipkins?)
@@ -719,7 +726,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
           or _IsMover(n.parent().parent(), moverList))
           ):
         if {a,n} not in described:
-          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName) + '\n'
+          ret += _AddPosition(a, 'P', fileBaseName) + ' ' + _AddPosition(n, 'L', fileBaseName, a) + '\n'
           described.append({a,n})
 
   # Add bonded structures for het groups that are Movers
