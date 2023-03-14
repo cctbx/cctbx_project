@@ -256,61 +256,50 @@ def _AddPosition(a, tag, group):
     a.xyz[2]
   )
 
-def _DescribeMainchainResidue(r, group, prevC):
+
+def _DescribeMainchainLink(a0s, a1s, group):
+  '''Return a string that describes the links between two atom sets, each of
+  which may contain multiple alternates. Only link ones that have compatible
+  alternates.
+  :param a0s: Alternates of first atom.
+  :param a1s: Alternates of second atom.
+  :param group: The dominant group name the point or line is part of.
+  '''
+  ret = ''
+  if (a0s is None) or (a1s is None):
+    return ret
+  for a0 in a0s:
+    for a1 in a1s:
+      if Helpers.compatibleConformations(a0, a1):
+        ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group) + '\n'
+  return ret
+
+
+def _DescribeMainchainResidue(r, group, prevCs):
   '''Return a string that describes the mainchain for a specified residue.
   Add the point for the first mainchain atom in the previous residue
   (none for the first) and lines to the N, Ca, C, and O.
   :param r: Residue to describe.
   :param group: The dominant group name the point or line is part of.
-  :param prevC: Atom that is the mainchain C for the previous residue (or
-  the N for this residue if we're the first residue in a chain).
+  :param prevCs: Atom(s) that is the mainchain C in all conformations
+  of the previous residue.
   '''
 
   ret = ''
-  # Find the atoms that we're going to use and insert their records into
-  # the output. If we're missing an atom, skip its record and make sure that
-  # the first one we use has a P and the others have L.
-  # @todo This runs through the first set of alternates found for all of the atoms,
-  # which means that in cases with two alternates we are missing bonds for some of
-  # the atoms.
-  try:
-    aN = [a for a in r.atoms() if a.name.strip().upper() == 'N'][0]
-    # If we're at the N terminus, we won't have a previous C, so just re-use our N
-    if prevC is None:
-      prevC = aN
-    ret += _AddPosition(prevC, 'P', group) + ' ' + _AddPosition(aN, 'L', group) + '\n'
-    tag = 'L'
-  except Exception:
-    tag = 'P'
 
-  try:
-    aCA = [a for a in r.atoms() if a.name.strip().upper() == 'CA'][0]
-    ret += _AddPosition(aCA, tag, group) + '\n'
-    tag = 'L'
-  except Exception:
-    tag = 'P'
+  # Find the lists of atoms that we might need.
+  Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
+  CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
+  Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
+  Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
+  OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
 
-  try:
-    aC = [a for a in r.atoms() if a.name.strip().upper() == 'C'][0]
-    ret += _AddPosition(aC, tag, group) + '\n'
-    tag = 'L'
-  except Exception:
-    tag = 'P'
-
-  try:
-    aO = [a for a in r.atoms() if a.name.strip().upper() == 'O'][0]
-    ret += _AddPosition(aO, tag, group) + '\n'
-    tag = 'L'
-  except Exception:
-    tag = 'P'
-
-  # If we're the C terminus, we'll have an OXT atom.  In this case, add
-  # a point at the C and a line to OXT.
-  try:
-    aOXT = [a for a in r.atoms() if a.name.strip().upper() == 'OXT'][0]
-    ret += _AddPosition(aC, 'P', group) + ' ' + _AddPosition(aOXT, 'L', group) + '\n'
-  except Exception:
-    pass
+  # Make all of the connections.
+  ret += _DescribeMainchainLink(prevCs, Ns, group)
+  ret += _DescribeMainchainLink(Ns, CAs, group)
+  ret += _DescribeMainchainLink(CAs, Cs, group)
+  ret += _DescribeMainchainLink(Cs, Os, group)
+  ret += _DescribeMainchainLink(Cs, OXTs, group)
 
   return ret
 
@@ -572,25 +561,23 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       state = 'on'
     ret += "@pointmaster '{}' {{{}}} {}\n".format(a.lower(), 'alt'+a.lower(), state)
 
-  # Add the mainchain (no hydrogens) for atoms all atoms (even Movers of the type
-  # we're looking at right now). Add the point for the first mainchain
-  # atom in the previous residue (None for the first).
+  # Add the mainchain (no hydrogens) for all residues (even Movers of the type
+  # we're looking at right now). Record the location(s) for the last mainchain
+  # atom in the previous residue (None for the first). Handle multiple alternates.
   ret += '@subgroup {{mc {}}} dominant\n'.format(fileBaseName)
   ret += '@vectorlist {mc} color= white  master= {mainchain}\n'
   for c in model.chains():
-    # @todo What to do about mainchains with alternate conformations?
-    prevC = None
+    prevCs = None
     for rg in c.residue_groups():
-      ret += _DescribeMainchainResidue(rg, fileBaseName, prevC)
+      ret += _DescribeMainchainResidue(rg, fileBaseName, prevCs)
       try:
-        prevC = [a for a in rg.atoms() if a.name.strip().upper() == 'C'][0]
+        prevCs = [a for a in rg.atoms() if a.name.strip().upper() == 'C']
       except Exception:
         pass
 
   # Add the Hydrogens on the mainchain
   ret += "@vectorlist {mc H} color= gray  nobutton master= {mainchain} master= {H's}\n"
   for c in model.chains():
-    prevC = None
     for rg in c.residue_groups():
       if not inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]]:
         ret += _DescribeMainchainResidueHydrogens(rg, fileBaseName, bondedNeighborLists)
@@ -653,14 +640,11 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
     if inWater[a]:
       ret += _AddPosition(a, 'P', fileBaseName) + '\n'
 
-  # @todo
-
   return ret
 
 def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeighborLists,
     moverList, inSideChain, inWater, inHet):
   '''Return a string that describes the Movers and atoms that are bonded to them.
-  @todo Also add the bumps between the States and the rest of the model.
   :param states: Return value from _FindFlipsInOutputString() indicating behavior of
   each Mover.
   :param fileBaseName: The base name of the file, without path or extension.
@@ -749,9 +733,6 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
     for rg in c.residue_groups():
       if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
          ret += _DescribeHetHydrogens(rg, fileBaseName, bondedNeighborLists)
-
-  # Add the dots, including their masters and submasters and caption.
-  # @todo
 
   return ret
 
@@ -861,7 +842,6 @@ NOTES:
   def _MakeProbePhil(self, movers_to_check, temp_output_file_name):
     # Determine the source and target selections based on the Movers
     # that we are checking being tested against everything else.
-    # @todo
     source_selection = 'sidechain and ('
     for i, m in enumerate(movers_to_check):
       if i > 0:
@@ -873,7 +853,7 @@ NOTES:
     source_selection += ')'
     target_selection = 'all'
 
-    # @todo Can we set default parameters and then only overwrite the ones we need?
+    # Set default parameters and then only overwrite the ones we need
     newParams = copy.deepcopy(self.params)
     newParams.__inject__('source_selection', source_selection)      # Not default
     newParams.__inject__('target_selection', target_selection)      # Not default
