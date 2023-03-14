@@ -451,6 +451,18 @@ citation {
   pmid = 36266465
 }
 
+citation {
+  article_id = predict_and_build_xray
+  authors = Terwilliger TC, Afonine PV, Liebschner, D., Croll TI, McCoy, AJ, Oeffner, RD., Williams, CJ, Poon, BK, Richardson JS, Read RJ, Adams PD
+  title = Accelerating crystal structure determination with iterative AlphaFold prediction
+  journal = Acta Cryst D 
+  volume = 79
+  pages = 234-244
+  year = 2023
+  doi_id =  doi:10.1107/S205979832300102X
+  pmid = 36876433
+}
+
 
 citation {
   article_id = colabfold
