@@ -908,7 +908,7 @@ Borrowing them from the first miller array""" %i)
   def commitSubgroupDatasets(self):
     if self.params.commit_subgroup_datasets==False:
       return
-    self.procarrays = self.viewer.proc_arrays[:] # assuming these are expanded to a subgroup
+    self.procarrays = self.viewer.proc_arrays[:] # assuming these are now expanded to a subgroup
     procarray, procarray_info = self.process_miller_array(self.viewer.miller_array)
     _, arrayinfo = self.update_arrayinfos()
     # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
@@ -916,6 +916,7 @@ Borrowing them from the first miller array""" %i)
     # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
     # First create a superset of HKLs existing miller arrays and the new procarray.
     self.origarrays["HKLs"] = procarray.indices()[:]
+    self.arrayinfos = []
     for arr in self.procarrays:
       if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
         if arr.sigmas() == None:
@@ -923,10 +924,14 @@ Borrowing them from the first miller array""" %i)
         else:
           self.origarrays[arr.info().labels[0]] = arr.data()
           self.origarrays[arr.info().labels[1]] = arr.sigmas()
+      arrayinfo = ArrayInfo(arr, 25)
+      self.arrayinfos.append(arrayinfo)
 
     self.update_space_group_choices(0) # get the default spacegroup choice
-    self.arrayinfos.append(arrayinfo)
     self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
+    self.SendInfoToGUI({"file_name": self.loaded_file_name + " expanded"})
+    # send file_name value separately from array_infotpls value since the former
+    # clears NGL_HKLViewer.millertable of the contents of the array_infotpls
     mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
               "ano_spg_tpls": self.ano_spg_tpls,
               "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
@@ -934,7 +939,6 @@ Borrowing them from the first miller array""" %i)
               "unitcell_info": [arrayinfo.ucellinf],
               "NewHKLscenes" : True,
               "NewMillerArray" : True,
-              "file_name": self.loaded_file_name + " expanded"
               }
     self.SendInfoToGUI(mydict)
     self.validated_preset_buttons = False

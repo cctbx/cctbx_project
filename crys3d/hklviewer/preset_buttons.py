@@ -64,7 +64,7 @@ cctbx_buttonsdeflist = [
 
 ("FoversigF", "F/SigF",
  """
-          miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "FoverSigF"

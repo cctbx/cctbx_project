@@ -76,7 +76,7 @@
     </item>
    </layout>
   </widget>
-  <widget class="QDockWidget" name="dockWidget">
+  <widget class="QDockWidget" name="ControlsWidget">
    <property name="features">
     <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
    </property>
@@ -169,8 +169,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>367</width>
-                  <height>607</height>
+                  <width>318</width>
+                  <height>617</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -400,8 +400,8 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>368</width>
-                   <height>425</height>
+                   <width>323</width>
+                   <height>395</height>
                   </rect>
                  </property>
                  <property name="sizePolicy">
@@ -511,7 +511,7 @@
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Expand the currently displayed dataset to a lower symmetry. The expansion is not committed to the actual dataset.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                        </widget>
                       </item>
@@ -525,6 +525,9 @@
                         </property>
                         <property name="text">
                          <string>Space Subgroups</string>
+                        </property>
+                        <property name="textFormat">
+                         <enum>Qt::AutoText</enum>
                         </property>
                        </widget>
                       </item>
@@ -578,7 +581,7 @@
                          </sizepolicy>
                         </property>
                         <property name="frameShape">
-                         <enum>QFrame::StyledPanel</enum>
+                         <enum>QFrame::NoFrame</enum>
                         </property>
                         <property name="frameShadow">
                          <enum>QFrame::Raised</enum>
@@ -594,10 +597,10 @@
                          </sizepolicy>
                         </property>
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Selected subgroup is applied to expand all datasets in the reflection datafile. These can then be saved as a new reflection datafile.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Selected subgroup expansion is committed to all datasets in the reflection file. The file may then be saved as a new reflection file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
-                         <string>Commit subgroup expansion of all datasets...</string>
+                         <string>Commit expansion...</string>
                         </property>
                        </widget>
                       </item>
@@ -1898,7 +1901,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_2">
+  <widget class="QDockWidget" name="InfoWidget">
    <property name="windowTitle">
     <string>HKLviewer Info</string>
    </property>

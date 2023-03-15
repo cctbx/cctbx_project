@@ -22,6 +22,8 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
 
+
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -95,9 +97,9 @@ class Ui_MainWindow(object):
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
         #MainWindow.setCentralWidget(self.centralwidget)
-        self.dockWidget = QDockWidget(MainWindow)
-        self.dockWidget.setObjectName(u"dockWidget")
-        self.dockWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
+        self.ControlsWidget = QDockWidget(MainWindow)
+        self.ControlsWidget.setObjectName(u"ControlsWidget")
+        self.ControlsWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
         self.dockControls = QWidget()
         self.dockControls.setObjectName(u"dockControls")
         self.gridLayout_9 = QGridLayout(self.dockControls)
@@ -139,7 +141,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 367, 607))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 318, 617))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -265,7 +267,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 368, 425))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 323, 395))
         sizePolicy6.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
         self.scrollAreaWidgetContents.setSizePolicy(sizePolicy6)
         self.gridLayout_4 = QGridLayout(self.scrollAreaWidgetContents)
@@ -327,6 +329,7 @@ class Ui_MainWindow(object):
         self.SpacegroupLabel.setObjectName(u"SpacegroupLabel")
         sizePolicy7.setHeightForWidth(self.SpacegroupLabel.sizePolicy().hasHeightForWidth())
         self.SpacegroupLabel.setSizePolicy(sizePolicy7)
+        self.SpacegroupLabel.setTextFormat(Qt.AutoText)
 
         self.gridLayout_28.addWidget(self.SpacegroupLabel, 5, 0, 1, 1, Qt.AlignTop)
 
@@ -356,7 +359,7 @@ class Ui_MainWindow(object):
         self.dummyframe.setObjectName(u"dummyframe")
         sizePolicy6.setHeightForWidth(self.dummyframe.sizePolicy().hasHeightForWidth())
         self.dummyframe.setSizePolicy(sizePolicy6)
-        self.dummyframe.setFrameShape(QFrame.StyledPanel)
+        self.dummyframe.setFrameShape(QFrame.NoFrame)
         self.dummyframe.setFrameShadow(QFrame.Raised)
 
         self.gridLayout_28.addWidget(self.dummyframe, 8, 0, 1, 3)
@@ -1061,10 +1064,10 @@ class Ui_MainWindow(object):
 
         self.gridLayout_9.addWidget(self.widget_2, 0, 0, 1, 1)
 
-        self.dockWidget.setWidget(self.dockControls)
-        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget)
-        self.dockWidget_2 = QDockWidget(MainWindow)
-        self.dockWidget_2.setObjectName(u"dockWidget_2")
+        self.ControlsWidget.setWidget(self.dockControls)
+        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.ControlsWidget)
+        self.InfoWidget = QDockWidget(MainWindow)
+        self.InfoWidget.setObjectName(u"InfoWidget")
         self.dockWidgetContents = QWidget()
         self.dockWidgetContents.setObjectName(u"dockWidgetContents")
         self.gridLayout_33 = QGridLayout(self.dockWidgetContents)
@@ -1133,8 +1136,8 @@ class Ui_MainWindow(object):
 
         self.gridLayout_33.addWidget(self.tabText, 0, 0, 1, 1)
 
-        self.dockWidget_2.setWidget(self.dockWidgetContents)
-        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.dockWidget_2)
+        self.InfoWidget.setWidget(self.dockWidgetContents)
+        MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.InfoWidget)
 
         self.retranslateUi(MainWindow)
 
@@ -1170,7 +1173,7 @@ class Ui_MainWindow(object):
         self.actionBackground_Colour.setToolTip(QCoreApplication.translate("MainWindow", u"change colour of the background", None))
 #endif // QT_CONFIG(tooltip)
         self.actionNGLmousebindings.setText(QCoreApplication.translate("MainWindow", u"Mouse Bindings help", None))
-        self.dockWidget.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Controls", None))
+        self.ControlsWidget.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Controls", None))
         self.XtriageBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtriage", None))
         self.XtricorderBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtricorder", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPresetbuttons), QCoreApplication.translate("MainWindow", u"Quick View", None))
@@ -1186,7 +1189,7 @@ class Ui_MainWindow(object):
         self.expandAnomalouscheckbox.setText(QCoreApplication.translate("MainWindow", u"Show Friedel pairs", None))
         self.sysabsentcheckbox.setText(QCoreApplication.translate("MainWindow", u"Show Systematic Absences", None))
 #if QT_CONFIG(tooltip)
-        self.SpaceGroupComboBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Expand the original dataset to a lower symmetry. This dataset can be saved from the menu to a new file.</p></body></html>", None))
+        self.SpaceGroupComboBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Expand the currently displayed dataset to a lower symmetry. The expansion is not committed to the actual dataset.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.SpacegroupLabel.setText(QCoreApplication.translate("MainWindow", u"Space Subgroups", None))
         self.onlymissingcheckbox.setText(QCoreApplication.translate("MainWindow", u"Only", None))
@@ -1195,9 +1198,9 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.missingcheckbox.setText(QCoreApplication.translate("MainWindow", u"Show Missing Reflections", None))
 #if QT_CONFIG(tooltip)
-        self.commitSubgroupExpansionBtn.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Selected subgroup is applied to expand all datasets in the reflection datafile. These can then be saved as a new reflection datafile.</p></body></html>", None))
+        self.commitSubgroupExpansionBtn.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Selected subgroup expansion is committed to all datasets in the reflection file. The file may then be saved as a new reflection file.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.commitSubgroupExpansionBtn.setText(QCoreApplication.translate("MainWindow", u"Commit subgroup expansion of all datasets...", None))
+        self.commitSubgroupExpansionBtn.setText(QCoreApplication.translate("MainWindow", u"Commit expansion...", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.expansion_tab), QCoreApplication.translate("MainWindow", u"Expansion", None))
 #if QT_CONFIG(tooltip)
         self.ClipPlaneChkGroupBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Limit the view of reflections with a clip plane parallel to the screen</p></body></html>", None))
@@ -1316,7 +1319,7 @@ class Ui_MainWindow(object):
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Close to radius of sphere of reflections", None))
         self.functionTabWidget.setTabText(self.functionTabWidget.indexOf(self.vectors_tab), QCoreApplication.translate("MainWindow", u"Vectors", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabDetails), QCoreApplication.translate("MainWindow", u"Details", None))
-        self.dockWidget_2.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Info", None))
+        self.InfoWidget.setWindowTitle(QCoreApplication.translate("MainWindow", u"HKLviewer Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi
