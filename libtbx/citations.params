@@ -609,6 +609,17 @@ citation {
 }
 
 citation {
+  article_id = map_comparison 
+  authors = Urzhumtsev, A,  Afonine, PV, Lunin, VY, Terwilliger, TC, Adams, PD
+  title = Metrics for comparison of crystallographic maps
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = D70
+  pages = 2593-2606
+  year = 2014
+  doi_id = 10.1107/S1399004714016289
+  pmid = 25286844 
+}
+citation {
   article_id = ias
   authors = Afonine PV, Grosse-Kunstleve RW, Adams PD, Lunin VY, \
     Urzhumtsev A

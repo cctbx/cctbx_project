@@ -53,7 +53,7 @@ options
     .type = float
     .short_caption = Resolution gridding factor
     .help = Determines grid spacing in map
-  shift_origin = False
+  shift_origin = True
     .type = bool
     .short_caption = Shift origin(s) to (0,0,0)
     .help = Shift origin if necessary
@@ -183,7 +183,7 @@ def run(args, out=sys.stdout, validated=False):
   crystal_gridding = None
   m1 = None
   m2 = None
-
+  assert params.options.shift_origin==True
   # 1 map, 1 mtz file
   if (n_maps == 1):
     for current_map in maps:
@@ -194,6 +194,8 @@ def run(args, out=sys.stdout, validated=False):
         crystal_gridding = maptbx.crystal_gridding(
           uc, space_group_info=sg_info, pre_determined_n_real=n_real)
         m1 = current_map.file_object.map_data()
+        if params.options.shift_origin:
+          m1=m1.shift_origin()
     if (crystal_gridding is not None):
       label = None
       for attribute in [('mtz_1', 'mtz_label_1'),
@@ -240,6 +242,12 @@ def run(args, out=sys.stdout, validated=False):
   # ---------------------------------------------------------------------------
   # analyze maps
   assert ( (m1 is not None) and (m2 is not None) )
+  if (list(m1.origin()) != [0,0,0]) or  \
+     (list(m2.origin()) != [0,0,0]):
+    raise Sorry(
+       "Shift_origin must be set if maps do not have origin at (0,0,0)")
+  if m1.size() != m2.size():
+    raise Sorry ("Maps must be the same size")
   results=dict()
   results['map_files'] = None
   results['map_statistics'] = None
@@ -435,7 +443,6 @@ def validate_params(params):
   if (params.options.resolution_factor < 0.0):
     raise Sorry(
       'Please use a positive value for the resolution gridding factor.')
-
   return True
 
 # =============================================================================
