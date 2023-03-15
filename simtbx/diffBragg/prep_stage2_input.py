@@ -32,20 +32,29 @@ def prep_dataframe(df, refls_key="predictions"):
     nshots = len(df)
     refls_names = df[refls_key]
     refls_per_shot = []
+    shots_skipped = []
     if COMM.rank==0:
         LOGGER.info("Loading nrefls per shot")
     for i_shot, name in enumerate(refls_names):
         if i_shot % COMM.size != COMM.rank:
             continue
-        R = flex.reflection_table.from_file(name)
+        try:
+            R = flex.reflection_table.from_file(name)
+        except IOError as e:
+            LOGGER.critical("Unable to load reflections from file %s -- skipping file." % name)
+            LOGGER.info("Attempting to load file produced error:\n%s" % e)
+            shots_skipped.append(i_shot)
+            refls_per_shot.append((i_shot, 0))
+            continue
         if len(R)==0:
             LOGGER.critical("Reflection %s has 0 reflections !" % (name, len(R)))
         refls_per_shot.append((i_shot, len(R)))
 
     refls_per_shot = COMM.reduce(refls_per_shot, root=0)
+    shots_skipped = COMM.reduce(shots_skipped, root=0)
     work_distribution = None
     if COMM.rank==0:
-        print("Found %d shots" % nshots)
+        print("Able to read reflections tables for %d of %d shots" % ((nshots - len(shots_skipped)), nshots))
         refls_per_shot = sorted(refls_per_shot)
         indices, weights = zip(*refls_per_shot)
         assert list(indices) == list(range(nshots)) # new sanity test

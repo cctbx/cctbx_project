@@ -99,7 +99,9 @@ if __name__ == "__main__":
                 os.makedirs(gather_dir)
 
     modelers = load_inputs(df, params, exper_key=args.exp, refls_key=args.refl, gather_dir=gather_dir)
-    # note, we only go beyond this point if perImport flag was not passed
+    # do not proceed beyond this point if we are only preimporting
+    if args.preImport:
+        sys.exit()
     modelers.cell_for_mtz = args.cell
     modelers.max_sigma = args.maxSigma
     modelers.outdir = args.outdir if args.outdir is not None else modelers.params.outdir
