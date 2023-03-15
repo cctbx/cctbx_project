@@ -328,15 +328,6 @@ class BaseDriftScraper(object):
     return expts, refls
 
   @staticmethod
-  def select_refls_on_experiment_identifiers(refls, identifiers):
-    selection = flex.bool(len(refls), False)
-    id_map = refls.experiment_identifiers()
-    inv_identifiers = {v: k for k, v in zip(id_map.keys(), id_map.values())}
-    for identifier in identifiers:
-      selection |= (refls['id'] == inv_identifiers.get(identifier, -1))
-    return refls.select(selection)
-
-  @staticmethod
   def _write_tdata(expts, tdata_path):
     """Read all expt_paths and write a tdata file with unit cells in lines"""
     s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
@@ -369,8 +360,7 @@ class BaseDriftScraper(object):
             print('  # expts, refls before selecting good:',
                   len(refined_expts), len(refined_refls))
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
-            refined_refls = self.select_refls_on_experiment_identifiers(
-              refined_refls, scaled_identifiers)
+            refined_refls = refined_refls.select(refined_expts)
             print('  # expts, refls after selecting good:',
                   len(refined_expts), len(refined_refls))
             scrap_dict.update({'expts': len(refined_expts)})
