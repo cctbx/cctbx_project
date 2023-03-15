@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from json.decoder import JSONDecodeError
 import glob
 import os
 import six
@@ -40,6 +41,10 @@ phil_scope = parse('''
       .type = str
       .multiple = True
       .help = glob which matches directories after TDER to be investigated.
+    exclude = None
+      .type = str
+      .multiple = True
+      .help = glob which matches merging directories to exclude from input.glob
     kind = tder_expt_files *merging_directory
       .type = choice
       .help = The type of files located by input.glob
@@ -138,9 +143,11 @@ class CorrelationMatrix(object):
       for i2, k2 in enumerate(self.keys):
         if i1 == i2:
           self.corr[k1][k2] = self.corr[k2][k1] = 1.0
+        elif len(variables[k1]) < 2:
+          self.corr[k1][k2] = self.corr[k2][k1] = 0.0
         elif i2 > i1:
-          corr = correlation(variables[k1], variables[k2], weights=weights)
-          self.corr[k1][k2] = self.corr[k2][k1] = corr
+          self.corr[k1][k2] = self.corr[k2][k1] = \
+            correlation(variables[k1], variables[k2], weights=weights)
 
   def __str__(self):
     s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
@@ -185,15 +192,15 @@ class BaseDriftScraper(object):
   def load_experiments(*expt_paths):
     """Create an instance of ExperimentList from *expt_paths"""
     expts = ExperimentList()
-    for expt_path in expt_paths:
+    for expt_path in set(expt_paths):
       expts.extend(ExperimentList.from_file(expt_path, check_format=False))
     return expts
 
   @staticmethod
   def load_reflections(*refl_paths):
     """Create an instance of flex.reflection_table from *refl_paths"""
-    refls_list = [flex.reflection_table.from_file(rp) for rp in refl_paths]
-    return flex.reflection_table.concat(refls_list)
+    refl_list = [flex.reflection_table.from_file(rp) for rp in set(refl_paths)]
+    return flex.reflection_table.concat(refl_list)
 
   @staticmethod
   def path_join(*path_elements):
@@ -203,7 +210,7 @@ class BaseDriftScraper(object):
 
   def path_lookup(self, *path_elements):
     """Join path elements and return a list of all matching files/dirs"""
-    return glob.glob(self.path_join(*path_elements))
+    return glob.glob(self.path_join(*path_elements), recursive=True)
 
   @staticmethod
   def path_split(path):
@@ -211,41 +218,51 @@ class BaseDriftScraper(object):
     return os.path.normpath(path).split(os.sep)
 
   @staticmethod
-  def extract_origin(expt_path):
-    """Read origin from lines 14-16 after 'hierarchy' text in expt file"""
-    with open(expt_path, 'r') as expt_file:
-      expt_lines = expt_file.read().splitlines()
-      hierarchy_word_pos = [i for i, li in enumerate(expt_lines)
-                            if 'hierarchy' in li][0]
-      x = float(expt_lines[hierarchy_word_pos + 14].replace(',', '').strip())
-      y = float(expt_lines[hierarchy_word_pos + 15].replace(',', '').strip())
-      z = float(expt_lines[hierarchy_word_pos + 16].replace(',', '').strip())
+  def return_string_value_or_range(sorted_iterable):
+    """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
+    fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
+    d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
+    return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
+
+  def extract_db_metadata(self, combine_phil_path):
+    """Get trial, task, rungroup, chunk, run info based on combining phil"""
+    parsed_combine_phil = parse(file_name=combine_phil_path)
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
+    index_dirs = [self.path_join(pie, '..') for pie in phil.input.experiments]
+    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
+    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
+    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
+    return {'chunk': self.path_split(combine_phil_path)[-1][16:19],
+            'run': self.return_string_value_or_range(runs),
+            'rungroup': self.return_string_value_or_range(rungroups),
+            'task': self.path_split(combine_phil_path)[-4],
+            'trial': self.return_string_value_or_range(trials)}
+
+  @staticmethod
+  def extract_origin(expts):
+    """Read detector origin (x, y, z) from the first expt file"""
+    x, y, z = expts[0].detector.hierarchy().get_origin()
     return {'x': x, 'y': y, 'z': z}
 
-  def extract_size_and_origin_deltas(self, expt_paths, refl_paths):
-    """Get number of experiments and reflections, as well as uncertainties
-    of origin positions from refined TDER reflection position deviations"""
-    tder_expts = self.load_experiments(*expt_paths)
-    tder_refls = self.load_reflections(*refl_paths)
-    return_dict = {'expts': len(tder_expts), 'refls': len(tder_refls)}
+  @staticmethod
+  def extract_origin_deltas(expts, refls):
+    """Get uncertainties of origin positions from refl. position deviations"""
     deltas_flex = flex.vec3_double()
-    if self.parameters.uncertainties:
-      for panel in tder_expts[0].detector:               # pr:  panel refls
-        pr = tder_refls.select(tder_refls['panel'] == panel.index())
-        pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in det space
-        pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in lab space
-        pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
-        pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-        deltas_flex.extend(pr_obs_lab - pr_cal_lab)
-      d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
-      return_dict.update({'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]})
-    return return_dict
+    for panel in expts[0].detector:
+      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
-  def extract_unit_cell_distribution(self, scaling_expt_paths):
+  def extract_unit_cell_distribution(self, scaling_expts):
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(scaling_expt_paths, tdata_file.name)
+      self._write_tdata(scaling_expts, tdata_file.name)
       with open(tdata_file.name, 'r') as tdata:
         for line in tdata.read().splitlines():
           a, b, c = line.strip().split(' ')[:3]
@@ -258,10 +275,24 @@ class BaseDriftScraper(object):
             'delta_c': cf.standard_deviation_of_the_sample()}
 
   def locate_input_tags(self):
-    input_paths = []
+    """Return all tags (paths relative to working directory)
+    which contain merging results to be processed"""
+    input_tags, exclude_tags = [], []
     for ig in self.parameters.input.glob:
-        input_paths.extend(glob.glob(ig))
-    return input_paths
+      input_tags.extend(glob.glob(ig))
+    for ie in self.parameters.input.exclude:
+      exclude_tags.extend(glob.glob(ie))
+    return [it for it in input_tags if it not in exclude_tags]
+
+  def locate_combining_phil_paths(self, scaling_phil_paths):
+    """Return paths to all phil files used to combine later-scaled expts"""
+    parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
+    combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
+    combine_phil_paths = []
+    for cd in combine_dirs:
+      combine_phil_paths.extend(self.path_lookup(cd, '*chunk*_combine_*.phil'))
+    return sorted(set(combine_phil_paths))
 
   @staticmethod
   def locate_scaling_directories(merging_phil_paths):
@@ -270,26 +301,30 @@ class BaseDriftScraper(object):
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
     return sorted(set(phil.input.path))
 
-  @staticmethod
-  def locate_tder_refined_expts_and_refls(scaling_phil_paths):
-    """Return paths to refined expt and refl files mentioned in scaling phil"""
-    expt_paths, refl_paths = [], []
-    scaling_phils = [parse(file_name=spp) for spp in scaling_phil_paths]
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=scaling_phils).extract()
-    refined_tder_input_paths = [ip.replace('*reintegrated*', '*refined*')
-                                for ip in phil.input.path]
-    for rip in refined_tder_input_paths:
-      expt_glob = os.path.join(rip + phil.input.experiments_suffix)
-      refl_glob = os.path.join(rip + phil.input.reflections_suffix)
-      expt_paths.extend(glob.glob(expt_glob))
-      refl_paths.extend(glob.glob(refl_glob))
-    return sorted(set(expt_paths)), sorted(set(refl_paths))
+  def locate_refined_expts_refls(self, combine_phil_path):
+    """Return all refined expts and refls down-stream from combine_phil_path"""
+    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    expts_paths = self.path_lookup(path_stem + '_refined.expt')
+    refls_paths = self.path_lookup(path_stem + '_refined.refl')
+    expts = self.load_experiments(*expts_paths)
+    refls = self.load_reflections(*refls_paths)
+    return expts, refls
 
-  def _write_tdata(self, expt_paths, tdata_path):
+  @staticmethod
+  def select_refls_on_experiment_identifiers(refls, identifiers):
+    selection = flex.bool(len(refls), False)
+    id_map = refls.experiment_identifiers()
+    inv_identifiers = {v: k for k, v in zip(id_map.keys(), id_map.values())}
+    for identifier in identifiers:
+      selection |= (refls['id'] == inv_identifiers.get(identifier, -1))
+    return refls.select(selection)
+
+  @staticmethod
+  def _write_tdata(expts, tdata_path):
     """Read all expt_paths and write a tdata file with unit cells in lines"""
     s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
     tdata_lines = []
-    for expt in self.load_experiments(*expt_paths):
+    for expt in expts:
       uc_params = expt.crystal.get_unit_cell().parameters()
       sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
       tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
@@ -298,28 +333,43 @@ class BaseDriftScraper(object):
 
   def scrap(self):
     for tag in self.locate_input_tags():
-      last_v_dir = sorted(self.path_lookup(tag, 'v*/'))[-1]
-      merging_phil_files = self.path_lookup(last_v_dir, '*_params.phil')
-      for scaling_dir in self.locate_scaling_directories(merging_phil_files):
-        scaling_expts = self.path_lookup(scaling_dir, 'scaling_*.expt')
-        try:
-          first_scaling_expt_path = sorted(scaling_expts)[0]
-        except IndexError:
-          continue
-        task_dir = self.path_join(first_scaling_expt_path, '..', '..')
-        trial_dir = self.path_join(task_dir, '..')
-        scrap_dict = {'tag': tag, 'trial': int(trial_dir[-9:-6]),
-                      'task': int(self.path_split(task_dir)[-1].lstrip('task')),
-                      'rungroup': int(trial_dir[-3:]),
-                      'run': self.path_split(trial_dir)[-2]}
-        print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
-        scrap_dict.update(self.extract_origin(first_scaling_expt_path))
-        if self.parameters.uncertainties:
-          scaling_phils = self.path_lookup(task_dir, 'params_1.phil')
-          expt_p, refl_p = self.locate_tder_refined_expts_and_refls(scaling_phils)
-          scrap_dict.update(self.extract_size_and_origin_deltas(expt_p, refl_p))
-          scrap_dict.update(self.extract_unit_cell_distribution(scaling_expts))
-        self.table.add(**scrap_dict)
+      merging_phil_paths = self.path_lookup(tag, '**', '*.phil')
+      merging_phil_paths.sort(key=os.path.getmtime)
+      for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
+        scaled_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
+        scaled_expts = self.load_experiments(*scaled_expt_paths)
+        scaled_identifiers = list(scaled_expts.identifiers())
+        scaling_phil_paths = []
+        for sep in scaled_expt_paths:
+          scaling_phil_paths.extend(self.path_lookup(sep, '..', '..', '*.phil'))
+        comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
+        for cpp in comb_phil_paths:
+          try:
+            scrap_dict = {'tag': tag}
+            scrap_dict.update(self.extract_db_metadata(cpp))
+            print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
+            refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+            print('  # expts, refls before selecting good:',
+                  len(refined_expts), len(refined_refls))
+            refined_expts.select_on_experiment_identifiers(scaled_identifiers)
+            refined_refls = self.select_refls_on_experiment_identifiers(
+              refined_refls, scaled_identifiers)
+            print('  # expts, refls after selecting good:',
+                  len(refined_expts), len(refined_refls))
+            scrap_dict.update({'expts': len(refined_expts)})
+            scrap_dict.update({'refls': len(refined_refls)})
+            scrap_dict.update(self.extract_origin(refined_expts))
+            scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
+            if self.parameters.uncertainties:
+              o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
+              scrap_dict.update(o_deltas)
+          except (KeyError, IndexError, JSONDecodeError) as e:
+            print(e)
+          else:
+            self.table.add(**scrap_dict)
+            print('Updating table with: {}'.format(scrap_dict))
+    for key in self.table.KEYS:
+      print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
@@ -337,7 +387,7 @@ class TderExptFilesDriftScraper(BaseDriftScraper):
 
 class DriftTable(object):
   """Class responsible for storing info about all DriftDataclass instances"""
-  KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z',
+  KEYS = ['tag', 'run', 'rungroup', 'trial', 'chunk', 'task', 'x', 'y', 'z',
           'delta_x', 'delta_y', 'delta_z', 'expts', 'refls',
           'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
 
@@ -390,7 +440,7 @@ class DriftArtist(object):
   def __init__(self, table, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.color_by = 'tag'
+    self.color_by = 'tag' if len(set(table['tag'])) > 1 else 'task'
     self.order_by = 'run'
     self.cov_colormap = plt.get_cmap('seismic')
     self.table = table
@@ -428,10 +478,6 @@ class DriftArtist(object):
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axc.set_xlabel(self.order_by.title())
     self.axh.set_ylabel('# expts')
-
-  @property
-  def _refl_to_expt_ratios(self):
-    return [r / e for e, r in zip(self.table['expts'], self.table['refls'])]
 
   @property
   def color_array(self):
@@ -539,6 +585,7 @@ def run(params_):
   da.publish()
 
 
+params = []
 if __name__ == '__main__':
   if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
     print(message)
