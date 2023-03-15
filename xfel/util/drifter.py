@@ -47,7 +47,7 @@ phil_scope = parse('''
       .type = str
       .multiple = True
       .help = glob which matches files to exclude from input.glob
-    kind = tder_expt_files *merging_directory
+    kind = tder_task_directory *merging_directory
       .type = choice
       .help = The type of files located by input.glob
   }
@@ -291,15 +291,15 @@ class BaseDriftScraper(object):
             'delta_b': bf.standard_deviation_of_the_sample(),
             'delta_c': cf.standard_deviation_of_the_sample()}
 
-  def locate_input_tags(self):
-    """Return all tags (paths relative to working directory)
-    which contain merging results to be processed"""
-    input_tags, exclude_tags = [], []
+  def locate_input_paths(self):
+    """Return all paths (either common files or directories, relative to
+    working directory) of specified kind to be processed"""
+    input_paths, exclude_paths = [], []
     for ig in self.parameters.input.glob:
-      input_tags.extend(glob.glob(ig))
+      input_paths.extend(glob.glob(ig))
     for ie in self.parameters.input.exclude:
-      exclude_tags.extend(glob.glob(ie))
-    return [it for it in input_tags if it not in exclude_tags]
+      exclude_paths.extend(glob.glob(ie))
+    return [it for it in input_paths if it not in exclude_paths]
 
   @staticmethod
   def locate_combining_phil_paths(scaling_phil_paths):
@@ -346,18 +346,43 @@ class BaseDriftScraper(object):
     pass
 
 
-class TderExptFilesDriftScraper(BaseDriftScraper):
-  input_kind = 'tder_expt_files'
+class TderTaskDirectoryDriftScraper(BaseDriftScraper):
+  input_kind = 'tder_task_directory'
 
   def scrap(self):
-    pass
+    combining_phil_paths = []
+    for tder_task_directory in self.locate_input_paths():
+      cpp = path_lookup(tder_task_directory, 'combine_experiments_t*',
+                        'intermediates', '*chunk*_combine_*.phil')
+      combining_phil_paths.extend(cpp)
+    for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
+      try:
+        scrap_dict = {'tag': "TDER"}
+        scrap_dict.update(self.extract_db_metadata(cpp))
+        print('Processing run {}'.format(scrap_dict['run']))
+        refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+        expts_len, refls_len = len(refined_expts), len(refined_refls)
+        print('Found {} expts and {} refls'.format(expts_len, refls_len))
+        scrap_dict.update({'expts': expts_len, 'refls': refls_len})
+        scrap_dict.update(self.extract_origin(refined_expts))
+        scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
+        if self.parameters.uncertainties:
+          o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
+          scrap_dict.update(o_deltas)
+      except (KeyError, IndexError, JSONDecodeError) as e:
+        print(e)
+      else:
+        self.table.add(**scrap_dict)
+        print('Updating table with: {}'.format(scrap_dict))
+    for key in self.table.KEYS:
+      print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'merging_directory'
 
   def scrap(self):
-    for tag in self.locate_input_tags():
+    for tag in self.locate_input_paths():
       merging_phil_paths = path_lookup(tag, '**', '*.phil')
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
@@ -368,20 +393,19 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
         for sep in scaled_expt_paths:
           scaling_phil_paths.extend(path_lookup(sep, '..', '..', '*.phil'))
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
-        for cpp in comb_phil_paths:
+        for cpp in unique_elements(comb_phil_paths):
           try:
             scrap_dict = {'tag': tag}
             scrap_dict.update(self.extract_db_metadata(cpp))
             print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-            print('  # expts, refls before selecting good:',
-                  len(refined_expts), len(refined_refls))
+            expts_len, refls_len = len(refined_expts), len(refined_refls)
+            print('Found {} expts and {} refls'.format(expts_len, refls_len))
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
             refined_refls = refined_refls.select(refined_expts)
-            print('  # expts, refls after selecting good:',
-                  len(refined_expts), len(refined_refls))
-            scrap_dict.update({'expts': len(refined_expts)})
-            scrap_dict.update({'refls': len(refined_refls)})
+            expts_len, refls_len = len(refined_expts), len(refined_refls)
+            print('Accepted {} expts and {} refls'.format(expts_len, refls_len))
+            scrap_dict.update({'expts': expts_len, 'refls': refls_len})
             scrap_dict.update(self.extract_origin(refined_expts))
             scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
             if self.parameters.uncertainties:
