@@ -559,10 +559,9 @@ def check_parameters(inputs = None, params = None,
       raise Sorry("Please set resolution for extract_unique")
     if (not params.symmetry) and (not params.symmetry_file) and \
         (not ncs_object):
-      raise Sorry(
-        "Please supply a symmetry file or symmetry for extract_unique (you "+
-       "\ncan try symmetry = ALL if you do not know your symmetry or "+
-        "symmetry = C1 if \nthere is none)")
+      params.symmetry="ALL"
+      print("Setting symmetry=ALL as no symmetry information supplied",
+        file = log)
     if params.mask_atoms:
       raise Sorry("You cannot set mask_atoms with extract_unique")
 
