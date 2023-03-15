@@ -168,9 +168,20 @@ class CorrelationMatrix(object):
 ############################## UTILITY FUNCTIONS ##############################
 
 
-def unique_elements(sequence):
-  """Return unique elements of sequence while preserving its order and type"""
-  return type(sequence)(OrderedDict.fromkeys(sequence))
+def path_join(*path_elements):
+  """Join path from elements, resolving all redundant or relative calls"""
+  path_elements = [os.pardir if p == '..' else p for p in path_elements]
+  return os.path.normpath(os.path.join(*path_elements))
+
+
+def path_lookup(*path_elements):
+  """Join path elements and return a list of all matching files/dirs"""
+  return glob.glob(path_join(*path_elements), recursive=True)
+
+
+def path_split(path):
+  """Split path into directories and file basename using os separator"""
+  return os.path.normpath(path).split(os.sep)
 
 
 def read_experiments(*expt_paths):
@@ -187,20 +198,16 @@ def read_reflections(*refl_paths):
   return flex.reflection_table.concat(r)
 
 
-def path_join(*path_elements):
-  """Join path from elements, resolving all redundant or relative calls"""
-  path_elements = [os.pardir if p == '..' else p for p in path_elements]
-  return os.path.normpath(os.path.join(*path_elements))
+def represent_range_as_str(sorted_iterable):
+  """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
+  fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
+  d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
+  return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
 
 
-def path_lookup(*path_elements):
-  """Join path elements and return a list of all matching files/dirs"""
-  return glob.glob(path_join(*path_elements), recursive=True)
-
-
-def path_split(path):
-  """Split path into directories and file basename using os separator"""
-  return os.path.normpath(path).split(os.sep)
+def unique_elements(sequence):
+  """Return unique elements of sequence while preserving its order and type"""
+  return type(sequence)(OrderedDict.fromkeys(sequence))
 
 
 ############################### DRIFT SCRAPPING ###############################
@@ -233,13 +240,6 @@ class BaseDriftScraper(object):
     self.table = table
     self.parameters = parameters
 
-  @staticmethod
-  def return_string_value_or_range(sorted_iterable):
-    """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
-    fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
-    d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
-    return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
-
   def extract_db_metadata(self, combine_phil_path):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
@@ -249,10 +249,10 @@ class BaseDriftScraper(object):
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
     runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
     return {'chunk': path_split(combine_phil_path)[-1][16:19],
-            'run': self.return_string_value_or_range(runs),
-            'rungroup': self.return_string_value_or_range(rungroups),
+            'run': self.represent_range_as_str(runs),
+            'rungroup': self.represent_range_as_str(rungroups),
             'task': path_split(combine_phil_path)[-4],
-            'trial': self.return_string_value_or_range(trials)}
+            'trial': self.represent_range_as_str(trials)}
 
   @staticmethod
   def extract_origin(expts):
@@ -274,11 +274,11 @@ class BaseDriftScraper(object):
     d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
     return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
-  def extract_unit_cell_distribution(self, scaling_expts):
+  def extract_unit_cell_distribution(self, expts):
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(scaling_expts, tdata_file.name)
+      self._write_tdata(expts, tdata_file.name)
       with open(tdata_file.name, 'r') as tdata:
         for line in tdata.read().splitlines():
           a, b, c = line.strip().split(' ')[:3]
