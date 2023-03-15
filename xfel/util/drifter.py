@@ -1,12 +1,15 @@
 from __future__ import absolute_import, print_function, division
 import glob
 import os
+import six
 import sys
 import tempfile
-from dials.array_family import flex
-from dxtbx.model.experiment_list import ExperimentList
+
+from dials.array_family import flex  # noqa
+from dxtbx.model.experiment_list import ExperimentList  # noqa
 from libtbx.phil import parse
 from libtbx.utils import Sorry
+
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
@@ -26,12 +29,20 @@ message = ''' This script aims to investigate the spatial drift of a detector
               xfel`/util/drifter.py input.glob=batch*TDER/`, where `batch*TDER`
               describes folders (and thus dataset names) with merging results.
 '''
+
+
+################################ PHIL HANDLING ################################
+
+
 phil_scope = parse('''
   input {
     glob = None
       .type = str
       .multiple = True
       .help = glob which matches directories after TDER to be investigated.
+    kind = tder_expt_files *merging_directory
+      .type = choice
+      .help = The type of files located by input.glob
   }
   plot {
     show = True
@@ -87,6 +98,9 @@ DEFAULT_INPUT_SCOPE = parse("""
 """)
 
 
+############################## UTILITY FUNCTIONS ##############################
+
+
 def average(sequence, weights=None):
   weights = [1] * len(sequence) if weights is None else weights
   return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
@@ -137,8 +151,32 @@ class CorrelationMatrix(object):
     return s
 
 
-class DriftScraper(object):
-  """Class for scraping cctbx.xfel output into instance of `DriftTable`"""
+############################### DRIFT SCRAPPING ###############################
+
+
+class DriftScraperRegistrar(type):
+  """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
+  REGISTRY = {}
+  def __new__(mcs, name, bases, attrs):
+    new_cls = type.__new__(mcs, name, bases, attrs)
+    if hasattr(new_cls, 'input_kind') and new_cls.input_kind:
+      mcs.REGISTRY[new_cls.input_kind] = new_cls
+    return new_cls
+
+
+class DriftScraperFactory(object):
+  """Produces appropriate DriftScraper class based on phil `params`."""
+  @classmethod
+  def get_drift_scraper(cls, table, parameters):
+    drift_scraper_class = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
+    return drift_scraper_class(table=table, parameters=parameters)
+
+
+@six.add_metaclass(DriftScraperRegistrar)
+class BaseDriftScraper(object):
+  """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
+  with automatic registration into the `DriftScraperRegistrar`."""
+
   def __init__(self, table, parameters):
     self.table = table
     self.parameters = parameters
@@ -284,6 +322,19 @@ class DriftScraper(object):
         self.table.add(**scrap_dict)
 
 
+class MergingDirectoryDriftScraper(BaseDriftScraper):
+  input_kind = 'merging_directory'
+
+
+
+class TderExptFilesDriftScraper(BaseDriftScraper):
+  input_kind = 'tder_expt_files'
+
+
+
+################################ DRIFT STORAGE ################################
+
+
 class DriftTable(object):
   """Class responsible for storing info about all DriftDataclass instances"""
   KEYS = ['tag', 'run', 'rungroup', 'trial', 'task', 'x', 'y', 'z',
@@ -329,6 +380,9 @@ class DriftTable(object):
   def auxiliary(self):
     density = [d['refls'] / d['expts'] if d['expts'] else 0 for d in self.data]
     return {'density': density}
+
+
+############################## DRIFT VISUALIZING ##############################
 
 
 class DriftArtist(object):
@@ -472,9 +526,12 @@ class DriftArtist(object):
       plt.show()
 
 
+################################ ENTRY POINTS #################################
+
+
 def run(params_):
   dt = DriftTable(parameters=params_)
-  ds = DriftScraper(table=dt, parameters=params_)
+  ds = DriftScraperFactory.get_drift_scraper(table=dt, parameters=params_)
   da = DriftArtist(table=dt, parameters=params_)
   ds.scrap()
   dt.sort(by_key='run')
