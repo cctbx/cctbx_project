@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import abc
 from collections import OrderedDict
 from json.decoder import JSONDecodeError
 import glob
@@ -213,18 +214,18 @@ def unique_elements(sequence):
 ############################### DRIFT SCRAPPING ###############################
 
 
-class DriftScraperRegistrar(type):
+class DriftScraperRegistrar(abc.ABCMeta):
   """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
   REGISTRY = {}
   def __new__(mcs, name, bases, attrs):
-    new_cls = type.__new__(mcs, name, bases, attrs)
+    new_cls = super().__new__(mcs, name, bases, attrs)
     if hasattr(new_cls, 'input_kind') and new_cls.input_kind:
       mcs.REGISTRY[new_cls.input_kind] = new_cls
     return new_cls
 
 
 class DriftScraperFactory(object):
-  """Produces appropriate DriftScraper class based on phil `params`."""
+  """Produces appropriate DriftScraper class based on phil `parameters`."""
   @classmethod
   def get_drift_scraper(cls, table, parameters):
     drift_scraper_class = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
@@ -339,6 +340,22 @@ class BaseDriftScraper(object):
     with open(tdata_path, 'w') as tdata_file:
       tdata_file.write('\n'.join(tdata_lines))
 
+  @abc.abstractmethod
+  def scrap(self):
+    """Fill `self.table` based on `self.parameters` provided."""
+    pass
+
+
+class TderExptFilesDriftScraper(BaseDriftScraper):
+  input_kind = 'tder_expt_files'
+
+  def scrap(self):
+    pass
+
+
+class MergingDirectoryDriftScraper(BaseDriftScraper):
+  input_kind = 'merging_directory'
+
   def scrap(self):
     for tag in self.locate_input_tags():
       merging_phil_paths = path_lookup(tag, '**', '*.phil')
@@ -377,16 +394,6 @@ class BaseDriftScraper(object):
             print('Updating table with: {}'.format(scrap_dict))
     for key in self.table.KEYS:
       print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
-
-
-class MergingDirectoryDriftScraper(BaseDriftScraper):
-  input_kind = 'merging_directory'
-
-
-
-class TderExptFilesDriftScraper(BaseDriftScraper):
-  input_kind = 'tder_expt_files'
-
 
 
 ################################ DRIFT STORAGE ################################
