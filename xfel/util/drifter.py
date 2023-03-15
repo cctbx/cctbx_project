@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 from json.decoder import JSONDecodeError
 import glob
 import os
@@ -40,11 +41,11 @@ phil_scope = parse('''
     glob = None
       .type = str
       .multiple = True
-      .help = glob which matches directories after TDER to be investigated.
+      .help = glob which matches files after TDER to be investigated.
     exclude = None
       .type = str
       .multiple = True
-      .help = glob which matches merging directories to exclude from input.glob
+      .help = glob which matches files to exclude from input.glob
     kind = tder_expt_files *merging_directory
       .type = choice
       .help = The type of files located by input.glob
@@ -103,15 +104,17 @@ DEFAULT_INPUT_SCOPE = parse("""
 """)
 
 
-############################## UTILITY FUNCTIONS ##############################
+############################### MATHS FUNCTIONS ###############################
 
 
 def average(sequence, weights=None):
+  """Calculate weighted arithmetic mean of an iterable"""
   weights = [1] * len(sequence) if weights is None else weights
   return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
 
 
 def correlation(xs, ys, weights=None):
+  """Calculate weighted Pearson's correlation coefficient between iterables"""
   weights = [1] * len(xs) if weights is None else weights
   x_variance = variance(xs, xs, weights=weights)
   y_variance = variance(ys, ys, weights=weights)
@@ -120,6 +123,7 @@ def correlation(xs, ys, weights=None):
 
 
 def variance(xs, ys, weights=None):
+  """Calculate weighted variance between iterables"""
   weights = [1] * len(xs) if weights is None else weights
   x_avg = average(xs, weights=weights)
   y_avg = average(ys, weights=weights)
@@ -128,10 +132,13 @@ def variance(xs, ys, weights=None):
   return sum(w * x * y for w, x, y in zip(weights, x_dev, y_dev)) / sum(weights)
 
 
-def normalise(sequence):
+def normalize(sequence, floor=0, ceiling=1):
+  """Normalize `sequence`'s values to lie between `floor` and `ceiling`"""
   min_, max_ = min(sequence), max(sequence)
-  return sequence if min_ == max_ else \
-    [(s - min_) / (max_ - min_) for s in sequence]
+  old_span = max_ - min_
+  new_span = ceiling - floor
+  normalized = [new_span * (s - min_) / old_span + floor for s in sequence]
+  return sequence if min_ == max_ else normalized
 
 
 class CorrelationMatrix(object):
@@ -156,6 +163,44 @@ class CorrelationMatrix(object):
       for k2 in self.keys:
         s += ' {:+6.4f}'.format(self.corr[k1][k2])
     return s
+
+
+############################## UTILITY FUNCTIONS ##############################
+
+
+def unique_elements(sequence):
+  """Return unique elements of sequence while preserving its order and type"""
+  return type(sequence)(OrderedDict.fromkeys(sequence))
+
+
+def read_experiments(*expt_paths):
+  """Create an instance of ExperimentList from one or more `*expt_paths`"""
+  expts = ExperimentList()
+  for expt_path in unique_elements(expt_paths):
+    expts.extend(ExperimentList.from_file(expt_path, check_format=False))
+  return expts
+
+
+def read_reflections(*refl_paths):
+  """Create an instance of flex.reflection_table from one/more `*refl_paths`"""
+  r = [flex.reflection_table.from_file(p) for p in unique_elements(refl_paths)]
+  return flex.reflection_table.concat(r)
+
+
+def path_join(*path_elements):
+  """Join path from elements, resolving all redundant or relative calls"""
+  path_elements = [os.pardir if p == '..' else p for p in path_elements]
+  return os.path.normpath(os.path.join(*path_elements))
+
+
+def path_lookup(*path_elements):
+  """Join path elements and return a list of all matching files/dirs"""
+  return glob.glob(path_join(*path_elements), recursive=True)
+
+
+def path_split(path):
+  """Split path into directories and file basename using os separator"""
+  return os.path.normpath(path).split(os.sep)
 
 
 ############################### DRIFT SCRAPPING ###############################
@@ -189,35 +234,6 @@ class BaseDriftScraper(object):
     self.parameters = parameters
 
   @staticmethod
-  def load_experiments(*expt_paths):
-    """Create an instance of ExperimentList from *expt_paths"""
-    expts = ExperimentList()
-    for expt_path in set(expt_paths):
-      expts.extend(ExperimentList.from_file(expt_path, check_format=False))
-    return expts
-
-  @staticmethod
-  def load_reflections(*refl_paths):
-    """Create an instance of flex.reflection_table from *refl_paths"""
-    refl_list = [flex.reflection_table.from_file(rp) for rp in set(refl_paths)]
-    return flex.reflection_table.concat(refl_list)
-
-  @staticmethod
-  def path_join(*path_elements):
-    """Join path from elements, resolving all redundant or relative calls"""
-    path_elements = [os.pardir if p == '..' else p for p in path_elements]
-    return os.path.normpath(os.path.join(*path_elements))
-
-  def path_lookup(self, *path_elements):
-    """Join path elements and return a list of all matching files/dirs"""
-    return glob.glob(self.path_join(*path_elements), recursive=True)
-
-  @staticmethod
-  def path_split(path):
-    """Split path into directories and file basename using os separator"""
-    return os.path.normpath(path).split(os.sep)
-
-  @staticmethod
   def return_string_value_or_range(sorted_iterable):
     """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
     fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
@@ -228,14 +244,14 @@ class BaseDriftScraper(object):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
-    index_dirs = [self.path_join(pie, '..') for pie in phil.input.experiments]
+    index_dirs = [path_join(pie, '..') for pie in phil.input.experiments]
     rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
     runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
-    return {'chunk': self.path_split(combine_phil_path)[-1][16:19],
+    return {'chunk': path_split(combine_phil_path)[-1][16:19],
             'run': self.return_string_value_or_range(runs),
             'rungroup': self.return_string_value_or_range(rungroups),
-            'task': self.path_split(combine_phil_path)[-4],
+            'task': path_split(combine_phil_path)[-4],
             'trial': self.return_string_value_or_range(trials)}
 
   @staticmethod
@@ -284,14 +300,15 @@ class BaseDriftScraper(object):
       exclude_tags.extend(glob.glob(ie))
     return [it for it in input_tags if it not in exclude_tags]
 
-  def locate_combining_phil_paths(self, scaling_phil_paths):
+  @staticmethod
+  def locate_combining_phil_paths(scaling_phil_paths):
     """Return paths to all phil files used to combine later-scaled expts"""
     parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
-    combine_dirs = [self.path_join(ip, '..') for ip in phil.input.path]
+    combine_dirs = [path_join(ip, '..') for ip in phil.input.path]
     combine_phil_paths = []
     for cd in combine_dirs:
-      combine_phil_paths.extend(self.path_lookup(cd, '*chunk*_combine_*.phil'))
+      combine_phil_paths.extend(path_lookup(cd, '*chunk*_combine_*.phil'))
     return sorted(set(combine_phil_paths))
 
   @staticmethod
@@ -304,8 +321,8 @@ class BaseDriftScraper(object):
   def locate_refined_expts_refls(self, combine_phil_path):
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
-    expts_paths = self.path_lookup(path_stem + '_refined.expt')
-    refls_paths = self.path_lookup(path_stem + '_refined.refl')
+    expts_paths = path_lookup(path_stem + '_refined.expt')
+    refls_paths = path_lookup(path_stem + '_refined.refl')
     expts = self.load_experiments(*expts_paths)
     refls = self.load_reflections(*refls_paths)
     return expts, refls
@@ -333,15 +350,15 @@ class BaseDriftScraper(object):
 
   def scrap(self):
     for tag in self.locate_input_tags():
-      merging_phil_paths = self.path_lookup(tag, '**', '*.phil')
+      merging_phil_paths = path_lookup(tag, '**', '*.phil')
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
-        scaled_expt_paths = self.path_lookup(scaling_dir, 'scaling_*.expt')
+        scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
         scaled_expts = self.load_experiments(*scaled_expt_paths)
         scaled_identifiers = list(scaled_expts.identifiers())
         scaling_phil_paths = []
         for sep in scaled_expt_paths:
-          scaling_phil_paths.extend(self.path_lookup(sep, '..', '..', '*.phil'))
+          scaling_phil_paths.extend(path_lookup(sep, '..', '..', '*.phil'))
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in comb_phil_paths:
           try:
@@ -519,7 +536,7 @@ class DriftArtist(object):
 
   def _plot_bars(self):
     y = self.table['expts']
-    w = normalise([0, *self.table['density']])[1:]
+    w = normalize([0, *self.table['density']])[1:]
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_correlations(self):
@@ -535,7 +552,7 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
-          color = self.cov_colormap(normalise([cm.corr[kx][ky], -1, 1])[0])
+          color = self.cov_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
