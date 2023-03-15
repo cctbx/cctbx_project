@@ -22,6 +22,7 @@ import os
 import sys
 import logging
 import pandas
+import time
 
 from simtbx.diffBragg.hopper_ensemble_utils import load_inputs
 from libtbx.mpi4py import MPI
@@ -75,7 +76,13 @@ if __name__ == "__main__":
     else:
         mpi_logger.setup_logging_from_params(params)
 
-    df = pandas.read_pickle(args.input)
+    for i in range(3):
+        try:
+            df = pandas.read_pickle(args.input)
+            break
+        except FileNotFoundError:
+            time.sleep(60)
+            # wait for preimported files to be written
 
     if params.skip is not None:
         df = df.iloc[params.skip:]
