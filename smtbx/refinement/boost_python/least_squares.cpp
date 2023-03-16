@@ -224,6 +224,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         using namespace boost::python;
         typedef ed_n_shared_data<FloatType> wt;
         typedef f_calc_function_base<FloatType> f_calc_f_t;
+        return_value_policy<return_by_value> rbv;
 
         class_<wt, std::auto_ptr<wt> >("ed_n_shared_data", no_init)
           .def(init<reparametrisation const&,
@@ -233,7 +234,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             bool,
             af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // Kvac, Kl, Fc2Ug, epsilon, mat_type
+            // Kvac, Kl, Fc2Ug, epsilon, mat_type, threads_n
             af::shared<FloatType> const&,
             bool, bool>(
               (arg("reparametrisation"),
@@ -242,6 +243,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("frames"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
+          .def("process_frame_id", &wt::process_frame_id)
+          .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
           ;
       }
 

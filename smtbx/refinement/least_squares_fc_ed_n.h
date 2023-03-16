@@ -48,7 +48,8 @@ namespace least_squares {
       mat_type(static_cast<int>(params[4])),
       frames(frames),
       thickness(thickness),
-      compute_grad(compute_grad)
+      compute_grad(compute_grad),
+      thread_n(static_cast<int>(params[5]))
     {
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
@@ -108,13 +109,14 @@ namespace least_squares {
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<FloatType>& Is,
-        af::shared<complex_t>& CIs)
+        af::shared<complex_t>& CIs, bool use_offset=true)
         : parent(parent),
         frame(frame),
         thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Is(Is),
-        CIs(CIs)
+        CIs(CIs),
+        offset(use_offset ? frame.offset : 0)
       {}
 
       void operator()() {
@@ -129,9 +131,9 @@ namespace least_squares {
                 h, parent.Fc2Ug * Fc,
                 thickness,
                 K, frame.RMf, frame.normal);
-              Is[frame.offset + i] = std::norm(ci);
+              Is[offset + i] = std::norm(ci);
               if (CIs.size() != 0) {
-                CIs[frame.offset + i] = ci;
+                CIs[offset + i] = ci;
               }
             }
             return;
@@ -166,11 +168,11 @@ namespace least_squares {
             af::shared<complex_t> amps =
               utils<FloatType>::calc_amps_modified(A, ExpDen, thickness,
                 frame.strong_measured_beams.size());
-
+            
             for (size_t i = 0; i < amps.size(); i++) {
-              Is[frame.offset + i] = std::norm(amps[i]);
+              Is[offset + i] = std::norm(amps[i]);
               if (CIs.size() != 0) {
-                CIs[frame.offset + i] = amps[i];
+                CIs[offset + i] = amps[i];
               }
             }
             return;
@@ -213,9 +215,9 @@ namespace least_squares {
               thickness, frame.strong_measured_beams.size());
           }
           for (size_t i = 0; i < amps.size(); i++) {
-            Is[frame.offset + i] = std::norm(amps[i]);
+            Is[offset + i] = std::norm(amps[i]);
             if (CIs.size() != 0) {
-              CIs[frame.offset + i] = amps[i];
+              CIs[offset + i] = amps[i];
             }
           }
         }
@@ -232,22 +234,36 @@ namespace least_squares {
       const af::shared<complex_t>& Fcs_k;
       af::shared<FloatType>& Is;
       af::shared<complex_t>& CIs;
+      size_t offset;
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
+    af::shared<FloatType> process_frame_id(int frame_id,
+      af::shared<complex_t> const& Fcs_k)
+    {
+      typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
+        frames_map.find(frame_id);
+      SMTBX_ASSERT(fi != frames_map.end());
+      FrameInfo<FloatType> const &frame= *fi->second;
+      af::shared<FloatType> Is_(frame.beams.size());
+      af::shared<complex_t> CIs_;
+      process_frame(*this, frame, Fcs_k, Is_, CIs_,
+        false); // no offset - write to Is_ at 0;
+      return Is_;
+    }
+
     void process_frames_mt(af::shared<FloatType> &Is_,
       af::shared<complex_t>& CIs_,
-      af::shared<complex_t> const& Fcs_k,
-      int thread_count = -1)
+      af::shared<complex_t> const& Fcs_k)
     {
-      if (thread_count < 0) {
-        thread_count = builder_base<FloatType>::get_available_threads();
+      if (thread_n < 0) {
+        thread_n = builder_base<FloatType>::get_available_threads();
       }
       boost::thread_group pool;
       typedef boost::shared_ptr<process_frame> frame_processor_t;
       size_t to = 0;
-      for (size_t fi = 0; fi < frames.size(); fi += thread_count) {
-        size_t t_end = std::min(thread_count, (int)(frames.size() - fi));
+      for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
+        size_t t_end = std::min(thread_n, (int)(frames.size() - fi));
         if (t_end == 0) {
           break;
         }
@@ -389,6 +405,7 @@ namespace least_squares {
     // 
     af::versa<FloatType, af::c_grid<2> > design_matrix;
     lookup_t mi_lookup;
+    int thread_n;
   };
 
   template <typename FloatType>
