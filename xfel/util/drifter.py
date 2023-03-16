@@ -228,8 +228,12 @@ class DriftScraperFactory(object):
   """Produces appropriate DriftScraper class based on phil `parameters`."""
   @classmethod
   def get_drift_scraper(cls, table, parameters):
-    drift_scraper_class = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
-    return drift_scraper_class(table=table, parameters=parameters)
+    base_scrapper_class = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
+    uncertainties_mixin_class = TrueUncertaintiesMixin \
+      if parameters.uncertainties else FalseUncertaintiesMixin
+    class DriftScraper(base_scrapper_class, uncertainties_mixin_class):
+      pass
+    return DriftScraper(table=table, parameters=parameters)
 
 
 @six.add_metaclass(DriftScraperRegistrar)
@@ -241,7 +245,8 @@ class BaseDriftScraper(object):
     self.table = table
     self.parameters = parameters
 
-  def extract_db_metadata(self, combine_phil_path):
+  @staticmethod
+  def extract_db_metadata(combine_phil_path):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
@@ -260,20 +265,6 @@ class BaseDriftScraper(object):
     """Read detector origin (x, y, z) from the first expt file"""
     x, y, z = expts[0].detector.hierarchy().get_origin()
     return {'x': x, 'y': y, 'z': z}
-
-  @staticmethod
-  def extract_origin_deltas(expts, refls):
-    """Get uncertainties of origin positions from refl. position deviations"""
-    deltas_flex = flex.vec3_double()
-    for panel in expts[0].detector:
-      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
-      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
-      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
-      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
-      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
-    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
-    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
   def extract_unit_cell_distribution(self, expts):
     """Retrieve average a, b, c and their deltas using expt paths"""
@@ -347,6 +338,29 @@ class BaseDriftScraper(object):
     pass
 
 
+class FalseUncertaintiesMixin(object):
+  @staticmethod
+  def get_origin_deltas(expts, refls):
+    """If uncertainties=False, return origin uncertainties as zeros"""
+    return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
+
+
+class TrueUncertaintiesMixin(object):
+  @staticmethod
+  def get_origin_deltas(expts, refls):
+    """Get uncertainties of origin positions from refl. position deviations"""
+    deltas_flex = flex.vec3_double()
+    for panel in expts[0].detector:
+      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
+
+
 class TderTaskDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'tder_task_directory'
 
@@ -367,9 +381,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         scrap_dict.update({'expts': expts_len, 'refls': refls_len})
         scrap_dict.update(self.extract_origin(refined_expts))
         scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
-        if self.parameters.uncertainties:
-          o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
-          scrap_dict.update(o_deltas)
+        scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
       else:
@@ -409,9 +421,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             scrap_dict.update({'expts': expts_len, 'refls': refls_len})
             scrap_dict.update(self.extract_origin(refined_expts))
             scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
-            if self.parameters.uncertainties:
-              o_deltas = self.extract_origin_deltas(refined_expts, refined_refls)
-              scrap_dict.update(o_deltas)
+            scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
