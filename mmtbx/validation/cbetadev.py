@@ -232,6 +232,8 @@ class cbetadev(validation):
     self.outliers_removed=outliers_removed
     if total_residues:
       self.percent_outliers=self.n_outliers/total_residues*100
+    else:
+      self.percent_outliers = None
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
