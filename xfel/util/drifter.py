@@ -224,18 +224,6 @@ class DriftScraperRegistrar(abc.ABCMeta):
     return new_cls
 
 
-class DriftScraperFactory(object):
-  """Produces appropriate DriftScraper class based on phil `parameters`."""
-  @classmethod
-  def get_drift_scraper(cls, table, parameters):
-    base_scrapper_class = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
-    uncertainties_mixin_class = TrueUncertaintiesMixin \
-      if parameters.uncertainties else FalseUncertaintiesMixin
-    class DriftScraper(base_scrapper_class, uncertainties_mixin_class):
-      pass
-    return DriftScraper(table=table, parameters=parameters)
-
-
 @six.add_metaclass(DriftScraperRegistrar)
 class BaseDriftScraper(object):
   """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
@@ -338,29 +326,6 @@ class BaseDriftScraper(object):
     pass
 
 
-class FalseUncertaintiesMixin(object):
-  @staticmethod
-  def get_origin_deltas(expts, refls):
-    """If uncertainties=False, return origin uncertainties as zeros"""
-    return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
-
-
-class TrueUncertaintiesMixin(object):
-  @staticmethod
-  def get_origin_deltas(expts, refls):
-    """Get uncertainties of origin positions from refl. position deviations"""
-    deltas_flex = flex.vec3_double()
-    for panel in expts[0].detector:
-      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
-      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
-      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
-      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
-      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
-    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
-    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
-
-
 class TderTaskDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'tder_task_directory'
 
@@ -426,6 +391,56 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print('Updating table with: {}'.format(scrap_dict))
     for key in self.table.KEYS:
       print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
+
+
+class DriftUncertaintiesRegistrar(abc.ABCMeta):
+  """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
+  REGISTRY = {}
+  def __new__(mcs, name, bases, attrs):
+    new_cls = super().__new__(mcs, name, bases, attrs)
+    if hasattr(new_cls, 'uncertainties'):
+      mcs.REGISTRY[new_cls.uncertainties] = new_cls
+    return new_cls
+
+
+@six.add_metaclass(DriftUncertaintiesRegistrar)
+class FalseUncertaintiesMixin(object):
+  uncertainties = False
+
+  @staticmethod
+  def get_origin_deltas(expts, refls):
+    """If uncertainties=False, return origin uncertainties as zeros"""
+    return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
+
+
+@six.add_metaclass(DriftUncertaintiesRegistrar)
+class TrueUncertaintiesMixin(object):
+  uncertainties = True
+
+  @staticmethod
+  def get_origin_deltas(expts, refls):
+    """Get uncertainties of origin positions from refl. position deviations"""
+    deltas_flex = flex.vec3_double()
+    for panel in expts[0].detector:
+      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
+
+
+class DriftScraperFactory(object):
+  """Produces appropriate DriftScraper class based on phil `parameters`."""
+  @classmethod
+  def get_drift_scraper(cls, table, parameters):
+    base = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
+    mixin = DriftUncertaintiesRegistrar.REGISTRY[parameters.uncertainty]
+    class DriftScraper(base, mixin):
+      pass
+    return DriftScraper(table=table, parameters=parameters)
 
 
 ################################ DRIFT STORAGE ################################
