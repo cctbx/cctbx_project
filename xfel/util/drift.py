@@ -572,10 +572,11 @@ class DriftArtist(object):
       ax_top.set_xticklabels(self.table['expts'])
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
-    axes2 = axes.twinx()
     avg_y = average(y, weights=self.table['refls'])
-    axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
-    axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+    if avg_y != 0:
+      axes2 = axes.twinx()
+      axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
+      axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
 
   def _plot_bars(self):
     y = self.table['expts']
