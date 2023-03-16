@@ -319,13 +319,14 @@ class BaseDriftScraper(object):
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
     return sorted(set(phil.input.path))
 
-  def locate_refined_expts_refls(self, combine_phil_path):
+  @staticmethod
+  def locate_refined_expts_refls(combine_phil_path):
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = path_lookup(path_stem + '_refined.expt')
     refls_paths = path_lookup(path_stem + '_refined.refl')
-    expts = self.load_experiments(*expts_paths)
-    refls = self.load_reflections(*refls_paths)
+    expts = read_experiments(*expts_paths)
+    refls = read_reflections(*refls_paths)
     return expts, refls
 
   @staticmethod
@@ -387,7 +388,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
         scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
-        scaled_expts = self.load_experiments(*scaled_expt_paths)
+        scaled_expts = read_experiments(*scaled_expt_paths)
         scaled_identifiers = list(scaled_expts.identifiers())
         scaling_phil_paths = []
         for sep in scaled_expt_paths:
