@@ -250,10 +250,10 @@ class BaseDriftScraper(object):
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
     runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
     return {'chunk': path_split(combine_phil_path)[-1][16:19],
-            'run': self.represent_range_as_str(runs),
-            'rungroup': self.represent_range_as_str(rungroups),
+            'run': represent_range_as_str(runs),
+            'rungroup': represent_range_as_str(rungroups),
             'task': path_split(combine_phil_path)[-4],
-            'trial': self.represent_range_as_str(trials)}
+            'trial': represent_range_as_str(trials)}
 
   @staticmethod
   def extract_origin(expts):
