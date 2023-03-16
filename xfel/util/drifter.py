@@ -437,7 +437,7 @@ class DriftScraperFactory(object):
   @classmethod
   def get_drift_scraper(cls, table, parameters):
     base = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
-    mixin = DriftUncertaintiesRegistrar.REGISTRY[parameters.uncertainty]
+    mixin = DriftUncertaintiesRegistrar.REGISTRY[parameters.uncertainties]
     class DriftScraper(base, mixin):
       pass
     return DriftScraper(table=table, parameters=parameters)
