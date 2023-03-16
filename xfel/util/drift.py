@@ -161,8 +161,11 @@ class CorrelationMatrix(object):
         elif len(variables[k1]) < 2:
           self.corr[k1][k2] = self.corr[k2][k1] = 0.0
         elif i2 > i1:
-          self.corr[k1][k2] = self.corr[k2][k1] = \
-            correlation(variables[k1], variables[k2], weights=weights)
+          try:
+            corr = correlation(variables[k1], variables[k2], weights=weights)
+          except ZeroDivisionError:
+            corr = 0
+          self.corr[k1][k2] = self.corr[k2][k1] = corr
 
   def __str__(self):
     s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
