@@ -393,17 +393,6 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
       print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
-class DriftUncertaintiesRegistrar(abc.ABCMeta):
-  """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
-  REGISTRY = {}
-  def __new__(mcs, name, bases, attrs):
-    new_cls = super().__new__(mcs, name, bases, attrs)
-    if hasattr(new_cls, 'uncertainties'):
-      mcs.REGISTRY[new_cls.uncertainties] = new_cls
-    return new_cls
-
-
-@six.add_metaclass(DriftUncertaintiesRegistrar)
 class FalseUncertaintiesMixin(object):
   uncertainties = False
 
@@ -413,7 +402,6 @@ class FalseUncertaintiesMixin(object):
     return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
 
 
-@six.add_metaclass(DriftUncertaintiesRegistrar)
 class TrueUncertaintiesMixin(object):
   uncertainties = True
 
@@ -437,7 +425,8 @@ class DriftScraperFactory(object):
   @classmethod
   def get_drift_scraper(cls, table, parameters):
     base = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
-    mixin = DriftUncertaintiesRegistrar.REGISTRY[parameters.uncertainties]
+    mixin = TrueUncertaintiesMixin if parameters.uncertainties \
+      else FalseUncertaintiesMixin
     class DriftScraper(base, mixin):
       pass
     return DriftScraper(table=table, parameters=parameters)
