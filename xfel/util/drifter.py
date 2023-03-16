@@ -20,17 +20,24 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import PercentFormatter
 
 
-message = ''' This script aims to investigate the spatial drift of a detector
-              as a function of experimental progress. It requires the directory
-              structure to follow that resulting from indexing and ensemble
-              refinement performed by cctbx.xfel. End result is a multiplot
-              with detector origin position (vertical position) as a function
-              of run number (horizontal position), colored according to tag
-              name. Error bars are derived from the uncertainty of individual
-              reflections' position in laboratory reference system.
-              Example usage: `libtbx.python `libtbx.find_in_repositories
-              xfel`/util/drifter.py input.glob=batch*TDER/`, where `batch*TDER`
-              describes folders (and thus dataset names) with merging results.
+message = '''
+This script aims to investigate the spatial drift of a detector as a function
+of experimental progress. It requires the directory structure to follow that
+resulting from indexing and ensemble refinement performed by cctbx.xfel.
+End result is a multiplot with detector origin position (vertical position) as
+a function of run number (horizontal position), colored according to tag name.
+Error bars can be derived from the uncertainty of individual reflections'
+position in laboratory reference system.
+
+Example usage 1:
+"libtbx.python `libtbx.find_in_repositories xfel`/util/drifter.py
+input.glob=batch*TDER/ input.kind=merging_directory"
+where `batch*TDER` points to folders with merging results.
+
+Example usage 2:
+"libtbx.python `libtbx.find_in_repositories xfel`/util/drifter.py
+input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory"
+where `r0*/039_rg084/task209` points to folders with TDER results.
 '''
 
 
