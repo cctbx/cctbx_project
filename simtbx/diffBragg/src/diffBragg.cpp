@@ -2036,7 +2036,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         last_kernel_on_GPU=false;
         }
     else { // we are using cuda or kokkos
-#if defined NANOBRAGG_HAVE_CUDA || defined DIFFBRAGG_HAVE_KOKKOS
+#if defined DIFFBRAGG_HAVE_CUDA || defined DIFFBRAGG_HAVE_KOKKOS
         db_cu_flags.device_Id = device_Id;
         db_cu_flags.update_step_positions = update_step_positions_on_device;
         db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
@@ -2051,7 +2051,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
       if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
         diffBragg_sum_over_steps_cuda(
              Npix_to_model, panels_fasts_slows_vec,
              image,

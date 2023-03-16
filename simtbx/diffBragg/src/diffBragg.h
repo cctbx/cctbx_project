@@ -12,7 +12,7 @@
 #include <Eigen/StdVector>
 #include <boost/python/numpy.hpp>
 
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
 #include "diffBraggCUDA.h"
 #endif
 
@@ -155,7 +155,7 @@ class diffBragg: public nanoBragg{
   cuda_flags db_cu_flags;
   detector db_det;
 
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
     diffBragg_cudaPointers device_pointers;
     inline void cuda_free(){
         freedom(device_pointers);

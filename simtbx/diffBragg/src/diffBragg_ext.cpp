@@ -610,7 +610,7 @@ namespace boost_python { namespace {
 
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
 #endif
 
