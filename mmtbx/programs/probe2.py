@@ -747,7 +747,7 @@ Note:
 
   def _generate_interaction_dots(self, sourceAtoms, targetSet, spatialQuery, phantomsQuery, bondedNeighborLists):
     '''
-      Find all interaction dots for the specified atom.
+      Find all interaction dots for the specified atoms.
       This does not include locations where the probe is inside a bonded neighbor.
       :param sourceAtoms: Sorted list of atoms that can be the source of an interaction.
       :param targetSet: Set of atoms that are targets; others will block dots but not interact
@@ -1788,6 +1788,15 @@ Note:
 
 # ------------------------------------------------------------------------------
 
+  def overrideModel(self, model):
+    '''This is a hack to let another program harness probe2 without having to write a
+    new model file for it to read. After initializing probe2, but before calling
+    run(), call this function to override the model that it should use.
+    '''
+    self.model = model
+
+# ------------------------------------------------------------------------------
+
   def run(self):
     # String that will be output to the specified file.
     outString = ''
@@ -1798,13 +1807,15 @@ Note:
 
     make_sub_header('Interpret Model', out=self.logger)
 
-    # Get our model.
-    self.model = self.data_manager.get_model()
+    # Allow the model to be overridden using the overrideModel() method.
+    if not hasattr(self, 'model'):
+      # Get our model.
+      self.model = self.data_manager.get_model()
 
-    # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-    cs = self.model.crystal_symmetry()
-    if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model)
+      # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+      cs = self.model.crystal_symmetry()
+      if (cs is None) or (cs.unit_cell() is None):
+        self.model = shift_and_box_model(model = self.model)
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
@@ -2416,8 +2427,8 @@ Note:
       ps = pstats.Stats(self._pr).sort_stats(profile_params['sort_by'])
       ps.print_stats(profile_params['num_entries'])
 
-    # Return the results object that has all of the dots.
-    return self._results
+    # Return the results object that has all of the dots and the output string.
+    return self._results, outString
 
 # ------------------------------------------------------------------------------
 
