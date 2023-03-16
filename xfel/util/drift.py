@@ -30,12 +30,12 @@ Error bars can be derived from the uncertainty of individual reflections'
 position in laboratory reference system.
 
 Example usage 1:
-"libtbx.python `libtbx.find_in_repositories xfel`/util/drifter.py
+"libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
 input.glob=batch*TDER/ input.kind=merging_directory"
 where `batch*TDER` points to folders with merging results.
 
 Example usage 2:
-"libtbx.python `libtbx.find_in_repositories xfel`/util/drifter.py
+"libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
 input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory"
 where `r0*/039_rg084/task209` points to folders with TDER results.
 '''
