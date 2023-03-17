@@ -709,11 +709,10 @@ class DriftArtist(object):
   def _plot_drift_distribution(self, axes, y):
     axes.set_facecolor('black')
     x_numeric = range(len(self.x))
-    x_full_list, y_full_list = flatten_together(x_numeric, y)
-    print(f"{list(x_full_list)=}")
-    print(f"{list(y_full_list)=}")
+    x_flat, y_flat = flatten_together(x_numeric, y)
     bins = (len(self.x), 100)
-    axes.hist2d(x_full_list, y_full_list, bins=bins, cmap=plt.cm.viridis)
+    range_ = [[-0.5, len(self.x) + 0.5], [min(y_flat), max(y_flat)]]
+    axes.hist2d(x_flat, y_flat, bins=bins, range=range_, cmap=plt.cm.viridis, cmin=0.5)
 
   def _plot_bars(self):
     y = self.table['expts']
