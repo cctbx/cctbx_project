@@ -703,7 +703,8 @@ class DriftArtist(object):
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
     axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
-    axes.scatter(self.x, [average(y_iterable) for y_iterable in y], c='w')
+    axes.scatter(self.x, [average(y_iterable) for y_iterable in y],
+                 c=self.color_array, edgecolors='white')
 
   def _plot_bars(self):
     y = self.table['expts']
