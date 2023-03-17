@@ -199,6 +199,8 @@ def flatten_together(*iterables):
     if len(unique_elements(lens)) > 1:
       raise ValueError('All iterables elements must be scalars of same-length')
     for iterable_idx, el in enumerate(iterable_elements):
+      print(f"{iterable_idx=}")
+      print(f"{el=}")
       flattened[iterable_idx].extend(el if is_iterable(el) else [el] * max(lens))
   return flattened
 
