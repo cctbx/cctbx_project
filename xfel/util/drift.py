@@ -194,14 +194,11 @@ def flatten_together(*iterables):
     raise ValueError('All iterables must have the same non-zero length')
   flat = [[] for _ in range(len(iterables))]
   for iterable_elements in zip(*iterables):
-    print(f"{iterable_elements=}")
     lens = [len(el) for el in iterable_elements if is_iterable(el)]
     if len(unique_elements(lens)) > 1:
       raise ValueError('All iterables elements must be scalars of same-length')
     elif len(unique_elements(lens)) == 1:
       for iterable_idx, el in enumerate(iterable_elements):
-        print(f"{iterable_idx=}")
-        print(f"{el=}")
         flat[iterable_idx].extend(el if is_iterable(el) else [el] * max(lens))
     else:
       for iterable_idx, el in enumerate(iterable_elements):
@@ -707,13 +704,10 @@ class DriftArtist(object):
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y):
-    # axes.set_facecolor('gray')
-    x_numeric = range(len(self.x))
-    x_flat, y_flat = flatten_together(x_numeric, y)
-    bins = (len(self.x), 100)
-    range_ = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
-    axes.hist2d(x_flat, y_flat, bins=bins, range=range_,
-                cmap=plt.cm.viridis_r, cmin=0.5)
+    x_flat, y_flat = flatten_together(range(len(self.x)), y)
+    b = (len(self.x), 100)
+    r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
+    axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
 
   def _plot_bars(self):
     y = self.table['expts']
@@ -721,10 +715,10 @@ class DriftArtist(object):
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_correlations(self):
-    keys = ['x', 'y', 'z', 'a', 'b', 'c']  # plot correlation between avg only
-    correlated = {k: [average(v) for v in self.table[k]] \
-      if is_iterable(self.table[k][0]) else self.table[k] for k in keys}
-    cm = CorrelationMatrix(correlated, weights=self.table['refls'])
+    keys = ['x', 'y', 'z', 'a', 'b', 'c']
+    flat_cols = flatten_together([self.table[k] for k in keys + ['refls']])
+    correlated = {k: f for k, f in zip(keys, flat_cols)}
+    cm = CorrelationMatrix(correlated, weights=flat_cols[-1])
     print(cm)
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
