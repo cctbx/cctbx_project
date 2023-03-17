@@ -905,6 +905,7 @@ Borrowing them from the first miller array""" %i)
     if self.params.commit_subgroup_datasets==False:
       return
     self.finish_dataloading(self.viewer.proc_arrays[:])
+    self.viewer.HKLscenedict = {} # delete all cached scenes
     self.SendInfoToGUI({"file_name": self.loaded_file_name + " expanded"})
     # send file_name value separately from array_infotpls value since the former
     # clears NGL_HKLViewer.millertable of the contents of the array_infotpls
