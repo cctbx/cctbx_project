@@ -3,7 +3,6 @@ import abc
 from collections import OrderedDict, defaultdict
 from json.decoder import JSONDecodeError
 import glob
-import itertools
 import os
 import six
 import sys
@@ -184,24 +183,6 @@ class CorrelationMatrix(object):
 
 
 ############################## UTILITY FUNCTIONS ##############################
-
-
-def flatten_together(*iterables):
-  """For each iterable flatten it or repeat its elements, return same-length"""
-  if len(unique_elements(len(it) for it in iterables if it)) != 1:
-    raise ValueError('All iterables must have the same non-zero length')
-  flat = [[] for _ in range(len(iterables))]
-  for iterable_elements in zip(*iterables):
-    lens = [len(el) for el in iterable_elements if is_iterable(el)]
-    if len(unique_elements(lens)) > 1:
-      raise ValueError('All iterables elements must be scalars of same-length')
-    elif len(unique_elements(lens)) == 1:
-      for iterable_idx, el in enumerate(iterable_elements):
-        flat[iterable_idx].extend(el if is_iterable(el) else [el] * max(lens))
-    else:
-      for iterable_idx, el in enumerate(iterable_elements):
-        flat[iterable_idx].append(el)
-  return flat
 
 
 def is_iterable(value):
@@ -572,6 +553,24 @@ class DriftTable(object):
   def sort(self, by_key=KEYS[0]):
     self.data = sorted(self.data, key=lambda d: d[by_key])
 
+  def get_flat(self, *keys):
+    """Flatten or repeat each self[key] col to return same-length 1D lists"""
+    columns = [self[k] for k in keys]
+    if len(unique_elements(len(col) for col in columns)) != 1:
+      raise ValueError('All flattened cols must have the same non-zero length')
+    flat = [[] for _ in range(len(columns))]
+    for row in zip(*columns):
+      lens = [len(el) for el in row if is_iterable(el)]
+      if len(unique_elements(lens)) > 1:
+        raise ValueError('All row elements must be scalars of same-length')
+      elif len(unique_elements(lens)) == 1:
+        for col_idx, el in enumerate(row):
+          flat[col_idx].extend(el if is_iterable(el) else [el] * max(lens))
+      else:
+        for col_idx, el in enumerate(row):
+          flat[col_idx].append(el)
+    return flat
+
   @property
   def active_keys(self):
     return [key for key in self.KEYS if not all(v is None for v in self[key])]
@@ -583,7 +582,12 @@ class DriftTable(object):
   @property
   def auxiliary(self):
     density = [d['refls'] / d['expts'] if d['expts'] else 0 for d in self.data]
-    return {'density': density}
+    index = [i for i, _ in enumerate(self.data)]
+    return {'density': density, 'index': index}
+
+  @property
+  def column_is_flat(self):
+    return {k: not is_iterable(self[k][0]) for k in self.available_keys}
 
   @staticmethod
   def _format_cell(value):
@@ -676,8 +680,8 @@ class DriftArtist(object):
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
-    if y and is_iterable(y[0]):
-      self._plot_drift_distribution(axes, y)
+    if y and not self.table.column_is_flat[values_key]:
+      self._plot_drift_distribution(axes, y, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
     if top:
@@ -685,7 +689,7 @@ class DriftArtist(object):
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
-    flattened_y, flattened_weights = flatten_together(y, self.table['refls'])
+    flattened_y, flattened_weights = self.table.get_flat(values_key, 'refls')
     avg_y = average(flattened_y, weights=flattened_weights)
     if avg_y != 0:
       axes2 = axes.twinx()
@@ -698,8 +702,8 @@ class DriftArtist(object):
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
-  def _plot_drift_distribution(self, axes, y):
-    x_flat, y_flat = flatten_together(range(len(self.x)), y)
+  def _plot_drift_distribution(self, axes, y, values_key):
+    x_flat, y_flat = self.table.get_flat('index', values_key)
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
     axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
@@ -713,7 +717,7 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    flat_cols = flatten_together(*[self.table[k] for k in keys + ['refls']])
+    flat_cols = self.table.get_flat(*keys, 'refls')
     correlated = {k: f for k, f in zip(keys, flat_cols)}
     cm = CorrelationMatrix(correlated, weights=flat_cols[-1])
     print(cm)
