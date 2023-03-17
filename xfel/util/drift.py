@@ -192,7 +192,7 @@ def flatten_together(*iterables):
   """For each iterable flatten it or repeat its elements, return same-length"""
   if len(unique_elements(len(it) for it in iterables if it)) != 1:
     raise ValueError('All iterables must have the same non-zero length')
-  flattened = [[]] *  len(iterables)
+  flattened = [[] for _ in range(len(iterables))]
   for iterable_elements in zip(*iterables):
     print(f"{iterable_elements=}")
     lens = [len(el) for el in iterable_elements if is_iterable(el)]
