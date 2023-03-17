@@ -250,8 +250,8 @@ def represent_range_as_str(sorted_iterable):
 
 
 def unique_elements(sequence):
-  """Return unique elements of sequence while preserving its order and type"""
-  return type(sequence)(OrderedDict.fromkeys(sequence))
+  """Return list of unique elements in sequence while preserving its order"""
+  return list(OrderedDict.fromkeys(sequence))
 
 
 ############################### DRIFT SCRAPPING ###############################
