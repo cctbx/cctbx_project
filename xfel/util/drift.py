@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import abc
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from json.decoder import JSONDecodeError
 import glob
 import os
@@ -456,16 +456,15 @@ class DriftTable(object):
     self.parameters = parameters
 
   def __getitem__(self, key):
-    auxiliary_key = key in self.auxiliary.keys()
-    return self.auxiliary[key] if auxiliary_key else [d[key] for d in self.data]
+    is_aux_key = key in self.auxiliary.keys()
+    return self.auxiliary[key] if is_aux_key else [d[key] for d in self.data]
 
   def __str__(self):
     lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.available_keys)]
     for i, d in enumerate(self.data):
-      cells = ['{:.20f}'.format(d[k]) if isinstance(d[k], float) else d[k]
-               for k in self.active_keys]
+      cells = [self._format_cell(d[k]) for k in self.active_keys]
       for ak in self.auxiliary.keys():
-        cells.append('{:.20f}'.format(self[ak][i]))
+        cells.append(self._format_cell(self[ak][i]))
       lines.append(' '.join('{!s:9.9}'.format(cell) for cell in cells))
     return '\n'.join(lines)
 
@@ -490,6 +489,17 @@ class DriftTable(object):
   def auxiliary(self):
     density = [d['refls'] / d['expts'] if d['expts'] else 0 for d in self.data]
     return {'density': density}
+
+  @staticmethod
+  def _format_cell(value):
+    if isinstance(value, (str, int)):
+      fmt_cell = '{!s:9.9}'.format(value)
+    elif isinstance(value, float):
+      fmt_cell = '{!s:9.9}'.format('{:.20f}'.format(value))
+    else:
+      fmt_cell = '{!s:9.9}'.format(represent_range_as_str(sorted(value)))
+    return fmt_cell
+
 
 
 ############################## DRIFT VISUALIZING ##############################
