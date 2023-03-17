@@ -689,7 +689,8 @@ class DriftArtist(object):
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
-    avg_y = average(y, weights=self.table['refls'])
+    flattened_y, flattened_weights = flatten_together(y, self.table['refls'])
+    avg_y = average(flattened_y, weights=flattened_weights)
     if avg_y != 0:
       axes2 = axes.twinx()
       axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
