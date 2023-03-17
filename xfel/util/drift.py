@@ -716,7 +716,7 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    flat_cols = flatten_together([self.table[k] for k in keys + ['refls']])
+    flat_cols = flatten_together(*[self.table[k] for k in keys + ['refls']])
     correlated = {k: f for k, f in zip(keys, flat_cols)}
     cm = CorrelationMatrix(correlated, weights=flat_cols[-1])
     print(cm)
