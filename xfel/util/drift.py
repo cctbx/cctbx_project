@@ -3,6 +3,7 @@ import abc
 from collections import OrderedDict, defaultdict
 from json.decoder import JSONDecodeError
 import glob
+import itertools
 import os
 import six
 import sys
@@ -178,6 +179,15 @@ class CorrelationMatrix(object):
 
 ############################## UTILITY FUNCTIONS ##############################
 
+
+def is_iterable(value):
+  """Return `True` if object is iterable, else `False`"""
+  try:
+    iter(value)
+  except TypeError:
+    return False
+  else:
+    return True
 
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
@@ -496,8 +506,10 @@ class DriftTable(object):
       fmt_cell = '{!s:9.9}'.format(value)
     elif isinstance(value, float):
       fmt_cell = '{!s:9.9}'.format('{:.20f}'.format(value))
+    elif is_iterable(value):
+      fmt_cell = '{!s:4.4}-{!s:4.4}'.format(min(value), max(value))
     else:
-      fmt_cell = '{!s:9.9}'.format(represent_range_as_str(sorted(value)))
+      fmt_cell = 'UnknwnFmt'
     return fmt_cell
 
 
@@ -573,13 +585,16 @@ class DriftArtist(object):
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
-    y_err = self.table.get(deltas_key, [])
-    axes.scatter(self.x, y, c=self.color_array)
+    if y and is_iterable(y[0]):
+      self._plot_drift_distribution(axes, y)
+    else:
+      self._plot_drift_point(axes, y)
     if top:
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
+    y_err = self.table.get(deltas_key, [])
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
     avg_y = average(y, weights=self.table['refls'])
@@ -587,6 +602,14 @@ class DriftArtist(object):
       axes2 = axes.twinx()
       axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
       axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+
+  def _plot_drift_point(self, axes, y):
+    axes.scatter(self.x, y, c=self.color_array)
+
+  def _plot_drift_distribution(self, axes, y):
+    axes.set_facecolor('black')
+    x_full_list, y_full_list = zip(*itertools.product(self.x, y))
+    axes.hist2d(x_full_list, y_full_list, cmap=plt.cm.viridis)
 
   def _plot_bars(self):
     y = self.table['expts']
