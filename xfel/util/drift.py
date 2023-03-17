@@ -695,8 +695,8 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']  # plot correlation between avg only
-    correlated = {k: average(self.table[k]) if is_iterable(self.table[k])
-                  else self.table[k] for k in keys}
+    correlated = {k: [average(v) for v in self.table[k]] \
+      if is_iterable(self.table[k][0]) else self.table[k] for k in keys}
     cm = CorrelationMatrix(correlated, weights=self.table['refls'])
     print(cm)
     self.axw.set_xlim([0, len(keys)])
