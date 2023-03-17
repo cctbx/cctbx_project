@@ -195,6 +195,7 @@ def flatten_together(*iterables):
   flattened = [[]] *  len(iterables)
   for iterable_elements in zip(iterables):
     lens = [len(el) for el in iterable_elements if is_iterable(el)]
+    print(f"{lens}")
     if len(unique_elements(lens)) > 1:
       raise ValueError('All iterables elements must be scalars of same-length')
     for iterable_idx, el in enumerate(iterable_elements):
