@@ -930,6 +930,43 @@ class map_manager(map_reader, write_ccp4_map):
     from iotbx.map_model_manager import map_model_manager
     return map_model_manager(map_manager = self)
 
+  def invert_hand(self):
+    ''' Invert the hand of this map by swapping the order of all sections
+        in Z'''
+
+    map_data = self.map_data()
+    # Swap all sections in Z, one pair at a time, in place
+    nx,ny,nz = [ne - ns  for ne,ns in zip(map_data.all(), map_data.origin())]
+    assert nx*ny*nz == map_data.size()
+    nxstart,nystart,nzstart= map_data.origin()
+    for k in range (int(nz//2)):
+      i = k + nzstart
+      ii = nzstart + nz -i -1  # sections to swap are i, ii
+      data_i = maptbx.copy(map_data,
+         (nxstart,nystart,i),
+         (nxstart+nx-1, nystart+ny-1,i)).deep_copy()
+      assert data_i.size() == nx * ny
+      data_ii = maptbx.copy(map_data,
+         (nxstart,nystart,ii),
+         (nxstart+nx-1, nystart+ny-1,ii)).deep_copy()
+      assert data_i.size() == nx * ny
+      assert data_ii.size() == data_i.size()
+      acc = flex.grid(data_i.all())
+      data_i.reshape(acc)
+      data_ii.reshape(acc)
+
+      maptbx.set_box(
+        map_data_from = data_ii,
+        map_data_to   = map_data,
+        start         = (nxstart,nystart,i),
+        end           = (nxstart+nx, nystart+ny, i+1))
+
+      maptbx.set_box(
+        map_data_from = data_i,
+        map_data_to   = map_data,
+        start         = (nxstart,nystart,ii),
+        end           = (nxstart+nx, nystart+ny, ii+1))
+
   def as_full_size_map(self):
     '''
       Create a full-size map with the current map inside it, padded by zero
