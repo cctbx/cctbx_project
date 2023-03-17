@@ -190,6 +190,8 @@ class CorrelationMatrix(object):
 
 def flatten_together(*iterables):
   """For each iterable flatten it or repeat its elements, return same-length"""
+  for it in iterables:
+    print(f"{list(it)=}")
   if unique_elements(len(it) for it in iterables if it) != 1:
     raise ValueError('All iterables must have the same non-zero length')
   flattened = [[]] *  len(iterables)
