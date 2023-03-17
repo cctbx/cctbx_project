@@ -124,8 +124,6 @@ DEFAULT_INPUT_SCOPE = parse("""
 
 def average(sequence, weights=None):
   """Calculate weighted arithmetic mean of an iterable"""
-  print(sequence, weights)
-  print(type(sequence), type(weights))
   weights = [1] * len(sequence) if weights is None else weights
   return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
 
@@ -401,9 +399,6 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print(e)
           else:
             self.table.add(**scrap_dict)
-            print('Updating table with: {}'.format(scrap_dict))
-    for key in self.table.KEYS:
-      print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
 class FirstOriginMixin(object):
