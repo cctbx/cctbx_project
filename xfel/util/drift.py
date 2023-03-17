@@ -4,7 +4,6 @@ from collections import OrderedDict, defaultdict
 from json.decoder import JSONDecodeError
 import glob
 import itertools
-import math
 import os
 import six
 import sys
@@ -189,6 +188,20 @@ class CorrelationMatrix(object):
 ############################## UTILITY FUNCTIONS ##############################
 
 
+def flatten_together(*iterables):
+  """For each iterable flatten it or repeat its elements, return same-length"""
+  if unique_elements(len(it) for it in iterables if it) != 1:
+    raise ValueError('All iterables must have the same non-zero length')
+  flattened = [[]] *  len(iterables)
+  for iterable_elements in zip(iterables):
+    lens = [len(el) for el in iterable_elements if is_iterable(el)]
+    if len(unique_elements(lens)) > 1:
+      raise ValueError('All iterables elements must be scalars of same-length')
+    for iterable_idx, el in enumerate(iterable_elements):
+      flattened[iterable_idx].extend(el if is_iterable(el) else [el] * max(lens))
+  return flattened
+
+
 def is_iterable(value):
   """Return `True` if object is iterable, else `False`"""
   try:
@@ -197,6 +210,7 @@ def is_iterable(value):
     return False
   else:
     return True
+
 
 def path_join(*path_elements):
   """Join path from elements, resolving all redundant or relative calls"""
@@ -687,7 +701,7 @@ class DriftArtist(object):
   def _plot_drift_distribution(self, axes, y):
     axes.set_facecolor('black')
     x_numeric = range(len(self.x))
-    x_full_list, y_full_list = zip(*itertools.product(x_numeric, y))
+    x_full_list, y_full_list = flatten_together(x_numeric, y)
     print(f"{list(x_full_list)=}")
     print(f"{list(y_full_list)=}")
     bins = (len(self.x), 100)
