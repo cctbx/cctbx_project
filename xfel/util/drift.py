@@ -465,7 +465,7 @@ class DriftTable(object):
       cells = [self._format_cell(d[k]) for k in self.active_keys]
       for ak in self.auxiliary.keys():
         cells.append(self._format_cell(self[ak][i]))
-      lines.append(' '.join('{!s:9.9}'.format(cell) for cell in cells))
+      lines.append(' '.join(cells))
     return '\n'.join(lines)
 
   def add(self, **kwargs):
