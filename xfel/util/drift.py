@@ -80,6 +80,9 @@ phil_scope = parse('''
     .type = bool
     .help = If True, uncertainties will be estimated using differences \
           between predicted and observed refl positions and cell distribution
+  unit_cell = *average distribution
+    .type = choice
+    .help = Use average unit cell or distribution of all?
 ''')
 
 
@@ -271,22 +274,6 @@ class BaseDriftScraper(object):
             'task': path_split(combine_phil_path)[-4],
             'trial': represent_range_as_str(trials)}
 
-  def get_unit_cell_distribution(self, expts):
-    """Retrieve average a, b, c and their deltas using expt paths"""
-    af, bf, cf = flex.double(), flex.double(), flex.double()
-    with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(expts, tdata_file.name)
-      with open(tdata_file.name, 'r') as tdata:
-        for line in tdata.read().splitlines():
-          a, b, c = line.strip().split(' ')[:3]
-          af.append(float(a))
-          bf.append(float(b))
-          cf.append(float(c))
-    return {'a': flex.mean(af), 'b': flex.mean(bf), 'c': flex.mean(cf),
-            'delta_a': af.standard_deviation_of_the_sample(),
-            'delta_b': bf.standard_deviation_of_the_sample(),
-            'delta_c': cf.standard_deviation_of_the_sample()}
-
   def locate_input_paths(self):
     """Return all paths (either common files or directories, relative to
     working directory) of specified kind to be processed"""
@@ -325,18 +312,6 @@ class BaseDriftScraper(object):
     refls = read_reflections(*refls_paths)
     return expts, refls
 
-  @staticmethod
-  def _write_tdata(expts, tdata_path):
-    """Read all expt_paths and write a tdata file with unit cells in lines"""
-    s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
-    tdata_lines = []
-    for expt in expts:
-      uc_params = expt.crystal.get_unit_cell().parameters()
-      sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
-      tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
-    with open(tdata_path, 'w') as tdata_file:
-      tdata_file.write('\n'.join(tdata_lines))
-
   @abc.abstractmethod
   def scrap(self):
     """Fill `self.table` based on `self.parameters` provided."""
@@ -362,7 +337,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         print('Found {} expts and {} refls'.format(expts_len, refls_len))
         scrap_dict.update({'expts': expts_len, 'refls': refls_len})
         scrap_dict.update(self.get_origin(refined_expts))
-        scrap_dict.update(self.get_unit_cell_distribution(refined_expts))
+        scrap_dict.update(self.get_unit_cell(refined_expts))
         scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
@@ -399,7 +374,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             print('Accepted {} expts and {} refls'.format(expts_len, refls_len))
             scrap_dict.update({'expts': expts_len, 'refls': refls_len})
             scrap_dict.update(self.get_origin(refined_expts))
-            scrap_dict.update(self.get_unit_cell_distribution(refined_expts))
+            scrap_dict.update(self.get_unit_cell(refined_expts))
             scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
@@ -467,14 +442,81 @@ class TrueUncertaintiesMixin(object):
     return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
 
+class BaseUnitCellMixin(object):
+  @staticmethod
+  def _write_tdata(expts, tdata_path):
+    """Read all expt_paths and write a tdata file with unit cells in lines"""
+    s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
+    tdata_lines = []
+    for expt in expts:
+      uc_params = expt.crystal.get_unit_cell().parameters()
+      sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
+      tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
+    with open(tdata_path, 'w') as tdata_file:
+      tdata_file.write('\n'.join(tdata_lines))
+
+
+class AverageUnitCellMixin(BaseUnitCellMixin):
+  def get_unit_cell(self, expts):
+    """Retrieve average a, b, c and their deltas using expt paths"""
+    af, bf, cf = flex.double(), flex.double(), flex.double()
+    with tempfile.NamedTemporaryFile() as tdata_file:
+      self._write_tdata(expts, tdata_file.name)
+      with open(tdata_file.name, 'r') as tdata:
+        for line in tdata.read().splitlines():
+          a, b, c = line.strip().split(' ')[:3]
+          af.append(float(a))
+          bf.append(float(b))
+          cf.append(float(c))
+    return {'a': flex.mean(af), 'b': flex.mean(bf), 'c': flex.mean(cf),
+            'delta_a': af.standard_deviation_of_the_sample(),
+            'delta_b': bf.standard_deviation_of_the_sample(),
+            'delta_c': cf.standard_deviation_of_the_sample()}
+
+
+class DistributionUnitCellMixin(BaseUnitCellMixin):
+  def get_unit_cell(self, expts):
+    """Retrieve average a, b, c and their deltas using expt paths"""
+    af, bf, cf = flex.double(), flex.double(), flex.double()
+    with tempfile.NamedTemporaryFile() as tdata_file:
+      self._write_tdata(expts, tdata_file.name)
+      with open(tdata_file.name, 'r') as tdata:
+        for line in tdata.read().splitlines():
+          a, b, c = line.strip().split(' ')[:3]
+          af.append(float(a))
+          bf.append(float(b))
+          cf.append(float(c))
+    return {'a': af, 'b': bf, 'c': cf,
+            'delta_a': af.standard_deviation_of_the_sample(),
+            'delta_b': bf.standard_deviation_of_the_sample(),
+            'delta_c': cf.standard_deviation_of_the_sample()}
+
+
 class DriftScraperFactory(object):
   """Produces appropriate DriftScraper class based on phil `parameters`."""
+  ORIGIN_MIXINS = {
+    'first': FirstOriginMixin,
+    'average': AverageOriginMixin,
+    'distribution': DistributionOriginMixin,
+  }
+  UNCERTAINTIES_MIXINS = {
+    True: TrueUncertaintiesMixin,
+    False: FalseUncertaintiesMixin,
+  }
+  UNIT_CELL_MIXINS = {
+    'average': AverageUnitCellMixin,
+    'distribution': DistributionUnitCellMixin,
+  }
+
   @classmethod
   def get_drift_scraper(cls, table, parameters):
     base = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
-    mixin = TrueUncertaintiesMixin if parameters.uncertainties \
-      else FalseUncertaintiesMixin
-    class DriftScraper(base, mixin):
+    mixins = [
+      cls.ORIGIN_MIXINS[parameters.origin],
+      cls.UNCERTAINTIES_MIXINS[parameters.uncertainties],
+      cls.UNIT_CELL_MIXINS[parameters.unit_cell],
+    ]
+    class DriftScraper(base, *mixins):
       pass
     return DriftScraper(table=table, parameters=parameters)
 
