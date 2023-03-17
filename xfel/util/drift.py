@@ -124,8 +124,10 @@ DEFAULT_INPUT_SCOPE = parse("""
 
 def average(sequence, weights=None):
   """Calculate weighted arithmetic mean of an iterable"""
-  weights = [1] * len(sequence) if weights is None else list(weights)
-  return sum(s * w for s, w in zip(list(sequence), weights)) / sum(weights)
+  print(sequence, weights)
+  print(type(sequence), type(weights))
+  weights = [1] * len(sequence) if weights is None else weights
+  return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
 
 
 def correlation(xs, ys, weights=None):
