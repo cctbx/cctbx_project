@@ -73,6 +73,9 @@ phil_scope = parse('''
       .type = float
       .help = Width of saved plot in inches
   }
+  origin = *first average distribution
+    .type = choice
+    .help = Use origin of first experiment only or average/distribution of all?
   uncertainties = True
     .type = bool
     .help = If True, uncertainties will be estimated using differences \
@@ -268,13 +271,7 @@ class BaseDriftScraper(object):
             'task': path_split(combine_phil_path)[-4],
             'trial': represent_range_as_str(trials)}
 
-  @staticmethod
-  def extract_origin(expts):
-    """Read detector origin (x, y, z) from the first expt file"""
-    x, y, z = expts[0].detector.hierarchy().get_origin()
-    return {'x': x, 'y': y, 'z': z}
-
-  def extract_unit_cell_distribution(self, expts):
+  def get_unit_cell_distribution(self, expts):
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
@@ -364,8 +361,8 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         expts_len, refls_len = len(refined_expts), len(refined_refls)
         print('Found {} expts and {} refls'.format(expts_len, refls_len))
         scrap_dict.update({'expts': expts_len, 'refls': refls_len})
-        scrap_dict.update(self.extract_origin(refined_expts))
-        scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
+        scrap_dict.update(self.get_origin(refined_expts))
+        scrap_dict.update(self.get_unit_cell_distribution(refined_expts))
         scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
@@ -401,8 +398,8 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             expts_len, refls_len = len(refined_expts), len(refined_refls)
             print('Accepted {} expts and {} refls'.format(expts_len, refls_len))
             scrap_dict.update({'expts': expts_len, 'refls': refls_len})
-            scrap_dict.update(self.extract_origin(refined_expts))
-            scrap_dict.update(self.extract_unit_cell_distribution(refined_expts))
+            scrap_dict.update(self.get_origin(refined_expts))
+            scrap_dict.update(self.get_unit_cell_distribution(refined_expts))
             scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
@@ -413,9 +410,41 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
       print('KEY: {}, LEN: {}'.format(key, len(self.table[key])))
 
 
-class FalseUncertaintiesMixin(object):
-  uncertainties = False
+class FirstOriginMixin(object):
+  @staticmethod
+  def get_origin(expts):
+    """Read detector origin (x, y, z) from the first expt file"""
+    x, y, z = expts[0].detector.hierarchy().get_origin()
+    return {'x': x, 'y': y, 'z': z}
 
+
+class AverageOriginMixin(object):
+  @staticmethod
+  def get_origin(expts):
+    """Read detector origin (x, y, z) from the first expt file"""
+    xs, ys, zs = flex.double(), flex.double(), flex.double()
+    for expt in expts:
+      x, y, z = expt.detector.hierarchy().get_origin()
+      xs.append(x)
+      ys.append(y)
+      zs.append(z)
+    return {'x': flex.mean(xs), 'y': flex.mean(ys), 'z': flex.mean(zs)}
+
+
+class DistributionOriginMixin(object):
+  @staticmethod
+  def get_origin(expts):
+    """Read detector origin (x, y, z) from the first expt file"""
+    xs, ys, zs = flex.double(), flex.double(), flex.double()
+    for expt in expts:
+      x, y, z = expt.detector.hierarchy().get_origin()
+      xs.append(x)
+      ys.append(y)
+      zs.append(z)
+    return {'x': xs, 'y': ys, 'z': zs}
+
+
+class FalseUncertaintiesMixin(object):
   @staticmethod
   def get_origin_deltas(expts, refls):
     """If uncertainties=False, return origin uncertainties as zeros"""
@@ -423,8 +452,6 @@ class FalseUncertaintiesMixin(object):
 
 
 class TrueUncertaintiesMixin(object):
-  uncertainties = True
-
   @staticmethod
   def get_origin_deltas(expts, refls):
     """Get uncertainties of origin positions from refl. position deviations"""
@@ -588,23 +615,23 @@ class DriftArtist(object):
     if y and is_iterable(y[0]):
       self._plot_drift_distribution(axes, y)
     else:
-      self._plot_drift_point(axes, y)
+      self._plot_drift_point(axes, y, deltas_key)
     if top:
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
-    y_err = self.table.get(deltas_key, [])
-    if self.parameters.uncertainties:
-      axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
     avg_y = average(y, weights=self.table['refls'])
     if avg_y != 0:
       axes2 = axes.twinx()
       axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
       axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
 
-  def _plot_drift_point(self, axes, y):
+  def _plot_drift_point(self, axes, y, deltas_key):
     axes.scatter(self.x, y, c=self.color_array)
+    y_err = self.table.get(deltas_key, [])
+    if self.parameters.uncertainties:
+      axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y):
     axes.set_facecolor('black')
