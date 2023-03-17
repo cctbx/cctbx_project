@@ -707,13 +707,13 @@ class DriftArtist(object):
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y):
-    axes.set_facecolor('gray')
+    # axes.set_facecolor('gray')
     x_numeric = range(len(self.x))
     x_flat, y_flat = flatten_together(x_numeric, y)
     bins = (len(self.x), 100)
     range_ = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
     axes.hist2d(x_flat, y_flat, bins=bins, range=range_,
-                cmap=plt.cm.viridis, cmin=0.5)
+                cmap=plt.cm.viridis_r, cmin=0.5)
 
   def _plot_bars(self):
     y = self.table['expts']
