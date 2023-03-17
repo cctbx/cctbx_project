@@ -591,8 +591,6 @@ class DriftArtist(object):
   def __init__(self, table, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.color_by = 'tag' if len(set(table['tag'])) > 1 else 'task'
-    self.order_by = 'run'
     self.cov_colormap = plt.get_cmap('seismic')
     self.table = table
     self.parameters = parameters
@@ -642,6 +640,14 @@ class DriftArtist(object):
   @property
   def x(self):
     return self.table[self.order_by]
+
+  @property
+  def color_by(self):
+    return 'tag' if len(set(self.table['tag'])) > 1 else 'task'
+
+  @property
+  def order_by(self):
+    return 'run'
 
   def _get_handles_and_labels(self):
     handles, unique_keys = [], []
