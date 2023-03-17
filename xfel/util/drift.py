@@ -688,6 +688,8 @@ class DriftArtist(object):
     axes.set_facecolor('black')
     x_numeric = range(len(self.x))
     x_full_list, y_full_list = zip(*itertools.product(x_numeric, y))
+    print(f"list(x_full_list)=")
+    print(f"list(y_full_list)=")
     bins = (len(self.x), 100)
     axes.hist2d(x_full_list, y_full_list, bins=bins, cmap=plt.cm.viridis)
 
