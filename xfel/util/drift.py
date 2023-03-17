@@ -692,9 +692,10 @@ class DriftArtist(object):
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
 
   def _plot_correlations(self):
-    keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    cm = CorrelationMatrix({k: self.table[k] for k in keys},
-                           weights=self.table['refls'])
+    keys = ['x', 'y', 'z', 'a', 'b', 'c']  # plot correlation between avg only
+    correlated = {k: average(self.table[k]) if is_iterable(self.table[k])
+                  else self.table[k] for k in keys}
+    cm = CorrelationMatrix(correlated, weights=self.table['refls'])
     print(cm)
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
