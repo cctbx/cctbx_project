@@ -4,6 +4,7 @@ from collections import OrderedDict, defaultdict
 from json.decoder import JSONDecodeError
 import glob
 import itertools
+import math
 import os
 import six
 import sys
@@ -685,8 +686,10 @@ class DriftArtist(object):
 
   def _plot_drift_distribution(self, axes, y):
     axes.set_facecolor('black')
-    x_full_list, y_full_list = zip(*itertools.product(self.x, y))
-    axes.hist2d(x_full_list, y_full_list, cmap=plt.cm.viridis)
+    x_numeric = range(len(self.x))
+    x_full_list, y_full_list = zip(*itertools.product(x_numeric, y))
+    bins = (len(self.x), 100)
+    axes.hist2d(x_full_list, y_full_list, bins=bins, cmap=plt.cm.viridis)
 
   def _plot_bars(self):
     y = self.table['expts']
