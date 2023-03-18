@@ -392,7 +392,6 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
-            print(scrap_dict)
             self.table.add(scrap_dict)
 
 
@@ -565,6 +564,7 @@ class DriftTable(object):
         dicts2.append({k: [v] for k, v in d.items()})
       else:
         dicts2.append({k: [sum(v)] if k == 'refls' else [v] for k, v in d.items()})
+    print(dicts2)
     new_rows = pd.DataFrame(*dicts2)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
