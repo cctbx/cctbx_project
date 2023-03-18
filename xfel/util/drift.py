@@ -19,7 +19,6 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import PercentFormatter
-import numpy as np
 import pandas as pd
 
 
@@ -263,6 +262,14 @@ class BaseDriftScraper(object):
     self.parameters = parameters
 
   @staticmethod
+  def calc_expt_refl_len(expts, refls):
+    expts_len = len(expts)
+    refls_len = []
+    for expt_id, expt in enumerate(expts):
+      refls_len.append((expt_id == refls['id']).count(True))
+    return expts_len, refls_len
+
+  @staticmethod
   def extract_db_metadata(combine_phil_path):
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
@@ -336,9 +343,9 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         scrap_dict.update(self.extract_db_metadata(cpp))
         print('Processing run {}'.format(scrap_dict['run']))
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-        expts_len, refls_len = len(refined_expts), len(refined_refls)
-        print('Found {} expts and {} refls'.format(expts_len, refls_len))
-        scrap_dict.update({'expts': expts_len, 'refls': refls_len})
+        elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+        print(f'Found {elen} expts and {sum(rlen)} refls')
+        scrap_dict.update({'expts': elen, 'refls': rlen})
         scrap_dict.update(self.get_origin(refined_expts))
         scrap_dict.update(self.get_unit_cell(refined_expts))
         scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
@@ -369,13 +376,13 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             scrap_dict.update(self.extract_db_metadata(cpp))
             print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-            expts_len, refls_len = len(refined_expts), len(refined_refls)
-            print('Found {} expts and {} refls'.format(expts_len, refls_len))
+            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+            print(f'Found {elen} expts and {sum(rlen)} refls')
             refined_expts.select_on_experiment_identifiers(scaled_identifiers)
             refined_refls = refined_refls.select(refined_expts)
-            expts_len, refls_len = len(refined_expts), len(refined_refls)
-            print('Accepted {} expts and {} refls'.format(expts_len, refls_len))
-            scrap_dict.update({'expts': expts_len, 'refls': refls_len})
+            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+            print(f'Accepted {elen} expts and {sum(rlen)} refls')
+            scrap_dict.update({'expts': elen, 'refls': rlen})
             scrap_dict.update(self.get_origin(refined_expts))
             scrap_dict.update(self.get_unit_cell(refined_expts))
             scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
@@ -539,13 +546,22 @@ class DriftTable(object):
       self.recalculate_dynamic_column(key)
     return self.data[key]
 
+  def __len__(self):
+    return len(self.data.index)
+
   def __str__(self):
     for key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return str(self.data)
 
   def add(self, *dicts):
-    new_rows = pd.DataFrame(*dicts)
+    dicts2 = []  # if only 'refls' column is iterable, immediately sum it
+    for d in dicts:
+      if any([is_iterable(d[k]) for k in d.keys() if k is not 'refls']):
+        dicts2.append(d)
+      else:
+        dicts2.append({k: sum(v) if k is 'refls' else v for k, v in d.items()})
+    new_rows = pd.DataFrame(*dicts2)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
   def get(self, key, default=None):
@@ -574,12 +590,18 @@ class DriftTable(object):
       else:
         flat_columns = [[cell] for cell in row]
       flat_table.add({k: v for k, v in zip(col_names, flat_columns)})
+    flat_table.data['expts'] = 1
     return flat_table
+
+  @property
+  def is_flat(self):
+    return all(self.column_is_flat[k] for k in self.data.columns)
 
   def recalculate_dynamic_column(self, key):
     if key == 'density':
-      density = self.data['refls'].div(self.data['expts']).replace(np.inf, 0)
-      self.data['density'] = density
+      refls = self.data['refls'] if self.column_is_flat['refls'] \
+        else pd.Series([sum(refl) for refl in self.data['refls']])
+      self.data['density'] = self.data['refls'] / self.data['expts']
     else:
       raise KeyError(f'Unknown dynamic column key: {key}')
 
@@ -589,11 +611,14 @@ class DriftTable(object):
 
 class DriftArtist(object):
   """Object responsible for plotting an instance of `DriftTable`."""
-  def __init__(self, table, parameters):
+  def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
     self.cov_colormap = plt.get_cmap('seismic')
+    self.order_by = ['run']
     self.table = table
+    self.table.data.sort_values(by=self.order_by, ignore_index=True)
+    self.table_flat = self.table.flat
     self.parameters = parameters
     self._init_figure()
     self._setup_figure()
@@ -626,13 +651,13 @@ class DriftArtist(object):
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
-    self.axc.set_xlabel(self.order_by.title())
+    self.axc.set_xlabel(', '.join(ob for ob in self.order_by))
     self.axh.set_ylabel('# expts')
 
   @property
   def color_array(self):
     """Registry-length color list with colors corresponding to self.color_by"""
-    color_i = [0, ] * len(self.table.data)
+    color_i = [0, ] * len(self.table)
     color_by = self.table[self.color_by]
     for i, cat in enumerate(color_by[1:], 1):
       color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
@@ -640,15 +665,11 @@ class DriftArtist(object):
 
   @property
   def x(self):
-    return self.table[self.order_by]
+    return self.table['index']
 
   @property
   def color_by(self):
     return 'tag' if len(set(self.table['tag'])) > 1 else 'task'
-
-  @property
-  def order_by(self):
-    return 'run'
 
   def _get_handles_and_labels(self):
     handles, unique_keys = [], []
@@ -670,7 +691,8 @@ class DriftArtist(object):
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
-    flattened_y, flattened_weights = self.table.get_flat(values_key, 'refls')
+    flattened_y = self.table_flat[values_key]
+    flattened_weights = self.table_flat['refls']
     avg_y = average(flattened_y, weights=flattened_weights)
     if avg_y != 0:
       axes2 = axes.twinx()
@@ -684,11 +706,12 @@ class DriftArtist(object):
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y, values_key):
-    x_flat, y_flat = self.table.get_flat('index', values_key)
+    x_flat = self.table_flat['index']
+    y_flat = self.table_flat[values_key]
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
     axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
-    axes.scatter(self.x, [average(y_iterable) for y_iterable in y],
+    axes.scatter(self.x, [average(y) for y in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
 
   def _plot_bars(self):
@@ -698,9 +721,10 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    flat_cols = self.table.get_flat(*keys, 'refls')
+    flat_cols = self.table_flat[keys]
+    weights = self.table_flat['refls']
     correlated = {k: f for k, f in zip(keys, flat_cols)}
-    cm = CorrelationMatrix(correlated, weights=flat_cols[-1])
+    cm = CorrelationMatrix(correlated, weights=weights)
     print(cm)
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
@@ -720,9 +744,11 @@ class DriftArtist(object):
     self.axl.legend(handles, labels, loc=7)
 
   def _plot_width_info(self):
-    extrema = [min(self.table['expts']), max(self.table['expts']),
-               min(self.table['refls']), max(self.table['refls'])]
-    s = "#expts/run: {} - {}\n#refls/run: {} - {}".format(*extrema)
+    expt_lens = self.table['expts']
+    refl_lens = self.table['refls'] if self.table.column_is_flat['refls'] \
+      else [sum(refl) for refl in self.table['refls']]
+    s = f"#expts/run: {min(expt_lens)} - {max(expt_lens)}\n" \
+        f"#refls/run: {min(refl_lens)} - {max(refl_lens)}"
     self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
@@ -755,7 +781,7 @@ def run(params_):
   ds = DriftScraperFactory.get_drift_scraper(table=dt, parameters=params_)
   da = DriftArtist(table=dt, parameters=params_)
   ds.scrap()
-  dt.sort(by_key='run')
+  dt.sort(by='run')
   print(dt)
   da.publish()
 
