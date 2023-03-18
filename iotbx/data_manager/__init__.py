@@ -422,11 +422,9 @@ options are {options}.\
     '''
     self._set_datatype(datatype)
     if filename not in self._get_current_storage().keys():
-      if os.path.isfile(filename):
+      processed = getattr(self, 'process_%s_file' % datatype)(filename)
+      if filename != processed:
         raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
-      else:
-        raise Sorry('Cannot find the file "%s" (data type of %s).' %(
-         filename, datatype))
     else:
       setattr(self, self._current_default, filename)
 
@@ -439,22 +437,15 @@ options are {options}.\
       else:
         return self._get(datatype, filename=default_filename)
     elif filename not in self._get_current_storage().keys():
-      ok = True
-      try:
-        # try to load file if not already available
-        # use type-specific function call instead of _process_file because
-        # process_model_file is unique
-        # change to _process_file after any_file is updated
-        getattr(self, 'process_%s_file' % datatype)(filename)
+      # try to load file if not already available
+      # use type-specific function call instead of _process_file because
+      # process_model_file is unique
+      # change to _process_file after any_file is updated
+      processed = getattr(self, 'process_%s_file' % datatype)(filename)
+      if processed == filename:
         return self._get_current_storage()[filename]
-      except Sorry:
-        ok = False
-      if not ok:
-        if os.path.isfile(filename):
-          raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
-        else:
-          raise Sorry('Cannot find the file "%s" (data type of %s).' %(
-           filename, datatype))
+      else:
+        raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
     else:
       return self._get_current_storage()[filename]
 
@@ -509,6 +500,7 @@ options are {options}.\
         raise Sorry('%s is not a recognized %s file' % (filename, datatype))
       else:
         self._add(datatype, filename, a.file_object)
+    return filename
 
   def _update_default_output_filename(self, filename):
     '''

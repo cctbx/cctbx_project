@@ -302,6 +302,22 @@ END
   except Sorry as s:
     assert 'Unrecognized' in str(s)
 
+  # check processing file by setting a default
+  dm = DataManager(['model', 'phil'])
+  dm.set_default_model(test_output_filename)
+  try:
+    dm.set_default_model('does_not_exist.pdb')
+  except Sorry as s:
+    assert 'find the file does_not_exist.pdb' in str(s)
+  try:
+    dm.set_default_model('model.eff')
+  except Sorry as s:
+    assert 'not a recognized model file' in str(s)
+  try:
+    dm.set_default_phil(test_filename)
+  except Sorry as s:
+    assert 'not a recognized phil file' in str(s)
+
   os.remove(test_eff)
   os.remove(test_filename)
   os.remove(test_output_filename)
