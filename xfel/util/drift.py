@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import abc
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from json.decoder import JSONDecodeError
 import glob
 import os
