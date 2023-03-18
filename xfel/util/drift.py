@@ -574,16 +574,15 @@ class DriftTable(object):
   def sort(self, by: Union[str, Sequence[str]] ='index'):
     self.data.sort_values(by=by, ignore_index=True)
 
-  @property
-  def column_is_flat(self):
-    return {k: not is_iterable(self[k][0]) for k in self.data.columns}
+  def column_is_flat(self, key):
+    return not is_iterable(self[key][0])
 
   @property
   def flat(self):
     """Drift table with all iterable fields expanded over rows"""
     c = self.column_is_flat
     col_names = self.data.columns
-    flatteners = [itertools.repeat if c[k] else lambda x: x for k in col_names]
+    flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
     flat_table = DriftTable()
     for row in self.data.itertuples(index=False):
       lens = [len(el) for el in row if is_iterable(el)]
@@ -599,11 +598,11 @@ class DriftTable(object):
 
   @property
   def is_flat(self):
-    return all(self.column_is_flat[k] for k in self.data.columns)
+    return all(self.column_is_flat(k) for k in self.data.columns)
 
   def recalculate_dynamic_column(self, key):
     if key == 'density':
-      refls = self.data['refls'] if self.column_is_flat['refls'] \
+      refls = self.data['refls'] if self.column_is_flat('refls') \
         else pd.Series([sum(refl) for refl in self.data['refls']])
       self.data['density'] = refls / self.data['expts']
     else:
@@ -685,7 +684,7 @@ class DriftArtist(object):
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
-    if y and not self.table.column_is_flat[values_key]:
+    if y and not self.table.column_is_flat(values_key):
       self._plot_drift_distribution(axes, y, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
@@ -749,7 +748,7 @@ class DriftArtist(object):
 
   def _plot_width_info(self):
     expt_lens = self.table['expts']
-    refl_lens = self.table['refls'] if self.table.column_is_flat['refls'] \
+    refl_lens = self.table['refls'] if self.table.column_is_flat('refls') \
       else [sum(refl) for refl in self.table['refls']]
     s = f"#expts/run: {min(expt_lens)} - {max(expt_lens)}\n" \
         f"#refls/run: {min(refl_lens)} - {max(refl_lens)}"
