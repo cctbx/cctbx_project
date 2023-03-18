@@ -644,11 +644,16 @@ def get_plddt_from_b(b_values, input_plddt_is_fractional = True):
     return None
 
   # b_values = flex.pow2(rmsd) * ((8 * (3.14159 ** 2)) / 3.0)
+  if b_values.min_max_mean().min < 0:
+    b_values = b_values.deep_copy()
+    b_values.set_selected(b_values < 0, 0)
   rmsd = flex.sqrt( b_values/ ((8 * (3.14159 ** 2)) / 3.0))
 
   # rmsd  = 1.5 * flex.exp(4*(0.7-plddt))
   plddt = 0.7 - 0.25 * flex.log(rmsd/1.5)
-
+  if plddt.min_max_mean().min < 0 or plddt.min_max_mean().max > 1:
+    plddt.set_selected(plddt < 0, 0)
+    plddt.set_selected(plddt > 1, 1)
 
   if not input_plddt_is_fractional:
     plddt = plddt * 100
