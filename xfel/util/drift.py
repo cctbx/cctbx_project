@@ -557,10 +557,10 @@ class DriftTable(object):
   def add(self, *dicts):
     dicts2 = []  # if only 'refls' column is iterable, immediately sum it
     for d in dicts:
-      if any([is_iterable(d[k]) for k in d.keys() if k is not 'refls']):
+      if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']):
         dicts2.append(d)
       else:
-        dicts2.append({k: sum(v) if k is 'refls' else v for k, v in d.items()})
+        dicts2.append({k: sum(v) if k == 'refls' else v for k, v in d.items()})
     new_rows = pd.DataFrame(*dicts2)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
@@ -601,7 +601,7 @@ class DriftTable(object):
     if key == 'density':
       refls = self.data['refls'] if self.column_is_flat['refls'] \
         else pd.Series([sum(refl) for refl in self.data['refls']])
-      self.data['density'] = self.data['refls'] / self.data['expts']
+      self.data['density'] = refls / self.data['expts']
     else:
       raise KeyError(f'Unknown dynamic column key: {key}')
 
