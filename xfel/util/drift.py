@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import abc
+import itertools
 from collections import OrderedDict
 from json.decoder import JSONDecodeError
 import glob
@@ -18,6 +19,8 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import PercentFormatter
+import numpy as np
+import pandas as pd
 
 
 message = '''
@@ -522,85 +525,63 @@ class DriftScraperFactory(object):
 
 
 class DriftTable(object):
-  """Class responsible for storing info about all DriftDataclass instances"""
-  KEYS = ['tag', 'run', 'rungroup', 'trial', 'chunk', 'task', 'x', 'y', 'z',
-          'delta_x', 'delta_y', 'delta_z', 'expts', 'refls',
-          'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
+  """Class responsible for storing all info collected by `DriftScraper`"""
+  STATIC_KEYS = ['tag', 'run', 'rungroup', 'trial', 'chunk', 'task',
+                 'x', 'y', 'z', 'delta_x', 'delta_y', 'delta_z', 'expts',
+                 'refls', 'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
+  DYNAMIC_KEYS = ['density']
 
-  def __init__(self, parameters):
-    self.data = []
-    self.parameters = parameters
+  def __init__(self):
+    self.data = pd.DataFrame()
 
   def __getitem__(self, key):
-    is_aux_key = key in self.auxiliary.keys()
-    return self.auxiliary[key] if is_aux_key else [d[key] for d in self.data]
+    if key in self.DYNAMIC_KEYS:
+      self.recalculate_dynamic_column(key)
+    return self.data[key]
 
   def __str__(self):
-    lines = [' '.join('{!s:9.9}'.format(k.upper()) for k in self.available_keys)]
-    for i, d in enumerate(self.data):
-      cells = [self._format_cell(d[k]) for k in self.active_keys]
-      for ak in self.auxiliary.keys():
-        cells.append(self._format_cell(self[ak][i]))
-      lines.append(' '.join(cells))
-    return '\n'.join(lines)
+    for key in self.DYNAMIC_KEYS:
+      self.recalculate_dynamic_column(key)
+    return str(self.data)
 
-  def add(self, **kwargs):
-    self.data.append(kwargs)
+  def add(self, *dicts):
+    new_rows = pd.DataFrame(*dicts)
+    self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
   def get(self, key, default=None):
-    return self[key] if key in self.available_keys else default
+    return self[key] if key in self.data.columns else default
 
-  def sort(self, by_key=KEYS[0]):
-    self.data = sorted(self.data, key=lambda d: d[by_key])
-
-  def get_flat(self, *keys):
-    """Flatten or repeat each self[key] col to return same-length 1D lists"""
-    columns = [self[k] for k in keys]
-    if len(unique_elements(len(col) for col in columns)) != 1:
-      raise ValueError('All flattened cols must have the same non-zero length')
-    flat = [[] for _ in range(len(columns))]
-    for row in zip(*columns):
-      lens = [len(el) for el in row if is_iterable(el)]
-      if len(unique_elements(lens)) > 1:
-        raise ValueError('All row elements must be scalars of same-length')
-      elif len(unique_elements(lens)) == 1:
-        for col_idx, el in enumerate(row):
-          flat[col_idx].extend(el if is_iterable(el) else [el] * max(lens))
-      else:
-        for col_idx, el in enumerate(row):
-          flat[col_idx].append(el)
-    return flat
-
-  @property
-  def active_keys(self):
-    return [key for key in self.KEYS if not all(v is None for v in self[key])]
-
-  @property
-  def available_keys(self):
-    return self.active_keys + list(self.auxiliary.keys())
-
-  @property
-  def auxiliary(self):
-    density = [d['refls'] / d['expts'] if d['expts'] else 0 for d in self.data]
-    index = [i for i, _ in enumerate(self.data)]
-    return {'density': density, 'index': index}
+  def sort(self, by='index'):
+    self.data.sort_values(by=by, ignore_index=True)
 
   @property
   def column_is_flat(self):
-    return {k: not is_iterable(self[k][0]) for k in self.available_keys}
+    return {k: not is_iterable(self[k][0]) for k in self.data.columns}
 
-  @staticmethod
-  def _format_cell(value):
-    if isinstance(value, (str, int)):
-      fmt_cell = '{!s:9.9}'.format(value)
-    elif isinstance(value, float):
-      fmt_cell = '{!s:9.9}'.format('{:.20f}'.format(value))
-    elif is_iterable(value):
-      fmt_cell = '{!s:4.4}-{!s:4.4}'.format(min(value), max(value))
+  @property
+  def flat(self):
+    """Drift table with all iterable fields expanded over rows"""
+    c = self.column_is_flat
+    col_names = self.data.columns
+    flatteners = [itertools.repeat if c[k] else lambda x: x for k in col_names]
+    flat_table = DriftTable()
+    for row in self.data.itertuples(index=False):
+      lens = [len(el) for el in row if is_iterable(el)]
+      if len(unique_elements(lens)) > 1:
+        raise ValueError('All row elements must be scalars or same-length')
+      elif len(unique_elements(lens)) == 1:
+        flat_columns = zip(*[f(cell) for cell, f in zip(row, flatteners)])
+      else:
+        flat_columns = [[cell] for cell in row]
+      flat_table.add({k: v for k, v in zip(col_names, flat_columns)})
+    return flat_table
+
+  def recalculate_dynamic_column(self, key):
+    if key == 'density':
+      density = self.data['refls'].div(self.data['expts']).replace(np.inf, 0)
+      self.data['density'] = density
     else:
-      fmt_cell = 'UnknwnFmt'
-    return fmt_cell
-
+      raise KeyError(f'Unknown dynamic column key: {key}')
 
 
 ############################## DRIFT VISUALIZING ##############################
@@ -770,7 +751,7 @@ class DriftArtist(object):
 
 
 def run(params_):
-  dt = DriftTable(parameters=params_)
+  dt = DriftTable()
   ds = DriftScraperFactory.get_drift_scraper(table=dt, parameters=params_)
   da = DriftArtist(table=dt, parameters=params_)
   ds.scrap()
