@@ -682,7 +682,7 @@ class DriftArtist(object):
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
-    if y and not self.table.column_is_flat(values_key):
+    if not self.table.column_is_flat(values_key):
       self._plot_drift_distribution(axes, y, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
@@ -789,6 +789,7 @@ def run(params_):
   ds.scrap()
   dt.sort(by='run')
   print(dt)
+  print(dt.flat)
   da.publish()
 
 
