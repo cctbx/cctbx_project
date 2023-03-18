@@ -570,7 +570,7 @@ class DriftTable(object):
   def get(self, key, default=None):
     return self[key] if key in self.data.columns else default
 
-  def sort(self, by: Union[str, Sequence[str]] ='index'):
+  def sort(self, by: Union[str, Sequence[str]]):
     self.data.sort_values(by=by, ignore_index=True)
 
   def column_is_flat(self, key):
@@ -666,7 +666,7 @@ class DriftArtist(object):
 
   @property
   def x(self):
-    return self.table['index']
+    return self.table.data.index
 
   @property
   def color_by(self):
@@ -708,7 +708,7 @@ class DriftArtist(object):
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y, values_key):
-    x_flat = self.table_flat['index']
+    x_flat = self.table_flat.data.index
     y_flat = self.table_flat[values_key]
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
