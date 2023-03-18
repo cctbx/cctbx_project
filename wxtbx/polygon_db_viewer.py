@@ -7,7 +7,7 @@ from libtbx import group_args
 import wx
 from six.moves import zip
 
-STD_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
+STD_FLAGS = wx.ALL
 
 all_keys = polygon.keys_to_show + polygon.other_numerical_keys
 all_captions = polygon.key_captions + polygon.other_captions
@@ -203,9 +203,12 @@ class ConfigFrame(wx.Frame):
     self.Destroy()
 
   def OnDestroy(self, evt):
-    parent = self.GetParent()
-    if (parent is not None):
-      parent.plot_frame = None
+    try:
+      parent = self.GetParent()
+      if (parent is not None):
+        parent.plot_frame = None
+    except Exception as e: # parent was already deleted
+      pass
 
 class CorrPlot(plots.plot_container):
   def set_plot(self, x, y, x_label, y_label):
@@ -240,7 +243,7 @@ class HistogramPlot(plots.histogram):
     mean = flex.mean(flex.double(data))
     p = plots.histogram.show_histogram(self,
       data=data,
-      n_bins=n_bins,
+      n_bins=int(n_bins),
       reference_value=reference_value,
       draw_now=False)
     p.axvline(mean, color='g', linewidth=2)
