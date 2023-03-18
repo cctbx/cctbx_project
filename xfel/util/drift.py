@@ -617,7 +617,6 @@ class DriftArtist(object):
     self.cov_colormap = plt.get_cmap('seismic')
     self.order_by = ['run']
     self.table = table
-    self.table.data.sort_values(by=self.order_by, ignore_index=True)
     self.table_flat = self.table.flat
     self.parameters = parameters
     self._init_figure()
