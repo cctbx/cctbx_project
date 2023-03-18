@@ -390,6 +390,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
+            print(scrap_dict)
             self.table.add(scrap_dict)
 
 
@@ -758,7 +759,7 @@ class DriftArtist(object):
     self.table_flat = self.table.flat
 
   def publish(self):
-    if self.table.data:
+    if len(self.table):
       self._prepare_table()
       self._plot_bars()
       self._plot_correlations()
