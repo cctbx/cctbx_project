@@ -327,7 +327,6 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
       cpp = path_lookup(tder_task_directory, 'combine_experiments_t*',
                         'intermediates', '*chunk*_combine_*.phil')
       combining_phil_paths.extend(cpp)
-    print(f"{combining_phil_paths}=")
     for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
       try:
         scrap_dict = {'tag': "TDER"}
