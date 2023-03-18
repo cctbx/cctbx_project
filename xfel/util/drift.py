@@ -324,7 +324,7 @@ class BaseDriftScraper(object):
     return expts, refls
 
   @abc.abstractmethod
-  def scrap(self):
+  def scrap(self) -> None:
     """Fill `self.table` based on `self.parameters` provided."""
     pass
 
@@ -353,7 +353,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
       else:
-        self.table.add(**scrap_dict)
+        self.table.add(scrap_dict)
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
@@ -390,7 +390,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
-            self.table.add(**scrap_dict)
+            self.table.add(scrap_dict)
 
 
 class FirstOriginMixin(object):
