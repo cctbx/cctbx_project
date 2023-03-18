@@ -188,8 +188,10 @@ class CorrelationMatrix(object):
 ############################## UTILITY FUNCTIONS ##############################
 
 
-def is_iterable(value):
-  """Return `True` if object is iterable, else `False`"""
+def is_iterable(value, count_str=False):
+  """Return `True` if object is iterable and not string, else `False`"""
+  if not count_str and isinstance(value, str):
+    return False
   try:
     iter(value)
   except TypeError:
