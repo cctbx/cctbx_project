@@ -8,6 +8,7 @@ import os
 import six
 import sys
 import tempfile
+from typing import Union, Sequence
 
 from dials.array_family import flex  # noqa
 from dxtbx.model.experiment_list import ExperimentList  # noqa
@@ -567,7 +568,7 @@ class DriftTable(object):
   def get(self, key, default=None):
     return self[key] if key in self.data.columns else default
 
-  def sort(self, by='index'):
+  def sort(self, by: Union[str, Sequence[str]] ='index'):
     self.data.sort_values(by=by, ignore_index=True)
 
   @property
@@ -617,7 +618,7 @@ class DriftArtist(object):
     self.cov_colormap = plt.get_cmap('seismic')
     self.order_by = ['run']
     self.table = table
-    self.table_flat = self.table.flat
+    self.table_flat: DriftTable
     self.parameters = parameters
     self._init_figure()
     self._setup_figure()
@@ -752,8 +753,13 @@ class DriftArtist(object):
     self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
+  def _prepare_table(self):
+    self.table.sort(by=self.order_by)
+    self.table_flat = self.table.flat
+
   def publish(self):
     if self.table.data:
+      self._prepare_table()
       self._plot_bars()
       self._plot_correlations()
       self._plot_width_info()
