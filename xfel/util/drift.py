@@ -558,7 +558,8 @@ class DriftTable(object):
     return str(self.data)
 
   def add(self, d):
-    if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']):
+    if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']) \
+            or all([not is_iterable(d[k]) for k in d.keys()]):
       d2 = d
     else:  # if only 'refls' column is iterable, immediately sum it
       d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
