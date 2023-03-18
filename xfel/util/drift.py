@@ -558,15 +558,13 @@ class DriftTable(object):
       self.recalculate_dynamic_column(key)
     return str(self.data)
 
-  def add(self, *dicts):
-    dicts2 = []  # if only 'refls' column is iterable, immediately sum it
-    for d in dicts:
-      if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']):
-        dicts2.append(d)
-      else:
-        dicts2.append({k: sum(v) if k == 'refls' else v for k, v in d.items()})
-    print(dicts2)
-    new_rows = pd.DataFrame(*dicts2)
+  def add(self, d):
+    if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']):
+      d2 = d
+    else:  # if only 'refls' column is iterable, immediately sum it
+      d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
+    print(d2)
+    new_rows = pd.DataFrame(d2, index=[0])
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
   def get(self, key, default=None):
