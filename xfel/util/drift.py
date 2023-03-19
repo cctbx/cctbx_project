@@ -28,8 +28,8 @@ This script aims to investigate the spatial drift of a detector as a function
 of experimental progress. It requires the directory structure to follow that
 resulting from indexing and ensemble refinement performed by cctbx.xfel.
 End result is a multiplot with detector origin position (vertical position) as
-a function of run number (horizontal position), colored according to tag name.
-Error bars can be derived from the uncertainty of individual reflections'
+a function of run number (horizontal position), colored according to merge
+name. Error bars can be derived from the uncertainty of individual reflections'
 position in laboratory reference system.
 
 Example usage 1:
@@ -62,12 +62,17 @@ phil_scope = parse('''
       .help = The type of files located by input.glob
   }
   plot {
+    color {
+      by = chunk *merge run rungroup task trial 
+        .type = choice
+        .help = Variable to color individual points on drift plot by;
+    }
     show = True
       .type = bool
       .help = If False, do not display resulting plot interactively
     path = ""
       .type = str
-      .help = if given, plot will be saved with this path and name (eg.: fig.png)
+      .help = If given, save plot with this path and name (eg.: fig.png)
     height = 8.0
       .type = float
      .help = Height of saved plot in inches
@@ -342,7 +347,7 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
       combining_phil_paths.extend(cpp)
     for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
       try:
-        scrap_dict = {'tag': "TDER"}
+        scrap_dict = {'merge': "None"}
         scrap_dict.update(self.extract_db_metadata(cpp))
         print('Processing run {}'.format(scrap_dict['run']))
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
@@ -362,8 +367,8 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'merging_directory'
 
   def scrap(self):
-    for tag in self.locate_input_paths():
-      merging_phil_paths = path_lookup(tag, '**', '*.phil')
+    for merge in self.locate_input_paths():
+      merging_phil_paths = path_lookup(merge, '**', '*.phil')
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
         scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
@@ -375,9 +380,9 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in unique_elements(comb_phil_paths):
           try:
-            scrap_dict = {'tag': tag}
+            scrap_dict = {'merge': merge}
             scrap_dict.update(self.extract_db_metadata(cpp))
-            print('Processing run {} in tag {}'.format(scrap_dict['run'], tag))
+            print('Processing run {} in merge {}'.format(scrap_dict['run'], merge))
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Found {elen} expts and {sum(rlen)} refls')
@@ -536,7 +541,7 @@ class DriftScraperFactory(object):
 
 class DriftTable(object):
   """Class responsible for storing all info collected by `DriftScraper`"""
-  STATIC_KEYS = ['tag', 'run', 'rungroup', 'trial', 'chunk', 'task',
+  STATIC_KEYS = ['merge', 'run', 'rungroup', 'trial', 'chunk', 'task',
                  'x', 'y', 'z', 'delta_x', 'delta_y', 'delta_z', 'expts',
                  'refls', 'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
   DYNAMIC_KEYS = ['density']
@@ -660,7 +665,7 @@ class DriftArtist(object):
   def color_array(self):
     """Registry-length color list with colors corresponding to self.color_by"""
     color_i = [0, ] * len(self.table)
-    color_by = self.table[self.color_by]
+    color_by = self.table[self.parameters.plot.color.by]
     for i, cat in enumerate(color_by[1:], 1):
       color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
     return [self.colormap(i % self.colormap_period) for i in color_i]
@@ -668,10 +673,6 @@ class DriftArtist(object):
   @property
   def x(self):
     return self.table.data.index
-
-  @property
-  def color_by(self):
-    return 'tag' if len(set(self.table['tag'])) > 1 else 'task'
 
   def _get_handles_and_labels(self):
     handles, unique_keys = [], []
