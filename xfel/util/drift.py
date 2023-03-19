@@ -591,7 +591,8 @@ class DriftTable(object):
       else:
         flat_columns = [cell for cell in row]
       flat_table.add({k: v for k, v in zip(col_names, flat_columns)})
-    flat_table.data['expts'] = 1
+    if flat_table.data.shape[0] > self.data.shape[0]:
+      flat_table.data['expts'] = 1  # set expts to 1 if refls were flattened
     return flat_table
 
   @property
@@ -690,7 +691,8 @@ class DriftArtist(object):
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
-      ax_top.set_xticklabels(self.table['expts'])
+      print(f"{self.table['expts']=}")
+      ax_top.set_xticklabels(self.table['expts']) #todo fix the rest of this mess
     axes.set_xticklabels(self.table[self.order_by[0]])
     flattened_y = self.table_flat[values_key]
     flattened_weights = self.table_flat['refls']
@@ -725,6 +727,7 @@ class DriftArtist(object):
     flat_cols = self.table_flat[keys]
     weights = self.table_flat['refls']
     correlated = {k: f for k, f in zip(keys, flat_cols)}
+    print(f"{correlated=}")
     cm = CorrelationMatrix(correlated, weights=weights)
     print(cm)
     self.axw.set_xlim([0, len(keys)])
