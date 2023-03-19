@@ -559,7 +559,8 @@ class DriftTable(object):
 
   def __str__(self):
     for key in self.data.keys():  # debug
-      print(self.data[key])       # debug
+      print(self.data[key])
+      print(type(self.data[key][0]))  # debug
     for key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return str(self.data)
