@@ -668,7 +668,6 @@ class DriftArtist(object):
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axc.set_xlabel(', '.join(ob for ob in self.order_by))
     self.axh.set_ylabel('# expts')
-    print(self.axx.get_xticks())
 
   @property
   def color_array(self):
@@ -692,6 +691,7 @@ class DriftArtist(object):
     return handles, unique_keys
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
+    axes.xaxis.set_major_locator(IndexLocator(base=1, offset=0))
     y = self.table[values_key]
     if not self.table.column_is_flat(values_key):
       self._plot_drift_distribution(axes, values_key)
