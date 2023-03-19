@@ -591,6 +591,7 @@ class DriftTable(object):
     flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
     flat_table = DriftTable()
     for row in self.data.itertuples(index=False):
+      print(f'{row=}')
       lens = [len(el) for el in row if is_iterable(el)]
       if len(unique_elements(lens)) > 1:
         raise ValueError('All row elements must be scalars or same-length')
@@ -598,6 +599,7 @@ class DriftTable(object):
         flat_columns = zip(*[f(cell) for cell, f in zip(row, flatteners)])
       else:
         flat_columns = [cell for cell in row]
+      print(f'{flat_columns=}')
       flat_table.add({k: v for k, v in zip(col_names, flat_columns)})
     if flat_table.data.shape[0] > self.data.shape[0]:
       flat_table.data['expts'] = 1  # set expts to 1 if refls were flattened
