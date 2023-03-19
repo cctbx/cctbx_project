@@ -563,12 +563,14 @@ class DriftTable(object):
     return str(self.data)
 
   def add(self, d):
-    if any([is_iterable(d[k]) for k in d.keys() if k != 'refls']) \
-            or all([not is_iterable(d[k]) for k in d.keys()]):
+    d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
+    d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
+    if d_is_bumpy or d_is_all_flat:
       d2 = d
     else:  # if only 'refls' column is iterable, immediately sum it
       d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
-    new_rows = pd.DataFrame(d2, index=[0])
+    pd_kwargs = {} if d_is_bumpy or d_is_all_flat else {'index': [0]}
+    new_rows = pd.DataFrame(d2, **pd_kwargs)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
   def get(self, key, default=None):
