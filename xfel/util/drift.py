@@ -558,6 +558,8 @@ class DriftTable(object):
     return len(self.data.index)
 
   def __str__(self):
+    for key in self.data.keys():  # debug
+      print(self.data[key])       # debug
     for key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return str(self.data)
@@ -602,6 +604,7 @@ class DriftTable(object):
         set_all_expt_count_to_1 = True
       else:
         flat_columns = [[cell] for cell in row]
+      print(len(flat_columns), flat_columns[0])
       flat_sub_tables.append(pd.DataFrame(flat_columns, columns=col_names))
     flat_table = pd.concat(flat_sub_tables, ignore_index=True)
     if set_all_expt_count_to_1:
