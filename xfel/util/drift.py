@@ -664,11 +664,10 @@ class DriftArtist(object):
   @property
   def color_array(self):
     """Registry-length color list with colors corresponding to plot.color.by"""
-    color_i = [0, ] * len(self.table)
     color_by = self.table[self.parameters.plot.color.by]
-    for i, cat in enumerate(color_by[1:], 1):
-      color_i[i] = color_i[i-1] if cat in color_by[:i] else color_i[i-1] + 1
-    return [self.colormap(i % self.colormap_period) for i in color_i]
+    color_id_map = {v: i for i, v in enumerate(self.table[color_by].unique())}
+    color_ids = [color_id_map[v] for v in self.table[color_by].values]
+    return [self.colormap(i % self.colormap_period) for i in color_ids]
 
   @property
   def x(self):
