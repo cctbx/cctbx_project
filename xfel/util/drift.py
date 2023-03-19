@@ -596,7 +596,7 @@ class DriftTable(object):
       if len(unique_elements(lens)) > 1:
         raise ValueError('All row elements must be scalars or same-length')
       elif len(unique_elements(lens)) == 1:
-        flat_columns = zip(*[f(cell) for cell, f in zip(row, flatteners)])
+        flat_columns = list(zip(*[f(cell) for cell, f in zip(row, flatteners)]))
       else:
         flat_columns = [cell for cell in row]
       print(f'{flat_columns=}')
