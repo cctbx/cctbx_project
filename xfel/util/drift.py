@@ -668,6 +668,7 @@ class DriftArtist(object):
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axc.set_xlabel(', '.join(ob for ob in self.order_by))
     self.axh.set_ylabel('# expts')
+    print(self.axx.get_xticks())
 
   @property
   def color_array(self):
