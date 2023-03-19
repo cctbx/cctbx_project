@@ -691,8 +691,8 @@ class DriftArtist(object):
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
-      print(f"{self.table['expts']=}")
-      ax_top.set_xticklabels(self.table['expts']) #todo fix the rest of this mess
+      print(self.axx.get_xticks())
+      ax_top.set_xticklabels(self.table['expts'])
     axes.set_xticklabels(self.table[self.order_by[0]])
     flattened_y = self.table_flat[values_key]
     flattened_weights = self.table_flat['refls']
@@ -724,11 +724,9 @@ class DriftArtist(object):
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
-    flat_cols = self.table_flat[keys]
-    weights = self.table_flat['refls']
-    correlated = {k: f for k, f in zip(keys, flat_cols)}
-    print(f"{correlated=}")
-    cm = CorrelationMatrix(correlated, weights=weights)
+    flat_cols = [self.table_flat[key] for key in keys]
+    correlated = {k: f for k, f in zip(keys, *flat_cols)}
+    cm = CorrelationMatrix(correlated, weights=self.table_flat['refls'])
     print(cm)
     self.axw.set_xlim([0, len(keys)])
     self.axw.set_ylim([0, len(keys)])
