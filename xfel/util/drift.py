@@ -594,7 +594,6 @@ class DriftTable(object):
     set_all_expt_count_to_1 = False
     flat_sub_tables = []
     for row in self.data.itertuples(index=False):
-      print(f'{row=}')
       lens = [len(el) for el in row if is_iterable(el)]
       if len(unique_elements(lens)) > 1:
         raise ValueError('All row elements must be scalars or same-length')
@@ -604,7 +603,6 @@ class DriftTable(object):
         set_all_expt_count_to_1 = True
       else:
         flat_columns = [[cell] for cell in row]
-      print(len(flat_columns), flat_columns[0])
       fst = pd.DataFrame({k: v for k, v in zip(col_names, flat_columns)})
       flat_sub_tables.append(fst)
     flat_table = pd.concat(flat_sub_tables, ignore_index=True)
@@ -636,7 +634,7 @@ class DriftArtist(object):
     self.cov_colormap = plt.get_cmap('seismic')
     self.order_by = ['run']
     self.table = table
-    self.table_flat: DriftTable
+    self.table_flat: pd.DataFrame
     self.parameters = parameters
     self._init_figure()
     self._setup_figure()
@@ -721,7 +719,7 @@ class DriftArtist(object):
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, y, values_key):
-    x_flat = self.table_flat.data.index
+    x_flat = self.table_flat.index
     y_flat = self.table_flat[values_key]
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
