@@ -563,6 +563,7 @@ class DriftTable(object):
     return str(self.data)
 
   def add(self, d):
+    print(d)
     d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
     d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
     if d_is_bumpy or d_is_all_flat:
@@ -694,7 +695,6 @@ class DriftArtist(object):
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
-      print(self.axx.get_xticks())
       ax_top.set_xticklabels(self.table['expts'])
     axes.set_xticklabels(self.table[self.order_by[0]])
     flattened_y = self.table_flat[values_key]
