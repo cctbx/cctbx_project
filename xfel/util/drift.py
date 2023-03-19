@@ -717,7 +717,7 @@ class DriftArtist(object):
 
   def _plot_drift_distribution(self, axes, y, values_key):
     x_flat = self.table_flat.index
-    y_flat = self.table_flat[values_key]
+    y_flat = self.table_flat[values_key].values
     print('x:', x_flat)
     print('y:', y_flat)
     b = (len(self.x), 100)
