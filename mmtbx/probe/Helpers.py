@@ -408,7 +408,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # as an acceptor, perhaps making it a cylinder or a sphere in the center
                 # of the ring.
                 if a.element in ['C','N']:
-                  if AtomTypes.IsAromatic(ag.resname, a.name):
+                  if AtomTypes.IsAromaticAcceptor(ag.resname, a.name):
                     extra.isAcceptor = True
                     warnings += "Marking "+a.name.strip()+" as an aromatic-ring acceptor\n"
 
@@ -680,11 +680,11 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
         # and if we find one that is on the same aromatic ring then we either ignore this new
         # atom (if it is further) or replace the existing one (if it is closer).
         skip = False
-        if AtomTypes.IsAromatic(a.parent().resname.strip().upper(), a.name.strip().upper()):
+        if AtomTypes.IsAromaticAcceptor(a.parent().resname.strip().upper(), a.name.strip().upper()):
           for c in candidates:
             # See if we belong to the same atom group and are both ring acceptors.  If so, we need to replace
             # or else squash this atom.
-            if (AtomTypes.IsAromatic(c._atom.parent().resname.strip().upper(), c._atom.name.strip().upper()) and
+            if (AtomTypes.IsAromaticAcceptor(c._atom.parent().resname.strip().upper(), c._atom.name.strip().upper()) and
                 a.parent() == c._atom.parent()):
               if overlap < c._overlap:
                 # Replace the further atom with this atom.
