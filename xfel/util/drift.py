@@ -601,7 +601,7 @@ class DriftTable(object):
         flat_columns = [flat_col for flat_col in zip(*flat_rows)]
         set_all_expt_count_to_1 = True
       else:
-        flat_columns = [cell for cell in row]
+        flat_columns = [[cell] for cell in row]
       flat_sub_tables.append(pd.DataFrame(flat_columns, columns=col_names))
     flat_table = pd.concat(flat_sub_tables, ignore_index=True)
     if set_all_expt_count_to_1:
