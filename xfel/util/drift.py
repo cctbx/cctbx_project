@@ -585,11 +585,12 @@ class DriftTable(object):
 
   @property
   def flat(self):
-    """Drift table with all iterable fields expanded over rows"""
+    """Pandas' data `DataFrame` with all iterable fields expanded over rows"""
     c = self.column_is_flat
     col_names = self.data.columns
     flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
-    flat_table = DriftTable()
+    set_all_expt_count_to_1 = False
+    flat_sub_tables = []
     for row in self.data.itertuples(index=False):
       print(f'{row=}')
       lens = [len(el) for el in row if is_iterable(el)]
@@ -598,12 +599,13 @@ class DriftTable(object):
       elif len(unique_elements(lens)) == 1:
         flat_rows = zip(*[f(cell) for cell, f in zip(row, flatteners)])
         flat_columns = [flat_col for flat_col in zip(*flat_rows)]
+        set_all_expt_count_to_1 = True
       else:
         flat_columns = [cell for cell in row]
-      print(f'{flat_columns=}')
-      flat_table.add({k: v for k, v in zip(col_names, flat_columns)})
-    if flat_table.data.shape[0] > self.data.shape[0]:
-      flat_table.data['expts'] = 1  # set expts to 1 if refls were flattened
+      flat_sub_tables.append(pd.DataFrame(flat_columns, columns=col_names))
+    flat_table = pd.concat(flat_sub_tables, ignore_index=True)
+    if set_all_expt_count_to_1:
+      flat_table['expts'] = 1
     return flat_table
 
   @property
