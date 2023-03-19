@@ -570,7 +570,7 @@ class DriftTable(object):
       d2 = d
     else:  # if only 'refls' column is iterable, immediately sum it
       d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
-    pd_kwargs = {} if d_is_bumpy else {'index': [0]}
+    pd_kwargs = {'index': [0]} #{} if d_is_bumpy else {'index': [0]}
     new_rows = pd.DataFrame(d2, **pd_kwargs)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
