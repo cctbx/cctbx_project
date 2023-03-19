@@ -718,6 +718,8 @@ class DriftArtist(object):
   def _plot_drift_distribution(self, axes, y, values_key):
     x_flat = self.table_flat.index
     y_flat = self.table_flat[values_key]
+    print('x:', x_flat)
+    print('y:', y_flat)
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
     axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
@@ -797,6 +799,7 @@ def run(params_):
   ds.scrap()
   dt.sort(by='run')
   print(dt)
+  print(dt.flat)
   da.publish()
 
 
