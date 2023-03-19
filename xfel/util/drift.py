@@ -590,7 +590,7 @@ class DriftTable(object):
     flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
     set_all_expt_count_to_1 = False
     flat_sub_tables = []
-    for row in self.data.itertuples(index=False):
+    for i, row in enumerate(self.data.itertuples(index=False)):
       lens = [len(el) for el in row if is_iterable(el)]
       if len(unique_elements(lens)) > 1:
         raise ValueError('All row elements must be scalars or same-length')
@@ -601,6 +601,7 @@ class DriftTable(object):
       else:
         flat_columns = [[cell] for cell in row]
       fst = pd.DataFrame({k: v for k, v in zip(col_names, flat_columns)})
+      fst['original_index'] = i
       flat_sub_tables.append(fst)
     flat_table = pd.concat(flat_sub_tables, ignore_index=True)
     if set_all_expt_count_to_1:
@@ -692,7 +693,7 @@ class DriftArtist(object):
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
     y = self.table[values_key]
     if not self.table.column_is_flat(values_key):
-      self._plot_drift_distribution(axes, y, values_key)
+      self._plot_drift_distribution(axes, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
     if top:
@@ -715,9 +716,9 @@ class DriftArtist(object):
     if self.parameters.uncertainties:
       axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
-  def _plot_drift_distribution(self, axes, y, values_key):
-    x_flat = self.table_flat.index
-    y_flat = self.table_flat[values_key].values
+  def _plot_drift_distribution(self, axes, values_key):
+    x_flat = self.table_flat['original_index']
+    y_flat = self.table_flat[values_key]
     print('x:', x_flat)
     print('y:', y_flat)
     b = (len(self.x), 100)
