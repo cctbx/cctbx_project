@@ -272,7 +272,7 @@ class BaseDriftScraper(object):
   @staticmethod
   def calc_expt_refl_len(expts, refls):
     expts_len = len(expts)
-    refls_len = []
+    refls_len = flex.int()
     for expt_id, expt in enumerate(expts):
       refls_len.append((expt_id == refls['id']).count(True))
     return expts_len, refls_len
