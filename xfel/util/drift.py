@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import IndexLocator, PercentFormatter
 import pandas as pd
 
 
@@ -651,6 +651,7 @@ class DriftArtist(object):
       ax.set_ylabel(label)
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
+    self.axx.xaxis.set_major_locator(IndexLocator(base=1, offset=0))
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
     self.axc.set_xlabel(', '.join(ob for ob in self.order_by))
     self.axh.set_ylabel('# expts')
