@@ -599,6 +599,7 @@ class DriftTable(object):
         print(row)
         print(flatteners)
         print([f(cell) for cell, f in zip(row, flatteners)])
+        print(r for r in zip(*[f(cell) for cell, f in zip(row, flatteners)]))
         assert False
         flat_columns = list(zip(*[f(cell) for cell, f in zip(row, flatteners)]))
       else:
