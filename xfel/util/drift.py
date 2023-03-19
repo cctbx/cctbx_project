@@ -558,15 +558,11 @@ class DriftTable(object):
     return len(self.data.index)
 
   def __str__(self):
-    for key in self.data.keys():  # debug
-      print(self.data[key])
-      print(type(self.data[key][0]))  # debug
     for key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return str(self.data)
 
   def add(self, d):
-    print(d)
     d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
     d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
     if d_is_bumpy or d_is_all_flat:
@@ -801,7 +797,6 @@ def run(params_):
   ds.scrap()
   dt.sort(by='run')
   print(dt)
-  print(dt.flat)
   da.publish()
 
 
