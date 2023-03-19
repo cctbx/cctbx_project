@@ -663,7 +663,7 @@ class DriftArtist(object):
 
   @property
   def color_array(self):
-    """Registry-length color list with colors corresponding to self.color_by"""
+    """Registry-length color list with colors corresponding to plot.color.by"""
     color_i = [0, ] * len(self.table)
     color_by = self.table[self.parameters.plot.color.by]
     for i, cat in enumerate(color_by[1:], 1):
@@ -676,7 +676,7 @@ class DriftArtist(object):
 
   def _get_handles_and_labels(self):
     handles, unique_keys = [], []
-    for key in self.table[self.color_by]:
+    for key in self.table[self.parameters.plot.color.by]:
       if key not in unique_keys:
         handles.append(Line2D([], [], c=self.colormap(len(unique_keys) % 10),
                               ls='', ms=12, marker='.'))
