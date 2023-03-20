@@ -525,11 +525,11 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
     # Find out the type of the residue, used to determine the type of flip.
     type = '?'
-    if s.resName == 'ASN':
+    if s.resName[-3:] == 'ASN':
       type = 'N'
-    elif s.resName == 'GLN':
+    elif s.resName[-3:] == 'GLN':
       type = 'Q'
-    elif s.resName == 'HIS':
+    elif s.resName[-3:] == 'HIS':
       type = 'H'
 
     if i > 0:
@@ -993,16 +993,31 @@ NOTES:
       flipStateString = 'Flipped'
     else:
       flipStateString = 'Unflipped'
+    # Look up the residue that is described and find Nitrogens in it whose names are
+    # longer than one character. These will be part of the flipping part of the residue.
+    # See if any of these atoms residue groups have the same altid as the flipMover; if
+    # so, use that one.  If not, use ''.  If we use '', replace it with '.' so that we
+    # can properly parse the string.
+    # @todo Atom selection here is will not necessarily work for future flip Movers.
     # @todo How to handle cases where the different alternates resulted in different placement
     # for the flip Movers?  Presumably, we want to do them in backwards order and replace all of
     # the alternates with '.' so that they always get handled and the last one is the one that
     # is set.
-    '''
-    altId = flipMover.altId
+    altId = ''
+    flipAlt = flipMover.altId.strip()
+    resAlt = ''
+    for chain in self.model.chains():
+      if flipMover.chain.strip() == chain.id.strip():
+        for rg in chain.residue_groups():
+          if int(flipMover.resId) == rg.resseq_as_int():
+            for a in rg.atoms():
+              if (a.element == 'N') and (len(a.name.strip()) > 1):
+                if a.parent().altloc.lower() == flipAlt.lower():
+                  resAlt = flipAlt
+    if flipAlt == resAlt:
+      altId = flipAlt
     if altId.strip() == '':
       altId = '.'
-    '''
-    altId = '.'
     return '{} {} {} {} {}{} {} {}'.format(flipMover.modelId+1, altId.lower(), flipMover.chain,
       flipMover.resName, flipMover.resId, flipMover.iCode, flipStateString, adjustedString)
 
@@ -1226,6 +1241,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
+          print('Results of optimization:')
+          print(opt.getInfo())
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -1347,6 +1364,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
+          print('Results of optimization:')
+          print(opt.getInfo())
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.

@@ -108,9 +108,10 @@ def _ResNameAndID(a):
   chainID = a.parent().parent().parent().id
   resName = a.parent().resname.strip().upper()
   resID = str(a.parent().parent().resseq_as_int())
+  altLoc = a.parent().altloc
   # Don't print the code if it is a space (blank).
   insertionCode = a.parent().parent().icode.strip()
-  return "chain "+str(chainID)+" "+resName+" "+resID+insertionCode
+  return "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
 
 ##################################################################################
 # Helper classes
@@ -1087,7 +1088,7 @@ class _SingletonOptimizer(object):
           try:
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and don't insert the Mover. If not, then insert the Mover.
-            s = _FindFlipState(a.parent().parent(), fs)
+            s = _FindFlipState(a, fs)
             if s is not None:
               self._infoString += _VerboseCheck(self._verbosity, 1,"Setting MoverAmideFlip for "+resNameAndID+": flipped = "+
                 str(s.flipped)+", angles adjusted = "+str(s.fixedUp)+"\n")
@@ -1204,7 +1205,7 @@ class _SingletonOptimizer(object):
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
             # If not, then insert the Histidine flip Mover.
-            s = _FindFlipState(a.parent().parent(), fs)
+            s = _FindFlipState(a, fs)
             if s is not None:
               if s.flipped:
                 enabledFlips = 2
@@ -1704,19 +1705,22 @@ def _ParseFlipStates(fs):
   return ret
 
 
-def _FindFlipState(rg, flipStates):
-  '''Is a residue group in the list of residues that have flip states? If so, return the associated state
-  :param rg: residue group
+def _FindFlipState(a, flipStates):
+  '''Is an atom in the list of residues that have flip states? If so, return the associated state
+  :param a: atom
   :param flipStates: List of FlipMoverState objects
   :return: FlipMoverState if the residue is in the list, None if not
   '''
+  ag = a.parent()
+  rg = ag.parent()
+  chain = rg.parent()
   for fs in flipStates:
-    chain = rg.parent()
     modelId = chain.parent().id
     # We must offset the index of the model by 1 to get to the 1-based model ID
     if ( (modelId == fs.modelId + 1 or modelId == '') and
           (chain.id == fs.chain) and
           (rg.resseq_as_int() == fs.resId) and
+          (ag.altloc.strip() == '' or fs.altId == '.' or ag.altloc.strip().lower() == fs.altId.lower()) and
           (rg.icode.strip() == fs.iCode.strip())
         ):
       return fs
