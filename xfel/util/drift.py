@@ -279,7 +279,7 @@ class ScrapResults(UserList):
   def write(self):
     write_path = self.parameters.scrap.cache.glob
     with open(write_path, 'wb') as pickle_file:
-      self.append(pickle.dump(pickle_file))
+      self.append(pickle.dump(self, pickle_file))
 
 
 def handle_scrap_cache(scrap):
