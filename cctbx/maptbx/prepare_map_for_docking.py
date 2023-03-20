@@ -9,6 +9,7 @@ from scitbx.dtmin.reparams import Reparams
 from scitbx.dtmin.bounds import Bounds
 from cctbx import adptbx
 from libtbx import group_args
+from libtbx.utils import Sorry
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 import sys
@@ -365,9 +366,7 @@ class RefineCryoemSignal(RefineBase):
       pass
 
     else:
-      print("Macrocycle protocol", macrocycle_protocol, " not recognised")
-      sys.stdout.flush()
-      exit
+      raise Sorry("Macrocycle protocol", macrocycle_protocol, " not recognised")
 
     # Now accumulate mask
     self.nmp = 0
@@ -906,7 +905,8 @@ def auto_sharpen_by_FSC(mc1, mc2):
   # again with a smooth curve over resolution instead of bins
 
   mapCC = mc1.map_correlation(other=mc2)
-  assert (mapCC < 1.) # Ensure these are really independent half-maps
+  if mapCC >= 1.:
+    raise Sorry("Half-maps must be non-identical")
   nref = mc1.size()
   nref_check = 0
   num_per_bin = 500
@@ -959,7 +959,8 @@ def auto_sharpen_isotropic(mc1, mc2):
     mc1sel = mc1.select(sel)
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
-    assert (mapCC < 1.) # Ensure these are really independent half-maps
+    if mapCC >= 1.:
+      raise Sorry("Half-maps must be non-identical")
     mapCC = max(mapCC,0.001) # Avoid zero or negative values
     FSCref = math.sqrt(2./(1.+1./mapCC))
     ssqr = mc1sel.d_star_sq().data()
@@ -1008,8 +1009,11 @@ def add_ordered_volume_mask(
     and that the map must be complete
   """
 
-  assert (protein_mw is not None) or (nucleic_mw is not None)
-  assert mmm.map_manager().unit_cell_grid == mmm.map_manager().map_data().all()
+  if (protein_mw is None) and (nucleic_mw is None):
+    raise Sorry("At least one of protein_mw and nucleic_mw must be defined")
+  if (not mmm.map_manager_1().is_full_size()) or  (
+      not mmm.map_manager_2().is_full_size()):
+    raise Sorry("Please supply half-maps that are full-size")
 
   if d_min is None or d_min <= 0:
     spacings = get_grid_spacings(mmm.map_manager().unit_cell(),
@@ -1072,7 +1076,8 @@ def add_ordered_volume_mask(
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
 def get_grid_spacings(unit_cell, unit_cell_grid):
-  assert unit_cell.parameters()[3:] == (90,90,90) # Required for this method
+  if unit_cell_parameters()[3:] != (90,90,90):
+    raise Sorry("Unit cell must be orthogonal") # Required for this method
   sp = []
   for a,n in zip(unit_cell.parameters()[:3], unit_cell_grid):
     sp.append(a/n)
@@ -1119,7 +1124,8 @@ def get_distance_from_center(c, unit_cell, unit_cell_grid = None,
 def get_maximal_mask_radius(mm_ordered_mask):
 
   # Check assumption that this is a full map
-  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+  if not mm_ordered_mask.is_full_size():
+    raise Sorry("Provided map or mask must be full-size")
 
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
@@ -1136,8 +1142,9 @@ def get_mask_radius(mm_ordered_mask,frac_coverage):
   ordered density
   """
 
-  # Test assumption that this is a full map
-  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+  # Check assumption that this is a full map
+  if not mm_ordered_mask.is_full_size():
+    raise Sorry("Provided map or mask must be full-size")
 
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
@@ -1161,8 +1168,9 @@ def get_ordered_volume_exact(mm_ordered_mask,sphere_center,sphere_radius):
   sphere_radius: radius of sphere
   """
 
-  # Test assumption that this is a full map
-  assert mm_ordered_mask.unit_cell_grid == mm_ordered_mask.map_data().all()
+  # Check assumption that this is a full map
+  if not mm_ordered_mask.is_full_size():
+    raise Sorry("Provided map or mask must be full-size")
 
   unit_cell = mm_ordered_mask.unit_cell()
   om_data = mm_ordered_mask.map_data()
@@ -1424,6 +1432,8 @@ def assess_cryoem_errors(
     verbosity=1, shift_map_origin=True, keep_full_map=False):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
+  Assume (but check) that half-maps come from full cell, not boxed.
+  Origin can be arbitrary, as long as full cell is given.
 
   Compulsory arguments:
   mmm: map_model_manager object containing two half-maps from reconstruction
@@ -1439,7 +1449,7 @@ def assess_cryoem_errors(
   sphere_cent: center of sphere defining target region for analysis
     default is center of map
   radius: radius of sphere
-    default (when sphere center not defined either) is 1/4 narrowest map width
+    default (when sphere center not defined either) is 1/3 narrowest map width
   sphere_points: number of reflections to use for local spherical average
   shift_map_origin: should map coefficients be shifted to correspond to
     original origin, rather than the origin being the corner of the box,
@@ -1461,22 +1471,35 @@ def assess_cryoem_errors(
   # Start from two half-maps and ordered volume mask in map_model_manager
   # Determine ordered volume in whole reconstruction and fraction that will be in sphere
   unit_cell = mmm.map_manager().unit_cell()
-  unit_cell_grid = mmm.map_data().accessor().all()
+  unit_cell_grid = mmm.map_manager().unit_cell_grid
+  if (not mmm.map_manager().is_full_size()):
+    raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
+  # Keep track of shifted origin
+  origin_shift = mmm.map_manager().origin_shift_grid_units
+  if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
+    shifted_origin = True
+  else:
+    shifted_origin = False
   if sphere_cent is None:
     # Default to sphere in center of cell extending 2/3 distance to nearest edge
-    sphere_cent = flex.double((ucpars[0], ucpars[1], ucpars[2]))/2.
+    # sphere_cent_grid and sphere_cent_map are relative to map origin
+    sphere_cent_grid = [round(n/2) for n in unit_cell_grid]
+    sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
     if radius is None:
       radius = min(ucpars[0], ucpars[1], ucpars[2])/3.
   else:
-    assert radius is not None
-    sphere_cent = flex.double(sphere_cent)
-  # Force sphere center to be on a map grid point for easier comparison of different spheres
-  sphere_cent_frac = unit_cell.fractionalize(tuple(sphere_cent))
-  sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
-  sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
-  sphere_cent = flex.double(sphere_cent)
+    if radius is None:
+      raise Sorry("Radius must be provided if sphere_cent is defined")
+    # Force sphere center to be on a map grid point for easier comparison of different spheres
+    # Account for origin shift if present in input maps
+    sphere_cent_frac = unit_cell.fractionalize(sphere_cent)
+    sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
+    if shifted_origin:
+      sphere_cent_grid = [(c - o) for c,o in zip(sphere_cent_grid, origin_shift)]
+  sphere_cent_map = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
+  sphere_cent_map = flex.double(sphere_cent_map)
 
   # Set first guess of d_min if no value provided
   # The majority of cryo-EM deposits have a ratio of nominal resolution to pixel
@@ -1492,7 +1515,7 @@ def assess_cryoem_errors(
   if determine_ordered_volume:
     ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
     total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
-    ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent, radius)
+    ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent_map, radius)
     fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
   else:
     fraction_scattering = None
@@ -1503,8 +1526,8 @@ def assess_cryoem_errors(
   soft_mask_radius = d_min
   padding = soft_mask_radius * boundary_to_smoothing_ratio
   cushion = flex.double(3,radius+padding)
-  cart_min = flex.double(sphere_cent) - cushion
-  cart_max = flex.double(sphere_cent) + cushion
+  cart_min = flex.double(sphere_cent_map) - cushion
+  cart_max = flex.double(sphere_cent_map) + cushion
   for i in range(3): # Keep within input map
     cart_min[i] = max(cart_min[i],0)
     cart_max[i] = min(cart_max[i],ucpars[i]-spacings[i])
@@ -1628,7 +1651,8 @@ def assess_cryoem_errors(
     if mc1sel.size() == 0:
       continue
     mapCC = mc1sel.map_correlation(other=mc2sel)
-    assert (mapCC < 1.) # Ensure these are really independent half-maps
+    if mapCC >= 1.:
+      raise Sorry("Half-maps must be non-identical")
     mapCC_bins.append(mapCC) # Store for before/after comparison
     sumfsqsel = sumfsqr.select(sel)
     meanfsq = flex.mean_default(sumfsqsel.data(),0.) / 2
@@ -1860,7 +1884,7 @@ def assess_cryoem_errors(
   return group_args(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
-    sphere_center = list(sphere_cent),
+    sphere_center = list(sphere_cent_map),
     expectE = expectE, dobs = dobs,
     over_sampling_factor = over_sampling_factor,
     fraction_scattering = fraction_scattering,
@@ -1956,9 +1980,7 @@ def run():
   protein_mw = None
   nucleic_mw = None
   if (args.protein_mw is None) and (args.nucleic_mw is None):
-    print("At least one of protein_mw or nucleic_mw must be given")
-    sys.stdout.flush()
-    exit
+    raise Sorry("At least one of protein_mw or nucleic_mw must be given")
   if args.protein_mw is not None:
     protein_mw = args.protein_mw
   if args.nucleic_mw is not None:
@@ -1968,30 +1990,26 @@ def run():
 
   if args.model is not None:
     if not (args.cutout_model or args.flatten_model):
-      print('Use for model must be specified (flatten or cut out map')
-      sys.stdout.flush()
-      exit
+      raise Sorry('Use for model must be specified (flatten or cut out map')
     model_file = args.model
     model = dm.get_model(model_file)
 
   if (args.sphere_cent is not None) and args.cutout_model:
-    print("Only one method to define region to cut out (sphere or model) can be given")
-    sys.stdout.flush()
-    exit
+    raise Sorry("Only one method to define region to cut out (sphere or model) can be given")
   if args.sphere_cent is not None:
-    assert args.radius is not None
+    if args.radius is None:
+      raise Sorry("Radius must be provided if sphere_cent is defined")
     sphere_cent = tuple(args.sphere_cent)
     radius = args.radius
     cutout_specified = True
   if args.cutout_model:
-    assert args.model is not None
+    if args.model is None:
+      raise Sorry("Model must be provided if cutout_model is defined")
     sphere_cent, radius = sphere_enclosing_model(model)
     radius = radius + d_min # Expand to allow width for density
     cutout_specified = True
   if (not determine_ordered_volume and not cutout_specified):
-    print("Must determine ordered volume if cutout not specified")
-    sys.stdout.flush()
-    exit
+    raise Sorry("Must determine ordered volume if cutout not specified")
 
   # Create map_model_manager containing half-maps
   map1_filename = args.map1
@@ -2002,7 +2020,8 @@ def run():
 
   # Prepare maps by flattening model volume if desired
   if args.flatten_model:
-    assert args.model is not None
+    if args.model is None:
+      raise Sorry("Model must be provided if flatten_model is defined")
     flatten_model_region(mmm, d_min)
 
   if determine_ordered_volume:
