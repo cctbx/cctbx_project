@@ -10,7 +10,7 @@ import pickle
 import six
 import sys
 import tempfile
-from typing import Union, Sequence
+from typing import Dict, List, Sequence, Union
 
 from dials.array_family import flex  # noqa
 from dxtbx.model.experiment_list import ExperimentList  # noqa
@@ -178,7 +178,9 @@ def normalize(sequence, floor=0, ceiling=1):
 
 
 class CorrelationMatrix(object):
-  def __init__(self, variables, weights=None):
+  """Calculate, store, and print correlation matrix between many sequences"""
+
+  def __init__(self, variables: Dict[str, Sequence], weights: Sequence = None):
     """Calculate corr. matrix between every pair in `variables` dict-like"""
     self.keys = variables.keys()
     self.corr = {k: {} for k in self.keys}
@@ -195,7 +197,7 @@ class CorrelationMatrix(object):
             corr = 0
           self.corr[k1][k2] = self.corr[k2][k1] = corr
 
-  def __str__(self):
+  def __str__(self) -> str:
     s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
     for k1 in self.keys:
       s += '\n{:7}'.format(k1)
@@ -207,35 +209,35 @@ class CorrelationMatrix(object):
 ############################## UTILITY FUNCTIONS ##############################
 
 
-def is_iterable(value, count_str=False):
+def is_iterable(value: object, count_str: bool = False):
   """Return `True` if object is iterable and not string, else `False`"""
   if not count_str and isinstance(value, str):
     return False
   try:
-    iter(value)
+    iter(value)  # noqa
   except TypeError:
     return False
   else:
     return True
 
 
-def path_join(*path_elements):
+def path_join(*path_elements: str) -> str:
   """Join path from elements, resolving all redundant or relative calls"""
   path_elements = [os.pardir if p == '..' else p for p in path_elements]
   return os.path.normpath(os.path.join(*path_elements))
 
 
-def path_lookup(*path_elements):
+def path_lookup(*path_elements: str) -> List[str]:
   """Join path elements and return a list of all matching files/dirs"""
   return glob.glob(path_join(*path_elements), recursive=True)
 
 
-def path_split(path):
+def path_split(path: str) -> List[str]:
   """Split path into directories and file basename using os separator"""
   return os.path.normpath(path).split(os.sep)
 
 
-def read_experiments(*expt_paths):
+def read_experiments(*expt_paths: str) -> ExperimentList:
   """Create an instance of ExperimentList from one or more `*expt_paths`"""
   expts = ExperimentList()
   for expt_path in unique_elements(expt_paths):
@@ -243,20 +245,20 @@ def read_experiments(*expt_paths):
   return expts
 
 
-def read_reflections(*refl_paths):
+def read_reflections(*refl_paths: str) -> flex.reflection_table:
   """Create an instance of flex.reflection_table from one/more `*refl_paths`"""
   r = [flex.reflection_table.from_file(p) for p in unique_elements(refl_paths)]
   return flex.reflection_table.concat(r)
 
 
-def represent_range_as_str(sorted_iterable):
+def represent_range_as_str(sorted_iterable: Sequence) -> str:
   """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
   fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
   d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
   return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
 
 
-def unique_elements(sequence):
+def unique_elements(sequence: Sequence) -> List:
   """Return list of unique elements in sequence while preserving its order"""
   return list(OrderedDict.fromkeys(sequence))
 
