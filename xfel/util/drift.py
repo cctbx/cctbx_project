@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
-from matplotlib.ticker import IndexLocator, PercentFormatter
+from matplotlib.ticker import FixedLocator, PercentFormatter
 import pandas as pd
 
 
@@ -691,18 +691,18 @@ class DriftArtist(object):
     return handles, unique_keys
 
   def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
-    axes.xaxis.set_major_locator(IndexLocator(base=1, offset=0))
+    axes.xaxis.set_major_locator(FixedLocator(self.x))
     y = self.table[values_key]
     if not self.table.column_is_flat(values_key):
       self._plot_drift_distribution(axes, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
-    # if top:
-    #   ax_top = self.axx.secondary_xaxis('top')
-    #   ax_top.tick_params(rotation=90)
-    #   ax_top.set_xticks(self.axx.get_xticks())
-    #   ax_top.xaxis.set_major_locator(IndexLocator(base=1, offset=0))
-    #   ax_top.set_xticklabels(self.table['expts'])
+    if top:
+      ax_top = self.axx.secondary_xaxis('top')
+      ax_top.tick_params(rotation=90)
+      ax_top.set_xticks(self.axx.get_xticks())
+      ax_top.xaxis.set_major_locator(FixedLocator(self.x))
+      ax_top.set_xticklabels(self.table['expts'])
     axes.set_xticklabels(self.table[self.order_by[0]])
     flattened_y = self.table_flat[values_key]
     flattened_weights = self.table_flat['refls']
