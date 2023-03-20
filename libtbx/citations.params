@@ -30,6 +30,11 @@ author {
 }
 
 author {
+  name = Millan C
+  orcid = 0000-0002-9283-2220
+}
+
+author {
   name = Moriarty NW
   orcid = 0000-0001-8857-9464
 }
@@ -1544,4 +1549,28 @@ citation {
   volume = 12
   pages = 15-25
   year = 2021
+}
+
+citation {
+  article_id = emplacement_theory
+  authors = Read RJ, Millan C, McCoy AJ, Terwilliger TC
+  title = Likelihood-based signal and noise analysis for docking of models into cryo-EM maps
+  journal = Acta Cryst. D
+  volume = 79
+  pages = xxx-xxx
+  year = 2023
+  pmid = 36920335
+  doi_id = 10.1107/S2059798323001596
+}
+
+citation {
+  article_id = emplacement_program
+  authors = Millan C, McCoy AJ, Terwilliger TC, Read RJ
+  title = Likelihood-based docking of models into cryo-EM maps
+  journal = Acta Cryst. D
+  volume = 79
+  pages = xxx-xxx
+  year = 2023
+  pmid = 36920336
+  doi_id = 10.1107/S2059798323001602
 }
