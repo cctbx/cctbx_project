@@ -1076,7 +1076,7 @@ def add_ordered_volume_mask(
   mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
 
 def get_grid_spacings(unit_cell, unit_cell_grid):
-  if unit_cell_parameters()[3:] != (90,90,90):
+  if unit_cell.parameters()[3:] != (90,90,90):
     raise Sorry("Unit cell must be orthogonal") # Required for this method
   sp = []
   for a,n in zip(unit_cell.parameters()[:3], unit_cell_grid):
@@ -1090,6 +1090,9 @@ def get_distance_from_center(c, unit_cell, unit_cell_grid = None,
   center of the map.
   Code provided by Tom Terwilliger
   """
+  if unit_cell.parameters()[3:] != (90,90,90):
+    raise Sorry("Unit cell must be orthogonal") # Required for this method
+
   acc = c.accessor()
   if not unit_cell_grid: # Assume c contains complete unit cell
     unit_cell_grid = acc.all()
