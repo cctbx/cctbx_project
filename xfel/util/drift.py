@@ -270,7 +270,7 @@ class ScrapResults(UserList):
 
   def read(self):
     scrap_paths, scrap_results = [], []
-    for scg in self.parameters.scrap.cache.glob:
+    for scg in path_lookup(self.parameters.scrap.cache.glob):
       scrap_paths.extend(glob.glob(scg))
     for scrap_path in scrap_paths:
       with open(scrap_path, 'rb') as pickle_file:
@@ -278,7 +278,6 @@ class ScrapResults(UserList):
 
   def write(self):
     write_path = self.parameters.scrap.cache.glob
-    print(write_path)
     with open(write_path, 'wb') as pickle_file:
       pickle.dump(self, pickle_file)
 
