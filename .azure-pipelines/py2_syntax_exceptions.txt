@@ -8,4 +8,4 @@ xfel/ui/db/cfgs/shifter_templates.py
 xfel/small_cell/powder_util.py
 xfel/ui/db/job.py
 xfel/command_line/cxi_mpi_submit.py
-xfel/util/drifter.py
+xfel/util/drift.py
