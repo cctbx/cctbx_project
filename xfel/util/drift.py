@@ -1,10 +1,12 @@
 from __future__ import absolute_import, print_function, division
 import abc
+import functools
 import itertools
-from collections import OrderedDict
+from collections import OrderedDict, UserList
 from json.decoder import JSONDecodeError
 import glob
 import os
+import pickle
 import six
 import sys
 import tempfile
@@ -48,19 +50,6 @@ where `r0*/039_rg084/task209` points to folders with TDER results.
 
 
 phil_scope = parse('''
-  input {
-    glob = None
-      .type = str
-      .multiple = True
-      .help = glob which matches files after TDER to be investigated.
-    exclude = None
-      .type = str
-      .multiple = True
-      .help = glob which matches files to exclude from input.glob
-    kind = tder_task_directory *merging_directory
-      .type = choice
-      .help = The type of files located by input.glob
-  }
   plot {
     color {
       by = chunk *merge run rungroup task trial 
@@ -80,16 +69,39 @@ phil_scope = parse('''
       .type = float
       .help = Width of saved plot in inches
   }
-  origin = *first average distribution
-    .type = choice
-    .help = Use origin of first experiment only or average/distribution of all?
-  uncertainties = True
-    .type = bool
-    .help = If True, uncertainties will be estimated using differences \
-          between predicted and observed refl positions and cell distribution
-  unit_cell = *average distribution
-    .type = choice
-    .help = Use average unit cell or distribution of all?
+  scrap {
+    input {
+      glob = None
+        .type = str
+        .multiple = True
+        .help = glob which matches files after TDER to be investigated.
+      exclude = None
+        .type = str
+        .multiple = True
+        .help = glob which matches files to exclude from input.glob
+      kind = tder_task_directory *merging_directory
+        .type = choice
+        .help = The type of files located by input.glob
+    }
+    cache {
+      action = *none read write
+        .type = choice
+        .help = Read drift table instead of generating one, or write one.
+      glob = drift_cache.pkl
+        .type = str
+        .help = Path to cache(s) with pickled scrap results to write/read
+    }
+    origin = *first average distribution
+      .type = choice
+      .help = Use origin of first experiment only or average/distribution of all?
+    uncertainties = True
+      .type = bool
+      .help = If True, uncertainties will be estimated using differences \
+            between predicted and observed refl positions and cell distribution
+    unit_cell = *average distribution
+      .type = choice
+      .help = Use average unit cell or distribution of all?
+    }
 ''')
 
 
@@ -250,6 +262,39 @@ def unique_elements(sequence):
 ############################### DRIFT SCRAPPING ###############################
 
 
+class ScrapResults(UserList):
+  """Responsible for storing and pickling DriftScraper results."""
+  def __init__(self, parameters):
+    super().__init__()
+    self.parameters = parameters
+
+  def read(self):
+    scrap_paths, scrap_results = [], []
+    for scg in self.parameters.scrap.cache.glob:
+      scrap_paths.extend(glob.glob(scg))
+    for scrap_path in scrap_paths:
+      with open(scrap_path, 'rb') as pickle_file:
+        self.append(pickle.load(pickle_file))
+
+  def write(self):
+    write_path = self.parameters.scrap.cache.glob
+    with open(write_path, 'wb') as pickle_file:
+      self.append(pickle.load(pickle_file))
+
+
+def handle_scrap_cache(scrap):
+  @functools.wraps(scrap)
+  def scrap_wrapper(self: BaseDriftScraper, *args, **kwargs):
+    if self.parameters.scrap.cache.action == 'read':
+      self.scrap_results.read()
+    scrap(self, *args, **kwargs)
+    if self.parameters.scrap.cache.action == 'write':
+      self.scrap_results.write()
+    for scrap_dict in self.scrap_results:
+      self.table.add(scrap_dict)
+  return scrap_wrapper
+
+
 class DriftScraperRegistrar(abc.ABCMeta):
   """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
   REGISTRY = {}
@@ -268,6 +313,7 @@ class BaseDriftScraper(object):
   def __init__(self, table, parameters):
     self.table = table
     self.parameters = parameters
+    self.scrap_results = ScrapResults(parameters)
 
   @staticmethod
   def calc_expt_refl_len(expts, refls):
@@ -296,9 +342,9 @@ class BaseDriftScraper(object):
     """Return all paths (either common files or directories, relative to
     working directory) of specified kind to be processed"""
     input_paths, exclude_paths = [], []
-    for ig in self.parameters.input.glob:
+    for ig in self.parameters.scrap.input.glob:
       input_paths.extend(glob.glob(ig))
-    for ie in self.parameters.input.exclude:
+    for ie in self.parameters.scrap.input.exclude:
       exclude_paths.extend(glob.glob(ie))
     return [it for it in input_paths if it not in exclude_paths]
 
@@ -339,6 +385,7 @@ class BaseDriftScraper(object):
 class TderTaskDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'tder_task_directory'
 
+  @handle_scrap_cache
   def scrap(self):
     combining_phil_paths = []
     for tder_task_directory in self.locate_input_paths():
@@ -360,12 +407,14 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
       else:
-        self.table.add(scrap_dict)
+        self.scrap_results.append(scrap_dict)
+
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
   input_kind = 'merging_directory'
 
+  @handle_scrap_cache
   def scrap(self):
     for merge in self.locate_input_paths():
       merging_phil_paths = path_lookup(merge, '**', '*.phil')
@@ -397,7 +446,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
-            self.table.add(scrap_dict)
+            self.scrap_results.append(scrap_dict)
 
 
 class FirstOriginMixin(object):
@@ -525,11 +574,11 @@ class DriftScraperFactory(object):
 
   @classmethod
   def get_drift_scraper(cls, table, parameters):
-    base = DriftScraperRegistrar.REGISTRY[parameters.input.kind]
+    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
     mixins = [
-      cls.ORIGIN_MIXINS[parameters.origin],
-      cls.UNCERTAINTIES_MIXINS[parameters.uncertainties],
-      cls.UNIT_CELL_MIXINS[parameters.unit_cell],
+      cls.ORIGIN_MIXINS[parameters.scrap.origin],
+      cls.UNCERTAINTIES_MIXINS[parameters.scrap.uncertainties],
+      cls.UNIT_CELL_MIXINS[parameters.scrap.unit_cell],
     ]
     class DriftScraper(base, *mixins):
       pass
@@ -714,8 +763,7 @@ class DriftArtist(object):
   def _plot_drift_point(self, axes, y, deltas_key):
     axes.scatter(self.x, y, c=self.color_array)
     y_err = self.table.get(deltas_key, [])
-    if self.parameters.uncertainties:
-      axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
+    axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes, values_key):
     x_flat = self.table_flat['original_index']
