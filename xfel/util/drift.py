@@ -701,7 +701,7 @@ class DriftArtist(object):
       ax_top = self.axx.secondary_xaxis('top')
       ax_top.tick_params(rotation=90)
       ax_top.set_xticks(self.axx.get_xticks())
-      ax_top.set_major_locator(IndexLocator(base=1, offset=0))
+      ax_top.xaxis.set_major_locator(IndexLocator(base=1, offset=0))
       ax_top.set_xticklabels(self.table['expts'])
     axes.set_xticklabels(self.table[self.order_by[0]])
     flattened_y = self.table_flat[values_key]
