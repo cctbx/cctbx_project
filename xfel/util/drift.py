@@ -22,6 +22,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, PercentFormatter
+import numpy as np
 import pandas as pd
 
 
@@ -141,29 +142,30 @@ DEFAULT_INPUT_SCOPE = parse("""
 ############################### MATHS FUNCTIONS ###############################
 
 
-def average(sequence, weights=None):
-  """Calculate weighted arithmetic mean of an iterable"""
-  weights = [1] * len(sequence) if weights is None else weights
-  return sum(s * w for s, w in zip(sequence, weights)) / sum(weights)
+def average(xs: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted arithmetic mean of a sequence"""
+  xs = np.array(xs)
+  weights = np.ones((len(xs))) if weights is None else np.array(weights)
+  return sum(xs * weights) / sum(weights)
 
 
-def correlation(xs, ys, weights=None):
-  """Calculate weighted Pearson's correlation coefficient between iterables"""
-  weights = [1] * len(xs) if weights is None else weights
+def correlation(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted Pearson's correlation coefficient between sequences"""
+  weights = np.ones((len(xs))) if weights is None else np.array(weights)
   x_variance = variance(xs, xs, weights=weights)
   y_variance = variance(ys, ys, weights=weights)
   covariance = variance(xs, ys, weights=weights)
   return covariance / (x_variance * y_variance) ** 0.5
 
 
-def variance(xs, ys, weights=None):
-  """Calculate weighted variance between iterables"""
-  weights = [1] * len(xs) if weights is None else weights
-  x_avg = average(xs, weights=weights)
-  y_avg = average(ys, weights=weights)
-  x_dev = [x - x_avg for x in xs]
-  y_dev = [y - y_avg for y in ys]
-  return sum(w * x * y for w, x, y in zip(weights, x_dev, y_dev)) / sum(weights)
+def variance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted variance between sequences"""
+  weights = np.ones((len(xs))) if weights is None else np.array(weights)
+  x_average = average(xs, weights=weights)
+  y_average = average(ys, weights=weights)
+  x_deviations = np.array(xs) - x_average
+  y_deviations = np.array(ys) - y_average
+  return sum(weights * x_deviations * y_deviations) / sum(weights)
 
 
 def normalize(sequence, floor=0, ceiling=1):
