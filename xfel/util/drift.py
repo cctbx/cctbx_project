@@ -716,8 +716,6 @@ class DriftArtist(object):
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
-    self.axc.set_xlabel(self.x_label)
-    self.axh.set_ylabel('# expts')
 
   @property
   def color_array(self):
@@ -826,13 +824,15 @@ class DriftArtist(object):
     self.axl.text(x=0.5, y=0., s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
-  def _prepare_table(self):
+  def _init_draw(self):
     self.table.sort(by=self.order_by)
     self.table_flat = self.table.flat
+    self.axc.set_xlabel(self.x_label)
+    self.axh.set_ylabel('# expts')
 
   def draw(self):
     if len(self.table):
-      self._prepare_table()
+      self._init_draw()
       self._plot_bars()
       self._plot_correlations()
       self._plot_width_info()
