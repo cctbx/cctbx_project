@@ -86,7 +86,7 @@ phil_scope = parse('''
     }
   plot {
     color {
-      by = chunk *merge run rungroup task trial 
+      by = chunk *merge run rungroup task trial
         .type = choice
         .help = Variable to color individual points on drift plot by;
     }
