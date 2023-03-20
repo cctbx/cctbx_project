@@ -288,8 +288,10 @@ def handle_scrap_cache(scrap):
     if self.parameters.scrap.cache.action == 'read':
       self.scrap_results.read()
     scrap(self, *args, **kwargs)
+    print(self.scrap_results)
     if self.parameters.scrap.cache.action == 'write':
       self.scrap_results.write()
+    print(self.scrap_results)
     for scrap_dict in self.scrap_results:
       self.table.add(scrap_dict)
   return scrap_wrapper
