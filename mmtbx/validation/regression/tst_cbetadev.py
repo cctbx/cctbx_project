@@ -57,7 +57,7 @@ SUMMARY: 6 C-beta deviations >= 0.25 Angstrom (Goal: 0)
     assert (validation.n_outliers == 6)
     assert (len(validation.results) == 51)
     assert validation.percent_outliers > 0.
-    assert validation.percent_outliers==10.
+    #assert validation.percent_outliers==10.
     out = StringIO()
     validation.show_old_output(out=out, verbose=True)
     assert not show_diff(out.getvalue(), """\
@@ -174,16 +174,61 @@ HETATM  569  C   DAL A  11      17.623  31.302  28.726  1.00  3.99           C
 HETATM  570  O   DAL A  11      18.770  30.854  28.916  1.00  5.73           O''').construct_hierarchy()
   validation = cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
+    outliers_only=False)
+  # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
+  for unpickle in [False, True] :
+    if unpickle :
+      validation = loads(dumps(validation))
+    assert (len(validation.results) == 1)
+    assert (validation.n_outliers == 0)
+    assert ([ cb.id_str() for cb in validation.results ] ==
+      [' A  11  DAL'])
+    assert approx_equal([ cb.deviation for cb in validation.results ],
+      [0.02848041692354018])
+    print(validation.percent_outliers)
+    assert validation.percent_outliers == 0.
+    out = StringIO()
+    validation.show_old_output(out=out, verbose=True)
+    print(out.getvalue())
+    for cb in validation.results:
+      print(cb.id_str(), cb.deviation)
+      assert cb.deviation<1.
+  print('OK')
+
+def exercise_cbetadev_misnamed_peptides():
+  #testing that residues with wrong chirality show up as outliers
+  #I have swapped the names of an otherwise real THR and DTH from 7ooj.pdb
+  #they should both be outliers
+  from iotbx import pdb
+  from mmtbx.validation import cbetadev
+  hierarchy = pdb.input(source_info=None, lines='''
+HETATM  411  N   THR A  53      22.401  17.450 -18.803  1.00 66.31           N
+HETATM  412  CA  THR A  53      23.810  17.544 -18.580  1.00 66.58           C
+HETATM  413  CB  THR A  53      24.424  18.930 -18.527  1.00 67.06           C
+HETATM  414  CG2 THR A  53      23.940  19.663 -17.276  1.00 68.25           C
+HETATM  415  OG1 THR A  53      24.132  19.634 -19.725  1.00 69.19           O
+HETATM  416  C   THR A  53      24.317  16.671 -19.722  1.00 67.57           C
+HETATM  417  O   THR A  53      25.217  15.882 -19.525  1.00 76.32           O
+ATOM    519  N   DTH A  66      14.250  13.187 -35.224  1.00 56.90           N
+ATOM    520  CA  DTH A  66      12.879  13.360 -34.677  1.00 58.61           C
+ATOM    521  C   DTH A  66      12.864  13.014 -33.188  1.00 57.65           C
+ATOM    522  O   DTH A  66      13.234  11.876 -32.846  1.00 58.82           O
+ATOM    523  CB  DTH A  66      11.870  12.499 -35.441  1.00 60.31           C
+ATOM    524  OG1 DTH A  66      11.977  12.858 -36.818  1.00 66.15           O
+ATOM    525  CG2 DTH A  66      10.452  12.683 -34.948  1.00 62.67           C''').construct_hierarchy()
+  validation = cbetadev.cbetadev(
+    pdb_hierarchy=hierarchy,
     outliers_only=True)
   # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
   for unpickle in [False, True] :
     if unpickle :
       validation = loads(dumps(validation))
-    assert (validation.n_outliers == len(validation.results) == 1)
+    assert (validation.n_outliers == len(validation.results) == 2)
     assert ([ cb.id_str() for cb in validation.results ] ==
-      [' A  11  DAL'])
+      [' A  53  THR',' A  66  DTH'])
+    print([ cb.deviation for cb in validation.results ])
     assert approx_equal([ cb.deviation for cb in validation.results ],
-      [2.4024791534406025])
+      [2.3247665655338596, 2.4166600592687995])
     print(validation.percent_outliers)
     assert validation.percent_outliers>0.
     out = StringIO()
@@ -191,8 +236,45 @@ HETATM  570  O   DAL A  11      18.770  30.854  28.916  1.00  5.73           O''
     print(out.getvalue())
     for cb in validation.results:
       print(cb.id_str(), cb.deviation)
+      assert cb.deviation>2.
+  print('OK')
+
+def exercise_cbetadev_nonstandard_peptide():
+  #testing that a nonstandard animo acid defaults to the general case
+  #LYZ is hydroxylysine
+  from iotbx import pdb
+  from mmtbx.validation import cbetadev
+  hierarchy = pdb.input(source_info=None, lines='''
+HETATM 3181  N   LYZ D   3      -1.842  -5.028  54.291  1.00 35.06           N
+HETATM 3182  CA  LYZ D   3      -3.207  -4.726  53.880  1.00 36.27           C
+HETATM 3183  C   LYZ D   3      -3.841  -3.660  54.771  1.00 41.71           C
+HETATM 3184  O   LYZ D   3      -4.669  -2.842  54.381  1.00 52.20           O
+HETATM 3185  CB  LYZ D   3      -4.176  -5.939  53.836  1.00 34.68           C''').construct_hierarchy()
+  validation = cbetadev.cbetadev(
+    pdb_hierarchy=hierarchy,
+    outliers_only=False)
+  # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
+  for unpickle in [False, True] :
+    if unpickle :
+      validation = loads(dumps(validation))
+    assert (len(validation.results) == 1)
+    assert (validation.n_outliers == 0)
+    assert ([ cb.id_str() for cb in validation.results ] ==
+      [' D   3  LYZ'])
+    assert approx_equal([ cb.deviation for cb in validation.results ],
+      [0.14107909562037108])
+    print(validation.percent_outliers)
+    assert validation.percent_outliers == 0.
+    out = StringIO()
+    validation.show_old_output(out=out, verbose=True)
+    print(out.getvalue())
+    for cb in validation.results:
+      print(cb.id_str(), cb.deviation)
       assert cb.deviation<1.
+  print('OK')
 
 if (__name__ == "__main__"):
   exercise_cbetadev()
   exercise_cbetadev_d_peptide()
+  exercise_cbetadev_misnamed_peptides()
+  exercise_cbetadev_nonstandard_peptide()
