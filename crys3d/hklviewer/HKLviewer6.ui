@@ -167,7 +167,7 @@
             </size>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <property name="elideMode">
             <enum>Qt::ElideNone</enum>
@@ -243,8 +243,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>316</width>
-                  <height>558</height>
+                  <width>460</width>
+                  <height>557</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -460,7 +460,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>309</width>
+                   <width>453</width>
                    <height>395</height>
                   </rect>
                  </property>
@@ -1992,6 +1992,9 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="InfoWidget">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
    <property name="windowTitle">
     <string>HKLviewer Info</string>
    </property>

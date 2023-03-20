@@ -91,7 +91,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.widget, 0, 0, 1, 1)
 
-        MainWindow.setCentralWidget(self.centralwidget)
+        #MainWindow.setCentralWidget(self.centralwidget)
         self.ControlsWidget = QDockWidget(MainWindow)
         self.ControlsWidget.setObjectName(u"ControlsWidget")
         self.ControlsWidget.setMinimumSize(QSize(183, 241))
@@ -158,7 +158,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 316, 558))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 460, 557))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -269,7 +269,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 309, 395))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 453, 395))
         sizePolicy4.setHeightForWidth(self.scrollAreaWidgetContents.sizePolicy().hasHeightForWidth())
         self.scrollAreaWidgetContents.setSizePolicy(sizePolicy4)
         self.scrollAreaWidgetContents.setMinimumSize(QSize(0, 0))
@@ -1060,6 +1060,7 @@ class Ui_MainWindow(object):
         MainWindow.addDockWidget(Qt.LeftDockWidgetArea, self.ControlsWidget)
         self.InfoWidget = QDockWidget(MainWindow)
         self.InfoWidget.setObjectName(u"InfoWidget")
+        self.InfoWidget.setFeatures(QDockWidget.DockWidgetFloatable|QDockWidget.DockWidgetMovable)
         self.dockWidgetContents = QWidget()
         self.dockWidgetContents.setObjectName(u"dockWidgetContents")
         self.gridLayout_33 = QGridLayout(self.dockWidgetContents)
@@ -1130,7 +1131,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         self.functionTabWidget.setCurrentIndex(0)
         self.xHKLrotBtn.setDefault(False)
         self.xHKLbackrotBtn.setDefault(False)
@@ -1318,3 +1319,4 @@ class Ui_MainWindow(object):
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi
+
