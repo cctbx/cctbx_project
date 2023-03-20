@@ -274,12 +274,12 @@ class ScrapResults(UserList):
       scrap_paths.extend(glob.glob(scg))
     for scrap_path in scrap_paths:
       with open(scrap_path, 'rb') as pickle_file:
-        self.append(pickle.load(pickle_file))
+        self.extend(pickle.load(pickle_file))
 
   def write(self):
     write_path = self.parameters.scrap.cache.glob
     with open(write_path, 'wb') as pickle_file:
-      self.append(pickle.dump(self, pickle_file))
+      pickle.dump(self, pickle_file)
 
 
 def handle_scrap_cache(scrap):
