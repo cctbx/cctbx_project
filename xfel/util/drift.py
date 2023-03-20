@@ -50,25 +50,6 @@ where `r0*/039_rg084/task209` points to folders with TDER results.
 
 
 phil_scope = parse('''
-  plot {
-    color {
-      by = chunk *merge run rungroup task trial 
-        .type = choice
-        .help = Variable to color individual points on drift plot by;
-    }
-    show = True
-      .type = bool
-      .help = If False, do not display resulting plot interactively
-    path = ""
-      .type = str
-      .help = If given, save plot with this path and name (eg.: fig.png)
-    height = 8.0
-      .type = float
-     .help = Height of saved plot in inches
-    width = 10.0
-      .type = float
-      .help = Width of saved plot in inches
-  }
   scrap {
     input {
       glob = None
@@ -102,6 +83,25 @@ phil_scope = parse('''
       .type = choice
       .help = Use average unit cell or distribution of all?
     }
+  plot {
+    color {
+      by = chunk *merge run rungroup task trial 
+        .type = choice
+        .help = Variable to color individual points on drift plot by;
+    }
+    show = True
+      .type = bool
+      .help = If False, do not display resulting plot interactively
+    path = ""
+      .type = str
+      .help = If given, save plot with this path and name (eg.: fig.png)
+    height = 8.0
+      .type = float
+     .help = Height of saved plot in inches
+    width = 10.0
+      .type = float
+      .help = Width of saved plot in inches
+  }
 ''')
 
 
@@ -288,10 +288,8 @@ def handle_scrap_cache(scrap):
     if self.parameters.scrap.cache.action == 'read':
       self.scrap_results.read()
     scrap(self, *args, **kwargs)
-    print(self.scrap_results)
     if self.parameters.scrap.cache.action == 'write':
       self.scrap_results.write()
-    print(self.scrap_results)
     for scrap_dict in self.scrap_results:
       self.table.add(scrap_dict)
   return scrap_wrapper
@@ -681,7 +679,7 @@ class DriftArtist(object):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
     self.cov_colormap = plt.get_cmap('seismic')
-    self.order_by = ['run']
+    self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
     self.parameters = parameters
@@ -716,7 +714,7 @@ class DriftArtist(object):
       ax.tick_params(axis='x', labelbottom=False, **common)
       ax.ticklabel_format(useOffset=False)
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
-    self.axc.set_xlabel(', '.join(ob for ob in self.order_by))
+    self.axc.set_xlabel(self.x_label)
     self.axh.set_ylabel('# expts')
 
   @property
@@ -730,6 +728,21 @@ class DriftArtist(object):
   @property
   def x(self):
     return self.table.data.index
+
+  @property
+  def x_keys(self):
+    is_constant = {k: self.table[k].nunique == 1 for k in self.order_by[1:]}
+    keys_used = [self.order_by[0]]
+    keys_used += [k for k in self.order_by[1:] if not is_constant[k]]
+    return keys_used
+
+  @property
+  def x_label(self):
+    return ':'.join(self.x_keys)
+
+  @property
+  def x_tick_labels(self):
+    return self.table.data[self.x_keys].agg(':'.join, axis=1)
 
   def _get_handles_and_labels(self):
     handles, unique_keys = [], []
@@ -747,13 +760,7 @@ class DriftArtist(object):
       self._plot_drift_distribution(axes, values_key)
     else:
       self._plot_drift_point(axes, y, deltas_key)
-    if top:
-      ax_top = self.axx.secondary_xaxis('top')
-      ax_top.tick_params(rotation=90)
-      ax_top.set_xticks(self.axx.get_xticks())
-      ax_top.xaxis.set_major_locator(FixedLocator(self.x))
-      ax_top.set_xticklabels(self.table['expts'])
-    axes.set_xticklabels(self.table[self.order_by[0]])
+    axes.set_xticklabels(self.x_tick_labels)
     flattened_y = self.table_flat[values_key]
     flattened_weights = self.table_flat['refls']
     avg_y = average(flattened_y, weights=flattened_weights)
@@ -780,6 +787,10 @@ class DriftArtist(object):
     y = self.table['expts']
     w = normalize([0, *self.table['density']])[1:]
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
+    ax_top = self.axx.secondary_xaxis('top')
+    ax_top.tick_params(rotation=90)
+    ax_top.xaxis.set_major_locator(FixedLocator(self.x))
+    ax_top.set_xticklabels(self.x_tick_labels)
 
   def _plot_correlations(self):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
@@ -808,16 +819,16 @@ class DriftArtist(object):
     expt_lens = self.table['expts']
     refl_lens = self.table['refls'] if self.table.column_is_flat('refls') \
       else [sum(refl) for refl in self.table['refls']]
-    s = f"#expts/run: {min(expt_lens)} - {max(expt_lens)}\n" \
-        f"#refls/run: {min(refl_lens)} - {max(refl_lens)}"
-    self.axl.text(x=0.5, y=0.0, s=s, clip_on=False, ha='center',
+    s = f"#expts/chunk: {min(expt_lens)} - {max(expt_lens)}\n" \
+        f"#refls/chunk: {min(refl_lens)} - {max(refl_lens)}"
+    self.axl.text(x=0.5, y=0., s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
   def _prepare_table(self):
     self.table.sort(by=self.order_by)
     self.table_flat = self.table.flat
 
-  def publish(self):
+  def draw(self):
     if len(self.table):
       self._prepare_table()
       self._plot_bars()
@@ -849,7 +860,7 @@ def run(params_):
   ds.scrap()
   dt.sort(by='run')
   print(dt)
-  da.publish()
+  da.draw()
 
 
 params = []
