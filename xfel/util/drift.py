@@ -898,7 +898,6 @@ def run(params_):
   da = DriftArtist(table=dt, parameters=params_)
   ds.scrap()
   print(dt)
-  print(dt.flat)
   da.plot()
 
 
