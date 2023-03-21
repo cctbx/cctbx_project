@@ -364,7 +364,7 @@ class BaseDriftScraper(object):
     rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
     trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
     runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
-    return {'chunk': path_split(combine_phil_path)[-1][16:19],
+    return {'chunk': int(path_split(combine_phil_path)[-1][16:19]),
             'run': represent_range_as_str(runs),
             'rungroup': represent_range_as_str(rungroups),
             'task': path_split(combine_phil_path)[-4],
@@ -766,11 +766,9 @@ class DriftArtist(object):
 
   @property
   def x_keys(self) -> List[str]:
-    is_constant = {k: self.table[k].nunique == 1 for k in self.order_by[1:]}
-    print(is_constant)
+    is_constant = {k: self.table[k].nunique() == 1 for k in self.order_by[1:]}
     keys_used = [self.order_by[0]]
     keys_used += [k for k in self.order_by[1:] if not is_constant[k]]
-    print(keys_used)
     return keys_used
 
   @property
