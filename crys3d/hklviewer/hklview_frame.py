@@ -783,10 +783,6 @@ class HKLViewFrame() :
   def set_spacegroup_choice(self, n) :
     if (self.viewer.miller_array is None) :
       raise Sorry("No data loaded!")
-    #if n == len(self.spacegroup_choices): # selected the "original spacegroup" in the list
-    #  self.viewer.proc_arrays = self.procarrays[:]
-    #  self.params.using_space_subgroup = False
-    #else:
     self.current_spacegroup = self.spacegroup_choices[n]
     from cctbx import crystal
     symm = crystal.symmetry(
@@ -908,42 +904,12 @@ Borrowing them from the first miller array""" %i)
   def commitSubgroupDatasets(self):
     if self.params.commit_subgroup_datasets==False:
       return
-    self.procarrays = self.viewer.proc_arrays[:] # assuming these are now expanded to a subgroup
-    procarray, procarray_info = self.process_miller_array(self.viewer.miller_array)
-    _, arrayinfo = self.update_arrayinfos()
-    # isanomalous and spacegroup might not have been selected for displaying so send them separatately to GUI
-    self.ano_spg_tpls.append((arrayinfo.isanomalous, arrayinfo.spginf) )
-    # Storing this new miller_array in the origarrays dictionary allows making a table of the data later.
-    # First create a superset of HKLs existing miller arrays and the new procarray.
-    self.origarrays["HKLs"] = procarray.indices()[:]
-    self.arrayinfos = []
-    for arr in self.procarrays:
-      if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
-        if arr.sigmas() == None:
-          self.origarrays[arr.info().label_string()] = arr.data()
-        else:
-          self.origarrays[arr.info().labels[0]] = arr.data()
-          self.origarrays[arr.info().labels[1]] = arr.sigmas()
-      arrayinfo = ArrayInfo(arr, 25)
-      self.arrayinfos.append(arrayinfo)
-
-    self.update_space_group_choices(0) # get the default spacegroup choice
-    self.viewer.get_labels_of_data_for_binning(self.arrayinfos)
+    self.finish_dataloading(self.viewer.proc_arrays[:])
+    self.viewer.HKLscenedict = {} # delete all cached scenes
     self.SendInfoToGUI({"file_name": self.loaded_file_name + " expanded"})
     # send file_name value separately from array_infotpls value since the former
     # clears NGL_HKLViewer.millertable of the contents of the array_infotpls
-    mydict = { "array_infotpls": self.viewer.array_info_format_tpl,
-              "ano_spg_tpls": self.ano_spg_tpls,
-              "spacegroups": [e.symbol_and_number() for e in self.spacegroup_choices],
-              "spacegroup_info": arrayinfo.spginf,
-              "unitcell_info": [arrayinfo.ucellinf],
-              "NewHKLscenes" : True,
-              "NewMillerArray" : True,
-              }
-    self.SendInfoToGUI(mydict)
-    self.validated_preset_buttons = False
-    self.viewer.include_tooltip_lst = [True] * len(self.viewer.proc_arrays)
-    self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
+    self.SendInfoToGUI({ "array_infotpls": self.viewer.array_info_format_tpl })
 
 
   def AddDataset2ExistingOnes(self, newarray, label=None, info=None):
@@ -1056,6 +1022,17 @@ Borrowing them from the first miller array""" %i)
     spgset = set([])
     self.arrayinfos = []
     previous_ucell = None
+    # origarrays dictionary is used for making a table of the data later.
+    if len(self.origarrays.items()) == 0:
+      self.origarrays["HKLs"] = arrays[0].indices()[:]
+      for arr in arrays:
+        if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
+          if arr.sigmas() == None:
+            self.origarrays[arr.info().label_string()] = arr.data()
+          else:
+            self.origarrays[arr.info().labels[0]] = arr.data()
+            self.origarrays[arr.info().labels[1]] = arr.sigmas()
+
     for i,array in enumerate(arrays):
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -1115,8 +1092,6 @@ Borrowing them from the first miller array""" %i)
       self.mprint(msg)
       self.NewFileLoaded=False
     elif (len(valid_arrays) >= 1):
-      #self.set_miller_array()
-
       array_info = self.process_all_miller_arrays(valid_arrays)
       self.viewer.proc_arrays = self.procarrays[:]
       self.viewer.identify_suitable_fomsarrays()
@@ -1229,15 +1204,6 @@ Borrowing them from the first miller array""" %i)
                 newarr[i] = nanval
             self.origarrays[mtzlbl] = list(newarr)
 
-        if len(self.origarrays.items()) == 0:
-          self.origarrays["HKLs"] = arrays[0].indices()[:]
-          for arr in arrays:
-            if (arr.is_complex_array() or arr.is_hendrickson_lattman_array())==False:
-              if arr.sigmas() == None:
-                self.origarrays[arr.info().label_string()] = arr.data()
-              else:
-                self.origarrays[arr.info().labels[0]] = arr.data()
-                self.origarrays[arr.info().labels[1]] = arr.sigmas()
         self.loaded_file_name = file_name
         self.finish_dataloading(arrays)
         self.SendInfoToGUI({"NewFileLoaded": self.NewFileLoaded})

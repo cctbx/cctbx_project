@@ -803,10 +803,10 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         "To run Xtricorder you must first open a datafile in the HKLviewer", buttons=QMessageBox.Ok)
       return
     if "_xtricorder.mtz" in self.currentfileName:
-      self.AddAlertsText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
+      self.AddInfoText("File looks like it has already been processed by Xtricorder. Try loading another reflection file.\n")
       return
     if "expanded" in self.currentfileName:
-      self.AddAlertsText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtricorder\n")
+      self.AddInfoText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtricorder\n")
       return
     from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
@@ -870,7 +870,7 @@ shutil.rmtree("%s")
         "To run Xtriage you must first display an observation dataset", buttons=QMessageBox.Ok)
       return
     if "expanded" in self.currentfileName:
-      self.AddAlertsText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtriage\n")
+      self.AddInfoText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtriage\n")
       return
     if self.currentfileName:
       firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'

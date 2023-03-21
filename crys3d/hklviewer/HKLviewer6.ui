@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1047</width>
-    <height>857</height>
+    <width>824</width>
+    <height>763</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -22,7 +22,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -40,10 +40,13 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
+    <property name="spacing">
+     <number>0</number>
+    </property>
     <item row="0" column="0">
      <widget class="QWidget" name="widget" native="true">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -61,11 +64,14 @@
        <property name="bottomMargin">
         <number>0</number>
        </property>
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <item row="0" column="0">
         <widget class="QWebEngineView" name="BrowserBox" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>4</horstretch>
+           <horstretch>2</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
@@ -77,6 +83,12 @@
    </layout>
   </widget>
   <widget class="QDockWidget" name="ControlsWidget">
+   <property name="minimumSize">
+    <size>
+     <width>183</width>
+     <height>241</height>
+    </size>
+   </property>
    <property name="features">
     <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
    </property>
@@ -89,19 +101,19 @@
    <widget class="QWidget" name="dockControls">
     <layout class="QGridLayout" name="gridLayout_9">
      <property name="leftMargin">
-      <number>2</number>
+      <number>0</number>
      </property>
      <property name="topMargin">
-      <number>2</number>
+      <number>0</number>
      </property>
      <property name="rightMargin">
-      <number>2</number>
+      <number>0</number>
      </property>
      <property name="bottomMargin">
-      <number>2</number>
+      <number>0</number>
      </property>
      <property name="spacing">
-      <number>3</number>
+      <number>0</number>
      </property>
      <item row="0" column="0">
       <widget class="QWidget" name="widget_2" native="true">
@@ -125,22 +137,40 @@
          <number>0</number>
         </property>
         <property name="spacing">
-         <number>6</number>
+         <number>0</number>
         </property>
         <item row="0" column="0">
          <widget class="QSplitter" name="splitter_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
+          <property name="handleWidth">
+           <number>5</number>
+          </property>
           <widget class="QTabWidget" name="tabWidget">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="currentIndex">
             <number>1</number>
+           </property>
+           <property name="elideMode">
+            <enum>Qt::ElideNone</enum>
            </property>
            <property name="usesScrollButtons">
             <bool>true</bool>
@@ -150,13 +180,57 @@
              <string>Quick View</string>
             </attribute>
             <layout class="QGridLayout" name="gridLayout_25">
-             <item row="1" column="0" colspan="2">
-              <widget class="QScrollArea" name="scrollArea_2">
+             <property name="leftMargin">
+              <number>3</number>
+             </property>
+             <property name="topMargin">
+              <number>3</number>
+             </property>
+             <property name="rightMargin">
+              <number>3</number>
+             </property>
+             <property name="bottomMargin">
+              <number>3</number>
+             </property>
+             <property name="spacing">
+              <number>3</number>
+             </property>
+             <item row="0" column="1">
+              <widget class="QPushButton" name="XtricorderBtn">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Run Xtricorder</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QPushButton" name="XtriageBtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Run Xtriage</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QScrollArea" name="scrollArea_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Plain</enum>
                </property>
                <property name="horizontalScrollBarPolicy">
                 <enum>Qt::ScrollBarAsNeeded</enum>
@@ -169,8 +243,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>318</width>
-                  <height>617</height>
+                  <width>460</width>
+                  <height>557</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -218,32 +292,6 @@
                  </item>
                 </layout>
                </widget>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QPushButton" name="XtriageBtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Run Xtriage</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QPushButton" name="XtricorderBtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Run Xtricorder</string>
-               </property>
               </widget>
              </item>
             </layout>
@@ -332,6 +380,12 @@
                      <verstretch>0</verstretch>
                     </sizepolicy>
                    </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>0</height>
+                    </size>
+                   </property>
                    <property name="text">
                     <string>Display a dataset with a double-click. Right-click table for more options.</string>
                    </property>
@@ -344,14 +398,14 @@
                </widget>
                <widget class="QTextEdit" name="SpaceGrpUCellText">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                   <horstretch>0</horstretch>
                   <verstretch>2</verstretch>
                  </sizepolicy>
                 </property>
                 <property name="minimumSize">
                  <size>
-                  <width>0</width>
+                  <width>100</width>
                   <height>30</height>
                  </size>
                 </property>
@@ -387,10 +441,16 @@
                </widget>
                <widget class="QScrollArea" name="scrollArea">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
                   <horstretch>0</horstretch>
                   <verstretch>2</verstretch>
                  </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>150</width>
+                  <height>0</height>
+                 </size>
                 </property>
                 <property name="widgetResizable">
                  <bool>true</bool>
@@ -400,7 +460,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>323</width>
+                   <width>453</width>
                    <height>395</height>
                   </rect>
                  </property>
@@ -409,6 +469,12 @@
                    <horstretch>0</horstretch>
                    <verstretch>2</verstretch>
                   </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_4">
                   <property name="leftMargin">
@@ -426,10 +492,16 @@
                   <item row="1" column="0">
                    <widget class="QTabWidget" name="functionTabWidget">
                     <property name="sizePolicy">
-                     <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+                     <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
                       <horstretch>0</horstretch>
                       <verstretch>0</verstretch>
                      </sizepolicy>
+                    </property>
+                    <property name="minimumSize">
+                     <size>
+                      <width>100</width>
+                      <height>0</height>
+                     </size>
                     </property>
                     <property name="currentIndex">
                      <number>0</number>
@@ -449,6 +521,9 @@
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Quick expansion of reflections utilising GPU of the computer&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="title">
                          <string>Expand reflections</string>
@@ -523,6 +598,9 @@
                           <verstretch>0</verstretch>
                          </sizepolicy>
                         </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Subgroups present in this space group&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
                         <property name="text">
                          <string>Space Subgroups</string>
                         </property>
@@ -591,7 +669,7 @@
                       <item row="7" column="1" colspan="2">
                        <widget class="QPushButton" name="commitSubgroupExpansionBtn">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
@@ -614,7 +692,7 @@
                       <item row="0" column="0">
                        <widget class="QGroupBox" name="ClipPlaneChkGroupBox">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                           <horstretch>0</horstretch>
                           <verstretch>1</verstretch>
                          </sizepolicy>
@@ -922,7 +1000,7 @@
                             <item row="0" column="0">
                              <widget class="QPushButton" name="xHKLrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -945,7 +1023,7 @@
                             <item row="0" column="1">
                              <widget class="QPushButton" name="xHKLbackrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -980,7 +1058,7 @@
                             <item row="0" column="0">
                              <widget class="QPushButton" name="yHKLrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -997,7 +1075,7 @@
                             <item row="0" column="1">
                              <widget class="QPushButton" name="yHKLbackrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -1026,7 +1104,7 @@
                             <item row="0" column="0">
                              <widget class="QPushButton" name="zHKLrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -1043,7 +1121,7 @@
                             <item row="0" column="1">
                              <widget class="QPushButton" name="zHKLbackrotBtn">
                               <property name="sizePolicy">
-                               <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                                </sizepolicy>
@@ -1074,7 +1152,7 @@
                        <widget class="QGroupBox" name="groupBox_3">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                          <horstretch>1</horstretch>
+                          <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
                         </property>
@@ -1248,7 +1326,7 @@
                          <item row="1" column="1">
                           <widget class="QPushButton" name="addDatasetBtn">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -1287,6 +1365,12 @@
                              <horstretch>0</horstretch>
                              <verstretch>1</verstretch>
                             </sizepolicy>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>0</width>
+                             <height>0</height>
+                            </size>
                            </property>
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change a bin threshold by entering a preferred value in the in the &amp;quot;lower bin value&amp;quot; column for a particular bin.&lt;br/&gt;Change visibility of bins either by ticking or unticking the check boxes or by entering opacity values between 0 and 1. Reflections with values less than 0.3 will not respond to mouse clicks.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -1439,7 +1523,7 @@
                          <item row="1" column="1">
                           <widget class="QSlider" name="reciprocunitcellslider">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -1467,6 +1551,12 @@
                          </item>
                          <item row="0" column="0">
                           <widget class="QCheckBox" name="DrawReciprocUnitCellBox">
+                           <property name="sizePolicy">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                             <horstretch>0</horstretch>
+                             <verstretch>0</verstretch>
+                            </sizepolicy>
+                           </property>
                            <property name="text">
                             <string>Show Unit Cell</string>
                            </property>
@@ -1527,7 +1617,7 @@
                          <item row="0" column="1" rowspan="2">
                           <widget class="QFrame" name="RotateAroundframe">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                              <horstretch>1</horstretch>
                              <verstretch>1</verstretch>
                             </sizepolicy>
@@ -1833,7 +1923,7 @@
                          <item row="1" column="1">
                           <widget class="QSlider" name="unitcellslider">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
@@ -1902,6 +1992,9 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="InfoWidget">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
    <property name="windowTitle">
     <string>HKLviewer Info</string>
    </property>
@@ -1928,7 +2021,7 @@
      <item row="0" column="0">
       <widget class="QTabWidget" name="tabText">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -1956,7 +2049,7 @@
          <item row="0" column="0">
           <widget class="MyQPlainTextEdit" name="textInfo">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>1</verstretch>
             </sizepolicy>
@@ -2006,7 +2099,7 @@
          <item row="0" column="0">
           <widget class="MyQPlainTextEdit" name="textAlerts">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
              <verstretch>1</verstretch>
             </sizepolicy>

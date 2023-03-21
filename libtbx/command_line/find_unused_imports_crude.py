@@ -122,11 +122,15 @@ def inspect(py_lines):
   return unused_names
 
 def show_unused_imports(file_name):
-  unused_imports = inspect(
-    py_lines=open(file_name).read().splitlines())
-  if (len(unused_imports) != 0):
-    print("%s: %s" % (file_name, ", ".join(unused_imports)))
-    print()
+  try:
+    unused_imports = inspect(
+      py_lines=open(file_name).read().splitlines())
+    if (len(unused_imports) != 0):
+      print("%s: %s" % (file_name, ", ".join(unused_imports)))
+      print()
+  except Exception as e:
+    print('Could not parse file {}, possibly invalid character'.format(file_name))
+    unused_imports = ['Failed to parse file']
   return unused_imports
 
 def walk_func(counter, dirname, names):

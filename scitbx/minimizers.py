@@ -255,6 +255,8 @@ class lbfgsb(object):
       u   = calculator.upper_bound,
       nbd = calculator.bound_flags)
     M.error = None
+    f_start = None
+    f = None
     try:
       icall = 0
       while 1:
@@ -268,9 +270,11 @@ class lbfgsb(object):
         assert not M.requests_f_and_g()
         if(M.is_terminated()): break
         if(max_iterations is not None and icall>max_iterations): break
-    except RuntimeError as e:
+    except Exception as e:
       M.error = str(e)
     M.n_calls = icall
+    if(M.error is not None):
+      print("lbfgsb: an error occured: %s"%M.error)
     # items to store
     self.M          = M
     self.f_start    = f_start
@@ -281,7 +285,7 @@ class lbfgsb(object):
   def show(self, log=None, prefix=""):
     if(log is None): log = sys.stdout
     m="%sLBFGS-B: function start/end, n_calls:"%prefix
-    print(m, self.f_start, self.f, self.nfev, file=log)
+    print(m, "%12.6g %12.6g"%(self.f_start, self.f), self.nfev, file=log)
 
 class lbfgs(object):
   """

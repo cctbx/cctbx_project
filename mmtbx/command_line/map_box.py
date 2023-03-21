@@ -371,6 +371,13 @@ master_phil = libtbx.phil.parse("""
     .help = Remove all output map labels
     .short_caption = Remove labels
 
+  invert_hand = False
+    .type = bool
+    .help = Just before writing out the map, swap the order of all sections \
+             in Z.  This will change the hand of the map. Note that this\
+             removes any correspondence to models (these are not inverted).
+    .short_caption = Invert hand of map
+
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -848,6 +855,9 @@ def print_notes(params = None,
     print("Map unit cell as grid units:  (%s, %s, %s)" %(
       tuple(ccp4_map.map_data().all())), file = log)
 
+    if params.invert_hand:
+      print("\nOutput map will be inverted hand "+
+         "(swapping order of sections in Z)", file = log)
 
 def run(args,
      ncs_object = None,  # ncs object
@@ -1133,6 +1143,9 @@ def run(args,
 
   if params.remove_output_map_labels:
     mam.map_manager().remove_labels()
+
+  if params.invert_hand:
+    mam.map_manager().invert_hand()
 
   # Print out any notes about the output files
   print_notes(params = params, mam = mam,

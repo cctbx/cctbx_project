@@ -522,6 +522,7 @@ class DistributionOriginMixin(object):
 
 class FalseUncertaintiesMixin(object):
   @staticmethod
+
   def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
           -> Dict[str, float]:
     """If uncertainties=False, return dummy zero origin uncertainties"""

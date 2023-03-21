@@ -232,6 +232,8 @@ class cbetadev(validation):
     self.outliers_removed=outliers_removed
     if total_residues:
       self.percent_outliers=self.n_outliers/total_residues*100
+    else:
+      self.percent_outliers = None
 
   def show_old_output(self, out, verbose=False, prefix="pdb"):
     if (verbose):
@@ -323,6 +325,7 @@ class calculate_ideal_and_deviation(object):
   __slots__ = ["deviation", "ideal", "dihedral"]
   def __init__(self, relevant_atoms, resname):
     assert (resname != "GLY")
+    from cctbx.geometry_restraints import chirality
     self.deviation = None
     self.ideal = None
     self.dihedral = None
@@ -330,8 +333,16 @@ class calculate_ideal_and_deviation(object):
     resN  = relevant_atoms[" N  "]
     resC  = relevant_atoms[" C  "]
     resCB = relevant_atoms[" CB "]
+    if None not in [resCA, resN, resCB, resC]:
+      chiral_volume = chirality([resCA.xyz, resN.xyz, resCB.xyz, resC.xyz],
+                               volume_ideal=0.,
+                               both_signs=True,
+                               weight=1.,
+                               ).volume_model
+    else:
+      chiral_volume = None
     dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal= \
-      idealized_calpha_angles(resname)
+      idealized_calpha_angles(resname, chiral_volume)
     betaNCAB = construct_fourth(resN,
                                 resCA,
                                 resC,
@@ -358,22 +369,27 @@ class calculate_ideal_and_deviation(object):
           sites=[resN.xyz,resCA.xyz,betaxyz.elems,resCB.xyz], deg=True)
         self.ideal = betaxyz.elems
 
-def idealized_calpha_angles(resname):
-  if (resname == "ALA"):
+def idealized_calpha_angles(resname, chiral_volume=None):
+  from iotbx.pdb import common_residue_names_get_class
+  if (resname in ["ALA", "DAL"]):
+    #target values are for L-aminao acids.
+    #D-amino acids will require the signs of the dihedrals to be flipped
+    #This will be performed just before the return
     dist = 1.536
     angleCAB = 110.1
     dihedralNCAB = 122.9
     angleNAB = 110.6
     dihedralCNAB = -122.6
     angleideal = 111.2
-  elif (resname == "PRO"):
+  elif (resname in ["PRO", "DPR"]):
     dist = 1.530
     angleCAB = 112.2
     dihedralNCAB = 115.1
     angleNAB = 103.0
     dihedralCNAB = -120.7
     angleideal = 111.8
-  elif (resname in ["VAL", "THR", "ILE"]):
+  elif (resname in ["VAL", "THR", "ILE",
+                    "DVA", "DTH", "DIL"]):
     dist = 1.540
     angleCAB = 109.1
     dihedralNCAB = 123.4
@@ -394,6 +410,15 @@ def idealized_calpha_angles(resname):
     angleNAB = 110.5
     dihedralCNAB = -122.6
     angleideal = 111.2
+  #check if dihedral signs should be flipped becasue residue has D chirality
+  #rely on residue names first, so that mis-named residues gat marked as outliers
+  #if the residue name is nonstandard, use the chiral volume for best guess about target
+  res_class = common_residue_names_get_class(resname)
+  if res_class == "common_amino_acid" or chiral_volume is None:
+    pass
+  elif res_class == "d_amino_acid" or chiral_volume > 0:
+    dihedralNCAB = dihedralNCAB * -1
+    dihedralCNAB = dihedralCNAB * -1
   return dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal
 
 def construct_fourth(resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
