@@ -527,7 +527,7 @@ class FirstPanelCOMOriginMixin(object):
     center_of_mass = np.array((0, 0, 0))
     detector = expts[0].detector
     for panel in detector:
-      fast, slow = expts[0].get_image_size()
+      fast, slow = panel.get_image_size()
       for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
         center_of_mass += np.array(panel.get_pixel_lab_coord(point))
     center_of_mass /= 4 * len(detector)
@@ -542,7 +542,7 @@ class AveragePanelCOMOriginMixin(object):
     for i, expt in enumerate(expts):
       detector = expt.detector
       for panel in detector:
-        fast, slow = expt.get_image_size()
+        fast, slow = panel.get_image_size()
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
@@ -559,7 +559,7 @@ class DistributionPanelCOMOriginMixin(object):
     for i, expt in enumerate(expts):
       detector = expt.detector
       for panel in detector:
-        fast, slow = expt.get_image_size()
+        fast, slow = panel.get_image_size()
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
