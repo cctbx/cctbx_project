@@ -145,17 +145,21 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
-                 scattering_table = None
+		 scattering_table = None,
+                 free_r_flags_scope = None,
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
     crystal_symmetry: comes as cctbx.crystal.symmetry or Phil scope.
     scattering_table will trigger the use of model and reflections with corrct
     array_type.
+    free_r_flags_scope defines the how-to message given if no free_r flags
+      are found
     """
     array_type = self.map_scattering_table_type(scattering_table)
     scattering_table = self.check_scattering_table_type(scattering_table)
     #
+
     crystal_symmetry_phil = crystal_symmetry
     if(crystal_symmetry is not None):
       if(isinstance(crystal_symmetry, libtbx.phil.scope_extract)):
@@ -164,7 +168,7 @@ class fmodel_mixins(object):
           space_group_info = crystal_symmetry.space_group)
       else:
         assert isinstance(crystal_symmetry, libtbx.phil.scope_extract)
-    # Gather models of apropriate type
+    # Gather models of appropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
       models.append(self.get_model(filename))
@@ -188,6 +192,7 @@ class fmodel_mixins(object):
       parameters                        = parameters,
       experimental_phases_params        = experimental_phases_params,
       working_point_group               = model.crystal_symmetry().space_group().build_derived_point_group(),
+      free_r_flags_scope = free_r_flags_scope,
       remark_r_free_flags_md5_hexdigest = model.get_header_r_free_flags_md5_hexdigest()).result()
     if(len(data.err)>0):
       raise Sorry("\n".join(data.err))

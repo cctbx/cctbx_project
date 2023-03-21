@@ -22,7 +22,7 @@ def miller_array_symmetry_safety_check(miller_array, data_description,
     working_point_group = working_point_group).format_error_message(
       data_description = data_description)
 
-def explain_how_to_generate_array_of_r_free_flags():
+def explain_how_to_generate_array_of_r_free_flags(scope = '<parent scope>.r_free_flags.generate'):
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -37,7 +37,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  return part1 + """<parent scope>.generate=True""" + part3
+  return part1 + """%s=True""" %(scope) + part3
 
 data_and_flags_str_part1 = """\
   file_name = None
@@ -220,6 +220,7 @@ class run(object):
                prefer_anomalous = None,
                force_non_anomalous = False,
                allow_mismatch_flags = False,
+               free_r_flags_scope = 'xray_data',
                ):
     adopt_init_args(self, locals())
     # Buffers for error and log messages.
@@ -452,7 +453,8 @@ class run(object):
       except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
           if(not self.keep_going):
-            self.err.append(explain_how_to_generate_array_of_r_free_flags())
+            self.err.append(explain_how_to_generate_array_of_r_free_flags(
+              scope = "%s.r_free_flags.generate" %(self.free_r_flags_scope)))
             self.err.append("Please try again.")
           return None
         r_free_flags, test_flag_value = None, None
