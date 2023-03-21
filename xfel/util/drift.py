@@ -497,7 +497,7 @@ class FirstOriginMixin(object):
 class AverageOriginMixin(object):
   @staticmethod
   def get_origin(expts: ExperimentList) -> Dict[str, float]:
-    """Read detector origin (x, y, z) from the first expt file"""
+    """Read detector origin (x, y, z) from all files & return their average"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
       x, y, z = expt.detector.hierarchy().get_origin()
@@ -510,7 +510,7 @@ class AverageOriginMixin(object):
 class DistributionOriginMixin(object):
   @staticmethod
   def get_origin(expts: ExperimentList) -> Dict[str, flex.double]:
-    """Read detector origin (x, y, z) from the first expt file"""
+    """Read detector origin (x, y, z) from all files & return flex with all"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
       x, y, z = expt.detector.hierarchy().get_origin()
