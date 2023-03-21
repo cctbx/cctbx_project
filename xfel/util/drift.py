@@ -807,6 +807,8 @@ class DriftArtist(object):
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
     flat_columns = (self.table_flat[key] for key in keys)
     correlated = {col.name: col.values for col in flat_columns}
+    print(correlated)
+    print(correlation(correlated['x'], correlated['y']))
     cm = CorrelationMatrix(correlated, weights=self.table_flat['refls'])
     print(cm)
     self.axw.set_xlim([0, len(keys)])
