@@ -315,7 +315,7 @@ class ScrapResults(UserList):
 
 def handle_scrap_cache(scrap: Callable) -> Callable:
   @functools.wraps(scrap)
-  def scrap_wrapper(self: BaseDriftScraper, *args: Any, **kwargs: Any):
+  def scrap_wrapper(self: 'BaseDriftScraper', *args: Any, **kwargs: Any):
     if self.parameters.scrap.cache.action == 'read':
       self.scrap_results.read()
     scrap(self, *args, **kwargs)
