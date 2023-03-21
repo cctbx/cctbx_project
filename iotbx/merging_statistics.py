@@ -616,7 +616,7 @@ class dataset_statistics(object):
         "CC(anom)"]
     graph_names = ["Reflection counts", "Redundancy", "Completeness",
         "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2", "CC(anom)"]
-    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10],[0,13]]
+    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,11],[0,13]]
     if cc_one_half_significance_level is not None:
       column_labels.extend(["CC1/2 significance", "CC1/2 critical value"])
       graph_names.extend(["CC1/2 significance", "CC1/2 critical value"])

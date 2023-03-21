@@ -288,7 +288,7 @@ class map_model_mixins(object):
       else:
         raise Sorry('Program does not have the "map_model" PHIL scope.')
 
-      model_file = map_model.model
+      model_file = getattr(map_model,'model', None)
 
       map_files = []
       full_map = getattr(map_model, 'full_map', None)
@@ -337,7 +337,7 @@ class map_model_mixins(object):
         mm_1 = self.get_real_map(map_files[0])
         mm_2 = self.get_real_map(map_files[1])
         if map_model:
-          map_model.half_map = map_files[1:3]
+          map_model.half_map = map_files
       elif len(map_files) == 3:
         if map_model:
           map_model.full_map = map_files[0]

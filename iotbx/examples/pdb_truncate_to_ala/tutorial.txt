@@ -71,8 +71,8 @@ these steps::
     if (len(args) == 0):
       raise RuntimeError("Please specify one or more pdb file names.")
     for file_name in args:
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      pdb_obj.construct_hierarchy().overall_counts().show()
 
   if (__name__ == "__main__"):
     run(sys.argv[1:])
@@ -100,8 +100,8 @@ us exactly where the error originates. This is often extremely helpful.
 
 The meat of the script is in these two lines::
 
-      pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-      pdb_obj.hierarchy.overall_counts().show()
+      pdb_obj = iotbx.pdb.input(file_name=file_name)
+      pdb_obj.construct_hierarchy().overall_counts().show()
 
 The first line executes the two steps outline above. This is really
 all we need, but the second line produces output that is useful to
@@ -201,7 +201,7 @@ just this subset of the hierarchy::
 This presentation translates directly into Python code,
 as found in `v1_loop_over_atoms.py`_::
 
-    for model in pdb_obj.hierarchy.models():
+    for model in pdb_obj.construct_hierarchy().models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           print 'resid: "%s"' % rg.resid()
@@ -273,7 +273,7 @@ do once the nested loops over the hierarchy are finished, is to
 write the modified hierarchy to a file::
 
     output_pdb = "v2_truncated_to_ala_"+file_name
-    pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
+    pdb_obj.construct_hierarchy().write_pdb_file(file_name=output_pdb)
 
 The first line builds the output file name by concatenating two
 strings with the ``+`` operator. In the second line the
@@ -430,9 +430,9 @@ write the output PDB file only if there are changes::
       output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
       if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
       print "Writing file:", output_pdb
-      pdb_obj.hierarchy.write_pdb_file(
+      pdb_obj.construct_hierarchy().write_pdb_file(
         file_name=output_pdb,
-        crystal_symmetry=pdb_obj.input.crystal_symmetry(),
+        crystal_symmetry=pdb_obj.crystal_symmetry(),
         append_end=True)
 
 There are three more small enhancements compared to the
@@ -444,7 +444,7 @@ There are three more small enhancements compared to the
     working directory, not the directory of the input file (which
     may be in another user's directory or a system directory)
 
-  - ``iotbx.pdb.hierarchy.input`` is able to open `.gz` files
+  - ``iotbx.pdb.input`` is able to open `.gz` files
     directly (e.g. compressed files as downloaded from the PDB).
     However, the ``.write_pdb_file()`` method always writes plain
     (non-compressed) files. Therefore the ``.gz`` extension has to be

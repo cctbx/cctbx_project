@@ -11,7 +11,7 @@ def exercise_map_tools():
   prefix = "tmp_iotbx_map_tools"
   pdb_file = prefix + ".pdb"
   mtz_file = prefix + ".mtz"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      1  N   GLY P  -1     -22.866  -2.627  15.217  1.00  0.00           N
 ATOM      2  CA  GLY P  -1     -22.714  -3.068  16.621  1.00  0.00           C
 ATOM      3  C   GLY P  -1     -21.276  -3.457  16.936  1.00  0.00           C
@@ -22,9 +22,10 @@ ATOM      7  H3  GLY P  -1     -23.828  -2.392  15.027  1.00  0.00           H
 ATOM      8  HA2 GLY P  -1     -23.016  -2.261  17.288  1.00  0.00           H
 ATOM      9  HA3 GLY P  -1     -23.352  -3.933  16.803  1.00  0.00           H
 """)
-  xrs = pdb_in.input.xray_structure_simple()
+  xrs = pdb_in.xray_structure_simple()
+  hierarchy = pdb_in.construct_hierarchy()
   with open(pdb_file, "w") as f:
-    f.write(pdb_in.hierarchy.as_pdb_string(xrs))
+    f.write(hierarchy.as_pdb_string(xrs))
   fc = xrs.structure_factors(d_min=1.5).f_calc()
   dec = mtz.label_decorator(phases_prefix="PH")
   # part 1: phenix.refine style

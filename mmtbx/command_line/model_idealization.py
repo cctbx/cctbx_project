@@ -475,7 +475,7 @@ class model_idealization():
     else:
       self.model_h = self.model.deep_copy()
     params_h = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    params_h.pdb_interpretation = self.model._pdb_interpretation_params.pdb_interpretation
+    params_h.pdb_interpretation = self.model.get_current_pdb_interpretation_params().pdb_interpretation
     # customization for model with H
     params_h.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     params_h.pdb_interpretation.max_reasonable_bond_distance = None

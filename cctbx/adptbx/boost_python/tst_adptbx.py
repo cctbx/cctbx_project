@@ -274,17 +274,17 @@ def exercise_random_traceless_symmetry_constrained_b_cart():
 def exercise_misc():
   import libtbx.load_env
   if (not libtbx.env.has_module("iotbx")) : return
-  from iotbx.pdb import hierarchy
+  import iotbx.pdb
   # Pair 1: 0.5 A apart, mean displacement = 0.4 A
   # Pair 2: 1.5 A apart, mean displacement = 0.6 A
-  pdb_in = hierarchy.input(pdb_string="""
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""
 CRYST1   10.000   11.000   12.000  70.00  80.00  90.00 P 1
 HETATM    1  O  AHOH A   1       4.000   5.000   3.000  1.00 12.63           O
 HETATM    2  O  BHOH A   1       4.500   5.000   3.000  1.00 12.63           O
 HETATM    3  O  AHOH A   2       7.000   1.000   6.000  1.00 28.42           O
 HETATM    4  O  BHOH A   2       8.500   1.000   6.000  1.00 28.42           O
 END""")
-  xrs = pdb_in.input.xray_structure_simple()
+  xrs = pdb_in.xray_structure_simple()
   unit_cell = xrs.unit_cell()
   sc = xrs.scatterers()
   delta12 = adptbx.intersection(

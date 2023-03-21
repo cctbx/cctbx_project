@@ -1642,7 +1642,7 @@ class TrialsTab(BaseTab):
                            db=self.main.db,
                            trial=trial,
                            box_label='Trial {} {}'.format(trial.trial,
-                             trial.comment[:min(len(trial.comment), 10)] if trial.comment is not None else ""))
+                             trial.comment[:min(len(trial.comment), 20)] if trial.comment is not None else ""))
     new_trial.chk_active.SetValue(trial.active)
     new_trial.refresh_trial()
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
@@ -3574,7 +3574,7 @@ class DatasetPanel(wx.Panel):
   def refresh_dataset(self):
     self.dataset_comment.SetLabel(self.dataset.comment if self.dataset.comment is not None else "")
     self.dataset_box.SetLabel('Dataset {} {}'.format(self.dataset.dataset_id,
-                               self.dataset.name[:min(len(self.dataset.name), 10)]
+                               self.dataset.name[:min(len(self.dataset.name), 20)]
                                if self.dataset.name is not None else ""))
     self.task_sizer.Clear(delete_windows=True)
     tags = self.dataset.tags

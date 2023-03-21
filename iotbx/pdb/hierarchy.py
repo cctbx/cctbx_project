@@ -1640,6 +1640,15 @@ class _():
         else:
           residues[key] = ag
 
+  def format_correction_for_H(self, verbose=False): # remove 1-JUL-2024
+    for atom in self.atoms():
+      if atom.element_is_hydrogen():
+        if len(atom.name.strip())<4:
+          if (atom.name.find(atom.name.strip())==0 and
+              atom.name[0] not in ['1', '2', '3']):
+            atom.name=' %-3s' % atom.name.strip()
+            if verbose: print('corrected PDB format of %s' % atom.quote())
+
   def flip_symmetric_amino_acids(self):
     import time
     from scitbx.math import dihedral_angle
@@ -2862,7 +2871,11 @@ class _():
     return self
 
 # MARKED_FOR_DELETION_OLEG
-# Reason: so far fount only in iotbx/file_reader.py for no clear reason.
+# Reason: so far found only in iotbx/file_reader.py for no clear reason.
+# Tried, problems encountered:
+#   - used in file_reader.any_file to return results of reading model
+#   - any_file is used 100s times across all repositories including phaser, so
+#     coordinated effort is needed.
 
 class input_hierarchy_pair(object):
 
@@ -2967,34 +2980,6 @@ class input(input_hierarchy_pair):
         source_info=source_info, lines=flex.split_lines(pdb_string))
     super(input, self).__init__(input=pdb_inp, sort_atoms=sort_atoms)
 # END_MARKED_FOR_DELETION_OLEG
-
-class show_summary(input):
-
-  def __init__(self,
-        file_name=None,
-        pdb_string=None,
-        out=None,
-        prefix="",
-        flag_errors=True,
-        flag_warnings=True,
-        residue_groups_max_show=10,
-        duplicate_atom_labels_max_show=10,
-        level_id=None,
-        level_id_exception=ValueError):
-    input.__init__(self, file_name=file_name, pdb_string=pdb_string)
-    print(prefix+self.input.source_info(), file=out)
-    self.overall_counts = self.hierarchy.overall_counts()
-    self.overall_counts.show(
-      out=out,
-      prefix=prefix+"  ",
-      residue_groups_max_show=residue_groups_max_show,
-      duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
-    if (level_id is not None):
-      self.hierarchy.show(
-        out=out,
-        prefix=prefix+"  ",
-        level_id=level_id,
-        level_id_exception=level_id_exception)
 
 # MARKED_FOR_DELETION_OLEG
 # Reason: functionality is moved to mmtbx.model and uses better all_chain_ids

@@ -276,6 +276,12 @@ class mtz_as_cif_blocks(object):
           array=r_free, column_name='_refln.pdbx_r_free_flag')
 
       if input_obs is None or r_free is None: continue
+      # it may happen that there is an Rfree array but the values are all identical
+      if (r_free.data().all_eq(r_free.data()[0])):
+        refln_status = r_free.array(data=flex.std_string(r_free.size(), "o"))
+        self.cif_blocks[data_type].add_miller_array(
+          array=refln_status, column_name="_refln.status")
+        continue
       if (test_flag_value is None):
         test_flag_value = reflection_file_utils.guess_r_free_flag_value(
           miller_array=r_free)

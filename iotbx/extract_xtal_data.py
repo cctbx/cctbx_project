@@ -215,6 +215,7 @@ class run(object):
                working_point_group = None,
                remark_r_free_flags_md5_hexdigest = None,
                extract_r_free_flags = True,
+               extract_experimental_phases = True,
                keep_going = False,
                prefer_anomalous = None,
                force_non_anomalous = False,
@@ -262,9 +263,10 @@ class run(object):
       self.f_obs        = self.f_obs.set_info(f_obs_info)
       self.r_free_flags = self.r_free_flags.set_info(flags_info)
     # extract phases
-    self.experimental_phases = self._determine_experimental_phases(
-      parameters      = experimental_phases_params,
-      parameter_scope = "")
+    if extract_experimental_phases:
+      self.experimental_phases = self._determine_experimental_phases(
+        parameters      = experimental_phases_params,
+        parameter_scope = "")
     # Fill in log
     self._show_summary()
 

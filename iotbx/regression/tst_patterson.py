@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
+from iotbx.pdb import hierarchy
 from libtbx import easy_run
 import libtbx.load_env
 import os
@@ -17,7 +18,7 @@ def exercise_simple():
 
 def exercise_isomorphous():
   import iotbx.pdb.hierarchy
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
 ATOM     49  C   TYR A   7      10.603   2.331   6.885  1.00 15.91           C
@@ -33,11 +34,13 @@ ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
 ATOM    100 CL   CL  B   1      12.000   5.000  10.000  1.00 10.00          CL
 """)
-  xrs_1 = pdb_in.input.xray_structure_simple()
-  sel = pdb_in.hierarchy.atom_selection_cache().selection("not resname CL")
+  xrs_1 = pdb_in.xray_structure_simple()
+  hierarchy = pdb_in.construct_hierarchy()
+  sel = hierarchy.atom_selection_cache().selection("not resname CL")
   assert (sel.count(False) == 1)
-  pdb_in_2 = pdb_in.hierarchy.select(sel).as_pdb_input(
-    crystal_symmetry=xrs_1)
+  pdb_in_2 = iotbx.pdb.input(source_info=None,
+      lines=hierarchy.select(sel).as_pdb_string(
+    crystal_symmetry=xrs_1))
   xrs_2 = pdb_in_2.xray_structure_simple()
   fc1 = abs(xrs_1.structure_factors(d_min=1.5).f_calc())
   fc2 = abs(xrs_2.structure_factors(d_min=1.5).f_calc())

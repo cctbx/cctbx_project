@@ -9,12 +9,13 @@ def run(args):
   aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
   ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
   for file_name in args:
-    pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-    pdb_obj.hierarchy.overall_counts().show()
+    pdb_obj = iotbx.pdb.input(file_name=file_name)
+    hierarchy = pdb_obj.construct_hierarchy()
+    hierarchy.overall_counts().show()
     n_amino_acid_residues = 0
     n_other_residues = 0
     n_atoms_removed = 0
-    for model in pdb_obj.hierarchy.models():
+    for model in hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           def have_amino_acid():
@@ -38,9 +39,9 @@ def run(args):
       output_pdb = "v4_truncated_to_ala_"+os.path.basename(file_name)
       if (output_pdb.endswith(".gz")): output_pdb = output_pdb[:-3]
       print("Writing file:", output_pdb)
-      pdb_obj.hierarchy.write_pdb_file(
+      hierarchy.write_pdb_file(
         file_name=output_pdb,
-        crystal_symmetry=pdb_obj.input.crystal_symmetry(),
+        crystal_symmetry=pdb_obj.crystal_symmetry(),
         append_end=True)
     print()
 

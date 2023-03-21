@@ -1618,6 +1618,7 @@ Wait for the command to finish, then try again.""" % vars())
     bin_path = [self.bin_path]
     if self.build_options.use_conda:
       bin_path.append(self.as_relocatable_path(get_conda_prefix()) / 'Library' / 'bin')
+      bin_path.append(self.as_relocatable_path(get_conda_prefix()) / 'Library' / 'mingw-w64' / 'bin')
     essentials.append(("PATH", bin_path))
     for n,v in essentials:
       if (len(v) == 0): continue

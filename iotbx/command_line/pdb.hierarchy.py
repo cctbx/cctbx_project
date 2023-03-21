@@ -78,7 +78,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
   co = command_line.options
   for file_name in command_line.args:
     if (not os.path.isfile(file_name)): continue
-    pdb_objs = execute(
+    pdb_inp, h = execute(
       file_name=file_name,
       prefix=co.prefix,
       residue_groups_max_show=co.residue_groups_max_show,
@@ -86,14 +86,14 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       level_id=co.details)
     if (co.write_pdb_file is not None):
       if (co.set_element_simple):
-        pdb_objs.hierarchy.atoms().set_chemical_element_simple_if_necessary()
+        h.atoms().set_chemical_element_simple_if_necessary()
       open_append = False
       if (not co.no_cryst):
-        s = pdb_objs.input.crystallographic_section()
+        s = pdb_inp.crystallographic_section()
         if (s.size() != 0):
           print("\n".join(s), file=open(co.write_pdb_file, "w"))
           open_append = True
-      pdb_objs.hierarchy.write_pdb_file(
+      h.write_pdb_file(
         file_name=co.write_pdb_file,
         open_append=open_append,
         append_end=True,
@@ -111,12 +111,17 @@ def execute(
       duplicate_atom_labels_max_show=10,
       level_id=None):
   try:
-    return pdb.hierarchy.show_summary(
-      file_name=file_name,
-      prefix=prefix,
-      residue_groups_max_show=residue_groups_max_show,
-      duplicate_atom_labels_max_show=duplicate_atom_labels_max_show,
-      level_id=level_id)
+    pdb_inp = pdb.input(file_name=file_name)
+    h = pdb_inp.construct_hierarchy()
+    h.overall_counts().show(
+        prefix=prefix+"  ",
+        residue_groups_max_show=residue_groups_max_show,
+        duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
+    if (level_id is not None):
+      h.show(
+          prefix=prefix+"  ",
+          level_id=level_id)
+    return pdb_inp, h
   except KeyboardInterrupt: raise
   except Exception as e:
     print("Exception: file %s: %s: %s" % (

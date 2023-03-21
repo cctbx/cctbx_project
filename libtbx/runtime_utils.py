@@ -192,7 +192,10 @@ class detached_process_server(detached_base):
         elif hasattr(e, "reset_module"):
           e.reset_module()
         traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
-        self.callback_error(e, traceback_str)
+        try:
+          self.callback_error(e, traceback_str)
+        except Exception as ee:
+          self.callback_error(str(e), traceback_str)
     else :
       #time.sleep(1)
       self.callback_final(return_value)

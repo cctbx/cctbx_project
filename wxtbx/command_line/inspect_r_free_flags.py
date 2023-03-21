@@ -107,13 +107,13 @@ class RfreeInspector(wx.Panel):
     self.percent_txt = wx.StaticText(self, -1, "", size=(300,-1))
     grid.Add(self.percent_txt, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     txt = wx.StaticText(self, -1,
-"""The graph on the right shows the total nubmer of test set \
+"""The graph on the right shows the total number of test set \
 reflections as a function of resolution.  A set picked at random will have an \
 approximately straight line; if the test set was picked in thin resolution \
 shells to avoid bias caused by non-crystallographic symmetry, it will \
 increase in sharp steps.  CCTBX/PHENIX can not currently extend a set picked \
 in shells; we suggest creating a new set in such cases.""")
-    txt.Wrap(780)
+    txt.Wrap(790)
     self.sizer.Add(txt, 0, wx.ALL, 5)
     plot_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.sizer.Add(plot_sizer, 1, wx.ALL|wx.EXPAND)

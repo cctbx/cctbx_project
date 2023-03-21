@@ -292,9 +292,6 @@ general_tests = [
   "$D/building/tst_extend_sidechains.py",
   "$D/building/tst_extend_sidechains_2.py",
   # alt confs
-  "$D/building/alternate_conformations/tst_backrub_conformers.py",
-  "$D/building/alternate_conformations/tst_shear_conformers.py",
-  "$D/building/alternate_conformations/tst_partial_omit_map.py",
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
   "$D/disorder/tst_analyze_model.py",
@@ -382,7 +379,6 @@ general_tests = [
   "$D/ions/tst_environment.py",
   "$D/regression/tst_table_one.py",
   "$D/regression/tst_msa.py",
-  "$D/regression/tst_build_alt_confs.py",
   "$D/regression/tst_cc_star.py",
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_rigid_bond_test.py",

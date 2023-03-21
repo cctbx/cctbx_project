@@ -9,9 +9,10 @@ def run(args):
   aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
   ala_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
   for file_name in args:
-    pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-    pdb_obj.hierarchy.overall_counts().show()
-    for model in pdb_obj.hierarchy.models():
+    pdb_obj = iotbx.pdb.input(file_name=file_name)
+    hierarchy = pdb_obj.construct_hierarchy()
+    hierarchy.overall_counts().show()
+    for model in hierarchy.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
           for ag in rg.atom_groups():
@@ -20,7 +21,7 @@ def run(args):
                 if (atom.name not in ala_atom_names):
                   ag.remove_atom(atom=atom)
     output_pdb = "v2_truncated_to_ala_"+file_name
-    pdb_obj.hierarchy.write_pdb_file(file_name=output_pdb)
+    hierarchy.write_pdb_file(file_name=output_pdb)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

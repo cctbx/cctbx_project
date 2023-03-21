@@ -37,6 +37,10 @@ Example:
       display_phi_psi_correction = False
         .type = bool
         .help = XXX
+      exclude_d_peptides = False
+        .type = bool
+        .style = hidden
+        .help = Attempts to exclude D-peptide using the large CBD
       }
 """
   datatypes = ['model','phil']
@@ -54,6 +58,7 @@ Example:
       outliers_only=self.params.outliers_only,
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
       display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
+      exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,
       out=self.logger,
       quiet=False)
     if self.params.cbetadev.output == "kin":

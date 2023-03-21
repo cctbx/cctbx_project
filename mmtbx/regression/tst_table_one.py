@@ -4,7 +4,7 @@ import os
 
 from mmtbx.regression import model_1yjp
 from mmtbx.command_line import table_one
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from cctbx import sgtbx
 from scitbx.array_family import flex
 from libtbx.utils import null_out
@@ -15,7 +15,7 @@ def exercise():
   flex.set_random_seed(123456)
   random.seed(123456)
   base = "tst_table_one"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=model_1yjp)
+  pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
   xrs = pdb_in.xray_structure_simple()
   xrs.set_inelastic_form_factors(
     photon=1.54,
@@ -87,7 +87,7 @@ def exercise_counts():
   pdb_file = libtbx.env.under_dist('mmtbx', 'regression/pdbs/two_chains_ligand_water.pdb')
   base = "tst_table_one_counts"
   mtz_file = base + ".mtz"
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_file)
+  pdb_in = iotbx.pdb.input(pdb_file)
   xrs = pdb_in.xray_structure_simple()
   xrs.set_inelastic_form_factors(photon=1.54, table="sasaki")
   fc = abs(xrs.structure_factors(d_min=4.0).f_calc()).average_bijvoet_mates()

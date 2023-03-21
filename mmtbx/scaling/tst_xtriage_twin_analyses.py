@@ -4,7 +4,7 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.scaling import twin_analyses
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import null_out
@@ -61,8 +61,8 @@ ATOM     20  OH  TYR B   7      -0.207   2.910  11.443  1.00 15.39           O
 ATOM     21  OXT TYR B   7       7.316   5.408   8.654  1.00 18.49           O
 END
 """
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
-  xrs = pdb_in.input.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  xrs = pdb_in.xray_structure_simple()
   fc = abs(xrs.structure_factors(d_min=2.5).f_calc())
   fc = fc.set_observation_type_xray_amplitude()
   sigf = flex.double(fc.size(), 0.1) + (fc.data() * 0.03)

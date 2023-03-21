@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import, division, print_function
-from iotbx import pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
@@ -11,6 +10,7 @@ import time
 
 def exercise_ramalyze():
   from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
+  import iotbx.pdb
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
@@ -20,11 +20,10 @@ def exercise_ramalyze():
   if (find_rotarama_data_dir(optional=True) is None):
     print("Skipping exercise_ramalyze(): rotarama_data directory not available")
     return
-  from iotbx import file_reader
   # Exercise 1
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
-  pdb_io = pdb.input(file_name=regression_pdb)
+  pdb_in = iotbx.pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
+  pdb_io = iotbx.pdb.input(file_name=regression_pdb)
   hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,
@@ -110,8 +109,8 @@ def exercise_ramalyze():
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = iotbx.pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
   r = ramalyze.ramalyze(
     pdb_hierarchy=hierarchy,
@@ -170,8 +169,8 @@ def exercise_ramalyze():
  A  45  ALA:57.37:-86.61:-8.57:Favored:General""")
 
   # Exercise 3: 2plx excerpt (unusual icode usage)
-  import iotbx.pdb.hierarchy
-  pdb_io = iotbx.pdb.hierarchy.input(pdb_string="""\
+  import iotbx.pdb
+  hierarchy = iotbx.pdb.input(source_info=None, lines="""\
 ATOM   1468  N   GLY A 219       3.721  21.322  10.752  1.00 14.12           N
 ATOM   1469  CA  GLY A 219       3.586  21.486  12.188  1.00 14.85           C
 ATOM   1470  C   GLY A 219       4.462  20.538  12.995  1.00 15.63           C
@@ -200,9 +199,9 @@ ATOM   1492  N   LYS A 222      -1.537  14.773  13.694  1.00 14.34           N
 ATOM   1493  CA  LYS A 222      -2.053  13.536  13.125  1.00 15.07           C
 ATOM   1494  C   LYS A 222      -1.679  13.455  11.655  1.00 14.88           C
 ATOM   1495  O   LYS A 222      -1.856  14.424  10.883  1.00 14.32           O
-""")
+""").construct_hierarchy()
   r = ramalyze.ramalyze(
-    pdb_hierarchy=pdb_io.hierarchy,
+    pdb_hierarchy=hierarchy,
     outliers_only=False)
   assert (len(r.results) == 3)
 

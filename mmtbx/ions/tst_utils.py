@@ -1,10 +1,12 @@
 
 from __future__ import absolute_import, division, print_function
 
+from libtbx.test_utils import show_diff
+
 def exercise():
   from mmtbx.ions import utils as ion_utils
-  import iotbx.pdb.hierarchy
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 CRYST1   20.000   60.000   50.000  90.00  90.00  90.00 P 1
 HETATM 1690 ZN    ZN X   1     -14.031  10.147  -2.484  1.00 14.71      ION ZN2+
 HETATM 1699 CL    CL X  10     -16.305  10.413  -3.294  0.94 15.45      ION CL1-
@@ -18,8 +20,9 @@ HETATM 1695 CA    CA X   6      -7.922 -11.718  -0.402  0.74 16.82      ION CA2+
 HETATM 1696 CD    CD X   7     -16.886 -19.039 -34.333  0.61 15.22      ION CD2+
 HETATM 1701 CL    CL X  12     -10.068 -10.650   0.239  0.53 22.83      ION CL1-
 """)
-  xrs = pdb_in.input.xray_structure_simple()
-  pdb_atoms = pdb_in.hierarchy.atoms()
+  xrs = pdb_in.xray_structure_simple()
+  h = pdb_in.construct_hierarchy()
+  pdb_atoms = h.atoms()
   perm = ion_utils.sort_atoms_permutation(
     pdb_atoms=pdb_atoms,
     xray_structure=xrs)
@@ -36,7 +39,7 @@ HETATM 1701 CL    CL X  12     -10.068 -10.650   0.239  0.53 22.83      ION CL1-
     ag = iotbx.pdb.hierarchy.atom_group(resname=atom.parent().resname)
     rg.append_atom_group(ag)
     ag.append_atom(atom.detached_copy())
-  assert (hierarchy.as_pdb_string(crystal_symmetry=xrs) == """\
+  assert not show_diff (hierarchy.as_pdb_string(crystal_symmetry=xrs), """\
 CRYST1   20.000   60.000   50.000  90.00  90.00  90.00 P 1
 SCALE1      0.050000  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.016667  0.000000        0.00000

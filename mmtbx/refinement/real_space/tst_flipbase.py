@@ -148,7 +148,7 @@ def exercise():
     crystal_symmetry=xrs_good.crystal_symmetry())
 
 def exercise2():
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""\
+  pdb_in = iotbx.pdb.input(source_info=None, lines="""\
 ATOM   3988  P    DA G  10       2.095 -23.407  14.671  1.00 24.76           P
 ATOM   3989  OP1  DA G  10       2.702 -22.768  13.479  1.00 24.54           O
 ATOM   3990  OP2  DA G  10       1.098 -22.688  15.497  1.00 26.02           O
@@ -172,7 +172,7 @@ ATOM   4007  N3   DA G  10       8.029 -28.435  17.152  1.00 13.57           N
 ATOM   4008  C4   DA G  10       7.629 -27.865  15.998  1.00 13.67           C
 """)
   #open("tmp1.pdb", "w").write(pdb_in.hierarchy.as_pdb_string())
-  base = pdb_in.hierarchy.only_atom_group()
+  base = pdb_in.construct_hierarchy().only_atom_group()
   xyz = base.atoms().extract_xyz().deep_copy()
   flipbase.flip_base(base, angle=180)
   xyz_new = base.atoms().extract_xyz()

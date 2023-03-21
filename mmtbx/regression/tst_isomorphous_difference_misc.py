@@ -1,12 +1,14 @@
 
 from __future__ import absolute_import, division, print_function
+from iotbx.pdb import hierarchy
 from libtbx import easy_run
+import iotbx.pdb
+from iotbx.file_reader import any_file
+from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
 import time
 import os
 
 def exercise_calcium_substitution():
-  from mmtbx.regression.make_fake_anomalous_data import generate_calcium_inputs
-  from iotbx.file_reader import any_file
   anom_mtz_file, pdb_file = generate_calcium_inputs(
     file_base = "tst_isomorphous_difference_misc_anom", anonymize = False)
   hoh_file = generate_calcium_inputs(
@@ -40,9 +42,9 @@ def exercise_calcium_substitution():
   coeffs = f.file_server.miller_arrays[0]
   fft_map = coeffs.fft_map(resolution_factor=0.25)
   minus_map = fft_map.apply_sigma_scaling().real_map_unpadded()
-  pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.hierarchy
-  xrs = pdb_in.file_object.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(pdb_file)
+  hierarchy = pdb_in.construct_hierarchy()
+  xrs = pdb_in.xray_structure_simple()
   for i_seq, atom in enumerate(hierarchy.atoms()):
     if (atom.element == "CA"):
       site_frac = xrs.sites_frac()[i_seq]
@@ -169,19 +171,18 @@ HETATM   63  CH3 ACT     1       2.127   7.078   8.030  1.00 18.08           C
   # dataset, and a control using the merged amplitudes. The MN should be
   # prominent in both, and by far the strongest feature in the anomalous map,
   # but the ACT should only have density in the control map.
-  from iotbx import file_reader
-  import iotbx.pdb.hierarchy
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_2)
-  xrs = pdb_in.input.xray_structure_simple()
-  mtz_1 = file_reader.any_file("tst_anom_iso_diff_map_coeffs.mtz")
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_2)
+  xrs = pdb_in.xray_structure_simple()
+  mtz_1 = any_file("tst_anom_iso_diff_map_coeffs.mtz")
   map_1 = mtz_1.file_server.miller_arrays[0].fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
-  mtz_2 = file_reader.any_file("tst_anom_iso_diff_map_coeffs_control.mtz")
+  mtz_2 = any_file("tst_anom_iso_diff_map_coeffs_control.mtz")
   map_2 = mtz_2.file_server.miller_arrays[0].fft_map(
     resolution_factor=0.25).apply_sigma_scaling().real_map_unpadded()
   sites_frac = xrs.sites_frac()
   anom_max = mn_anom = 0
-  for i_seq, atom in enumerate(pdb_in.hierarchy.atoms()):
+  hierarchy = pdb_in.construct_hierarchy()
+  for i_seq, atom in enumerate(hierarchy.atoms()):
     site_frac = sites_frac[i_seq]
     anom_diff = map_1.eight_point_interpolation(site_frac)
     fobs_diff = map_2.eight_point_interpolation(site_frac)

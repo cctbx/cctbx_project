@@ -2,8 +2,9 @@
 # TODO more tests
 
 from __future__ import absolute_import, division, print_function
+from iotbx.pdb import hierarchy
 from mmtbx.command_line import molprobity
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.utils import null_out
 import libtbx.load_env
@@ -29,11 +30,12 @@ HETATM 6419  D2  DOD A1001      -4.625   2.741 -13.845  1.00 14.81           D
 """
   random.seed(12345)
   flex.set_random_seed(12345)
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_raw)
-  xrs = pdb_in.input.xray_structure_simple()
-  pdb_in.hierarchy.atoms().reset_i_seq()
+  pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_raw)
+  xrs = pdb_in.xray_structure_simple()
+  hierarchy = pdb_in.construct_hierarchy()
+  hierarchy.atoms().reset_i_seq()
   open("tst_validate_experimental.pdb", "w").write(
-    pdb_in.hierarchy.as_pdb_string(crystal_symmetry=xrs))
+    hierarchy.as_pdb_string(crystal_symmetry=xrs))
   f_calc =abs( xrs.structure_factors(d_min=2.0).f_calc())
   f_calc.set_observation_type_xray_amplitude()
   flags = f_calc.generate_r_free_flags()

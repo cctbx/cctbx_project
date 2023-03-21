@@ -278,9 +278,9 @@ def exercise():
   r = ""
   for l in results.split('\n'):
     r += l.strip() + '\n'
-  assert not show_diff(r, """MTRIX1   1 -0.999932 -0.011239  0.003138      174.44280
-MTRIX2   1  0.010826 -0.793178  0.608894       -1.51400
-MTRIX3   1 -0.004354  0.608886  0.793246        0.70450
+  assert not show_diff(r, """MTRIX1   1 -0.999932 -0.011239  0.003138      174.44280    1
+MTRIX2   1  0.010826 -0.793178  0.608894       -1.51400    1
+MTRIX3   1 -0.004354  0.608886  0.793246        0.70450    1
 """)
   m = mmtbx.model.manager(pdb_inp,
    crystal_symmetry=model1_crystal_symmetry)

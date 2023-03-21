@@ -64,24 +64,24 @@ cctbx_buttonsdeflist = [
 
 ("FoversigF", "F/SigF",
  """
-          miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
-              label = "FoverSigF2"
+              label = "FoverSigF"
               datatype = "Amplitude"
             }
           }
 
  """),
 
-("IoverSigI", "I/SigI >= 2",
+("IoverSigI", "I/SigI",
  """
         miller_array_operation = "('newarray._data=array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'IoverSigI', ['I<<FSQ,SIGI<<FSQ', 'Intensity'], ['', ''])"
         binning {
           scene_bin_thresholds = -10000 1 2 3 4 5 460 793.55 2750
           binlabel = "IoverSigI"
-          bin_opacity = 0 0
-          bin_opacity = 0 1
+          bin_opacity = 1 0
+          bin_opacity = 1 1
           bin_opacity = 1 2
           bin_opacity = 1 3
           bin_opacity = 1 4

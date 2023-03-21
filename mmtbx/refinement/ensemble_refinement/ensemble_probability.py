@@ -3,7 +3,6 @@ import sys
 from iotbx.option_parser import iotbx_option_parser
 from mmtbx import utils
 from iotbx import file_reader
-from iotbx.pdb import hierarchy
 import iotbx.phil
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -350,10 +349,10 @@ class ensemble_probability(object):
     # process PDB
     pdb_file.assert_file_type("pdb")
     #
-    pdb_in = hierarchy.input(file_name=pdb_file.file_name)
+    pdb_in = pdb.input(file_name=pdb_file.file_name)
     ens_pdb_hierarchy = pdb_in.construct_hierarchy()
     ens_pdb_hierarchy.atoms().reset_i_seq()
-    ens_pdb_xrs_s = pdb_in.input.xray_structures_simple()
+    ens_pdb_xrs_s = pdb_in.xray_structures_simple()
     number_structures = len(ens_pdb_xrs_s)
     print('Number of structure in ensemble : ', number_structures, file=self.log)
 

@@ -1,13 +1,13 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 import iotbx.pdb.secondary_structure as ioss
 from libtbx.utils import null_out
 
 
 def exercise_helix_bonding_pattern_with_insertions():
-  alpha_h1_ends = iotbx.pdb.hierarchy.input(pdb_string="""\
+  alpha_h1_ends = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      1  N   ALA     1       1.643  -2.366  -1.408  1.00  0.00           N
 ATOM      2  CA  ALA     1       1.280  -3.608  -2.069  1.00  0.00           C
 ATOM      3  C   ALA     1      -0.114  -3.466  -2.684  1.00  0.00           C
@@ -59,9 +59,9 @@ ATOM     48  C   ALA     9A     -5.242  -1.695 -15.130  1.00  0.00           C
 ATOM     49  O   ALA     9A     -5.880  -1.605 -16.177  1.00  0.00           O
 ATOM     50  CB  ALA     9A     -5.358   0.040 -13.274  1.00  0.00           C
 TER
-""")
+""").construct_hierarchy()
 
-  alpha_h1_ac = iotbx.pdb.hierarchy.input(pdb_string="""\
+  alpha_h1_ac = iotbx.pdb.input(source_info=None, lines="""\
 ATOM      1  N  AALA     1       1.643  -2.366  -1.408  0.50  0.00           N
 ATOM      2  CA AALA     1       1.280  -3.608  -2.069  0.50  0.00           C
 ATOM      3  C  AALA     1      -0.114  -3.466  -2.684  0.50  0.00           C
@@ -128,7 +128,7 @@ ATOM     64  C  BALA     9A     -5.142  -1.695 -15.130  0.50  0.00           C
 ATOM     65  O  BALA     9A     -5.780  -1.605 -16.177  0.50  0.00           O
 ATOM     66  CB BALA     9A     -5.258   0.040 -13.274  0.50  0.00           C
 END
-""")
+""").construct_hierarchy()
 
   alpha_annot_1_1 = """\
 HELIX    1   1 ALA      1  ALA      9A 1                                  10
@@ -150,7 +150,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
   log = null_out()
   n_hbonds = []
   n_hangles = []
-  for pdb_inp, recs in [
+  for pdb_h, recs in [
                         (alpha_h1_ends, alpha_annot_1_1), #6
                         (alpha_h1_ends, alpha_annot_1_2), #4
                         (alpha_h1_ends, alpha_annot_1_3), #5
@@ -166,7 +166,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
     custom_pars = defpars.fetch(iotbx.phil.parse(ann))
     custom_pars_ex = custom_pars.extract()
     ss_manager = manager(
-                pdb_inp.hierarchy,
+                pdb_h,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)
@@ -180,7 +180,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
   assert n_hangles == [18, 12, 15, 15, 28, 16, 22, 22]
 
 def exercise_sheets_bonding_pattern_with_insertions():
-  pdb_apar_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+  pdb_apar_h = iotbx.pdb.input(source_info=None, lines = """\
 SCRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
 SCALE1      0.021524  0.012427  0.000000        0.00000
 SCALE2      0.000000  0.024854  0.000000        0.00000
@@ -268,9 +268,9 @@ ATOM    236  C   SER A  35A     24.387 -22.368  -1.553  1.00  5.05           C
 ATOM    237  O   SER A  35A     24.929 -22.095  -0.497  1.00  6.22           O
 ATOM    238  CB  SER A  35A     23.881 -21.071  -3.639  1.00  5.69           C
 ATOM    239  OG  SER A  35A     25.213 -20.561  -3.633  1.00  7.12           O
-""")
+""").construct_hierarchy()
 
-  pdb_par_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+  pdb_par_h = iotbx.pdb.input(source_info=None, lines = """\
 CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
 SCALE1      0.021524  0.012427  0.000000        0.00000
 SCALE2      0.000000  0.024854  0.000000        0.00000
@@ -346,9 +346,9 @@ ATOM    222  O   ALA A  45A      8.479 -27.750  -7.000  1.00  4.79           O
 ATOM    223  CB  ALA A  45A      6.607 -27.026  -9.678  1.00  4.52           C
 TER
 END
-""")
+""").construct_hierarchy()
 
-  pdb_par_ac_input = iotbx.pdb.hierarchy.input(pdb_string = """\
+  pdb_par_ac_h = iotbx.pdb.input(source_info=None, lines = """\
 CRYST1   46.460   46.460  193.210  90.00  90.00 120.00 P 31 2 1
 SCALE1      0.021524  0.012427  0.000000        0.00000
 SCALE2      0.000000  0.024854  0.000000        0.00000
@@ -434,7 +434,7 @@ ATOM     78  O   ALA A  46       8.479 -27.750  -7.000  1.00  4.79           O
 ATOM     79  CB  ALA A  46       6.607 -27.026  -9.678  1.00  4.52           C
 TER      80      ALA A  46
 END
-""")
+""").construct_hierarchy()
 
   s_apar_records1 = """\
 SHEET    1   A 2 TYR A   2  VAL A   7  0
@@ -466,14 +466,14 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
   # defpars = sec_str_master_phil
   n_hbonds = []
   n_hangles = []
-  for pdb_inp, recs in [
-                        (pdb_apar_input, s_apar_records1), # 6
-                        (pdb_apar_input, s_apar_records2), # 6
-                        (pdb_apar_input, s_apar_records3), # 4
-                        (pdb_par_input,  s_par_records1), # 6
-                        (pdb_par_input,  s_par_records2), # 6
-                        (pdb_par_input,  s_par_records3), # 5
-                        (pdb_par_ac_input,  s_par_records1), # 8 hbonds
+  for pdb_h, recs in [
+                        (pdb_apar_h, s_apar_records1), # 6
+                        (pdb_apar_h, s_apar_records2), # 6
+                        (pdb_apar_h, s_apar_records3), # 4
+                        (pdb_par_h,  s_par_records1), # 6
+                        (pdb_par_h,  s_par_records2), # 6
+                        (pdb_par_h,  s_par_records3), # 5
+                        (pdb_par_ac_h,  s_par_records1), # 8 hbonds
                         ]:
     ioss_annotation = ioss.annotation.from_records(records = recs.split('\n'))
     ann = ioss_annotation.as_restraint_groups(prefix_scope="secondary_structure")
@@ -481,7 +481,7 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
     custom_pars = defpars.fetch(iotbx.phil.parse(ann))
     custom_pars_ex = custom_pars.extract()
     ss_manager = manager(
-                pdb_inp.hierarchy,
+                pdb_h,
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)

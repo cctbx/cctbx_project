@@ -4,6 +4,7 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from six import string_types
 from six.moves import range, zip
+from cctbx.array_family import flex
 
 class container(object):
 
@@ -92,7 +93,11 @@ def parse_MTRIX_BIOMT_records_cif(cif_block, recs='mtrix'):
         continue
       serial_number.append((sn,i))
       if recs == 'mtrix':
-        coordinates_present.append(cif_block.get('%s.code' % block_name)[i] == 'given')
+        code_loop_or_item = cif_block.get('%s.code' % block_name)
+        if isinstance(code_loop_or_item, flex.std_string):
+          coordinates_present.append(code_loop_or_item[i] == 'given')
+        else:
+          coordinates_present.append(code_loop_or_item == 'given')
       else:
         coordinates_present.append(False) # no way to figure out
       r = [(cif_block.get('%s.matrix[%s][%s]' %(block_name,x,y)))

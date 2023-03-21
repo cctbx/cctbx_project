@@ -29,7 +29,10 @@ class ValidatedTextCtrl(wx.TextCtrl, phil_controls.PhilCtrl):
       self.SetValue(saved_value)
 
   def GetValue(self):
-    val = wx.TextCtrl.GetValue(self)
+    try:
+      val = wx.TextCtrl.GetValue(self)
+    except Exception as e:
+      val = "" # Probably C++ object deleted
     if wxtbx.is_unicode_build():
       return to_str(val)
     else :

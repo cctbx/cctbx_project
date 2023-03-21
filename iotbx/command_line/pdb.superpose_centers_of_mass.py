@@ -127,13 +127,13 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   sites_carts = []
   centers_of_mass = []
   for param_group in [params.reference, params.other]:
-    pdb_obj = pdb.hierarchy.input(file_name=param_group.file_name)
-    pdb_obj.atoms = pdb_obj.hierarchy.atoms()
+    pdb_obj = pdb.input(file_name=param_group.file_name)
+    pdb_obj.atoms = pdb_obj.construct_hierarchy().atoms()
     pdb_objs.append(pdb_obj)
     sites_carts.append(pdb_obj.atoms.extract_xyz())
     sites_sel = sites_carts[-1]
     if (param_group.atom_selection is not None):
-      sel = pdb_obj.hierarchy.atom_selection_cache().selection(
+      sel = pdb_obj.construct_hierarchy().atom_selection_cache().selection(
         param_group.atom_selection)
       sites_sel = sites_sel.select(sel)
     print("Number of selected sites:", sites_sel.size())
@@ -143,7 +143,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   crystal_symmetry = command_line.symmetry
   for pdb_obj in pdb_objs:
-    crystal_symmetry_from_pdb = pdb_obj.input.crystal_symmetry()
+    crystal_symmetry_from_pdb = pdb_obj.crystal_symmetry()
     if (crystal_symmetry_from_pdb is not None):
       crystal_symmetry = crystal_symmetry.join_symmetry(
         other_symmetry=crystal_symmetry_from_pdb,
@@ -220,7 +220,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   # Write (selected) transformed coordinates.
   #
-  pdb_hierarchy = pdb_objs[1].hierarchy
+  pdb_hierarchy = pdb_objs[1].construct_hierarchy()
   if (params.output.atom_selection is not None):
     sel = pdb_hierarchy.atom_selection_cache().selection(
       params.output.atom_selection)

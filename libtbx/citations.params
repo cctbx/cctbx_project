@@ -30,6 +30,11 @@ author {
 }
 
 author {
+  name = Millán C
+  orcid = 0000-0002-9283-2220
+}
+
+author {
   name = Moriarty NW
   orcid = 0000-0001-8857-9464
 }
@@ -451,6 +456,18 @@ citation {
   pmid = 36266465
 }
 
+citation {
+  article_id = predict_and_build_xray
+  authors = Terwilliger TC, Afonine PV, Liebschner, D., Croll TI, McCoy, AJ, Oeffner, RD., Williams, CJ, Poon, BK, Richardson JS, Read RJ, Adams PD
+  title = Accelerating crystal structure determination with iterative AlphaFold prediction
+  journal = Acta Cryst D
+  volume = 79
+  pages = 234-244
+  year = 2023
+  doi_id =  doi:10.1107/S205979832300102X
+  pmid = 36876433
+}
+
 
 citation {
   article_id = colabfold
@@ -596,6 +613,17 @@ citation {
   doi_id = doi:10.1107/S0907444903018043
 }
 
+citation {
+  article_id = map_comparison
+  authors = Urzhumtsev, A,  Afonine, PV, Lunin, VY, Terwilliger, TC, Adams, PD
+  title = Metrics for comparison of crystallographic maps
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = D70
+  pages = 2593-2606
+  year = 2014
+  doi_id = 10.1107/S1399004714016289
+  pmid = 25286844
+}
 citation {
   article_id = ias
   authors = Afonine PV, Grosse-Kunstleve RW, Adams PD, Lunin VY, \
@@ -1521,4 +1549,28 @@ citation {
   volume = 12
   pages = 15-25
   year = 2021
+}
+
+citation {
+  article_id = emplacement_theory
+  authors = Read RJ, Millán C, McCoy AJ, Terwilliger TC
+  title = Likelihood-based signal and noise analysis for docking of models into cryo-EM maps
+  journal = Acta Cryst. D
+  volume = 79
+  pages = xxx-xxx
+  year = 2023
+  pmid = 36920335
+  doi_id = 10.1107/S2059798323001596
+}
+
+citation {
+  article_id = emplacement_program
+  authors = Millán C, McCoy AJ, Terwilliger TC, Read RJ
+  title = Likelihood-based docking of models into cryo-EM maps
+  journal = Acta Cryst. D
+  volume = 79
+  pages = xxx-xxx
+  year = 2023
+  pmid = 36920336
+  doi_id = 10.1107/S2059798323001602
 }

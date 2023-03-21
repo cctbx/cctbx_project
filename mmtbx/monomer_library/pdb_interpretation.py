@@ -3347,6 +3347,7 @@ class build_all_chain_proxies(linking_mixins):
       if self.params.flip_symmetric_amino_acids:
         self.pdb_hierarchy.flip_symmetric_amino_acids()
     self.pdb_hierarchy.merge_atoms_at_end_to_residues()
+    self.pdb_hierarchy.format_correction_for_H()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
@@ -3850,6 +3851,12 @@ class build_all_chain_proxies(linking_mixins):
       pdb_hierarchy             = self.pdb_hierarchy,
       special_position_settings = self.special_position_settings,
       atom_selection_cache      = None)
+    self._check_for_capitalised_element()
+
+  def _check_for_capitalised_element(self):
+    for atom in self.pdb_hierarchy.atoms():
+      if atom.element==atom.element.upper():
+        atom.element=atom.element.upper()
 
   def __getstate__(self):
     indexer = dict( ( a, i) for ( i, a ) in enumerate( self.pdb_hierarchy.atoms() ) )

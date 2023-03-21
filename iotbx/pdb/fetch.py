@@ -214,13 +214,13 @@ def load_pdb_structure(id, format="pdb", allow_unknowns=False,
   directly (without intermediate files).
   """
   data = fetch(id=id, format=format, log=null_out(), local_cache=local_cache)
-  import iotbx.pdb.hierarchy
-  pdb_in = iotbx.pdb.hierarchy.input(pdb_string=data.read())
-  hierarchy = pdb_in.hierarchy
+  import iotbx.pdb.input
+  pdb_in = iotbx.pdb.input(pdb_string=data.read())
+  hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
   # XXX enable_scattering_type_unknown can be modified here because the PDB
   # (unfortunately) contains many unknowns which would crash this
-  xray_structure = pdb_in.input.xray_structure_simple(
+  xray_structure = pdb_in.xray_structure_simple(
     enable_scattering_type_unknown=allow_unknowns)
   return hierarchy, xray_structure
 

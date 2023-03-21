@@ -174,7 +174,7 @@ def getBondedNeighborLists(atoms, bondProxies):
     :param bondProxies: Flex array of bond proxies for the atoms.  This could be obtained
     using model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart =
     model.get_sites_cart())[0] if the model has only a single conformation.  Otherwise,
-    it should be a flex array of atom positions for the atoms that are in the first argument.
+    it should be a flex array of atom positions for the atoms that are in the first parameter.
     It can include atoms that are not in the first parameter, but they will not be added
     to the lists.
     :returns a dictionary with one entry for each atom that contains a list of all of

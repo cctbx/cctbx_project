@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
-from libtbx.utils import import_python_object, Sorry, multi_out
+from libtbx.utils import import_python_object, multi_out
 from libtbx import group_args, Auto
 from multiprocessing import Pool, cpu_count
 from six.moves import cStringIO as StringIO
@@ -31,10 +31,13 @@ DEFAULT_VERBOSITY = 1
 EXTRA_VERBOSE = 2 # for nightly builds
 
 def get_test_list(module_name, test_type='tst_list', valgrind=False,
-         python_keyword_text=None):
+         python_keyword_text=None, skip_missing = False):
   dist_path = libtbx.env.dist_path(module_name)
   if dist_path is None:
-    raise Sorry("'%s' is not a valid CCTBX module." % module_name)
+    if skip_missing:
+      return []
+    else:
+      raise AssertionError("'%s' is not a valid CCTBX module." % module_name)
   # XXX don't check for file name, because import conventions differ among
   # derived modules - dist_path can be either the sys.path entry or the actual
   # module contents.  If the file is missing the import below will fail, which
@@ -64,23 +67,27 @@ def get_test_list(module_name, test_type='tst_list', valgrind=False,
   return commands
 
 def get_module_tests(module_name, valgrind=False, slow_tests=False,
-      python_keyword_text=None):
+      python_keyword_text=None, skip_missing = False):
   tst_list = get_test_list(module_name, valgrind=valgrind,
-     python_keyword_text=python_keyword_text)
+     python_keyword_text=python_keyword_text, skip_missing = skip_missing)
   if slow_tests:
     tst_list.extend(get_test_list(module_name, test_type='tst_list_slow',
                     valgrind=valgrind,
-                    python_keyword_text=python_keyword_text))
+                    python_keyword_text=python_keyword_text,
+                    skip_missing = skip_missing))
   return tst_list
 
-def get_module_expected_test_failures(module_name):
-  return get_test_list(module_name, test_type='tst_list_expected_failures')
+def get_module_expected_test_failures(module_name, skip_missing = False):
+  return get_test_list(module_name, test_type='tst_list_expected_failures',
+                    skip_missing = skip_missing)
 
-def get_module_expected_unstable_tests(module_name):
-  return get_test_list(module_name, test_type='tst_list_expected_unstable')
+def get_module_expected_unstable_tests(module_name, skip_missing = False):
+  return get_test_list(module_name, test_type='tst_list_expected_unstable',
+                    skip_missing = skip_missing)
 
-def get_module_parallel_tests(module_name):
-  return get_test_list(module_name, test_type='tst_list_parallel')
+def get_module_parallel_tests(module_name, skip_missing = False):
+  return get_test_list(module_name, test_type='tst_list_parallel',
+                     skip_missing = skip_missing)
 
 def find_tests(dir_name):
   if not os.path.isdir(dir_name):

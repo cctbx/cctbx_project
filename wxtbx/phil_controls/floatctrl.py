@@ -49,7 +49,11 @@ class FloatCtrl(ValidatedTextCtrl):
     self.SetFloat(value)
 
   def GetPhilValue(self):
-    self.Validate()
+    try:
+      self.Validate()
+    except Exception as e:
+      return self.ReturnNoneIfOptional() # probably C++ object deleted
+
     val_str = ValidatedTextCtrl.GetValue(self)
     if (val_str == ""):
       return self.ReturnNoneIfOptional()

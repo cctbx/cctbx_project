@@ -118,7 +118,13 @@ def update_libtbx_env(default_dir=None):
   env.set_derived_paths()
   env.exe_path = env.bin_path
   env.pythonpath = list()
-  env.python_exe = env.as_relocatable_path(sys.executable)
+  sys_executable = sys.executable
+  if sys_executable.endswith('cross-python'):
+    if sys.platform == 'darwin':
+      sys_executable = os.path.join(sys_prefix, 'python.app', 'Contents', 'MacOS', 'python')
+    else:
+      sys_executable = os.path.join(sys_prefix, 'bin', 'python')
+  env.python_exe = env.as_relocatable_path(sys_executable)
   env.no_bin_python = True
   site_packages_path = None
   for path in sys.path:
