@@ -11,8 +11,10 @@ if env_etc.enable_kokkos:
   # set environment variable defaults if necessary
   if os.getenv('KOKKOS_DEVICES') is None:
     os.environ['KOKKOS_DEVICES'] = "OpenMP"
+  use_openmp = "OpenMP" in os.getenv('KOKKOS_DEVICES')  
   use_cuda = "Cuda" in os.getenv('KOKKOS_DEVICES')
   use_hip = "HIP" in os.getenv('KOKKOS_DEVICES')
+  use_sycl = "SYCL" in os.getenv('KOKKOS_DEVICES')
   if os.getenv('KOKKOS_PATH') is None:
     os.environ['KOKKOS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos')
   if os.getenv('KOKKOSKERNELS_PATH') is None:
@@ -90,7 +92,7 @@ if env_etc.enable_kokkos:
   # - Verify that libraries from cmake version works the same as libkokkos.a
 
   OnOff = {True:'ON', False:'OFF'}
-  supported_architectures = ['Volta70', 'Ampere80', 'Vega908', 'Vega90A']
+  supported_architectures = ['Native', 'HSW', 'Zen', 'Zen2', 'Zen3', 'Volta70', 'Ampere80', 'Vega908', 'Vega90A', 'XeHP', 'PVC']
   architectures = {}
   for arch in supported_architectures:
     architectures[arch] = OnOff[ arch in os.getenv('KOKKOS_ARCH') ]
@@ -106,19 +108,30 @@ if env_etc.enable_kokkos:
     returncode = subprocess.call([
         'cmake',
         os.environ['KOKKOS_PATH'],
+        '-DCMAKE_CXX_STANDARD={}'.format(cxx_standard),
         '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
         '-DCMAKE_INSTALL_LIBDIR=lib',
-        '-DKokkos_ENABLE_SERIAL=ON',
-        '-DKokkos_ENABLE_OPENMP=ON',
+        '-DBUILD_SHARED_LIBS={}'.format(OnOff[use_sycl]),
+        '-DKokkos_ARCH_NATIVE={}'.format(architectures['Native']),
+        '-DKokkos_ARCH_HSW={}'.format(architectures['HSW']),
+        '-DKokkos_ARCH_ZEN={}'.format(architectures['Zen']),
+        '-DKokkos_ARCH_ZEN2={}'.format(architectures['Zen2']),
+        '-DKokkos_ARCH_ZEN3={}'.format(architectures['Zen3']),
         '-DKokkos_ARCH_VOLTA70={}'.format(architectures['Volta70']),
         '-DKokkos_ARCH_AMPERE80={}'.format(architectures['Ampere80']),
         '-DKokkos_ARCH_VEGA908={}'.format(architectures['Vega908']),
         '-DKokkos_ARCH_VEGA90A={}'.format(architectures['Vega90A']),
+        '-DKokkos_ARCH_INTEL_XEHP={}'.format(architectures['XeHP']),
+        '-DKokkos_ARCH_INTEL_PVC={}'.format(architectures['PVC']),
+        '-DKokkos_ENABLE_SERIAL=ON',
+        '-DKokkos_ENABLE_OPENMP={}'.format(OnOff[use_openmp]),
         '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
         '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
-        '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip])
+        '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip]),
+        '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl])
       ],
       cwd=kokkos_build_dir)
+
     returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
 
   # -----------------------------------------------------------------------------
