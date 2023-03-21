@@ -27,23 +27,42 @@ import pandas as pd
 
 
 message = '''
-This script aims to investigate the spatial drift of a detector as a function
-of experimental progress. It requires the directory structure to follow that
-resulting from indexing and ensemble refinement performed by cctbx.xfel.
-End result is a multiplot with detector origin position (vertical position) as
-a function of run number (horizontal position), colored according to merge
-name. Error bars can be derived from the uncertainty of individual reflections'
+This script collects and visualizes the spatial drift of a detector and unit
+cell parameters as a function of experimental progress. It requires
+the directory structure to follow the one resulting from data processing
+(i.e. ensemble refinement) performed by cctbx.xfel.
+Data scraping can take a lot of time, especially for large datasets.
+For this reason, scraping results can be saved and loaded from a pickle cache.
+End result is a plot with detector origin position and unit cell lengths
+(vertical position) as a function of run & chunk number (horizontal position).
+Numbers of reflections and experiments contributing to each batch are drawn
+as a bar height and width on the top of the plot.
+By default, point and bars' colors reflect the data's folders of origin.
+Error bars can be also derived from the uncertainty of individual reflections'
 position in laboratory reference system.
 
 Example usage 1:
-"libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-input.glob=batch*TDER/ input.kind=merging_directory"
-where `batch*TDER` points to folders with merging results.
+Read common detector origin position and average unit cell parameters for all
+expts merged in "batch*" datasets / directories, excluding "batch5":
+excluding those :
+    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    scrap.input.glob=batch*/ scrap.input.exclude=batch5/
 
 Example usage 2:
-"libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory"
-where `r0*/039_rg084/task209` points to folders with TDER results.
+Not only read, but also cache "batch*" results in a "name.pkl" pickle:
+    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    scrap.input.glob=batch*/ scrap.cache.action=write scrap.cache.glob=name.pkl
+
+Example usage 3:
+Read cached "batch*" results from all "*.pkl" files and save the plot:
+    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    scrap.cache.action=read scrap.cache.glob=*.pkl plot.save=True
+
+Example usage 4:
+Read distribution of detector origin position, detector origin uncertainty,
+and unit cell parameters from selected TDER task209 directories:
+    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    scrap.input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory
 '''
 
 
@@ -93,9 +112,12 @@ phil_scope = parse('''
     show = True
       .type = bool
       .help = If False, do not display resulting plot interactively
-    path = ""
+    save = False
+      .type = bool
+      .help = If True, save resulting drift plot under plot.path
+    path = drift_plot.png
       .type = str
-      .help = If given, save plot with this path and name (eg.: fig.png)
+      .help = A path, name, and extension of saved plot (e.g.: drift/fig.png)
     height = 8.0
       .type = float
      .help = Height of saved plot in inches
@@ -168,7 +190,8 @@ def variance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
   return sum(weights * x_deviations * y_deviations) / sum(weights)
 
 
-def normalize(sequence, floor=0, ceiling=1):
+def normalize(sequence: Sequence, floor: float = 0., ceiling: float = 1.) \
+        -> Sequence:
   """Normalize `sequence`'s values to lie between `floor` and `ceiling`"""
   min_, max_ = min(sequence), max(sequence)
   old_span = max_ - min_
@@ -268,7 +291,7 @@ def unique_elements(sequence: Sequence) -> List:
 
 class ScrapResults(UserList):
   """Responsible for storing and pickling DriftScraper results."""
-  def __init__(self, parameters):
+  def __init__(self, parameters) -> None:
     super().__init__()
     self.parameters = parameters
 
@@ -314,7 +337,7 @@ class BaseDriftScraper(object):
   """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
   with automatic registration into the `DriftScraperRegistrar`."""
 
-  def __init__(self, table: 'DriftTable', parameters):
+  def __init__(self, table: 'DriftTable', parameters) -> None:
     self.table = table
     self.parameters = parameters
     self.scrap_results = ScrapResults(parameters)
@@ -366,7 +389,7 @@ class BaseDriftScraper(object):
 
   @staticmethod
   def locate_scaling_directories(merging_phil_paths: Iterable[str]) -> List:
-    """Return paths to all directories specified as input.path in phil file"""
+    """Return paths to all directories specified as scrap.input.glob in phil"""
     merging_phils = [parse(file_name=mpp) for mpp in merging_phil_paths]
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
     return sorted(set(phil.input.path))
@@ -383,8 +406,10 @@ class BaseDriftScraper(object):
     return expts, refls
 
   @abc.abstractmethod
+  @handle_scrap_cache
   def scrap(self) -> None:
-    """Fill `self.table` based on `self.parameters` provided."""
+    """Prepare `ScrapResults` list used by `handle_scrap_cache` to create
+    `self.table`, instance of `DriftTable`, based on `self.parameters`."""
     pass
 
 
@@ -852,7 +877,7 @@ class DriftArtist(object):
       self._plot_width_info()
       self._plot_legend()
     self.fig.align_labels()
-    if self.parameters.plot.path:
+    if self.parameters.plot.save:
       self.fig.set_size_inches(self.parameters.plot.width,
                                self.parameters.plot.height)
       self.fig.savefig(self.parameters.plot.path)
