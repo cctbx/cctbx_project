@@ -10,7 +10,7 @@ import pickle
 import six
 import sys
 import tempfile
-from typing import Dict, List, Sequence, Union
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, Union
 
 from dials.array_family import flex  # noqa
 from dxtbx.model.experiment_list import ExperimentList  # noqa
@@ -272,7 +272,7 @@ class ScrapResults(UserList):
     super().__init__()
     self.parameters = parameters
 
-  def read(self):
+  def read(self) -> None:
     scrap_paths, scrap_results = [], []
     for scg in path_lookup(self.parameters.scrap.cache.glob):
       scrap_paths.extend(glob.glob(scg))
@@ -280,15 +280,15 @@ class ScrapResults(UserList):
       with open(scrap_path, 'rb') as pickle_file:
         self.extend(pickle.load(pickle_file))
 
-  def write(self):
+  def write(self) -> None:
     write_path = self.parameters.scrap.cache.glob
     with open(write_path, 'wb') as pickle_file:
       pickle.dump(self, pickle_file)
 
 
-def handle_scrap_cache(scrap):
+def handle_scrap_cache(scrap: Callable) -> Callable:
   @functools.wraps(scrap)
-  def scrap_wrapper(self: BaseDriftScraper, *args, **kwargs):
+  def scrap_wrapper(self: BaseDriftScraper, *args: Any, **kwargs: Any):
     if self.parameters.scrap.cache.action == 'read':
       self.scrap_results.read()
     scrap(self, *args, **kwargs)
@@ -314,21 +314,22 @@ class BaseDriftScraper(object):
   """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
   with automatic registration into the `DriftScraperRegistrar`."""
 
-  def __init__(self, table, parameters):
+  def __init__(self, table: 'DriftTable', parameters):
     self.table = table
     self.parameters = parameters
     self.scrap_results = ScrapResults(parameters)
 
   @staticmethod
-  def calc_expt_refl_len(expts, refls):
+  def calc_expt_refl_len(expts: ExperimentList, refls: flex.reflection_table) \
+          -> Tuple[int, flex.int]:
     expts_len = len(expts)
-    refls_len = flex.int()
+    refls_lens = flex.int()
     for expt_id, expt in enumerate(expts):
-      refls_len.append((expt_id == refls['id']).count(True))
-    return expts_len, refls_len
+      refls_lens.append((expt_id == refls['id']).count(True))
+    return expts_len, refls_lens
 
   @staticmethod
-  def extract_db_metadata(combine_phil_path):
+  def extract_db_metadata(combine_phil_path: str) -> dict:
     """Get trial, task, rungroup, chunk, run info based on combining phil"""
     parsed_combine_phil = parse(file_name=combine_phil_path)
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
@@ -342,7 +343,7 @@ class BaseDriftScraper(object):
             'task': path_split(combine_phil_path)[-4],
             'trial': represent_range_as_str(trials)}
 
-  def locate_input_paths(self):
+  def locate_input_paths(self) -> List:
     """Return all paths (either common files or directories, relative to
     working directory) of specified kind to be processed"""
     input_paths, exclude_paths = [], []
@@ -353,7 +354,7 @@ class BaseDriftScraper(object):
     return [it for it in input_paths if it not in exclude_paths]
 
   @staticmethod
-  def locate_combining_phil_paths(scaling_phil_paths):
+  def locate_combining_phil_paths(scaling_phil_paths: Iterable[str]) -> List:
     """Return paths to all phil files used to combine later-scaled expts"""
     parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
@@ -364,14 +365,15 @@ class BaseDriftScraper(object):
     return sorted(set(combine_phil_paths))
 
   @staticmethod
-  def locate_scaling_directories(merging_phil_paths):
+  def locate_scaling_directories(merging_phil_paths: Iterable[str]) -> List:
     """Return paths to all directories specified as input.path in phil file"""
     merging_phils = [parse(file_name=mpp) for mpp in merging_phil_paths]
     phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
     return sorted(set(phil.input.path))
 
   @staticmethod
-  def locate_refined_expts_refls(combine_phil_path):
+  def locate_refined_expts_refls(combine_phil_path: str) \
+          -> Tuple[ExperimentList, flex.reflection_table]:
     """Return all refined expts and refls down-stream from combine_phil_path"""
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = path_lookup(path_stem + '_refined.expt')
@@ -387,10 +389,11 @@ class BaseDriftScraper(object):
 
 
 class TderTaskDirectoryDriftScraper(BaseDriftScraper):
+  """Drift scraper which looks for all TDER downstream from merging"""
   input_kind = 'tder_task_directory'
 
   @handle_scrap_cache
-  def scrap(self):
+  def scrap(self) -> None:
     combining_phil_paths = []
     for tder_task_directory in self.locate_input_paths():
       cpp = path_lookup(tder_task_directory, 'combine_experiments_t*',
@@ -416,10 +419,11 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
 
 
 class MergingDirectoryDriftScraper(BaseDriftScraper):
+  """Drift scraper which directly looks for TDER task directories"""
   input_kind = 'merging_directory'
 
   @handle_scrap_cache
-  def scrap(self):
+  def scrap(self) -> None:
     for merge in self.locate_input_paths():
       merging_phil_paths = path_lookup(merge, '**', '*.phil')
       merging_phil_paths.sort(key=os.path.getmtime)
@@ -455,15 +459,15 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
 
 class FirstOriginMixin(object):
   @staticmethod
-  def get_origin(expts):
-    """Read detector origin (x, y, z) from the first expt file"""
+  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+    """Read detector origin (x, y, z) from the first expt file only"""
     x, y, z = expts[0].detector.hierarchy().get_origin()
     return {'x': x, 'y': y, 'z': z}
 
 
 class AverageOriginMixin(object):
   @staticmethod
-  def get_origin(expts):
+  def get_origin(expts: ExperimentList) -> Dict[str, float]:
     """Read detector origin (x, y, z) from the first expt file"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -476,7 +480,7 @@ class AverageOriginMixin(object):
 
 class DistributionOriginMixin(object):
   @staticmethod
-  def get_origin(expts):
+  def get_origin(expts: ExperimentList) -> Dict[str, flex.double]:
     """Read detector origin (x, y, z) from the first expt file"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -489,14 +493,16 @@ class DistributionOriginMixin(object):
 
 class FalseUncertaintiesMixin(object):
   @staticmethod
-  def get_origin_deltas(expts, refls):
-    """If uncertainties=False, return origin uncertainties as zeros"""
+  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
+          -> Dict[str, float]:
+    """If uncertainties=False, return dummy zero origin uncertainties"""
     return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
 
 
 class TrueUncertaintiesMixin(object):
   @staticmethod
-  def get_origin_deltas(expts, refls):
+  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
+          -> Dict[str, float]:
     """Get uncertainties of origin positions from refl. position deviations"""
     deltas_flex = flex.vec3_double()
     for panel in expts[0].detector:
@@ -512,7 +518,7 @@ class TrueUncertaintiesMixin(object):
 
 class BaseUnitCellMixin(object):
   @staticmethod
-  def _write_tdata(expts, tdata_path):
+  def _write_tdata(expts: ExperimentList, tdata_path: str) -> None:
     """Read all expt_paths and write a tdata file with unit cells in lines"""
     s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
     tdata_lines = []
@@ -525,7 +531,7 @@ class BaseUnitCellMixin(object):
 
 
 class AverageUnitCellMixin(BaseUnitCellMixin):
-  def get_unit_cell(self, expts):
+  def get_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
@@ -543,8 +549,9 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
 
 
 class DistributionUnitCellMixin(BaseUnitCellMixin):
-  def get_unit_cell(self, expts):
-    """Retrieve average a, b, c and their deltas using expt paths"""
+  def get_unit_cell(self, expts: ExperimentList) \
+          -> Dict[str, Union[flex.double, float]]:
+    """Retrieve distribution of a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
       self._write_tdata(expts, tdata_file.name)
@@ -577,7 +584,8 @@ class DriftScraperFactory(object):
   }
 
   @classmethod
-  def get_drift_scraper(cls, table, parameters):
+  def get_drift_scraper(cls, table: 'DriftTable', parameters) \
+          -> BaseDriftScraper:
     base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
     mixins = [
       cls.ORIGIN_MIXINS[parameters.scrap.origin],
@@ -602,20 +610,20 @@ class DriftTable(object):
   def __init__(self):
     self.data = pd.DataFrame()
 
-  def __getitem__(self, key):
+  def __getitem__(self, key: str) -> pd.Series:
     if key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return self.data[key]
 
-  def __len__(self):
+  def __len__(self) -> int:
     return len(self.data.index)
 
-  def __str__(self):
+  def __str__(self) -> str:
     for key in self.DYNAMIC_KEYS:
       self.recalculate_dynamic_column(key)
     return str(self.data)
 
-  def add(self, d):
+  def add(self, d: dict) -> None:
     d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
     d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
     if d_is_bumpy or d_is_all_flat:
@@ -626,17 +634,17 @@ class DriftTable(object):
     new_rows = pd.DataFrame(d2, **pd_kwargs)
     self.data = pd.concat([self.data, new_rows], ignore_index=True)
 
-  def get(self, key, default=None):
+  def get(self, key: str, default: Any = None) -> pd.Series:
     return self[key] if key in self.data.columns else default
 
-  def sort(self, by: Union[str, Sequence[str]]):
+  def sort(self, by: Union[str, Sequence[str]]) -> None:
     self.data.sort_values(by=by, ignore_index=True)
 
-  def column_is_flat(self, key):
+  def column_is_flat(self, key: str) -> bool:
     return not is_iterable(self[key][0])
 
   @property
-  def flat(self):
+  def flat(self) -> pd.DataFrame:
     """Pandas' data `DataFrame` with all iterable fields expanded over rows"""
     c = self.column_is_flat
     col_names = self.data.columns
@@ -661,11 +669,7 @@ class DriftTable(object):
       flat_table['expts'] = 1
     return flat_table
 
-  @property
-  def is_flat(self):
-    return all(self.column_is_flat(k) for k in self.data.columns)
-
-  def recalculate_dynamic_column(self, key):
+  def recalculate_dynamic_column(self, key: str) -> None:
     if key == 'density':
       refls = self.data['refls'] if self.column_is_flat('refls') \
         else pd.Series([sum(refl) for refl in self.data['refls']])
@@ -690,7 +694,7 @@ class DriftArtist(object):
     self._init_figure()
     self._setup_figure()
 
-  def _init_figure(self):
+  def _init_figure(self) -> None:
     self.fig = plt.figure(tight_layout=True)
     gs = GridSpec(7, 2, hspace=0, wspace=0, width_ratios=[4, 1],
                   height_ratios=[2, 3, 3, 3, 3, 3, 3])
@@ -704,7 +708,7 @@ class DriftArtist(object):
     self.axw = self.fig.add_subplot(gs[0, 1])
     self.axl = self.fig.add_subplot(gs[1:, 1])
 
-  def _setup_figure(self):
+  def _setup_figure(self) -> None:
     self.axl.axis('off')
     self.axw.axis('off')
     self.axh.spines['top'].set_visible(False)
@@ -720,7 +724,7 @@ class DriftArtist(object):
     self.axc.tick_params(axis='x', labelbottom=True, rotation=90)
 
   @property
-  def color_array(self):
+  def color_array(self) -> List:
     """Registry-length color list with colors corresponding to plot.color.by"""
     color_by = self.parameters.plot.color.by
     color_id_map = {v: i for i, v in enumerate(self.table[color_by].unique())}
@@ -728,25 +732,25 @@ class DriftArtist(object):
     return [self.colormap(i % self.colormap_period) for i in color_ids]
 
   @property
-  def x(self):
+  def x(self) -> pd.Index:
     return self.table.data.index
 
   @property
-  def x_keys(self):
+  def x_keys(self) -> List[str]:
     is_constant = {k: self.table[k].nunique == 1 for k in self.order_by[1:]}
     keys_used = [self.order_by[0]]
     keys_used += [k for k in self.order_by[1:] if not is_constant[k]]
     return keys_used
 
   @property
-  def x_label(self):
+  def x_label(self) -> str:
     return ':'.join(self.x_keys)
 
   @property
-  def x_tick_labels(self):
+  def x_tick_labels(self) -> pd.Series:
     return self.table.data[self.x_keys].agg(':'.join, axis=1)
 
-  def _get_handles_and_labels(self):
+  def _get_handles_and_labels(self) -> Tuple[List, List]:
     handles, unique_keys = [], []
     for key in self.table[self.parameters.plot.color.by]:
       if key not in unique_keys:
@@ -755,37 +759,13 @@ class DriftArtist(object):
         unique_keys.append(key)
     return handles, unique_keys
 
-  def _plot_drift(self, axes, values_key, deltas_key=None, top=False):
-    axes.xaxis.set_major_locator(FixedLocator(self.x))
-    y = self.table[values_key]
-    if not self.table.column_is_flat(values_key):
-      self._plot_drift_distribution(axes, values_key)
-    else:
-      self._plot_drift_point(axes, y, deltas_key)
-    axes.set_xticklabels(self.x_tick_labels)
-    flattened_y = self.table_flat[values_key]
-    flattened_weights = self.table_flat['refls']
-    avg_y = average(flattened_y, weights=flattened_weights)
-    if avg_y != 0:
-      axes2 = axes.twinx()
-      axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
-      axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+  def _plot_init(self) -> None:
+    self.table.sort(by=self.order_by)
+    self.table_flat = self.table.flat
+    self.axc.set_xlabel(self.x_label)
+    self.axh.set_ylabel('# expts')
 
-  def _plot_drift_point(self, axes, y, deltas_key):
-    axes.scatter(self.x, y, c=self.color_array)
-    y_err = self.table.get(deltas_key, [])
-    axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
-
-  def _plot_drift_distribution(self, axes, values_key):
-    x_flat = self.table_flat['original_index']
-    y_flat = self.table_flat[values_key]
-    b = (len(self.x), 100)
-    r = [[-0.5, len(self.x) - 0.5], [min(y_flat), max(y_flat)]]
-    axes.hist2d(x_flat, y_flat, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)
-    axes.scatter(self.x, [average(y) for y in self.table[values_key]],
-                 c=self.color_array, edgecolors='white')
-
-  def _plot_bars(self):
+  def _plot_bars(self) -> None:
     y = self.table['expts']
     w = normalize([0, *self.table['density']])[1:]
     self.axh.bar(self.x, y, width=w, color=self.color_array, alpha=0.5)
@@ -794,7 +774,7 @@ class DriftArtist(object):
     ax_top.xaxis.set_major_locator(FixedLocator(self.x))
     ax_top.set_xticklabels(self.x_tick_labels)
 
-  def _plot_correlations(self):
+  def _plot_correlations(self) -> None:
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
     flat_columns = (self.table_flat[key] for key in keys)
     correlated = {col.name: col.values for col in flat_columns}
@@ -813,11 +793,43 @@ class DriftArtist(object):
                         ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
 
-  def _plot_legend(self):
+  def _plot_drift(self, axes: plt.Axes, values_key: str,
+                  deltas_key: str = None) -> None:
+    axes.xaxis.set_major_locator(FixedLocator(self.x))
+    y = self.table[values_key]
+    if not self.table.column_is_flat(values_key):
+      self._plot_drift_distribution(axes, values_key)
+    else:
+      self._plot_drift_point(axes, y, deltas_key)
+    axes.set_xticklabels(self.x_tick_labels)
+    flattened_y = self.table_flat[values_key]
+    flattened_weights = self.table_flat['refls']
+    avg_y = average(flattened_y, weights=flattened_weights)
+    if avg_y != 0:
+      axes2 = axes.twinx()
+      axes2.set_ylim([lim / avg_y - 1 for lim in axes.get_ylim()])
+      axes2.yaxis.set_major_formatter(PercentFormatter(xmax=1))
+
+  def _plot_drift_point(self, axes: plt.Axes, y: Sequence,
+                        deltas_key: str = None) -> None:
+    axes.scatter(self.x, y, c=self.color_array)
+    y_err = self.table.get(deltas_key, [])
+    axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
+
+  def _plot_drift_distribution(self, axes: plt.Axes, values_key: str) -> None:
+    x = self.table_flat['original_index']
+    y = self.table_flat[values_key]
+    b = (len(self.x), 100)
+    r = [[-0.5, len(self.x) - 0.5], [min(x), max(y)]]
+    axes.hist2d(x, y, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)  # noqa
+    axes.scatter(self.x, [average(val) for val in self.table[values_key]],
+                 c=self.color_array, edgecolors='white')
+
+  def _plot_legend(self) -> None:
     handles, labels = self._get_handles_and_labels()
     self.axl.legend(handles, labels, loc=7)
 
-  def _plot_width_info(self):
+  def _plot_width_info(self) -> None:
     expt_lens = self.table['expts']
     refl_lens = self.table['refls'] if self.table.column_is_flat('refls') \
       else [sum(refl) for refl in self.table['refls']]
@@ -826,24 +838,18 @@ class DriftArtist(object):
     self.axl.text(x=0.5, y=0., s=s, clip_on=False, ha='center',
                   ma='center', va='top', transform=self.axl.transAxes)
 
-  def _init_draw(self):
-    self.table.sort(by=self.order_by)
-    self.table_flat = self.table.flat
-    self.axc.set_xlabel(self.x_label)
-    self.axh.set_ylabel('# expts')
-
-  def draw(self):
+  def plot(self) -> None:
     if len(self.table):
-      self._init_draw()
+      self._plot_init()
       self._plot_bars()
       self._plot_correlations()
-      self._plot_width_info()
-      self._plot_drift(self.axx, 'x', 'delta_x', top=True)
+      self._plot_drift(self.axx, 'x', 'delta_x')
       self._plot_drift(self.axy, 'y', 'delta_y')
       self._plot_drift(self.axz, 'z', 'delta_z')
       self._plot_drift(self.axa, 'a', 'delta_a')
       self._plot_drift(self.axb, 'b', 'delta_b')
       self._plot_drift(self.axc, 'c', 'delta_c')
+      self._plot_width_info()
       self._plot_legend()
     self.fig.align_labels()
     if self.parameters.plot.path:
@@ -862,9 +868,8 @@ def run(params_):
   ds = DriftScraperFactory.get_drift_scraper(table=dt, parameters=params_)
   da = DriftArtist(table=dt, parameters=params_)
   ds.scrap()
-  dt.sort(by='run')
   print(dt)
-  da.draw()
+  da.plot()
 
 
 params = []
