@@ -767,8 +767,10 @@ class DriftArtist(object):
   @property
   def x_keys(self) -> List[str]:
     is_constant = {k: self.table[k].nunique == 1 for k in self.order_by[1:]}
+    print(is_constant)
     keys_used = [self.order_by[0]]
     keys_used += [k for k in self.order_by[1:] if not is_constant[k]]
+    print(keys_used)
     return keys_used
 
   @property
@@ -801,7 +803,7 @@ class DriftArtist(object):
     ax_top = self.axx.secondary_xaxis('top')
     ax_top.tick_params(rotation=90)
     ax_top.xaxis.set_major_locator(FixedLocator(self.x))
-    ax_top.set_xticklabels(self.x_tick_labels)
+    ax_top.set_xticklabels(self.table['expts'])
 
   def _plot_correlations(self) -> None:
     keys = ['x', 'y', 'z', 'a', 'b', 'c']
