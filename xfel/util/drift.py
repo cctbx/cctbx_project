@@ -96,7 +96,7 @@ phil_scope = parse("""
         .type = str
         .help = Path to cache(s) with pickled scrap results to write/read
     }
-    origin = *first average distribution
+    origin = *first average distribution panel_com_first panel_com_average panel_com_distribution
       .type = choice
       .help = Use origin of first experiment only or average/distribution of all?
     uncertainties = True
@@ -520,6 +520,54 @@ class DistributionOriginMixin(object):
     return {'x': xs, 'y': ys, 'z': zs}
 
 
+class FirstPanelCOMOriginMixin(object):
+  @staticmethod
+  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in first expt"""
+    center_of_mass = np.array((0, 0, 0))
+    detector = expts[0].detector
+    for panel in detector:
+      fast, slow = expts[0].get_image_size()
+      for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+        center_of_mass += np.array(panel.get_pixel_lab_coord(point))
+    center_of_mass /= 4 * len(detector)
+    return {xyz: com_xyz for xyz, com_xyz in zip('xyz', center_of_mass)}
+
+
+class AveragePanelCOMOriginMixin(object):
+  @staticmethod
+  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in first expt"""
+    centers_of_mass = np.zeros(shape=(len(expts), 3))
+    for i, expt in enumerate(expts):
+      detector = expt.detector
+      for panel in detector:
+        fast, slow = expt.get_image_size()
+        for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+          centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
+      centers_of_mass[i] /= 4 * len(expt.detector)
+    return {'x': np.average(centers_of_mass[:, 0]),
+            'y': np.average(centers_of_mass[:, 1]),
+            'z': np.average(centers_of_mass[:, 2])}
+
+
+class DistributionPanelCOMOriginMixin(object):
+  @staticmethod
+  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in first expt"""
+    centers_of_mass = np.zeros(shape=(len(expts), 3))
+    for i, expt in enumerate(expts):
+      detector = expt.detector
+      for panel in detector:
+        fast, slow = expt.get_image_size()
+        for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+          centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
+      centers_of_mass[i] /= 4 * len(expt.detector)
+    return {'x': centers_of_mass[:, 0],
+            'y': centers_of_mass[:, 1],
+            'z': centers_of_mass[:, 2]}
+
+
 class FalseUncertaintiesMixin(object):
   @staticmethod
   def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
@@ -602,6 +650,9 @@ class DriftScraperFactory(object):
     'first': FirstOriginMixin,
     'average': AverageOriginMixin,
     'distribution': DistributionOriginMixin,
+    'panel_com_first': FirstPanelCOMOriginMixin,
+    'panel_com_average': AveragePanelCOMOriginMixin,
+    'panel_com_distribution': DistributionPanelCOMOriginMixin,
   }
   UNCERTAINTIES_MIXINS = {
     True: TrueUncertaintiesMixin,
