@@ -1432,7 +1432,7 @@ def assess_cryoem_errors(
     determine_ordered_volume=True,
     ordered_mask_id='ordered_volume_mask', sphere_points=500,
     sphere_cent=None, radius=None,
-    verbosity=1, shift_map_origin=True, keep_full_map=False):
+    verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
   Assume (but check) that half-maps come from full cell, not boxed.
@@ -1469,7 +1469,7 @@ def assess_cryoem_errors(
   from iotbx.map_model_manager import map_model_manager
 
   if verbosity > 0:
-    print("\nPrepare map for docking by analysing signal and errors")
+    print("\nPrepare map for docking by analysing signal and errors", file=log)
 
   # Start from two half-maps and ordered volume mask in map_model_manager
   # Determine ordered volume in whole reconstruction and fraction that will be in sphere
@@ -1680,7 +1680,7 @@ def assess_cryoem_errors(
   wilson_scale_signal = math.exp(intercept)
   wilson_b_signal = -4 * slope
   if verbosity > 0:
-    print("\n  Wilson B for signal power: ", wilson_b_signal)
+    print("\n  Wilson B for signal power: ", wilson_b_signal, file=log)
   n_bins = ssqr_bins.size()
 
   sigmaT_bins = [1.]*n_bins
@@ -1737,17 +1737,17 @@ def assess_cryoem_errors(
   make_intermediate_files = False
 
   if verbosity > 0:
-    print("\nRefinement of scales and error terms completed\n")
-    print("\nParameters for A and BEST curve correction")
-    print("  A overall scale: ",math.sqrt(asqr_scale))
+    print("\nRefinement of scales and error terms completed\n", file=log)
+    print("\nParameters for A and BEST curve correction", file=log)
+    print("  A overall scale: ",math.sqrt(asqr_scale), file=log)
     for i_bin in range(n_bins):
-      print("  Bin #", i_bin + 1, "BEST curve correction: ", sigmaT_bins[i_bin])
-    print("  A tensor as beta:", a_beta)
-    print("  A tensor as Baniso: ", a_baniso)
+      print("  Bin #", i_bin + 1, "BEST curve correction: ", sigmaT_bins[i_bin], file=log)
+    print("  A tensor as beta:", a_beta, file=log)
+    print("  A tensor as Baniso: ", a_baniso, file=log)
     es = adptbx.eigensystem(a_baniso)
-    print("  Eigenvalues and eigenvectors:")
+    print("  Eigenvalues and eigenvectors:", file=log)
     for iv in range(3):
-      print("  ",es.values()[iv],es.vectors(iv))
+      print("  ",es.values()[iv],es.vectors(iv), file=log)
 
     sys.stdout.flush()
 
@@ -1762,8 +1762,8 @@ def assess_cryoem_errors(
   i_bin_used = 0 # Keep track in case full range of bins not used
   weighted_map_noise = 0.
   if verbosity > 0:
-    print("MapCC before and after rescaling as a function of resolution")
-    print("Bin   <ssqr>   mapCC_before   mapCC_after")
+    print("MapCC before and after rescaling as a function of resolution", file=log)
+    print("Bin   <ssqr>   mapCC_before   mapCC_after", file=log)
   for i_bin in mc1.binner().range_used():
     sel = expectE.binner().selection(i_bin)
     eEsel = expectE.select(sel)
@@ -1816,7 +1816,7 @@ def assess_cryoem_errors(
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
     if verbosity > 0:
-      print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC)
+      print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC, file=log)
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
 
@@ -1850,9 +1850,9 @@ def assess_cryoem_errors(
 
   if verbosity > 0:
     if determine_ordered_volume:
-      print("Fraction of full map scattering: ",fraction_scattering)
-    print("Over-sampling factor: ",over_sampling_factor)
-    print("Weighted map noise: ",weighted_map_noise)
+      print("Fraction of full map scattering: ",fraction_scattering, file=log)
+    print("Over-sampling factor: ",over_sampling_factor, file=log)
+    print("Weighted map noise: ",weighted_map_noise, file=log)
     sys.stdout.flush()
 
   # Return a map_model_manager with the weighted map
