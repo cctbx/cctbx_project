@@ -30,7 +30,7 @@ pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 25)
 pd.set_option('display.max_colwidth', 20)
 
-message = '''
+message = """
 This script collects and visualizes the spatial drift of a detector and unit
 cell parameters as a function of experimental progress. It requires
 the directory structure to follow the one resulting from data processing
@@ -67,13 +67,13 @@ Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
     scrap.input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory
-'''
+"""
 
 
 ################################ PHIL HANDLING ################################
 
 
-phil_scope = parse('''
+phil_scope = parse("""
   scrap {
     input {
       glob = None
@@ -129,7 +129,7 @@ phil_scope = parse('''
       .type = float
       .help = Width of saved plot in inches
   }
-''')
+""")
 
 
 def params_from_phil(args):
