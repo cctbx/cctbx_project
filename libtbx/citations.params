@@ -30,7 +30,7 @@ author {
 }
 
 author {
-  name = Millan C
+  name = Millán C
   orcid = 0000-0002-9283-2220
 }
 
@@ -1553,7 +1553,7 @@ citation {
 
 citation {
   article_id = emplacement_theory
-  authors = Read RJ, Millan C, McCoy AJ, Terwilliger TC
+  authors = Read RJ, Millán C, McCoy AJ, Terwilliger TC
   title = Likelihood-based signal and noise analysis for docking of models into cryo-EM maps
   journal = Acta Cryst. D
   volume = 79
@@ -1565,7 +1565,7 @@ citation {
 
 citation {
   article_id = emplacement_program
-  authors = Millan C, McCoy AJ, Terwilliger TC, Read RJ
+  authors = Millán C, McCoy AJ, Terwilliger TC, Read RJ
   title = Likelihood-based docking of models into cryo-EM maps
   journal = Acta Cryst. D
   volume = 79
