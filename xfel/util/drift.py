@@ -849,7 +849,7 @@ class DriftArtist(object):
     x = self.table_flat['original_index']
     y = self.table_flat[values_key]
     b = (len(self.x), 100)
-    r = [[-0.5, len(self.x) - 0.5], [min(x), max(y)]]
+    r = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
     axes.hist2d(x, y, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)  # noqa
     axes.scatter(self.x, [average(val) for val in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
