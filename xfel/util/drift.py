@@ -26,6 +26,10 @@ import numpy as np
 import pandas as pd
 
 
+pd.set_option('display.max_rows', 100)
+pd.set_option('display.max_columns', 25)
+pd.set_option('display.max_colwidth', 20)
+
 message = '''
 This script collects and visualizes the spatial drift of a detector and unit
 cell parameters as a function of experimental progress. It requires
