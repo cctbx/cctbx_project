@@ -563,9 +563,6 @@ class DistributionPanelCOMOriginMixin(object):
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
-    print({'x': centers_of_mass[:, 0],
-            'y': centers_of_mass[:, 1],
-            'z': centers_of_mass[:, 2]})
     return {'x': flex.double(np.copy(centers_of_mass[:, 0])),
             'y': flex.double(np.copy(centers_of_mass[:, 1])),
             'z': flex.double(np.copy(centers_of_mass[:, 2]))}
