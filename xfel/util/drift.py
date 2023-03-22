@@ -567,17 +567,19 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             self.scrap_results.append(scrap_dict)
 
 
-class FirstOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+class DriftScraperMixin(object):
+  scrap_results: ScrapResults
+
+
+class FirstOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read detector origin (x, y, z) from the first expt file only"""
     x, y, z = expts[0].detector.hierarchy().get_origin()
     return {'x': x, 'y': y, 'z': z}
 
 
-class AverageOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+class AverageOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read detector origin (x, y, z) from all files & return their average"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -585,12 +587,12 @@ class AverageOriginMixin(object):
       xs.append(x)
       ys.append(y)
       zs.append(z)
-    return {'x': flex.mean(xs), 'y': flex.mean(ys), 'z': flex.mean(zs)}
+    weights = self.scrap_results[-1]['refls']
+    return {k: average(v, weights) for k, v in zip('xyz', (xs, ys, zs))}
 
 
-class DistributionOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, flex.double]:
+class DistributionOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
     """Read detector origin (x, y, z) from all files & return flex with all"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -601,9 +603,8 @@ class DistributionOriginMixin(object):
     return {'x': xs, 'y': ys, 'z': zs}
 
 
-class FirstPanelCOMOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
+class FirstPanelCOMOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
     center_of_mass = np.array((0, 0, 0), dtype=float)
     detector = expts[0].detector
@@ -615,10 +616,9 @@ class FirstPanelCOMOriginMixin(object):
     return {xyz: com_xyz for xyz, com_xyz in zip('xyz', center_of_mass)}
 
 
-class AveragePanelCOMOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
-    """Read average (x, y, z) position of all detector panels in first expt"""
+class AveragePanelCOMOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in all expts"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
       detector = expt.detector
@@ -627,15 +627,15 @@ class AveragePanelCOMOriginMixin(object):
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
-    return {'x': np.average(centers_of_mass[:, 0]),
-            'y': np.average(centers_of_mass[:, 1]),
-            'z': np.average(centers_of_mass[:, 2])}
+    weights = self.scrap_results[-1]['refls']
+    return {'x': average(centers_of_mass[:, 0], weights),
+            'y': average(centers_of_mass[:, 1], weights),
+            'z': average(centers_of_mass[:, 2], weights)}
 
 
-class DistributionPanelCOMOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
-    """Read average (x, y, z) position of all detector panels in first expt"""
+class DistributionPanelCOMOriginMixin(DriftScraperMixin):
+  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in every expt"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
       detector = expt.detector
@@ -649,7 +649,7 @@ class DistributionPanelCOMOriginMixin(object):
             'z': flex.double(np.copy(centers_of_mass[:, 2]))}
 
 
-class FalseUncertaintiesMixin(object):
+class FalseUncertaintiesMixin(DriftScraperMixin):
   @staticmethod
   def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
           -> Dict[str, float]:
@@ -657,7 +657,7 @@ class FalseUncertaintiesMixin(object):
     return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
 
 
-class TrueUncertaintiesMixin(object):
+class TrueUncertaintiesMixin(DriftScraperMixin):
   @staticmethod
   def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
           -> Dict[str, float]:
@@ -674,7 +674,7 @@ class TrueUncertaintiesMixin(object):
     return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
 
 
-class BaseUnitCellMixin(object):
+class BaseUnitCellMixin(DriftScraperMixin):
   @staticmethod
   def _write_tdata(expts: ExperimentList, tdata_path: str) -> None:
     """Read all expt_paths and write a tdata file with unit cells in lines"""
@@ -700,7 +700,8 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
           af.append(float(a))
           bf.append(float(b))
           cf.append(float(c))
-    return {'a': flex.mean(af), 'b': flex.mean(bf), 'c': flex.mean(cf),
+    wg = self.scrap_results[-1]['refls']  # weights
+    return {'a': average(af, wg), 'b': average(bf, wg), 'c': average(cf, wg),
             'delta_a': af.standard_deviation_of_the_sample(),
             'delta_b': bf.standard_deviation_of_the_sample(),
             'delta_c': cf.standard_deviation_of_the_sample()}
@@ -754,7 +755,7 @@ class DriftScraperFactory(object):
       cls.UNIT_CELL_MIXINS[parameters.scrap.unit_cell],
     ]
     class DriftScraper(base, *mixins):
-      pass
+      """The actual data scraping class generated based on phil parameters"""
     return DriftScraper(table=table, parameters=parameters)
 
 
