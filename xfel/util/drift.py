@@ -179,14 +179,22 @@ def average(xs: Sequence, weights: Sequence = None) -> float:
 def correlation(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
   """Calculate weighted Pearson's correlation coefficient between sequences"""
   weights = np.ones((len(xs))) if weights is None else np.array(weights)
-  x_variance = variance(xs, xs, weights=weights)
-  y_variance = variance(ys, ys, weights=weights)
-  covariance = variance(xs, ys, weights=weights)
-  return covariance / (x_variance * y_variance) ** 0.5
+  x_variance = variance(xs, weights=weights)
+  y_variance = variance(ys, weights=weights)
+  xy_covariance = covariance(xs, ys, weights=weights)
+  return xy_covariance / (x_variance * y_variance) ** 0.5
 
 
-def variance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
-  """Calculate weighted variance between sequences"""
+def variance(xs: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted variance of a sequence"""
+  weights = np.ones((len(xs))) if weights is None else np.array(weights)
+  x_average = average(xs, weights=weights)
+  x_deviations = np.array(xs) - x_average
+  return sum(weights * x_deviations * x_deviations) / sum(weights)
+
+
+def covariance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted covariance between two sequences"""
   weights = np.ones((len(xs))) if weights is None else np.array(weights)
   x_average = average(xs, weights=weights)
   y_average = average(ys, weights=weights)
@@ -717,11 +725,13 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
           af.append(float(a))
           bf.append(float(b))
           cf.append(float(c))
-    wg = self.scrap_dict['refls']  # weights
-    return {'a': average(af, wg), 'b': average(bf, wg), 'c': average(cf, wg),
-            'delta_a': np.sqrt(variance(af, wg)),
-            'delta_b': np.sqrt(variance(bf, wg)),
-            'delta_c': np.sqrt(variance(cf, wg))}
+    weights = self.scrap_dict['refls']  # weights
+    return {'a': average(af, weights),
+            'b': average(bf, weights),
+            'c': average(cf, weights),
+            'delta_a': np.sqrt(variance(af, weights)),
+            'delta_b': np.sqrt(variance(bf, weights)),
+            'delta_c': np.sqrt(variance(cf, weights))}
 
 
 class DistributionUnitCellMixin(BaseUnitCellMixin):
@@ -738,11 +748,11 @@ class DistributionUnitCellMixin(BaseUnitCellMixin):
           af.append(float(a))
           bf.append(float(b))
           cf.append(float(c))
-    wg = self.scrap_dict['refls']
+    weights = self.scrap_dict['refls']
     return {'a': af, 'b': bf, 'c': cf,
-            'delta_a': np.sqrt(variance(af, wg)),
-            'delta_b': np.sqrt(variance(bf, wg)),
-            'delta_c': np.sqrt(variance(cf, wg))}
+            'delta_a': np.sqrt(variance(af, weights)),
+            'delta_b': np.sqrt(variance(bf, weights)),
+            'delta_c': np.sqrt(variance(cf, weights))}
 
 
 class DriftScraperFactory(object):
