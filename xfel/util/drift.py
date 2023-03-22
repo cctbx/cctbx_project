@@ -566,9 +566,9 @@ class DistributionPanelCOMOriginMixin(object):
     print({'x': centers_of_mass[:, 0],
             'y': centers_of_mass[:, 1],
             'z': centers_of_mass[:, 2]})
-    return {'x': flex.double(centers_of_mass[:, 0]),
-            'y': flex.double(centers_of_mass[:, 1]),
-            'z': flex.double(centers_of_mass[:, 2])}
+    return {'x': flex.double(np.copy(centers_of_mass[:, 0])),
+            'y': flex.double(np.copy(centers_of_mass[:, 1])),
+            'z': flex.double(np.copy(centers_of_mass[:, 2]))}
 
 
 class FalseUncertaintiesMixin(object):
