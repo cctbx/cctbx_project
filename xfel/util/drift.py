@@ -524,7 +524,7 @@ class FirstPanelCOMOriginMixin(object):
   @staticmethod
   def get_origin(expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
-    center_of_mass = np.array((0, 0, 0))
+    center_of_mass = np.array((0, 0, 0), dtype=float)
     detector = expts[0].detector
     for panel in detector:
       fast, slow = panel.get_image_size()
@@ -538,7 +538,7 @@ class AveragePanelCOMOriginMixin(object):
   @staticmethod
   def get_origin(expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
-    centers_of_mass = np.zeros(shape=(len(expts), 3))
+    centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
       detector = expt.detector
       for panel in detector:
@@ -555,7 +555,7 @@ class DistributionPanelCOMOriginMixin(object):
   @staticmethod
   def get_origin(expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
-    centers_of_mass = np.zeros(shape=(len(expts), 3))
+    centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
       detector = expt.detector
       for panel in detector:
