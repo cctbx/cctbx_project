@@ -225,7 +225,7 @@ class CorrelationMatrix(object):
           self.corr[k1][k2] = self.corr[k2][k1] = corr
 
   def __str__(self) -> str:
-    s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
+    s = 'wPPC    ' + ' '.join('{:>7}'.format(k) for k in self.keys)
     for k1 in self.keys:
       s += '\n{:7}'.format(k1)
       for k2 in self.keys:
@@ -619,7 +619,7 @@ class DistributionOriginMixin(DriftScraperMixin):
 
 class FirstPanelCOMOriginMixin(DriftScraperMixin):
   @autoupdate_scrap_dict_with_return
-  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
     center_of_mass = np.array((0, 0, 0), dtype=float)
     detector = expts[0].detector
@@ -633,7 +633,7 @@ class FirstPanelCOMOriginMixin(DriftScraperMixin):
 
 class AveragePanelCOMOriginMixin(DriftScraperMixin):
   @autoupdate_scrap_dict_with_return
-  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in all expts"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
@@ -651,7 +651,7 @@ class AveragePanelCOMOriginMixin(DriftScraperMixin):
 
 class DistributionPanelCOMOriginMixin(DriftScraperMixin):
   @autoupdate_scrap_dict_with_return
-  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
     """Read average (x, y, z) position of all detector panels in every expt"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
     for i, expt in enumerate(expts):
@@ -668,16 +668,15 @@ class DistributionPanelCOMOriginMixin(DriftScraperMixin):
 
 class FalseUncertaintiesMixin(DriftScraperMixin):
   @autoupdate_scrap_dict_with_return
-  def get_origin_deltas(self, expts: ExperimentList,
-                        refls: flex.reflection_table) -> Dict[str, float]:
+  def scrap_origin_deltas(self, *_) -> Dict[str, float]:
     """If uncertainties=False, return dummy zero origin uncertainties"""
     return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
 
 
 class TrueUncertaintiesMixin(DriftScraperMixin):
   @autoupdate_scrap_dict_with_return
-  def get_origin_deltas(self, expts: ExperimentList,
-                        refls: flex.reflection_table) -> Dict[str, float]:
+  def scrap_origin_deltas(self, expts: ExperimentList,
+                          refls: flex.reflection_table) -> Dict[str, float]:
     """Get uncertainties of origin positions from refl. position deviations"""
     deltas_flex = flex.vec3_double()
     for panel in expts[0].detector:
@@ -707,7 +706,7 @@ class BaseUnitCellMixin(DriftScraperMixin):
 
 class AverageUnitCellMixin(BaseUnitCellMixin):
   @autoupdate_scrap_dict_with_return
-  def get_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
+  def scrap_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
     with tempfile.NamedTemporaryFile() as tdata_file:
@@ -727,7 +726,7 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
 
 class DistributionUnitCellMixin(BaseUnitCellMixin):
   @autoupdate_scrap_dict_with_return
-  def get_unit_cell(self, expts: ExperimentList) \
+  def scrap_unit_cell(self, expts: ExperimentList) \
           -> Dict[str, Union[flex.double, float]]:
     """Retrieve distribution of a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
