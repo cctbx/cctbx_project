@@ -376,20 +376,32 @@ class any_file_input(object):
       self._file_object = cif_file
       self._file_type = "hkl"
     else:
-      from iotbx.pdb.mmcif import cif_input
-      from iotbx.pdb.hierarchy import input_hierarchy_pair
-      try:
-        cif_in = cif_input(file_name=self.file_name)
-        self._file_object = input_hierarchy_pair(cif_in, cif_in.hierarchy)
+      # Try to read as simple cif model file.  If it fails, use the
+      #  input_hierarchy_pair reader as previously (totally unknown
+      #  function or reason for this reader. See:
+      #    modules/cctbx_project/iotbx/pdb/hierarchy.py
+      try :
+        pdb_inp = iotbx.pdb.hierarchy.input(self.file_name)
+        self._file_object = pdb_inp
         self._file_type = "pdb"
-      except Exception as e:
-        if (str(e).startswith("Space group is incompatible") or
-            str(e).startswith("The space group") ):
-          raise
-        else:
-          self._file_object = iotbx.cif.reader(file_path=self.file_name,
-            strict=False)
-          self._file_type = "cif"
+      except ValueError as e :
+        self._file_object = None
+
+      if not self._file_object:
+        from iotbx.pdb.mmcif import cif_input
+        from iotbx.pdb.hierarchy import input_hierarchy_pair
+        try:
+          cif_in = cif_input(file_name=self.file_name)
+          self._file_object = input_hierarchy_pair(cif_in, cif_in.hierarchy)
+          self._file_type = "pdb"
+        except Exception as e:
+          if (str(e).startswith("Space group is incompatible") or
+              str(e).startswith("The space group") ):
+            raise
+          else:
+            self._file_object = iotbx.cif.reader(file_path=self.file_name,
+              strict=False)
+            self._file_type = "cif"
 
   def _try_as_phil(self):
     from iotbx.phil import parse as parse_phil
