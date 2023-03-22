@@ -394,6 +394,16 @@ class ScrapResults(UserList):
       pickle.dump(self, pickle_file)
 
 
+def autoupdate_scrap_dict_with_return(scrap_method: Callable) -> Callable:
+  @functools.wraps(scrap_method)
+  def scrap_wrapper(self: Union['BaseDriftScraper', 'DriftScraperMixin'],
+                    *args: Any, **kwargs: Any):
+    scraped = scrap_method(self, *args, **kwargs)
+    self.scrap_dict.update(scraped)
+    return scraped
+  return scrap_wrapper
+
+
 def handle_scrap_cache(scrap: Callable) -> Callable:
   @functools.wraps(scrap)
   def scrap_wrapper(self: 'BaseDriftScraper', *args: Any, **kwargs: Any):
@@ -437,21 +447,6 @@ class BaseDriftScraper(object):
       refls_lens.append((expt_id == refls['id']).count(True))
     return expts_len, refls_lens
 
-  @staticmethod
-  def extract_db_metadata(combine_phil_path: str) -> dict:
-    """Get trial, task, rungroup, chunk, run info based on combining phil"""
-    parsed_combine_phil = parse(file_name=combine_phil_path)
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
-    index_dirs = [path_join(pie, '..') for pie in phil.input.experiments]
-    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
-    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
-    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
-    return {'chunk': int(path_split(combine_phil_path)[-1][16:19]),
-            'run': represent_range_as_str(runs),
-            'rungroup': represent_range_as_str(rungroups),
-            'task': path_split(combine_phil_path)[-4],
-            'trial': represent_range_as_str(trials)}
-
   def locate_input_paths(self) -> List:
     """Return all paths (either common files or directories, relative to
     working directory) of specified kind to be processed"""
@@ -491,6 +486,21 @@ class BaseDriftScraper(object):
     refls = read_reflections(*refls_paths)
     return expts, refls
 
+  @autoupdate_scrap_dict_with_return
+  def scrap_db_metadata(self, combine_phil_path: str) -> dict:
+    """Get trial, task, rungroup, chunk, run info based on combining phil"""
+    parsed_combine_phil = parse(file_name=combine_phil_path)
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
+    index_dirs = [path_join(pie, '..') for pie in phil.input.experiments]
+    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
+    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
+    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
+    return {'chunk': int(path_split(combine_phil_path)[-1][16:19]),
+            'run': represent_range_as_str(runs),
+            'rungroup': represent_range_as_str(rungroups),
+            'task': path_split(combine_phil_path)[-4],
+            'trial': represent_range_as_str(trials)}
+
   @abc.abstractmethod
   @handle_scrap_cache
   def scrap(self) -> None:
@@ -513,15 +523,15 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
     for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
       try:
         self.scrap_dict = {'merge': "None"}
-        self.scrap_dict.update(self.extract_db_metadata(cpp))
+        self.scrap_db_metadata(cpp)
         print(f'Processing run {self.scrap_dict["run"]}')
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         print(f'Found {elen} expts and {sum(rlen)} refls')
         self.scrap_dict.update({'expts': elen, 'refls': rlen})
-        self.scrap_dict.update(self.get_origin(refined_expts))
-        self.scrap_dict.update(self.get_unit_cell(refined_expts))
-        self.scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
+        self.scrap_origin(refined_expts)
+        self.scrap_unit_cell(refined_expts)
+        self.scrap_origin_deltas(refined_expts, refined_refls)
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
       else:
@@ -549,7 +559,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
         for cpp in unique_elements(comb_phil_paths):
           try:
             self.scrap_dict = {'merge': merge}
-            self.scrap_dict.update(self.extract_db_metadata(cpp))
+            self.scrap_db_metadata(cpp)
             print(f'Processing run {self.scrap_dict["run"]} in merge {merge}')
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
@@ -559,9 +569,9 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Accepted {elen} expts and {sum(rlen)} refls')
             self.scrap_dict.update({'expts': elen, 'refls': rlen})
-            self.scrap_dict.update(self.get_origin(refined_expts))
-            self.scrap_dict.update(self.get_unit_cell(refined_expts))
-            self.scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
+            self.scrap_origin(refined_expts)
+            self.scrap_unit_cell(refined_expts)
+            self.scrap_origin_deltas(refined_expts, refined_refls)
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
@@ -573,14 +583,16 @@ class DriftScraperMixin(object):
 
 
 class FirstOriginMixin(DriftScraperMixin):
-  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read detector origin (x, y, z) from the first expt file only"""
     x, y, z = expts[0].detector.hierarchy().get_origin()
     return {'x': x, 'y': y, 'z': z}
 
 
 class AverageOriginMixin(DriftScraperMixin):
-  def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read detector origin (x, y, z) from all files & return their average"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -593,7 +605,8 @@ class AverageOriginMixin(DriftScraperMixin):
 
 
 class DistributionOriginMixin(DriftScraperMixin):
-  def get_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
     """Read detector origin (x, y, z) from all files & return flex with all"""
     xs, ys, zs = flex.double(), flex.double(), flex.double()
     for expt in expts:
@@ -605,6 +618,7 @@ class DistributionOriginMixin(DriftScraperMixin):
 
 
 class FirstPanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
   def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in first expt"""
     center_of_mass = np.array((0, 0, 0), dtype=float)
@@ -618,6 +632,7 @@ class FirstPanelCOMOriginMixin(DriftScraperMixin):
 
 
 class AveragePanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
   def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in all expts"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
@@ -635,6 +650,7 @@ class AveragePanelCOMOriginMixin(DriftScraperMixin):
 
 
 class DistributionPanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
   def get_origin(self, expts: ExperimentList) -> Dict[str, float]:
     """Read average (x, y, z) position of all detector panels in every expt"""
     centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
@@ -651,17 +667,17 @@ class DistributionPanelCOMOriginMixin(DriftScraperMixin):
 
 
 class FalseUncertaintiesMixin(DriftScraperMixin):
-  @staticmethod
-  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
-          -> Dict[str, float]:
+  @autoupdate_scrap_dict_with_return
+  def get_origin_deltas(self, expts: ExperimentList,
+                        refls: flex.reflection_table) -> Dict[str, float]:
     """If uncertainties=False, return dummy zero origin uncertainties"""
     return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
 
 
 class TrueUncertaintiesMixin(DriftScraperMixin):
-  @staticmethod
-  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
-          -> Dict[str, float]:
+  @autoupdate_scrap_dict_with_return
+  def get_origin_deltas(self, expts: ExperimentList,
+                        refls: flex.reflection_table) -> Dict[str, float]:
     """Get uncertainties of origin positions from refl. position deviations"""
     deltas_flex = flex.vec3_double()
     for panel in expts[0].detector:
@@ -690,6 +706,7 @@ class BaseUnitCellMixin(DriftScraperMixin):
 
 
 class AverageUnitCellMixin(BaseUnitCellMixin):
+  @autoupdate_scrap_dict_with_return
   def get_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
     """Retrieve average a, b, c and their deltas using expt paths"""
     af, bf, cf = flex.double(), flex.double(), flex.double()
@@ -709,6 +726,7 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
 
 
 class DistributionUnitCellMixin(BaseUnitCellMixin):
+  @autoupdate_scrap_dict_with_return
   def get_unit_cell(self, expts: ExperimentList) \
           -> Dict[str, Union[flex.double, float]]:
     """Retrieve distribution of a, b, c and their deltas using expt paths"""
