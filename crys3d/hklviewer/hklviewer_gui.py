@@ -1319,4 +1319,3 @@ class Ui_MainWindow(object):
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi
-

@@ -628,7 +628,7 @@ class HKLViewFrame() :
           return
 
       if jsview_3d.has_phil_path(diff_phil, "savefilename"):
-        self.SaveReflectionsFile(phl.savefilename)
+        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
       phl.savefilename = None # ensure the same action in succession can be executed
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
@@ -1246,16 +1246,22 @@ Borrowing them from the first miller array""" %i)
     self.params.use_provided_miller_arrays = True
 
 
-  def SaveReflectionsFile(self, savefilename):
+  def SaveReflectionsFile(self, savefilename, datasets_to_save):
+    if datasets_to_save is None or len(datasets_to_save) <1:
+      self.mprint("Choose one or more datasets to save to a new datafile")
+      return
+    datasets_to_save.sort()
     if self.loaded_file_name == savefilename:
       self.mprint("Not overwriting currently loaded file. Choose a different name!")
       return
     self.mprint("Saving file...")
     fileextension = os.path.splitext(savefilename)[1]
     if fileextension == ".mtz":
-      mtz1 = self.viewer.proc_arrays[0].as_mtz_dataset(column_root_label= self.viewer.proc_arrays[0].info().labels[0])
+      idx1 = datasets_to_save[0]
+      # create mtzdata file from the first selected dataset
+      mtz1 = self.viewer.proc_arrays[idx1].as_mtz_dataset(column_root_label= self.viewer.proc_arrays[idx1].info().labels[0])
       for i,arr in enumerate(self.viewer.proc_arrays):
-        if i==0:
+        if i not in datasets_to_save[1:]: # add the other selected datasets to the mtzfile
           continue
         mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
       try: # python2 or 3
@@ -1275,6 +1281,8 @@ Borrowing them from the first miller array""" %i)
           print(mycif.cif_block, file= f)
 
       for i,arr in enumerate(self.viewer.proc_arrays):
+        if i not in datasets_to_save: # add the selected datasets to the mtzfile
+          continue
         arrtype = None
         colnames = ["_refln.%s" %e for e in arr.info().labels ]
         colname= None
@@ -1993,6 +2001,9 @@ master_phil_str = """
   savefilename = None
     .type = path
     .help = "Name of file where the user wants to save datasets. Optionally used after making new datasets from existing ones"
+  datasets_to_save = None
+    .type = ints
+    .help = "Indices in the list of datasets on the Details tab to save. If list is empty or None all datasets will be saved"
   visible_dataset_label = None
     .type = path
     .help = "User supplied label for a new dataset of visible reflections, i.e. those which have opacity=1"

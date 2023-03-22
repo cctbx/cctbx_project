@@ -743,12 +743,21 @@ newarray._sigmas = sigs
 
 
   def onSaveReflectionFile(self):
+    if len(self.millertable.selectedrows) ==0:
+      QMessageBox.warning(self.window, "HKLviewer",
+        "First highlight one or more datasets in the table of datasets to save them as a new datafile", buttons=QMessageBox.Ok)
+      return
+
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
             "Save datasets to a new reflection file", "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
-      self.send_message('savefilename = "%s"' %fileName )
+      self.send_message('''
+savefilename = "%s"
+datasets_to_save = %s'''
+                        %(fileName, " ".join([ str(e) for e in self.millertable.selectedrows] ))
+                        )
 
 
   def SettingsDialog(self):
