@@ -1132,7 +1132,13 @@ public:
 
   // returns a list of independent and variable params
   af::shared<parameter*> independent() const;
-  
+  /* cross checks the independet params returned by independent() against the
+  actual scatterer params. The return value size matches the input but some
+  elements might be null if the parameter is 'truly' independent
+  */
+  af::shared<asu_parameter*> independent_owners(
+    af::shared<parameter*> const & params) const;
+
   // returns the unit cell associated with this object
   uctbx::unit_cell const& unit_cell() const {
     return unit_cell_;
