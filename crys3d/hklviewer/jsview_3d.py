@@ -511,6 +511,9 @@ class HKLview_3d:
       if has_phil_path(diff_phil, "vector_width"):
         self.SetVectorWidth(self.params.NGL.vector_width)
 
+      if has_phil_path(diff_phil, "hkldist"):
+        self.visual_symHKLs = []
+
       if has_phil_path(diff_phil, "show_vector",
                                   "real_space_unit_cell_scale_fraction",
                                   "reciprocal_unit_cell_scale_fraction"):
@@ -1666,10 +1669,12 @@ class HKLview_3d:
           self.GetReflectionsInFrustum()
         elif "MoveClipPlanesUp" in message:
           self.params.clip_plane.hkldist += 1
+          self.visual_symHKLs = []
           self.set_volatile_params(use_semaphore=False)
           philchanged = True
         elif "MoveClipPlanesDown" in message:
           self.params.clip_plane.hkldist -= 1
+          self.visual_symHKLs = []
           self.set_volatile_params(use_semaphore=False)
           philchanged = True
         elif "RenderStageObjects" in message: # reflections have been drawn
@@ -2223,8 +2228,8 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def visualise_sym_HKLs(self):
+    self.RemovePrimitives("sym_HKLs")
     if len(self.visual_symHKLs):
-      self.RemovePrimitives("sym_HKLs")
       for i,(hkl,hklstr) in enumerate(self.visual_symHKLs):
         thkl = tuple(hkl)
         hklstr = "H,K,L: %d,%d,%d" %thkl
