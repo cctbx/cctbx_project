@@ -290,6 +290,87 @@ def unique_elements(sequence: Sequence) -> List:
   return list(OrderedDict.fromkeys(sequence))
 
 
+################################ DRIFT STORAGE ################################
+
+
+class DriftTable(object):
+  """Class responsible for storing all info collected by `DriftScraper`"""
+  STATIC_KEYS = ['merge', 'run', 'rungroup', 'trial', 'chunk', 'task',
+                 'x', 'y', 'z', 'delta_x', 'delta_y', 'delta_z', 'expts',
+                 'refls', 'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
+  DYNAMIC_KEYS = ['density']
+
+  def __init__(self):
+    self.data = pd.DataFrame()
+
+  def __getitem__(self, key: str) -> pd.Series:
+    if key in self.DYNAMIC_KEYS:
+      self.recalculate_dynamic_column(key)
+    return self.data[key]
+
+  def __len__(self) -> int:
+    return len(self.data.index)
+
+  def __str__(self) -> str:
+    for key in self.DYNAMIC_KEYS:
+      self.recalculate_dynamic_column(key)
+    return str(self.data)
+
+  def add(self, d: dict) -> None:
+    d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
+    d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
+    if d_is_bumpy or d_is_all_flat:
+      d2 = d
+    else:  # if only 'refls' column is iterable, immediately sum it
+      d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
+    pd_kwargs = {'index': [0]} #{} if d_is_bumpy else {'index': [0]}
+    new_rows = pd.DataFrame(d2, **pd_kwargs)
+    self.data = pd.concat([self.data, new_rows], ignore_index=True)
+
+  def get(self, key: str, default: Any = None) -> pd.Series:
+    return self[key] if key in self.data.columns else default
+
+  def sort(self, by: Union[str, Sequence[str]]) -> None:
+    self.data.sort_values(by=by, ignore_index=True)
+
+  def column_is_flat(self, key: str) -> bool:
+    return not is_iterable(self[key][0])
+
+  @property
+  def flat(self) -> pd.DataFrame:
+    """Pandas' data `DataFrame` with all iterable fields expanded over rows"""
+    c = self.column_is_flat
+    col_names = self.data.columns
+    flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
+    set_all_expt_count_to_1 = False
+    flat_sub_tables = []
+    for i, row in enumerate(self.data.itertuples(index=False)):
+      lens = [len(el) for el in row if is_iterable(el)]
+      if len(unique_elements(lens)) > 1:
+        raise ValueError('All row elements must be scalars or same-length')
+      elif len(unique_elements(lens)) == 1:
+        flat_rows = zip(*[f(cell) for cell, f in zip(row, flatteners)])
+        flat_columns = [flat_col for flat_col in zip(*flat_rows)]
+        set_all_expt_count_to_1 = True
+      else:
+        flat_columns = [[cell] for cell in row]
+      fst = pd.DataFrame({k: v for k, v in zip(col_names, flat_columns)})
+      fst['original_index'] = i
+      flat_sub_tables.append(fst)
+    flat_table = pd.concat(flat_sub_tables, ignore_index=True)
+    if set_all_expt_count_to_1:
+      flat_table['expts'] = 1
+    return flat_table
+
+  def recalculate_dynamic_column(self, key: str) -> None:
+    if key == 'density':
+      refls = self.data['refls'] if self.column_is_flat('refls') \
+        else pd.Series([sum(refl) for refl in self.data['refls']])
+      self.data['density'] = refls / self.data['expts']
+    else:
+      raise KeyError(f'Unknown dynamic column key: {key}')
+
+
 ############################### DRIFT SCRAPPING ###############################
 
 
@@ -664,7 +745,7 @@ class DriftScraperFactory(object):
   }
 
   @classmethod
-  def get_drift_scraper(cls, table: 'DriftTable', parameters) \
+  def get_drift_scraper(cls, table: DriftTable, parameters) \
           -> BaseDriftScraper:
     base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
     mixins = [
@@ -675,87 +756,6 @@ class DriftScraperFactory(object):
     class DriftScraper(base, *mixins):
       pass
     return DriftScraper(table=table, parameters=parameters)
-
-
-################################ DRIFT STORAGE ################################
-
-
-class DriftTable(object):
-  """Class responsible for storing all info collected by `DriftScraper`"""
-  STATIC_KEYS = ['merge', 'run', 'rungroup', 'trial', 'chunk', 'task',
-                 'x', 'y', 'z', 'delta_x', 'delta_y', 'delta_z', 'expts',
-                 'refls', 'a', 'b', 'c', 'delta_a', 'delta_b', 'delta_c']
-  DYNAMIC_KEYS = ['density']
-
-  def __init__(self):
-    self.data = pd.DataFrame()
-
-  def __getitem__(self, key: str) -> pd.Series:
-    if key in self.DYNAMIC_KEYS:
-      self.recalculate_dynamic_column(key)
-    return self.data[key]
-
-  def __len__(self) -> int:
-    return len(self.data.index)
-
-  def __str__(self) -> str:
-    for key in self.DYNAMIC_KEYS:
-      self.recalculate_dynamic_column(key)
-    return str(self.data)
-
-  def add(self, d: dict) -> None:
-    d_is_bumpy = any(is_iterable(d[k]) for k in d.keys() if k != 'refls')
-    d_is_all_flat = all(not is_iterable(d[k]) for k in d.keys())
-    if d_is_bumpy or d_is_all_flat:
-      d2 = d
-    else:  # if only 'refls' column is iterable, immediately sum it
-      d2 = {k: sum(v) if k == 'refls' else v for k, v in d.items()}
-    pd_kwargs = {'index': [0]} #{} if d_is_bumpy else {'index': [0]}
-    new_rows = pd.DataFrame(d2, **pd_kwargs)
-    self.data = pd.concat([self.data, new_rows], ignore_index=True)
-
-  def get(self, key: str, default: Any = None) -> pd.Series:
-    return self[key] if key in self.data.columns else default
-
-  def sort(self, by: Union[str, Sequence[str]]) -> None:
-    self.data.sort_values(by=by, ignore_index=True)
-
-  def column_is_flat(self, key: str) -> bool:
-    return not is_iterable(self[key][0])
-
-  @property
-  def flat(self) -> pd.DataFrame:
-    """Pandas' data `DataFrame` with all iterable fields expanded over rows"""
-    c = self.column_is_flat
-    col_names = self.data.columns
-    flatteners = [itertools.repeat if c(k) else lambda x: x for k in col_names]
-    set_all_expt_count_to_1 = False
-    flat_sub_tables = []
-    for i, row in enumerate(self.data.itertuples(index=False)):
-      lens = [len(el) for el in row if is_iterable(el)]
-      if len(unique_elements(lens)) > 1:
-        raise ValueError('All row elements must be scalars or same-length')
-      elif len(unique_elements(lens)) == 1:
-        flat_rows = zip(*[f(cell) for cell, f in zip(row, flatteners)])
-        flat_columns = [flat_col for flat_col in zip(*flat_rows)]
-        set_all_expt_count_to_1 = True
-      else:
-        flat_columns = [[cell] for cell in row]
-      fst = pd.DataFrame({k: v for k, v in zip(col_names, flat_columns)})
-      fst['original_index'] = i
-      flat_sub_tables.append(fst)
-    flat_table = pd.concat(flat_sub_tables, ignore_index=True)
-    if set_all_expt_count_to_1:
-      flat_table['expts'] = 1
-    return flat_table
-
-  def recalculate_dynamic_column(self, key: str) -> None:
-    if key == 'density':
-      refls = self.data['refls'] if self.column_is_flat('refls') \
-        else pd.Series([sum(refl) for refl in self.data['refls']])
-      self.data['density'] = refls / self.data['expts']
-    else:
-      raise KeyError(f'Unknown dynamic column key: {key}')
 
 
 ############################## DRIFT VISUALIZING ##############################
