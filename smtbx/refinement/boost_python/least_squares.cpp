@@ -215,8 +215,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
               (arg("data"),
                 arg("space_group"), arg("anomalous_flag"),
                 arg("frame"), arg("thickness"),
+                // Kl, Fc2Ug, use_diff_n vs Pltns-2013
                 arg("params"))))
-          .add_property("ratio", &wt::get_ratio)
           ;
       }
 

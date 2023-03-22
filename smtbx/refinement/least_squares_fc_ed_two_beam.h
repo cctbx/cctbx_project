@@ -20,6 +20,7 @@ namespace least_squares {
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
     typedef scitbx::vec3<FloatType> cart_t;
     typedef builder_base<FloatType> data_t;
+    typedef std::complex<FloatType> complex_t;
 
     f_calc_function_ed_two_beam(data_t const& data,
       sgtbx::space_group const& space_group,
@@ -33,6 +34,7 @@ namespace least_squares {
       Kl(params[0]),
       Fc2Ug(params[1]),
       thickness(thickness),
+      use_diff_n(params[2] != 0),
       index(-1),
       observable_updated(false),
       computed(false)
@@ -68,7 +70,7 @@ namespace least_squares {
 
     virtual void compute(
       miller::index<> const& h,
-      boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+      boost::optional<complex_t> const& f_mask = boost::none,
       twin_fraction<FloatType> const* fraction = 0,
       bool compute_grad = true)
     {
@@ -92,7 +94,6 @@ namespace least_squares {
       SMTBX_ASSERT(fi != frames_map.end());
       frame = fi->second;
       this->h = h;
-      ratio = 1;
       if (compute_grad) {
         grads.resize(design_matrix.accessor().n_columns());
       }
@@ -118,24 +119,11 @@ namespace least_squares {
       return Fsq * sin_part / X;
     }
 
-    /* IT Vol C, Chapter 4.3 */
-    FloatType calc_test(FloatType U, FloatType t, FloatType Sg) const {
-      FloatType sig = 0.0007289;
-      FloatType delta_k = U * sig / scitbx::constants::pi;
-      FloatType s_eff = std::sqrt(Sg * Sg + delta_k * delta_k);
-      FloatType x1 = scitbx::fn::pow2(sig * U * sin(scitbx::constants::pi * t * s_eff));
-      x1 /= scitbx::fn::pow2(scitbx::constants::pi * s_eff);
-      return x1;
-    }
-
-    virtual FloatType get_observable() const {
-      if (observable_updated || !computed) {
-        return Fsq;
-      }
-      SMTBX_ASSERT(frame != 0);
-      int coln = design_matrix.accessor().n_columns();
+    // Acta Cryst. (2013). A69, 171–188
+    FloatType get_observable_pltns_2013() const {
       cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
       cart_t K = cart_t(0, 0, -Kl);
+
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
@@ -143,11 +131,13 @@ namespace least_squares {
         P = t_part * std::sqrt(X);
       FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
         I = Fsq * sin_part / X;
+
       // update gradients...
       if (grads.size() > 0) {
         if (index >= 0) {
-          FloatType grad_fsq = sin_part/X + Fsq *
-            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) / 2.0) * X - sin_part)/(X*X);
+          FloatType grad_fsq = sin_part / X + Fsq *
+            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) / 2.0) * X - sin_part) / (X * X);
+          int coln = design_matrix.accessor().n_columns();
           for (int i = 0; i < coln; i++) {
             grads[i] = design_matrix(index, i) * grad_fsq;
           }
@@ -174,22 +164,70 @@ namespace least_squares {
           std::fill(grads.begin(), grads.end(), 0);
         }
       }
-      observable_updated = true;
-      ratio = sin_part / X;
-      return (Fsq = I);
+      return I;
     }
-    virtual std::complex<FloatType> get_f_calc() const {
+
+    FloatType calc_dI_dt(FloatType eps) const {
+      cart_t K = cart_t(0, 0, -Kl);
+      complex_t Ug = Fc * Fc2Ug;
+      FloatType Ip = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
+        thickness.value + eps,
+        K, frame->RMf, frame->normal));
+      FloatType In = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
+        thickness.value - eps,
+        K, frame->RMf, frame->normal));
+      return (Ip - In) / (2 * eps);
+    }
+
+    FloatType get_observable_diff_n() const {
+      complex_t Ug = Fc * Fc2Ug;
+      cart_t K = cart_t(0, 0, -Kl);
+      FloatType I = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
+        thickness.value, K, frame->RMf, frame->normal));
+      // update gradients...
+      if (grads.size() > 0) {
+        if (index >= 0) {
+          FloatType eps = 1e-8;
+          FloatType dI_dFsq = utils<FloatType>::calc_amp_2beam_dI_dFsq(h, Fsq,
+            thickness.value, K, frame->RMf, frame->normal, eps);
+          int coln = design_matrix.accessor().n_columns();
+          for (int i = 0; i < coln; i++) {
+            grads[i] = design_matrix(index, i) * dI_dFsq;
+          }
+          if (thickness.grad) {
+            int grad_index = thickness.grad_index;
+            SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
+            grads[grad_index] = calc_dI_dt(eps);
+          }
+
+        }
+        else {
+          std::fill(grads.begin(), grads.end(), 0);
+        }
+      }
+      return I;
+    }
+
+    virtual FloatType get_observable() const {
+      if (observable_updated || !computed) {
+        return Fsq;
+      }
+      SMTBX_ASSERT(frame != 0);
+      if (use_diff_n) {
+        Fsq = get_observable_diff_n();
+      }
+      else {
+        Fsq = get_observable_pltns_2013();
+      }
+      observable_updated = true;
+      return Fsq;
+    }
+
+    virtual complex_t get_f_calc() const {
       if (!observable_updated) {
         get_observable();
       }
       return Fc;
-    }
-    // updated observable over original observable
-    FloatType get_ratio() const {
-      if (!observable_updated) {
-        get_observable();
-      }
-      return ratio;
     }
     virtual af::const_ref<FloatType> get_grad_observable() const {
       if (!computed) {
@@ -211,7 +249,8 @@ namespace least_squares {
     af::shared<FrameInfo<FloatType> > frames;
     FloatType Kl, Fc2Ug;
     cctbx::xray::thickness<FloatType> const& thickness;
-    af::shared<std::complex<FloatType> > f_calc;
+    bool use_diff_n;
+    af::shared<complex_t> f_calc;
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
     af::versa<FloatType, af::c_grid<2> > design_matrix;
@@ -220,8 +259,8 @@ namespace least_squares {
     long index;
     const FrameInfo<FloatType>* frame;
     mutable bool observable_updated, computed;
-    mutable std::complex<FloatType> Fc;
-    mutable FloatType Fsq, ratio;
+    mutable complex_t Fc;
+    mutable FloatType Fsq;
     mutable af::shared<FloatType> grads;
     miller::index<> h;
   };

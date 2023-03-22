@@ -437,4 +437,33 @@ namespace smtbx { namespace refinement { namespace constraints {
     return rv;
   }
 
+  af::shared<asu_parameter*> reparametrisation
+    ::independent_owners(af::shared<parameter*> const& params) const
+  {
+    af::shared<asu_parameter*> rv;
+    BOOST_FOREACH(parameter * p, params) {
+      asu_parameter* asu_p = dynamic_cast<asu_parameter*>(p);
+      if (asu_p != 0) {
+        rv.push_back(asu_p);
+        continue;
+      }
+      bool found = false;
+      BOOST_FOREACH(parameter * p1, all) {
+        asu_p = dynamic_cast<asu_parameter*>(p1);
+        if (asu_p == 0) {
+          continue;
+        }
+        if (asu_p->n_arguments() > 0 && asu_p->argument(0) == p) {
+          rv.push_back(asu_p);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        rv.push_back(0);
+      }
+    }
+    return rv;
+  }
+
 }}}
