@@ -563,9 +563,12 @@ class DistributionPanelCOMOriginMixin(object):
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
-    return {'x': centers_of_mass[:, 0],
+    print({'x': centers_of_mass[:, 0],
             'y': centers_of_mass[:, 1],
-            'z': centers_of_mass[:, 2]}
+            'z': centers_of_mass[:, 2]})
+    return {'x': flex.double(centers_of_mass[:, 0]),
+            'y': flex.double(centers_of_mass[:, 1]),
+            'z': flex.double(centers_of_mass[:, 2])}
 
 
 class FalseUncertaintiesMixin(object):
