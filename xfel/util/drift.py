@@ -73,7 +73,7 @@ and unit cell parameters from selected TDER task209 directories:
 ################################ PHIL HANDLING ################################
 
 
-phil_scope = parse("""
+phil_scope_str = """
   scrap {
     input {
       glob = None
@@ -129,7 +129,8 @@ phil_scope = parse("""
       .type = float
       .help = Width of saved plot in inches
   }
-""")
+"""
+phil_scope = parse(phil_scope_str)
 
 
 def params_from_phil(args):
@@ -538,7 +539,6 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
         self.scrap_results.append(self.scrap_dict)
 
 
-
 class MergingDirectoryDriftScraper(BaseDriftScraper):
   """Drift scraper which directly looks for TDER task directories"""
   input_kind = 'merging_directory'
@@ -719,9 +719,9 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
           cf.append(float(c))
     wg = self.scrap_dict['refls']  # weights
     return {'a': average(af, wg), 'b': average(bf, wg), 'c': average(cf, wg),
-            'delta_a': af.standard_deviation_of_the_sample(),
-            'delta_b': bf.standard_deviation_of_the_sample(),
-            'delta_c': cf.standard_deviation_of_the_sample()}
+            'delta_a': np.sqrt(variance(af, wg)),
+            'delta_b': np.sqrt(variance(bf, wg)),
+            'delta_c': np.sqrt(variance(cf, wg))}
 
 
 class DistributionUnitCellMixin(BaseUnitCellMixin):
@@ -738,10 +738,11 @@ class DistributionUnitCellMixin(BaseUnitCellMixin):
           af.append(float(a))
           bf.append(float(b))
           cf.append(float(c))
+    wg = self.scrap_dict['refls']
     return {'a': af, 'b': bf, 'c': cf,
-            'delta_a': af.standard_deviation_of_the_sample(),
-            'delta_b': bf.standard_deviation_of_the_sample(),
-            'delta_c': cf.standard_deviation_of_the_sample()}
+            'delta_a': np.sqrt(variance(af, wg)),
+            'delta_b': np.sqrt(variance(bf, wg)),
+            'delta_c': np.sqrt(variance(cf, wg))}
 
 
 class DriftScraperFactory(object):
