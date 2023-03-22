@@ -425,8 +425,8 @@ class BaseDriftScraper(object):
   def __init__(self, table: DriftTable, parameters) -> None:
     self.table = table
     self.parameters = parameters
-    self.scrap_dict = {}  # currently scraped data, reset for each batch
-    self.scrap_results = ScrapResults(parameters)  # list of all scraped data
+    self.scrap_dict: Dict[str, Union[str, float, Sequence]] = {}  # scraped now
+    self.scrap_results = ScrapResults(parameters)                 # all scraped
 
   @staticmethod
   def calc_expt_refl_len(expts: ExperimentList, refls: flex.reflection_table) \
@@ -569,7 +569,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
 
 
 class DriftScraperMixin(object):
-  scrap_dict: Dict[str]
+  scrap_dict: Dict[str, Union[str, float, Sequence]]
 
 
 class FirstOriginMixin(DriftScraperMixin):
