@@ -2364,7 +2364,11 @@ def try_send_to_trash(path_name, delete_if_not_available=False,
         raise Sorry("This function not supported because the required module is "+
           "not installed.")
     else :
-      send2trash.send2trash(path_name)
+      try:
+        send2trash.send2trash(path_name)
+      except Exception as e:
+        print("Unable to send the directory %s to trash" %(path_name))
+        return 1 # indicate failure
 
 if sys.hexversion >= 0x03000000:
   unicode = str
