@@ -145,7 +145,7 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
-		 scattering_table = None,
+                 scattering_table = None,
                  free_r_flags_scope = None,
                  ):
     """
