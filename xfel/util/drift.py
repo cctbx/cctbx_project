@@ -422,10 +422,11 @@ class BaseDriftScraper(object):
   """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
   with automatic registration into the `DriftScraperRegistrar`."""
 
-  def __init__(self, table: 'DriftTable', parameters) -> None:
+  def __init__(self, table: DriftTable, parameters) -> None:
     self.table = table
     self.parameters = parameters
-    self.scrap_results = ScrapResults(parameters)
+    self.scrap_dict = {}  # currently scraped data, reset for each batch
+    self.scrap_results = ScrapResults(parameters)  # list of all scraped data
 
   @staticmethod
   def calc_expt_refl_len(expts: ExperimentList, refls: flex.reflection_table) \
@@ -511,20 +512,20 @@ class TderTaskDirectoryDriftScraper(BaseDriftScraper):
       combining_phil_paths.extend(cpp)
     for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
       try:
-        scrap_dict = {'merge': "None"}
-        scrap_dict.update(self.extract_db_metadata(cpp))
-        print('Processing run {}'.format(scrap_dict['run']))
+        self.scrap_dict = {'merge': "None"}
+        self.scrap_dict.update(self.extract_db_metadata(cpp))
+        print(f'Processing run {self.scrap_dict["run"]}')
         refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
         elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
         print(f'Found {elen} expts and {sum(rlen)} refls')
-        scrap_dict.update({'expts': elen, 'refls': rlen})
-        scrap_dict.update(self.get_origin(refined_expts))
-        scrap_dict.update(self.get_unit_cell(refined_expts))
-        scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
+        self.scrap_dict.update({'expts': elen, 'refls': rlen})
+        self.scrap_dict.update(self.get_origin(refined_expts))
+        self.scrap_dict.update(self.get_unit_cell(refined_expts))
+        self.scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
       except (KeyError, IndexError, JSONDecodeError) as e:
         print(e)
       else:
-        self.scrap_results.append(scrap_dict)
+        self.scrap_results.append(self.scrap_dict)
 
 
 
@@ -547,9 +548,9 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
         comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
         for cpp in unique_elements(comb_phil_paths):
           try:
-            scrap_dict = {'merge': merge}
-            scrap_dict.update(self.extract_db_metadata(cpp))
-            print('Processing run {} in merge {}'.format(scrap_dict['run'], merge))
+            self.scrap_dict = {'merge': merge}
+            self.scrap_dict.update(self.extract_db_metadata(cpp))
+            print(f'Processing run {self.scrap_dict["run"]} in merge {merge}')
             refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Found {elen} expts and {sum(rlen)} refls')
@@ -557,18 +558,18 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
             refined_refls = refined_refls.select(refined_expts)
             elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
             print(f'Accepted {elen} expts and {sum(rlen)} refls')
-            scrap_dict.update({'expts': elen, 'refls': rlen})
-            scrap_dict.update(self.get_origin(refined_expts))
-            scrap_dict.update(self.get_unit_cell(refined_expts))
-            scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
+            self.scrap_dict.update({'expts': elen, 'refls': rlen})
+            self.scrap_dict.update(self.get_origin(refined_expts))
+            self.scrap_dict.update(self.get_unit_cell(refined_expts))
+            self.scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
           except (KeyError, IndexError, JSONDecodeError) as e:
             print(e)
           else:
-            self.scrap_results.append(scrap_dict)
+            self.scrap_results.append(self.scrap_dict)
 
 
 class DriftScraperMixin(object):
-  scrap_results: ScrapResults
+  scrap_dict: Dict[str]
 
 
 class FirstOriginMixin(DriftScraperMixin):
@@ -587,7 +588,7 @@ class AverageOriginMixin(DriftScraperMixin):
       xs.append(x)
       ys.append(y)
       zs.append(z)
-    weights = self.scrap_results[-1]['refls']
+    weights = self.scrap_dict['refls']
     return {k: average(v, weights) for k, v in zip('xyz', (xs, ys, zs))}
 
 
@@ -627,7 +628,7 @@ class AveragePanelCOMOriginMixin(DriftScraperMixin):
         for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
           centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
       centers_of_mass[i] /= 4 * len(expt.detector)
-    weights = self.scrap_results[-1]['refls']
+    weights = self.scrap_dict['refls']
     return {'x': average(centers_of_mass[:, 0], weights),
             'y': average(centers_of_mass[:, 1], weights),
             'z': average(centers_of_mass[:, 2], weights)}
@@ -700,7 +701,7 @@ class AverageUnitCellMixin(BaseUnitCellMixin):
           af.append(float(a))
           bf.append(float(b))
           cf.append(float(c))
-    wg = self.scrap_results[-1]['refls']  # weights
+    wg = self.scrap_dict['refls']  # weights
     return {'a': average(af, wg), 'b': average(bf, wg), 'c': average(cf, wg),
             'delta_a': af.standard_deviation_of_the_sample(),
             'delta_b': bf.standard_deviation_of_the_sample(),
