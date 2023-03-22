@@ -319,7 +319,8 @@ namespace least_squares {
         }
       }
       af::shared<parameter*> params = reparamn.independent();
-      size_t param_n = 0;
+      af::shared<asu_parameter*> p_owners = reparamn.independent_owners(params);
+        size_t param_n = 0;
       for (size_t i = 0; i < params.size(); i++) {
         param_n += params[i]->components().size();
       }
@@ -330,11 +331,13 @@ namespace least_squares {
       af::shared<FloatType> Is_p(beam_n), Is_m(beam_n);
       FloatType t_eps = 2 * eps;
       for (size_t i = 0, n = 0; i < params.size(); i++) {
-        af::ref<double> x = params[i]->components();
-        asu_parameter* cp = dynamic_cast<asu_parameter*>(params[i]);
+        parameter* param = params[i];
+        af::ref<double> x = param->components();
+        asu_parameter* cp = p_owners[i];
         for (size_t j = 0; j < x.size(); j++, n++) {
           x[j] += eps;
           if (cp != 0) {
+            cp->evaluate(reparamn.unit_cell());
             cp->store(reparamn.unit_cell());
           }
           for (size_t i_h = 0; i_h < indices.size(); i_h++) {
@@ -345,6 +348,7 @@ namespace least_squares {
 
           x[j] -= t_eps;
           if (cp != 0) {
+            cp->evaluate(reparamn.unit_cell());
             cp->store(reparamn.unit_cell());
           }
           for (size_t i_h = 0; i_h < indices.size(); i_h++) {
