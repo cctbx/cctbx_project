@@ -441,25 +441,29 @@ namespace smtbx { namespace refinement { namespace constraints {
     ::independent_owners(af::shared<parameter*> const& params) const
   {
     af::shared<asu_parameter*> rv;
+    std::map<const parameter *, asu_parameter *> p_map;
+    BOOST_FOREACH(parameter * p, all) {
+      asu_parameter *asu_p = dynamic_cast<asu_parameter*>(p);
+      if (asu_p == 0) {
+        continue;
+      }
+      for (size_t i = 0; i < asu_p->n_arguments(); i++) {
+        p_map.insert(std::make_pair(asu_p->argument(i), asu_p));
+      }
+    }
+
     BOOST_FOREACH(parameter * p, params) {
       asu_parameter* asu_p = dynamic_cast<asu_parameter*>(p);
       if (asu_p != 0) {
         rv.push_back(asu_p);
         continue;
       }
-      bool found = false;
-      BOOST_FOREACH(parameter * p1, all) {
-        asu_p = dynamic_cast<asu_parameter*>(p1);
-        if (asu_p == 0) {
-          continue;
-        }
-        if (asu_p->n_arguments() > 0 && asu_p->argument(0) == p) {
-          rv.push_back(asu_p);
-          found = true;
-          break;
-        }
+      std::map<const parameter*, asu_parameter*>
+        ::const_iterator i = p_map.find(p);
+      if (i != p_map.end()) {
+        rv.push_back(i->second);
       }
-      if (!found) {
+      else {
         rv.push_back(0);
       }
     }
