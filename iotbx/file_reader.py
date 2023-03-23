@@ -384,7 +384,7 @@ class any_file_input(object):
         pdb_inp = iotbx.pdb.hierarchy.input(self.file_name)
         self._file_object = pdb_inp
         self._file_type = "pdb"
-      except ValueError as e :
+      except Exception as e :
         self._file_object = None
 
       if not self._file_object:
