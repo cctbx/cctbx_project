@@ -154,6 +154,9 @@ def show_plot_frame(result, parent=None):
     raise Sorry("No suitable chains found in PDB file.")
   frame.set_plot_data(plots)
   frame.Show()
+  # Toggle it off/on to make sure it displays
+  frame.OnToggleControls(None)
+  frame.OnToggleControls(None)
 
 class BPlotFrame(plots.plot_frame):
   def draw_top_panel(self):
@@ -240,8 +243,8 @@ class b_plot_panel(plots.plot_container):
     y = numpy.array(avg_b)
     x = numpy.linspace(1, y.size, y.size)
     points = numpy.array([x, y]).T.reshape(-1,1,2)
-    yy = numpy.nan_to_num(y)
-    yyy = yy[yy>0]
+    y = numpy.nan_to_num(y)  # XXX to get rid of comparison errors
+    yyy = y[y>0]
     b_range = numpy.linspace(yyy.min(), yyy.max(), cm.jet.N)
     norm = BoundaryNorm(b_range, 256)
     segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
