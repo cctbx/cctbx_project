@@ -3,12 +3,18 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 import iotbx.pdb
+from mmtbx.validation.rna_validate import rna_validation
 from libtbx.easy_pickle import loads, dumps
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
+from iotbx.data_manager import DataManager
 import sys, os
+import json
+import time
+from mmtbx.validation import test_utils
+
 
 # This actually tests expected output - the remaining tests guard against
 # fixed bugs.
@@ -20,7 +26,9 @@ def exercise_1():
   if (regression_pdb is None):
     print("Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available")
     return
-  rv = rna_validate.run(args=[regression_pdb], out=null_out())
+  dm = DataManager()
+  m = dm.get_model(regression_pdb)
+  rv = rna_validation(m.get_hierarchy())
   assert len(rv.puckers.results) == 2, len(rv.puckers.results)
   assert len(rv.bonds.results) == 4, len(rv.bonds.results)
   assert len(rv.angles.results) == 14, len(rv.angles.results)
@@ -33,6 +41,27 @@ def exercise_1():
     geometry_restraints_manager=None,
     params=None)
   pickle_unpickle(result)
+  bonds_json = json.loads(rv.bonds.as_JSON())
+  angles_json = json.loads(rv.angles.as_JSON())
+  puckers_json = json.loads(rv.puckers.as_JSON())
+  suites_json = json.loads(rv.suites.as_JSON())
+  #print(bonds_json)
+  assert len(bonds_json["flat_results"]) == 4, "tst_rna_validate json output not returning correct number of bond outliers, changed to: "+str(len(bonds_json["flat_results"]))
+  assert approx_equal(bonds_json['flat_results'][0]["score"], -4.40664), "tst_rna_validate json output first bond outlier score changed to: "+str(bonds_json['flat_results'][0]["score"])
+  assert test_utils.count_dict_values(bonds_json['hierarchical_results'], True)==4, "tst_rna_validate json hierarchical output total number of bond outliers changed to: "+str(test_utils.count_dict_values(bonds_json['hierarchical_results'], True))
+  assert bonds_json['summary_results']['']["num_outliers_too_small"]==4, "tst_rna_validate json output summary result number of bond outliers too small changed to: "+str(bonds_json['summary_results']['']["num_outliers_too_small"])
+  assert len(angles_json["flat_results"]) == 14, "tst_rna_validate json output not returning correct number of angle outliers, changed to: " + str(len(angles_json["flat_results"]))
+  assert approx_equal(angles_json['flat_results'][0]["score"], 4.765809), "tst_rna_validate json output first angle outlier score changed to: " + str(angles_json['flat_results'][0]["score"])
+  assert test_utils.count_dict_values(angles_json['hierarchical_results'], ["A", "A", "A"])==11, "tst_rna_validate json hierarchical output number of angle outliers in chain A changed to: "+str(test_utils.count_dict_values(angles_json['hierarchical_results'], ["A", "A", "A"]))
+  assert angles_json['summary_results']['']["num_outliers_too_small"]==6, "tst_rna_validate json output summary result number of angle outliers too small changed to: "+str(angles_json['summary_results']['']["num_outliers_too_small"])
+  assert len(puckers_json["flat_results"]) == 2, "tst_rna_validate json output not returning correct number of pucker outliers, changed to: " + str(len(puckers_json["flat_results"]))
+  assert approx_equal(puckers_json['flat_results'][0]["delta_angle"], 106.454213), "tst_rna_validate json output first pucker outlier delta changed to: " + str(puckers_json['flat_results'][0]["delta_angle"])
+  assert test_utils.count_dict_values(puckers_json['hierarchical_results'], "A")==2, "tst_rna_validate json hierarchical output number of pucker outliers changed to: "+str(test_utils.count_dict_values(puckers_json['hierarchical_results'], "A", "A", "A"))
+  assert puckers_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
+  assert len(suites_json["flat_results"]) == 4, "tst_rna_validate json output not returning correct number of suite outliers, changed to: " + str(len(suites_json["flat_results"]))
+  assert suites_json['flat_results'][0]["suiteness"]=="0.000", "tst_rna_validate json output first suite outlier suiteness changed to: " + str(suites_json['flat_results'][0]["suiteness"])
+  assert test_utils.count_dict_values(suites_json['hierarchical_results'], "!!")==4, "tst_rna_validate json hierarchical output number of suite outliers changed to: "+str(test_utils.count_dict_values(suites_json['hierarchical_results'], "!!"))
+  #assert suites_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
 
 def exercise_2():
   # fragment from 3g8t
@@ -84,9 +113,10 @@ ATOM   8018  N3    A Q 141      19.364 135.620  82.917  1.00123.84           N
 ATOM   8019  C4    A Q 141      18.953 136.340  83.979  1.00123.84           C
 TER    8020        A Q 141
 """
-  with open("tst_rna_validate_1.pdb", "w") as f:
-    f.write(pdb_raw)
-  rv = rna_validate.run(args=["tst_rna_validate_1.pdb"], out=null_out())
+  dm = DataManager()
+  #print(help(dm))
+  dm.process_model_str("", pdb_raw)
+  rv = rna_validation(dm.get_model().get_hierarchy())
   assert len(rv.puckers.results) == 1
   pickle_unpickle(rv)
 
@@ -148,9 +178,10 @@ ATOM     52  N4    C A   2      37.659  28.519  55.412  1.00 47.02           N
 ATOM     53  C5    C A   2      36.834  29.060  57.597  1.00 46.21           C
 ATOM     54  C6    C A   2      35.840  29.624  58.297  1.00 47.22           C
 """
-  with open("tst_rna_validate_2.pdb", "w") as f:
-    f.write(pdb_raw)
-  rv = rna_validate.run(args=["tst_rna_validate_2.pdb"], out=null_out())
+  dm = DataManager()
+  #print(help(dm))
+  dm.process_model_str("", pdb_raw)
+  rv = rna_validation(dm.get_model().get_hierarchy())
   pickle_unpickle(rv)
 
 def pickle_unpickle(result):
@@ -162,11 +193,12 @@ def pickle_unpickle(result):
   assert (out1.getvalue() == out2.getvalue())
 
 def run():
+  t0 = time.time()
   verbose = "--verbose" in sys.argv[1:]
   exercise_1()
   exercise_2()
   exercise_3()
-  print("OK")
+  print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
   run()

@@ -6,7 +6,10 @@ from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.validation import utils
 from mmtbx import monomer_library
-from mmtbx import validation
+from mmtbx.validation import validation
+from mmtbx.validation import residue
+from mmtbx.validation import atoms
+from mmtbx.validation import get_atoms_info
 from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
 from libtbx.str_utils import make_sub_header, format_value
@@ -14,18 +17,23 @@ from libtbx import slots_getstate_setstate
 from libtbx import easy_run
 from math import sqrt
 import sys
+import json
 
 rna_backbone_atoms = set([
   "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C1'",
   "C3'", "O3'", "C2'", "O2'", "N1", "N9" ]) #version 3.x naming
 
 # individual validation results
-class rna_bond(validation.residue):
-  __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
+class rna_bond(atoms):
+  __slots__ = atoms.__slots__ + ["sigma", "delta"]
 
   @staticmethod
   def header():
     return "%-20s  %6s  %6s  %6s" % ("residue", "atom 1", "atom 2", "sigmas")
+
+  def id_str(self, spacer=" "):
+    return "%s%s%s" % (self.atoms_info[0].id_str(), spacer,
+      self.atoms_info[1].id_str())
 
   def format_values(self):
     return "%-20s  %6s  %6s  %6.2f" % (self.id_str(), self.atoms_info[0].name,
@@ -34,17 +42,35 @@ class rna_bond(validation.residue):
   def as_string(self, prefix=""):
     return prefix + self.format_values()
 
+  def as_JSON(self):
+    atoms_dict = {}
+    for s in self.atoms_info[0].__slots__:
+      atoms_dict["atoms_"+s] = [getattr(self.atoms_info[0], s), getattr(self.atoms_info[1], s)]
+    serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    return json.dumps({**slots_as_dict, **atoms_dict}, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
              self.score ]
 
-class rna_angle(validation.residue):
-  __slots__ = validation.residue.__slots__ + ["atoms_info", "sigma", "delta"]
+class rna_angle(atoms):
+  __slots__ = atoms.__slots__ + ["sigma", "delta"]
 
   @staticmethod
   def header():
     return "%-20s  %6s  %6s  %6s  %6s" % ("residue", "atom 1", "atom 2",
       "atom 3", "sigmas")
+
+  def id_str(self, spacer=" "):
+    return "%s%s%s%s%s" % (self.atoms_info[0].id_str(), spacer,
+      self.atoms_info[1].id_str(), spacer,
+      self.atoms_info[2].id_str())
 
   def format_values(self):
     return "%-20s  %6s  %6s  %6s  %6.2f" % (self.id_str(),
@@ -54,19 +80,33 @@ class rna_angle(validation.residue):
   def as_string(self, prefix=""):
     return prefix + self.format_values()
 
+  def as_JSON(self):
+    atoms_dict = {}
+    for s in self.atoms_info[0].__slots__:
+      atoms_dict["atoms_"+s] = [getattr(self.atoms_info[0], s), getattr(self.atoms_info[1], s), getattr(self.atoms_info[2], s)]
+    serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    return json.dumps({**slots_as_dict, **atoms_dict}, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     return [ self.id_str(), self.atoms_info[0].name, self.atoms_info[1].name,
              self.atoms_info[2].name, self.score ]
 
-class rna_pucker(validation.residue):
+class rna_pucker(residue):
   """
   Validation using pucker-specific restraints library.
   """
-  __slots__ = validation.residue.__slots__ + [
+  __slots__ = residue.__slots__ + [
     "delta_angle",
     "is_delta_outlier",
     "epsilon_angle",
     "is_epsilon_outlier",
+    "model_id",
   ]
 
   @staticmethod
@@ -89,14 +129,24 @@ class rna_pucker(validation.residue):
   def as_string(self, prefix=""):
     return prefix + self.format_values()
 
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     return [ self.id_str(), self.delta_angle, self.epsilon_angle ]
 
-class rna_suite(validation.residue):
+class rna_suite(residue):
   """
   RNA backbone "suite", analyzed using the external program 'suitename'.
   """
-  __slots__ = validation.residue.__slots__ + [
+  __slots__ = residue.__slots__ + [
     "suite_id",
     "suite",
     "suiteness",
@@ -115,10 +165,22 @@ class rna_suite(validation.residue):
   def as_string(self, prefix=""):
     return prefix + self.format_values()
 
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     return [ self.suite_id, self.suite, self.suiteness, self.triaged_angle ]
 
-class rna_geometry(validation.validation):
+class rna_geometry(validation):
+  #__slots__ = validation.__slots__ + ["n_outliers_small_by_model", "n_outliers_large_by_model"]
+
   def show(self, out=sys.stdout, prefix="  ", verbose=True):
     if (len(self.results) > 0):
       print(prefix + self.get_result_class().header(), file=out)
@@ -135,6 +197,8 @@ class rna_bonds(rna_geometry):
   wx_column_widths = [160] * 4
   def __init__(self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
                 outliers_only=True):
+    self.n_outliers_large_by_model = {}
+    self.n_outliers_small_by_model = {}
     rna_geometry.__init__(self)
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
@@ -150,28 +214,65 @@ class rna_bonds(rna_geometry):
       atom1 = pdb_atoms[proxy.i_seqs[0]].name
       atom2 = pdb_atoms[proxy.i_seqs[1]].name
       labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
+      model_id = labels.model_id
+      if model_id not in self.n_total_by_model.keys():
+        self.n_total_by_model[model_id] = 0
+        self.n_outliers_by_model[model_id] = 0
+        self.n_outliers_small_by_model[model_id] = 0
+        self.n_outliers_large_by_model[model_id] = 0
       if (atom1.strip() not in rna_backbone_atoms or
           atom2.strip() not in rna_backbone_atoms):
         continue
       self.n_total += 1
+      self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
-      if (is_outlier or not outliers_only):
+      if is_outlier:
         self.n_outliers += 1
+        self.n_outliers_by_model[model_id] += 1
+        if num_sigmas < 0:
+          self.n_outliers_small_by_model[model_id] += 1
+        else:
+          self.n_outliers_large_by_model[model_id] += 1
+      if (is_outlier or not outliers_only):
         self.results.append(rna_bond(
-          chain_id=labels.chain_id,
-          resseq=labels.resseq,
-          icode=labels.icode,
-          altloc=labels.altloc,
-          resname=labels.resname,
-          atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
+          atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
+          xyz=self.mean_xyz([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]),
           outlier=is_outlier))
 
+  def mean_xyz(self, atom_xyzs):
+    sums = [0]*3
+    for xyz in atom_xyzs:
+      for i, val in enumerate(xyz):
+        sums[i] += val
+    mean = [x / len(atom_xyzs) for x in sums]
+    return mean
+
   def get_result_class(self) : return rna_bond
+
+  def as_JSON(self):
+    data = {"validation_type": "rna_bonds"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    for mod_id in self.n_total_by_model.keys():
+      summary_results[mod_id] = {"num_outliers": self.n_outliers_by_model[mod_id],
+                                 "num_total": self.n_total_by_model[mod_id],
+                                 "num_outliers_too_small": self.n_outliers_small_by_model[mod_id],
+                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id]}
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
@@ -190,6 +291,8 @@ class rna_angles(rna_geometry):
   wx_column_widths = [160] * 5
   def __init__(self, pdb_hierarchy, pdb_atoms, geometry_restraints_manager,
                 outliers_only=True):
+    self.n_outliers_large_by_model = {}
+    self.n_outliers_small_by_model = {}
     rna_geometry.__init__(self)
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
@@ -203,29 +306,58 @@ class rna_angles(rna_geometry):
       atom2 = pdb_atoms[proxy.i_seqs[1]].name
       atom3 = pdb_atoms[proxy.i_seqs[2]].name
       labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
+      model_id = labels.model_id
+      if model_id not in self.n_total_by_model.keys():
+        self.n_total_by_model[model_id] = 0
+        self.n_outliers_by_model[model_id] = 0
+        self.n_outliers_small_by_model[model_id] = 0
+        self.n_outliers_large_by_model[model_id] = 0
       if (atom1.strip() not in rna_backbone_atoms or
           atom2.strip() not in rna_backbone_atoms or
           atom3.strip() not in rna_backbone_atoms):
         continue
       self.n_total += 1
+      self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
-      if (is_outlier or not outliers_only):
+      if is_outlier:
         self.n_outliers += 1
+        self.n_outliers_by_model[model_id] += 1
+        if num_sigmas < 0:
+          self.n_outliers_small_by_model[model_id] += 1
+        else:
+          self.n_outliers_large_by_model[model_id] += 1
+      if (is_outlier or not outliers_only):
         self.results.append(rna_angle(
-          chain_id=labels.chain_id,
-          resseq=labels.resseq,
-          icode=labels.icode,
-          altloc=labels.altloc,
-          resname=labels.resname,
-          atoms_info=validation.get_atoms_info(pdb_atoms, proxy.i_seqs),
+          atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
+          xyz=pdb_atoms[proxy.i_seqs[1]].xyz,
           outlier=is_outlier))
 
   def get_result_class(self) : return rna_angle
+
+  def as_JSON(self):
+    data = {"validation_type": "rna_angles"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    for mod_id in self.n_total_by_model.keys():
+      summary_results[mod_id] = {"num_outliers": self.n_outliers_by_model[mod_id],
+                                 "num_total": self.n_total_by_model[mod_id],
+                                 "num_outliers_too_small": self.n_outliers_small_by_model[mod_id],
+                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id]}
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
@@ -256,6 +388,8 @@ class rna_puckers(rna_geometry):
     rna_geometry.__init__(self)
     from iotbx.pdb.rna_dna_detection import residue_analysis
     for model in pdb_hierarchy.models():
+      self.n_outliers_by_model[model.id] = 0
+      self.n_total_by_model[model.id] = 0
       for chain in model.chains():
         first_altloc = [conformer.altloc for conformer in chain.conformers()][0]
         #can skip some calculations on later altlocs
@@ -292,11 +426,14 @@ class rna_puckers(rna_geometry):
               residue_2_p_atom=residue_2_p_atom)
             self.pucker_states.append(ana)
             self.n_total += 1
+            self.n_total_by_model[model.id] += 1
             is_outlier = ana.is_delta_outlier or ana.is_epsilon_outlier
             if (is_outlier):
               self.n_outliers += 1
+              self.n_outliers_by_model[model.id] += 1
             if (is_outlier or not outliers_only):
               pucker = rna_pucker(
+                model_id=model.id,
                 chain_id=chain.id,
                 resseq=residue.resseq,
                 icode=residue.icode,
@@ -306,6 +443,7 @@ class rna_puckers(rna_geometry):
                 is_delta_outlier=ana.is_delta_outlier,
                 epsilon_angle=ana.epsilon,
                 is_epsilon_outlier=ana.is_epsilon_outlier,
+                xyz=self.get_sugar_xyz_mean(residue),
                 outlier=is_outlier)
               self.results.append(pucker)
               key = pucker.id_str() #[8:-1]
@@ -313,7 +451,40 @@ class rna_puckers(rna_geometry):
               self.pucker_dist[key] = [ana.p_distance_c1p_outbound_line,
                                        ana.o3p_distance_c1p_outbound_line]
 
+  def get_sugar_xyz_mean(self, residue):
+    sugar_atoms = [" C1'", " C2'", " C3'", " C4'", " O4'"]
+    atom_xyzs = []
+    sums = [0]*3
+    for at_name in sugar_atoms:
+      sug_atom = residue.find_atom_by(name = at_name)
+      if sug_atom is not None:
+        atom_xyzs.append(sug_atom.xyz)
+    assert len(atom_xyzs) > 0, "RNA sugar pucker validation found zero sugar atoms, probably due to non-standard atom names"
+    for xyz in atom_xyzs:
+      for i, val in enumerate(xyz):
+        sums[i] += val
+    mean = [x / len(atom_xyzs) for x in sums]
+    return mean
+
   def get_result_class(self) : return rna_pucker
+
+  def as_JSON(self):
+    data = {"validation_type": "rna_puckers"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    for mod_id in self.n_total_by_model.keys():
+      summary_results[mod_id] = {"num_outliers": self.n_outliers_by_model[mod_id],
+                                 "num_residues": self.n_total_by_model[mod_id]}
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
@@ -363,6 +534,7 @@ class rna_suites(rna_geometry):
       geometry=geometry_restraints_manager)
     suitename_out = easy_run.fully_buffered(suitename,
                          stdin_lines=backbone_dihedrals).stdout_lines
+
     for line in suitename_out:
       if line.startswith(' :'):
         temp = line.split(":")
@@ -406,6 +578,21 @@ class rna_suites(rna_geometry):
       self.average_suiteness = total_suiteness / self.n_suites
 
   def get_result_class(self) : return rna_suite
+
+  def as_JSON(self):
+    data = {"validation_type": "rna_suites"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
@@ -474,6 +661,13 @@ class rna_validation(slots_getstate_setstate):
       if (rv.n_outliers > 0) or (not outliers_only):
         make_sub_header(rv.label, out=out)
         rv.show(out=out)
+
+  def as_JSON(self):
+    rna_json = {}
+    for slot in self.__slots__:
+      slot_json = json.loads(getattr(self, slot).as_JSON())
+      rna_json["rna_"+slot] = slot_json
+    return json.dumps(rna_json, indent=2)
 
 class rna_pucker_ref(object):
   def __init__(self):

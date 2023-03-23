@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from mmtbx.model import manager
 from mmtbx.validation.rna_validate import rna_validation
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
+from libtbx.utils import null_out
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -47,8 +49,17 @@ Example:
     self.data_manager.has_models(raise_sorry=True)
 
   def run(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    geometry = self.data_manager.get_model().get_restraints_manager()
+    model = self.data_manager.get_model()
+    model.set_stop_for_unknowns(False)
+    hierarchy = model.get_hierarchy()
+    p = manager.get_default_pdb_interpretation_params()
+    ##print(dir(p.pdb_interpretation))
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+    model.log=null_out()
+    model.process(make_restraints=True, pdb_interpretation_params=p)
+    geometry = model.get_restraints_manager().geometry
 
     result = rna_validation(
       pdb_hierarchy=hierarchy,

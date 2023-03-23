@@ -426,7 +426,7 @@ class validation(slots_getstate_setstate):
   associated statistics.  Individual modules will subclass this and override
   the unimplemented methods.
   """
-  __slots__ = ["n_outliers", "n_total", "results", "_cache"]
+  __slots__ = ["n_outliers", "n_total", "results", "_cache", "n_outliers_by_model", "n_total_by_model"]
   program_description = None
   output_header = None
   gui_list_headers = [] # for Phenix GUI ListCtrl widgets
@@ -436,6 +436,8 @@ class validation(slots_getstate_setstate):
   def __init__(self):
     self.n_outliers = 0
     self.n_total = 0
+    self.n_outliers_by_model = {}
+    self.n_total_by_model = {}
     self.results = []
     self._cache = None
     assert (len(self.gui_list_headers) == len(self.gui_formats) ==
