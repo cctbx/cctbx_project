@@ -274,10 +274,6 @@ class HKLViewFrame() :
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
           self.guarded_process_PHIL_parameters(new_phil, msgtype, lastmsgtype)
-        if msgtype=="external_cmd":
-          self.external_cmd = mstr
-          self.mprint("Received python command string:\n" + mstr, verbose=1)
-          self.run_external_cmd()
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -467,11 +463,17 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
-  def update_from_philstr(self, philstr):
+  def update_from_philstr(self, philstr, separate_thread=False):
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
+    if separate_thread:
+      # avoid deadlocking if we are called from within guarded_process_PHIL_parameters()
+      thrd = threading.Thread(target = self.guarded_process_PHIL_parameters,
+                    kwargs= {"new_phil":new_phil, "msgtype":"preset_philstr", "postrender":True},
+                    daemon=True).start()
+    else:
+      self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
 
 
   def guarded_process_PHIL_parameters(self, new_phil=None, msgtype="philstr",
@@ -630,6 +632,10 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "savefilename"):
         self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
       phl.savefilename = None # ensure the same action in succession can be executed
+
+      if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
+        self.run_external_cmd()
+      phl.external_cmd = None # ensure we can do this again
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -976,16 +982,21 @@ Borrowing them from the first miller array""" %i)
     # Get logfile name and tabname assigned
     # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
     # in the script
+
+    from pathlib import PurePath
+    firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
+    firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
+    # Provide a temp directory for xtricorder in current working directory and
+    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
+    tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerTemp")).as_posix()
+    if self.params.external_cmd == "runXtricorder":
+      from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
+    if self.params.external_cmd == "runXtriage":
+      from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
+
     try:
-      ldic= {'retval': None, 'errormsg': None, 'self': self, 'master_phil': master_phil }
-      exec(self.external_cmd, globals(), ldic)
-      retval = ldic.get("retval", None)
-      errormsg = ldic.get("errormsg", None)
-      if retval != 0:
-        raise Sorry(errormsg)
-      tabname = ldic.get("tabname", None)
-      logfname = ldic.get("logfname", None)
-      self.SendInfoToGUI( {"show_log_file_from_external_cmd": [tabname, logfname ]  } )
+      ret = external_cmd(self, master_phil, firstpart, tempdir)
+      self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
       self.validated_preset_buttons = False
       self.validate_preset_buttons()
     except Exception as e:
@@ -2010,6 +2021,9 @@ master_phil_str = """
   save_image_name = None
     .type = path
     .help = "Name of image file (PNG format) where the current displayed reflections will be saved to at the users request"
+  external_cmd = *None runXtricorder runXtriage
+    .type = choice
+    .help = "Run an external program that analyses reflection files and presents results to HKLviewer"
   merge_data = False
     .type = bool
     .help = "internal flag"

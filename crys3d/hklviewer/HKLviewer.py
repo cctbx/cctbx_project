@@ -541,8 +541,8 @@ newarray._sigmas = sigs
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
     self.chimeraxsession = None
-    self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
-    self.XtriageBtn.clicked.connect(self.onXtriageRun)
+    self.XtricorderBtn.clicked.connect(self.onXtricorderRun2)
+    self.XtriageBtn.clicked.connect(self.onXtriageRun2)
     self.tabText.setCurrentIndex(0)
     self.tabText.currentChanged.connect( self.onTabtextChanged )
     if not isembedded:
@@ -817,57 +817,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     if "expanded" in self.currentfileName:
       self.AddInfoText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtricorder\n")
       return
-    from pathlib import PurePath
-    firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
-    firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
-    # Put xtricorders temp directory into current working directory and
-    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
-    tempdir = PurePath(os.path.join( os.getcwd(), "XtricorderTemp")).as_posix()
-    xtricorder_cmd = """
-from phasertng.scripts import xtricorder
-
-tabname = "Xtricorder"
-(retobj) = xtricorder.xtricorder(
-r'''phasertng {
-            hklin.filename = "%s"
-            reflections.wavelength = 1.0
-            suite.mute = True
-            suite.store = logfile
-            suite.level = logfile
-            suite.database = "%s"
-            commensurate.patterson.percent = 10
-          }
-'''
-)
-retval = retobj.exit_code()
-errormsg = retobj.error_type() + " error, " + retobj.error_message()
-import shutil, glob
-mtzs = retobj.get_filenames(["mtz"])
-if len(mtzs):
-  xtricordermtz = mtzs[-1]
-  self.hklin =  "%s" + "_xtricorder.mtz"
-  shutil.copyfile( xtricordermtz, self.hklin ) # copy the last file only
-  self.LoadReflectionsFile(self.hklin)
-logs = glob.glob("%s/**/*.logfile.log", recursive=True)
-timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
-mstr = ''
-for fname, t in timesortedlogs:
-  with open(fname, 'r') as f:
-    mstr += f.read() + '\\n'
-# The name of logfile and tab should be present in ldic after running exec().
-# cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
-logfname = "%s_xtricorder.log"
-with open(logfname, 'w') as f:
-  f.write(mstr)
-if len(mtzs) == 0:
-  raise Sorry("Could not find the mtz file from running Xtricorder")
-
-shutil.rmtree("%s")
-
-""" %(self.currentfileName, tempdir, firstpart, tempdir, firstpart, tempdir )
     self.XtricorderBtn.setEnabled(False)
     self.XtriageBtn.setEnabled(False)
-    self.send_message("%s" %xtricorder_cmd, "external_cmd" )
+    self.send_message("external_cmd = 'runXtricorder'" )
     self.AddInfoText("Running Xtricorder")
     self.AddAlertsText("Running Xtricorder")
     self.waiting = True
@@ -881,61 +833,17 @@ shutil.rmtree("%s")
     if "expanded" in self.currentfileName:
       self.AddInfoText("Datasets appear to have been expanded to a subgroup. Save these to a new file and load that to run Xtriage\n")
       return
-    if self.currentfileName:
-      firstpart = os.path.splitext(os.path.basename(self.currentfileName))[0]# i.e. '4e8u' of '4e8u.mtz'
-      xtriage_cmd = """
-from mmtbx.scaling import xtriage
-from io import StringIO
-tabname = "Xtriage"
-
-logstrbuf = StringIO()
-xtriageobj = xtriage.run([ r"%s", "scaling.input.xray_data.obs_labels=" + "%s" ], out=logstrbuf)
-logfname = "%s_xtriage.log"
-with open(logfname, "w") as f:
-  f.write( logstrbuf.getvalue() )
-
-retval = 0
-errormsg = ""
-# Add any twin operators as user vectors.
-# user_vector is multiple scope so we can't assign viewer.user_vector directly
-philstr = ""
-for i,twinop in enumerate(xtriageobj.twin_results.twin_law_names):
-  philstr += '''
-  viewer.user_vector {
-              label = "twin_"''' + str(i) + '''
-              hkl_op = "''' + twinop + '''"
-         }
-  '''
-# Add TNCS vector as a real space vector if patterson peak > 0.1 of origin peak
-if len(xtriageobj.twin_results.translational_pseudo_symmetry.suspected_peaks) > 0:
-  tncsvec = xtriageobj.twin_results.translational_pseudo_symmetry.suspected_peaks[0][0]
-  patterson_height = xtriageobj.twin_results.translational_pseudo_symmetry.suspected_peaks[0][1]
-  if patterson_height > 10:
-    philstr += '''
-    viewer.user_vector {
-                label = "TNCS_xtriage"
-                abc = ''' + f"({tncsvec[0]:.5}, {tncsvec[1]:.5}, {tncsvec[2]:.5})" + '''
-            }
-    '''
-vectorphil = libtbx.phil.parse(philstr)
-working_params = master_phil.fetch(source= vectorphil).extract()
-self.add_user_vector(working_params.viewer.user_vector, rectify_improper_rotation=False)
-
-# The name of logfile and tab should be present in ldic after running exec().
-# cctbx.python sends this back to HKLviewer from HKLViewFrame.run_external_cmd()
-
-""" %(self.currentfileName, self.current_labels, firstpart)
-      self.XtricorderBtn.setEnabled(False)
-      self.XtriageBtn.setEnabled(False)
-      self.send_message("%s" %xtriage_cmd, "external_cmd" )
-      self.AddInfoText("Running Xtriage")
-      self.AddAlertsText("Running Xtriage")
-      self.waiting = True
+    self.XtricorderBtn.setEnabled(False)
+    self.XtriageBtn.setEnabled(False)
+    self.send_message("external_cmd = 'runXtriage'" )
+    self.AddInfoText("Running Xtriage")
+    self.AddAlertsText("Running Xtriage")
+    self.waiting = True
 
 
   def ProcessMessages(self):
     """
-    Deal with the messages posted to this GUI by cmdlineframes.py
+    Deal with the messages posted to this GUI by hklview_frame.HKLViewFrame.SendInfoToGUI()
     """
     if self.webpagedebugform is not None:
       try: # During shutdown this may fail if webpagedebugform exits before message handler terminates

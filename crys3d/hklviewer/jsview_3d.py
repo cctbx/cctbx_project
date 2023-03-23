@@ -1487,8 +1487,12 @@ class HKLview_3d:
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
-         "current_labels": self.get_label_type_from_scene_id( self.params.viewer.scene_id)[0] } )
+         "current_labels": self.get_current_labels() } )
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
+
+
+  def get_current_labels(self):
+    return self.get_label_type_from_scene_id(self.params.viewer.scene_id)[0]
 
 
   def get_visible_current_miller_array(self):
