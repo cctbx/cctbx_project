@@ -282,6 +282,22 @@ class _():
       self.raw_pixels = cache_pixels
       # print("switch back to cached")
 
+def nexus_factory(nxmx_filename):
+    params = nxmx_writer.phil_scope.fetch(parse("""
+    output_file=%s
+    nexus_details {
+      instrument_name=nanoBragg
+      source_name=nanoBragg
+      start_time=NA
+      end_time_estimated=NA
+      sample_name=nanoBragg
+    }
+    dtype=int32
+    """%nxmx_filename)).extract()
+    writer = nxmx_writer.NXmxWriter(params)
+    return writer
+
+
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)
   reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
