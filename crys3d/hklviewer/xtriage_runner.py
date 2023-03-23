@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args, phil
-import os, os.path, glob, threading
+
 
 def external_cmd(parent, master_phil, firstpart, tempdir):
   from mmtbx.scaling import xtriage

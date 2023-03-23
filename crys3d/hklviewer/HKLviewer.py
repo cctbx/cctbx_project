@@ -541,8 +541,8 @@ newarray._sigmas = sigs
     self.Statusbartxtbox = None
     self.chimeraxprocmsghandler = None
     self.chimeraxsession = None
-    self.XtricorderBtn.clicked.connect(self.onXtricorderRun2)
-    self.XtriageBtn.clicked.connect(self.onXtriageRun2)
+    self.XtricorderBtn.clicked.connect(self.onXtricorderRun)
+    self.XtriageBtn.clicked.connect(self.onXtriageRun)
     self.tabText.setCurrentIndex(0)
     self.tabText.currentChanged.connect( self.onTabtextChanged )
     if not isembedded:
