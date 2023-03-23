@@ -171,6 +171,6 @@ class ControlPanel(wx.Panel):
     self.GetParent().update_plot(
       elements=elements,
       range_type=range_type,
-      range=(range_min,range_max),
+      range_values=(range_min,range_max),
       table=table,
       include_fp=True)
