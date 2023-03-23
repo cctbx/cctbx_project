@@ -35,6 +35,7 @@ except ImportError:
 
 import libtbx.load_env
 import iotbx.pdb
+import iotbx.pdb.mmcif
 import mmtbx.model
 from libtbx.utils import null_out
 
