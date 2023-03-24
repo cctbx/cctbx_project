@@ -148,7 +148,8 @@ def run(args=(), params=None, out=sys.stdout):
     out=out)
 
 def show_plot_frame(result, parent=None):
-  frame = BPlotFrame(parent, -1, "B-factor plot")
+  frame = BPlotFrame(parent, -1, "B-factor plot",
+      style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP)
   plots = result.make_plots()
   if (len(plots) == 0):
     raise Sorry("No suitable chains found in PDB file.")
@@ -268,5 +269,14 @@ class b_plot_panel(plots.plot_container):
     self.parent.Refresh()
 
 def validate_params(params):
+  import os
+  from iotbx import file_reader
   if (params.b_plot.pdb_file is None):
     raise Sorry("No PDB file defined!")
+  if not os.path.isfile(params.b_plot.pdb_file):
+    raise Sorry("The PDB file %s is missing" %(params.b_plot.pdb_file))
+  try:
+    pdb_in = file_reader.any_file(params.b_plot.pdb_file, force_type="pdb")
+  except Exception as e:
+    raise Sorry("The PDB file %s cannot be read or has no atoms?" %(params.b_plot.pdb_file))
+
