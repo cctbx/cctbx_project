@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.secondary_structure import sec_str_master_phil_str, manager
 from cctbx import geometry_restraints
-from iotbx import file_reader
 import iotbx.pdb
 import libtbx.load_env
 import iotbx.pdb.secondary_structure as ioss
@@ -32,9 +31,9 @@ def exercise_protein():
   log = sys.stdout
   expected_distances = [2.9, 1.975]
   for k, file_name in enumerate([pdb_file, pdb_file_h]):
-    pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
-    pdb_hierarchy = pdb_in.hierarchy
-    sec_str_from_pdb_file = pdb_in.input.extract_secondary_structure()
+    pdb_in = iotbx.pdb.input(file_name)
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+    sec_str_from_pdb_file = pdb_in.extract_secondary_structure()
     m = manager(pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.params.secondary_structure.protein.remove_outliers = False

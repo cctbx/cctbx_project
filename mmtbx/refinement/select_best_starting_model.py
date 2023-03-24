@@ -356,13 +356,11 @@ def strip_model(
   if (file_name is not None):
     print("Reading model from %s" % file_name, file=log)
     assert ([pdb_hierarchy, xray_structure] == [None, None])
-    from iotbx import file_reader
-    pdb_in = file_reader.any_file(file_name, force_type="pdb",
-      raise_sorry_if_errors=True)
-    pdb_in.check_file_type("pdb")
-    remarks = pdb_in.file_object.input.remark_section()
-    pdb_hierarchy = pdb_in.file_object.hierarchy
-    xray_structure = pdb_in.file_object.xray_structure_simple()
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(file_name)
+    remarks = pdb_in.remark_section()
+    pdb_hierarchy = pdb_in.construct_hierarchy()
+    xray_structure = pdb_in.xray_structure_simple()
   else :
     # XXX work with copies, not the original structure
     pdb_hierarchy = pdb_hierarchy.deep_copy()

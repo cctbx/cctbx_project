@@ -1,22 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-
-
-
-
-
-
-# NOT WORKING
-
-
-
-
-
-
-
-
 import libtbx.phil
 from libtbx.utils import Sorry, Usage
+import iotbx.pdb
+from iotbx.pdb.hierarchy import new_hierarchy_from_chain
+
 import os
 import sys
 
@@ -58,12 +46,10 @@ def run(args=(), params=None, out=None):
     params.output_dir = os.getcwd()
   if (params.output_base is None):
     params.output_base = os.path.basename(os.path.splitext(params.pdb_file)[0])
-  from iotbx import file_reader
-  from iotbx.pdb.hierarchy import new_hierarchy_from_chain
-  pdb_in = file_reader.any_file(params.pdb_file, force_type="pdb")
-  pdb_in.check_file_type("pdb")
-  symm = pdb_in.file_object.crystallographic_section()
-  hierarchy = pdb_in.file_object.hierarchy
+  # from iotbx import file_reader
+  pdb_in = iotbx.pdb.input(params.pdb_file)
+  symm = pdb_in.crystallographic_section()
+  hierarchy = pdb_in.construct_hierarchy()
   if (len(hierarchy.models()) > 1):
     raise Sorry("Multi-model PDB files are not supported.  You can use "+
       "iotbx.pdb.split_models to break the structure into individual model "+

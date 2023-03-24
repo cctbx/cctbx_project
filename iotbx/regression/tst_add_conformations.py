@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils import contains_lines, Exception_expected
 from libtbx.utils import Sorry
 import libtbx.load_env
+import iotbx.pdb
 from six.moves import cStringIO as StringIO
 import os
 
@@ -21,19 +22,18 @@ def exercise():
   run([pdb_file, "atom_selection=\"chain A and not resname HOH\""], out=out)
   assert contains_lines(out.getvalue(), "Modified model: 3990 atoms")
   run([pdb_file, "new_occ=0.4", "atom_selection=\"resseq 1:275\""], out=out)
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
-  atoms = pdb_in.input.atoms()
+  pdb_in = iotbx.pdb.input("1ywf_split.pdb")
+  atoms = pdb_in.atoms()
   occ = atoms.extract_occ()
   assert (occ.count(0.6) == occ.count(0.4) == 1858)
   out = StringIO()
   run([pdb_file, "n_confs=3", "new_occ=0.25"], out=out)
-  pdb_in = file_reader.any_file("1ywf_split.pdb", force_type="pdb").file_object
+  pdb_in = iotbx.pdb.input("1ywf_split.pdb")
   assert contains_lines(out.getvalue(), """\
 WARNING: zero-occupancy atom:
 HETATM 1940  O  AHOH A 354      -0.009  56.525  -3.872  0.25 29.17           O\
 """)
-  atoms = pdb_in.input.atoms()
+  atoms = pdb_in.atoms()
   assert (atoms.size() == 6381)
   occ = atoms.extract_occ()
   assert (occ.count(0.5) == 2126) and (occ.count(0.25) == 4254)

@@ -5,7 +5,6 @@ mmtbx.apply_ncs_to_ligands (used in phenix.ligand_pipeline)
 """
 
 from __future__ import absolute_import, division, print_function
-from iotbx import file_reader
 from libtbx import easy_run
 from libtbx.utils import null_out
 import os.path as op
@@ -181,8 +180,9 @@ def exercise():
   # Test command-line program
   #
   pdb_in, mtz_in = make_inputs()
-  pdb_file = file_reader.any_file(pdb_in, force_type="pdb")
-  hierarchy = pdb_file.file_object.hierarchy
+  import iotbx.pdb
+  pdb_file = iotbx.pdb.input(pdb_in)
+  hierarchy = pdb_file.construct_hierarchy()
   old_ligand = None
   for chain in hierarchy.only_model().chains():
     if (chain.id != "B") : continue
@@ -195,7 +195,7 @@ def exercise():
   assert old_ligand is not None
   with open("tst_ligand_ncs_start.pdb", "w") as f:
     f.write(hierarchy.as_pdb_string(
-      crystal_symmetry=pdb_file.file_object.crystal_symmetry()))
+      crystal_symmetry=pdb_file.crystal_symmetry()))
   args = [
     "tst_ligand_ncs_start.pdb",
     mtz_in,
@@ -207,8 +207,8 @@ def exercise():
   result = apply_ncs_to_ligand.run(args=args, out=null_out())
   assert result.n_ligands_new == 1
   assert op.isfile("ncs_ligands.pdb")
-  pdb_out = file_reader.any_file("ncs_ligands.pdb", force_type="pdb")
-  hierarchy_new = pdb_out.file_object.hierarchy
+  pdb_out = iotbx.pdb.input("ncs_ligands.pdb")
+  hierarchy_new = pdb_out.construct_hierarchy()
   new_ligand = None
   for chain in hierarchy_new.only_model().chains():
     if (chain.id != "B") : continue
