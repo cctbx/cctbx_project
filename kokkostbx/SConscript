@@ -37,6 +37,10 @@ if env_etc.enable_kokkos:
     linked_libraries += " -lcudart -lcuda"
   os.environ['LDLIBS'] = linked_libraries
 
+  cxx_standard = '14'
+  if use_sycl:
+    cxx_standard = '17'
+
   original_cxx = None
   kokkos_lib = 'libkokkos.a'
   kokkos_cxxflags = None
