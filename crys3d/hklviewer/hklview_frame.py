@@ -529,6 +529,10 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
+        self.run_external_cmd()
+      #phl.external_cmd = "None" # ensure we can do this again
+
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
         self.set_scene(phl.viewer.scene_id)
@@ -625,10 +629,6 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "savefilename"):
         self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
       phl.savefilename = None # ensure the same action in succession can be executed
-
-      if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
-        self.run_external_cmd()
-      #phl.external_cmd = "None" # ensure we can do this again
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -991,11 +991,9 @@ Borrowing them from the first miller array""" %i)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
-      # Since process_PHIL_parameters() might be called by update_from_philstr ) in external_cmd()
-      # we run thrdfunc separately to avoid semaphore deadlock when entering process_PHIL_parameters() twice
-      thrd = threading.Thread(target = thrdfunc, daemon=True)
-      thrd.start()
-
+      # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
+      # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
+      threading.Thread(target = thrdfunc, daemon=True).start()
     except Exception as e:
       self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
       raise Sorry(str(e))

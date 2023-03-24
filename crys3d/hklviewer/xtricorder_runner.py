@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
-import os, os.path, glob, threading
+import os, os.path, glob
 
 def external_cmd(parent, master_phil, firstpart, tempdir):
   from phasertng.scripts import xtricorder

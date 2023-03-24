@@ -1936,7 +1936,7 @@ viewer.user_vector {
     vprec = 2
     self.hkldistval = 0.0
     self.hkldist_spinBox.setValue(self.hkldistval)
-    self.hkldist_spinBox.setDecimals(2)
+    self.hkldist_spinBox.setDecimals(1)
     self.hkldist_spinBox.setSingleStep(1)
     self.hkldist_spinBox.setRange(-1000.0, 1000.0)
     self.hkldist_spinBox.editingFinished.connect(self.onHKLdistEditFinished)
