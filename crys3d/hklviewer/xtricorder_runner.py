@@ -26,7 +26,9 @@ def external_cmd(parent, master_phil, firstpart, tempdir):
     xtricordermtz = mtzs[-1]
     parent.hklin =  firstpart + "_xtricorder.mtz"
     shutil.copyfile( xtricordermtz, parent.hklin ) # copy the last file only
-    parent.update_from_philstr("openfilename=" + parent.hklin)
+    parent.update_from_philstr("openfilename=" + parent.hklin) # resets all PHIL parameters
+    parent.params.external_cmd = "runXtricorder" # allow this PHIL parameter to be shown
+    parent.currentphil = master_phil.format(python_object=parent.params)
 
   logs = glob.glob(tempdir + "/**/*.logfile.log", recursive=True)
   timesortedlogs = sorted( [ (p, os.path.getmtime(p) )   for p in logs ], key=lambda e: e[1] )
