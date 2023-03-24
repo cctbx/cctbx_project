@@ -463,17 +463,11 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
-  def update_from_philstr(self, philstr, separate_thread=False):
+  def update_from_philstr(self, philstr):
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    if separate_thread:
-      # avoid deadlocking if we are called from within guarded_process_PHIL_parameters()
-      thrd = threading.Thread(target = self.guarded_process_PHIL_parameters,
-                    kwargs= {"new_phil":new_phil, "msgtype":"preset_philstr", "postrender":True},
-                    daemon=True).start()
-    else:
-      self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
+    self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
 
 
   def guarded_process_PHIL_parameters(self, new_phil=None, msgtype="philstr",
@@ -566,7 +560,6 @@ class HKLViewFrame() :
         currentNGLscope = self.currentphil.extract().NGL
         currentSelectInfoscope = self.currentphil.extract().selected_info
         phl = self.ResetPhilandViewer()
-        #phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
           return
         self.params.NGL = currentNGLscope # override default NGL and selected_info scopes with user settings
@@ -635,7 +628,7 @@ class HKLViewFrame() :
 
       if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
         self.run_external_cmd()
-      phl.external_cmd = None # ensure we can do this again
+      #phl.external_cmd = "None" # ensure we can do this again
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -982,7 +975,6 @@ Borrowing them from the first miller array""" %i)
     # Get logfile name and tabname assigned
     # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
     # in the script
-
     from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
     firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
@@ -993,12 +985,17 @@ Borrowing them from the first miller array""" %i)
       from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
     if self.params.external_cmd == "runXtriage":
       from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
-
     try:
-      ret = external_cmd(self, master_phil, firstpart, tempdir)
-      self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
-      self.validated_preset_buttons = False
-      self.validate_preset_buttons()
+      def thrdfunc():
+        ret = external_cmd(self, master_phil, firstpart, tempdir)
+        self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
+        self.validated_preset_buttons = False
+        self.validate_preset_buttons()
+      # Since process_PHIL_parameters() might be called by update_from_philstr ) in external_cmd()
+      # we run thrdfunc separately to avoid semaphore deadlock when entering process_PHIL_parameters() twice
+      thrd = threading.Thread(target = thrdfunc, daemon=True)
+      thrd.start()
+
     except Exception as e:
       self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
       raise Sorry(str(e))

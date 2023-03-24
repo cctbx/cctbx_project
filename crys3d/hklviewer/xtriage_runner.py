@@ -10,7 +10,7 @@ def external_cmd(parent, master_phil, firstpart, tempdir):
   logstrbuf = StringIO()
   xtriageobj = xtriage.run([ parent.loaded_file_name, "scaling.input.xray_data.obs_labels=" +
                            parent.viewer.get_current_labels() ], out=logstrbuf)
-  logfname = "%s_xtriage.log"
+  logfname = firstpart + "_xtriage.log"
   with open(logfname, "w") as f:
     f.write( logstrbuf.getvalue() )
 
