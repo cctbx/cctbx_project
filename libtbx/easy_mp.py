@@ -777,7 +777,7 @@ def run_parallel(
    kw_list=None,           # list of kw dictionaries for target_function
    preserve_order=True,
    break_condition = None,
-   try_single_processor_on_failure = False,
+   try_single_processor_on_failure = True,
    ):
 
   '''
@@ -794,7 +794,7 @@ def run_parallel(
       results.append(ra(i))
   elif try_single_processor_on_failure:
     try:  # Try as is, then use nproc=1 if it fails for any reason
-      return run_parallel(
+      results = run_parallel(
          method=method,
          qsub_command=qsub_command,
          nproc=nproc,
@@ -803,15 +803,10 @@ def run_parallel(
          preserve_order=preserve_order,
          break_condition=break_condition)
     except Exception as e:
-      return run_parallel(
-         method=method,
-         qsub_command=qsub_command,
-         nproc=1,
-         target_function=target_function,
-         kw_list=kw_list,
-         preserve_order=preserve_order,
-         break_condition=break_condition)
-
+      results=[]
+      ra=run_anything(kw_list=kw_list,target_function=target_function)
+      for i in range(n):
+        results.append(ra(i))
 
   elif 0:  #(method == "multiprocessing") and (sys.platform != "win32"):
     # XXX Can crash 2015-10-13 TT so don't use it
@@ -1015,7 +1010,7 @@ def run_jobs_with_large_fixed_objects(
        multiprocessing_method = 'multiprocessing',  # how to run
        qsub_command='qsub',       # queue command,
        break_condition = None,
-       try_single_processor_on_failure = False,
+       try_single_processor_on_failure = True,
        log = sys.stdout):
   '''
 
