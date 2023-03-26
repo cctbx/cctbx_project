@@ -140,7 +140,6 @@ class select_model(object):
     self.best_result = None
     self.best_model_name = None
     from mmtbx.pdb_symmetry import rms_difference
-    from iotbx import file_reader
     data_symmetry = f_obs.crystal_symmetry()
     data_space_group = data_symmetry.space_group()
     data_point_group = data_space_group.build_derived_point_group()
