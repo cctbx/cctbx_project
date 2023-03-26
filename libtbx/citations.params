@@ -1574,7 +1574,7 @@ citation {
   doi_id = 10.1107/S2059798323001602
 }
 citation {
-  article_id = lddt 
+  article_id = lddt
   authors = Mariani V, Biasini M, Barbato A, Schwede T.
   title = lDDT: a local superposition-free score for comparing protein structures and models using distance difference tests
   journal = Bioinformatics
