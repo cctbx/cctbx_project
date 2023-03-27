@@ -8,16 +8,6 @@ from simtbx.diffBragg.utils import is_outlier
 class reflection_table_utils(object):
 
   @staticmethod
-  def slice_table(reflections, start, stop):
-    ''' Slice a table, preserving experiment identifiers '''
-    subset = reflections[start:stop] # drops identifier map
-    src = reflections.experiment_identifiers()
-    dest = subset.experiment_identifiers()
-    for expt_id in set(subset['id']):
-      dest[expt_id] = src[expt_id]
-    return subset
-
-  @staticmethod
   def get_next_hkl_reflection_table(reflections):
     '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
     if reflections.size() == 0:
@@ -30,11 +20,11 @@ class reflection_table_utils(object):
       if hkl == hkl_ref:
         continue
       else:
-        yield reflection_table_utils.slice_table(reflections, i_begin, i)
+        yield reflections[i_begin:i]
         i_begin = i
         hkl_ref = hkl
 
-    yield reflection_table_utils.slice_table(reflections, i_begin, i+1)
+    yield reflections[i_begin:i+1]
 
   @staticmethod
   def select_odd_experiment_reflections(reflections):
@@ -143,7 +133,7 @@ class reflection_table_utils(object):
           i2 = i + stride
           if generated_slices == nonempty_slices:
             i2 = count
-          yield reflection_table_utils.slice_table(reflections, i, i2)
+          yield reflections[i:i2]
 
       # generate some empty slices if necessary
       empty_slices = max(0, n_slices - generated_slices)
