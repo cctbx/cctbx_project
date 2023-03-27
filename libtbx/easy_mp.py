@@ -787,35 +787,16 @@ def run_parallel(
   '''
   n=len(kw_list)  # number of jobs to run, one per kw dict
 
-  if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
+  # Two ways to run:  directly or with parallel_map
+
+  def run_directly(kw_list, target_function, n):
     results=[]
     ra=run_anything(kw_list=kw_list,target_function=target_function)
     for i in range(n):
       results.append(ra(i))
-  elif try_single_processor_on_failure:
-    try:  # Try as is, then use nproc=1 if it fails for any reason
-      results = run_parallel(
-         method=method,
-         qsub_command=qsub_command,
-         nproc=nproc,
-         target_function=target_function,
-         kw_list=kw_list,
-         preserve_order=preserve_order,
-         break_condition=break_condition)
-    except Exception as e:
-      results=[]
-      ra=run_anything(kw_list=kw_list,target_function=target_function)
-      for i in range(n):
-        results.append(ra(i))
+    return results
 
-  elif 0:  #(method == "multiprocessing") and (sys.platform != "win32"):
-    # XXX Can crash 2015-10-13 TT so don't use it
-    from libtbx.easy_mp import  pool_map
-    results = pool_map(
-      func=run_anything(target_function=target_function,kw_list=kw_list),
-      iterable=range(n),
-      processes=nproc)
-  else :
+  def run_with_parallel_map(kw_list, target_function, n):
     from libtbx.easy_mp import parallel_map
     results=parallel_map(
       func=run_anything(target_function=target_function,kw_list=kw_list),
@@ -829,6 +810,22 @@ def run_parallel(
       use_manager=True,  #  Always use manager 2015-10-13 TT (sys.platform == "win32"))
       preserve_order=preserve_order,
       break_condition = break_condition)
+    return results
+
+  # Now actually run
+
+  if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
+    results = run_directly(kw_list, target_function, n)
+
+  elif try_single_processor_on_failure:
+    try:  # Try as is, then use nproc=1 if it fails for any reason
+      results = run_with_parallel_map(kw_list, target_function, n)
+    except Exception as e:
+      results = run_directly(kw_list, target_function, n)
+
+  else : # standard run, run outside of a try
+    results = run_with_parallel_map(kw_list, target_function, n)
+
   return results
 
 #  -------  END OF SIMPLE INTERFACE TO MULTIPROCESSING -------------
