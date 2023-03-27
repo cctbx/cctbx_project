@@ -478,7 +478,7 @@ merging {
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {
-    model = ha14 *ev11 errors_from_sample_residuals
+    model = ha14 *ev11 ev11_mll errors_from_sample_residuals
       .type = choice
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
@@ -505,6 +505,19 @@ merging {
       plot_refinement_steps = False
         .type = bool
         .help = If True, plot refinement steps during refinement.
+    }
+    ev11_mll
+      .help = Updated EV11 with MLL target function
+      {
+      verify_derivatives = False
+        .type = bool
+        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
+      n_degrees = 3
+        .help = s_add as a n_degree polynomial of the correlation coefficient
+        .type = int
+      tuning_param = 5
+        .help = tuning param for t-dist in maximum log likelihood
+        .type = float
     }
   }
   plot_single_index_histograms = False
