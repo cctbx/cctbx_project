@@ -197,19 +197,12 @@ filter
           .type = path
         component = 0
           .type = int(value_min=0)
-        skip_component = None
-          .type = int(value_min=0)
-          .multiple = True
-          .help = If a lattice belongs to any of these components, exclude it from processing.
         mahalanobis = 4.0
           .type = float(value_min=0)
           .help = Is essentially the standard deviation cutoff. Given that the unit cells
           .help = are estimated to be distributed by a multivariate Gaussian, this is the
           .help = maximum deviation (in sigmas) from the central value that is allowable for the
           .help = unit cell to be considered part of the cluster.
-        skip_mahalanobis = 4.0
-          .type = float(value_min=0)
-          .help = Cutoff distance for any components specified under skip_component.
         }
       isoform = None
         .type=str
@@ -485,7 +478,7 @@ merging {
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {
-    model = ha14 *ev11 errors_from_sample_residuals
+    model = ha14 *ev11 ev11_mll errors_from_sample_residuals
       .type = choice
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
@@ -512,6 +505,19 @@ merging {
       plot_refinement_steps = False
         .type = bool
         .help = If True, plot refinement steps during refinement.
+    }
+    ev11_mll
+      .help = Updated EV11 with MLL target function
+      {
+      verify_derivatives = False
+        .type = bool
+        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
+      n_degrees = 3
+        .help = s_add as a n_degree polynomial of the correlation coefficient
+        .type = int
+      tuning_param = 5
+        .help = tuning param for t-dist in maximum log likelihood
+        .type = float
     }
   }
   plot_single_index_histograms = False
