@@ -89,6 +89,18 @@ Inputs: Model file (PDB, mmCIF)
               already removed, so in most cases this keyword has no effect.
        .short_caption = Maximum output B
 
+     remove_hydrogen = True
+       .type = bool
+       .help = Remove hydrogen atoms from model on input
+       .short_caption = Remove hydrogen
+
+     single_letter_chain_ids = False
+       .type = bool
+       .help = Write output files with all chain IDS as single characters.\
+                Default is to use original chain ID and to add digits (1-9)\
+                for domains.
+       .short_caption = Use only single-letter chain ID
+
   }
 
   include scope mmtbx.process_predicted_model.master_phil_str
@@ -165,6 +177,11 @@ Inputs: Model file (PDB, mmCIF)
         self.params.output_files.maximum_output_b), file = self.logger)
     mm = limit_output_b(info.model,
          maximum_output_b = self.params.output_files.maximum_output_b)
+
+    if self.params.output_files.single_letter_chain_ids:
+      # convert all chain_ids to single character
+      mm = convert_chain_ids_to_single_character(mm)
+
     self.data_manager.write_model_file(mm, self.processed_model_file_name)
 
     # Split up processed model and write each chain as well
@@ -275,9 +292,9 @@ Inputs: Model file (PDB, mmCIF)
       raise Sorry("Unable to guess model file name...please specify")
     if not os.path.isfile(file_name):
       raise Sorry("Missing the model file '%s'" %(file_name))
-    if 1: #try:
+    try:
       self.model=self.data_manager.get_model(filename=file_name)
-    if 0:#except Exception as e:
+    except Exception as e:
       raise Sorry("Failed to read model file '%s'" %(file_name))
 
     print("Read model from %s" %(file_name), file = self.logger)
@@ -286,9 +303,15 @@ Inputs: Model file (PDB, mmCIF)
       raise Sorry("Missing model")
 
     self.model.add_crystal_symmetry_if_necessary()
+
+    # Remove hydrogens and apply user selection
+    selections = []
+    if self.params.output_files.remove_hydrogen:
+      selections.append("(not (element H))")
     if self.params.input_files.selection:
-      self.model = self.model.apply_selection_string(
-        self.params.input_files.selection)
+      selections.append("(%s)" %(self.params.input_files.selection))
+    if selections:
+      self.model = self.model.apply_selection_string(" and ".join(selections))
 
     if self.params.process_predicted_model.weight_by_ca_ca_distance:
       if not self.params.input_files.distance_model_file:
@@ -330,6 +353,56 @@ Inputs: Model file (PDB, mmCIF)
     print ("Working directory: ",os.getcwd(),"\n",file=self.logger)
     print ("PHENIX VERSION: ",os.environ.get('PHENIX_VERSION','svn'),"\n",
      file=self.logger)
+
+def convert_chain_ids_to_single_character(m):
+
+  from mmtbx.secondary_structure.find_ss_from_ca import set_chain_id
+  chain_ids = m.chain_ids(unique_only = True)
+  chain_id_dict = {}  # convert from orig to new
+  # get all the ones that are already ok
+  all_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+  # Get all the single-char ids already present and use as is
+  for chain_id in chain_ids:
+    c = chain_id.strip()
+    if len(c) == 1:
+      chain_id_dict[chain_id] = c
+
+  # Get an available character for all others
+  for chain_id in chain_ids:
+    if chain_id in list(chain_id_dict.keys()):
+      continue # already got it
+    else:
+      key = get_available_letter(c, all_letters, list(chain_id_dict.keys()))
+      if not key:
+        raise Sorry("Unable to represent all chain IDs with single characters"+
+            ". Please try single_letter_chain_ids=False")
+      chain_id_dict[chain_id] = key
+
+  # rename all the chains
+  did_something = False
+  for chain_id in chain_ids:
+    if chain_id_dict[chain_id] != chain_id:
+      set_chain_id(m.get_hierarchy(), chain_id_dict[chain_id],
+         original_id = chain_id)
+      did_something = True
+  if did_something:
+    m.reset_after_changing_hierarchy()
+  return m
+
+def get_available_letter(c, all_letters, used_ids):
+
+  if len(c) == 1 and not c in used_ids:
+    return c
+  if c and (not (c[0] in used_ids)):
+    return c[0]
+
+  for a in all_letters:
+    if not (a in used_ids):
+      return a
+  return None
+
+
 
 def limit_output_b(m, maximum_output_b = None):
   """ create deep copy of model m in which all isotropic

@@ -662,13 +662,12 @@ def reorder_residues(hierarchy, merge_chains = False, chain_id = None):
       cc.append_residue_group(rg)
   return new_hierarchy
 
-def set_chain_id(hierarchy, chain_id = None):
+def set_chain_id(hierarchy, chain_id = None, original_id = None):
   assert chain_id
   for model in hierarchy.models():
-    n_chains = 0
     for chain in model.chains():
-      n_chains+=1
-      chain.id = chain_id
+      if (original_id is None) or (chain.id == original_id):
+        chain.id = chain_id
 
 def get_atom_list(hierarchy):
   atom_list=[]
