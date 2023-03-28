@@ -361,6 +361,7 @@ def convert_chain_ids_to_single_character(m):
   chain_id_dict = {}  # convert from orig to new
   # get all the ones that are already ok
   all_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  all_letters += all_letters.lower()
 
   # Get all the single-char ids already present and use as is
   for chain_id in chain_ids:
