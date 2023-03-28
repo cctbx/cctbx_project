@@ -24,6 +24,20 @@ from __future__ import absolute_import
 from boost_adaptbx import graph
 import mmtbx.reduce.Movers as Movers
 import mmtbx_probe_ext as probeExt
+from mmtbx.probe import Helpers
+
+def _ConvertPositionsToLvecs(positions):
+  """Converts a list of lists of tuples into a list of lists of
+  Helpers.lvec3 objects.
+  """
+  ret = []
+  for plist in positions:
+    newlist = []
+    for e in plist:
+      newlist.append(Helpers.lvec3(e))
+    ret.append(newlist)
+  return ret
+
 
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   """Tests for overlap of all possible positions of all movable atoms between each
@@ -72,9 +86,13 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
     for c in range(len(coarsePositions)):
       total.extend(m.FinePositions(c).positions)
 
+    # Convert the elements into Helpers.lvec objects so that we can
+    # do fast math on them in _PairsOverlap().
+    lvecs = _ConvertPositionsToLvecs(total)
+
     # Add the atoms and positions into our dictionaries
     atoms[m] = coarses.atoms
-    positions[m] = total
+    positions[m] = lvecs
     for a in coarses.atoms:
       atomMoverSets[a] = {m}
 
@@ -197,10 +215,12 @@ def _PairsOverlap(mover1, atoms1, positions1,
   """Helper function that tells whether any pair of atoms from two Movers overlap.
   :param mover1: The first Mover
   :param atoms1: Atom list for the first Mover
-  :param positions1: probe.PositionReturn.positions holding possible positions for each.
+  :param positions1: probe.PositionReturn.positions converted into Helpers.lvec3 objects
+  holding possible positions for each.
   :param mover2: The first Mover
   :param atoms2: Atom list for the second Mover
-  :param positions2: probe.PositionReturn.positions holding possible positions for each.
+  :param positions2: probe.PositionReturn.positions converted into Helpers.lvec3 objects
+  holding possible positions for each.
   :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
   up the information for atoms whose values need to be changed.  Can be
   obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
@@ -217,13 +237,9 @@ def _PairsOverlap(mover1, atoms1, positions1,
       for i2, p2 in enumerate(positions2):
         for ai2 in range(len(p2)):
           r2 = extraAtomInfoMap.getMappingFor(atoms2[ai2]).vdwRadius
-          dx = p1[ai1][0] - p2[ai2][0]
-          dy = p1[ai1][1] - p2[ai2][1]
-          dz = p1[ai1][2] - p2[ai2][2]
-          dSquared = dx*dx + dy*dy + dz*dz
+          d = (p1[ai1] - p2[ai2]).length()
           limit = r1 + r2 + 2*probeRad
-          limitSquared = limit*limit
-          if dSquared <= limitSquared:
+          if d <= limit:
             # Add the opposite Mover to each atom; they interact
             atomMoverSets[atoms1[ai1]].add(mover2)
             atomMoverSets[atoms2[ai2]].add(mover1)
