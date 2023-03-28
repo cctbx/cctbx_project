@@ -438,6 +438,7 @@ libtbx.scons: Warning: compiling with /MDd:
 
     if (libtbx.env.build_options.debug_symbols):
       env_etc.shlinkflags.append("/DEBUG")
+      env_base.Prepend(LINKFLAGS=["/DEBUG"]) # write program database files with debug symbols
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
     # handle std::snprintf for some dependencies that may need this macro
