@@ -577,7 +577,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
-        # the multi-element Cliques and then to do indepenedent fine adjustment of all
+        # the multi-element Cliques and then to do independent fine adjustment of all
         # Cliques.  Subclasses should overload the called routines, but the global approach
         # taken here will be the same for all of them.  If we want to change the recipe
         # so that we can do global fine optimization, we'll do that here rather than in the
@@ -606,7 +606,7 @@ class _SingletonOptimizer(object):
         # each of them, whether they are part of a multi-Mover Clique or not.
         self._fineLocations = {}
         for m in self._movers:
-          self._fineLocations[m] = 0
+          self._fineLocations[m] = None
         self._infoString += _VerboseCheck(self._verbosity, 1,"Fine optimization on all Movers\n")
         for m in self._movers:
           self._optimizeSingleMoverFine(m)
@@ -888,8 +888,8 @@ class _SingletonOptimizer(object):
 
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
-      self._fineLocations[mover] = maxIndex
       if maxScore > self._highScores[mover]:
+        self._fineLocations[mover] = maxIndex
         self._infoString += _VerboseCheck(self._verbosity, 3,"Setting single Mover to fine orientation {}".format(maxIndex)+
           ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
@@ -898,6 +898,7 @@ class _SingletonOptimizer(object):
         self._highScores[mover] = maxScore
       else:
         # Put us back to the initial coarse location and don't change the high score.
+        self._fineLocations[mover] = None
         self._infoString += _VerboseCheck(self._verbosity, 3,"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
     return maxScore
