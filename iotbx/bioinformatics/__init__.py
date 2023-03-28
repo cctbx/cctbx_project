@@ -1911,14 +1911,20 @@ def get_number_of_dups(line):
   values = text.split()
   return max(1, len(values))
 
-def clear_empty_lines(text, apply_duplicate_multiple_chains = False):
+def clear_empty_lines(text, apply_duplicate_multiple_chains = False,
+    keep_labels = False):
   # First duplicate any multiple chains, then clear empty lines.
   if apply_duplicate_multiple_chains:
     text = duplicate_multiple_chains(text)
   # make empty lines just a blank line.  Includes >>> etc.
+  # If keep_labels, make the starting line for each group start with >
+
   new_lines=[]
   prev_line = ""
+  label_line = ""
   for line in text.splitlines():
+    if keep_labels and line.startswith(">"):
+      label_line = line
     if not line.replace(">","").replace(" ",""):
        line=""
     elif line.startswith(">"):
@@ -1926,16 +1932,21 @@ def clear_empty_lines(text, apply_duplicate_multiple_chains = False):
     line=line.replace("?","")
     if (not line) and (not prev_line):
       continue # skip blanks if dup or at beginning
+    if line and label_line:
+      new_lines.append(label_line)
+      label_line = ""
     new_lines.append(line)
     prev_line = line
   return "\n".join(new_lines)+"\n"
 
 def get_sequences(file_name=None,text=None,remove_duplicates=None,
      apply_duplicate_multiple_chains = False,
-     remove_unknowns = False):
+     remove_unknowns = False,
+     return_sequences_with_labels = False):
   # return simple list of sequences in this file. duplicates included
   #  unless remove_duplicates=True
   #  remove unknowns (X) if requested
+  #  If return_sequences_with_labels,  return sequence objects with labels
   if not text:
     if not file_name:
       raise Sorry("Missing file for get_sequences: %s" %(
@@ -1943,18 +1954,28 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None,
     with open(file_name) as f:
       text = f.read()
   # clear any lines that have only > and nothing else
-  text=clear_empty_lines(text, apply_duplicate_multiple_chains)
-  chain_types=[]
+  text=clear_empty_lines(text, apply_duplicate_multiple_chains,
+    keep_labels = return_sequences_with_labels)
+
   ( sequences, unknowns ) = parse_sequence( text )
+
   simple_sequence_list=[]
+  sequence_object_list = []
   for sequence in sequences:
     if remove_duplicates and sequence.sequence in simple_sequence_list:
       continue # it is a duplicate
     elif remove_unknowns: # remove any X and take it
-      simple_sequence_list.append(sequence.sequence.upper().replace("X",""))
+      sequence.sequence = sequence.sequence.upper().replace("X","")
+      simple_sequence_list.append(sequence.sequence)
+      sequence_object_list.append(sequence)
     else: # take it
-      simple_sequence_list.append(sequence.sequence.upper())
-  return simple_sequence_list
+      sequence.sequence = sequence.sequence.upper()
+      simple_sequence_list.append(sequence.sequence)
+      sequence_object_list.append(sequence)
+  if return_sequences_with_labels:
+    return sequence_object_list
+  else:
+    return simple_sequence_list
 
 #####################################################################
 ####   Methods to try and guess chain types from sequences ##########
