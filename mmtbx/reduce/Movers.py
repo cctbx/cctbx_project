@@ -172,7 +172,7 @@ class MoverNull(object):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
     else:
@@ -364,11 +364,14 @@ class _MoverRotator(object):
     return FixUpReturn([], [], [], [])
 
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
     else:
-      angle = self._offset + self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex]
+      fineOffset = 0
+      if fineIndex is not None:
+        fineOffset = self._fineAngles[fineIndex]
+      angle = self._offset + self._coarseAngles[coarseIndex] + fineOffset
       while angle > 180: angle -= 360
       while angle < -180: angle += 360
       return "Angle {:.1f} deg .".format(angle)
@@ -912,7 +915,7 @@ class MoverAmideFlip(object):
         fString = 'AnglesNotAdjusted'
     else:
       fString = '.'
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state ."
     elif coarseIndex == 0:
@@ -1208,7 +1211,7 @@ class MoverHisFlip(object):
 
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if self._enabledFlipStates == 3:
-      if coarseIndex >= len(self.CoarsePositions().positions) or (
+      if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
           fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
         return "Unrecognized state . ."
       elif coarseIndex < 4:
