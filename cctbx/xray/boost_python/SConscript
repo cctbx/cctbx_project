@@ -1,6 +1,8 @@
 import libtbx.load_env
 Import('env_etc', "env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Clone()
+if not env_etc.msvc_version:
+  env[flags].append('-fpermissive')
 env_etc.include_registry.append(env=env, paths=[env_etc.fable_include])
 env_etc.enable_more_warnings(env=env)
 

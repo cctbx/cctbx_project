@@ -1168,7 +1168,7 @@ if libtbx.env.build_options.enable_cxx11:
     cxx11_flags = ["-std=c++11"]
   elif ver(env_etc.icc_version) >= ver((10,0)):
     cxx11_flags = ["-std=c++0x"]
-  elif env_etc.msvc_version and  env_etc.msvc_version >= 11 :
+  elif env_etc.msvc_version and env_etc.msvc_version >= 11 :
     cxx11_flags = [] # no options are needed
   else:
     raise RuntimeError("Unknown C++11 flag for compiler: %s" % env_etc.compiler)
