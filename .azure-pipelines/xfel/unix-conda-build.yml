@@ -80,6 +80,9 @@ steps:
     rm -rf modules/boost
     export KOKKOS_ARCH=HSW
     export KOKKOS_DEVICES=OpenMP
+    if [ "$(OS)" = "darwin" ]; then
+      export KOKKOS_DEVICES=Serial
+    fi
     python bootstrap.py \
       --builder=xfel \
       --use-conda $CONDA_PREFIX \
