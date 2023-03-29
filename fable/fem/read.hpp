@@ -528,13 +528,7 @@ namespace fem {
         }
       }
 
-      ~read_loop()
-#ifdef _MSC_VER
-      // exceptions are deliberately thrown for the purpose of flow control.
-      // This crashes in C++11 on Windows so use noexcept(false)
-      // see https://stackoverflow.com/questions/32956339/transitioning-to-c11-where-destructors-are-implicitly-declared-with-noexcept
-      noexcept(false) // gcc and xcode compilers doesn't like this
-#endif
+      ~read_loop() NOEXCEPT_FALSE
       {
         if (inp.get() == 0) return;
         if (io_mode == io_unformatted) {
