@@ -528,8 +528,14 @@ namespace fem {
         }
       }
 
-      ~read_loop() noexcept(false)
-      { // see https://stackoverflow.com/questions/32956339/transitioning-to-c11-where-destructors-are-implicitly-declared-with-noexcept
+      ~read_loop()
+#ifdef _MSC_VER
+      // exceptions are deliberately thrown for the purpose of flow control.
+      // This crashes in C++11 on Windows so use noexcept(false)
+      // see https://stackoverflow.com/questions/32956339/transitioning-to-c11-where-destructors-are-implicitly-declared-with-noexcept
+      noexcept(false) // gcc and xcode compilers doesn't like this
+#endif
+      {
         if (inp.get() == 0) return;
         if (io_mode == io_unformatted) {
           skip_to_end_of_unformatted_record();
