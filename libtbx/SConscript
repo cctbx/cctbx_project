@@ -1503,4 +1503,8 @@ enable_openmp_if_possible()
 enable_cuda_if_possible()
 enable_kokkos_if_possible()
 
+if os.environ.get('LIBTBX_COMPILATION_DB', False):
+  env_base.Tool('compilation_db')
+  env_base.CompilationDatabase('compilation_db.json')
+
 Export("env_base", "env_etc")

@@ -19,7 +19,6 @@ def exercise():
     get_sequence_n_copies_from_files
   import iotbx.bioinformatics
   import iotbx.pdb
-  from iotbx import file_reader
   import libtbx.load_env # import dependency
   from libtbx.test_utils import Exception_expected, contains_lines, approx_equal
   from six.moves import cStringIO as StringIO
@@ -548,8 +547,7 @@ END
     test=os.path.isfile)
   if (pdb_file is not None):
     seq = iotbx.bioinformatics.sequence("MGSSHHHHHHSSGLVPRGSHMAVRELPGAWNFRDVADTATALRPGRLFRSSELSRLDDAGRATLRRLGITDVADLRSSREVARRGPGRVPDGIDVHLLPFPDLADDDADDSAPHETAFKRLLTNDGSNGESGESSQSINDAATRYMTDEYRQFPTRNGAQRALHRVVTLLAAGRPVLTHCFAGKDRTGFVVALVLEAVGLDRDVIVADYLRSNDSVPQLRARISEMIQQRFDTELAPEVVTFTKARLSDGVLGVRAEYLAAARQTIDETYGSLGGYLRDAGISQATVNRMRGVLLG")
-    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-    hierarchy = pdb_in.file_object.hierarchy
+    hierarchy = iotbx.pdb.input(pdb_file).construct_hierarchy()
     v = validation(
       pdb_hierarchy=hierarchy,
       sequences=[seq],

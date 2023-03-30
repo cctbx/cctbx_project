@@ -274,10 +274,6 @@ class HKLViewFrame() :
           self.mprint("Received PHIL string:\n" + mstr, verbose=1)
           new_phil = libtbx.phil.parse(mstr)
           self.guarded_process_PHIL_parameters(new_phil, msgtype, lastmsgtype)
-        if msgtype=="external_cmd":
-          self.external_cmd = mstr
-          self.mprint("Received python command string:\n" + mstr, verbose=1)
-          self.run_external_cmd()
         lastmsgtype = msgtype
         time.sleep(self.zmqsleeptime)
       except Exception as e:
@@ -533,6 +529,10 @@ class HKLViewFrame() :
 
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
+      if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
+        self.run_external_cmd()
+      #phl.external_cmd = "None" # ensure we can do this again
+
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
         self.set_scene(phl.viewer.scene_id)
@@ -564,7 +564,6 @@ class HKLViewFrame() :
         currentNGLscope = self.currentphil.extract().NGL
         currentSelectInfoscope = self.currentphil.extract().selected_info
         phl = self.ResetPhilandViewer()
-        #phl.openfilename = fname # as openfilename was reset above
         if not self.load_reflections_file(fname):
           return
         self.params.NGL = currentNGLscope # override default NGL and selected_info scopes with user settings
@@ -628,7 +627,7 @@ class HKLViewFrame() :
           return
 
       if jsview_3d.has_phil_path(diff_phil, "savefilename"):
-        self.SaveReflectionsFile(phl.savefilename)
+        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
       phl.savefilename = None # ensure the same action in succession can be executed
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
@@ -976,18 +975,25 @@ Borrowing them from the first miller array""" %i)
     # Get logfile name and tabname assigned
     # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
     # in the script
+    from pathlib import PurePath
+    firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
+    firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
+    # Provide a temp directory for xtricorder in current working directory and
+    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
+    tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerTemp")).as_posix()
+    if self.params.external_cmd == "runXtricorder":
+      from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
+    if self.params.external_cmd == "runXtriage":
+      from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
     try:
-      ldic= {'retval': None, 'errormsg': None, 'self': self, 'master_phil': master_phil }
-      exec(self.external_cmd, globals(), ldic)
-      retval = ldic.get("retval", None)
-      errormsg = ldic.get("errormsg", None)
-      if retval != 0:
-        raise Sorry(errormsg)
-      tabname = ldic.get("tabname", None)
-      logfname = ldic.get("logfname", None)
-      self.SendInfoToGUI( {"show_log_file_from_external_cmd": [tabname, logfname ]  } )
-      self.validated_preset_buttons = False
-      self.validate_preset_buttons()
+      def thrdfunc():
+        ret = external_cmd(self, master_phil, firstpart, tempdir)
+        self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
+        self.validated_preset_buttons = False
+        self.validate_preset_buttons()
+      # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
+      # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
+      threading.Thread(target = thrdfunc, daemon=True).start()
     except Exception as e:
       self.SendInfoToGUI( {"show_log_file_from_external_cmd": -42 } )
       raise Sorry(str(e))
@@ -1246,16 +1252,22 @@ Borrowing them from the first miller array""" %i)
     self.params.use_provided_miller_arrays = True
 
 
-  def SaveReflectionsFile(self, savefilename):
+  def SaveReflectionsFile(self, savefilename, datasets_to_save):
+    if datasets_to_save is None or len(datasets_to_save) <1:
+      self.mprint("Choose one or more datasets to save to a new datafile")
+      return
+    datasets_to_save.sort()
     if self.loaded_file_name == savefilename:
       self.mprint("Not overwriting currently loaded file. Choose a different name!")
       return
     self.mprint("Saving file...")
     fileextension = os.path.splitext(savefilename)[1]
     if fileextension == ".mtz":
-      mtz1 = self.viewer.proc_arrays[0].as_mtz_dataset(column_root_label= self.viewer.proc_arrays[0].info().labels[0])
+      idx1 = datasets_to_save[0]
+      # create mtzdata file from the first selected dataset
+      mtz1 = self.viewer.proc_arrays[idx1].as_mtz_dataset(column_root_label= self.viewer.proc_arrays[idx1].info().labels[0])
       for i,arr in enumerate(self.viewer.proc_arrays):
-        if i==0:
+        if i not in datasets_to_save[1:]: # add the other selected datasets to the mtzfile
           continue
         mtz1.add_miller_array(arr, column_root_label=arr.info().labels[0] )
       try: # python2 or 3
@@ -1275,6 +1287,8 @@ Borrowing them from the first miller array""" %i)
           print(mycif.cif_block, file= f)
 
       for i,arr in enumerate(self.viewer.proc_arrays):
+        if i not in datasets_to_save: # add the selected datasets to the mtzfile
+          continue
         arrtype = None
         colnames = ["_refln.%s" %e for e in arr.info().labels ]
         colname= None
@@ -1993,12 +2007,18 @@ master_phil_str = """
   savefilename = None
     .type = path
     .help = "Name of file where the user wants to save datasets. Optionally used after making new datasets from existing ones"
+  datasets_to_save = None
+    .type = ints
+    .help = "Indices in the list of datasets on the Details tab to save. If list is empty or None all datasets will be saved"
   visible_dataset_label = None
     .type = path
     .help = "User supplied label for a new dataset of visible reflections, i.e. those which have opacity=1"
   save_image_name = None
     .type = path
     .help = "Name of image file (PNG format) where the current displayed reflections will be saved to at the users request"
+  external_cmd = *None runXtricorder runXtriage
+    .type = choice
+    .help = "Run an external program that analyses reflection files and presents results to HKLviewer"
   merge_data = False
     .type = bool
     .help = "internal flag"

@@ -35,6 +35,7 @@ except ImportError:
 
 import libtbx.load_env
 import iotbx.pdb
+import iotbx.pdb.mmcif
 import mmtbx.model
 from libtbx.utils import null_out
 
@@ -79,11 +80,18 @@ Convert version 3.2 file to version 2.3 naming:
   def get_results(self):
     return self.results
 
+  def validate(self):
+    if not self.params.file_name or (not os.path.isfile(self.params.file_name)):
+      raise Sorry("The file %s is missing" %(self.params.file_name))
+
 
 #{{{ pre_screen_file
 def pre_screen_file(filename, atom_exch, alt_atom_exch):
   count = 0
   res_count = 0
+  if not os.path.isfile(filename):
+    from libtbx.utils import Sorry
+    raise Sorry("The file %s is missing" %(filename))
   pdb_file = open(filename)
   for line in pdb_file:
     line=line.rstrip()

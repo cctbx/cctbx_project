@@ -414,14 +414,14 @@ def run(args=(), params=None, out=sys.stdout):
   output_file = params.muscle.output_file
   if (output_file is None) or (output_file == ""):
     output_file = os.path.join(os.getcwd(), "muscle.aln")
-  from iotbx import file_reader
+  import iotbx.pdb
   from iotbx.bioinformatics import any_sequence_format, sequence
   seqs = []
   for file_name in seq_files :
     if (file_name.endswith(".pdb") or file_name.endswith(".ent") or
         file_name.endswith(".pdb.gz") or file_name.endswith(".ent.gz")):
-      pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
-      hierarchy = pdb_in.hierarchy
+      pdb_in = iotbx.pdb.input(file_name)
+      hierarchy = pdb_in.construct_hierarchy()
       first_model = hierarchy.models()[0]
       found_protein = False
       for chain in first_model.chains():

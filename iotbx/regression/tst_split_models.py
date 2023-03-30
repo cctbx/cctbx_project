@@ -1,6 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import iotbx.pdb
+from libtbx import easy_run
+from libtbx.test_utils import approx_equal
+
 
 def exercise():
   if (os.path.isfile("multi_model_1.pdb")):
@@ -40,18 +44,14 @@ ATOM      9  HA3 GLY P  -1       7.112 -26.918  14.499  1.00  0.00           H
 ENDMDL
 END""")
   f.close()
-  from iotbx import file_reader
-  from libtbx import easy_run
-  from libtbx.test_utils import approx_equal
   out = easy_run.fully_buffered("iotbx.pdb.split_models multi_model.pdb")
   assert (len(out.stdout_lines) == 2) and (len(out.stderr_lines) == 0)
   assert (os.path.isfile("multi_model_1.pdb") and
           os.path.isfile("multi_model_2.pdb"))
   sites = []
   for file in ["multi_model_1.pdb", "multi_model_2.pdb"] :
-    pdb_in = file_reader.any_file(file, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
-    h = pdb_in.file_object.hierarchy
+    pdb_in = iotbx.pdb.input(file)
+    h = pdb_in.construct_hierarchy()
     assert (len(h.models()) == 1)
     sites.append(h.atoms().extract_xyz())
   assert approx_equal(sites[0].rms_difference(sites[1]), 38.9216638)

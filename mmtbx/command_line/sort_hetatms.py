@@ -440,6 +440,14 @@ class sort_hetatms_result(object):
 def validate_params(params):
   if (params.file_name is None):
     raise Sorry("Model file (file_name) not specified.")
+  if not os.path.isfile(params.file_name):
+    raise Sorry("Model file (%s) is missing." %(params.file_name))
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  m = dm.get_model(params.file_name)
+  if not m:
+    raise Sorry("Unable to read the file %s" %(params.file_name))
+
   return True
 
 class launcher(runtime_utils.target_with_save_result):

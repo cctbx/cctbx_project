@@ -85,6 +85,7 @@ Full parameters:
   import mmtbx.validation.experimental
   from iotbx import merging_statistics
   from iotbx import file_reader
+  import iotbx.pdb
   if (params.data is None):
     raise Sorry("Please specify a data file (usually MTZ format).")
   if (params.unmerged_data is None):
@@ -188,9 +189,8 @@ Full parameters:
     if (params.model is None):
       raise Sorry("A PDB file is required if F(model) is not pre-calculated.")
     make_sub_header("Calculating F(model)", out=out)
-    pdb_in = file_reader.any_file(params.model, force_type="pdb")
-    pdb_in.check_file_type("pdb")
-    pdb_symm = pdb_in.file_object.crystal_symmetry()
+    pdb_in = iotbx.pdb.input(params.model)
+    pdb_symm = pdb_in.crystal_symmetry()
     if (pdb_symm is None):
       pdb_symm = f_obs
     else :
@@ -202,7 +202,7 @@ Full parameters:
           file2="data file",
           symm1=pdb_symm,
           symm2=f_obs)
-    xray_structure = pdb_in.file_object.xray_structure_simple(
+    xray_structure = pdb_in.xray_structure_simple(
       crystal_symmetry=pdb_symm)
     from mmtbx.utils import fmodel_simple
     # XXX this gets done anyway later, but they need to be consistent before

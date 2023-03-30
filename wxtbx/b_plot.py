@@ -148,12 +148,16 @@ def run(args=(), params=None, out=sys.stdout):
     out=out)
 
 def show_plot_frame(result, parent=None):
-  frame = BPlotFrame(parent, -1, "B-factor plot")
+  frame = BPlotFrame(parent, -1, "B-factor plot",
+      style = wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP)
   plots = result.make_plots()
   if (len(plots) == 0):
     raise Sorry("No suitable chains found in PDB file.")
   frame.set_plot_data(plots)
   frame.Show()
+  # Toggle it off/on to make sure it displays
+  frame.OnToggleControls(None)
+  frame.OnToggleControls(None)
 
 class BPlotFrame(plots.plot_frame):
   def draw_top_panel(self):
@@ -240,8 +244,8 @@ class b_plot_panel(plots.plot_container):
     y = numpy.array(avg_b)
     x = numpy.linspace(1, y.size, y.size)
     points = numpy.array([x, y]).T.reshape(-1,1,2)
-    yy = numpy.nan_to_num(y)
-    yyy = yy[yy>0]
+    y = numpy.nan_to_num(y)  # XXX to get rid of comparison errors
+    yyy = y[y>0]
     b_range = numpy.linspace(yyy.min(), yyy.max(), cm.jet.N)
     norm = BoundaryNorm(b_range, 256)
     segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
@@ -265,5 +269,14 @@ class b_plot_panel(plots.plot_container):
     self.parent.Refresh()
 
 def validate_params(params):
+  import os
+  from iotbx import file_reader
   if (params.b_plot.pdb_file is None):
     raise Sorry("No PDB file defined!")
+  if not os.path.isfile(params.b_plot.pdb_file):
+    raise Sorry("The PDB file %s is missing" %(params.b_plot.pdb_file))
+  try:
+    pdb_in = file_reader.any_file(params.b_plot.pdb_file, force_type="pdb")
+  except Exception as e:
+    raise Sorry("The PDB file %s cannot be read or has no atoms?" %(params.b_plot.pdb_file))
+

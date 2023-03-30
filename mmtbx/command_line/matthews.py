@@ -79,11 +79,11 @@ crystallized molecule(s).
         "sequence file.")
   elif (params.model is not None):
     assert (params.n_residues == params.n_bases == None)
-    from iotbx.file_reader import any_file
+    import iotbx.pdb
     params.n_residues = 0
     params.n_bases = 0
-    pdb_in = any_file(params.model)
-    hierarchy = pdb_in.file_object.hierarchy
+    pdb_in = iotbx.pdb.input(params.model)
+    hierarchy = pdb_in.construct_hierarchy()
     for chain in hierarchy.models()[0].chains():
       if chain.is_protein():
         params.n_residues += chain.residue_groups_size()

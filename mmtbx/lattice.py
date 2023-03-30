@@ -163,9 +163,9 @@ def apply_biological_unit(pdb_in):
 
 if __name__ == "__main__" :
   pdb_file = sys.argv[1]
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(pdb_file).file_object
-  pdb_hierarchy = pdb_in.hierarchy
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(pdb_file)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
   xrs = pdb_in.xray_structure_simple()
   residue_contacts = find_crystal_contacts_by_residue(xrs, pdb_hierarchy)
   summarize_contacts_by_residue(residue_contacts, pdb_hierarchy)

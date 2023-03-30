@@ -511,6 +511,9 @@ class HKLview_3d:
       if has_phil_path(diff_phil, "vector_width"):
         self.SetVectorWidth(self.params.NGL.vector_width)
 
+      if has_phil_path(diff_phil, "hkldist"):
+        self.visual_symHKLs = []
+
       if has_phil_path(diff_phil, "show_vector",
                                   "real_space_unit_cell_scale_fraction",
                                   "reciprocal_unit_cell_scale_fraction"):
@@ -1484,8 +1487,12 @@ class HKLview_3d:
     self.sceneisdirty = False
     self.lastscene_id = self.params.viewer.scene_id
     self.SendInfoToGUI( { "CurrentDatatype": self.get_current_datatype(),
-         "current_labels": self.get_label_type_from_scene_id( self.params.viewer.scene_id)[0] } )
+         "current_labels": self.get_current_labels() } )
     self.mprint("\nSubmitted reflections and other objects to browser for rendering.", verbose=1)
+
+
+  def get_current_labels(self):
+    return self.get_label_type_from_scene_id(self.params.viewer.scene_id)[0]
 
 
   def get_visible_current_miller_array(self):
@@ -1646,12 +1653,13 @@ class HKLview_3d:
             rotids = eval(message.split(":")[2])
             self.visible_hkls = []
             self.outsideplane_hkls = []
-            for i,hklid in enumerate(hklids):
-              hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
-              self.visible_hkls.append(hkl)
-              if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
-               self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
-                self.outsideplane_hkls.append(hkl)
+            if isinstance(hklids, tuple):
+              for i,hklid in enumerate(hklids):
+                hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
+                self.visible_hkls.append(hkl)
+                if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
+                 self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
+                  self.outsideplane_hkls.append(hkl)
             self.visible_hkls = list(set(self.visible_hkls))
             self.outsideplane_hkls = list(set(self.outsideplane_hkls))
             self.mprint( "visible hkls: " + str(self.visible_hkls), verbose="frustum")
@@ -1666,10 +1674,12 @@ class HKLview_3d:
           self.GetReflectionsInFrustum()
         elif "MoveClipPlanesUp" in message:
           self.params.clip_plane.hkldist += 1
+          self.visual_symHKLs = []
           self.set_volatile_params(use_semaphore=False)
           philchanged = True
         elif "MoveClipPlanesDown" in message:
           self.params.clip_plane.hkldist -= 1
+          self.visual_symHKLs = []
           self.set_volatile_params(use_semaphore=False)
           philchanged = True
         elif "RenderStageObjects" in message: # reflections have been drawn
@@ -2223,8 +2233,8 @@ in the space group %s\nwith unit cell %s""" \
 
 
   def visualise_sym_HKLs(self):
+    self.RemovePrimitives("sym_HKLs")
     if len(self.visual_symHKLs):
-      self.RemovePrimitives("sym_HKLs")
       for i,(hkl,hklstr) in enumerate(self.visual_symHKLs):
         thkl = tuple(hkl)
         hklstr = "H,K,L: %d,%d,%d" %thkl

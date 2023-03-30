@@ -433,18 +433,6 @@ citation {
 }
 
 citation {
-  article_id = alphafold
-  authors = Jumper J, Evans R, Pritzel A, Green T, Figurnov M, Ronneberger O, Tunyasuvunakool K, Bates R, Žídek A, Potapenko A, Bridgland A, Meyer C, Kohl SAA, Ballard AJ, Cowie A, Romera-Paredes B, Nikolov S, Jain R, Adler J, Back T, Petersen S, Reiman D, Clancy E, Zielinski M, Steinegger M, Pacholska M, Berghammer T, Bodenstein S, Silver D, Vinyals O, Senior AW, Kavukcuoglu K, Kohli P, Hassabis D
-  title = Highly accurate protein structure prediction with AlphaFold
-  journal = Nature
-  volume = 596
-  pages = 583-589
-  year = 2021
-  doi_id =  doi:10.1038/s41586-021-03819-2
-  pmid = 34265844
-}
-
-citation {
   article_id = predict_and_build_cryo_em
   authors = Terwilliger TC, Poon BK, Afonine PV, Schlicksup CJ, Croll TI, Millán C, Richardson JS, Read RJ, Adams PD
   title = Improved AlphaFold modeling with implicit experimental information
@@ -468,6 +456,17 @@ citation {
   pmid = 36876433
 }
 
+citation {
+  article_id = alphafold_hypothesis
+  authors = Terwilliger TC, Afonine PV, Liebschner, D., Croll TI, McCoy, AJ, Oeffner, RD., Williams, CJ, Poon, BK, Richardson JS, Read RJ, Adams PD
+  title = AlphaFold predictions: great hypotheses but no match for experiment
+  journal = BiorXiv
+  volume = None
+  pages = None
+  year = 2023
+  doi_id = 10.1101/2022.11.21.517405
+  pmid = None
+}
 
 citation {
   article_id = colabfold
@@ -1573,4 +1572,26 @@ citation {
   year = 2023
   pmid = 36920336
   doi_id = 10.1107/S2059798323001602
+}
+citation {
+  article_id = lddt
+  authors = Mariani V, Biasini M, Barbato A, Schwede T.
+  title = lDDT: a local superposition-free score for comparing protein structures and models using distance difference tests
+  journal = Bioinformatics
+  volume = 29
+  pages = 2722-2728
+  year = 2013
+  doi_id = 10.1093/bioinformatics/btt473
+  pmid = 23986568
+}
+citation {
+  article_id = alphafold
+  authors = Jumper J, Evans R, Pritzel A, Green T, Figurnov M, Ronneberger O, Tunyasuvunakool K, Bates R, Žídek A, Potapenko A, Bridgland A, Meyer C, Kohl SAA, Ballard AJ, Cowie A, Romera-Paredes B, Nikolov S, Jain R, Adler J, Back T, Petersen S, Reiman D, Clancy E, Zielinski M, Steinegger M, Pacholska M, Berghammer T, Bodenstein S, Silver D, Vinyals O, Senior AW, Kavukcuoglu K, Kohli P, Hassabis D
+  title = Highly accurate protein structure prediction with AlphaFold
+  journal = Nature
+  volume = 596
+  pages = 583-589
+  year = 2021
+  doi_id =  doi:10.1038/s41586-021-03819-2
+  pmid = 34265844
 }

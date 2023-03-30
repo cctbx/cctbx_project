@@ -169,9 +169,12 @@ class ConfigFrame(wx.Frame):
         raise Sorry("Invalid reference value '%s' - must be a decimal number."%
           reference_value_txt)
     try :
-      n_bins = float(self.n_bins.GetValue())
+      n_bins = int(float(self.n_bins.GetValue()))
     except ValueError :
       raise Sorry("Number of bins must be a decimal number.")
+    if n_bins < 1:
+      raise Sorry("Number of bins must be a decimal number 1 or greater")
+
     data = []
     print(limits.h_min, limits.h_max)
     for (d_, v_) in zip(db['high_resolution'], db[h_key]):
@@ -241,6 +244,8 @@ class HistogramPlot(plots.histogram):
   def show_histogram(self, data, n_bins, reference_value, xlabel):
     from scitbx.array_family import flex
     mean = flex.mean(flex.double(data))
+    if not n_bins:
+      raise Sorry("Number of bins must be greater than zero for histograms")
     p = plots.histogram.show_histogram(self,
       data=data,
       n_bins=int(n_bins),

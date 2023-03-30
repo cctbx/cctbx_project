@@ -249,6 +249,7 @@ The choices are {}.
           skip_ss_annotations=skip_ss_annotations,
           log=self.logger)
         self.add_model(filename, model)
+    return filename
 
   def process_model_str(self, label, model_str):
     model = mmtbx.model.manager(

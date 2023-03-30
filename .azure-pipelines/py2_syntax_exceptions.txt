@@ -1,4 +1,5 @@
 crys3d/hklviewer/webbrowser_messenger_py3.py
+crys3d/hklviewer/xtriage_runner.py
 crys3d/regression/tst_websocket.py
 xfel/ui/db/dxtbx_db.py
 xfel/euxfel/agipd_from_defs.py

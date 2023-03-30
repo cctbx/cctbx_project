@@ -27,6 +27,7 @@ import string
 import sys, os
 import time
 import math
+import numpy as np
 
 from cctbx.geometry_restraints.linking_class import linking_class
 from six.moves import zip, range
@@ -798,18 +799,19 @@ class counters(object):
     self.discarded_because_of_special_positions = 0
 
 class special_position_dict():
-  def __init__(self, special_position_indices):
+  def __init__(self, special_position_indices, n_seq):
     self.spi = special_position_indices
-    self.iseq_mapping = {}
+    self.specials = None
+    if self.spi is not None:
+      self.specials = np.array([False]*n_seq)
+      for s in self.spi:
+        self.specials[s] = True
 
   def involves_special_positions(self, i_seqs):
     if self.spi is None: return False
     for i_seq in i_seqs:
-      mapping = self.iseq_mapping.get(i_seq)
-      if mapping:
+      if self.specials[i_seq]:
         return True
-      elif mapping is None:
-        self.iseq_mapping[i_seq] = i_seq in self.spi
     return False
 
 def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
@@ -3495,7 +3497,8 @@ class build_all_chain_proxies(linking_mixins):
         self.site_symmetry_table().special_position_indices()
 
     self.special_position_dict = special_position_dict(
-        special_position_indices=self.special_position_indices)
+        special_position_indices=self.special_position_indices,
+        n_seq = self.pdb_atoms.size())
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
     self.conformation_dependent_restraints_list = []

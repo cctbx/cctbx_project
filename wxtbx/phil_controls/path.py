@@ -108,8 +108,11 @@ class PathCtrl(wx.PyPanel, phil_controls.PhilCtrl):
     self._path_text.SetBackgroundColour(*args, **kwds)
 
   def GetPhilValue(self):
-    self._path_text.GetValidator().Validate(self)
-    val_str = self.GetValue()
+    ok = self._path_text.GetValidator().Validate(self)
+    if ok:
+      val_str = self.GetValue()
+    else:
+      val_str = ""
     assert isinstance(val_str, str)
     if (val_str == ""):
       return self.ReturnNoneIfOptional()

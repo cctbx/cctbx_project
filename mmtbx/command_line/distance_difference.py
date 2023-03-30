@@ -118,14 +118,12 @@ def run(args=(), params=None, out=None, display_plot=False):
 
 def calculate_matrix(params, log=None):
   if (log is None) : log = null_out()
-  from iotbx import file_reader
-  pdb_1 = file_reader.any_file(params.model_1, force_type="pdb")
-  pdb_1.check_file_type("pdb")
-  hierarchy_1 = pdb_1.file_object.hierarchy
+  import iotbx.pdb
+  pdb_1 = iotbx.pdb.input(params.model_1)
+  hierarchy_1 = pdb_1.construct_hierarchy()
   hierarchy_1.atoms().reset_i_seq()
-  pdb_2 = file_reader.any_file(params.model_2, force_type="pdb")
-  pdb_2.check_file_type("pdb")
-  hierarchy_2 = pdb_2.file_object.hierarchy
+  pdb_2 = iotbx.pdb.input(params.model_2)
+  hierarchy_2 = pdb_2.construct_hierarchy()
   hierarchy_2.atoms().reset_i_seq()
   for k, hierarchy in enumerate([hierarchy_1,hierarchy_2]):
     k += 1
