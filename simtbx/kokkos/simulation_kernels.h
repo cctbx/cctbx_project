@@ -1,6 +1,13 @@
-#include <simtbx/kokkos/kokkos_types.h>
+#include <kokkostbx/kokkos_types.h>
+#include <kokkostbx/kokkos_vector3.h>
+#include <kokkostbx/kokkos_matrix3.h>
+using vec3 = kokkostbx::vector3<CUDAREAL>;
+using mat3 = kokkostbx::matrix3<CUDAREAL>;
+
 #include <simtbx/nanoBragg/nanotypes.h>
 #include <simtbx/kokkos/kernel_math.h>
+
+
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
 using simtbx::nanoBragg::SQUARE;
@@ -8,6 +15,7 @@ using simtbx::nanoBragg::ROUND;
 using simtbx::nanoBragg::GAUSS;
 using simtbx::nanoBragg::GAUSS_ARGCHK;
 using simtbx::nanoBragg::TOPHAT;
+
 
 void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     int roi_ymin, int roi_ymax, int oversample, int point_pixel,
@@ -47,8 +55,6 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
         const int s_k_max = s_k_min + s_k_range - 1;
         const int s_l_max = s_l_min + s_l_range - 1;
 
-
-
         const int total_pixels = spixels * fpixels;
 
         // add background from something amorphous
@@ -56,6 +62,20 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
         CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
 
        Kokkos::parallel_for("kokkosSpotsKernel", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
+
+                vec3 sdet_tmp {sdet_vector(1), sdet_vector(2), sdet_vector(3)};
+                vec3 fdet_tmp {fdet_vector(1), fdet_vector(2), fdet_vector(3)};
+                vec3 odet_tmp {odet_vector(1), odet_vector(2), odet_vector(3)};
+                vec3 pix0_tmp {pix0_vector(1), pix0_vector(2), pix0_vector(3)};
+
+                vec3 beam_vector_tmp {beam_vector(1), beam_vector(2), beam_vector(3)};
+                vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
+
+                vec3 a0_tmp {a0(1), a0(2), a0(3)};
+                vec3 b0_tmp {b0(1), b0(2), b0(3)};
+                vec3 c0_tmp {c0(1), c0(2), c0(3)};
+
+                vec3 polar_vector_tmp {polar_vector(1), polar_vector(2), polar_vector(3)};
 
                 const int fpixel = pixIdx % fpixels;
                 const int spixel = pixIdx / fpixels;
@@ -106,38 +126,25 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         //                      pixel_X = distance;
                                         //                      pixel_Y = Sdet-Ybeam;
                                         //                      pixel_Z = Fdet-Xbeam;
-                                        //CUDAREAL * pixel_pos = tmpVector1;
-                                        CUDAREAL pixel_pos[4];
-                                        pixel_pos[1] = Fdet * fdet_vector(1)
-                                                     + Sdet * sdet_vector(1)
-                                                     + Odet * odet_vector(1)
-                                                            + pix0_vector(1); // X
-                                        pixel_pos[2] = Fdet * fdet_vector(2)
-                                                     + Sdet * sdet_vector(2)
-                                                     + Odet * odet_vector(2)
-                                                            + pix0_vector(2); // Y
-                                        pixel_pos[3] = Fdet * fdet_vector(3)
-                                                     + Sdet * sdet_vector(3)
-                                                     + Odet * odet_vector(3)
-                                                            + pix0_vector(3); // Z
+                                        vec3 pixel_pos;
+                                        pixel_pos += Fdet * fdet_tmp;
+                                        pixel_pos += Sdet * sdet_tmp;
+                                        pixel_pos += Odet * odet_tmp;
+                                        pixel_pos += pix0_tmp;
+
+                                        CUDAREAL pixel_pos_tmp[] = {0, pixel_pos[0], pixel_pos[1], pixel_pos[2]};
 
                                         if (curved_detector) {
                                                 // construct detector pixel that is always "distance" from the sample
-                                                CUDAREAL dbvector[] = { 0.0, 0.0, 0.0, 0.0 };
-                                                dbvector[1] = distance * beam_vector(1);
-                                                dbvector[2] = distance * beam_vector(2);
-                                                dbvector[3] = distance * beam_vector(3);
+                                                vec3 dbvector = distance * vec3{beam_vector(1), beam_vector(2), beam_vector(3)};
                                                 // treat detector pixel coordinates as radians
-                                                CUDAREAL newvector[] = { 0.0, 0.0, 0.0, 0.0 };
-                                                rotate_axis(dbvector, newvector, sdet_vector, pixel_pos[2] / distance);
-                                                rotate_axis(newvector, pixel_pos, fdet_vector, pixel_pos[3] / distance);
-                                                // rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
+                                                vec3 newvector = dbvector.rotate_around_axis(sdet_tmp, pixel_pos.y_val() / distance );
+                                                pixel_pos = newvector.rotate_around_axis(fdet_tmp, pixel_pos.z_val() / distance );
                                         }
 
                                         // construct the diffracted-beam unit vector to this sub-pixel
-                                        //CUDAREAL * diffracted = tmpVector2;
-                                        CUDAREAL diffracted[4];
-                                        CUDAREAL airpath = unitize(pixel_pos, diffracted);
+                                        CUDAREAL airpath = pixel_pos.length();
+                                        vec3 diffracted = pixel_pos.get_unit_vector();
 
                                         // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                                         CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance / airpath;
@@ -150,11 +157,8 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         CUDAREAL capture_fraction = 1.0;
                                         if (detector_thick > 0.0 && detector_mu> 0.0) {
                                                 // inverse of effective thickness increase
-                                                CUDAREAL odet[4];
-                                                odet[1] = odet_vector(1);
-                                                odet[2] = odet_vector(2);
-                                                odet[3] = odet_vector(3);
-                                                CUDAREAL parallax = dot_product(odet, diffracted);
+                                                vec3 odet{odet_vector(1), odet_vector(2), odet_vector(3)};
+                                                CUDAREAL parallax = odet.dot(diffracted);
                                                 capture_fraction = exp(-thick_tic * detector_thickstep / detector_mu / parallax)
                                                                 - exp(-(thick_tic + 1) * detector_thickstep / detector_mu / parallax);
                                         }
@@ -164,28 +168,17 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         for (source = 0; source < sources; ++source) {
 
                                                 // retrieve stuff from cache
-                                                CUDAREAL incident[4];
-                                                incident[1] = -source_X(source);
-                                                incident[2] = -source_Y(source);
-                                                incident[3] = -source_Z(source);
+                                                vec3 incident = {-source_X(source), -source_Y(source), -source_Z(source)};
                                                 CUDAREAL lambda = source_lambda(source);
                                                 CUDAREAL source_fraction = source_I(source);
 
                                                 // construct the incident beam unit vector while recovering source distance
                                                 // TODO[Giles]: Optimization! We can unitize the source vectors before passing them in.
-                                                unitize(incident, incident);
+                                                incident.normalize();
 
                                                 // construct the scattering vector for this pixel
-                                                CUDAREAL scattering[4];
-                                                scattering[1] = (diffracted[1] - incident[1]) / lambda;
-                                                scattering[2] = (diffracted[2] - incident[2]) / lambda;
-                                                scattering[3] = (diffracted[3] - incident[3]) / lambda;
-
-                                                #ifdef __CUDA_ARCH__
-                                                CUDAREAL stol = 0.5 * norm3d(scattering[1], scattering[2], scattering[3]);
-                                                #else
-                                                CUDAREAL stol = 0.5 * sqrt(scattering[1]*scattering[1] + scattering[2]*scattering[2] + scattering[3]*scattering[3]);
-                                                #endif
+                                                vec3 scattering = (diffracted - incident) / lambda;
+                                                CUDAREAL stol = 0.5 * scattering.length();
 
                                                 // rough cut to speed things up when we aren't using whole detector
                                                 if (dmin > 0.0 && stol > 0.0) {
@@ -197,7 +190,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 // polarization factor
                                                 if (!nopolar) {
                                                         // need to compute polarization factor
-                                                        polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+                                                        polar = polarization_factor(polarization, incident, diffracted, polar_vector_tmp);
                                                 } else {
                                                         polar = 1.0;
                                                 }
@@ -206,54 +199,37 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
                                                         CUDAREAL phi = phistep * phi_tic + phi0;
 
-                                                        CUDAREAL ap[4];
-                                                        CUDAREAL bp[4];
-                                                        CUDAREAL cp[4];
-
                                                         // rotate about spindle if necessary
-                                                        rotate_axis(a0, ap, spindle_vector, phi);
-                                                        rotate_axis(b0, bp, spindle_vector, phi);
-                                                        rotate_axis(c0, cp, spindle_vector, phi);
+                                                        vec3 ap = a0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
+                                                        vec3 bp = b0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
+                                                        vec3 cp = c0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
 
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
                                                                 // apply mosaic rotation after phi rotation
-                                                                CUDAREAL a[4];
-                                                                CUDAREAL b[4];
-                                                                CUDAREAL c[4];
+                                                                // CUDAREAL a[4];
+                                                                // CUDAREAL b[4];
+                                                                // CUDAREAL c[4];
+                                                                vec3 a, b, c;
 
                                                                 if (mosaic_spread > 0.0) {
-                                                                        CUDAREAL umat[] = {mosaic_umats(mos_tic * 9 + 0),
-                                                                                           mosaic_umats(mos_tic * 9 + 1),
-                                                                                           mosaic_umats(mos_tic * 9 + 2),
-                                                                                           mosaic_umats(mos_tic * 9 + 3),
-                                                                                           mosaic_umats(mos_tic * 9 + 4),
-                                                                                           mosaic_umats(mos_tic * 9 + 5),
-                                                                                           mosaic_umats(mos_tic * 9 + 6),
-                                                                                           mosaic_umats(mos_tic * 9 + 7),
-                                                                                           mosaic_umats(mos_tic * 9 + 8)};
-
-                                                                        rotate_umat(ap, a, umat);
-                                                                        rotate_umat(bp, b, umat);
-                                                                        rotate_umat(cp, c, umat);
+                                                                        mat3 umat;
+                                                                        for (int i=0; i<9; ++i) {
+                                                                                umat[i] = mosaic_umats(mos_tic * 9 + i);
+                                                                        }
+                                                                        a = umat.dot(ap);
+                                                                        b = umat.dot(bp);
+                                                                        c = umat.dot(cp);
                                                                 } else {
-                                                                        a[1] = ap[1];
-                                                                        a[2] = ap[2];
-                                                                        a[3] = ap[3];
-                                                                        b[1] = bp[1];
-                                                                        b[2] = bp[2];
-                                                                        b[3] = bp[3];
-                                                                        c[1] = cp[1];
-                                                                        c[2] = cp[2];
-                                                                        c[3] = cp[3];
+                                                                        a = ap;
+                                                                        b = bp;
+                                                                        c = cp;
                                                                 }
 
-
                                                                 // construct fractional Miller indicies
-
-                                                                CUDAREAL h = dot_product(a, scattering);
-                                                                CUDAREAL k = dot_product(b, scattering);
-                                                                CUDAREAL l = dot_product(c, scattering);
+                                                                CUDAREAL h = a.dot(scattering);
+                                                                CUDAREAL k = b.dot(scattering);
+                                                                CUDAREAL l = c.dot(scattering);
 
                                                                 // round off to nearest whole index
                                                                 int h0 = ceil(h - 0.5);
@@ -628,6 +604,13 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
 //                 float * max_I_x_reduction,
 //                 float * max_I_y_reduction, bool * rangemap);
 
+template <typename T, typename U>
+void add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
+  Kokkos::parallel_for("add_arrays", lhs.span(), KOKKOS_LAMBDA(const int& i) {
+    lhs( i ) = lhs( i ) + (T)rhs( i );
+    rhs( i ) = 0;
+  });
+}
 
 void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
@@ -670,6 +653,13 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
     // const int stride = fstride * sstride;
     Kokkos::parallel_for("add_background", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
 
+        vec3 sdet_tmp {sdet_vector(1), sdet_vector(2), sdet_vector(3)};
+        vec3 fdet_tmp {fdet_vector(1), fdet_vector(2), fdet_vector(3)};
+        vec3 odet_tmp {odet_vector(1), odet_vector(2), odet_vector(3)};
+        vec3 pix0_tmp {pix0_vector(1), pix0_vector(2), pix0_vector(3)};
+
+        vec3 polar_vector_tmp {polar_vector(1), polar_vector(2), polar_vector(3)};
+
         const int fpixel = pixIdx % fpixels;
         const int spixel = pixIdx / fpixels;
         // reset background photon count for this pixel
@@ -685,17 +675,21 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                 for(int thick_tic=0; thick_tic<detector_thicksteps; ++thick_tic) {
                     // assume "distance" is to the front of the detector sensor layer
                     CUDAREAL Odet = thick_tic*detector_thickstep;
-                    CUDAREAL pixel_pos[4];
+                //     CUDAREAL pixel_pos[4];
 
-                    pixel_pos[0] = 0.0;
-                    pixel_pos[1] = Fdet * fdet_vector(1) + Sdet * sdet_vector(1) + Odet * odet_vector(1) + pix0_vector(1); // X
-                    pixel_pos[2] = Fdet * fdet_vector(2) + Sdet * sdet_vector(2) + Odet * odet_vector(2) + pix0_vector(2); // Y
-                    pixel_pos[3] = Fdet * fdet_vector(3) + Sdet * sdet_vector(3) + Odet * odet_vector(3) + pix0_vector(3); // Z
+                //     pixel_pos[0] = 0.0;
+                //     pixel_pos[1] = Fdet * fdet_vector(1) + Sdet * sdet_vector(1) + Odet * odet_vector(1) + pix0_vector(1); // X
+                //     pixel_pos[2] = Fdet * fdet_vector(2) + Sdet * sdet_vector(2) + Odet * odet_vector(2) + pix0_vector(2); // Y
+                //     pixel_pos[3] = Fdet * fdet_vector(3) + Sdet * sdet_vector(3) + Odet * odet_vector(3) + pix0_vector(3); // Z
+
+                    vec3 pixel_pos = Fdet * fdet_tmp + Sdet * sdet_tmp + Odet * odet_tmp + pix0_tmp;
 
                     // no curved detector option (future implementation)
                     // construct the diffracted-beam unit vector to this pixel
-                    CUDAREAL diffracted[4];
-                    CUDAREAL airpath = unitize(pixel_pos, diffracted);
+                //     CUDAREAL diffracted[4];
+                //     CUDAREAL airpath = unitize(pixel_pos, diffracted);
+                    CUDAREAL airpath = pixel_pos.length();
+                    vec3 diffracted = pixel_pos.get_unit_vector();
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                     CUDAREAL omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
@@ -706,7 +700,8 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                     CUDAREAL capture_fraction = 1.0;
                     if(detector_thick > 0.0){
                         // inverse of effective thickness increase
-                        CUDAREAL parallax = diffracted[1] * odet_vector(1) + diffracted[2] * odet_vector(2) + diffracted[3] * odet_vector(3);
+                        // CUDAREAL parallax = diffracted[1] * odet_vector(1) + diffracted[2] * odet_vector(2) + diffracted[3] * odet_vector(3);
+                        CUDAREAL parallax = diffracted.dot(odet_tmp);
                         capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
                                             -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                     }
@@ -715,23 +710,27 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                     for(int source=source_start; source<sources; ++source) {
 
                         // retrieve stuff from cache
-                        CUDAREAL incident[4];
-                        incident[1] = -source_X(source);
-                        incident[2] = -source_Y(source);
-                        incident[3] = -source_Z(source);
+                        // CUDAREAL incident[4];
+                        // incident[1] = -source_X(source);
+                        // incident[2] = -source_Y(source);
+                        // incident[3] = -source_Z(source);
+                        vec3 incident {-source_X(source), -source_Y(source), -source_Z(source)};
                         CUDAREAL lambda = source_lambda(source);
                         CUDAREAL source_fraction = full_spectrum * source_I(source) + n_source_scale;
                         // construct the incident beam unit vector while recovering source distance
-                        unitize(incident, incident);
+                        incident.normalize();
+                        // unitize(incident, incident);
 
                         // construct the scattering vector for this pixel
-                        CUDAREAL scattering[4];
-                        scattering[1] = (diffracted[1]-incident[1])/lambda;
-                        scattering[2] = (diffracted[2]-incident[2])/lambda;
-                        scattering[3] = (diffracted[3]-incident[3])/lambda;
-                        magnitude(scattering);
+                        vec3 scattering = (diffracted - incident) / lambda;
+                        // CUDAREAL scattering[4];
+                        // scattering[1] = (diffracted[1]-incident[1])/lambda;
+                        // scattering[2] = (diffracted[2]-incident[2])/lambda;
+                        // scattering[3] = (diffracted[3]-incident[3])/lambda;
+                        // magnitude(scattering);
                         // sin(theta)/lambda is half the scattering vector length
-                        CUDAREAL stol = 0.5*scattering[0];
+                        // CUDAREAL stol = 0.5*scattering[0];
+                        CUDAREAL stol = 0.5*scattering.length();
 
                         // now we need to find the nearest four "stol file" points
                         while(stol > stol_of(nearest) && nearest <= stols){ ++nearest; };
@@ -761,8 +760,9 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
                         CUDAREAL polar = 1.0;
                         if(! nopolar){
                             // need to compute polarization factor
-                            CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
-                            polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+                        //     CUDAREAL axis[] = {polar_vector(0), polar_vector(1), polar_vector(2), polar_vector(3)};
+                        //     polar = polarization_factor(polarization, incident, diffracted, polar_vector);
+                            polar = polarization_factor(polarization, incident, diffracted, polar_vector_tmp);
                         }
 
                         // accumulate unscaled pixel intensity from this

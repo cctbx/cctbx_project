@@ -104,3 +104,7 @@ assert np.allclose(avals, avals2)
 assert np.all(np.float32(avals)==np.float32(avals2))
 
 print("OK")
+from simtbx.diffBragg.utils import find_diffBragg_instances
+from simtbx.diffBragg.device import DeviceWrapper
+with DeviceWrapper(0) as _:
+    for name in find_diffBragg_instances(globals()): del globals()[name]

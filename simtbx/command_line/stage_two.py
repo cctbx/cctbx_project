@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
@@ -62,8 +64,7 @@ class Script:
             raise ValueError("Pandas table input required")
 
         refine_starttime = time.time()
-        if not self.params.refiner.randomize_devices:
-            self.params.simulator.device_id = COMM.rank % self.params.refiner.num_devices
+        self.params.simulator.device_id = COMM.rank % self.params.refiner.num_devices
         refiner = ensemble_refine_launcher.global_refiner_from_parameters(self.params)
         print("Time to refine experiment: %f" % (time.time()- refine_starttime))
 

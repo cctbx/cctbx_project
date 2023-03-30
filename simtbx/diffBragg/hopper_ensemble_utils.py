@@ -276,12 +276,8 @@ class DataModelers:
 
     def set_device_id(self):
         assert self.SIM is not None
-        if self.params.refiner.randomize_devices:
-            dev = np.random.choice(self.params.refiner.num_devices)
-            MAIN_LOGGER.info("will use randomly chosen device %d on host %s" % (dev, socket.gethostname()))
-        else:
-            dev = COMM.rank % self.params.refiner.num_devices
-            MAIN_LOGGER.info("will use device %d on host %s" % (dev, socket.gethostname()))
+        dev = COMM.rank % self.params.refiner.num_devices
+        MAIN_LOGGER.info("will use device %d on host %s" % (dev, socket.gethostname()))
         self.SIM.D.device_Id = dev
 
     def mpi_set_x_slices(self):

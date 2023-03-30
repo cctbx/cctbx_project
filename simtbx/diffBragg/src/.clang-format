@@ -1,0 +1,12 @@
+---
+BasedOnStyle: Chromium
+---
+AlignAfterOpenBracket: AlwaysBreak
+BreakStringLiterals: false
+ColumnLimit: 100
+CompactNamespaces: true
+IndentPPDirectives: BeforeHash
+IndentWidth: '4'
+Language: Cpp
+
+...

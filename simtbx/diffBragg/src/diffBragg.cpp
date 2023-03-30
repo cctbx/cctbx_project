@@ -1778,10 +1778,12 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     np::dtype dt = np::dtype::get_builtin<double>();
     np::ndarray output = np::empty(shape,dt);
 
-    if (errors)
+    if (errors) {
         output = np::from_data(&first_deriv_imgs.Fhkl_hessian[0], dt, shape, stride, boost::python::object());
-    else
+    }
+    else {
         output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
+    }
     return output.copy();
 }
 
@@ -2020,7 +2022,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
-    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL) || force_cpu){
+    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL && getenv("DIFFBRAGG_USE_KOKKOS")==NULL ) || force_cpu){
         diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,
@@ -2033,8 +2035,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_flags);
         last_kernel_on_GPU=false;
         }
-    else { // we are using cuda
-#ifdef NANOBRAGG_HAVE_CUDA
+    else { // we are using cuda or kokkos
+#if defined DIFFBRAGG_HAVE_CUDA || defined DIFFBRAGG_HAVE_KOKKOS
         db_cu_flags.device_Id = device_Id;
         db_cu_flags.update_step_positions = update_step_positions_on_device;
         db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
@@ -2048,7 +2050,35 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
+      if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
+#ifdef DIFFBRAGG_HAVE_CUDA
         diffBragg_sum_over_steps_cuda(
+             Npix_to_model, panels_fasts_slows_vec,
+             image,
+             first_deriv_imgs,
+             second_deriv_imgs,
+             db_steps,
+             db_det,
+             db_beam,
+             db_cryst,
+             db_flags,
+             db_cu_flags,
+             device_pointers,
+             TIMERS);
+        if(verbose)
+           printf("Ran the CUDA kernel\n");
+#else
+        bool DIFFBRAGG_USE_CUDA_flag_unsupported=false;
+        SCITBX_ASSERT(DIFFBRAGG_USE_CUDA_flag_unsupported);
+#endif
+      }
+      else {
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+        if (!diffBragg_runner) {
+          diffBragg_runner = std::make_shared<diffBraggKOKKOS>();
+        }
+
+        diffBragg_runner->diffBragg_sum_over_steps_kokkos(
             Npix_to_model, panels_fasts_slows_vec,
             image,
             first_deriv_imgs,
@@ -2059,12 +2089,18 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_cryst,
             db_flags,
             db_cu_flags,
-            device_pointers,
             TIMERS);
-        last_kernel_on_GPU=true;
-
+        if (verbose)
+            printf("Ran the Kokkos kernel\n");
 #else
-       // no statement
+    bool DIFFBRAGG_USE_KOKKOS_flag_unsupported=false;
+    SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_flag_unsupported);
+#endif
+    }
+    last_kernel_on_GPU=true;
+#else
+    bool DIFFBRAGG_USE_KOKKOS_and_DIFFBRAGG_USE_CUDA_flags_unsupported=false;
+    SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_and_DIFFBRAGG_USE_CUDA_flags_unsupported);
 #endif
     }
     gettimeofday(&t2, 0);
@@ -2178,7 +2214,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
-
 
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){
