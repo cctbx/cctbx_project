@@ -130,9 +130,10 @@ def dump_args(*args, **keyword_args):
   """
   dump("args.pickle", (args, keyword_args))
 
-def fix_py2_pickle(p):
+def fix_py2_pickle_orig(p):
   '''
   Fix pickles from Python 2
+  Original version
 
   Parameters
   ----------
@@ -150,18 +151,111 @@ def fix_py2_pickle(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key])
+      p[key] = fix_py2_pickle_orig(p[key])
+  if isinstance(p, MutableSequence):
+    for i in range(len(p)):
+      p[i] = fix_py2_pickle_orig(p[i])
+
+  if hasattr(p, '__dict__'):
+    p.__dict__ = fix_py2_pickle_orig(p.__dict__)
+  # miller array object
+  if hasattr(p, '_info') and hasattr(p._info, 'labels'):
+    p._info.labels = fix_py2_pickle_orig(p._info.labels)
+
+  if isinstance(p, bytes):
+    p = p.decode('utf8')
+
+  return p
+
+def fix_py2_pickle(p):
+  '''
+  Fix pickles from Python 2
+  version 2
+
+  Parameters
+  ----------
+  p: pickle
+
+  Returns
+  -------
+  p: the fixed pickle
+  '''
+  from collections.abc import Mapping, MutableSequence
+
+  from mmtbx.model.model import manager
+  import types
+  from cctbx_sgtbx_ext import space_group
+  from cctbx.sgtbx import empty
+  from cctbx.xray.structure import structure
+  from iotbx_pdb_hierarchy_ext import root
+  from cctbx.crystal import symmetry
+  from libtbx import group_args
+  from scitbx_array_family_flex_ext import bool
+
+  if p is None:
+    return p
+
+  if isinstance(p, bytes):
+    return p.decode('utf8')
+
+  for unfixable in (str, float, int, bool,
+     types.FunctionType, types.MethodType):
+    if isinstance(p, unfixable):
+      return p # cannot fix these
+
+  unfixable_type_strs = [
+     "class 'cctbx_sgtbx_ext",
+     "class 'cctbx.sgtbx",
+     "class 'cctbx.xray",
+     "class 'cctbx.crystal",
+     "class 'iotbx.pdb",
+     "class 'iotbx_pdb_hierarchy_ext",
+     "class 'scitbx_array_family_flex_ext",
+     "class 'mmtbx.model.model.get_hierarchy_and_run_hierarchy_method",
+   ]
+
+  type_string = str(type(p))
+  for unfixable_type_str in unfixable_type_strs:
+    if unfixable_type_str in type_string:
+      return p # cannot fix
+
+  if isinstance(p, list):
+    for i in range(len(p)):
+      p[i] = fix_py2_pickle(p[i])
+    return p
+
+  if isinstance(p, tuple):
+    return tuple(fix_py2_pickle(list(p)))
+
+  if isinstance(p, group_args):
+    for item in dir(p):
+      if item.startswith("__"): continue
+      setattr(p,item,fix_py2_pickle(getattr(p,item)))
+    return p
+
   if isinstance(p, MutableSequence):
     for i in range(len(p)):
       p[i] = fix_py2_pickle(p[i])
+    return p
+
+  if isinstance(p, Mapping):
+    for key in list(p.keys()):
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key])
+    return p
 
   if hasattr(p, '__dict__'):
-    p.__dict__ = fix_py2_pickle(p.__dict__)
+    for item in list(p.__dict__.keys()):
+      if not str(item).startswith("__"):
+        p.__dict__[item] = fix_py2_pickle(p.__dict__[item])
+
   # miller array object
   if hasattr(p, '_info') and hasattr(p._info, 'labels'):
     p._info.labels = fix_py2_pickle(p._info.labels)
 
-  if isinstance(p, bytes):
-    p = p.decode('utf8')
 
   return p
