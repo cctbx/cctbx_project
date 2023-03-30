@@ -257,6 +257,8 @@ class omegalyze(validation):
   Frontend for calculating omega angle statistics for a model.
   """
   __slots__ = validation.__slots__ + [
+    "residue_count_by_model",
+    "omega_count_by_model",
     "residue_count",
     "omega_count",
     "_outlier_i_seqs"
@@ -282,6 +284,8 @@ class omegalyze(validation):
     self.omega_count = [[0,0,0], [0,0,0]]
     #[OMEGA_GENERAL, OMEGA_PRO], then
     #[OMEGALYZE_TRANS, OMEGALYZE_CIS, OMEGALYZE_TWISTED]
+    self.residue_count_by_model = {}
+    self.omega_count_by_model = {}
 
     from mmtbx.validation import utils
     from scitbx.array_family import flex
@@ -305,6 +309,10 @@ class omegalyze(validation):
       prevres_altloc, mainres_altloc = get_local_omega_altlocs(twores)
       twores_altloc = prevres_altloc or mainres_altloc #default '' evals False
 
+      model_id = twores[0].parent().parent().parent().id
+      if model_id not in self.residue_count_by_model:
+        self.residue_count_by_model[model_id] = [0,0]
+        self.omega_count_by_model[model_id] = [[0,0,0],[0,0,0]]
       chain = main_residue.parent().parent()
       if use_segids:
         chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -332,7 +340,9 @@ class omegalyze(validation):
       if main_residue.resname == "PRO": res_type = OMEGA_PRO
       else:                             res_type = OMEGA_GENERAL
       self.residue_count[res_type] += 1
+      self.residue_count_by_model[model_id][res_type] += 1
       self.omega_count[res_type][omega_type] += 1
+      self.omega_count_by_model[model_id][res_type][omega_type] += 1
       highest_mc_b = get_highest_mc_b(twores[0].atoms(),twores[1].atoms())
       coords = get_center(main_residue)
       markup_atoms = []
@@ -340,7 +350,7 @@ class omegalyze(validation):
         markup_atoms.append(kin_atom(omega_atom.parent().id_str(), omega_atom.xyz))
 
       result = omega_result(
-                model_id=twores[0].parent().parent().parent().id,
+                model_id=model_id,
                 chain_id=chain_id,
                 resseq=main_residue.resseq,
                 icode=main_residue.icode,
@@ -433,6 +443,7 @@ class omegalyze(validation):
     data = {"validation_type": "omegalyze"}
     flat_results = []
     hierarchical_results = {}
+    summary_results = {}
     #hierarchical_results_dict = collections.defaultdict(dict)
     #hierarchical_results_dict['model_id']['chain_id']['resseq+icode']['resname'] = 'result'
     #print(hierarchical_results_dict)
@@ -443,14 +454,17 @@ class omegalyze(validation):
 
     data['flat_results'] = flat_results
     data['hierarchical_results'] = hierarchical_results
-    data['summary_results'] = {
-    "num_cis_proline" : self.n_cis_proline(), 
-    "num_twisted_proline" : self.n_twisted_proline(), 
-    "num_proline" : self.n_proline(), 
-    "num_cis_general" : self.n_cis_general(), 
-    "num_twisted_general" : self.n_twisted_general(),
-    "num_general" : self.n_general(), 
-    }
+    for model_id in self.residue_count_by_model.keys():
+      summary_results[model_id] = {
+        "num_cis_proline" : self.n_cis_proline_by_model(model_id), 
+        "num_twisted_proline" : self.n_twisted_proline_by_model(model_id), 
+        "num_proline" : self.n_proline_by_model(model_id), 
+        "num_cis_general" : self.n_cis_general_by_model(model_id), 
+        "num_twisted_general" : self.n_twisted_general_by_model(model_id),
+        "num_general" : self.n_general_by_model(model_id), 
+      }
+    data['summary_results'] = summary_results
+    
     return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):
@@ -517,6 +531,24 @@ class omegalyze(validation):
     return self.omega_count[OMEGA_GENERAL][OMEGALYZE_CIS]
   def n_twisted_general(self):
     return self.omega_count[OMEGA_GENERAL][OMEGALYZE_TWISTED]
+
+  def n_proline_by_model(self, model_id):
+    return self.residue_count_by_model[model_id][OMEGA_PRO]
+  def n_trans_proline_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_PRO][OMEGALYZE_TRANS]
+  def n_cis_proline_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_PRO][OMEGALYZE_CIS]
+  def n_twisted_proline_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_PRO][OMEGALYZE_TWISTED]
+
+  def n_general_by_model(self, model_id):
+    return self.residue_count_by_model[model_id][OMEGA_GENERAL]
+  def n_trans_general_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_GENERAL][OMEGALYZE_TRANS]
+  def n_cis_general_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_GENERAL][OMEGALYZE_CIS]
+  def n_twisted_general_by_model(self, model_id):
+    return self.omega_count_by_model[model_id][OMEGA_GENERAL][OMEGALYZE_TWISTED]
 
 def write_header(writeto=sys.stdout):
   writeto.write("residue:omega:evaluation\n")

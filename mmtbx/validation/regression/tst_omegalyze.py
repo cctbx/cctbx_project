@@ -6,6 +6,7 @@ from iotbx.data_manager import DataManager
 import libtbx.load_env
 import os
 import json
+import time
 
 ref_omegalyze_give_text = """residues:type:omega:conformation:mc_bmax
  A  40  PHE to  A  41  PRO: Pro     : -14.27:Cis     :28.76
@@ -68,22 +69,23 @@ def exercise_omegalyze_json():
   omjson_dict = json.loads(omegalyze_json)
   import pprint
   #pprint.pprint(omjson_dict)
-  assert len(omjson_dict['flat_results'])==9, "tst_omegalyze json output not returning correct number of nontrans residues"
-  assert approx_equal(omjson_dict['flat_results'][0]['omega'], -14.27418253081719), "tst_omegalyze json output first calculated omega dihedral angle not matching previous value"
-  assert omjson_dict['flat_results'][0]['omega_type']=='Cis', "tst_omegalyze json output first omega_type not matching previous value"
-  assert approx_equal(omjson_dict['flat_results'][8]['omega'], 8.043663329121266), "tst_omegalyze json output last calculated omega dihedral angle not matching previous value"
-  assert omjson_dict['flat_results'][8]['omega_type']=='Cis', "tst_omegalyze json output last omega_type not matching previous value"
+  assert len(omjson_dict['flat_results'])==9, "tst_omegalyze json output not returning correct number of nontrans residues, now: "+str(len(omjson_dict['flat_results']))
+  assert approx_equal(omjson_dict['flat_results'][0]['omega'], -14.27418253081719), "tst_omegalyze json output first calculated omega dihedral angle not matching previous value, now: "+str(omjson_dict['flat_results'][0]['omega'])
+  assert omjson_dict['flat_results'][0]['omega_type']=='Cis', "tst_omegalyze json output first omega_type not matching previous value, now: "+str(omjson_dict['flat_results'][0]['omega_type'])
+  assert approx_equal(omjson_dict['flat_results'][8]['omega'], 8.043663329121266), "tst_omegalyze json output last calculated omega dihedral angle not matching previous value, now: "+str(omjson_dict['flat_results'][8]['omega'])
+  assert omjson_dict['flat_results'][8]['omega_type']=='Cis', "tst_omegalyze json output last omega_type not matching previous value, now: "+str(omjson_dict['flat_results'][8]['omega_type'])
 
   from mmtbx.validation import test_utils
   #assert count(omjson_dict['hierarchical_results'], "PRO")==3, "tst_omegalyze json hierarchical output number of Pro omega outliers changed"
-  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Cis")==5, "tst_omegalyze json hierarchical output total number of omega Cis outliers changed"
-  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Twisted")==4, "tst_omegalyze json hierarchical output total number of omega Twisted outliers changed"
-
+  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Cis")==5, "tst_omegalyze json hierarchical output total number of omega Cis outliers changed to: "+str(test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Cis"))
+  assert test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Twisted")==4, "tst_omegalyze json hierarchical output total number of omega Twisted outliers changed to: "+str(test_utils.count_dict_values(omjson_dict['hierarchical_results'], "Twisted"))
+  assert omjson_dict['summary_results'][""]['num_cis_proline']==3, "tst_omegalyze json summary results num cis prolines changed to: " + str(omjson_dict['summary_results'][""]['num_cis_proline'])
 
 def run():
+  t0 = time.time()
   exercise_omegalyze()
   exercise_omegalyze_json()
-  print("OK")
+  print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
   run()
