@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys, os
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 from cctbx import maptbx
 from cctbx import crystal
 from cctbx import uctbx
@@ -110,6 +110,7 @@ class map_model_manager(object):
                absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry
                absolute_length_tolerance = 0.01,  # length tolerance
                log              = None,
+               stop_file = None,  # if present in working directory, stop
                make_cell_slightly_different_in_abc  = False,
                name = 'map_model_manager',
                verbose = False):
@@ -126,6 +127,7 @@ class map_model_manager(object):
 
     # Set the log stream and name
     self.set_log(log = log)
+    self.set_stop_file(file_name = stop_file)
     self.set_name(name)
     self.set_verbose(verbose)
 
@@ -465,6 +467,12 @@ class map_model_manager(object):
     self.name = name
 
 
+  def set_stop_file(self, file_name = None):
+    '''
+      Define file name that means "STOP"
+    '''
+    self._stop_file = file_name
+
   def set_verbose(self, verbose = None):
     '''
        Set verbose
@@ -488,6 +496,12 @@ class map_model_manager(object):
   def add_to_info(self, item_name = None, item = None):
     setattr(self._info,item_name, item)
 
+  # Methods for job control
+
+  def check_stop_file(self):
+    if self._stop_file and os.path.isfile(self._stop_file):
+      raise Abort("Stopping as the stop_file %s is present" %(
+        os.path.abspath(self._stop_file)))
   # Methods for printing
 
   def set_log(self, log = sys.stdout):
@@ -5285,6 +5299,7 @@ class map_model_manager(object):
     other._queue_run_command = self._queue_run_command
     other._force_wrapping = deepcopy(self._force_wrapping)
     other._warning_message = self._warning_message
+    other._stop_file = self._stop_file
 
     other.set_log(self.log)
 
@@ -9980,6 +9995,8 @@ class run_anisotropic_scaling_as_class:
       overall_scale: radial part of overall correction factor
     """
 
+    #Check for stop_file
+    self.map_model_manager.check_stop_file()
 
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
@@ -10108,6 +10125,7 @@ class run_fsc_as_class:
     expected_rms_fc_list = None
 
     for i in range(first_to_use, last_to_use + 1):
+      self.map_model_manager.check_stop_file()
       new_box_info = get_split_maps_and_models(
         map_model_manager = self.map_model_manager,
         box_info = self.box_info,
