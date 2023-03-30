@@ -1,11 +1,11 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.rna_suitelyze
-# LIBTBX_SET_DISPATCHER_NAME molprobity.rna_suitelyze
+# LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate_suites
+# LIBTBX_SET_DISPATCHER_NAME molprobity.rna_validate_suites
 
 from __future__ import absolute_import, division, print_function
 import sys
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time
-from mmtbx.programs import rna_suitelyze
+from mmtbx.programs import rna_validate_suites
 
 def run(args, out=sys.stdout, quiet=False):
   # create parser
@@ -15,14 +15,14 @@ def run(args, out=sys.stdout, quiet=False):
   logger2.register('stdout', sys.stdout)
 
   parser = CCTBXParser(
-    program_class=rna_suitelyze.Program,
+    program_class=rna_validate_suites.Program,
     logger=logger)
   namespace = parser.parse_args(sys.argv[1:])
 
   # start program
   print('Starting job', file=logger)
   print('='*79, file=logger)
-  task = rna_suitelyze.Program(
+  task = rna_validate_suites.Program(
     parser.data_manager, parser.working_phil.extract(), logger=logger2)
 
   # validate inputs
