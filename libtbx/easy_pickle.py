@@ -235,7 +235,7 @@ def fix_py2_pickle(p):
       else:
         str_item = item
       if str_item.startswith("__"): continue
-      new_p.str_item = fix_py2_pickle(p.get(item))
+      setattr(new_p,str_item,fix_py2_pickle(p.get(item)))
     return new_p
 
   if isinstance(p, MutableSequence):
