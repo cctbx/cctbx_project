@@ -144,6 +144,11 @@ def fix_py2_pickle_orig(p):
   p: the fixed pickle
   '''
   from collections.abc import Mapping, MutableSequence
+  from cctbx.crystal import symmetry
+  from cctbx.sgtbx import empty, space_group
+  from cctbx.xray.structure import structure
+  from iotbx.pdb.hierarchy import root
+  skip_types = (empty, root, space_group, structure, symmetry)
   if isinstance(p, Mapping):
     for key in list(p.keys()):
       if isinstance(key, bytes):
@@ -151,7 +156,11 @@ def fix_py2_pickle_orig(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle_orig(p[key])
+      if isinstance(p[key], skip_types) or callable(p[key]):
+        pass
+      else:
+        # print(key, type(p[key]), p[key])
+        p[key] = fix_py2_pickle_orig(p[key])
   if isinstance(p, MutableSequence):
     for i in range(len(p)):
       p[i] = fix_py2_pickle_orig(p[i])
