@@ -228,10 +228,15 @@ def fix_py2_pickle(p):
     return tuple(fix_py2_pickle(list(p)))
 
   if isinstance(p, group_args):
+    new_p = group_args()
     for item in dir(p):
-      if item.startswith("__"): continue
-      setattr(p,item,fix_py2_pickle(getattr(p,item)))
-    return p
+      if isinstance(item, bytes):
+        str_item = item.decode('utf8')
+      else:
+        str_item = item
+      if str_item.startswith("__"): continue
+      new_p.str_item = fix_py2_pickle(p.get(item))
+    return new_p
 
   if isinstance(p, MutableSequence):
     for i in range(len(p)):
@@ -250,8 +255,14 @@ def fix_py2_pickle(p):
 
   if hasattr(p, '__dict__'):
     for item in list(p.__dict__.keys()):
-      if not str(item).startswith("__"):
-        p.__dict__[item] = fix_py2_pickle(p.__dict__[item])
+      if str(item).startswith("__"): continue
+      value = fix_py2_pickle(p.__dict__[item])
+      if isinstance(item, bytes):
+        str_item = item.decode('utf8')
+        del p.__dict__[item]
+      else:
+        str_item = item
+      p.__dict__[str_item] = value
 
   # miller array object
   if hasattr(p, '_info') and hasattr(p._info, 'labels'):
