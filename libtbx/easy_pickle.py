@@ -229,12 +229,13 @@ def fix_py2_pickle(p):
 
   if isinstance(p, group_args):
     new_p = group_args()
+    new_p_dir = dir(new_p)
     for item in dir(p):
       if isinstance(item, bytes):
         str_item = item.decode('utf8')
       else:
         str_item = item
-      if str_item.startswith("__"): continue
+      if str_item in new_p_dir: continue
       setattr(new_p,str_item,fix_py2_pickle(p.get(item)))
     return new_p
 
@@ -255,13 +256,18 @@ def fix_py2_pickle(p):
 
   if hasattr(p, '__dict__'):
     for item in list(p.__dict__.keys()):
-      if str(item).startswith("__"): continue
-      value = fix_py2_pickle(p.__dict__[item])
       if isinstance(item, bytes):
         str_item = item.decode('utf8')
-        del p.__dict__[item]
+        item_changed = True
       else:
         str_item = item
+        item_changed = False
+      if str_item.startswith("__"):
+        value = p.__dict__[item]
+      else: # usual
+        value = fix_py2_pickle(p.__dict__[item])
+      if item_changed:
+        del p.__dict__[item]
       p.__dict__[str_item] = value
 
   # miller array object
