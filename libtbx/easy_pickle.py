@@ -179,7 +179,7 @@ def fix_py2_pickle_orig(p):
 def fix_py2_pickle(p):
   '''
   Fix pickles from Python 2
-  version 2
+  Version 3
 
   Parameters
   ----------
@@ -190,98 +190,34 @@ def fix_py2_pickle(p):
   p: the fixed pickle
   '''
   from collections.abc import Mapping, MutableSequence
-
-  from mmtbx.model.model import manager
-  import types
-  from cctbx_sgtbx_ext import space_group
-  from cctbx.sgtbx import empty
-  from cctbx.xray.structure import structure
-  from iotbx_pdb_hierarchy_ext import root
-  from cctbx.crystal import symmetry
   from libtbx import group_args
-  from scitbx_array_family_flex_ext import bool
-
-  if p is None:
-    return p
-
-  if isinstance(p, bytes):
-    return p.decode('utf8')
-
-  for unfixable in (str, float, int, bool,
-     types.FunctionType, types.MethodType):
-    if isinstance(p, unfixable):
-      return p # cannot fix these
-
-  unfixable_type_strs = [
-     "class 'cctbx_sgtbx_ext",
-     "class 'cctbx.sgtbx",
-     "class 'cctbx.xray",
-     "class 'cctbx.crystal",
-     "class 'iotbx.pdb",
-     "class 'iotbx_pdb_hierarchy_ext",
-     "class 'scitbx_array_family_flex_ext",
-     "class 'mmtbx.model.model.get_hierarchy_and_run_hierarchy_method",
-   ]
-
-  type_string = str(type(p))
-  for unfixable_type_str in unfixable_type_strs:
-    if unfixable_type_str in type_string:
-      return p # cannot fix
-
-  if isinstance(p, list):
-    for i in range(len(p)):
-      p[i] = fix_py2_pickle(p[i])
-    return p
-
-  if isinstance(p, tuple):
-    return tuple(fix_py2_pickle(list(p)))
 
   if isinstance(p, group_args):
-    new_p = group_args()
-    new_p_dir = dir(new_p)
-    for item in dir(p):
-      if isinstance(item, bytes):
-        str_item = item.decode('utf8')
-      else:
-        str_item = item
-      if str_item in new_p_dir: continue
-      setattr(new_p,str_item,fix_py2_pickle(p.get(item)))
-    return new_p
+    # convert to dict, fix, convert back to group args
+    p = group_args(**fix_py2_pickle(p()))
 
-  if isinstance(p, MutableSequence):
+  elif isinstance(p, bytes):
+    p = p.decode('utf8')
+
+  elif isinstance(p, MutableSequence):
     for i in range(len(p)):
       p[i] = fix_py2_pickle(p[i])
-    return p
 
-  if isinstance(p, Mapping):
-    for key in list(p.keys()):
+  elif isinstance(p, Mapping):
+    for key in list(p.keys()):    # fix the key
       if isinstance(key, bytes):
         str_key = key.decode('utf8')
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key])
-    return p
+        p[key] = fix_py2_pickle(p[key])
 
-  if hasattr(p, '__dict__'):
-    for item in list(p.__dict__.keys()):
-      if isinstance(item, bytes):
-        str_item = item.decode('utf8')
-        item_changed = True
-      else:
-        str_item = item
-        item_changed = False
-      if str_item.startswith("__"):
-        value = p.__dict__[item]
-      else: # usual
-        value = fix_py2_pickle(p.__dict__[item])
-      if item_changed:
-        del p.__dict__[item]
-      p.__dict__[str_item] = value
+  # Classes like mmtbx.monomer_library.cif_types.chem_mod_angle remain here
+  elif hasattr(p, '__dict__'):
+    p.__dict__ = fix_py2_pickle(p.__dict__)
 
-  # miller array object
-  if hasattr(p, '_info') and hasattr(p._info, 'labels'):
-    p._info.labels = fix_py2_pickle(p._info.labels)
-
+  else:
+    # We have no idea...skip conversion (should never be here)
+    pass
 
   return p
