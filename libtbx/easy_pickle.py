@@ -210,7 +210,7 @@ def fix_py2_pickle(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-        p[key] = fix_py2_pickle(p[key])
+      p[key] = fix_py2_pickle(p[key])
 
   # Classes like mmtbx.monomer_library.cif_types.chem_mod_angle remain here
   elif hasattr(p, '__dict__'):
