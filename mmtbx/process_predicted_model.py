@@ -825,9 +825,11 @@ def split_model_with_pae(
   keep_list = []
   good_selections = []
   ph = m.get_hierarchy()
+  ca_string =  '(name ca or name p)'
+
   for selection_string, region_number in zip(selection_list,unique_regions):
     asc1 = ph.atom_selection_cache()
-    sel = asc1.selection(selection_string)
+    sel = asc1.selection("(%s) and %s" %(selection_string,ca_string))
     if sel.count(True) >= minimum_domain_length:
       keep_list.append(True)
       good_selections.append(selection_string)
