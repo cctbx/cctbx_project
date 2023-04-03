@@ -412,7 +412,8 @@ general_tests = [
   ]
 
 molprobity_tests = [
-  "$D/regression/tst_rama_z_01.py",
+  "$D/validation/regression/tst_rama_z_01.py",
+  "$D/validation/regression/tst_rama_z_02.py",
   "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/pdb_interpretation/tst_edits_actions.py",
   "$D/regression/tst_add_arrows_on_plot.py",
