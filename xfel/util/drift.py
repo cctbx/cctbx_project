@@ -858,7 +858,8 @@ class DriftArtist(object):
 
   @property
   def x_tick_labels(self) -> pd.Series:
-    return self.table.data[self.x_keys].agg(':'.join, axis=1)
+    return self.table.data[self.x_keys].apply(
+      lambda x: ':'.join(x.astype(str)), axis=1)
 
   def _get_handles_and_labels(self) -> Tuple[List, List]:
     handles, unique_keys = [], []
