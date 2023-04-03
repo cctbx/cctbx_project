@@ -291,7 +291,7 @@ def represent_range_as_str(sorted_iterable: Sequence) -> str:
   """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
   fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
   d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
-  return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
+  return fs if not d else fs[:d] + fs[d:] + '-' + ls[d:]
 
 
 def unique_elements(sequence: Sequence) -> List:
@@ -340,7 +340,7 @@ class DriftTable(object):
     return self[key] if key in self.data.columns else default
 
   def sort(self, by: Union[str, Sequence[str]]) -> None:
-    self.data.sort_values(by=by, ignore_index=True)
+    self.data.sort_values(by=by, ignore_index=True, inplace=True)
 
   def column_is_flat(self, key: str) -> bool:
     return not is_iterable(self[key][0])
