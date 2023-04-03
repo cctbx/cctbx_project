@@ -865,7 +865,7 @@ NOTES:
     newParams.__inject__('source_selection', source_selection)      # Not default
     newParams.__inject__('target_selection', target_selection)      # Not default
     newParams.approach = 'both'                                     # Not default
-    newParams.__inject__('excluded_bond_chain_length', 4)
+    newParams.__inject__('excluded_bond_chain_length', self._bondedNeighborDepth) # Not default
     newParams.__inject__('minimum_water_hydrogen_occupancy', 0.66)  # Not default
     newParams.__inject__('maximum_water_hydrogen_b', 40.0)          # Not default
     newParams.__inject__('include_mainchain_mainchain', True)
@@ -1050,6 +1050,9 @@ NOTES:
       self._pr = cProfile.Profile()
       self._pr.enable()
 
+    # Set constants that may later be added to the Phil parameters.
+    self._bondedNeighborDepth = 3
+
 # ------------------------------------------------------------------------------
 
   def run(self):
@@ -1094,6 +1097,7 @@ NOTES:
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
         self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
+        bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
