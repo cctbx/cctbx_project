@@ -459,6 +459,7 @@ def construct_fourth(resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
     a = col(res2.xyz)
     c += a
     b = c
+    if a == b: return newD.elems
     return rotate_point_around_axis(
       axis_point_1=a.elems,
       axis_point_2=b.elems,

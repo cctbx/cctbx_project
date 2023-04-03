@@ -423,6 +423,7 @@ molprobity_tests = [
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",
   "$D/validation/regression/tst_cbetadev.py",
+  "$D/validation/regression/tst_cbetadev_02.py",
   "$D/regression/tst_statistics_output.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
