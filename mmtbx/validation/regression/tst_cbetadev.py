@@ -4,6 +4,7 @@ from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
+import iotbx.pdb
 import os.path
 
 def exercise_cbetadev():
@@ -14,9 +15,8 @@ def exercise_cbetadev():
     print("Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available")
     return
   from mmtbx.validation import cbetadev
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = iotbx.pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   validation = cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
