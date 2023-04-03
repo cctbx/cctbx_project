@@ -1,3 +1,11 @@
+2023.3
+======
+
+* Bug fixes for RNA validation
+* Improved handling of B and pLDDT values in mmtbx.process_predicted_model
+* Bug fixes for validating C-beta deviations for D-amino acids
+* Bug fixes and improvements to cctbx.HKLviewer
+
 2023.2
 ======
 
