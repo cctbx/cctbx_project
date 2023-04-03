@@ -112,6 +112,9 @@ phil_scope_str = """
       by = chunk *merge run rungroup task trial
         .type = choice
         .help = Variable to color individual points on drift plot by;
+      distribution = seismic
+        .type = str
+        .help = Name of matplotlib colormap to be used for drawing gradients 
     }
     show = True
       .type = bool
@@ -796,7 +799,7 @@ class DriftArtist(object):
   def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.cov_colormap = plt.get_cmap('seismic')
+    self.cov_colormap = plt.get_cmap(parameters.plot.color.distribution)
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
