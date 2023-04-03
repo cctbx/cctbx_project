@@ -1769,10 +1769,10 @@ function getOrientMsg()
 }
 
 // Distinguish between click and hover mouse events.
-function HoverPickingProxyfunc(pickingProxy) {  PickingProxyfunc(pickingProxy, 'hover'); }
+function HoverPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'hover'); }
 function ClickPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'click'); }
 
-// listen to hover or click signal to show a tooltip at an hkl or to post hkl id for matching  entry in 
+// listen to hover or click signal to show a tooltip at an hkl or to post hkl id for matching entry in 
 // millerarraytable in GUI or for visualising symmetry mates of the hkl for a given rotation operator
 function PickingProxyfunc(pickingProxy, eventstr) {
   // adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
@@ -2121,6 +2121,7 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     // possibly needs a better default value in case of using wireframe
     if (iswireframe == false) // no radius array available if using wireframe
       radius = buffer.geometry.attributes.radius.array[i];
+    //radius=0.0;
     let x = buffer.picking.cartpos[i][0];
     let y = buffer.picking.cartpos[i][1];
     let z = buffer.picking.cartpos[i][2];
@@ -2129,7 +2130,7 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let currenthklpos = hklpos.applyMatrix4(m);
     let childZ = currenthklpos.z - stage.viewer.camera.position.z;
     let infrustum = false;
-    if ((childZ + radius) <stage.viewer.parameters.clipFar && (childZ - radius) > stage.viewer.parameters.clipNear)
+    if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
       infrustum = true;
       let hklid = buffer.picking.ids[i + 1];
@@ -2158,7 +2159,7 @@ function GetReflectionsInFrustum() {
         rotid_infrustum = rotid_infrustum.concat(arr[1]);
       }
   }
-  WebsockSendMsg('InFrustum:' + hkls_infrustums + ':' + rotid_infrustum);
+  WebsockSendMsg('InFrustum:[' + hkls_infrustums + ']:[' + rotid_infrustum + ']');
 }
 
 

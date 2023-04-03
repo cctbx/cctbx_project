@@ -146,6 +146,7 @@ class HKLViewFrame() :
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
+    #time.sleep(12)
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
     self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
@@ -530,7 +531,7 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
-        self.run_external_cmd()
+        self.run_external_cmd(diff_phil)
       #phl.external_cmd = "None" # ensure we can do this again
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
@@ -969,7 +970,7 @@ Borrowing them from the first miller array""" %i)
     self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
 
 
-  def run_external_cmd(self):
+  def run_external_cmd(self, diff_phil):
     # Run some python script like xtricorder with the exec function. Script can manipulate HKLViewFrame
     # by accessing functions and attributes on 'self' that is exported as a local variable.
     # Get logfile name and tabname assigned
@@ -987,10 +988,16 @@ Borrowing them from the first miller array""" %i)
       from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
     try:
       def thrdfunc():
+        parcpy = diff_phil.extract()
+        parcpy.external_cmd = "None"
+        diff2 = master_phil.fetch_diff(source =diff_phil.format(parcpy))
         ret = external_cmd(self, master_phil, firstpart, tempdir)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
+        # apply the phil paramaters that may have been reset by external_cmd applying an openfilename call
+        self.guarded_process_PHIL_parameters(new_phil=diff2)
+
       # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
       # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
       threading.Thread(target = thrdfunc, daemon=True).start()

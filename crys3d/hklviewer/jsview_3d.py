@@ -822,9 +822,9 @@ class HKLview_3d:
 
 
   def ConstructReciprocalSpace(self, scene_id=None):
-    sceneid = scene_id
-    if len(self.proc_arrays) == 0:
+    if len(self.proc_arrays) == 0 or scene_id is None:
       return False
+    sceneid = scene_id
     self.HKLsceneKey = self.Sceneid_to_SceneKey(sceneid)
     if self.HKLsceneKey in self.HKLscenedict and not self.has_new_miller_array:
       self.HKLscene = self.HKLscenedict.get(self.HKLsceneKey, False)
@@ -925,7 +925,8 @@ class HKLview_3d:
       for i,e in enumerate(self.hkl_scenes_infos):
         if e[4] == datatype:
           return i
-    return -1
+    self.mprint("Currently no dataset with label %s or type %s" %(datalabel, datatype), verbose=1)
+    return None
 
 
   def get_label_type_from_scene_id(self, sceneid):
@@ -960,7 +961,7 @@ class HKLview_3d:
     for i,array_scene_id in enumerate(self.sceneid_from_arrayid):
       if scene_id == i:
         return array_scene_id
-    raise Sorry("scene_id, %d, is out of range" %scene_id)
+    raise Sorry("scene_id, %s, is out of range" %scene_id)
 
 
   def calc_bin_thresholds(self, binner_idx, nbins):
@@ -1647,19 +1648,18 @@ class HKLview_3d:
           self.parent.SetScene(sceneid)
         elif "InFrustum:" in message:
           # if GetReflectionsInFrustum() finds no reflections
-          # then message=="InFrustum::" which crashes eval(). Avoid this
+          # then message="InFrustum::" which crashes eval(). Avoid this
           if "InFrustum::" not in message:
             hklids = eval(message.split(":")[1])
             rotids = eval(message.split(":")[2])
             self.visible_hkls = []
             self.outsideplane_hkls = []
-            if isinstance(hklids, tuple):
-              for i,hklid in enumerate(hklids):
-                hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
-                self.visible_hkls.append(hkl)
-                if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
-                 self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
-                  self.outsideplane_hkls.append(hkl)
+            for i,hklid in enumerate(hklids):
+              hkl, _ = self.get_rothkl_from_IDs(hklid, rotids[i])
+              self.visible_hkls.append(hkl)
+              if self.normal_vecnr != -1 and self.params.clip_plane.is_assoc_real_space_vector and \
+                self.planescalarvalue != (self.planenormalhklvec[0]*hkl[0] + self.planenormalhklvec[1]*hkl[1] + self.planenormalhklvec[2]*hkl[2]):
+                self.outsideplane_hkls.append(hkl)
             self.visible_hkls = list(set(self.visible_hkls))
             self.outsideplane_hkls = list(set(self.outsideplane_hkls))
             self.mprint( "visible hkls: " + str(self.visible_hkls), verbose="frustum")
