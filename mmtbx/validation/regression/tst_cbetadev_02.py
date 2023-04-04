@@ -1,9 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import approx_equal
 import libtbx.load_env
-from libtbx import easy_run
-from libtbx.test_utils import assert_lines_in_text
 import iotbx.pdb
 from mmtbx.validation import cbetadev
 import os
