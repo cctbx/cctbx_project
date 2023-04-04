@@ -19,7 +19,7 @@ browser = "firefox"
 philstr1 = """
 external_cmd = None *runXtricorder runXtriage
 clip_plane {
-  hkldist = 32
+  hkldist = 33
   normal_vector = "TNCS_xtricorder"
   clip_width = 0.1997394793
 }
@@ -54,10 +54,13 @@ hkls {
 # is sliced perpendicular to the TNCS vector at layer 32 in the TNCS modulation and reflections have been
 # divided into 6 bins according to TNCS modulation values and only reflections of the two highest bins
 # are displayed
-reflections2match1 = set(  [(21, 5, 11), (20, 10, 12), (18, 6, 14), (15, 7, 17), (15, 9, 17), (13, 7, 19),
-     (14, 8, 18), (16, 10, 16), (18, 10, 14), (17, 7, 15), (21, 7, 11), (17, 9, 15), (16, 8, 16), (23, 7, 9),
-     (19, 9, 13), (22, 6, 10), (22, 8, 10), (20, 6, 12), (18, 8, 14), (23, 5, 9), (21, 9, 11), (20, 8, 12),
-     (19, 7, 13), (16, 6, 16)]
+reflections2match1 = set(  [(23, 1, 11), (17, -5, 17), (16, 0, 18), (19, 7, 15), (22, 4, 12), (22, 2, 12),
+  (20, -4, 14), (19, 1, 15), (18, 6, 16), (21, 5, 13), (17, 1, 17), (20, 0, 14), (16, 4, 18), (16, -2, 18), 
+  (19, 3, 15), (20, -6, 14), (19, -3, 15), (18, 2, 16), (23, -1, 11), (17, -1, 17), (17, 5, 17), 
+  (16, -4, 18), (22, -2, 12), (21, -5, 13), (23, -3, 11), (20, -2, 14), (18, -6, 16), (19, -7, 15), 
+  (18, -2, 16), (17, 3, 17), (17, -3, 17), (20, 2, 14), (22, -4, 12), (15, 1, 19), (21, -1, 13), 
+  (19, 5, 15), (20, 4, 14), (18, 4, 16), (15, -1, 19), (21, 3, 13), (20, 6, 14), (23, 3, 11), (21, -3, 13), 
+  (16, 2, 18), (19, -1, 15), (18, -4, 16), (21, 1, 13), (19, -5, 15), (18, 0, 16)]
  )
 
 
@@ -100,7 +103,7 @@ hkls {
 # is sliced perpendicular to the twin axis detected by xtriage at layer 13 and reflections have been
 # divided into 4 bins according to I_lowres values and only reflections of the highest bin with
 # values above 20000 are displayed. Twinning suggests the pattern of the slice should be close to 2 fold symmetry
-reflections2match1 = set( [(-33, -7, -7), (-19, 7, 5), (-19, 7, -1), (-7, 19, 1), (-32, -6, 20),
+reflections2match2 = set( [(-33, -7, -7), (-19, 7, 5), (-19, 7, -1), (-7, 19, 1), (-32, -6, 20),
    (7, 33, 7), (-7, 19, 5), (-7, 19, -1), (-32, -6, -20), (-7, 19, -5), (7, 33, -7), (-20, 6, 0),
    (6, 32, -20), (-19, 7, -5), (-33, -7, 7), (-6, 20, 0), (-19, 7, 1), (6, 32, 20)]
  )

@@ -2107,6 +2107,23 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
 }
 
 
+function webgl2CanvasPosition(x,y,z) 
+{
+  let r = new NGL.Vector3();
+  r.x = x;
+  r.y = y;
+  r.z = z;
+  r.add(stage.viewer.translationGroup.position);
+  r.applyMatrix4(stage.viewer.rotationGroup.matrix);
+  r.applyMatrix4(stage.viewer.camera.projectionMatrix);
+  let canvasX = (1 - r.x)*0.5 * stage.viewer.width;
+  let canvasY = (1 + r.y)*0.5 * stage.viewer.height;
+  return [canvasX, canvasY];
+}
+
+
+
+
 function GetReflectionsInFrustumFromBuffer(buffer) {
   // For the simple case where clip planes are parallel with the screen as in clipFar, clipNear.
   // Use cartesian coordinates of reflections stored in shapebufs[0].picking.cartpos
@@ -2125,6 +2142,7 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let x = buffer.picking.cartpos[i][0];
     let y = buffer.picking.cartpos[i][1];
     let z = buffer.picking.cartpos[i][2];
+
     let hklpos = new NGL.Vector3(x, y, z);
     let m = stage.viewer.modelGroup.children[0].matrixWorld;
     let currenthklpos = hklpos.applyMatrix4(m);
@@ -2132,11 +2150,18 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let infrustum = false;
     if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
-      infrustum = true;
-      let hklid = buffer.picking.ids[i + 1];
-      let rotid = buffer.picking.ids[0];
-      hkls_infrustums.push(hklid);
-      rotid_infrustum.push(rotid);
+    // do rough exclusion of reflections from frustum with clipplanes above for the sake of speed
+      let cv = webgl2CanvasPosition(x,y,z); 
+      // stage.viewer.pick() calling readRenderTargetPixels() evaluates points in frustum
+      let ret = stage.viewer.pick(cv[0], cv[1]); 
+      if (ret.pid !== 0)
+      {
+        infrustum = true;
+        let hklid = buffer.picking.ids[i + 1];
+        let rotid = buffer.picking.ids[0];
+        hkls_infrustums.push(hklid);
+        rotid_infrustum.push(rotid);
+      }
     }
   }
   return [hkls_infrustums, rotid_infrustum];
