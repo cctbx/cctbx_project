@@ -314,11 +314,10 @@ def exercise_rotalyze_json():
   assert rtjson_dict['flat_results'][122]['rotamer_name']=='OUTLIER', "tst_rotalyze json output last rotamer_name not matching previous value"
   from mmtbx.validation import test_utils
   assert test_utils.count_dict_values(rtjson_dict['hierarchical_results'], "OUTLIER")==246, "tst_rotalyze json hierarchical output total number of rota outliers changed"
-  assert rtjson_dict['summary_results']['num_allowed'] == 116, "tst_rotalyze json output summary total num_allowed not matching previous value"
-  assert rtjson_dict['summary_results']['num_favored'] == 404, "tst_rotalyze json output summary total num_favored not matching previous value"
-  assert rtjson_dict['summary_results']['num_outliers'] == 123, "tst_rotalyze json output summary total num_outliers not matching previous value"
-  assert rtjson_dict['summary_results']['num_residues'] == 643, "tst_rotalyze json output summary total num_residues not matching previous value"
-
+  assert rtjson_dict['summary_results'][""]['num_allowed'] == 116, "tst_rotalyze json output summary total num_allowed not matching previous value"
+  assert rtjson_dict['summary_results'][""]['num_favored'] == 404, "tst_rotalyze json output summary total num_favored not matching previous value"
+  assert rtjson_dict['summary_results'][""]['num_outliers'] == 123, "tst_rotalyze json output summary total num_outliers not matching previous value"
+  assert rtjson_dict['summary_results'][""]['num_residues'] == 643, "tst_rotalyze json output summary total num_residues not matching previous value"
 
 if (__name__ == "__main__"):
   exercise_rotalyze()

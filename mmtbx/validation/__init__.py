@@ -450,6 +450,13 @@ class validation(slots_getstate_setstate):
       return self.n_outliers, fraction
     return 0, 0.
 
+  def get_outliers_fraction_for_model(self, model_id):
+    if (self.n_total_by_model[model_id] != 0):
+      fraction = float(self.n_outliers_by_model[model_id]) / self.n_total_by_model[model_id]
+      assert fraction <= 1.0
+      return fraction
+    return 0.
+
   @property
   def percent_outliers(self):
     n_outliers, frac_outliers = self.get_outliers_count_and_fraction()

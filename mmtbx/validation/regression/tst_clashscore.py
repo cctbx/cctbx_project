@@ -146,8 +146,8 @@ def exercise_clashscore_json():
   m = dm.get_model("1")
   cs = clashscore.clashscore(pdb_hierarchy=m.get_hierarchy())
   csjson_dict = json.loads(cs.as_JSON())
-  import pprint
-  pprint.pprint(csjson_dict)
+  #import pprint
+  #pprint.pprint(csjson_dict)
   assert len(csjson_dict['flat_results']) == 3, "tst_clashscore json output not returning correct number of clashes"
   assert approx_equal(csjson_dict['flat_results'][0]["overlap"], -1.038), "tst_clashscore json output first overlap value changed"
   from mmtbx.validation import test_utils
