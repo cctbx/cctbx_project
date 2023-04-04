@@ -2122,8 +2122,6 @@ function webgl2CanvasPosition(x,y,z)
 }
 
 
-
-
 function GetReflectionsInFrustumFromBuffer(buffer) {
   // For the simple case where clip planes are parallel with the screen as in clipFar, clipNear.
   // Use cartesian coordinates of reflections stored in shapebufs[0].picking.cartpos
@@ -2148,9 +2146,9 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let currenthklpos = hklpos.applyMatrix4(m);
     let childZ = currenthklpos.z - stage.viewer.camera.position.z;
     let infrustum = false;
+    // do rough exclusion of reflections from frustum with clipplanes for the sake of speed
     if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
-    // do rough exclusion of reflections from frustum with clipplanes above for the sake of speed
       let cv = webgl2CanvasPosition(x,y,z); 
       // stage.viewer.pick() calling readRenderTargetPixels() evaluates points in frustum
       let ret = stage.viewer.pick(cv[0], cv[1]); 
