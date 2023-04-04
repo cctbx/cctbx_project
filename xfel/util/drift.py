@@ -114,7 +114,7 @@ phil_scope_str = """
         .help = Variable to color individual points on drift plot by;
       distribution = seismic
         .type = str
-        .help = Name of matplotlib colormap to be used for drawing gradients 
+        .help = Name of matplotlib colormap to be used for drawing gradients
     }
     show = True
       .type = bool
