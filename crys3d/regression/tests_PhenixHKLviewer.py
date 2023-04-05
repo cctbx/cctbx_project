@@ -8,11 +8,14 @@ import traceback
 
 # The tests below uses datasets in this file here
 datafname = libtbx.env.find_in_repositories(
-  relative_path=r"C:\Users\oeffner\Work\HKLviewerTests\1upp_lowres.mtz",
+  relative_path="phenix_regression/reflection_files/1upp_lowres.mtz",
   test=os.path.isfile)
 
 closetime = 150 # about half the maximum time each test will run
-maxruns = 4 # maximum number to repeat unstable test until it passes
+# HKLviewer uses websockets which is slightly unstable on virtual machines used on Azure.
+# This might yield a bogus failure of the test. If so, repeat the test at most maxruns times
+# or until it passes whichever comes first.
+maxruns = 4
 browser = "firefox"
 
 
@@ -50,10 +53,9 @@ hkls {
 
 """
 # These are the indices of visible TEPS reflections of processed with xtricorder 1upp_lowres.mtz
-# when the sphere of reflections
-# is sliced perpendicular to the TNCS vector at layer 32 in the TNCS modulation and reflections have been
-# divided into 6 bins according to TNCS modulation values and only reflections of the two highest bins
-# are displayed
+# when the sphere of reflections is sliced perpendicular to the TNCS vector at layer 33 in the
+# TNCS modulation and reflections have been divided into 5 bins according to TNCS modulation
+# values but with explicit bin threshold values and only reflections of the highest bin are displayed
 reflections2match1 = set(  [(23, 1, 11), (17, -5, 17), (16, 0, 18), (19, 7, 15), (22, 4, 12), (22, 2, 12),
   (20, -4, 14), (19, 1, 15), (18, 6, 16), (21, 5, 13), (17, 1, 17), (20, 0, 14), (16, 4, 18), (16, -2, 18),
   (19, 3, 15), (20, -6, 14), (19, -3, 15), (18, 2, 16), (23, -1, 11), (17, -1, 17), (17, 5, 17),
@@ -66,8 +68,9 @@ reflections2match1 = set(  [(23, 1, 11), (17, -5, 17), (16, 0, 18), (19, 7, 15),
 
 
 philstr2 = """
+external_cmd = None runXtricorder *runXtriage
 clip_plane {
-  hkldist = 13
+  hkldist = 20
   normal_vector = "2-fold_twin_ 0"
   clip_width = 0.5
 }
@@ -100,12 +103,14 @@ hkls {
 
 """
 # These are the indices of visible reflections of 1upp_lowres.mtz when the sphere of reflections
-# is sliced perpendicular to the twin axis detected by xtriage at layer 13 and reflections have been
-# divided into 4 bins according to I_lowres values and only reflections of the highest bin with
-# values above 20000 are displayed. Twinning suggests the pattern of the slice should be close to 2 fold symmetry
-reflections2match2 = set( [(-33, -7, -7), (-19, 7, 5), (-19, 7, -1), (-7, 19, 1), (-32, -6, 20),
-   (7, 33, 7), (-7, 19, 5), (-7, 19, -1), (-32, -6, -20), (-7, 19, -5), (7, 33, -7), (-20, 6, 0),
-   (6, 32, -20), (-19, 7, -5), (-33, -7, 7), (-6, 20, 0), (-19, 7, 1), (6, 32, 20)]
+# is sliced perpendicular to the twin axis detected by xtriage at layer 20 and reflections have been
+# divided into 4 bins according to I_lowres values with explicit bin thresholds and only reflections
+# of the highest bin with values above 20000 are displayed. Twinning suggests the pattern of the
+# slice is close to 2 fold symmetry.
+reflections2match2 = set( [(-23, 21, 18), (-10, 34, 6), (-19, 25, 29), (-8, 36, -2), (-23, 21, -18),
+  (-34, 10, 6), (-26, 18, -17), (-36, 8, 2), (-25, 19, 29), (-21, 23, 18), (-25, 19, -29), (-36, 8, -2),
+  (-21, 23, -18), (-26, 18, 17), (-34, 10, -6), (-8, 36, 2), (-34, 10, -8), (-19, 25, -29),
+  (-10, 34, -6), (-34, 10, 8)]
  )
 
 

@@ -69,6 +69,7 @@ class HKLViewFrame() :
     ]
     self.zmqsleeptime = 0.1
     self.update_handler_sem = threading.BoundedSemaphore()
+    self.run_external_sem = threading.BoundedSemaphore()
     self.initiated_gui_sem = threading.Semaphore()
     self.start_time = time.time()
     kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
@@ -146,7 +147,7 @@ class HKLViewFrame() :
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
-    #time.sleep(12)
+    time.sleep(12)
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
     self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
@@ -176,6 +177,11 @@ class HKLViewFrame() :
         with open(fname, "r") as f:
           philstr = f.read()
           self.update_from_philstr(philstr)
+          self.mprint("thread_process_arguments() waiting for run_external_sem.acquire", verbose="threadingmsg")
+          if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
+            self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+          self.run_external_sem.release()
+          self.mprint("thread_process_arguments() releasing run_external_sem", verbose="threadingmsg")
         if 'image_file' in kwds: # save displayed reflections to an image file
           time.sleep(1)
           fname = kwds.get('image_file', "testimage.png" )
@@ -988,6 +994,9 @@ Borrowing them from the first miller array""" %i)
       from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
     try:
       def thrdfunc():
+        self.mprint("run_external_cmd.thrdfunc() waiting for run_external_sem.acquire", verbose="threadingmsg")
+        if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
+            self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
         parcpy = diff_phil.extract()
         parcpy.external_cmd = "None"
         diff2 = master_phil.fetch_diff(source =diff_phil.format(parcpy))
@@ -995,8 +1004,10 @@ Borrowing them from the first miller array""" %i)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
-        # apply the phil paramaters that may have been reset by external_cmd applying an openfilename call
+        # reapply the phil paramaters that may have been reset by external_cmd doing an openfilename call
         self.guarded_process_PHIL_parameters(new_phil=diff2)
+        self.run_external_sem.release()
+        self.mprint("run_external_cmd.thrdfunc() releasing run_external_sem", verbose="threadingmsg")
 
       # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
       # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
@@ -1139,6 +1150,8 @@ Borrowing them from the first miller array""" %i)
         self.prepare_dataloading()
         hkl_file = any_reflection_file(file_name)
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
+        if hkl_file._file_type is None:
+          raise Sorry(file_name + " seems not to be a reflection data file")
         self.origarrays = {}
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections

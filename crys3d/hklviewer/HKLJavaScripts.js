@@ -2145,7 +2145,6 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     let m = stage.viewer.modelGroup.children[0].matrixWorld;
     let currenthklpos = hklpos.applyMatrix4(m);
     let childZ = currenthklpos.z - stage.viewer.camera.position.z;
-    let infrustum = false;
     // do rough exclusion of reflections from frustum with clipplanes for the sake of speed
     if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
@@ -2154,7 +2153,6 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
       let ret = stage.viewer.pick(cv[0], cv[1]); 
       if (ret.pid !== 0)
       {
-        infrustum = true;
         let hklid = buffer.picking.ids[i + 1];
         let rotid = buffer.picking.ids[0];
         hkls_infrustums.push(hklid);

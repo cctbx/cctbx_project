@@ -11,6 +11,12 @@ datafname = libtbx.env.find_in_repositories(
   relative_path="iotbx/regression/data/phaser_1.mtz",
   test=os.path.isfile)
 
+closetime = 150 # about half the maximum time each test will run
+# HKLviewer uses websockets which is slightly unstable on virtual machines used on Azure.
+# This might yield a bogus failure of the test. If so, repeat the test at most maxruns times
+# or until it passes whichever comes first.
+maxruns = 4
+browser = "firefox"
 
 philstr1 = """
 clip_plane {
@@ -118,13 +124,6 @@ reflections2match3 = set([(-5, -2, 9), (2, 1, 9), (-3, -1, 9), (-3, -2, 9), (-2,
    (-2, 1, 9), (1, -2, 9), (-2, 3, 9), (-1, 3, 9), (2, -1, 9), (2, -2, 9), (-4, -1, 9), (-3, 1, 9),
    (0, 4, 9), (-2, -4, 9), (-2, -1, 9), (2, 2, 9), (1, 2, 9), (-2, 0, 9)]
 )
-
-closetime = 150 # about half the maximum time each test will run
-maxruns = 4 # maximum number to repeat unstable test until it passes
-#browser = "chrome"
-browser = "firefox"
-#browser = "default"
-
 
 def check_log_file(fname, refls2match):
   with open(fname, "r") as f:
