@@ -425,8 +425,9 @@ void diffBragg::set_close_distances(){
         Eigen::Vector3d OO(db_det.odet_vectors[ii*3], db_det.odet_vectors[ii*3+1], db_det.odet_vectors[ii*3+2]) ;
         double close_dist = pix0.dot(OO);
         db_det.close_distances.push_back(close_dist);
-        if (verbose) printf("Panel %d: close distance %f\n", ii, close_dist);
+        if (verbose>2) printf("Panel %d: close distance %f\n", ii, close_dist);
     }
+    db_cu_flags.update_detector = true;
 }
 
 
@@ -710,12 +711,14 @@ void diffBragg::update_dxtbx_geoms(
     SCITBX_ASSERT(close_distance > 0);
     verbose = old_verbose;
     set_close_distances();
+    db_cu_flags.update_detector=true;
     }
 
 void diffBragg::shift_originZ(const dxtbx::model::Detector& detector, double shiftZ){
     for (int pid=0; pid< detector.size(); pid++)
         db_det.pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
     set_close_distances();
+    db_cu_flags.update_detector=true;
 }
 
 void diffBragg::init_raw_pixels_roi(){
@@ -726,12 +729,14 @@ void diffBragg::initialize_managers(){
     for (int i_rot=0; i_rot < 3; i_rot++){
         if (rot_managers[i_rot]->refine_me){
             rot_managers[i_rot]->initialize(Npix_total, compute_curvatures);
-            update_rotmats_on_device = true;
+            db_cu_flags.update_rotmats = true;
+            db_cu_flags.update_umats=true;
+            db_cu_flags.update_Amats=true;
         }
     }
     for (int i_uc=0; i_uc < 6; i_uc++){
         if (ucell_managers[i_uc]->refine_me){
-            update_dB_matrices_on_device = true;
+            db_cu_flags.update_dB_mats = true;
             ucell_managers[i_uc]->initialize(Npix_total, compute_curvatures);
         }
     }
@@ -745,7 +750,7 @@ void diffBragg::initialize_managers(){
         pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
         if (pan_orig->refine_me){
             pan_orig->initialize(Npix_total, compute_curvatures);
-            update_detector_on_device=true;
+            db_cu_flags.update_detector = true;
         }
     }
 
@@ -764,7 +769,7 @@ void diffBragg::initialize_managers(){
             counter +=1;
             }
         if (counter>0){
-            update_umats_on_device=true;
+            db_cu_flags.update_umats=true;
             vectorize_umats();
         }
     }
@@ -781,7 +786,7 @@ void diffBragg::initialize_managers(){
         pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_idx]);
         if (pan_rot->refine_me){
             update_panel_deriv_vecs_on_device=true;
-            update_detector_on_device=true;
+            db_cu_flags.update_detector = true;
             pan_rot->initialize(Npix_total, compute_curvatures);
         }
     }
@@ -869,6 +874,9 @@ void diffBragg::vectorize_umats(){
             }
         }
     }
+    db_cu_flags.update_umats=true;
+    db_cu_flags.update_rotmats=true;
+    db_cu_flags.update_Amats=true;
 }
 
 void diffBragg::let_loose(int refine_id){
@@ -971,13 +979,15 @@ void diffBragg::refine(int refine_id){
         // 3 possitle rotation managers (rotX, rotY, rotZ)
         rot_managers[refine_id]->refine_me=true;
         rot_managers[refine_id]->initialize(Npix_total, compute_curvatures);
-        update_rotmats_on_device=true;
+        db_cu_flags.update_rotmats=true;
+        db_cu_flags.update_umats=true;
+        db_cu_flags.update_Amats=true;
     }
     else if (refine_id >=3 and refine_id < 9 ){
         // 6 possible unit cell managers (a,b,c,al,be,ga)
         ucell_managers[refine_id-3]->refine_me=true;
         ucell_managers[refine_id-3]->initialize(Npix_total, compute_curvatures);
-        update_dB_matrices_on_device = true;
+        db_cu_flags.update_dB_mats = true;
     }
     else if (refine_id==9){
         for (int i_nc=0; i_nc < 3; i_nc ++){
@@ -996,7 +1006,7 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device=true;
+        db_cu_flags.update_detector = true;
     }
     else if(refine_id==11){
         fcell_managers[0]->refine_me=true;
@@ -1016,7 +1026,7 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
 
@@ -1024,21 +1034,21 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
     }
 
     else if (refine_id==16){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
     }
     else if (refine_id==17){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==18){
@@ -1046,14 +1056,14 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==19){
         eta_managers[0]->refine_me=true;
         SCITBX_ASSERT(mosaic_umats_prime != NULL);
         eta_managers[0]->initialize(Npix_total, compute_curvatures);
-        update_umats_on_device = true;
+        db_cu_flags.update_umats = true;
         if (modeling_anisotropic_mosaic_spread){
             if (verbose){
                 printf("Initializing for anisotropic mosaic spread modeling!\n");
@@ -1344,6 +1354,9 @@ void diffBragg::set_value( int refine_id, double value ){
     if (refine_id < 3){
         rot_managers[refine_id]->value = value;
         rot_managers[refine_id]->set_R();
+        db_cu_flags.update_rotmats=true;
+        db_cu_flags.update_umats=true;
+        db_cu_flags.update_Amats=true;
     }
     if (refine_id==9){
         Ncells_managers[0]->value = value;
@@ -1730,10 +1743,11 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     while (n_data_alloc < Npix_to_model){
         first_deriv_imgs.residual.push_back(0);
         first_deriv_imgs.variance.push_back(0);
-        first_deriv_imgs.trusted.push_back(0);
         first_deriv_imgs.freq.push_back(0);
         n_data_alloc ++;
     }
+    while ( first_deriv_imgs.trusted.size() < n_data_alloc)
+        first_deriv_imgs.trusted.push_back(0);
 
     for (int i=0; i < Npix_to_model; i++){
         double resid = *(resid_ptr+i);
@@ -1748,7 +1762,7 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
 
     db_flags.Fhkl_gradient_mode = true;
     db_flags.using_trusted_mask = true;
-    bool is_empty  = first_deriv_imgs.Fhkl_scale_deriv.empty();
+    bool is_empty = first_deriv_imgs.Fhkl_scale_deriv.empty();
     for (int i=0; i < db_cryst.Num_ASU*num_Fhkl_channels; i ++){
         if (is_empty)
             first_deriv_imgs.Fhkl_scale_deriv.push_back(0);
@@ -1954,7 +1968,17 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cryst.dB2_Mats.push_back(ucell_managers[i_uc]->dB2);
     }
 
-    std::vector<unsigned int> panels_fasts_slows_vec(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
+    // see if the panels fasts vector has changed in order to determine whether to update the device arrays..
+    std::vector<unsigned int> temp_pfs(panels_fasts_slows.begin(), panels_fasts_slows.begin()+panels_fasts_slows.size());
+    if (temp_pfs != panels_fasts_slows_vec){ // TODO: time this
+        db_cu_flags.update_panels_fasts_slows = true;
+        panels_fasts_slows_vec.resize(panels_fasts_slows.size());
+        panels_fasts_slows_vec.assign(panels_fasts_slows.begin(), panels_fasts_slows.begin() + panels_fasts_slows.size()) ;//(panels_fasts_slows.size());
+    }
+    else {
+        db_cu_flags.update_panels_fasts_slows = false;
+    }
+
     gettimeofday(&t4,0 );
     double time_other_vecs = (1000000.0*(t4.tv_sec-t3.tv_sec) + t4.tv_usec-t3.tv_usec)/1000.0;
 
@@ -2039,16 +2063,12 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 #if defined DIFFBRAGG_HAVE_CUDA || defined DIFFBRAGG_HAVE_KOKKOS
         db_cu_flags.device_Id = device_Id;
         db_cu_flags.update_step_positions = update_step_positions_on_device;
-        db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
         db_cu_flags.update_sources = update_sources_on_device;
-        db_cu_flags.update_umats = update_umats_on_device;
-        db_cu_flags.update_dB_mats = update_dB_matrices_on_device;
-        db_cu_flags.update_rotmats = update_rotmats_on_device;
         db_cu_flags.update_Fhkl = update_Fhkl_on_device;
-        db_cu_flags.update_detector = update_detector_on_device;
         db_cu_flags.update_refine_flags = update_refine_flags_on_device;
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
+        db_cu_flags.update_Fhkl_scales_on_device = (db_flags.Fhkl_have_scale_factors & !(db_flags.Fhkl_gradient_mode));
 
       if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
 #ifdef DIFFBRAGG_HAVE_CUDA

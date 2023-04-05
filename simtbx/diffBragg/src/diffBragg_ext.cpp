@@ -10,10 +10,17 @@ namespace simtbx{
 namespace diffBragg{
 namespace boost_python { namespace {
 
-  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_A)() = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
-  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_B)(const nanoBragg::af::shared<size_t>&) = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
-  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_C)(const nanoBragg::af::shared<size_t>&, boost::python::list per_pix_nominal_hkl)
-        = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_A)
+    ()
+    = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+
+  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_B)
+    (const nanoBragg::af::shared<size_t>&)
+    = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
+
+  void (simtbx::nanoBragg::diffBragg::*add_diffBragg_spots_C)
+    (const nanoBragg::af::shared<size_t>&, boost::python::list per_pix_nominal_hkl)
+    = &simtbx::nanoBragg::diffBragg::add_diffBragg_spots;
 
   boost::python::list get_Fhkl_grad_inds(simtbx::nanoBragg::diffBragg& diffBragg){
       boost::python::list indices;
@@ -286,9 +293,11 @@ namespace boost_python { namespace {
       diffBragg.user_matrix = 1;
       diffBragg.init_cell();
 
-       diffBragg.db_cryst.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
-            diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
-            diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
+      diffBragg.db_cryst.eig_B << diffBragg.a0[1], diffBragg.b0[1], diffBragg.c0[1],
+           diffBragg.a0[2], diffBragg.b0[2], diffBragg.c0[2],
+           diffBragg.a0[3], diffBragg.b0[3], diffBragg.c0[3];
+
+      diffBragg.db_cu_flags.update_Amats=true;
   }
 
   //void set_roi(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& tupleoftuples){

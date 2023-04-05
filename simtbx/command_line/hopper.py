@@ -281,7 +281,7 @@ class Script:
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
             Modeler.clean_up(SIM)
-            del SIM.D  # TODO: is this necessary ?
+            del SIM.D
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
             exp_gatheredRef_spec = COMM.reduce(exp_gatheredRef_spec)

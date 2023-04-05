@@ -8,7 +8,7 @@ from dials.command_line.stills_process import Processor
 from xfel.small_cell.small_cell import small_cell_index_detail
 from simtbx.diffBragg import hopper_utils
 from dials.array_family import flex
-from simtbx.command_line.hopper import save_to_pandas
+from simtbx.diffBragg.hopper_io import save_to_pandas
 from dxtbx.model import ExperimentList
 import numpy as np
 import socket
@@ -87,6 +87,7 @@ class Hopper_Processor(Processor):
 
         self.stage1_df = None  # the pandas dataframe containing model parameters after running stage 1 (see method refine)
         self.stage1_modeler = None  # the data modeler used during stage 1 refinement
+        self.stage1_SIM = None  # the model simulator used during stage 1 refinement
         self.modeler_dir = None  # path for writing the data modelers
         self.known_crystal_models = None  # default flag, should be defined in stills_process init
 
@@ -187,7 +188,8 @@ class Hopper_Processor(Processor):
             if self.params.reidx_obs:
                 exps, ref = self._reindex_obs(exps, self.observed)
 
-            exp, ref, self.stage1_modeler, x = hopper_utils.refine(exps[0], ref,
+            #TODO what about free_mem?
+            exp, ref, self.stage1_modeler, self.stage1_SIM, x = hopper_utils.refine(exps[0], ref,
                                                self.params.diffBragg,
                                                spec=self.params.refspec,
                                                gpu_device=self.device_id, return_modeler=True, best=best)
@@ -195,13 +197,14 @@ class Hopper_Processor(Processor):
             refls_name = os.path.abspath(self.params.output.indexed_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
-            self.stage1_df = save_to_pandas(x, self.stage1_modeler.SIM, orig_exp_name, self.params.diffBragg,
-                                            self.stage1_modeler.E, 0, refls_name, None)
+            self.stage1_df = save_to_pandas(x, self.stage1_modeler, self.stage1_SIM,
+                                            orig_exp_name, self.params.diffBragg,
+                                            self.stage1_modeler.E, 0, refls_name, None,
+                                            rank=COMM.rank)
             exps_out = ExperimentList()
             exps_out.append(exp)
 
-            basename = os.path.splitext(os.path.basename(refls_name))[0]
-            self._save_modeler_info(basename)
+            self._save_modeler_info(x)
 
         out = super(Hopper_Processor, self).refine(exps_out, ref)
         return out
@@ -227,15 +230,11 @@ class Hopper_Processor(Processor):
         self.known_crystal_models = None
         return exps, ref
 
-    def _save_modeler_info(self, basename):
-        APATH = lambda x: os.path.abspath(os.path.join(self.modeler_dir, x))
+    def _save_modeler_info(self, x):
         if self.params.save_modelers:
-            modeler_fname = APATH("%s_%s" % (basename, "modeler.npy"))
-            np.save(modeler_fname, self.stage1_modeler)  # pickle the modeler, set __setstate__
-
-        spectra_fname = APATH("%s_%s" % (basename, "spectrum.lam"))
-        SIM_state_fname = APATH("%s_%s" % (basename, "SimState.txt"))
-        hopper_utils.write_SIM_logs(self.stage1_modeler.SIM, log=SIM_state_fname, lam=spectra_fname)
+            self.stage1_modeler.save_up(
+                x, self.stage1_SIM, COMM.rank, 0,
+                save_modeler_file=True, save_refl=False, save_fhkl_data=False, save_sim_info=True)
 
     def integrate(self, experiments, indexed):
         if self.params.skip_hopper:
@@ -305,14 +304,14 @@ class Hopper_Processor(Processor):
         predicted, model = predictions.get_predicted_from_pandas(
             self.stage1_df, self.params.diffBragg, self.observed,
             experiments[0].identifier, self.device_id,
-            spectrum_override=self.stage1_modeler.SIM.beam.spectrum)
+            spectrum_override=self.stage1_SIM.beam.spectrum)
         if self.params.refine_predictions:
             experiments, rnd2_refls = self.refine(experiments, predicted, refining_predictions=True, best=self.stage1_df)
             # TODO: match rnd2_refls with indexed.refl and re-save indexed.refl
             predicted, model = predictions.get_predicted_from_pandas(
                 self.stage1_df, self.params.diffBragg, self.observed,
                 experiments[0].identifier, self.device_id,
-                spectrum_override=self.stage1_modeler.SIM.beam.spectrum)
+                spectrum_override=self.stage1_SIM.beam.spectrum)
 
         predicted.match_with_reference(indexed)
         integrator = create_integrator(self.params, experiments, predicted)

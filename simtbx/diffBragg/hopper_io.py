@@ -61,6 +61,20 @@ def diffBragg_Umat(rotX, rotY, rotZ, U):
 
 def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
                    rank=0):
+    """
+
+    :param x:
+    :param Mod:
+    :param SIM:
+    :param orig_exp_name:
+    :param params:
+    :param expt:
+    :param rank_exp_idx:
+    :param stg1_refls:
+    :param stg1_img_path:
+    :param rank:
+    :return:
+    """
     LOGGER = logging.getLogger("refine")
     rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
     rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)

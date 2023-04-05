@@ -17,6 +17,7 @@ import glob
 
 
 style.use("ggplot")
+summary = {}
 for glob_s in args.globs:
     fnames = glob.glob(glob_s)
     all_d = []
@@ -38,15 +39,19 @@ for glob_s in args.globs:
         nref_per_shot .append( len(d))
 
     all_d = hstack(all_d)
-    print("median over %d shots=%f pixels (%d refls)" % (len(nref_per_shot), median(all_d), len(all_d)))
-    print("Min refls per shot=%d, max refls per shot = %d, ave refls per shot=%.1f" % (min(nref_per_shot), max(nref_per_shot), mean(nref_per_shot)))
+    shot_s = "median over %d shots=%f pixels (%d refls)" % (len(nref_per_shot), median(all_d), len(all_d))
+    print(shot_s)
+    refl_s = "Min refls per shot=%d, max refls per shot = %d, ave refls per shot=%.1f" % (min(nref_per_shot), max(nref_per_shot), mean(nref_per_shot))
+    print(refl_s)
+
+    summary[glob_s] = shot_s, refl_s
     subplot(121)
     hist( all_d, bins=args.nbins[0], histtype='step', lw=2, label=glob_s)
     if not args.linear:
         gca().set_yscale("log")
     xlabel("|calc-obs| (pixels)", fontsize=17)
     ylabel("num refls", fontsize=15)
-    #legend(prop={'size':12})
+    legend(prop={'size':12})
     gca().tick_params(direction='in', which='both', labelsize=15)
     subplot(122)
     hist( all_shotd, bins=args.nbins[1], histtype='step', lw=2, label=glob_s)
@@ -59,7 +64,12 @@ for glob_s in args.globs:
 
 gcf().set_size_inches((7,4))
 suptitle(" %d shots ; %d refls" % (len(nref_per_shot), len(all_d)))
-subplots_adjust(bottom=0.2, right=0.97, top=0.92, left=0.1)
+subplots_adjust(bottom=0.2, right=0.97, wspace=0.3, hspace=.3,  top=0.92, left=0.1)
+
+for name, items in summary.items():
+    print("\n<><><><><><><><><><><><><><>\nglob: %s" % name)
+    for s in items:
+        print("\t%s" % s)
 
 if args.noPlot:
     exit()

@@ -7,11 +7,18 @@
 #define CUDAREAL double
 #endif
 
+#include <boost/python.hpp>
+#include <boost/python/numpy.hpp>
+
+namespace bp=boost::python;
+namespace np=bp::numpy;
+
 //#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 
 struct diffBragg_cudaPointers {
 
   bool device_is_allocated = false;
+  bool trusted_flags_allocated = false;
   int npix_allocated=0;
   int previous_nsource = 0;
 
@@ -88,6 +95,8 @@ struct diffBragg_cudaPointers {
   Eigen::Matrix3d* cu_d_sausages_RXYZ;
   Eigen::Matrix3d* cu_sausages_U;
   CUDAREAL* cu_sausages_scale;
+  CUDAREAL* Fhkl_init;
+  CUDAREAL* Fhkl_xvals;
 
   bool* cu_refine_Bmat;
   bool* cu_refine_Umat;
@@ -110,6 +119,8 @@ struct diffBragg_cudaPointers {
   CUDAREAL* Fhkl_scale=NULL;  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
   CUDAREAL* Fhkl_scale_deriv=NULL; // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
 
+  bool allocated_for_rescaling_Fhkls=false;
+
 };
 
 void diffBragg_sum_over_steps_cuda(
@@ -127,5 +138,8 @@ void diffBragg_sum_over_steps_cuda(
         diffBragg_cudaPointers& cp,
         timer_variables& TIMERS);
 
+np::ndarray rescale_Fhkl_factors(diffBragg_cudaPointers& cp, np::ndarray& scales_init, np::ndarray& Fhkl_xvals, CUDAREAL Fhkl_sigma);
+//    SIM.Fhkl_scales_init * np.exp( Mod.params.sigmas.Fhkl *(current_Fhkl_xvals-1))
+//}
 
 void freedom(diffBragg_cudaPointers& cp);

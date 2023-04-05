@@ -2,10 +2,7 @@
 #include "diffBraggCUDA.h"
 #include "diffBragg_gpu_kernel.h"
 #include <stdio.h>
-//lkalskdlaksdlkalsd
 
-//#define BLOCKSIZE 128
-//#define NUMBLOCKS 128
 //https://stackoverflow.com/a/14038590/2077270
 #define gpuErr(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -23,6 +20,7 @@ void error_msg(cudaError_t err, const char* msg){
         exit(err);
     }
 }
+
 
 void diffBragg_sum_over_steps_cuda(
         int Npix_to_model,
@@ -121,12 +119,12 @@ void diffBragg_sum_over_steps_cuda(
         if (db_flags.verbose){
            printf("Will model %d pixels and allocate %d pix\n", Npix_to_model, db_cu_flags.Npix_to_allocate);
         }
+
         // Check the Fhkl geradient arrays
         if (db_flags.Fhkl_have_scale_factors){
             gpuErr(cudaMallocManaged(&cp.data_residual, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.data_variance, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL)));
             gpuErr(cudaMallocManaged(&cp.data_freq, db_cu_flags.Npix_to_allocate*sizeof(int)));
-            gpuErr(cudaMallocManaged(&cp.data_trusted, db_cu_flags.Npix_to_allocate*sizeof(bool)));
             gpuErr(cudaMallocManaged(&cp.FhklLinear_ASUid, db_cryst.FhklLinear_ASUid.size()*sizeof(int)));
             gpuErr(cudaMallocManaged(&cp.Fhkl_scale, d_image.Fhkl_scale.size()*sizeof(CUDAREAL)));
             // alloc Fhkl_scale_deriv to bs same length as Fhkl_scale.size(), as Fhkl_scale_deriv is only set when Fhkl_gradient_mode=True, typpically not first iteration
@@ -231,6 +229,11 @@ void diffBragg_sum_over_steps_cuda(
         cp.npix_allocated = db_cu_flags.Npix_to_allocate;
     } // END of allocation
 
+    if (db_flags.using_trusted_mask && !cp.trusted_flags_allocated){
+        gpuErr(cudaMallocManaged(&cp.data_trusted, db_cu_flags.Npix_to_allocate*sizeof(bool)));
+        cp.trusted_flags_allocated=true;
+    }
+
     bool ALLOC = !cp.device_is_allocated; // shortcut variable
 
     gettimeofday(&t2, 0);
@@ -242,25 +245,36 @@ void diffBragg_sum_over_steps_cuda(
     //ALLOC = false;
 //  BEGIN COPYING DATA
     gettimeofday(&t1, 0);
-    bool FORCE_COPY=true;
+    bool FORCE_COPY=false;
 
 //  END step position
+    // TODO only copy arrays when necessary
+    if (db_flags.using_trusted_mask && db_cu_flags.update_trusted_mask_on_device){
+        for (int i=0; i < Npix_to_model; i++)
+            cp.data_trusted[i] = d_image.trusted[i];
+        if(db_flags.verbose>1 )
+          printf("H2D trusted mask\n");
+    }
     if (db_flags.Fhkl_gradient_mode){
         for (int i=0; i < Npix_to_model; i++){
             cp.data_residual[i] = d_image.residual[i];
             cp.data_variance[i] = d_image.variance[i];
-            cp.data_trusted[i] = d_image.trusted[i];
             cp.data_freq[i] = d_image.freq[i];
         }
+        if(db_flags.verbose>1 )
+          printf("H2D pixel data (residual, variance, freq)\n");
     }
 
     if (db_flags.Fhkl_have_scale_factors && ALLOC){
         for (int i=0; i < db_cryst.FhklLinear_ASUid.size(); i++){
             cp.FhklLinear_ASUid[i] = db_cryst.FhklLinear_ASUid[i];
         }
+        if(db_flags.verbose>1 )
+          printf("H2D Fhkllinear ASUId\n");
     }
 
-    if (db_flags.Fhkl_have_scale_factors){
+    // TODO, only copy arrays when necessary
+    if (db_flags.Fhkl_have_scale_factors && db_cu_flags.update_Fhkl_scales_on_device){
         //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
         for (int i=0; i < db_beam.number_of_sources; i++)
             cp.Fhkl_channels[i] = db_beam.Fhkl_channels[i];
@@ -271,6 +285,15 @@ void diffBragg_sum_over_steps_cuda(
                 cp.Fhkl_scale_deriv[i] = 0;
             }
         }
+        if(db_flags.verbose>1 )
+          printf("H2D Fhkl scale factors\n");
+    }
+
+    if (db_flags.Fhkl_gradient_mode){
+        for (int i=0; i < d_image.Fhkl_scale.size(); i++)
+            cp.Fhkl_scale_deriv[i] = 0;
+        if(db_flags.verbose>1 )
+          printf("H2D reset Fhkl scale factor derivatives to 0\n");
     }
 
 //  BEGIN sources
@@ -302,17 +325,19 @@ void diffBragg_sum_over_steps_cuda(
             cp.cu_UMATS_RXYZ_dbl_prime[i] = db_cryst.UMATS_RXYZ_dbl_prime[i];
         if(db_flags.verbose>1)
             printf("H2D Done copying Umats\n") ;
+        db_cu_flags.update_umats=false;
     }
 //  END UMATS
 
 
-    if (db_cu_flags.update_umats || ALLOC||FORCE_COPY){
+    if (db_cu_flags.update_Amats || ALLOC||FORCE_COPY){
         MAT3 Amat_init = db_cryst.eig_U*db_cryst.eig_B*1e10*(db_cryst.eig_O.transpose());
         for(int i_mos =0; i_mos< db_cryst.UMATS_RXYZ.size(); i_mos++){
             cp.cu_AMATS[i_mos] = (db_cryst.UMATS_RXYZ[i_mos]*Amat_init).transpose();
             }
         if(db_flags.verbose>1)
             printf("H2D Done copying Amats\n") ;
+        db_cu_flags.update_Amats=false;
     }
 
 
@@ -324,6 +349,7 @@ void diffBragg_sum_over_steps_cuda(
             cp.cu_dB2_Mats[i] = db_cryst.dB2_Mats[i];
         if(db_flags.verbose>1)
             printf("H2D Done copying dB_Mats\n") ;
+        db_cu_flags.update_dB_mats=false;
     }
 //  END BMATS
 
@@ -338,6 +364,7 @@ void diffBragg_sum_over_steps_cuda(
             cp.cu_d2RotMats[i] = db_cryst.d2RotMats[i];
         if (db_flags.verbose>1)
           printf("H2D Done copying rotmats\n");
+        //db_cu_flags.update_rotmats=false;
     }
 //  END ROT MATS
 
@@ -354,6 +381,7 @@ void diffBragg_sum_over_steps_cuda(
         }
         if (db_flags.verbose>1)
           printf("H2D Done copying detector vectors\n");
+        db_cu_flags.update_detector = false;
     }
 //  END  DETECTOR VECTORS
 
@@ -681,8 +709,12 @@ void freedom(diffBragg_cudaPointers& cp){
         cp.npix_allocated = 0;
     }
 
-    if (cp.Fhkl_grad_arrays_allocated){
+    if (cp.trusted_flags_allocated){
         gpuErr(cudaFree(cp.data_trusted));
+        cp.trusted_flags_allocated=false;
+    }
+
+    if (cp.Fhkl_grad_arrays_allocated){
         gpuErr(cudaFree(cp.data_freq));
         gpuErr(cudaFree(cp.data_residual));
         gpuErr(cudaFree(cp.data_variance));
@@ -690,5 +722,10 @@ void freedom(diffBragg_cudaPointers& cp){
         gpuErr(cudaFree(cp.Fhkl_scale));
         gpuErr(cudaFree(cp.Fhkl_scale_deriv));
         cp.Fhkl_grad_arrays_allocated=false;
+    }
+    if (cp.allocated_for_rescaling_Fhkls){
+        gpuErr(cudaFree(cp.Fhkl_xvals));
+        gpuErr(cudaFree(cp.Fhkl_init));
+        cp.allocated_for_rescaling_Fhkls= false;
     }
 }

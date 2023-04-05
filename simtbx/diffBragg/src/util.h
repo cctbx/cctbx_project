@@ -68,6 +68,9 @@ struct step_arrays{
 
 
 struct cuda_flags{
+    // NOTE the following three flags are true by default until we fix ensemble refinement accordingly
+    bool update_Fhkl_scales_on_device=true;
+    bool update_trusted_mask_on_device=true;
     int device_Id=0;  // gpu device id
     int Npix_to_allocate; // how much space to allocate for simulating forward model and gradients
     // these following flags indicate whether to update quantities on the GPU device prior to running the kernel
@@ -76,6 +79,7 @@ struct cuda_flags{
     bool update_panels_fasts_slows; // pixels to simulatoe (panel id, fast scan, slow scan)
     bool update_sources;  // beam sources
     bool update_umats; // umatrices for mosaic blocks
+    bool update_Amats=true; // umatrices for mosaic blocks
     bool update_dB_mats; // derivative of the orthogonalization matrix (for unit cell derivatives)
     bool update_rotmats; // rotation matrices (for Umat derivatives)
     bool update_Fhkl; // structure factors

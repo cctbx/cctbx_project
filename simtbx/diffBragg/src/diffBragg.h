@@ -10,7 +10,6 @@
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
 #include <Eigen/StdVector>
-#include <boost/python/numpy.hpp>
 
 #ifdef DIFFBRAGG_HAVE_CUDA
 #include "diffBraggCUDA.h"
@@ -177,6 +176,7 @@ class diffBragg: public nanoBragg{
   void vectorize_umats();
   void rotate_fs_ss_vecs(double panel_rot_ang);
   void rotate_fs_ss_vecs_3D(double panel_rot_angO, double panel_rot_angF, double panel_rot_angS);
+
   void add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows);
   np::ndarray add_Fhkl_gradients(const af::shared<size_t>& panels_fasts_slows,
            np::ndarray& residual, np::ndarray& variance, np::ndarray& trusted, np::ndarray& freq,
@@ -305,12 +305,13 @@ class diffBragg: public nanoBragg{
 
   void set_close_distances();
 
+  std::vector<unsigned int> panels_fasts_slows_vec;
+
   // cuda properties
   bool update_dB_matrices_on_device=false;
   bool update_detector_on_device=false;
   bool update_rotmats_on_device=false;
   bool update_umats_on_device=false;
-  bool update_panels_fasts_slows_on_device=false;
   bool update_sources_on_device=false;
   bool update_Fhkl_on_device=false;
   bool update_refine_flags_on_device=false;
