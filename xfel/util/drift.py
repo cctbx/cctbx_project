@@ -803,7 +803,7 @@ class DriftArtist(object):
   def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.corr_colormap = plt.get_cmap(parameters.plot.color.covariance)
+    self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
     self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
     self.order_by = ['run', 'chunk']
     self.table = table
