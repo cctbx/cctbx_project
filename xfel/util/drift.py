@@ -66,7 +66,7 @@ Example usage 4:
 Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory
+    scrap.input.glob=r0*/039_rg084/task209 scrap.input.kind=tder_task_directory
 """
 
 
@@ -112,9 +112,12 @@ phil_scope_str = """
       by = chunk *merge run rungroup task trial
         .type = choice
         .help = Variable to color individual points on drift plot by;
-      distribution = seismic
+      correlation = seismic
+        .type - str
+        .help = Name of matplotlib colormap to be used on correlation plot 
+      distribution = magma_r
         .type = str
-        .help = Name of matplotlib colormap to be used for drawing gradients
+        .help = Name of matplotlib colormap to be used on distribution heatmap
     }
     show = True
       .type = bool
@@ -800,7 +803,8 @@ class DriftArtist(object):
   def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.cov_colormap = plt.get_cmap(parameters.plot.color.distribution)
+    self.corr_colormap = plt.get_cmap(parameters.plot.color.covariance)
+    self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
@@ -903,7 +907,7 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
-          color = self.cov_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
+          color = self.corr_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
@@ -936,7 +940,7 @@ class DriftArtist(object):
     y = self.table_flat[values_key]
     b = (len(self.x), 100)
     r = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
-    axes.hist2d(x, y, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)  # noqa
+    axes.hist2d(x, y, bins=b, range=r, cmap=self.dist_colormap, cmin=0.5)
     axes.scatter(self.x, [average(val) for val in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
 
