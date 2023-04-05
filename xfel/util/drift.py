@@ -808,8 +808,8 @@ class DriftArtist(object):
     self.colormap_period = 10
     self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
     self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
-    dbc = parameters.plot.color.distribution_bg
-    self.dist_bg_col = self.dist_colormap(0) if dbc == 'auto' else dbc
+    dbc = str(parameters.plot.color.distribution_bg)
+    self.dist_bg_col = self.dist_colormap(0) if dbc.lower() == 'auto' else dbc
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
