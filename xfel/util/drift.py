@@ -938,9 +938,11 @@ class DriftArtist(object):
   def _plot_drift_distribution(self, axes: plt.Axes, values_key: str) -> None:
     x = self.table_flat['original_index']
     y = self.table_flat[values_key]
-    b = (len(self.x), 100)
-    r = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
-    axes.hist2d(x, y, bins=b, range=r, cmap=self.dist_colormap, cmin=0.5)
+    weights = self.table_flat['refls']
+    bins = (len(self.x), 100)
+    ranges = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
+    axes.hist2d(x, y, weights=weights, bins=bins, range=ranges,
+                cmap=self.dist_colormap, cmin=1E-10)
     axes.scatter(self.x, [average(val) for val in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
 
