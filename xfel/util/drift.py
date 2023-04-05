@@ -118,6 +118,9 @@ phil_scope_str = """
       distribution = magma_r
         .type = str
         .help = Name of matplotlib colormap to be used on distribution heatmap
+      distribution_bg = white
+        .type = str
+        .help = Bg color of distribution plot. 'auto' to derive from gradient.
     }
     show = True
       .type = bool
@@ -805,6 +808,8 @@ class DriftArtist(object):
     self.colormap_period = 10
     self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
     self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
+    dbc = parameters.plot.color.distribution_bg
+    self.dist_bg_col = self.dist_colormap(0) if dbc.lower() == 'auto' else dbc
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
@@ -936,6 +941,7 @@ class DriftArtist(object):
     axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes: plt.Axes, values_key: str) -> None:
+    axes.set_facecolor(self.dist_bg_col)
     x = self.table_flat['original_index']
     y = self.table_flat[values_key]
     weights = self.table_flat['refls']
