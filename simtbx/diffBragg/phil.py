@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+nominal_Fhkl_only = True
+  .type = bool
+  .help = if refining Fhkls, only refine the ones that are assigned to a reflection table...
 use_geometric_mean_Fhkl = False
   .type = bool
   .help = whether to use the geometric mean for Fhkl restraint (when betasFhkl is not None, restratin Fhkl to the mean in each res bin)
@@ -777,6 +780,14 @@ simulator {
       .help = three missetting angles (about X,Y,Z axes), followed by
       .help = unit cell parameters. The crystal will be rotated according to
       .help = the matrix RotX*RotY*RotZ, and then the unit cell will be updated
+  }
+  gonio {
+    delta_phi = None
+      .type = float
+      .help = Angular amount in degrees by which goniometer is rotated during shot
+    phi_steps = 50
+      .type = int
+      .help = number of discrete angular positions to model
   }
   structure_factors {
     from_pdb {

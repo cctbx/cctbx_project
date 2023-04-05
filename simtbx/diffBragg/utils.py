@@ -861,7 +861,30 @@ def simulator_from_expt_and_params(expt, params=None):
         kern_size = SIM.psf_args["psf_radius"]*2 + 1
         SIM.PSF = psf.makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
 
+    update_SIM_with_gonio(SIM, params)
+
     return SIM
+
+
+def update_SIM_with_gonio(SIM, params=None, delta_phi=None, num_phi_steps=5):
+    """
+
+    :param SIM: sim_data instance
+    :param params: diffBragg phil parameters instance
+    :param delta_phi: how much to rotate gonio during model
+    :param num_phi_steps: number of phi steps
+    :return:
+    """
+    if not hasattr(SIM, "D"):
+        raise AttributeError("Need to instantiate diffBragg first")
+    if params is not None:
+        delta_phi = params.simulator.gonio.delta_phi
+        num_phi_steps = params.simulator.gonio.phi_steps
+
+    if delta_phi is not None:
+        SIM.D.phi_deg = 0
+        SIM.D.osc_deg = delta_phi
+        SIM.D.phisteps = num_phi_steps
 
 
 def get_complex_fcalc_from_pdb(
@@ -927,7 +950,8 @@ def open_mtz(mtzfname, mtzlabel=None, verbose=False):
             break
 
     assert foundlabel, "MTZ Label not found... \npossible choices: %s" % (" ".join(possible_labels))
-    ma = ma.as_amplitude_array()
+    if not ma.is_xray_amplitude_array():
+        ma = ma.as_amplitude_array()
     return ma
 
 
