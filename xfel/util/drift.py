@@ -50,12 +50,12 @@ Read common detector origin position and average unit cell parameters for all
 expts merged in "batch*" datasets / directories, excluding "batch5":
 excluding those :
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.input.exclude=batch5/
+    scrap.input.glob=batch* scrap.input.exclude=batch5
 
 Example usage 2:
 Not only read, but also cache "batch*" results in a "name.pkl" pickle:
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.cache.action=write scrap.cache.glob=name.pkl
+    scrap.input.glob=batch* scrap.cache.action=write scrap.cache.glob=name.pkl
 
 Example usage 3:
 Read cached "batch*" results from all "*.pkl" files and save the plot:
