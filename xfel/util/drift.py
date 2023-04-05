@@ -290,11 +290,12 @@ def read_reflections(*refl_paths: str) -> flex.reflection_table:
   return flex.reflection_table.concat(r)
 
 
-def represent_range_as_str(sorted_iterable: Sequence, sep: str = '') -> str:
-  """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
+def represent_range_as_str(sorted_iterable: Sequence, sep: str = None) -> str:
+  """Return range of str in iterable, e.g. "r081-94" for ["r081", "r094"]"""
   fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
   d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
-  return fs if not d else fs[:d] + sep[0] + fs[d:] + '-' + ls[d:] + sep[-1]
+  sep0, sep1 = (sep[0], sep[-1]) if sep is not None else ('', '')
+  return fs if not d else fs[:d] + sep0 + fs[d:] + '-' + ls[d:] + sep1
 
 
 def unique_elements(sequence: Sequence) -> List:
