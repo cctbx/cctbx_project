@@ -113,7 +113,7 @@ phil_scope_str = """
         .type = choice
         .help = Variable to color individual points on drift plot by;
       correlation = seismic
-        .type - str
+        .type = str
         .help = Name of matplotlib colormap to be used on correlation plot 
       distribution = magma_r
         .type = str
