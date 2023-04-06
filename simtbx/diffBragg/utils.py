@@ -732,9 +732,10 @@ def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flu
 def simulator_for_refinement(expt, params):
     # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
     MAIN_LOGGER.info(
-        "Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
+        "Setting initial mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
     if params.simulator.crystal.has_isotropic_mosaicity:
         params.simulator.crystal.anisotropic_mosaicity = None
+        params.simulator.crystal.mosaicity = params.init.eta_abc[0]
     else:
         params.simulator.crystal.anisotropic_mosaicity = params.init.eta_abc
     MAIN_LOGGER.info("Number of mosaic domains from params: %d" % params.simulator.crystal.num_mosaicity_samples)
