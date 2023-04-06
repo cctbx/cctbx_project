@@ -16,6 +16,7 @@ from libtbx.utils import Sorry, format_exception
 from libtbx import slots_getstate_setstate
 from mmtbx.ncs.ncs_search import get_chains_info
 from six.moves import range
+from iotbx.pdb.hybrid_36 import hy36encode
 
 abc="abcdefghijklmnopqrstuvwxyz"
 ABC="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -34,6 +35,22 @@ def _character_case_id(strings):
   if (have_upper): return 1
   if (have_lower): return -1
   return 0
+
+def long_int_to_str(number):
+  # if short, no need to transform
+  if len(number) <=4:
+    return number
+  # make sure we deal with actual number
+  for c in number:
+    if c not in '0123456789':
+      return number
+  try:
+    number_int = int(number)
+  except Exception:
+    return number
+  if number_int < 0:
+    return number
+  return hy36encode(4, int(number_int))
 
 def _get_map_string(
       map,
@@ -76,9 +93,9 @@ def _get_serial_range(sel_keyword, map, start, stop):
   o_start = None
   o_stop = None
   if (start is not None and start.count(" ") != len(start)):
-    o_start = o(start)
+    o_start = o(long_int_to_str(start))
   if (stop is not None and stop.count(" ") != len(stop)):
-    o_stop = o(stop)
+    o_stop = o(long_int_to_str(stop))
   if (    o_start is not None
       and o_stop is not None
       and o_start > o_stop):
@@ -223,6 +240,7 @@ class cache(slots_getstate_setstate):
       unconditionally_case_insensitive=False)
 
   def get_resseq(self, pattern):
+    pattern.value = long_int_to_str(pattern.value)
     return _get_map_string(
       map=self.resseq,
       pattern=pattern,
@@ -239,10 +257,11 @@ class cache(slots_getstate_setstate):
       wildcard_escape_char=self.wildcard_escape_char)
 
   def get_resid(self, pattern):
-    return _get_map_string(
+    res = _get_map_string(
       map=self.resid,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
+    return res
 
   def get_resid_range(self, start, stop):
     from iotbx.pdb import utils_base_256_ordinal as o

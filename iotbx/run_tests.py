@@ -23,6 +23,7 @@ tst_list_base = [
   "$D/regression/tst_map_tools.py",
   "$D/regression/tst_patterson.py",
   "$D/regression/tst_restraints_merge.py",
+  "$D/regression/tst_atom_selections_10k.py",
   "$D/ranges.py",
   "$D/regression/tst_crystal_symmetry_from_any.py",
   "$D/regression/tst_poscar.py",
