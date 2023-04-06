@@ -579,6 +579,7 @@ class nanoBragg {
 
     /* member function for triggering noise calculation */
     void add_noise();
+    af::flex_double add_noise(af::flex_double) const;
 
     /* utility function for outputting an image to examine */
     void to_smv_format(std::string const& fileout, double intfile_scale, int debug_x, int debug_y);
