@@ -211,10 +211,14 @@ class DataModeler:
         self.target.hop_iter += 1
         #self.target.minima.append((f,self.target.x0,accept))
         self.target.lowest_x = x
-        if f < self.target.lowest_f:
-            self.target.lowest_f = f
-            MAIN_LOGGER.info("New minimum found!")
-            self.save_up(self.target.x0, self.rank)
+        try:
+            # TODO get SIM and i_exp in here so we can save_up each new global minima!
+            if f < self.target.lowest_f:
+                 self.target.lowest_f = f
+                 MAIN_LOGGER.info("New minimum found!")
+                 self.save_up(self.target.x0, SIM, self.rank, i_exp=i_exp)
+        except NameError:
+            pass
 
     def _abs_path_params(self):
         """adds absolute path to certain params"""
