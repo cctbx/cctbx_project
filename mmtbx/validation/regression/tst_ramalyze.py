@@ -256,10 +256,10 @@ def exercise_ramalyze_json():
   assert rmjson_dict['flat_results'][99]['rama_type']=='OUTLIER', "tst_ramalyze json output last rama_type not matching previous value"
   from mmtbx.validation import test_utils
   assert test_utils.count_dict_values(rmjson_dict['hierarchical_results'], "OUTLIER")==100, "tst_ramalyze json hierarchical output total number of rama outliers changed"
-  assert rmjson_dict['summary_results']['num_allowed'] == 162, "tst_ramalyze json output summary total num_allowed not matching previous value"
-  assert rmjson_dict['summary_results']['num_favored'] == 463, "tst_ramalyze json output summary total num_favored not matching previous value"
-  assert rmjson_dict['summary_results']['num_outliers'] == 100, "tst_ramalyze json output summary total num_outliers not matching previous value"
-  assert rmjson_dict['summary_results']['num_residues'] == 725, "tst_ramalyze json output summary total num_residues not matching previous value"
+  assert rmjson_dict['summary_results'][""]['num_allowed'] == 162, "tst_ramalyze json output summary total num_allowed not matching previous value"
+  assert rmjson_dict['summary_results'][""]['num_favored'] == 463, "tst_ramalyze json output summary total num_favored not matching previous value"
+  assert rmjson_dict['summary_results'][""]['num_outliers'] == 100, "tst_ramalyze json output summary total num_outliers not matching previous value"
+  assert rmjson_dict['summary_results'][""]['num_residues'] == 725, "tst_ramalyze json output summary total num_residues not matching previous value"
 
 if (__name__ == "__main__"):
   t0=time.time()
