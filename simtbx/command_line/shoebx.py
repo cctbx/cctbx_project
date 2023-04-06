@@ -143,6 +143,8 @@ while FIG.loop_counter < num_spots:
     sh = y2 - y1, x2 - x1
     data = M.all_data[sel].reshape(sh)
     trusted = M.all_trusted[sel].reshape(sh)
+    any_trusted = np.any(trusted)
+
     bg = M.all_background[sel].reshape(sh)
     bragg = M.best_model[sel].reshape(sh)
     model = bragg + bg
@@ -153,17 +155,19 @@ while FIG.loop_counter < num_spots:
 
     vals = Z[trusted]
     data_trust = data[trusted]
-    data_thresh = np.percentile(data_trust,97)
+    if not any_trusted:
+        data_thresh = 0
+    else:
+        data_thresh = np.percentile(data_trust,97)
     y,x = np.indices(data.shape)
 
     ycent = (bragg.ravel()*y.ravel()).sum() /bragg.sum()
     xcent = (bragg.ravel()*x.ravel()).sum() / bragg.sum()
 
-    sigZ_val = Z[trusted].std()
-
-
-
-
+    if not any_trusted:
+        sigZ_val = np.nan
+    else:
+        sigZ_val = Z[trusted].std()
 
     for ax in ax0,ax1,ax2:
         ax.clear()
