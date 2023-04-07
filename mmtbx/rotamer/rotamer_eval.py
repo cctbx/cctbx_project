@@ -33,7 +33,7 @@ Can't find chem_data/rotarama_data/ directory:
 def open_rotarama_dlite(rotarama_data_dir=None):
   if (rotarama_data_dir is None):
     rotarama_data_dir = find_rotarama_data_dir()
-  return dlite.target_db(os.path.join(rotarama_data_dir, "rotarama.dlite"))
+  return dlite.try_loading_db(os.path.join(rotarama_data_dir, "rotarama.dlite"))
 
 # maps aa name to file name
 aminoAcids = {
