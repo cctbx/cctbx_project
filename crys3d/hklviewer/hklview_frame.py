@@ -982,12 +982,10 @@ Borrowing them from the first miller array""" %i)
     # Get logfile name and tabname assigned
     # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
     # in the script
-    from pathlib import PurePath
     firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
     firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
     # Provide a temp directory for xtricorder in current working directory and
     # replace any backslashes on Windows with forwardslashes for the sake of phasertng
-    tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerTemp")).as_posix()
     if self.params.external_cmd == "runXtricorder":
       from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
     if self.params.external_cmd == "runXtriage":
@@ -1000,7 +998,7 @@ Borrowing them from the first miller array""" %i)
         parcpy = diff_phil.extract()
         parcpy.external_cmd = "None"
         diff2 = master_phil.fetch_diff(source =diff_phil.format(parcpy))
-        ret = external_cmd(self, master_phil, firstpart, tempdir)
+        ret = external_cmd(self, master_phil, firstpart)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
