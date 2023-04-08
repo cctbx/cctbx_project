@@ -2,9 +2,12 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 import os, os.path, glob
 
-def external_cmd(parent, master_phil, firstpart, tempdir):
+def external_cmd(parent, master_phil, firstpart):
   from phasertng.scripts import xtricorder
-
+  # Append a random number to tempdir to avoid race conditions if another instance of xtricorder is running
+  import random
+  from pathlib import PurePath
+  tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerXtricorder")).as_posix() + str(random.randrange(100000))
   tabname = "Xtricorder"
   (retobj) = xtricorder.xtricorder(
   r'''phasertng {
