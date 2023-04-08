@@ -1966,7 +1966,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
        "blur the image with specified point-spread function, may be done before or after adding noise")
 
       /* actual run of the noise simulation */
-      .def("add_noise",&nanoBragg::add_noise,
+      .def("add_noise",static_cast<void(nanoBragg::*)()>(&nanoBragg::add_noise),
        "apply specified Poisson, calibration, flicker and read-out noise to the pixels")
 
       .def("to_smv_format",&nanoBragg::to_smv_format,
