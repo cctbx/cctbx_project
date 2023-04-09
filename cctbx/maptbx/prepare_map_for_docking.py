@@ -1013,7 +1013,7 @@ def add_ordered_volume_mask(
     raise Sorry("At least one of protein_mw and nucleic_mw must be defined")
   if (not mmm.map_manager_1().is_full_size()) or  (
       not mmm.map_manager_2().is_full_size()):
-    raise Sorry("Please supply half-maps that are full-size")
+    raise Sorry("Please supply half-maps that are full-size, not cut out from a larger box")
 
   if d_min is None or d_min <= 0:
     spacings = get_grid_spacings(mmm.map_manager().unit_cell(),
