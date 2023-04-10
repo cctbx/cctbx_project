@@ -633,9 +633,7 @@ class HKLViewFrame() :
         if not ret:
           return
 
-      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
-        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
-      phl.savefilename = None # ensure the same action in succession can be executed
+      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -650,11 +648,13 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
+      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
+        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
+      phl.savefilename = None # ensure the same action in succession can be executed
+
       if jsview_3d.has_phil_path(diff_phil, "openfilename", "commit_subgroup_datasets"):
         self.list_vectors()
         self.validated_preset_buttons = False
-
-      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
 
       self.SendCurrentPhilValues()
