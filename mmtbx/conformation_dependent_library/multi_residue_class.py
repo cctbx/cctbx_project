@@ -305,7 +305,7 @@ class ThreeProteinResidues(ProteinResidues):
     return proxies
 
 def id_str_for_phi_psi_2(residue, ignore_altloc=False):
-  id_str = residue.id_str().replace('pdbres=','').replace('"','')
+  id_str = residue.id_str(suppress_segid=True).replace('pdbres=','').replace('"','')
   if ignore_altloc:
     return ' %s' % id_str
   altloc=''
