@@ -1034,7 +1034,7 @@ NOTES:
         pad = 'H'
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       self.params.output.filename = base + suffix
-      print('Writing model output to', self.params.output.filename)
+      print('Writing model output to', self.params.output.filename, file=self.logger)
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1108,8 +1108,8 @@ NOTES:
       outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
-        print('Atom information used during calculations:')
-        print(opt.getAtomDump())
+        print('Atom information used during calculations:', file=self.logger)
+        print(opt.getAtomDump(), file=self.logger)
 
     else: # Removing Hydrogens from the model rather than adding them.
       make_sub_header('Removing Hydrogens', out=self.logger)
@@ -1245,8 +1245,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
-          print('Results of optimization:')
-          print(opt.getInfo())
+          print('Results of optimization:', file=self.logger)
+          print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -1368,8 +1368,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
-          print('Results of optimization:')
-          print(opt.getInfo())
+          print('Results of optimization:', file=self.logger)
+          print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -1415,7 +1415,7 @@ NOTES:
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
-      print('Profile results:')
+      print('Profile results:', file=self.logger)
       import pstats
       profile_params = {'sort_by': 'time', 'num_entries': 20}
       self._pr.disable()
