@@ -475,7 +475,9 @@ class symmetry(object):
   def is_nonsense(self):
     uc = self.unit_cell()
     if uc is None:
-      return False
+      return True
+    if(self.space_group_info() is None or self.space_group() is None):
+      return True
     ucp = uc.parameters()
     result = ((abs(1.-ucp[0])<1.e-3 and
              abs(1.-ucp[1])<1.e-3 and
