@@ -21,6 +21,7 @@ from libtbx import group_args
 
 from mmtbx.conformation_dependent_library import generate_protein_threes
 from mmtbx.validation import cbd_utils
+import json
 
 relevant_atom_names = {
   " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
@@ -49,6 +50,7 @@ class cbeta(residue):
     "deviation",
     "dihedral_NABB",
     "ideal_xyz",
+    "model_id"
   ]
   __slots__ = residue.__slots__ + __cbeta_attr__
 
@@ -98,6 +100,16 @@ class cbeta(residue):
     y = self.deviation * np.sin(angle)
     return "{%s} %.3f %.3f 0" % (key,x,y)
 
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
@@ -139,6 +151,9 @@ class cbetadev(validation):
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
     for model in pdb_hierarchy.models():
+      if model.id not in self.n_total_by_model:
+        self.n_total_by_model[model.id] = 0
+        self.n_outliers_by_model[model.id] = 0
       for chain in model.chains():
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -167,6 +182,7 @@ class cbetadev(validation):
                 if (dev is None) : continue
                 resCB = relevant_atoms[" CB "]
                 self.stats.n_results += 1
+                self.n_total_by_model[model.id] += 1
                 self.stats.n_weighted_results += resCB.occ
                 if (is_alt_conf):
                   altchar = cf.altloc
@@ -195,6 +211,7 @@ class cbetadev(validation):
                 elif(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
+                    self.n_outliers_by_model[model.id]+=1
                     self.stats.n_weighted_outliers += resCB.occ
                     self._outlier_i_seqs.append(atom.i_seq)
                   res=residue.resname.lower()
@@ -202,6 +219,7 @@ class cbetadev(validation):
                   if(len(sub)==1):
                     sub=" "+sub
                   result = cbeta(
+                    model_id=model.id,
                     chain_id=chain_id,
                     resname=residue.resname,
                     resseq=residue.resseq,
@@ -312,6 +330,30 @@ class cbetadev(validation):
     if len(cbeta_alt) == 1: cbeta_alt = []
     if len(cbeta_alt_labels) == 1: cbeta_alt_labels = []
     return "\n".join(header + cbeta_main + cbeta_main_labels + cbeta_alt + cbeta_alt_labels)
+
+  def as_JSON(self):
+    data = {"validation_type": "cbetadev"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = summary_results
+    for model_id in self.n_total_by_model.keys():
+      if self.n_total_by_model[model_id]:
+        summary_results[model_id] = {
+          "num_outliers" : self.n_outliers_by_model[model_id], 
+          "num_cbeta_residues" : self.n_total_by_model[model_id], 
+          "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100, 
+          "outlier_goal" : 0,
+        }
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def as_coot_data(self):
     data = []
