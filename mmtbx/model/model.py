@@ -26,6 +26,7 @@ from cctbx import adptbx
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
 from cctbx import crystal
+from cctbx import uctbx
 
 import mmtbx.restraints
 import mmtbx.hydrogens
@@ -197,7 +198,8 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
-      skip_ss_annotations       = False):
+      skip_ss_annotations       = False,
+      reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
     if(model_input is not None): assert pdb_hierarchy is None
     if(pdb_hierarchy is not None):
@@ -302,6 +304,15 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     ########### Allow access to methods from pdb_hierarchy directly ######
     self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
+    # !!! This must be the last call !!!
+    # This forces to use P1 box as crystal symmetry with specified buffer
+    # This needs to use BIOMT expanded model for the box to be meaningful
+    if(reset_crystal_symmetry_to_box_with_buffer is not None):
+      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+        sites_cart   = self.get_hierarchy().atoms().extract_xyz(),
+        buffer_layer = reset_crystal_symmetry_to_box_with_buffer)
+      self._crystal_symmetry = box.crystal_symmetry()
+      self.get_hierarchy().atoms().set_xyz(box.sites_cart)
 
   @classmethod
   def from_sites_cart(cls,
