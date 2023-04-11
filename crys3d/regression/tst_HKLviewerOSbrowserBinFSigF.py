@@ -7,8 +7,8 @@ import os, subprocess
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
 # Using a webbrowser exercise_OSbrowser() runs HKLviewer to enact the settings in philstr3 and
-# eventually asserts that the visible reflections in the browser match the indices in 
-# reflections2match3. Due to occasional instability of websockets on virtual machines the test 
+# eventually asserts that the visible reflections in the browser match the indices in
+# reflections2match3. Due to occasional instability of websockets on virtual machines the test
 # is run in a loop until it passes but no longer than maxruns times.
 
 # This test is creating the F/SigF dataset on the fly from iotbx/regression/data/phaser_1.mtz,

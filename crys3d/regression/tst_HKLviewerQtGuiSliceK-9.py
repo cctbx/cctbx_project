@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 
 # Using the HKLviewer Qt GUI exerciseQtGUI() runs HKLviewer to enact the settings in philstr1 and
-# eventually asserts that the visible reflections in the browser match the indices in 
-# reflections2match1. Due to occasional instability of websockets on virtual machines the test 
+# eventually asserts that the visible reflections in the browser match the indices in
+# reflections2match1. Due to occasional instability of websockets on virtual machines the test
 # is run in a loop until it passes but no longer than maxruns times.
 
 # With the HKLviewer Qt GUI test expanding amplitude data from iotbx/regression/data/phaser_1.mtz

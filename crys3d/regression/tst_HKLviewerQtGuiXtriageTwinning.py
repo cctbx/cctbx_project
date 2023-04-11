@@ -3,8 +3,8 @@ from crys3d.regression import tests_PhenixHKLviewer as tsthkl
 import sys, os
 
 # Using the HKLviewer Qt GUI exerciseQtGUI() runs HKLviewer to enact the settings in philstr2 and
-# eventually asserts that the visible reflections in the browser match the indices in 
-# reflections2match2. Due to occasional instability of websockets on virtual machines the test 
+# eventually asserts that the visible reflections in the browser match the indices in
+# reflections2match2. Due to occasional instability of websockets on virtual machines the test
 # is run in a loop until it passes but no longer than maxruns times.
 
 # The test loads 1upp_lowres.mtz, then runs xtriage on the data, then
