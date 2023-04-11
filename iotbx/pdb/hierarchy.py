@@ -390,18 +390,22 @@ class _():
 
   def __setstate__(self, state):
     assert len(state) >= 3
+    if sys.version_info.major >= 3:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
     else: raise RuntimeError("Unknown version of pickled state.")
     self.info = state[-2]
     import iotbx.pdb
-    models = iotbx.pdb.input(
-      source_info="pickle",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False).models()
-    self.pre_allocate_models(number_of_additional_models=len(models))
-    for model in models:
-      self.append_model(model=model)
+    ph = iotbx.pdb.input(
+      source_info="string",
+      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+
+    self.pre_allocate_models(number_of_additional_models=len(ph.models()))
+    for model in ph.models():
+      self.append_model(model=model.detached_copy())
 
   def chains(self):
     """
