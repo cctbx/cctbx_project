@@ -2,8 +2,13 @@ from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_PhenixHKLviewer as tsthkl
 import sys, os
 
-# With HKLviewer Qt GUI run xtriage on 1upp_lowres.mtz
-# test for the visible reflections of 1upp_lowres.mtz when the sphere of reflections
+# Using the HKLviewer Qt GUI exerciseQtGUI() runs HKLviewer to enact the settings in philstr2 and
+# eventually asserts that the visible reflections in the browser match the indices in 
+# reflections2match2. Due to occasional instability of websockets on virtual machines the test 
+# is run in a loop until it passes but no longer than maxruns times.
+
+# The test loads 1upp_lowres.mtz, then runs xtriage on the data, then
+# tests for the visible reflections of 1upp_lowres.mtz when the sphere of reflections
 # is sliced perpendicular to the twin axis detected by xtriage at layer 13 and reflections have been
 # divided into 4 bins according to I_lowres values and only reflections of the highest bin with
 # values above 20000 are displayed. Twinning suggests the pattern of the slice should be

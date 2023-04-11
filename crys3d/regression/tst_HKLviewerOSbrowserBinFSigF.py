@@ -6,11 +6,15 @@ import os, subprocess
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
-# Using a webbrowser
-# Test creating the F/SigF dataset on the fly from iotbx/regression/data/phaser_1.mtz,
-# expand data to P! with Friedel pairs, slice with a clip plane at l=9 and only show
-# reflections with F/SigF<=1. Then save those reflections to a new file OSbrowserLowValueBinFSigF.mtz.
-# Then check that this file matches the info in expectedstr
+# Using a webbrowser exercise_OSbrowser() runs HKLviewer to enact the settings in philstr3 and
+# eventually asserts that the visible reflections in the browser match the indices in 
+# reflections2match3. Due to occasional instability of websockets on virtual machines the test 
+# is run in a loop until it passes but no longer than maxruns times.
+
+# This test is creating the F/SigF dataset on the fly from iotbx/regression/data/phaser_1.mtz,
+# expands data to P! with Friedel pairs, slices with a clip plane at l=9 and only shows
+# reflections with F/SigF<=1. Then saves those reflections to a new file OSbrowserLowValueBinFSigF.mtz.
+# Then checks that this file matches the info in expectedstr
 
 expectedstr = """
 Starting job
