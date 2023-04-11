@@ -93,20 +93,12 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
+      from .preset_buttons import buttonsdeflist
       try:
-        from .preset_buttons import cctbx_buttonsdeflist
-        buttonsdeflist = cctbx_buttonsdeflist
-        try:
-          from phasertng.scripts import xtricorder # then we are in phenix and can load phasertng
-          from .preset_buttons import phenix_buttonsdeflist
-          buttonsdeflist.extend(phenix_buttonsdeflist) # add phenix buttons to Quick View list
-        except Exception as e: # otherwise we only have cctbx
-          from .preset_buttons import cctbx_buttonsdeflist
-          buttonsdeflist = cctbx_buttonsdeflist
-      except Exception as e: # don't even have cctbx! Should never get here!
-        buttonsdeflist = []
-      if "phenix_buttonsdeflist" in dir():
-        self.SendInfoToGUI({"AddPhenixButtons": True})
+        from phasertng.scripts import xtricorder # then we can load phasertng
+        self.SendInfoToGUI({"AddXtricorderButton": True})# show the button next to the xtriage button
+      except Exception as e: # no phasertng present, just a cctbx installation
+        pass
     else:
       now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
       self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)

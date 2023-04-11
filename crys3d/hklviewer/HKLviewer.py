@@ -303,7 +303,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.devmode = False
     self.make_new_factory_default_settings = False
     self.XtricorderBtn.setVisible(False)
-    self.XtriageBtn.setVisible(False)
+    self.XtriageBtn.setVisible(True)
     for e in sys.argv:
       if "UseOSBrowser" in e:
         self.UseOSBrowser = True
@@ -893,9 +893,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         self.infodict = eval(msgstr)
         if self.infodict:
 
-          if self.infodict.get("AddPhenixButtons", False):
+          if self.infodict.get("AddXtricorderButton", False):
             self.XtricorderBtn.setVisible(True)
-            self.XtriageBtn.setVisible(True)
 
           if self.infodict.get("closing_time"): # notified by cctbx in regression tests
             QTimer.singleShot(10000, self.closeEvent )

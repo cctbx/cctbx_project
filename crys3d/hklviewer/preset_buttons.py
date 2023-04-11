@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-cctbx_buttonsdeflist = [
+buttonsdeflist = [
   ("Intensities", "Show Intensities", """
             viewer {
               data_array {
@@ -136,13 +136,6 @@ cctbx_buttonsdeflist = [
 
  """),
 
-]
-
-
-
-
-
-phenix_buttonsdeflist = [
 ("INFO035", "INFO < 0.35 bits", """
         binning {
           scene_bin_thresholds = -1 0.35 0.7 1 1.25 1.85 17.59 100
