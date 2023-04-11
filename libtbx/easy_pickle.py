@@ -176,7 +176,15 @@ def fix_py2_pickle_orig(p):
 
   return p
 
-def fix_py2_pickle(p):
+def duplicate_count(count):
+  if not count:
+    return 0
+  n = 0
+  for c in count:
+    n = max(n, count.count(c))
+  return n
+
+def fix_py2_pickle(p,max_count = 2, count = None):
   '''
   Fix pickles from Python 2
   Version 3
@@ -189,19 +197,31 @@ def fix_py2_pickle(p):
   -------
   p: the fixed pickle
   '''
+  if not count: count = []
+  if duplicate_count(count) > max_count:
+    return p
+
   from collections.abc import Mapping, MutableSequence
   from libtbx import group_args
-
+  from scitbx_array_family_flex_ext import std_string
   if isinstance(p, group_args):
+    p = p() # now it is a dict
+    for key in list(p.keys()):    # fix the key
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key],count = count+[key])
     # convert to dict, fix, convert back to group args
-    p = group_args(**fix_py2_pickle(p()))
+    p = group_args(**p)
 
   elif isinstance(p, bytes):
     p = p.decode('utf8')
 
   elif isinstance(p, MutableSequence):
     for i in range(len(p)):
-      p[i] = fix_py2_pickle(p[i])
+      p[i] = fix_py2_pickle(p[i],count = count+[i])
 
   elif isinstance(p, Mapping):
     for key in list(p.keys()):    # fix the key
@@ -210,14 +230,31 @@ def fix_py2_pickle(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key])
+      p[key] = fix_py2_pickle(p[key],count = count+[key])
+
+
+  elif isinstance(p,tuple):
+    p = tuple(fix_py2_pickle(list(p), count = count))
+
+  elif isinstance(p, std_string):
+    new_p = std_string()
+    for x in p:
+      new_p.append(fix_py2_pickle(x,count = count+[x]))
+    p = new_p
 
   # Classes like mmtbx.monomer_library.cif_types.chem_mod_angle remain here
   elif hasattr(p, '__dict__'):
-    p.__dict__ = fix_py2_pickle(p.__dict__)
+    for key in list(p.__dict__.keys()):    # fix the key
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p.__dict__[str_key] = p.__dict__[key]
+        del p.__dict__[key]
+        key = str_key
+      if not key.startswith("__"):
+        if count == 0: start = key
+        p.__dict__[key] = fix_py2_pickle(p.__dict__[key], count = count+[key])
 
   else:
     # We have no idea...skip conversion (should never be here)
     pass
-
   return p
