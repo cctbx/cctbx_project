@@ -176,15 +176,7 @@ def fix_py2_pickle_orig(p):
 
   return p
 
-def duplicate_count(count):
-  if not count:
-    return 0
-  n = 0
-  for c in count:
-    n = max(n, count.count(c))
-  return n
-
-def fix_py2_pickle(p,max_count = 2, count = None):
+def fix_py2_pickle(p,max_count = 2, already_tested_keys = None):
   '''
   Fix pickles from Python 2
   Version 3
@@ -196,10 +188,15 @@ def fix_py2_pickle(p,max_count = 2, count = None):
   Returns
   -------
   p: the fixed pickle
+  max_count: maximum number of times that a particular key is examined, to
+    prevent infinite recursion in cases with circular references
+  already_tested_keys : list of values of keys that have already been examined.
+
+  Comments:
+  ---------
+
   '''
-  if not count: count = []
-  if duplicate_count(count) > max_count:
-    return p
+  if not already_tested_keys: already_tested_keys = []
 
   from collections.abc import Mapping, MutableSequence
   from libtbx import group_args
@@ -212,7 +209,7 @@ def fix_py2_pickle(p,max_count = 2, count = None):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key],count = count+[key])
+      p[key] = fix_py2_pickle(p[key])
     # convert to dict, fix, convert back to group args
     p = group_args(**p)
 
@@ -221,7 +218,7 @@ def fix_py2_pickle(p,max_count = 2, count = None):
 
   elif isinstance(p, MutableSequence):
     for i in range(len(p)):
-      p[i] = fix_py2_pickle(p[i],count = count+[i])
+      p[i] = fix_py2_pickle(p[i])
 
   elif isinstance(p, Mapping):
     for key in list(p.keys()):    # fix the key
@@ -230,16 +227,16 @@ def fix_py2_pickle(p,max_count = 2, count = None):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key],count = count+[key])
+      p[key] = fix_py2_pickle(p[key])
 
 
   elif isinstance(p,tuple):
-    p = tuple(fix_py2_pickle(list(p), count = count))
+    p = tuple(fix_py2_pickle(list(p)))
 
   elif isinstance(p, std_string):
     new_p = std_string()
     for x in p:
-      new_p.append(fix_py2_pickle(x,count = count+[x]))
+      new_p.append(fix_py2_pickle(x))
     p = new_p
 
   # Classes like mmtbx.monomer_library.cif_types.chem_mod_angle remain here
@@ -250,9 +247,11 @@ def fix_py2_pickle(p,max_count = 2, count = None):
         p.__dict__[str_key] = p.__dict__[key]
         del p.__dict__[key]
         key = str_key
-      if not key.startswith("__"):
-        if count == 0: start = key
-        p.__dict__[key] = fix_py2_pickle(p.__dict__[key], count = count+[key])
+      if not key.startswith("__") and (
+         (not key in already_tested_keys) or
+         (already_tested_keys.count(key) < max_count)):
+        p.__dict__[key] = fix_py2_pickle(p.__dict__[key],
+          already_tested_keys = already_tested_keys+[key])
 
   else:
     # We have no idea...skip conversion (should never be here)
