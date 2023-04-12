@@ -1140,7 +1140,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.send_message(current_philstr)
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
-            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
     # Notify CCTBX that GUI has been initiated and it can now process messages.
     # This is critical as it releases a waiting semaphore in CCTBX
             self.send_message("", msgtype="initiated_gui")
@@ -1150,7 +1149,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
-            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
 
           if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )

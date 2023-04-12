@@ -191,6 +191,7 @@ class HKLview_3d:
     self.visible_hkls = [] # Populated when applying clip planes. To be examined in regression tests
     self.outsideplane_hkls = []
     self.sceneisdirty = True
+    self.max_reflections_in_frustum = 0
     self.imagename = None
     self.imgdatastr = ""
     self.hkl_scenes_info = []
@@ -423,6 +424,11 @@ class HKLview_3d:
       self.binvals, self.nuniqueval = self.calc_bin_thresholds(curphilparam.binning.binner_idx,
                                                                curphilparam.binning.nbins)
       self.sceneisdirty = True
+
+    self.params.max_reflections_in_frustum
+
+    if has_phil_path(diff_phil, "max_reflections_in_frustum"):
+      self.max_reflections_in_frustum = self.params.max_reflections_in_frustum
 
     if has_phil_path(diff_phil, "sigma_color_radius"):
       self.sceneisdirty = True
@@ -1839,7 +1845,8 @@ Distance: %s
 
 
   def GetReflectionsInFrustum(self):
-    self.AddToBrowserMsgQueue("GetReflectionsInFrustum")
+    msg = str(self.max_reflections_in_frustum)
+    self.AddToBrowserMsgQueue("GetReflectionsInFrustum", msg)
 
 
   def RedrawNGL(self):
