@@ -50,7 +50,7 @@ hkls {
   expand_to_p1 = True
   expand_anomalous = True
 }
-
+max_reflections_in_frustum = 70
 """
 # These are the indices of visible TEPS reflections of processed with xtricorder 1upp_lowres.mtz
 # when the sphere of reflections is sliced perpendicular to the TNCS vector at layer 33 in the
@@ -100,7 +100,7 @@ hkls {
   expand_to_p1 = True
   expand_anomalous = True
 }
-
+max_reflections_in_frustum = 30
 """
 # These are the indices of visible reflections of 1upp_lowres.mtz when the sphere of reflections
 # is sliced perpendicular to the twin axis detected by xtriage at layer 20 and reflections have been

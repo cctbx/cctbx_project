@@ -37,7 +37,7 @@ viewer {
 }
 hkls.expand_to_p1 = True
 hkls.expand_anomalous = True
-#use_wireframe = True
+max_reflections_in_frustum = 70
 
 """
 # These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections
@@ -72,7 +72,7 @@ viewer {
   show_vector = "['K-axis (0,1,0)', True]"
   fixorientation = *vector None
 }
-#use_wireframe = True
+max_reflections_in_frustum = 40
 
 """
 # These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections
@@ -119,7 +119,7 @@ hkls {
 visible_dataset_label = "LowValuesFSigF"
 savefilename = "%s"
 datasets_to_save = 8
-
+max_reflections_in_frustum = 40
 """
 # These are the indices of visible reflections of phaser_1.mtz of the F/SigF dataset created on the fly
 # where the sphere of reflections have been sliced with a clip plane at l=9 and only reflections
@@ -179,7 +179,7 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
 
   cmdargs = [datafname,
             "phil_file=%sHKLviewer_philinput.txt" %prefix,
-            "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+            "verbose=2_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=%sHKLviewer.png" %prefix,
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
@@ -224,7 +224,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   cmdargs = ["cctbx.HKLviewer",
              datafname,
              "phil_file=%sHKLviewer_philinput.txt" %prefix,
-             "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "verbose=2_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=%sHKLviewer.png" %prefix,
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closing_time=%d" %closetime, # close HKLviewer after 25 seconds
