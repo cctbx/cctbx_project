@@ -10,12 +10,10 @@ tst_list_expected_unstable = [
    "$D/regression/tst_websocket.py",
    "$D/regression/tst_HKLviewerOSbrowserSliceK-9.py",
    "$D/regression/tst_HKLviewerOSbrowserBinFSigF.py",
-   "$D/regression/tst_HKLviewerOSbrowserXtriageTwinning.py",
 ]
 other_tests = [
   "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
   "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
-  "$D/regression/tst_HKLviewerQtGuiXtriageTwinning.py",
 ]
 if sys.platform == "darwin" or sys.platform == "win32":
   tst_list.extend(other_tests)
