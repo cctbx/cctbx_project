@@ -362,6 +362,16 @@ class map_model_mixins(object):
     else:
       model = None
 
+    # Check to make sure all map_managers are similar
+    managers = [mm, mm_1,mm_2]
+    comp_mm = None
+    for m in managers:
+      if not m: continue
+      if m and (not comp_mm):
+        comp_mm = m
+      else:
+        if (not comp_mm.is_similar(m)):
+          raise Sorry("Input map files need to all have the same origin, gridding, and dimensions")
     mmm = map_model_manager(model=model, map_manager=mm, map_manager_1=mm_1,
       map_manager_2=mm_2, **kwargs)
 

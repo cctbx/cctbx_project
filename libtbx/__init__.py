@@ -286,9 +286,22 @@ class group_args(dda):
     Overwrites matching fields!!!"""
     self.__dict__.update(other.__dict__)
 
+  def add_if_missing(self, other, add_if_self_is_none = False):
+    """ takes values from other only if not present at all in self
+      Optionally add if value in self is None"""
+    self_keys = list(self.keys())
+    for key in other.keys():
+      if key.startswith("__"): continue
+      if (not (key in self_keys)) or (add_if_self_is_none and
+          (self.get(key) is None)):
+        self.add(key,other.get(key))
+
   def add(self,key=None,value=None):
     self.__dict__[key]=value
 
+  def delete(self, key = None):
+    if key in self.keys():
+      self.__dict__[key] = None
   def copy(self):
     """ produce shallow copy of self by converting to dict and back"""
     return group_args(**self().copy())
