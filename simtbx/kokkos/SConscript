@@ -61,6 +61,11 @@ original_cxx = None
 kokkos_lib = 'libkokkos.a'
 kokkos_cxxflags = None
 
+# remove conda/lib path from ld_path
+original_ld_path = os.getenv('LD_LIBRARY_PATH')
+ld_path = [s for s in original_ld_path.split(':') if not 'opt/mamba/envs/psana_env/lib' in s]
+os.environ['LD_LIBRARY_PATH'] = ":".join(ld_path)
+
 if os.getenv('CXX') is not None:
   original_cxx = os.environ['CXX']
 if use_cuda:
@@ -196,6 +201,9 @@ else:
   print('cmake was not found')
   print('Skipping builds of kokkos and kokkos-kernels')
   print('*'*79)
+
+# restore LD_LIBRARY_PATH
+os.environ['LD_LIBRARY_PATH'] = original_ld_path
   
 # =============================================================================
 
