@@ -7,6 +7,7 @@ from libtbx import easy_pickle #NDimTables are stored as pickle files
 import libtbx.load_env
 import os, sys
 from iotbx.pdb.hybrid_36 import hy36decode
+import json
 
 #{{{ global constants
 #-------------------------------------------------------------------------------
@@ -308,7 +309,8 @@ class cablam_result(residue):
     "alts",
     "measures",
     "scores",
-    "feedback"
+    "feedback",
+    "model_id"
     ]
 
   @staticmethod
@@ -361,10 +363,11 @@ class cablam_result(residue):
     #  c: 2-char Chain ID, space for none
     #  n: sequence number, right justified, space padded
     #  i: insertion code, space for none
+    model = self.model_id
     chain = self.chain_id
     resnum = self.residue.resseq
     ins = self.residue.icode
-    return chain + resnum + ins
+    return model + chain + resnum + ins
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -604,6 +607,33 @@ class cablam_result(residue):
     return suggestion
   #-----------------------------------------------------------------------------
   #}}}
+
+  def as_JSON(self):
+    non_serializable_list = ['residue','prevres','nextres','measures','scores','feedback']
+    serializable_slots = [s for s in self.__slots__ if s not in non_serializable_list and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict['outlier_type'] = self.find_single_outlier_type().strip()
+    slots_as_dict['feedback'] = self.find_single_structure_suggestion().strip()
+    slots_as_dict['scores'] = {
+      "cablam": self.scores.cablam,
+      "c_alpha_geom": self.scores.c_alpha_geom,
+      "alpha": self.scores.alpha,
+      "beta": self.scores.beta,
+      "threeten": self.scores.threeten
+    }
+    slots_as_dict['measures'] = {
+      "mu_in" : self.measures.mu_in,
+      "mu_out" : self.measures.mu_out,
+      "nu" : self.measures.nu,
+      "ca_virtual" : self.measures.ca_virtual,
+      "omega" : self.measures.omega
+    }
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   #{{{ as_kinemage
   #-----------------------------------------------------------------------------
@@ -884,6 +914,7 @@ class cablamalyze(validation):
     all_keys = []
     confs = []
     for model in pdb_hierarchy.models():
+      self.all_results[model.id] = {}
       for chain in model.chains():
         if not chain.is_protein():
           continue
@@ -896,7 +927,7 @@ class cablamalyze(validation):
           chain_id = chain.id.rjust(2)
         #The above .rjust(2)'s are to force 2-char chain ids
         current_chain = cablam_chain()
-        self.all_results[chain_id] = current_chain
+        self.all_results[model.id][chain_id] = current_chain
         previous_result = None
         for conf in chain.conformers():
           if not conf.is_protein():
@@ -907,6 +938,7 @@ class cablamalyze(validation):
           current_chain.conf_names.append(conf.altloc)
           for residue in conf.residues():
             result = cablam_result(
+              model_id=model.id,
               residue=residue,
               resseq=residue.resseq,
               icode=residue.icode,
@@ -935,21 +967,23 @@ class cablamalyze(validation):
             if result.sorting_id() not in current_conf.results:
               current_conf.results[result.sorting_id()] = result
             previous_result = result
-    for chain in self.all_results:
-      for conf in self.all_results[chain].confs:
-        for result in self.all_results[chain].confs[conf].results:
-          if self.all_results[chain].confs[conf].results[result].has_ca:
-            self.all_results[chain].confs[conf].results[result].calculate_cablam_geometry()
-            self.all_results[chain].confs[conf].results[result].calculate_contour_values(cablam_contours, ca_contours, motif_contours)
-            self.all_results[chain].confs[conf].results[result].xyz = self.all_results[chain].confs[conf].results[result].get_atom(' CA ').xyz
+    for model_id in self.all_results:
+      for chain in self.all_results[model_id]:
+        for conf in self.all_results[model_id][chain].confs:
+          for result in self.all_results[model_id][chain].confs[conf].results:
+            if self.all_results[model_id][chain].confs[conf].results[result].has_ca:
+              self.all_results[model_id][chain].confs[conf].results[result].calculate_cablam_geometry()
+              self.all_results[model_id][chain].confs[conf].results[result].calculate_contour_values(cablam_contours, ca_contours, motif_contours)
+              self.all_results[model_id][chain].confs[conf].results[result].xyz = self.all_results[model_id][chain].confs[conf].results[result].get_atom(' CA ').xyz
     self.outlier_count = 0
-    for chain in self.all_results:
-      for conf in self.all_results[chain].confs:
-        for result in self.all_results[chain].confs[conf].results:
-          if self.all_results[chain].confs[conf].results[result].has_ca:
-            self.all_results[chain].confs[conf].results[result].set_cablam_feedback()
-            if self.all_results[chain].confs[conf].results[result].outlier:
-              self.outlier_count += 1
+    for model_id in self.all_results:
+      for chain in self.all_results[model_id]:
+        for conf in self.all_results[model_id][chain].confs:
+          for result in self.all_results[model_id][chain].confs[conf].results:
+            if self.all_results[model_id][chain].confs[conf].results[result].has_ca:
+              self.all_results[model_id][chain].confs[conf].results[result].set_cablam_feedback()
+              if self.all_results[model_id][chain].confs[conf].results[result].outlier:
+                self.outlier_count += 1
     self.assemble_secondary_structure()
     self.make_single_results_object(confs, all_keys)
     self.residue_count = len(self.results)
@@ -963,97 +997,98 @@ class cablamalyze(validation):
     #assembles complete secondary structure elements (alpha helices, three-ten
     #  helices, and beta strands) from individual residue
     #have to assemble from scores to handle helix transitions
-    for chain in self.all_results:
-      for conf_id in self.all_results[chain].confs:
-        conf = self.all_results[chain].confs[conf_id]
-        records = []
-        record_start = None
-        helix_in_progress = False
-        result_ids = list(conf.results.keys())
-        #result_ids.sort(key=lambda k: (k[0:2], int(hy36decode(4,k[2:6])), k[6:7])) #this broke for non 2-char segids
-        result_ids.sort(key=lambda k: (conf.results[k].chain_id, int(hy36decode(len(conf.results[k].resseq),conf.results[k].resseq)), conf.results[k].icode))
-        for result_id in result_ids:
-          result = conf.results[result_id]
-          #is it evaluable?
-          if not result.prevres or not result.prevres.scores:
-            continue
-          if not result.has_ca or not result.nextres or not result.nextres.scores:
-            if helix_in_progress:
-              records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
-              helix_in_progress = False
-            continue
-
-          #helix building
-          #This requires that the residues be the center of three in any combination of helix types
-          #threeten segments of only 2 are lost in this method relative to the previous
-          if ((result.scores.alpha >= ALPHA_CUTOFF or result.scores.threeten >=THREETEN_CUTOFF)
-            and (result.prevres.scores.alpha >= ALPHA_CUTOFF or result.prevres.scores.threeten >= THREETEN_CUTOFF)
-            and (result.nextres.scores.alpha >= ALPHA_CUTOFF or result.nextres.scores.threeten >= THREETEN_CUTOFF)):
-            #now determine which helix type the current residue should be identified as
-            #if at least two residues in a row have higher threeten scores than alpha scores, they can be considered threeten
-            if (result.scores.threeten > result.scores.alpha and
-              (result.nextres.scores.threeten > result.nextres.scores.alpha or
-                result.prevres.scores.threeten > result.prevres.scores.alpha)):
-              thisres = 'threeten'
-            else:
-              thisres = 'alpha'
-            if helix_in_progress:
-              if thisres == helix_in_progress: #is it same as previous residue
-                record_length += 1
-                continue
-              else: #or has it changed helix types
+    for model_id in self.all_results:
+      for chain in self.all_results[model_id]:
+        for conf_id in self.all_results[model_id][chain].confs:
+          conf = self.all_results[model_id][chain].confs[conf_id]
+          records = []
+          record_start = None
+          helix_in_progress = False
+          result_ids = list(conf.results.keys())
+          #result_ids.sort(key=lambda k: (k[0:2], int(hy36decode(4,k[2:6])), k[6:7])) #this broke for non 2-char segids
+          result_ids.sort(key=lambda k: (conf.results[k].chain_id, int(hy36decode(len(conf.results[k].resseq),conf.results[k].resseq)), conf.results[k].icode))
+          for result_id in result_ids:
+            result = conf.results[result_id]
+            #is it evaluable?
+            if not result.prevres or not result.prevres.scores:
+              continue
+            if not result.has_ca or not result.nextres or not result.nextres.scores:
+              if helix_in_progress:
                 records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
+                helix_in_progress = False
+              continue
+
+            #helix building
+            #This requires that the residues be the center of three in any combination of helix types
+            #threeten segments of only 2 are lost in this method relative to the previous
+            if ((result.scores.alpha >= ALPHA_CUTOFF or result.scores.threeten >=THREETEN_CUTOFF)
+              and (result.prevres.scores.alpha >= ALPHA_CUTOFF or result.prevres.scores.threeten >= THREETEN_CUTOFF)
+              and (result.nextres.scores.alpha >= ALPHA_CUTOFF or result.nextres.scores.threeten >= THREETEN_CUTOFF)):
+              #now determine which helix type the current residue should be identified as
+              #if at least two residues in a row have higher threeten scores than alpha scores, they can be considered threeten
+              if (result.scores.threeten > result.scores.alpha and
+                (result.nextres.scores.threeten > result.nextres.scores.alpha or
+                  result.prevres.scores.threeten > result.prevres.scores.alpha)):
+                thisres = 'threeten'
+              else:
+                thisres = 'alpha'
+              if helix_in_progress:
+                if thisres == helix_in_progress: #is it same as previous residue
+                  record_length += 1
+                  continue
+                else: #or has it changed helix types
+                  records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
+                  helix_in_progress = thisres
+                  record_start = result
+                  record_length = 1
+              else:
                 helix_in_progress = thisres
                 record_start = result
                 record_length = 1
-            else:
-              helix_in_progress = thisres
-              record_start = result
-              record_length = 1
-          else: #(current residue is not helix)
-            if helix_in_progress:
-              #might fail on chain breaks?
-              records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
-              helix_in_progress = False
-              record_start = None
-              record_length = 0
-            else:
-              continue
-        #helix building end
+            else: #(current residue is not helix)
+              if helix_in_progress:
+                #might fail on chain breaks?
+                records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type=helix_in_progress, segment_length=record_length))
+                helix_in_progress = False
+                record_start = None
+                record_length = 0
+              else:
+                continue
+          #helix building end
 
-        #beta strands require another, separate pass
-        strand_in_progress = False
-        record_start = None
-        for result_id in result_ids:
-          result = conf.results[result_id]
-          if not result.prevres or not result.prevres.scores:
-            continue
-          if not result.has_ca or not result.nextres or result.nextres.scores:
-            if strand_in_progress:
-              records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type='beta', segment_length=record_length))
-              strand_in_progress = False
-            continue
-          if result.scores and result.prevres.scores and result.nextres.scores and result.scores.beta >= BETA_CUTOFF and result.prevres.scores.beta >= BETA_CUTOFF and result.nextres.scores.beta >= BETA_CUTOFF:
-            if strand_in_progress:
-              record_length += 1
+          #beta strands require another, separate pass
+          strand_in_progress = False
+          record_start = None
+          for result_id in result_ids:
+            result = conf.results[result_id]
+            if not result.prevres or not result.prevres.scores:
               continue
-            else:
-              strand_in_progress = True
-              record_start = result
-              record_length = 1
-          else:
-            if strand_in_progress:
-              records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type='beta', segment_length=record_length))
-              strand_in_progress = False
-              record_start = None
-              record_length = 0
-            else:
+            if not result.has_ca or not result.nextres or result.nextres.scores:
+              if strand_in_progress:
+                records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type='beta', segment_length=record_length))
+                strand_in_progress = False
               continue
-        #beta strand building end
-        #NOTE: Each strand is currently treated as its own sheet
-        #Developing or implementing strand-to-sheet assembly that does not rely on
-        #  H-bonds is a major future goal
-        conf.sec_struc_records = records
+            if result.scores and result.prevres.scores and result.nextres.scores and result.scores.beta >= BETA_CUTOFF and result.prevres.scores.beta >= BETA_CUTOFF and result.nextres.scores.beta >= BETA_CUTOFF:
+              if strand_in_progress:
+                record_length += 1
+                continue
+              else:
+                strand_in_progress = True
+                record_start = result
+                record_length = 1
+            else:
+              if strand_in_progress:
+                records.append(secondary_structure_segment(start=record_start, end=result.prevres, segment_type='beta', segment_length=record_length))
+                strand_in_progress = False
+                record_start = None
+                record_length = 0
+              else:
+                continue
+          #beta strand building end
+          #NOTE: Each strand is currently treated as its own sheet
+          #Developing or implementing strand-to-sheet assembly that does not rely on
+          #  H-bonds is a major future goal
+          conf.sec_struc_records = records
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1063,40 +1098,41 @@ class cablamalyze(validation):
     #should work without any arguments
     #populates self.results
     self.results = []
-    chains = list(self.all_results.keys())
-    chains.sort()
-    for chain_id in chains:
-      chain = self.all_results[chain_id]
-      #take the first conformer as the basis for comparison
-      conf  = chain.confs[chain.conf_names[0]]
-      if len(chain.conf_names) == 0:
-        for result_id in conf.results:
+    for model_id in self.all_results:
+      chains = list(self.all_results[model_id].keys())
+      chains.sort()
+      for chain_id in chains:
+        chain = self.all_results[model_id][chain_id]
+        #take the first conformer as the basis for comparison
+        conf  = chain.confs[chain.conf_names[0]]
+        if len(chain.conf_names) == 0:
+          for result_id in conf.results:
+            result = conf.results[result_id]
+            result.altloc = ''
+            #set self.results id
+          continue #go to next chain
+        #else, combine results into single list
+        result_ids = list(conf.results.keys())
+        ###result_ids.sort()
+        #for result_id in conf.results:
+        for result_id in result_ids:
           result = conf.results[result_id]
-          result.altloc = ''
-          #set self.results id
-        continue #go to next chain
-      #else, combine results into single list
-      result_ids = list(conf.results.keys())
-      ###result_ids.sort()
-      #for result_id in conf.results:
-      for result_id in result_ids:
-        result = conf.results[result_id]
-        if not result.has_ca: continue
-        #results without CAs have measures=None and break the
-        #  is_same_as_other_result check. Also, they aren't evaluable residues.
-        self.results.append(result)
-        found_meaningful_alt = False
-        for other_conf in chain.conf_names[1:]:
-          if result.sorting_id() in chain.confs[other_conf].results:
-            other_result = chain.confs[other_conf].results[result.sorting_id()]
-            if not other_result.has_ca: continue
-            if not result.is_same_as_other_result(other_result):
-              self.results.append(other_result)
-              found_meaningful_alt = True
-        if not found_meaningful_alt:
-          result.altloc = ''
-          #set self.results id
-          pass
+          if not result.has_ca: continue
+          #results without CAs have measures=None and break the
+          #  is_same_as_other_result check. Also, they aren't evaluable residues.
+          self.results.append(result)
+          found_meaningful_alt = False
+          for other_conf in chain.conf_names[1:]:
+            if result.sorting_id() in chain.confs[other_conf].results:
+              other_result = chain.confs[other_conf].results[result.sorting_id()]
+              if not other_result.has_ca: continue
+              if not result.is_same_as_other_result(other_result):
+                self.results.append(other_result)
+                found_meaningful_alt = True
+          if not found_meaningful_alt:
+            result.altloc = ''
+            #set self.results id
+            pass
     self.results.sort(key=lambda r: (r.chain_id, int(hy36decode(len(r.resseq),r.resseq)), r.icode, r.altloc))
   #-----------------------------------------------------------------------------
   #}}}
@@ -1173,20 +1209,33 @@ class cablamalyze(validation):
     is_alpha, is_beta, is_threeten = 0,0,0
     correctable_helix_count, correctable_beta_count = 0,0
     is_correctable_helix, is_correctable_beta = 0,0
+    residue_count_by_model = {}
+    outlier_count_by_model = {}
+    disfavored_count_by_model = {}
+    ca_geom_outlier_count_by_model = {}
     for result in self.results:
       if not result.has_ca:
         continue
+      if result.model_id not in residue_count_by_model:
+        residue_count_by_model[result.model_id] = 0
+        outlier_count_by_model[result.model_id] = 0
+        disfavored_count_by_model[result.model_id] = 0
+        ca_geom_outlier_count_by_model[result.model_id] = 0
       is_residue = 1
       if result.scores.cablam is None:
         is_residue = 0
       if result.sorting_id() != prev_result_id:
         #new residue; update counts
         residue_count    += is_residue
+        residue_count_by_model[result.model_id] += is_residue
         if result.scores.c_alpha_geom is not None:
           ca_residue_count += 1
         cablam_outliers  += is_cablam_outlier
         cablam_disfavored+= is_cablam_disfavored
         ca_geom_outliers += is_ca_geom_outlier
+        outlier_count_by_model[result.model_id] += is_cablam_outlier
+        disfavored_count_by_model[result.model_id] += is_cablam_disfavored
+        ca_geom_outlier_count_by_model[result.model_id] += is_ca_geom_outlier
         is_cablam_outlier    = 0
         is_cablam_disfavored = 0
         is_ca_geom_outlier   = 0
@@ -1220,13 +1269,20 @@ class cablamalyze(validation):
     cablam_outliers  += is_cablam_outlier
     cablam_disfavored+= is_cablam_disfavored
     ca_geom_outliers += is_ca_geom_outlier
+    #outlier_count_by_model[result.model_id] += is_cablam_outlier
+    #disfavored_count_by_model[result.model_id] += is_cablam_disfavored
+    #ca_geom_outlier_count_by_model[result.model_id] += is_ca_geom_outlier
     alpha_count    += is_alpha
     beta_count     += is_beta
     threeten_count += is_threeten
     return {'residue_count':residue_count,'ca_residue_count':ca_residue_count,
       'cablam_outliers':cablam_outliers,'cablam_disfavored':cablam_disfavored,'ca_geom_outliers':ca_geom_outliers,
       'alpha_count':alpha_count, 'beta_count':beta_count,'threeten_count':threeten_count,
-      'correctable_helix_count':correctable_helix_count,'correctable_beta_count':correctable_beta_count}
+      'correctable_helix_count':correctable_helix_count,'correctable_beta_count':correctable_beta_count,
+      'num_cablam_outliers_by_model': outlier_count_by_model,
+      'num_cablam_disfavored_by_model': disfavored_count_by_model,
+      'num_ca_geom_outliers_by_model': ca_geom_outlier_count_by_model,
+      'num_residues_by_model': residue_count_by_model}
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1449,60 +1505,61 @@ class cablamalyze(validation):
     helix_records = []
     strand_records = []
 
-    chain_list = list(self.all_results.keys())
-    chain_list.sort()
-    for chain_id in chain_list:
-      chain = self.all_results[chain_id]
-      if conf_request in chain.conf_names:
-        conf = conf_request
-      else:
-        conf = chain.conf_names[0]
-      for record in chain.confs[conf].sec_struc_records:
-        if record.segment_type == 'alpha' or record.segment_type == 'threeten':
-          helix_i += 1
-          if record.segment_type == 'alpha':
-            helix_class = 1
-          elif record.segment_type == 'threeten':
-            helix_class = 5
-          return_record = secondary_structure.pdb_helix(
-            serial = helix_i,
-            helix_id = helix_i,
-            start_resname  = record.start.resname,
-            start_chain_id = record.start.chain_id,
-            #start_chain_id = " A",
-            start_resseq   = record.start.resseq,
-            start_icode    = record.start.icode,
-            end_resname    = record.end.resname,
-            end_chain_id   = record.end.chain_id,
-            end_resseq     = record.end.resseq,
-            end_icode      = record.end.icode,
-            helix_class    = helix_class,
-            comment = "",
-            length = record.segment_length)
-          helix_records.append(return_record)
-        if record.segment_type == 'beta':
-          sheet_i += 1
-          strand_record = secondary_structure.pdb_strand(
-            sheet_id       = sheet_i,
-            strand_id      = 1,
-            start_resname  = record.start.resname,
-            start_chain_id = record.start.chain_id,
-            start_resseq   = record.start.resseq,
-            start_icode    = record.start.icode,
-            end_resname    = record.end.resname,
-            end_chain_id   = record.end.chain_id,
-            end_resseq     = record.end.resseq,
-            end_icode      = record.end.icode,
-            sense          = 1
-            )
-          return_record=secondary_structure.pdb_sheet(
-            sheet_id = sheet_i,
-            n_strands = 1,
-            strands = [strand_record],
-            registrations = [None],
-            hbond_list = []
-            )
-          strand_records.append(return_record)
+    for model_id in self.all_results:
+      chain_list = list(self.all_results[model_id].keys())
+      chain_list.sort()
+      for chain_id in chain_list:
+        chain = self.all_results[model_id][chain_id]
+        if conf_request in chain.conf_names:
+          conf = conf_request
+        else:
+          conf = chain.conf_names[0]
+        for record in chain.confs[conf].sec_struc_records:
+          if record.segment_type == 'alpha' or record.segment_type == 'threeten':
+            helix_i += 1
+            if record.segment_type == 'alpha':
+              helix_class = 1
+            elif record.segment_type == 'threeten':
+              helix_class = 5
+            return_record = secondary_structure.pdb_helix(
+              serial = helix_i,
+              helix_id = helix_i,
+              start_resname  = record.start.resname,
+              start_chain_id = record.start.chain_id,
+              #start_chain_id = " A",
+              start_resseq   = record.start.resseq,
+              start_icode    = record.start.icode,
+              end_resname    = record.end.resname,
+              end_chain_id   = record.end.chain_id,
+              end_resseq     = record.end.resseq,
+              end_icode      = record.end.icode,
+              helix_class    = helix_class,
+              comment = "",
+              length = record.segment_length)
+            helix_records.append(return_record)
+          if record.segment_type == 'beta':
+            sheet_i += 1
+            strand_record = secondary_structure.pdb_strand(
+              sheet_id       = sheet_i,
+              strand_id      = 1,
+              start_resname  = record.start.resname,
+              start_chain_id = record.start.chain_id,
+              start_resseq   = record.start.resseq,
+              start_icode    = record.start.icode,
+              end_resname    = record.end.resname,
+              end_chain_id   = record.end.chain_id,
+              end_resseq     = record.end.resseq,
+              end_icode      = record.end.icode,
+              sense          = 1
+              )
+            return_record=secondary_structure.pdb_sheet(
+              sheet_id = sheet_i,
+              n_strands = 1,
+              strands = [strand_record],
+              registrations = [None],
+              hbond_list = []
+              )
+            strand_records.append(return_record)
     return secondary_structure.annotation(helices=helix_records,sheets=strand_records)
   #-----------------------------------------------------------------------------
   #}}}
@@ -1529,6 +1586,46 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
+  def as_JSON(self):
+    data = {"validation_type": "cablam"}
+    flat_results = []
+    hierarchical_results = {}
+    for result in self.results:
+      if result.scores.cablam:
+        flat_results.append(json.loads(result.as_JSON()))
+        hier_result = json.loads(result.as_hierarchical_JSON())
+        hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = self.summary_JSON()
+    return json.dumps(data, indent=2)
+
+  def summary_JSON(self):
+    summary_results = {}
+    for model_id in self.summary_stats['num_residues_by_model'].keys():
+      if self.summary_stats['num_residues_by_model'][model_id]:
+        num_cablam_outliers = self.summary_stats['num_cablam_outliers_by_model'][model_id]
+        num_cablam_disfavored = self.summary_stats['num_cablam_disfavored_by_model'][model_id]
+        num_ca_geom_outliers = self.summary_stats['num_ca_geom_outliers_by_model'][model_id]
+        num_residues = self.summary_stats['num_residues_by_model'][model_id]
+        cablam_outliers_percentage = 0
+        cablam_disfavored_percentage = 0
+        ca_geom_outliers_percentage = 0
+        if num_residues != 0:
+          cablam_outliers_percentage = num_cablam_outliers/num_residues*100
+          cablam_disfavored_percentage = num_cablam_disfavored/num_residues*100
+          ca_geom_outliers_percentage = num_ca_geom_outliers/num_residues*100
+        summary_results[model_id] = {
+          "num_cablam_outliers" : num_cablam_outliers,
+          "cablam_outliers_percentage" : cablam_outliers_percentage,
+          "num_cablam_disfavored" : num_cablam_disfavored, 
+          "cablam_disfavored_percentage" : cablam_disfavored_percentage,
+          "num_ca_geom_outliers" : num_ca_geom_outliers, 
+          "ca_geom_outliers_percentage" : ca_geom_outliers_percentage,
+          "num_residues": num_residues,
+        }
+    return summary_results
   #{{{ as_coot_data
   #-----------------------------------------------------------------------------
   def as_coot_data(self):
