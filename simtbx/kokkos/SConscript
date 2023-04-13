@@ -63,8 +63,9 @@ kokkos_cxxflags = None
 
 # remove conda/lib path from ld_path
 original_ld_path = os.getenv('LD_LIBRARY_PATH')
-ld_path = [s for s in original_ld_path.split(':') if not 'opt/mamba/envs/psana_env/lib' in s]
-os.environ['LD_LIBRARY_PATH'] = ":".join(ld_path)
+if original_ld_path is not None:
+  ld_path = [s for s in original_ld_path.split(':') if not 'opt/mamba/envs/psana_env/lib' in s]
+  os.environ['LD_LIBRARY_PATH'] = ":".join(ld_path)
 
 if os.getenv('CXX') is not None:
   original_cxx = os.environ['CXX']
@@ -203,7 +204,8 @@ else:
   print('*'*79)
 
 # restore LD_LIBRARY_PATH
-os.environ['LD_LIBRARY_PATH'] = original_ld_path
+if original_ld_path is not None:
+  os.environ['LD_LIBRARY_PATH'] = original_ld_path
   
 # =============================================================================
 
