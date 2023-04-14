@@ -663,6 +663,50 @@ def setup_scattering_dictionaries(scattering_table,
   return xray_scattering_dict, neutron_scattering_dict
 # END_MARKED_FOR_DELETION_OLEG
 
+def fmodel_manager2(
+  f_obs,
+  r_free_flags,
+  abcd,
+  xray_structure,
+  twin_law,
+  ignore_r_free_flags,
+  mtz_object=None,
+  data_type=None):
+  """
+  This makes a basic fmodel manager.
+  alpha_beta_params, sf_and_grads_accuracy_params, mask_params, tNCS epsilons,
+  target_name should be set separately if needed.
+  """
+  if(r_free_flags is None or ignore_r_free_flags):
+    r_free_flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
+  if(twin_law is None):
+    fmodel = mmtbx.f_model.manager(
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      abcd           = abcd,
+      xray_structure = xray_structure,
+      origin         = mtz_object,
+      data_type      = data_type)
+  else:
+    from cctbx import sgtbx
+    twin_law_xyz = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+    twin_params = twin_f_model.master_params.extract()
+    fmodel = twin_f_model.twin_model_manager(
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      xray_structure = xray_structure,
+      twin_law       = twin_law_xyz,
+      twin_law_str   = twin_law,
+      detwin_mode    = twin_params.detwin.mode,
+      map_types      = twin_params.detwin.map_types,
+      origin         = mtz_object,
+      data_type      = data_type)
+    fmodel.twin = twin_law
+  return fmodel
+
+# XXX
+# XXX PVA: DELETE LATER !
+# XXX
 def fmodel_manager(
       f_obs,
       i_obs                         = None,
@@ -678,8 +722,8 @@ def fmodel_manager(
       epsilons                      = None,
       use_f_model_scaled            = False,
       twin_law                      = None,
-      detwin_mode                   = None,
-      detwin_map_types              = None,
+      #detwin_mode                   = None,
+      #detwin_map_types              = None,
       alpha_beta_params             = None,
       sf_and_grads_accuracy_params  = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract(),
       mask_params                   = None,
@@ -707,6 +751,7 @@ def fmodel_manager(
   else:
     from cctbx import sgtbx
     twin_law_xyz = sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+    twin_params = twin_f_model.master_params.extract()
     fmodel = twin_f_model.twin_model_manager(
       f_obs                        = f_obs,
       f_mask                       = f_mask,
@@ -717,8 +762,8 @@ def fmodel_manager(
       twin_law                     = twin_law_xyz,
       twin_law_str                 = twin_law,
       mask_params                  = mask_params,
-      detwin_mode                  = detwin_mode,
-      map_types                    = detwin_map_types)
+      detwin_mode                  = twin_params.detwin.mode,
+      map_types                    = twin_params.detwin.map_types)
     fmodel.twin = twin_law
   return fmodel
 
