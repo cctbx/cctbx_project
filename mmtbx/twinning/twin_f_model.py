@@ -34,10 +34,6 @@ from six.moves import zip
 from six.moves import range
 
 master_params =  iotbx.phil.parse("""
-  twin_law = None
-  .type=str
-  .input_size = 80
-  .style = bold noauto
   twin_target=*twin_lsq_f
   .type=choice
   detwin{
@@ -57,7 +53,6 @@ master_params =  iotbx.phil.parse("""
     }
   }
   """)
-
 
 class twin_fraction_object(object):
   """provides methods for derivatives and
@@ -329,8 +324,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                max_bins           = 20,
                detwin_mode        = None,
                map_types          = None,
-               twin_target = master_params.extract().twin_target):
+               twin_target = master_params.extract().twin_target,
+               data_type=None,
+               origin=None):
     self.fmodel_ts1 = None
+    self._origin = origin
+    self._data_type = data_type
     self.f_obs_ = f_obs
     if(f_calc is not None): raise RuntimeError("Not implemented.")
     if(map_types is None):
@@ -541,6 +540,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.epsilons_w = self.f_obs_w.epsilons().data().as_double()
     self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
 
+  def data_type(self):
+    return self._data_type
+
+  def origin(self):
+    return self._origin
+
   def f_obs(self):
     return self.f_obs_
 
@@ -634,6 +639,7 @@ the percentage of R-free reflections).
       detwin_mode        = self.detwin_mode,
       map_types          = self.map_types,
       sf_and_grads_accuracy_params = self.sfg_params,
+      origin = self.origin()
       )
     new_object.twin_fraction_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
@@ -664,7 +670,8 @@ the percentage of R-free reflections).
       max_bins           = dc.max_bins,
       detwin_mode        = dc.detwin_mode,
       map_types          = dc.map_types,
-      sf_and_grads_accuracy_params = dc.sfg_params
+      sf_and_grads_accuracy_params = dc.sfg_params,
+      origin = dc.origin()
       )
 
     new_object.update()
@@ -690,7 +697,8 @@ the percentage of R-free reflections).
       max_bins           = dc.max_bins,
       detwin_mode        = dc.detwin_mode,
       map_types          = dc.map_types,
-      sf_and_grads_accuracy_params = dc.sfg_params
+      sf_and_grads_accuracy_params = dc.sfg_params,
+      origin = dc.origin()
       )
     new_object.did_search = self.did_search
     return new_object

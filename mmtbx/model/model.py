@@ -15,6 +15,7 @@ from libtbx import group_args, str_utils
 import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
+from cctbx import sgtbx
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 # from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
@@ -2440,6 +2441,20 @@ class manager(object):
 
   def get_model_input(self):
     return self._model_input
+
+  def twin_law_from_model_input(self):
+    """
+    Extract twin_law from model_input, if available and extractable
+    """
+    twin_law = None
+    mi = self.get_model_input()
+    if(mi is None): return None
+    twin_law = mi.extract_f_model_core_constants().twin_law
+    if twin_law is not None:
+     try: sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+     except ValueError as e:
+       twin_law = None
+    return twin_law
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
