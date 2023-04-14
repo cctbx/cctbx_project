@@ -111,6 +111,17 @@ class fmodel_mixins(object):
       return self.export_phil_scope(as_extract=True).data_manager.fmodel
     return self._fmodel_phil_scope.extract().data_manager.fmodel
 
+  def set_fmodel_params(self, phil_extract):
+    '''
+    Set the fmodel parameters. The phil_extract can be the full DataManager
+    PHIL extract or the output from get_fmodel_params
+    '''
+    full_extract = phil_extract
+    if not hasattr(full_extract, 'data_manager'):
+      full_extract = self.master_phil.extract()
+      full_extract.data_manager.fmodel = phil_extract
+    self._fmodel_phil_scope = self.master_phil.format(python_object=full_extract)
+
   def _resolve_symmetry_conflicts(self, model, reflection_file_server,
                                   params=None):
     '''
@@ -212,16 +223,14 @@ class fmodel_mixins(object):
     #
     # Set DataManager parameters extracted from inputs
     #
-    dm_params = self.export_phil_scope().extract()
+    fmodel_params = self.get_fmodel_params()
     # Extract and set twin_law
     if(parameters.twin_law is None):
-      dm_params.data_manager.fmodel.xray_data.twin_law = \
-        model.twin_law_from_model_input()
+      fmodel_params.xray_data.twin_law = model.twin_law_from_model_input()
     # Set test flag value
-    dm_params.data_manager.fmodel.xray_data.r_free_flags.test_flag_value = \
-      data.test_flag_value
+    fmodel_params.xray_data.r_free_flags.test_flag_value = data.test_flag_value
     # Load all back
-    self.load_phil_scope(dm_params)
+    self.set_fmodel_params(fmodel_params)
     #
     if(len(data.err)>0):
       raise Sorry("\n".join(data.err))
