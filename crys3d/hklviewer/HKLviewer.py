@@ -2574,6 +2574,13 @@ clip_plane {
   def PersistQsettings(self, write_factory_default_settings = False):
     Qtversion = self.Qtversion
     if write_factory_default_settings:
+      # For developers only:
+      # When supplying the new_factory_defaults argument on the command line all the settings
+      # usually stored in the users Qsettings database will instead be stored in the file
+      # crys3d\HKLviewer\HKLviewerDefaults.ini which can then be committed to git repo if desired and
+      # work as new factory default settings. Adjust colours and sizes for datasets as well
+      # as other settings as desired to write a HKLviewerDefaults.ini with those new settings
+      # when exiting HKLviewer. The file should then be committed to the cctbx_project repo.
       self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
       self.AddInfoText("Writing factory defaults to %s\n" %self.factorydefaultfname)
       self.AddAlertsText("Writing factory defaults to %s\n" %self.factorydefaultfname)
