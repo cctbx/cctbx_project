@@ -12,7 +12,7 @@ os.environ['PYTHONIOENCODING'] = 'UTF-8'
 # is run in a loop until it passes but no longer than maxruns times.
 
 # This test is creating the F/SigF dataset on the fly from iotbx/regression/data/phaser_1.mtz,
-# expands data to P! with Friedel pairs, slices with a clip plane at l=9 and only shows
+# expands data to P1 with Friedel pairs, slices with a clip plane at l=9 and only shows
 # reflections with F/SigF<=1. Then saves those reflections to a new file OSbrowserLowValueBinFSigF.mtz.
 # Then checks that this file matches the info in expectedstr
 

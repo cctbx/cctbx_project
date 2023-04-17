@@ -7,7 +7,7 @@ from crys3d.regression import tests_HKLviewer
 # is run in a loop until it passes but no longer than maxruns times.
 
 # With the HKLviewer Qt GUI test expanding amplitude data from iotbx/regression/data/phaser_1.mtz
-# to P! with Friedel pairs, slice with a clip plane at k= -9
+# to P1 with Friedel pairs, slice with a clip plane at k= -9
 
 def run():
   count = 0
