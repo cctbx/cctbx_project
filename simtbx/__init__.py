@@ -1,4 +1,5 @@
 from __future__ import division
+from simtbx import nanoBragg
 
 def get_exascale(interface, context):
   if context == "kokkos_gpu":
