@@ -343,6 +343,12 @@ class map_model_mixins(object):
       if full_map is not None:
         map_files.append(full_map)
       half_maps = getattr(map_model, 'half_map', None)
+
+      # Catch case where full_map is also present in half_maps as the only
+      #   half map
+      if full_map and (len(half_maps) == 1) and (half_maps[0] == full_map):
+        half_maps = []
+
       if half_maps:
         if len(half_maps) != 2:
           raise Sorry('Please provide 2 half-maps or one full map.')
