@@ -381,7 +381,7 @@ class manager(object):
                        scattering_type = self.params.scattering_type))
     elif(self.params.new_solvent == "anisotropic"):
       u_star = adptbx.u_iso_as_u_star(
-        self.model.crystal_symmetry()().unit_cell(), adptbx.b_as_u(b_solv))
+        self.model.crystal_symmetry().unit_cell(), adptbx.b_as_u(b_solv))
       new_scatterers = flex.xray_scatterer(
         sites.size(),
         xray.scatterer(
