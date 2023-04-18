@@ -1453,6 +1453,11 @@ class manager(object):
     self.unset_restraints_manager() # no longer applies
     self.unset_ncs_constraints_groups()
 
+  def adopt_xray_structure(self, xray_structure=None):
+    if(xray_structure is None):
+      xray_structure = self.get_xray_structure()
+    self.get_hierarchy().adopt_xray_structure(xray_structure)
+
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
     # XXX are still consistent!

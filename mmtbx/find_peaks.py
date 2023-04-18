@@ -35,8 +35,9 @@ master_params = libtbx.phil.parse("""\
     .type=bool
     .help = Default is sigma scaled map, map in absolute scale is used \
             otherwise.
-  resolution_factor = 1./4.
+  grid_step = 0.6
     .type=float
+    .help = Grid step for map sampling
   map_next_to_model
     .expert_level=2
     .style = noauto
@@ -107,30 +108,37 @@ class manager(object):
                log = None,
                use_all_data = True,
                silent = False,
-               map_coeffs=None):
+               #map_coeffs=None
+               ):
     adopt_init_args(self, locals())
     assert (map_type is not None) or (map_coeffs is not None)
     self.mapped = False
     self.peaks_ = None
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
-    if (map_coeffs is not None):
-      fft_map = map_coeffs.fft_map(
-        resolution_factor=self.params.resolution_factor,
-        symmetry_flags=maptbx.use_space_group_symmetry)
-      if(self.params.use_sigma_scaled_maps):
-        fft_map.apply_sigma_scaling()
-        map_units = "sigma"
-      else:
-        fft_map.apply_volume_scaling()
-        map_units = "e/A**3"
-      fft_map_data = fft_map.real_map_unpadded()
-    else:
-      fft_map = self.fmodel.electron_density_map().\
-          fft_map(resolution_factor = self.params.resolution_factor,
-                  symmetry_flags    = maptbx.use_space_group_symmetry,
-                  map_type          = self.map_type,
-                  use_all_data      = use_all_data)
+    self.crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry()
+    self.crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = self.crystal_symmetry.unit_cell(),
+      space_group_info = self.crystal_symmetry.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = self.params.grid_step)
+    #if (map_coeffs is not None):
+    #  fft_map = map_coeffs.fft_map(
+    #    resolution_factor=self.params.resolution_factor,
+    #    symmetry_flags=maptbx.use_space_group_symmetry)
+    #  if(self.params.use_sigma_scaled_maps):
+    #    fft_map.apply_sigma_scaling()
+    #    map_units = "sigma"
+    #  else:
+    #    fft_map.apply_volume_scaling()
+    #    map_units = "e/A**3"
+    #  fft_map_data = fft_map.real_map_unpadded()
+    #else:
+    if 1: # XXX
+      fft_map = self.fmodel.electron_density_map().map_coefficients(
+        map_type     = self.map_type,
+        fill_missing = False,
+        isotropize   = True).fft_map(crystal_gridding = self.crystal_gridding)
       if(self.params.use_sigma_scaled_maps):
         fft_map.apply_sigma_scaling()
         map_units = "sigma"
