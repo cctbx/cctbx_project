@@ -70,9 +70,10 @@ jobs:
       if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.svn" ]; then
         rm -fr $(System.DefaultWorkingDirectory)/chem_data
         cd $(System.DefaultWorkingDirectory)
-        svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+        svn co svn+ssh://builder@boa.lbl.gov/chem_data/trunk chem_data
       fi
       cd $(System.DefaultWorkingDirectory)/chem_data
+      svn relocate svn+ssh://builder@boa.lbl.gov/chem_data/trunk
       svn update
     displayName: Update chem_data
     continueOnError: true
