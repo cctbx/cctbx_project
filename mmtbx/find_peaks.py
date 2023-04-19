@@ -108,7 +108,7 @@ class manager(object):
                log = None,
                use_all_data = True,
                silent = False,
-               #map_coeffs=None
+               map_coeffs=None
                ):
     adopt_init_args(self, locals())
     assert (map_type is not None) or (map_coeffs is not None)
@@ -122,23 +122,24 @@ class manager(object):
       space_group_info = self.crystal_symmetry.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = self.params.grid_step)
-    #if (map_coeffs is not None):
-    #  fft_map = map_coeffs.fft_map(
-    #    resolution_factor=self.params.resolution_factor,
-    #    symmetry_flags=maptbx.use_space_group_symmetry)
-    #  if(self.params.use_sigma_scaled_maps):
-    #    fft_map.apply_sigma_scaling()
-    #    map_units = "sigma"
-    #  else:
-    #    fft_map.apply_volume_scaling()
-    #    map_units = "e/A**3"
-    #  fft_map_data = fft_map.real_map_unpadded()
-    #else:
-    if 1: # XXX
+    if (map_coeffs is not None):
+      fft_map = map_coeffs.fft_map(
+        crystal_gridding = self.crystal_gridding,
+        symmetry_flags=maptbx.use_space_group_symmetry)
+      if(self.params.use_sigma_scaled_maps):
+        fft_map.apply_sigma_scaling()
+        map_units = "sigma"
+      else:
+        fft_map.apply_volume_scaling()
+        map_units = "e/A**3"
+      fft_map_data = fft_map.real_map_unpadded()
+    else:
       fft_map = self.fmodel.electron_density_map().map_coefficients(
         map_type     = self.map_type,
         fill_missing = False,
-        isotropize   = True).fft_map(crystal_gridding = self.crystal_gridding)
+        isotropize   = True).fft_map(
+          crystal_gridding = self.crystal_gridding,
+          symmetry_flags=maptbx.use_space_group_symmetry)
       if(self.params.use_sigma_scaled_maps):
         fft_map.apply_sigma_scaling()
         map_units = "sigma"
