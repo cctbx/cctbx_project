@@ -23,6 +23,8 @@ from xfel.cxi.cspad_ana.parse_calib import Section
 import six
 from six.moves import zip
 
+from serialtbx import util
+
 __version__ = "$Revision$"
 
 
@@ -1231,9 +1233,7 @@ def evt_time(evt=None):
   """
 
   if evt is None:
-    t = time.time()
-    s = int(math.floor(t))
-    return (s, int(round((t - s) * 1000)))
+    return util.now_s_ms()
 
   if hasattr(evt, "getTime"):
     t = evt.getTime()
@@ -1255,13 +1255,7 @@ def evt_timestamp(t=None):
   @return  Human-readable ISO 8601 timestamp in string representation
   """
 
-  if t is None:
-    t = evt_time(evt=None)
-    if t is None:
-      return None
-  return time.strftime("%Y-%m-%dT%H:%MZ%S", time.gmtime(t[0])) + \
-      (".%03d" % t[1])
-
+  return util.timestamp(t)
 
 def evt_wavelength(evt, delta_k=0):
   """The evt_wavelength() function returns the wavelength in Ångström
