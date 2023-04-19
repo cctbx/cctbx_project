@@ -496,7 +496,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       # in this step,and apply that shift to the unrefined panels in this step
       if params.flat_refinement and params.flat_refinement_with_distance and i > 0:
         from dxtbx.model.experiment_list import ExperimentListFactory
-        from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels
+        from serialtbx.detector import iterate_detector_at_level, iterate_panels
         from scitbx.array_family import flex
         from scitbx.matrix import col
         from libtbx.test_utils import approx_equal

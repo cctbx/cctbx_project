@@ -403,7 +403,8 @@ def trumpet_plot(experiment, reflections, axis = None):
   axis.plot(two_thetas, tan_outer_deg, "g.")
   axis.plot(two_thetas, -tan_outer_deg, "g.")
 
-from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name, get_center, detector_plot_dict
+from xfel.command_line.cspad_detector_congruence import detector_plot_dict
+from serialtbx.detector import iterate_detector_at_level, iterate_panels, id_from_name, get_center
 from xfel.command_line.cspad_detector_congruence import Script as DCScript
 class Script(DCScript):
   ''' Class to parse the command line options. '''

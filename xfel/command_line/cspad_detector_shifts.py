@@ -19,7 +19,7 @@ from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.phil import parse
 from libtbx.utils import Sorry
-from xfel.command_line.cspad_detector_congruence import get_center
+from serialtbx.detector import get_center
 import libtbx.load_env
 from six.moves import zip
 
@@ -38,7 +38,7 @@ max_hierarchy_level=Auto
   .help = Maximum hierarchy level to compute shifts to
 ''', process_includes=True)
 
-from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name
+from serialtbx.detector import iterate_detector_at_level, iterate_panels, id_from_name
 from xfel.command_line.cspad_detector_congruence import Script as ParentScript
 
 class Script(ParentScript):
