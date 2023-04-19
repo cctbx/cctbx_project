@@ -474,7 +474,7 @@ class refinement(refinement_base):
         OO.parent.show_figure(plt,fig,"psi")
         plt.close()
 
-      from xfel.mono_simulation.util import green_curve_area,ewald_proximal_volume
+      from serialtbx.mono_simulation.util import green_curve_area,ewald_proximal_volume
       if OO.mosaic_refinement_target=="ML":
         OO.parent.green_curve_area = green_curve_area(two_thetas, tan_outer_deg_ML)
         OO.parent.inputai.setMosaicity(M.x[1]*180./math.pi) # full width, degrees
