@@ -16,11 +16,9 @@ def external_cmd(parent, master_phil, firstpart):
   r'''phasertng {
               hklin.filename = "%s"
               reflections.wavelength = 1.0
-              suite.mute = True
               suite.store = logfile
               suite.level = logfile
               suite.database = "%s"
-              commensurate.patterson.percent = 10
             }
   ''' %(parent.loaded_file_name, tempdir)
   )
