@@ -169,7 +169,7 @@ if __name__=="__main__":
 
   print("pos_neg output Deff/2, eta_deg ",1./M.x[0], M.x[1]*180./pi)
 
-  from xfel.mono_simulation.max_like import minimizer as legacy_minimizer
+  from serialtbx.mono_simulation.max_like import minimizer as legacy_minimizer
   Q = legacy_minimizer(d_i, psi_i, eta_rad, Deff)
 
   print("legacy output Deff/2, eta_deg ",1./Q.x[0], Q.x[1]*180./pi)

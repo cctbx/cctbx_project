@@ -344,7 +344,7 @@ class refinement(refinement_base):
       tan_outer_deg = tan_phi_deg + k_degrees
 
       if OO.mosaic_refinement_target=="ML":
-        from xfel.mono_simulation.max_like import minimizer
+        from serialtbx.mono_simulation.max_like import minimizer
         print("input", s_ang,2. * solution[1]*180/math.pi)
         # coerce the estimates to be positive for max-likelihood
         lower_limit_domain_size = math.pow(
