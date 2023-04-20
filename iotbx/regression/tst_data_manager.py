@@ -108,6 +108,19 @@ data_manager {
   os.remove('c.dat')
   os.remove('e.dat')
 
+  # check datatypes with parent
+  datatypes = ['miller_array', 'map_coefficients']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['miller_array', 'map_coefficients', 'phil', 'model']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['phil', 'model', 'miller_array', 'map_coefficients',]
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
 # -----------------------------------------------------------------------------
 def test_model_datatype():
   import mmtbx.monomer_library.server
