@@ -10,6 +10,7 @@ import re
 import sys
 
 from collections import OrderedDict
+from copy import copy
 from six.moves import range
 
 import iotbx.phil
@@ -139,7 +140,7 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
   # check inheritance and add datatypes if necessary
   class_datatypes = set()
   parent_classes = []
-  for manager_class in manager_classes.copy():
+  for manager_class in copy(manager_classes):
     if hasattr(manager_class, 'datatype'):
       class_datatypes.add(manager_class.datatype)
     # get full inheritance order and check
