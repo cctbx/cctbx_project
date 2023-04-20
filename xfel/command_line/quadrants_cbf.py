@@ -5,7 +5,7 @@ from __future__ import absolute_import, division, print_function
 
 import sys,os
 from scitbx.matrix import col
-from xfel.cftbx.detector.cspad_cbf_tbx import center
+from serialtbx.detector import center
 import dxtbx
 import libtbx.load_env
 from libtbx.utils import Usage

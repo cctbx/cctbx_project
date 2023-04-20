@@ -231,7 +231,7 @@ class FormatCBFRayonixInMemory(FormatCBFFullStillInMemory):
 
 def get_dxtbx_from_params(params, detector_size):
   """ Build a dxtbx format object for the Rayonix based on input paramters (beam center and binning) """
-  from xfel.cftbx.detector.cspad_cbf_tbx import basis
+  from serialtbx.detector import basis
   from scitbx.matrix import col
   fake_distance = 100
   null_ori = col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)

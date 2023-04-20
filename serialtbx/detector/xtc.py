@@ -1,5 +1,23 @@
 from __future__ import division
 
+def basis_from_geo(geo, use_z = True):
+  """ Given a psana GeometryObject, construct a basis object """
+  rotx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_x + geo.tilt_x, deg=True)
+  roty = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_y + geo.tilt_y, deg=True)
+  rotz = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(
+    geo.rot_z + geo.tilt_z, deg=True)
+
+  rot = (rotx*roty*rotz).r3_rotation_matrix_as_unit_quaternion()
+
+  if use_z:
+    trans = matrix.col((geo.x0/1000, geo.y0/1000, geo.z0/1000))
+  else:
+    trans = matrix.col((geo.x0/1000, geo.y0/1000, 0))
+
+  return basis(orientation = rot, translation = trans)
+
 def evt_wavelength(evt, delta_k=0):
   """The evt_wavelength() function returns the wavelength in Ångström
   of the event pointed to by @p evt.  From Margaritondo & Rebernik

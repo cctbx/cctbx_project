@@ -115,7 +115,7 @@ class Script(ParentScript):
     table_header = ["PanelG","BC dist","Delta XY","R Offsets","T Offsets","Z Offsets","dR Norm","dT Norm","Local dNorm","Rot Z","N Refls"]
     table_header2 = ["ID","(mm)","(microns)","(microns)","(microns)","(microns)","(deg)","(deg)","(deg)","(deg)",""]
 
-    from xfel.cftbx.detector.cspad_cbf_tbx import basis
+    from serialtbx.detector import basis
     def get_full_basis_shift(pg):
       """Compute basis shift from pg to lab space"""
       shift = basis(panelgroup=pg)
