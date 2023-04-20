@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 from libtbx.test_utils import contains_substring
-import os, subprocess
+import os, sys, subprocess
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
@@ -28,6 +28,8 @@ Job complete
 """
 
 def run():
+  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
+    return # Only run test if on a local linux machine with a connected monitor
   count = 0
   while True:
     print("running %d" %count)
