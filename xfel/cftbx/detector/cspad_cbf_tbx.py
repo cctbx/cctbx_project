@@ -22,6 +22,7 @@ except AttributeError:
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
+from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
 from serialtbx.detector import basis, center
 from serialtbx.detector.cspad import cspad_saturated_value, cspad_min_trusted_value, read_slac_metrology
 
@@ -93,37 +94,6 @@ def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, commo
   if additional_gain_factor is not None:
     data /= additional_gain_factor
   return data
-
-from dxtbx.format.FormatCBFMultiTile import cbf_wrapper as dxtbx_cbf_wrapper
-class cbf_wrapper(dxtbx_cbf_wrapper):
-  """ Wrapper class that provides convenience functions for working with cbflib"""
-
-  def add_frame_shift(self, basis, axis_settings):
-    """Add an axis representing a frame shift (a rotation axis with an offset)"""
-    angle, axis = angle_and_axis(basis)
-
-    if angle == 0:
-      axis = (0,0,1)
-
-    if basis.include_translation:
-      translation = basis.translation
-    else:
-      translation = (0,0,0)
-
-    self.add_row([basis.axis_name,"rotation","detector",basis.depends_on,
-                  str(axis[0]),str(axis[1]),str(axis[2]),
-                  str(translation[0]),
-                  str(translation[1]),
-                  str(translation[2]),
-                  basis.equipment_component])
-
-    axis_settings.append([basis.axis_name, "FRAME1", str(angle), "0"])
-
-def angle_and_axis(basis):
-  """Normalize a quaternion and return the angle and axis
-  @param params metrology object"""
-  q = matrix.col(basis.orientation).normalize()
-  return q.unit_quaternion_as_axis_and_angle(deg=True)
 
 def get_calib_file_path(env, address, run):
   """ Findes the path to the SLAC metrology file stored in a psana environment

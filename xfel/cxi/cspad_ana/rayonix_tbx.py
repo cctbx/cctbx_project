@@ -68,7 +68,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
     basis.axis_name = detector_axes_names[-1]
 
   # the data block is the root cbf node
-  from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
+  from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
   import os
   cbf=cbf_wrapper()
   cbf.new_datablock(os.path.splitext(os.path.basename(cbf_root))[0].encode())
