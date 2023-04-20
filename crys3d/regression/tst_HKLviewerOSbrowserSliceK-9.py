@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
+import os, sys
 
 # Using a webbrowser exercise_OSbrowser() runs HKLviewer to enact the settings in philstr1 and
 # eventually asserts that the visible reflections in the browser match the indices in
@@ -10,6 +11,8 @@ from crys3d.regression import tests_HKLviewer
 # to P1 with Friedel pairs, slice with a clip plane at k= -9
 
 def run():
+  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
+    return # Only run test if on a local linux machine with a connected monitor
   count = 0
   while True:
     print("running %d" %count)
