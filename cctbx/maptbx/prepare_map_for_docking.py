@@ -1858,6 +1858,11 @@ def assess_cryoem_errors(
   # Return a map_model_manager with the weighted map
   wEmean = dobs*expectE
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  sigmaA = 0.9 # Default for likelihood-weighted map
+  dosa = sigmaA*dobs.data()
+  lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
+  wEmean2 = lweight*expectE
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
   working_mmm.remove_map_manager_by_id(map_1_id)
   working_mmm.remove_map_manager_by_id(map_2_id)
