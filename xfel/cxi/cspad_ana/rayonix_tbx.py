@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 # Utility functions for the Rayonix Detector.
+from dxtbx.format.cbf_writer import add_frame_specific_cbf_tables
 from scitbx.array_family import flex
 
 # given value of rayonix detector saturation xppi6115
@@ -288,7 +289,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
     data = flex.double(data.astype(np.float64))
 
   n_asics = data.focus()[0] * data.focus()[1]
-  cspad_cbf_tbx.add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
+  add_frame_specific_cbf_tables(cbf, wavelength,timestamp,
     [(rayonix_min_trusted_value, rayonix_max_trusted_value)]*n_asics)
 
   # Set the distance, I.E., the length translated along the Z axis

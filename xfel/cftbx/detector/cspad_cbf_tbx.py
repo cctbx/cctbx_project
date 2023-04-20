@@ -23,6 +23,7 @@ asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
 from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
+from dxtbx.format.cbf_writer import add_frame_specific_cbf_tables
 from serialtbx.detector import basis, center
 from serialtbx.detector.cspad import cspad_saturated_value, cspad_min_trusted_value, read_slac_metrology
 
@@ -506,78 +507,6 @@ def metro_phil_to_basis_dict(metro):
                                                                       matrix.col(a.translation)*1000)
 
   return bd
-
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True, gain = 1.0, flux = None):
-  """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
-  @ param wavelength Wavelength in angstroms
-  @ param timestamp String formatted timestamp for the image
-  @ param trusted_ranges Array of trusted range tuples (min, max), one for each element """
-
-  """Data items in the DIFFRN_RADIATION category describe
-   the radiation used for measuring diffraction intensities,
-   its collimation and monochromatization before the sample.
-
-   Post-sample treatment of the beam is described by data
-   items in the DIFFRN_DETECTOR category."""
-  if flux:
-    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe","beam_flux"])
-    cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray","%f"%flux])
-  else:
-    cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
-    cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray"])
-
-  """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
-   the wavelength of the radiation used in measuring the diffraction
-   intensities. Items may be looped to identify and assign weights
-   to distinct wavelength components from a polychromatic beam."""
-  cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-  cbf.add_row(["WAVELENGTH1",str(wavelength),"1.0"])
-
-  """Data items in the DIFFRN_MEASUREMENT category record details
-   about the device used to orient and/or position the crystal
-   during data measurement and the manner in which the
-   diffraction data were measured."""
-  cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
-  cbf.add_row([diffrn_id,
-    "INJECTION" if is_xfel else "unknown","0",
-    "electrospray" if is_xfel else "unknown"
-    "crystals injected by electrospray" if is_xfel else "unknown"])
-
-  """ Data items in the DIFFRN_SCAN category describe the parameters of one
-     or more scans, relating axis positions to frames."""
-  cbf.add_category("diffrn_scan",["id","frame_id_start","frame_id_end","frames"])
-  cbf.add_row(["SCAN1","FRAME1","FRAME1","1"])
-
-  """Data items in the DIFFRN_SCAN_FRAME category describe
-   the relationships of particular frames to scans."""
-  cbf.add_category("diffrn_scan_frame",["frame_id","frame_number","integration_time","scan_id","date"])
-  cbf.add_row(["FRAME1","1","0.0","SCAN1",timestamp])
-
-  """ Data items in the ARRAY_INTENSITIES category record the
-   information required to recover the intensity data from
-   the set of data values stored in the ARRAY_DATA category."""
-  # More detail here: http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Carray_intensities.html
-  array_names = []
-  cbf.find_category(b"diffrn_data_frame")
-  while True:
-    try:
-      cbf.find_column(b"array_id")
-      array_names.append(cbf.get_value().decode())
-      cbf.next_row()
-    except Exception as e:
-      assert "CBF_NOTFOUND" in str(e)
-      break
-
-  if not isinstance(gain, list):
-    gain = [gain] * len(array_names)
-
-
-  cbf.add_category("array_intensities",["array_id","binary_id","linearity","gain","gain_esd","overload","underload","undefined_value"])
-  for i, array_name in enumerate(array_names):
-    overload = trusted_ranges[i][1] + 1
-    underload = trusted_ranges[i][0]
-    undefined = underload - 1
-    cbf.add_row([array_name,str(i+1),"linear","%f"%gain[i],"0.0",str(overload),str(underload),str(undefined)])
 
 def add_tiles_to_cbf(cbf, tiles, verbose = False):
   """
