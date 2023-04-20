@@ -25,8 +25,6 @@ if os.getenv('KOKKOSKERNELS_PATH') is None:
   os.environ['KOKKOSKERNELS_PATH'] = libtbx.env.under_dist('simtbx', '../../kokkos-kernels')
 if os.getenv('KOKKOS_ARCH') is None:
   os.environ['KOKKOS_ARCH'] = "HSW"
-if use_cuda and os.getenv('KOKKOS_CUDA_OPTIONS') is None:
-  os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
 os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
 
 library_flags = "-Llib"
@@ -61,6 +59,12 @@ original_cxx = None
 kokkos_lib = 'libkokkos.a'
 kokkos_cxxflags = None
 
+# remove conda/lib path from ld_path
+original_ld_path = os.getenv('LD_LIBRARY_PATH')
+if original_ld_path is not None:
+  ld_path = [s for s in original_ld_path.split(':') if not 'opt/mamba/envs/psana_env/lib' in s]
+  os.environ['LD_LIBRARY_PATH'] = ":".join(ld_path)
+
 if os.getenv('CXX') is not None:
   original_cxx = os.environ['CXX']
 if use_cuda:
@@ -71,25 +75,6 @@ elif use_sycl:
   os.environ['CXX'] = 'icpx'
 else:
   os.environ['CXX'] = os.environ.get('CXX', 'g++')
-print('='*79)
-print('Building Kokkos')
-print('-'*79)
-returncode = subprocess.call(['make', '-f', 'Makefile.kokkos', kokkos_lib],
-                              cwd=os.environ['KOKKOS_PATH'])
-print()
-
-print('Copying Kokkos library')
-print('-'*79)
-src = os.path.join(os.environ['KOKKOS_PATH'], kokkos_lib)
-dst = os.path.join(libtbx.env.under_build('lib'), kokkos_lib)
-if os.path.isfile(src):
-  copy(src, dst)
-  print('Copied')
-  print('  source:     ', src)
-  print('  destination:', dst)
-else:
-  print('Error: {src} does not exist'.format(src=src))
-print()
 
 # =============================================================================
 #
@@ -97,118 +82,8 @@ print()
 #
 # =============================================================================
 
-
-
-# =============================================================================
-# Build kokkos with CMake
-# The build needs to be in a directory not in the build directory, otherwise
-# kokkos-kernels will find that build directory instead of build/lib/cmake/Kokkos
-# The error will look like
-#
-#   -- The project name is: KokkosKernels
-#   CMake Error at /dev/shm/bkpoon/software/xfel/build/kokkos/KokkosConfig.cmake:48 (INCLUDE):
-#     INCLUDE could not find requested file:
-
-#       /dev/shm/bkpoon/software/xfel/build/kokkos/KokkosTargets.cmake
-#   Call Stack (most recent call first):
-#     CMakeLists.txt:107 (FIND_PACKAGE)
-#
-# kokkos will be installed in build with the libraries in lib, not lib64
-#
-# TODO:
-# - Change over from Makefile version to cmake version
-# - Change system configuration classes to select backends with cmake
-#   flags instead of environment variables
-# - Verify that libraries from cmake version works the same as libkokkos.a
-
-OnOff = {True:'ON', False:'OFF'}
-supported_architectures = ['Native', 'HSW', 'Zen', 'Zen2', 'Zen3', 'Volta70', 'Ampere80', 'Vega908', 'Vega90A', 'XeHP', 'PVC']
-architectures = {}
-for arch in supported_architectures:
-  architectures[arch] = OnOff[ arch in os.getenv('KOKKOS_ARCH') ]
-
-cmake_is_available = which('cmake')
-if cmake_is_available and os.getenv('KOKKOS_HOME') is None:
-  print('='*79)
-  print('Building kokkos with cmake')
-  print('-'*79)
-  kokkos_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos_build')
-  if not os.path.isdir(kokkos_build_dir):
-    os.mkdir(kokkos_build_dir)
-  # ..............................................................................
-  # Build kokkos with CMake.
-  # Turn off all ETI builds for now, until needed, for maximum machine compatibility    
-  returncode = subprocess.call([
-      'cmake',
-      os.environ['KOKKOS_PATH'],
-      '-DCMAKE_CXX_STANDARD={}'.format(cxx_standard),
-      '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
-      '-DCMAKE_INSTALL_LIBDIR=lib',
-      '-DBUILD_SHARED_LIBS={}'.format(OnOff[use_sycl]),
-      '-DKokkos_ARCH_NATIVE={}'.format(architectures['Native']),
-      '-DKokkos_ARCH_HSW={}'.format(architectures['HSW']),
-      '-DKokkos_ARCH_ZEN={}'.format(architectures['Zen']),
-      '-DKokkos_ARCH_ZEN2={}'.format(architectures['Zen2']),
-      '-DKokkos_ARCH_ZEN3={}'.format(architectures['Zen3']),
-      '-DKokkos_ARCH_VOLTA70={}'.format(architectures['Volta70']),
-      '-DKokkos_ARCH_AMPERE80={}'.format(architectures['Ampere80']),
-      '-DKokkos_ARCH_VEGA908={}'.format(architectures['Vega908']),
-      '-DKokkos_ARCH_VEGA90A={}'.format(architectures['Vega90A']),
-      '-DKokkos_ARCH_INTEL_XEHP={}'.format(architectures['XeHP']),
-      '-DKokkos_ARCH_INTEL_PVC={}'.format(architectures['PVC']),
-      '-DKokkos_ENABLE_SERIAL=ON',
-      '-DKokkos_ENABLE_OPENMP={}'.format(OnOff[use_openmp]),
-      '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
-      '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
-      '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip]),
-      '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl])
-    ],
-    cwd=kokkos_build_dir)
-  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_build_dir)
-
-# -----------------------------------------------------------------------------
-# Build kokkos-kernels with CMake.
-# Turn off all ETI builds for now, until needed, for maximum machine compatibility
-  print('='*79)
-  print('Building kokkos_kernels')
-  print('-'*79)
-  kokkos_kernels_build_dir = libtbx.env.under_dist('simtbx', '../../kokkos-kernels/build')
-  if not os.path.isdir(kokkos_kernels_build_dir):
-    os.mkdir(kokkos_kernels_build_dir)
-  returncode = subprocess.call([
-      'cmake',
-      os.environ['KOKKOSKERNELS_PATH'],
-      '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
-      '-DCMAKE_INSTALL_LIBDIR=lib',
-      '-DBUILD_SHARED_LIBS={}'.format(OnOff[use_sycl]),
-      '-DKokkos_ROOT={}'.format(libtbx.env.under_build('.')),
-      '-DKokkosKernels_ADD_DEFAULT_ETI={}'.format(OnOff[False]),
-      '-DKokkosKernels_INST_LAYOUTLEFT:BOOL={}'.format(OnOff[False]),
-      '-DKokkosKernels_INST_LAYOUTRIGHT:BOOL={}'.format(OnOff[False]),
-      '-DKokkosKernels_ENABLE_TPL_CUBLAS={}'.format(OnOff[False]),
-      '-DKokkosKernels_ENABLE_TPL_CUSPARSE={}'.format(OnOff[False])
-    ],
-    cwd=kokkos_kernels_build_dir)
-  returncode = subprocess.call(['make', '-j', '4'], cwd=kokkos_kernels_build_dir)
-  returncode = subprocess.call(['make', '-j', '4', 'install'], cwd=kokkos_kernels_build_dir)
-else:
-  print('*'*79)
-  print('cmake was not found')
-  print('Skipping builds of kokkos and kokkos-kernels')
-  print('*'*79)
-  
-# =============================================================================
-
 print('Getting environment variables')
 print('-'*79)
-kokkos_cxxflags = subprocess.check_output(
-  ['make', '-f', 'Makefile.kokkos', 'print-cxx-flags'],
-  cwd=os.environ['KOKKOS_PATH'])
-#print('5'*79)
-#print(os.environ['KOKKOS_CXXFLAGS'])
-#print('5'*79)
-#kokkos_cxxflags = kokkos_cxxflags.split(b'\n')
-#kokkos_cxxflags = kokkos_cxxflags[1].decode('utf8').split()
 kokkos_cxxflags = os.environ['KOKKOS_CXXFLAGS'].split()
 if kokkos_cxxflags and kokkos_cxxflags[0] == 'echo':
   kokkos_cxxflags = [f.strip('"') for f in kokkos_cxxflags[1:]]
