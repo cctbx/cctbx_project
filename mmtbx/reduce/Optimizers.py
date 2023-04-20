@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, time, itertools
+import argparse, itertools, re
 
 from mmtbx.reduce import Movers
 from mmtbx.reduce import InteractionGraph
@@ -25,7 +25,6 @@ from boost_adaptbx.graph import connected_component_algorithm as cca
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
-from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
@@ -1842,6 +1841,75 @@ def _generateAllStates(numStates):
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
+def _optimizeFragment(pdb_raw):
+  """Returns an optimizer constructed based on the raw PDB data snippet passed in.
+  :param pdb_raw: A string that includes a snippet of a PDB file. Should have no alternates.
+  :return: FastOptimizer initialized based on the snippet.
+  """
+  dm = DataManager(['model'])
+  dm.process_model_str("my_data.pdb", pdb_raw)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers, which should be none because the Histidine flip
+  # will be constrained by the ionic bonds.
+  probePhil = philLike(False)
+  return FastOptimizer(probePhil, True, model)
+
 def Test(inFileName = None, dumpAtoms = False):
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
@@ -1880,6 +1948,46 @@ END
 
   #========================================================================
   # Unit tests for each type of Optimizer.
+
+  ################################################################################
+  # Test using a snippet from 7c31 to make sure the single-hydrogen rotator sets
+  # the orientation of the Hydrogen to point towards the nearby Oxygen. The B
+  # alternate has been removed and the A moved to the main alternate.
+
+  pdb_7c31_two_residues = """\
+CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.035901  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.035901  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010040        0.00000
+ATOM     68  N   SER A   5     -31.155  49.742   0.887  1.00 10.02           N
+ATOM     69  CA  SER A   5     -32.274  48.937   0.401  1.00  9.76           C
+ATOM     70  C   SER A   5     -33.140  49.851  -0.454  1.00  9.47           C
+ATOM     71  O   SER A   5     -33.502  50.939  -0.012  1.00 10.76           O
+ATOM     72  CB  SER A   5     -33.086  48.441   1.599  1.00 12.34           C
+ATOM     73  OG  SER A   5     -34.118  47.569   1.179  1.00 19.50           O
+ATOM    758  N   VAL B   2     -34.430  42.959   3.043  1.00 19.95           N
+ATOM    759  CA  VAL B   2     -32.994  42.754   2.904  0.50 18.09           C
+ATOM    760  C   VAL B   2     -32.311  44.083   2.629  1.00 17.65           C
+ATOM    761  O   VAL B   2     -32.869  44.976   1.975  1.00 18.97           O
+ATOM    762  CB  VAL B   2     -32.703  41.738   1.778  0.50 19.70           C
+ATOM    763  CG1 VAL B   2     -33.098  42.307   0.419  0.50 19.61           C
+ATOM    764  CG2 VAL B   2     -31.224  41.334   1.755  0.50 16.49           C
+TER    1447      CYS B  47
+END
+"""
+  opt = _optimizeFragment(pdb_7c31_two_residues)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator test: " + str(len(movers))
+
+  # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
+  # after 'pose Angle '.
+  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  if angle != 111:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 111"
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
@@ -1984,9 +2092,6 @@ END
       a.xyz = origPositionCU
     if a.element.upper() == "ZN":
       a.xyz = origPositionZN
-
-  # Get the spatial-query information needed to quickly determine which atoms are nearby
-  sq = probeExt.SpatialQuery(atoms)
 
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
