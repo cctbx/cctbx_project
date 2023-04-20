@@ -24,7 +24,7 @@ steps:
 - script: |
     export SVN_SSH="ssh -F $(ssh_config.secureFilePath)"
     if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
-      svn co svn+ssh://builder@cci.lbl.gov/chem_data/trunk chem_data
+      svn co svn+ssh://builder@boa.lbl.gov/chem_data/trunk chem_data
     fi
     cd $(Pipeline.Workspace)/modules/chem_data
     svn update
