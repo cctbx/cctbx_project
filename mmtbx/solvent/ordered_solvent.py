@@ -465,6 +465,7 @@ class manager(object):
 
   def _correct_drifted_waters(self):
     if(self.params.mode != "filter_only"): return
+    if(not self.params.correct_drifted_waters): return
     map_cutoff = self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold/2
     find_peaks_params_drifted = find_peaks.master_params.extract()
     find_peaks_params_drifted.map_next_to_model.min_model_peak_dist=0.01
