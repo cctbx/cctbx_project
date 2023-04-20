@@ -139,7 +139,7 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
   # check inheritance and add datatypes if necessary
   class_datatypes = set()
   parent_classes = []
-  for manager_class in manager_classes:
+  for manager_class in manager_classes.copy():
     if hasattr(manager_class, 'datatype'):
       class_datatypes.add(manager_class.datatype)
     # get full inheritance order and check
