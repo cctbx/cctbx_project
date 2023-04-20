@@ -1,5 +1,28 @@
 from __future__ import division
 
+# The CAMP and CSpad counters are both 14 bits wide (Strüder et al
+# 2010; Philipp et al., 2007), which means the physical limit is 2**14 - 1.
+# However, in practice, when the pixels are in the low gain mode, after
+# correcting by a gain value of around 6.87, the pixels tend to saturate
+# around 90000. See xpp experiment xppe0314, run 184 as evidence.
+cspad_saturated_value = 90000
+
+# The dark average for the CSPAD detector is around 1100-1500. A pixel
+# histogram of a minimum projection of an uncorrected (raw) light run shows
+# a mostly flat tail up to ~800 ADU with a few bumps in the tail which
+# represent true underloads. Assume a dark average of 1200 ADU. After dark
+# subtraction, 800 - 1200 gives a minimum trusted value of -400. Reject
+# pixels less than this.
+cspad_min_trusted_value = -400
+
+# The pixel size in mm.  The pixel size is fixed and square, with side
+# length of 110 µm (Philipp et al., 2007).  XXX Should really clarify
+# this with Sol and Chris.
+#
+# XXX Andor: 13.5 µm square, CAMP: 75 µm, square (Strüder et al.,
+# 2010)
+pixel_size = 110e-3
+
 def dpack(active_areas=None,
           address=None,
           beam_center_x=None,

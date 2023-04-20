@@ -22,7 +22,7 @@ except AttributeError:
 asic_dimension = (194,185)
 asic_gap = 3
 pixel_size = 0.10992
-from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value, cspad_min_trusted_value
+from serialtbx.detector.cspad import cspad_saturated_value, cspad_min_trusted_value
 
 def get_psana_corrected_data(psana_det, evt, use_default=False, dark=True, common_mode=None, apply_gain_mask=True,
                              gain_mask_value=None, per_pixel_gain=False, gain_mask=None, additional_gain_factor=None):

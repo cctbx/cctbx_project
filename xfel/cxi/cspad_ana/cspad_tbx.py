@@ -25,24 +25,10 @@ from six.moves import zip
 
 from serialtbx import util
 import serialtbx.detector.cspad
+from serialtbx.detector.cspad import pixel_size
 
 __version__ = "$Revision$"
 
-
-# The CAMP and CSpad counters are both 14 bits wide (Strüder et al
-# 2010; Philipp et al., 2007), which means the physical limit is 2**14 - 1.
-# However, in practice, when the pixels are in the low gain mode, after
-# correcting by a gain value of around 6.87, the pixels tend to saturate
-# around 90000. See xpp experiment xppe0314, run 184 as evidence.
-cspad_saturated_value = 90000
-
-# The dark average for the CSPAD detector is around 1100-1500. A pixel
-# histogram of a minimum projection of an uncorrected (raw) light run shows
-# a mostly flat tail up to ~800 ADU with a few bumps in the tail which
-# represent true underloads. Assume a dark average of 1200 ADU. After dark
-# subtraction, 800 - 1200 gives a minimum trusted value of -400. Reject
-# pixels less than this.
-cspad_min_trusted_value = -400
 
 # As long as the mask value is outside of the trusted range, the pixel should
 # be ignored by any downstream software.
@@ -51,14 +37,6 @@ cspad_mask_value = -100000
 # The side length of a square quadrant from the old XtcExplorer code.
 # XXX This should be obsoleted!
 npix_quad = 850
-
-# The pixel size in mm.  The pixel size is fixed and square, with side
-# length of 110 µm (Philipp et al., 2007).  XXX Should really clarify
-# this with Sol and Chris.
-#
-# XXX Andor: 13.5 µm square, CAMP: 75 µm, square (Strüder et al.,
-# 2010)
-pixel_size = 110e-3
 
 # origin of section in quad coordinate system.  x-position
 # correspond to column number.  XXX Note/reference the source!
@@ -883,25 +861,9 @@ def env_detz(address, env):
   return None
 
 
-def env_distance(address, env, offset):
-  """The env_distance() function returns the distance between the
-  sample and the detector with the given address string in mm.  The
-  distance between the sample and the the detector's zero-point can
-  vary by an inch or more between different LCLS runs.  According to
-  Sébastien Boutet the offset should be stable to within ±0.5 mm
-  during a normal experiment.
-
-  @param address Full data source address of the DAQ device
-  @param env     Environment object
-  @param offset  Detector-sample offset in mm, corresponding to
-                 longest detector-sample distance
-  @return        Detector-sample distance, in mm
-  """
-
-  detz = env_detz(address, env)
-  if detz is not None:
-    return detz + offset
-  return None
+def env_distance(*kwargs):
+  """ thin wrapper """
+  return serialtbx.detector.xtc.env_distance(*kwargs)
 
 
 def env_sifoil(env):
@@ -1185,42 +1147,9 @@ def evt_timestamp(t=None):
 
   return util.timestamp(t)
 
-def evt_wavelength(evt, delta_k=0):
-  """The evt_wavelength() function returns the wavelength in Ångström
-  of the event pointed to by @p evt.  From Margaritondo & Rebernik
-  Ribic (2011): the dimensionless relativistic γ-factor is derived
-  from beam energy in MeV and the electron rest mass, K is a
-  dimensionless "undulator parameter", and L is the macroscopic
-  undulator period in Ångström.  See also
-  https://people.eecs.berkeley.edu/~attwood/srms/2007/Lec10.pdf
-
-  @param evt     Event data object, a configure object
-  @param delta_k Optional K-value correction
-  @return        Wavelength, in Ångström
-  """
-
-  if evt is not None:
-    ebeam = get_ebeam(evt)
-
-    if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
-      # pyana
-      return 12398.4187 / ebeam.fEbeamPhotonEnergy
-    if hasattr(ebeam, 'ebeamPhotonEnergy') and ebeam.ebeamPhotonEnergy() > 0:
-      # psana
-      return 12398.4187 / ebeam.ebeamPhotonEnergy()
-
-    if hasattr(ebeam, 'fEbeamL3Energy') and ebeam.fEbeamL3Energy > 0:
-      # pyana
-      gamma = ebeam.fEbeamL3Energy / 0.510998910
-    elif hasattr(ebeam, 'ebeamL3Energy') and ebeam.ebeamL3Energy() > 0:
-      # psana
-      gamma = ebeam.ebeamL3Energy() / 0.510998910
-    else:
-      return None
-    K = 3.5 + delta_k
-    L = 3.0e8
-    return L / (2 * gamma**2) * (1 + K**2 / 2)
-  return None
+def evt_wavelength(*kwargs):
+  """ thin wrapper """
+  return serialtbx.detector.xtc.evt_wavelength(*kwargs)
 
 def old_address_to_new_address(address):
   """ Change between old and new style detector addresses.

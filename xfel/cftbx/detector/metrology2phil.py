@@ -34,8 +34,8 @@ def sections2phil(sections, verbose):
   # 110 um.  Because cspad_tbx depends on pyana, it may fail to import
   # in which case a hardcoded fallback is provided.
   try:
-    from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value as sv
-    from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
+    from serialtbx.detector.cspad import cspad_saturated_value as sv
+    from serialtbx.detector.cspad import pixel_size as ps
     saturated_value = sv
     pixel_size = ps * 1e-3
   except ImportError:
