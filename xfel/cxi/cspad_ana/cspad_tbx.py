@@ -26,6 +26,7 @@ from six.moves import zip
 from serialtbx import util
 import serialtbx.detector.cspad
 from serialtbx.detector.cspad import pixel_size
+from serialtbx.detector.xtc import old_address_to_new_address
 
 __version__ = "$Revision$"
 
@@ -1150,13 +1151,6 @@ def evt_timestamp(t=None):
 def evt_wavelength(*kwargs):
   """ thin wrapper """
   return serialtbx.detector.xtc.evt_wavelength(*kwargs)
-
-def old_address_to_new_address(address):
-  """ Change between old and new style detector addresses.
-  I.E. CxiDs1-0|Cspad-0 becomes CxiDs1.0:Cspad.0
-  @param address detector address to convert
-  """
-  return address.replace('-','.').replace('|',':')
 
 def getConfig(address, env):
   """ Given a detector address, find the config object in an env object

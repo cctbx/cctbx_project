@@ -18,6 +18,13 @@ def basis_from_geo(geo, use_z = True):
 
   return basis(orientation = rot, translation = trans)
 
+def old_address_to_new_address(address):
+  """ Change between old and new style detector addresses.
+  I.E. CxiDs1-0|Cspad-0 becomes CxiDs1.0:Cspad.0
+  @param address detector address to convert
+  """
+  return address.replace('-','.').replace('|',':')
+
 def evt_wavelength(evt, delta_k=0):
   """The evt_wavelength() function returns the wavelength in Ångström
   of the event pointed to by @p evt.  From Margaritondo & Rebernik

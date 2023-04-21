@@ -46,9 +46,9 @@ def get_data_from_psana_event(evt, address):
   @param address old style psana detector address
   @return numpy array with raw data"""
   from psana import Source, Camera
-  from xfel.cxi.cspad_ana import cspad_tbx
+  from serialtbx.detector import xtc
   import numpy as np
-  address = cspad_tbx.old_address_to_new_address(address)
+  address = xtc.old_address_to_new_address(address)
   src=Source('DetInfo(%s)'%address)
   data = evt.get(Camera.FrameV1,src)
   if data is not None:
