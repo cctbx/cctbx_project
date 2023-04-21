@@ -1711,6 +1711,14 @@ class _():
     }
     data["TYR"]=data["PHE"]
 
+    for code, item in data.items():
+      current = item.get('pairs', [])
+      adds = []
+      for a1, a2 in current:
+        if a1[0]=='H' and a2[0]=='H':
+          adds.append(['D%s'%a1[1:], 'D%s'%a2[1:]])
+      item['pairs']+=adds
+
     sites_cart = self.atoms().extract_xyz()
     t0=time.time()
     info = ""
