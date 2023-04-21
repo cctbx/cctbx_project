@@ -3,45 +3,8 @@ from __future__ import absolute_import, division, print_function
 from dxtbx.format.cbf_writer import add_frame_specific_cbf_tables
 from scitbx.array_family import flex
 
-# given value of rayonix detector saturation xppi6115
-rayonix_saturated_value = 2**16 -1
-
-# minimum value for rayonix data
-rayonix_min_trusted_value = 0
-rayonix_max_trusted_value = rayonix_saturated_value - 1
-
-def get_rayonix_pixel_size(bin_size):
-  ''' Given a bin size determine a pixel size.
-
-Michael Blum from Rayonix said The pixel size is recorded in the header,
-but can be derived trivially from the overall dimension of the corrected imaging
-area (170mm) and the number of pixels. (3840 unbinned). The corrected image is
-forced to this size.
-
-unbinned 170/3840  = 0.04427
-
-I believe the accuracy of the MEAN pixel size to be at least as good as 0.1%
-which is the limit to which I can measure our calibration plate and exceeds the
- parallax error in our calibration station.
-
-Note, the Rayonix MX340 has the same pixel size as the MX170:
-
-unbinned 340/7680  = 0.04427
-
-  @param bin_size rayonix bin size as an integer
-  '''
-  pixel_size=bin_size*170/3840
-  return pixel_size
-
-def get_rayonix_detector_dimensions(env):
-  ''' Given a psana env object, find the detector dimensions
-      @param env psana environment object
-  '''
-  import psana
-  cfgs = env.configStore()
-  rayonix_cfg = cfgs.get(psana.Rayonix.ConfigV2, psana.Source('Rayonix'))
-  if not rayonix_cfg: return None, None
-  return rayonix_cfg.width(), rayonix_cfg.height()
+from serialtbx.detector.rayonix import rayonix_min_trusted_value, rayonix_max_trusted_value, get_rayonix_pixel_size
+from serialtbx.detector.rayonix import get_data_from_psana_event, rayonix_saturated_value, get_rayonix_detector_dimensions # import dependency
 
 def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distance, bin_size, detector_size, verbose = True, header_only = False):
   # set up the metrology dictionary to include axis names, pixel sizes, and so forth
@@ -250,21 +213,6 @@ def get_dxtbx_from_params(params, detector_size):
   cbf = get_rayonix_cbf_handle(None, metro, None, "test", None, fake_distance, params.bin_size, detector_size, verbose = True, header_only = True)
   base_dxtbx = FormatCBFRayonixInMemory(cbf)
   return base_dxtbx
-
-def get_data_from_psana_event(evt, address):
-  """ Read the pixel data for a Rayonix image from an event
-  @param psana event object
-  @param address old style psana detector address
-  @return numpy array with raw data"""
-  from psana import Source, Camera
-  from xfel.cxi.cspad_ana import cspad_tbx
-  import numpy as np
-  address = cspad_tbx.old_address_to_new_address(address)
-  src=Source('DetInfo(%s)'%address)
-  data = evt.get(Camera.FrameV1,src)
-  if data is not None:
-    data = data.data16().astype(np.float64)
-  return data
 
 def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=True):
   """
