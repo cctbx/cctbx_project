@@ -426,10 +426,10 @@ void kokkos_sum_over_steps(
                         if (detector_thick > 0.0 && detector_attnlen > 0.0) {
                             // inverse of effective thickness increase
                             CUDAREAL _parallax = _diffracted.dot(_o_vec);
-                            _capture_fraction = ::Kokkos::Experimental::exp(
+                            _capture_fraction = ::Kokkos::exp(
                                                     -_thick_tic * detector_thickstep /
                                                     detector_attnlen / _parallax) -
-                                                ::Kokkos::Experimental::exp(
+                                                ::Kokkos::exp(
                                                     -(_thick_tic + 1) * detector_thickstep /
                                                     detector_attnlen / _parallax);
                         }
@@ -505,10 +505,10 @@ void kokkos_sum_over_steps(
 
                                 if (exparg < 35)
                                     if (no_Nabc_scale)
-                                        I0 = ::Kokkos::Experimental::exp(-2 * exparg);
+                                        I0 = ::Kokkos::exp(-2 * exparg);
                                     else
                                         I0 = (NABC_det_sq) *
-                                             ::Kokkos::Experimental::exp(-2 * exparg);
+                                             ::Kokkos::exp(-2 * exparg);
 
                                 // are we doing diffuse scattering
                                 CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
@@ -570,14 +570,14 @@ void kokkos_sum_over_steps(
                                             CUDAREAL atom_y = atom_data(i_atom * 5 + 1);
                                             CUDAREAL atom_z = atom_data(i_atom * 5 + 2);
                                             CUDAREAL B = atom_data(i_atom * 5 + 3);  // B factor
-                                            B = ::Kokkos::Experimental::exp(
+					    B = ::Kokkos::exp(
                                                 -B * S_2 / 4.0);  // TODO: speed me up?
                                             CUDAREAL occ = atom_data(i_atom * 5 + 4);  // occupancy
                                             CUDAREAL r_dot_h =
                                                 _h0 * atom_x + _k0 * atom_y + _l0 * atom_z;
                                             CUDAREAL phase = 2 * M_PI * r_dot_h;
-                                            CUDAREAL s_rdoth = ::Kokkos::Experimental::sin(phase);
-                                            CUDAREAL c_rdoth = ::Kokkos::Experimental::cos(phase);
+                                            CUDAREAL s_rdoth = ::Kokkos::sin(phase);
+                                            CUDAREAL c_rdoth = ::Kokkos::cos(phase);
                                             CUDAREAL Bocc = B * occ;
                                             CUDAREAL BC = B * c_rdoth;
                                             CUDAREAL BS = B * s_rdoth;
@@ -601,7 +601,7 @@ void kokkos_sum_over_steps(
                                     CUDAREAL Freal = _F_cell;
                                     CUDAREAL Fimag = _F_cell2;
                                     _F_cell =
-                                        ::Kokkos::Experimental::sqrt(Freal * Freal + Fimag * Fimag);
+                                        ::Kokkos::sqrt(Freal * Freal + Fimag * Fimag);
                                     if (refine_fp_fdp) {
                                         c_deriv_Fcell =
                                             Freal * c_deriv_Fcell_real + Fimag * c_deriv_Fcell_imag;
@@ -1125,7 +1125,7 @@ void kokkos_sum_over_steps(
                 // correction for polarized _incident beam
                 _polar =
                     0.5 * (1.0 + cos2theta_sqr -
-                           kahn_factor * ::Kokkos::Experimental::cos(2 * _psi) * sin2theta_sqr);
+                           kahn_factor * ::Kokkos::cos(2 * _psi) * sin2theta_sqr);
             }
 
             CUDAREAL _om = 1;

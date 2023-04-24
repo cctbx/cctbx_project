@@ -1,6 +1,6 @@
 #include "simtbx/kokkos/kokkos_instance.h"
 
-using Kokkos::InitArguments;
+using Kokkos::InitializationSettings;
 using Kokkos::initialize;
 using Kokkos::finalize;
 
@@ -15,11 +15,9 @@ namespace Kokkos {
   }
 
   kokkos_instance::kokkos_instance(int const& t_deviceID) {
-    InitArguments kokkos_init;
-    kokkos_init.device_id = t_deviceID;
-
     if (!m_isInitialized) {
-      initialize(kokkos_init);
+      initialize(InitializationSettings()
+		      .set_device_id(t_deviceID));
 
       m_isInitialized = true;
       m_isFinalized = false;

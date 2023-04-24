@@ -10,8 +10,8 @@
 
 // #ifdef KOKKOS_CORE_HPP
 //     template <typename T> KOKKOS_FUNCTION T sin_func(T x) { return
-//     ::Kokkos::Experimental::sin(x); } template <typename T> KOKKOS_FUNCTION T cos_func(T x) {
-//     return ::Kokkos::Experimental::cos(x); }
+//     ::Kokkos::sin(x); } template <typename T> KOKKOS_FUNCTION T cos_func(T x) {
+//     return ::Kokkos::cos(x); }
 // #else
 //     #include <cmath>
 //     template <typename T> KOKKOS_FUNCTION T sin_func(T x) { return sin(x); }
@@ -60,8 +60,8 @@ struct vector3 : public vector<NumType, 3> {
         const {
         // NumType sinphi = sin_func(angle);
         // NumType cosphi = cos_func(angle);
-        NumType sinphi = ::Kokkos::Experimental::sin(angle);
-        NumType cosphi = ::Kokkos::Experimental::cos(angle);
+        NumType sinphi = ::Kokkos::sin(angle);
+        NumType cosphi = ::Kokkos::cos(angle);
 
         NumType dot_factor = axis.dot(*this) * (1.0 - cosphi);
 

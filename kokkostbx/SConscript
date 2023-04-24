@@ -37,10 +37,6 @@ if env_etc.enable_kokkos:
     linked_libraries += " -lcudart -lcuda"
   os.environ['LDLIBS'] = linked_libraries
 
-  cxx_standard = '14'
-  if use_sycl:
-    cxx_standard = '17'
-
   original_cxx = None
   kokkos_lib = 'libkokkos.a'
   kokkos_cxxflags = None
@@ -119,7 +115,7 @@ if env_etc.enable_kokkos:
     returncode = subprocess.call([
         'cmake',
         os.environ['KOKKOS_PATH'],
-        '-DCMAKE_CXX_STANDARD={}'.format(cxx_standard),
+        '-DCMAKE_CXX_STANDARD={}'.format('17'),
         '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
         '-DCMAKE_INSTALL_LIBDIR=lib',
         '-DBUILD_SHARED_LIBS={}'.format(OnOff[use_sycl]),
