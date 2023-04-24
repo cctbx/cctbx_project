@@ -609,12 +609,14 @@ namespace boost_python { namespace {
 
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+
 #ifdef DIFFBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
 #endif
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-      .def("kokkos_gpu_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
+      .def("kokkos_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
 #endif
 
       .def("set_mosaic_blocks_prime",
@@ -770,9 +772,9 @@ namespace boost_python { namespace {
              "coefficients for source_lambda refinement: `lambda = coef0 + coef1*source`  where `source` is the source index")
 
      // CUDA PROPERTIES
-      .add_property("use_cuda",
-             make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
-             make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
+      .add_property("use_gpu",
+             make_getter(&simtbx::nanoBragg::diffBragg::use_gpu,rbv()),
+             make_setter(&simtbx::nanoBragg::diffBragg::use_gpu,dcp()),
              "use GPU acceleration")
 
       .add_property("record_time",

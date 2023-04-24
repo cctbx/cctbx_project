@@ -63,7 +63,7 @@ class RefineLauncher:
             raise ValueError("Cannot refine because params.refiner.max_calls is empty")
 
         if os.environ.get("DIFFBRAGG_CUDA") is not None:
-            params.refiner.use_cuda = True
+            params.refiner.use_gpu = True
 
         return params
 

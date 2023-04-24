@@ -24,7 +24,7 @@ def main():
     print (angles_XYZ*180 / np.pi)
 
     D = get_diffBragg_instance()
-    D.use_cuda = args.kokkos
+    D.use_gpu = args.kokkos
 
     rotX, rotY, rotZ = 0, 1, 2
     D.refine(rotX)  # rotX

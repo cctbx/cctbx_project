@@ -59,7 +59,7 @@ with DeviceWrapper(0) as _:
     D.refine(rot_idx)
     D.initialize_managers()
     D.set_value(rot_idx, 0)
-    D.use_cuda = args.kokkos
+    D.use_gpu = args.kokkos
     #D.printout_pixel_fastslow = 786, 567
     D.add_diffBragg_spots()
     img0 = D.raw_pixels_roi.as_numpy_array()

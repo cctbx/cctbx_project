@@ -99,7 +99,7 @@ with DeviceWrapper(0) as _:
     SIM.add_air = True
     SIM.add_water = True
     SIM.include_noise = True
-    SIM.D.use_cuda = args.kokkos
+    SIM.D.use_gpu = args.kokkos
     SIM.D.compute_curvatures = args.curvatures
     SIM.D.add_diffBragg_spots()
 

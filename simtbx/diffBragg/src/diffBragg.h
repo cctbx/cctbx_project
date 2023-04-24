@@ -164,11 +164,20 @@ class diffBragg: public nanoBragg{
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
     // diffBragg_cudaPointers cuda_pointers;
-    void kokkos_free() { diffBragg_runner.reset(); }
+    inline void kokkos_free() { diffBragg_runner.reset(); }
     // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
     std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
     // diffBraggKOKKOS diffBragg_runner;
 #endif
+
+    inline void gpu_free(){
+#ifdef DIFFBRAGG_HAVE_CUDA
+	    cuda_free();
+#endif
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+	    kokkos_free();
+#endif
+    }
 
   // methods
   void update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value);
@@ -316,7 +325,7 @@ class diffBragg: public nanoBragg{
   bool update_refine_flags_on_device=false;
   bool update_step_positions_on_device=false;
   bool update_panel_deriv_vecs_on_device=false;
-  bool use_cuda=false;
+  bool use_gpu=false;
   bool force_cpu=false;
   int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
 
