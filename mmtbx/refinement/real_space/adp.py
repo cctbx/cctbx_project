@@ -289,9 +289,10 @@ class ncs_aware_refinement(object):
                 break
               rw = rw*2
               flipped = True
-          if(log is not None):
-            print("r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
-              fmodel.r_work(), rms_b, rw), file=log)
+            if(log is not None):
+              print(
+                "r_work: %6.4f rms_B_bonded: %4.2f restraints_weight: %6.4f"%(
+                fmodel.r_work(), rms_b, rw), file=log)
           if(rms_b_prev is None): break
       else:
         for it in range(1,2):
