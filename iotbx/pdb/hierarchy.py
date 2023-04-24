@@ -1723,34 +1723,35 @@ class _():
     t0=time.time()
     info = ""
     for rg in self.residue_groups():
+      flip_it=False
       for ag in rg.atom_groups():
         flip_data = data.get(ag.resname, None)
         if flip_data is None: continue
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
-        flip_it=False
-        if 'dihedral' in flip_data:
-          sites = []
-          for d in flip_data["dihedral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          dihedral = dihedral_angle(sites=sites, deg=True)
-          if abs(dihedral)>360./flip_data["value"][1]/4:
-            flip_it=True
-        elif 'chiral' in flip_data:
-          sites = []
-          for d in flip_data["chiral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
-                                  volume_ideal=flip_data["value"][0],
-                                  both_signs=flip_data['value'][1],
-                                  )
-          if abs(delta)>2.:
-            flip_it=True
+        if not flip_it:
+          if 'dihedral' in flip_data:
+            sites = []
+            for d in flip_data["dihedral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            dihedral = dihedral_angle(sites=sites, deg=True)
+            if abs(dihedral)>360./flip_data["value"][1]/4:
+              flip_it=True
+          elif 'chiral' in flip_data:
+            sites = []
+            for d in flip_data["chiral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
+                                    volume_ideal=flip_data["value"][0],
+                                    both_signs=flip_data['value'][1],
+                                    )
+            if abs(delta)>2.:
+              flip_it=True
         if flip_it:
           info += '    Residue "%s %s %s":' % (
             rg.parent().id,
