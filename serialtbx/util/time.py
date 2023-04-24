@@ -1,6 +1,6 @@
 from __future__ import division
 
-import time
+import math, time
 
 def now_s_ms():
   """The now_s_ms() function returns the time since

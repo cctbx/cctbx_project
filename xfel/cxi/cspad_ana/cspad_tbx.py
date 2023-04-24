@@ -26,7 +26,7 @@ from six.moves import zip
 from serialtbx import util
 import serialtbx.detector.cspad
 from serialtbx.detector.cspad import pixel_size
-from serialtbx.detector.xtc import old_address_to_new_address
+from serialtbx.detector.xtc import old_address_to_new_address, get_ebeam, env_detz, address_split
 
 __version__ = "$Revision$"
 
@@ -51,51 +51,6 @@ ypos_sec2x1 = [[   0,    0,  214,    1,  425,  425,  615,  402],  # 2:5 were not
                [   0,    0,  214,    1,  425,  425,  615,  402],
                [   0,    0,  215,    3,  431,  431,  616,  403],
                [   0,    0,  214,    1,  425,  425,  615,  403]] # 2:5 were not measured
-
-
-def address_split(address, env=None):
-  """The address_split() function splits an address into its four
-  components.  Address strings are on the form
-  detector-detectorID|device-deviceID, where the detectors must be in
-  dir(xtc.DetInfo.Detector) and device must be in
-  (xtc.DetInfo.Device).
-  @param address Full data source address of the DAQ device
-  @param env     Optional env to dereference an alias into an address
-  @return        Four-tuple of detector name, detector ID, device, and
-                 device ID
-  """
-
-  import re
-
-  # pyana
-  m = re.match(
-    r"^(?P<det>\S+)\-(?P<det_id>\d+)\|(?P<dev>\S+)\-(?P<dev_id>\d+)$", address)
-  if m is not None:
-    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
-
-  # psana
-  m = re.match(
-    r"^(?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)$", address)
-  if m is not None:
-    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
-
-  # psana DetInfo string
-  m = re.match(
-    r"^DetInfo\((?P<det>\S+)\.(?P<det_id>\d+)\:(?P<dev>\S+)\.(?P<dev_id>\d+)\)$", address)
-  if m is not None:
-    return (m.group('det'), m.group('det_id'), m.group('dev'), m.group('dev_id'))
-
-  if env is not None:
-    # Try to see if this is a detector alias, and if so, dereference it. Code from psana's Detector/PyDetector.py
-    amap = env.aliasMap()
-    alias_src = amap.src(address) # string --> DAQ-style psana.Src
-
-    # if it is an alias, look up the full name
-    if amap.alias(alias_src) != '':         # alias found
-      address = str(alias_src)
-      return address_split(address)
-
-  return (None, None, None, None)
 
 
 def cbcaa(config, sections):
@@ -735,31 +690,6 @@ def pathsubst(format_string, evt, env, **kwargs):
                     stream=stream,
                     subprocess=env.subprocess(),
                     user=getuser())
-
-def get_ebeam(evt):
-  try:
-    # pyana
-    ebeam = evt.getEBeam()
-  except AttributeError as e:
-    from psana import Source, Bld
-    src = Source('BldInfo(EBeam)')
-    ebeam = evt.get(Bld.BldDataEBeamV6, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV5, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV4, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV3, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV2, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV1, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV0, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
-
-  return ebeam
 
 def env_laser_status(env, laser_id):
   """The return value is a bool that indicates whether the laser in

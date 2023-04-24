@@ -1,4 +1,5 @@
 from __future__ import division
+from scitbx import matrix
 
 def center(coords):
   """ Returns the average of a list of vectors
@@ -104,7 +105,7 @@ def get_center(pg):
   """ Find the center of a panel group pg, projected on its fast/slow plane """
   if pg.is_group():
     # find the average center of all this group's children
-    children_center = col((0,0,0))
+    children_center = matrix.col((0,0,0))
     count = 0
     for p in iterate_panels(pg):
       children_center += get_center(p)
@@ -112,12 +113,12 @@ def get_center(pg):
     children_center /= count
 
     # project the children center onto the plane of the panel group
-    pgf = col(pg.get_fast_axis())
-    pgs = col(pg.get_slow_axis())
-    pgn = col(pg.get_normal())
-    pgo = col(pg.get_origin())
+    pgf = matrix.col(pg.get_fast_axis())
+    pgs = matrix.col(pg.get_slow_axis())
+    pgn = matrix.col(pg.get_normal())
+    pgo = matrix.col(pg.get_origin())
 
     return (pgf.dot(children_center) * pgf) + (pgs.dot(children_center) * pgs) + (pgn.dot(pgo) * pgn)
   else:
     s = pg.get_image_size()
-    return col(pg.get_pixel_lab_coord((s[0]/2, s[1]/2)))
+    return matrix.col(pg.get_pixel_lab_coord((s[0]/2, s[1]/2)))

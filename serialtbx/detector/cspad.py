@@ -1,6 +1,9 @@
 from __future__ import division
 
+from libtbx.utils import Sorry
 from scitbx import matrix
+from scitbx.array_family import flex
+import serialtbx.util.time
 import os
 
 # The CAMP and CSpad counters are both 14 bits wide (Strüder et al
@@ -53,7 +56,7 @@ def read_slac_metrology(path = None, geometry = None, plot=False, include_asic_o
     try:
       from PSCalib.GeometryAccess import GeometryAccess
       geometry = GeometryAccess(path)
-    except Exception as e:
+    except Exception:
       raise Sorry("Can't parse this metrology file")
 
   metro = {}
@@ -223,7 +226,7 @@ def dpack(active_areas=None,
 
   # Create a time stamp of the current time if none was supplied.
   if timestamp is None:
-    timestamp = evt_timestamp()
+    timestamp = serialtbx.util.time.timestamp()
 
   # For unknown historical reasons, the dictionary must contain both
   # CCD_IMAGE_SATURATION and SATURATED_VALUE items.
