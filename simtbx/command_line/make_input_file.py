@@ -3,12 +3,16 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.make_input_file
 
 from argparse import ArgumentParser
-parser = ArgumentParser()
+from argparse import ArgumentDefaultsHelpFormatter as show_defaults_formatter
+parser = ArgumentParser(formatter_class=show_defaults_formatter)
 parser.add_argument("dirnames", nargs="+", type=str, help="processing dirs")
 parser.add_argument("filename", type=str, help="the name of the diffBragg input file written at the end of this script")
-parser.add_argument("--splitDir", default=None, type=str)
-parser.add_argument("--exptSuffix", type=str, default="refined.expt")
-parser.add_argument("--reflSuffix", type=str, default="indexed.refl")
+parser.add_argument("--splitDir", default=None, type=str, help="optional folder for writing split expts and refls. If None, then "
+                                                               "split files will be written in same folders as their sources")
+parser.add_argument("--exptSuffix", type=str, default="refined.expt", help="find experiments with this suffix")
+parser.add_argument("--reflSuffix", type=str, default="indexed.refl", help="find reflection files with this suffix")
+
+
 args = parser.parse_args()
 
 import glob

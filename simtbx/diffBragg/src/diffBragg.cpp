@@ -2295,7 +2295,17 @@ std::string get_hkl_key(int h, int k , int l){
 }
 
 void diffBragg::linearize_Fhkl(bool compute_dists){
+//      TODO assert eig_O and hall_symbol are properly set before proceeding
         cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
+        Eigen::Matrix3d O_inv = db_cryst.eig_O.inverse();
+        if (verbose>1){
+            printf("Hall symbol %s\n", db_cryst.hall_symbol.c_str());
+            printf("O_inv:\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n",
+                O_inv(0,0), O_inv(0,1), O_inv(0,2),
+                O_inv(1,0), O_inv(1,1), O_inv(1,2),
+                O_inv(2,0), O_inv(2,1), O_inv(2,2));
+        }
+
         cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
 
         cctbx::uctbx::unit_cell ucell;
@@ -2327,13 +2337,16 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
                                 int k0 = k+ k_min;
                                 int l0 = l+ l_min;
 
-                                // TODO: add change of basis operation
+                                Eigen::Vector3d HKL((double)h0, (double)k0, (double)l0);
+                                HKL = O_inv*HKL;
+                                h0 = (int)HKL[0];
+                                k0 = (int)HKL[1];
+                                l0 = (int)HKL[2];
 
                                 cctbx::miller::index<int> hkl0(h0,k0,l0);
                                 cctbx::miller::asym_index ai(sg, asu, hkl0);
                                 cctbx::miller::index_table_layout_adaptor ila = ai.one_column(true);
                                 cctbx::miller::index<int> hkl0_asu = ila.h();
-
 
                                 int h_asu = hkl0_asu[0];
                                 int k_asu = hkl0_asu[1];

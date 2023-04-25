@@ -126,6 +126,9 @@ namespace simtbx { namespace Kokkos {
         .def("add_background", &simtbx::Kokkos::exascale_api::add_background,
              (arg_("detector"), arg_("override_source")=-1),
              "Add a background field directly on the GPU")
+        .def("add_noise", &simtbx::Kokkos::exascale_api::add_noise,
+             (arg_("detector")),
+             "Modify pixels with noise on CPU. Unusual pattern, returns pixels directly instead of saving persistent")
         .def("show",&simtbx::Kokkos::exascale_api::show)
         ;
     }

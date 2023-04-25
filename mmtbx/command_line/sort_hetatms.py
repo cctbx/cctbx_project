@@ -60,6 +60,9 @@ loose_chain_id = X
     macromolecule chain.
   .short_caption = Loose chain ID
   .input_size = 48
+model_skip_expand_with_mtrix = False
+  .type = bool
+  .help = If set to false then expand the model into NCS copies using matrix present in PDB file
 """
 
 master_params = """
@@ -443,7 +446,12 @@ def validate_params(params):
   if not os.path.isfile(params.file_name):
     raise Sorry("Model file (%s) is missing." %(params.file_name))
   from iotbx.data_manager import DataManager
-  dm = DataManager()
+  if (params.model_skip_expand_with_mtrix):
+    # phenix.famos doesn't need NCS expanded model and sometimes expansion crashes
+    # in python 3. Use this keyword for phenix.famos to avoid expansion
+    dm = DataManager(custom_options=['model_skip_expand_with_mtrix'])
+  else:
+    dm = DataManager()
   m = dm.get_model(params.file_name)
   if not m:
     raise Sorry("Unable to read the file %s" %(params.file_name))

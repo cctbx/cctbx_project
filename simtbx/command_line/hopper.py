@@ -249,7 +249,7 @@ class Script:
                 nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
             x0 = [1] * nparam
             try:
-                x = Modeler.Minimize(x0, SIM)
+                x = Modeler.Minimize(x0, SIM, i_exp=i_exp)
             except StopIteration:
                 x = Modeler.target.x0
             if self.params.profile:

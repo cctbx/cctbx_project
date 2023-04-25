@@ -87,6 +87,17 @@ def unpickle_miller_arrays(file_name):
       return None
   return result
 
+def _cif_prefilter(file_name):
+  f_root, f_ext = os.path.splitext(file_name)
+  if f_ext.lower() == '.gz': f_root, f_ext = os.path.splitext(f_root)
+  if f_ext.lower() in ['.cif', '.mmcif', '.dic']: return True
+  with open(file_name) as f:
+    for l in f:
+      if l.strip().startswith('#'): continue
+      if not l.strip(): continue
+      return l.strip().lower().startswith('data_')
+  return False
+
 def try_all_readers(file_name):
   try: content = mtz.object(file_name=file_name)
   except RuntimeError: pass
@@ -126,6 +137,10 @@ def try_all_readers(file_name):
   except Exception: pass
   else: return ("shelx_hklf", content)
   try:
+    # The cif parser uses a lot of memory when reading a file with millions
+    # of words (like an xds_ascii file). Thus we filter out obvious non-cif
+    # files.
+    assert _cif_prefilter(file_name)
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
     for block in content.model().values():

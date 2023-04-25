@@ -732,9 +732,10 @@ def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flu
 def simulator_for_refinement(expt, params):
     # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
     MAIN_LOGGER.info(
-        "Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
+        "Setting initial mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
     if params.simulator.crystal.has_isotropic_mosaicity:
         params.simulator.crystal.anisotropic_mosaicity = None
+        params.simulator.crystal.mosaicity = params.init.eta_abc[0]
     else:
         params.simulator.crystal.anisotropic_mosaicity = params.init.eta_abc
     MAIN_LOGGER.info("Number of mosaic domains from params: %d" % params.simulator.crystal.num_mosaicity_samples)
@@ -861,7 +862,30 @@ def simulator_from_expt_and_params(expt, params=None):
         kern_size = SIM.psf_args["psf_radius"]*2 + 1
         SIM.PSF = psf.makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
 
+    update_SIM_with_gonio(SIM, params)
+
     return SIM
+
+
+def update_SIM_with_gonio(SIM, params=None, delta_phi=None, num_phi_steps=5):
+    """
+
+    :param SIM: sim_data instance
+    :param params: diffBragg phil parameters instance
+    :param delta_phi: how much to rotate gonio during model
+    :param num_phi_steps: number of phi steps
+    :return:
+    """
+    if not hasattr(SIM, "D"):
+        raise AttributeError("Need to instantiate diffBragg first")
+    if params is not None:
+        delta_phi = params.simulator.gonio.delta_phi
+        num_phi_steps = params.simulator.gonio.phi_steps
+
+    if delta_phi is not None:
+        SIM.D.phi_deg = 0
+        SIM.D.osc_deg = delta_phi
+        SIM.D.phisteps = num_phi_steps
 
 
 def get_complex_fcalc_from_pdb(
@@ -927,7 +951,8 @@ def open_mtz(mtzfname, mtzlabel=None, verbose=False):
             break
 
     assert foundlabel, "MTZ Label not found... \npossible choices: %s" % (" ".join(possible_labels))
-    ma = ma.as_amplitude_array()
+    if not ma.is_xray_amplitude_array():
+        ma = ma.as_amplitude_array()
     return ma
 
 

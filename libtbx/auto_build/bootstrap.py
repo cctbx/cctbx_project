@@ -717,17 +717,17 @@ class rosetta_class(SourceModule):
   module = 'rosetta'
   authenticated = [
     'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/'+rosetta_version_tar_bundle+'/',
+    '%(cciuser)s@boa.lbl.gov:/net/cci/auto_build/externals/'+rosetta_version_tar_bundle+'/',
   ]
   authenticated = [
     'scp',
-    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version_tar_bundle+'.tgz']
+    '%(cciuser)s@boa.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version_tar_bundle+'.tgz']
 
 class afitt_class(SourceModule):
   module = 'afitt'
   authenticated = [
     'scp',
-    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+afitt_version+'.gz']
+    '%(cciuser)s@boa.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+afitt_version+'.gz']
 
 # Core CCTBX repositories
 # These must all provide anonymous access.
@@ -761,9 +761,9 @@ class qrefine_module(SourceModule):
 
 class mon_lib_module(SourceModule):
   module = 'mon_lib'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/mon_lib.gz']
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'mon_lib.tar.gz', '/net/cci/auto_build/repositories/mon_lib']
-  #authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
+  anonymous = ['curl', 'http://boa.lbl.gov/repositories/mon_lib.gz']
+  authentarfile = ['%(cciuser)s@boa.lbl.gov', 'mon_lib.tar.gz', '/net/cci/auto_build/repositories/mon_lib']
+  #authenticated = ['rsync', '%(cciuser)s@boa.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class geostd_module(SourceModule):
   module = 'geostd'
@@ -823,7 +823,7 @@ class gui_resources_module(SourceModule):
 
 class opt_resources_module(SourceModule):
   module = 'opt_resources'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/opt_resources/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/opt_resources/trunk']
 
 class eigen_module(SourceModule):
   module = 'eigen'
@@ -867,27 +867,27 @@ class phenix_colabs(SourceModule):
 
 class plex_module(SourceModule):
   module = 'Plex'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/Plex/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/Plex/trunk']
 
 class pyquante_module(SourceModule):
   module = 'PyQuante'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/PyQuante/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/PyQuante/trunk']
 
 class chem_data_module(SourceModule):
   module = 'chem_data'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/chem_data/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/chem_data/trunk']
 
 class elbow_module(SourceModule):
   module = 'elbow'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/elbow/trunk']
 
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/ksdssp/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/ksdssp/trunk']
 
 class pulchra_module(SourceModule):
   module = 'pulchra'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/pulchra/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/pulchra/trunk']
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
@@ -895,19 +895,19 @@ class solve_resolve_module(SourceModule):
 
 class reel_module(SourceModule):
   module = 'reel'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/reel/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/reel/trunk']
 
 class muscle_module(SourceModule):
   module = 'muscle'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/muscle/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/muscle/trunk']
 
 class cxi_xdr_xes_module(SourceModule):
   module = 'cxi_xdr_xes'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/cxi_xdr_xes/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/cxi_xdr_xes/trunk']
 
 class buildbot_module(SourceModule):
   module = 'buildbot'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/buildbot/trunk']
+  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/buildbot/trunk']
 
 class phenix_pathwalker_module(SourceModule):
   module = 'phenix_pathwalker'
@@ -972,7 +972,7 @@ class dxtbx_module(SourceModule):
 class dials_regression_module(SourceModule):
   module = 'dials_regression'
   authenticated = ['svn',
-                   'svn+ssh://%(cciuser)s@cci.lbl.gov/dials_regression/trunk']
+                   'svn+ssh://%(cciuser)s@boa.lbl.gov/dials_regression/trunk']
 
 class iota_module(SourceModule):
   module = 'iota'
@@ -991,7 +991,7 @@ class msgpack_module(SourceModule):
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
   authenticated = ['svn',
-                   'svn+ssh://%(cciuser)s@cci.lbl.gov/xfel_regression/trunk']
+                   'svn+ssh://%(cciuser)s@boa.lbl.gov/xfel_regression/trunk']
 
 class xia2_module(SourceModule):
   module = 'xia2'
@@ -2106,8 +2106,8 @@ class PhaserTNGBuilder(PhaserBuilder):
   LIBTBX = PhaserBuilder.LIBTBX + ['phasertng', 'phaser_voyager', 'voyager_regression']
 
   def add_tests(self):
-    #self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
     self.add_test_parallel(module='voyager_regression') # run voyager_regression/run_tests.py file
+    self.add_test_parallel(module='phaser_regression') # run phaser_regression/run_tests.py file
 
   def get_libtbx_configure(self):
     configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()

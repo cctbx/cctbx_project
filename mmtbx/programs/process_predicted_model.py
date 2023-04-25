@@ -136,6 +136,7 @@ Inputs: Model file (PDB, mmCIF)
     self.starting_model = self.model
     self.model_list = []
     self.processed_model = None
+    self.processed_model_text = None
     self.processed_model_file_name = None
     self.processed_model_file_name_list = []
 
@@ -170,6 +171,9 @@ Inputs: Model file (PDB, mmCIF)
       prefix = "%s_processed" %(prefix)
       prefix = os.path.basename(prefix)
     self.processed_model_file_name = "%s.pdb" %(prefix)
+    if not info.model or info.model.overall_counts().n_residues < 1:
+      print("No residues obtained after processing...", file = self.logger)
+      return None
     if (self.params.output_files.maximum_output_b is not None) and (
        info.model.get_b_iso().min_max_mean().max >
        self.params.output_files.maximum_output_b):
@@ -179,26 +183,35 @@ Inputs: Model file (PDB, mmCIF)
          maximum_output_b = self.params.output_files.maximum_output_b)
 
     if self.params.output_files.single_letter_chain_ids:
-      # convert all chain_ids to single character
-      mm = convert_chain_ids_to_single_character(mm)
+      # convert all chain_ids to single character (A)
+      mm_to_split = convert_chain_ids_to_single_character(mm, chain_id = "A")
+    else:
+      mm_to_split = mm
 
+    # original (multi-char chain IDs)
     self.data_manager.write_model_file(mm, self.processed_model_file_name)
 
     # Split up processed model and write each chain as well
-    if len(info.model.chain_ids()) > 1:
-      model_list = info.model.as_model_manager_each_chain()
+    if len(mm_to_split.chain_ids()) > 1 or \
+         self.params.output_files.single_letter_chain_ids:
+      model_list = mm_to_split.as_model_manager_each_chain()
     else:
-      model_list = [info.model]
+      model_list = [mm_to_split]
+    count = 0
     for m in model_list:
+      count += 1
       chain_id = m.first_chain_id().strip()
       if not chain_id:
         if len(model_list) > 1:
           raise Sorry(
            "Input model cannot have a blank chain ID and non-blank chain IDS")
         chain_id = "A"
-      fn = "%s_%s.pdb" %(prefix,chain_id)
-      print("Copying predicted model chain %s to %s" %(
-           chain_id,fn), file = self.logger)
+      fn = "%s_%s_%s.pdb" %(prefix,chain_id, count)
+      print("Copying predicted model chain %s (#%s)to %s" %(
+           chain_id,count,fn), file = self.logger)
+      if not m or not m.overall_counts().n_residues:
+        print("Skipping #%s (no residues)" %(count), file = self.logger)
+        continue
       mm = limit_output_b(m,
            maximum_output_b = self.params.output_files.maximum_output_b)
       self.data_manager.write_model_file(mm,fn)
@@ -354,42 +367,14 @@ Inputs: Model file (PDB, mmCIF)
     print ("PHENIX VERSION: ",os.environ.get('PHENIX_VERSION','svn'),"\n",
      file=self.logger)
 
-def convert_chain_ids_to_single_character(m):
+def convert_chain_ids_to_single_character(m, chain_id = "A"):
 
   from mmtbx.secondary_structure.find_ss_from_ca import set_chain_id
-  chain_ids = m.chain_ids(unique_only = True)
-  chain_id_dict = {}  # convert from orig to new
-  # get all the ones that are already ok
-  all_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-  all_letters += all_letters.lower()
-
-  # Get all the single-char ids already present and use as is
-  for chain_id in chain_ids:
-    c = chain_id.strip()
-    if len(c) == 1:
-      chain_id_dict[chain_id] = c
-
-  # Get an available character for all others
-  for chain_id in chain_ids:
-    if chain_id in list(chain_id_dict.keys()):
-      continue # already got it
-    else:
-      key = get_available_letter(c, all_letters, list(chain_id_dict.keys()))
-      if not key:
-        raise Sorry("Unable to represent all chain IDs with single characters"+
-            ". Please try single_letter_chain_ids=False")
-      chain_id_dict[chain_id] = key
-
-  # rename all the chains
-  did_something = False
-  for chain_id in chain_ids:
-    if chain_id_dict[chain_id] != chain_id:
-      set_chain_id(m.get_hierarchy(), chain_id_dict[chain_id],
-         original_id = chain_id)
-      did_something = True
-  if did_something:
-    m.reset_after_changing_hierarchy()
-  return m
+  # rename all chains to "A" but keep separate chains for different segments
+  mm = m.deep_copy()
+  set_chain_id(mm.get_hierarchy(), chain_id)
+  mm.reset_after_changing_hierarchy()
+  return mm
 
 def get_available_letter(c, all_letters, used_ids):
 

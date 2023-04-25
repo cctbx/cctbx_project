@@ -273,8 +273,44 @@ HETATM 3185  CB  LYZ D   3      -4.176  -5.939  53.836  1.00 34.68           C''
       assert cb.deviation<1.
   print('OK')
 
+def exercise_cbetadev_unknown_peptide():
+  #testing that a nonstandard animo acid defaults to the general case
+  #LYZ is hydroxylysine
+  from iotbx import pdb
+  from mmtbx.validation import cbetadev
+  hierarchy = pdb.input(source_info=None, lines='''
+HETATM 3181  N   LY? D   3      -1.842  -5.028  54.291  1.00 35.06           N
+HETATM 3182  CA  LY? D   3      -3.207  -4.726  53.880  1.00 36.27           C
+HETATM 3183  C   LY? D   3      -3.841  -3.660  54.771  1.00 41.71           C
+HETATM 3184  O   LY? D   3      -4.669  -2.842  54.381  1.00 52.20           O
+HETATM 3185  CB  LY? D   3      -4.176  -5.939  53.836  1.00 34.68           C''').construct_hierarchy()
+  validation = cbetadev.cbetadev(
+    pdb_hierarchy=hierarchy,
+    outliers_only=False)
+  # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
+  for unpickle in [False, True] :
+    if unpickle :
+      validation = loads(dumps(validation))
+    assert (len(validation.results) == 1)
+    assert (validation.n_outliers == 0)
+    for cb in validation.results: print(cb.id_str())
+    assert ([ cb.id_str() for cb in validation.results ] ==
+      [' D   3  LY?'])
+    assert approx_equal([ cb.deviation for cb in validation.results ],
+      [0.14107909562037108])
+    print(validation.percent_outliers)
+    assert validation.percent_outliers == 0.
+    out = StringIO()
+    validation.show_old_output(out=out, verbose=True)
+    print(out.getvalue())
+    for cb in validation.results:
+      print(cb.id_str(), cb.deviation)
+      assert cb.deviation<1.
+  print('OK')
+
 if (__name__ == "__main__"):
   exercise_cbetadev()
   exercise_cbetadev_d_peptide()
   exercise_cbetadev_misnamed_peptides()
   exercise_cbetadev_nonstandard_peptide()
+  exercise_cbetadev_unknown_peptide()

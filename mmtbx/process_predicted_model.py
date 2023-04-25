@@ -794,7 +794,7 @@ def split_model_with_pae(
      file = log)
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
-  m_ca= m.apply_selection_string(selection_string)
+  m_ca_or_p = m.apply_selection_string(selection_string)
   n = model.apply_selection_string(selection_string
        ).get_hierarchy().overall_counts().n_residues
 
@@ -825,11 +825,11 @@ def split_model_with_pae(
   keep_list = []
   good_selections = []
   ph = m.get_hierarchy()
-  ca_string =  '(name ca or name p)'
+  ca_or_p_string =  '(name ca or name p)'
 
   for selection_string, region_number in zip(selection_list,unique_regions):
     asc1 = ph.atom_selection_cache()
-    sel = asc1.selection("(%s) and %s" %(selection_string,ca_string))
+    sel = asc1.selection("(%s) and %s" %(selection_string,ca_or_p_string))
     if sel.count(True) >= minimum_domain_length:
       keep_list.append(True)
       good_selections.append(selection_string)
@@ -934,11 +934,11 @@ def split_model_into_compact_units(
 
   # Select CA and P atoms with B-values in range
   selection_string = '(name ca or name p)'
-  m_ca= m.apply_selection_string(selection_string)
+  m_ca_or_p = m.apply_selection_string(selection_string)
 
   # Put the model inside a box and get a map_model_manager
-  put_model_inside_cell(m_ca, grid_resolution)
-  mmm = m_ca.as_map_model_manager()
+  put_model_inside_cell(m_ca_or_p, grid_resolution)
+  mmm = m_ca_or_p.as_map_model_manager()
 
   # Generate map at medium_res for this model and use it to get domains
 
@@ -963,13 +963,13 @@ def split_model_into_compact_units(
   co_info = assign_all_points(co_info, map_data, log = log)
 
   #  Assign all CA in model to a region
-  regions_list = assign_ca_to_region(co_info, m_ca, minimum_domain_length,
+  regions_list = assign_ca_to_region(co_info, m_ca_or_p, minimum_domain_length,
      close_distance,
      maximum_domains = maximum_domains,
      maximum_fraction_close = maximum_fraction_close,
      log = log)
 
-  info = set_chain_id_by_region(m, m_ca, regions_list, log = log)
+  info = set_chain_id_by_region(m, m_ca_or_p, regions_list, log = log)
   if original_crystal_symmetry and info and info.model:
     info.model.set_crystal_symmetry(original_crystal_symmetry)
   return info
@@ -994,10 +994,10 @@ def get_region_name_dict(m, unique_regions, keep_list = None):
       chainid_list.append(region_name)
   return region_name_dict, chainid_list
 
-def set_chain_id_by_region(m, m_ca, regions_list, log = sys.stdout):
+def set_chain_id_by_region(m, m_ca_or_p, regions_list, log = sys.stdout):
   # Set chainid based on regions_list
 
-  atoms = m_ca.get_hierarchy().atoms()  # new
+  atoms = m_ca_or_p.get_hierarchy().atoms()  # new
   unique_regions = get_unique_values(regions_list)
 
   region_name_dict, chainid_list = get_region_name_dict(m, unique_regions)
@@ -1536,9 +1536,9 @@ def set_high_pae_for_missing(pae_matrix, pae_cutoff,
    return matrix
 
 
-def get_residue_numbers_in_model(m_ca, remove_offset_of = None):
+def get_residue_numbers_in_model(m_ca_or_p, remove_offset_of = None):
   residue_numbers = []
-  for at in m_ca.get_hierarchy().atoms():
+  for at in m_ca_or_p.get_hierarchy().atoms():
     resseq_int = at.parent().parent().resseq_as_int()
     if remove_offset_of is not None:
       resseq_int = resseq_int - remove_offset_of

@@ -81,6 +81,7 @@ var pmleft = null;
 var pmbottom = null;
 var btnwidth = null;
 var StopAnimateBtn = null;
+var maxReflInFrustum = 0;
 var hklequationmsg = "";
 var animatheta = 0.0;
 var animaaxis = new NGL.Vector3();
@@ -1322,6 +1323,7 @@ function onMessage(e)
     if (msgtype === "GetReflectionsInFrustum")
     {
       RenderRequest();
+      maxReflInFrustum = parseInt(val[0]); 
       GetReflectionsInFrustum();
     }
 
@@ -1464,7 +1466,8 @@ function onMessage(e)
 
     if (msgtype ==="RenderStageObjects")
     {
-      if (shape != null) {
+      if (shape != null) 
+      {
         shapeComp = stage.addComponentFromObject(shape);
         MakeHKL_Axis();
         MakeXYZ_Axis();
@@ -1769,10 +1772,10 @@ function getOrientMsg()
 }
 
 // Distinguish between click and hover mouse events.
-function HoverPickingProxyfunc(pickingProxy) {  PickingProxyfunc(pickingProxy, 'hover'); }
+function HoverPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'hover'); }
 function ClickPickingProxyfunc(pickingProxy) { PickingProxyfunc(pickingProxy, 'click'); }
 
-// listen to hover or click signal to show a tooltip at an hkl or to post hkl id for matching  entry in 
+// listen to hover or click signal to show a tooltip at an hkl or to post hkl id for matching entry in 
 // millerarraytable in GUI or for visualising symmetry mates of the hkl for a given rotation operator
 function PickingProxyfunc(pickingProxy, eventstr) {
   // adapted from http://nglviewer.org/ngl/api/manual/interaction-controls.html#clicked
@@ -2107,6 +2110,21 @@ function AddSpheresBin2ShapeBuffer(coordarray, colourarray, radiiarray, ttipids)
 }
 
 
+function webgl2CanvasPosition(x,y,z) 
+{
+  let r = new NGL.Vector3();
+  r.x = x;
+  r.y = y;
+  r.z = z;
+  r.add(stage.viewer.translationGroup.position);
+  r.applyMatrix4(stage.viewer.rotationGroup.matrix);
+  r.applyMatrix4(stage.viewer.camera.projectionMatrix);
+  let canvasX = (1 - r.x)*0.5 * stage.viewer.width;
+  let canvasY = (1 + r.y)*0.5 * stage.viewer.height;
+  return [canvasX, canvasY];
+}
+
+
 function GetReflectionsInFrustumFromBuffer(buffer) {
   // For the simple case where clip planes are parallel with the screen as in clipFar, clipNear.
   // Use cartesian coordinates of reflections stored in shapebufs[0].picking.cartpos
@@ -2115,27 +2133,38 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
   if (buffer.parameters.opacity < 0.3) // use the same threshold as when tooltips won't show
     return [hkls_infrustums, rotid_infrustum];
 
+  let nrefl = 0;
   for (let i = 0; i < buffer.picking.cartpos.length; i++)
   {
     let radius = 0.05* Math.abs(stage.viewer.parameters.clipFar -stage.viewer.parameters.clipNear)
     // possibly needs a better default value in case of using wireframe
     if (iswireframe == false) // no radius array available if using wireframe
       radius = buffer.geometry.attributes.radius.array[i];
+    //radius=0.0;
     let x = buffer.picking.cartpos[i][0];
     let y = buffer.picking.cartpos[i][1];
     let z = buffer.picking.cartpos[i][2];
+
     let hklpos = new NGL.Vector3(x, y, z);
     let m = stage.viewer.modelGroup.children[0].matrixWorld;
     let currenthklpos = hklpos.applyMatrix4(m);
     let childZ = currenthklpos.z - stage.viewer.camera.position.z;
-    let infrustum = false;
-    if ((childZ + radius) <stage.viewer.parameters.clipFar && (childZ - radius) > stage.viewer.parameters.clipNear)
+    // do rough exclusion of reflections from frustum with clipplanes for the sake of speed
+    if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
-      infrustum = true;
-      let hklid = buffer.picking.ids[i + 1];
-      let rotid = buffer.picking.ids[0];
-      hkls_infrustums.push(hklid);
-      rotid_infrustum.push(rotid);
+      if (nrefl >= maxReflInFrustum) // limit to avoid calling stage.viewer.pick() excessively
+        return [hkls_infrustums, rotid_infrustum];
+      let cv = webgl2CanvasPosition(x,y,z); 
+      // stage.viewer.pick() calling readRenderTargetPixels() evaluates points in frustum
+      let ret = stage.viewer.pick(cv[0], cv[1]); 
+      if (ret.pid !== 0)
+      {
+        nrefl++;
+        let hklid = buffer.picking.ids[i + 1];
+        let rotid = buffer.picking.ids[0];
+        hkls_infrustums.push(hklid);
+        rotid_infrustum.push(rotid);
+      }
     }
   }
   return [hkls_infrustums, rotid_infrustum];
@@ -2158,7 +2187,7 @@ function GetReflectionsInFrustum() {
         rotid_infrustum = rotid_infrustum.concat(arr[1]);
       }
   }
-  WebsockSendMsg('InFrustum:' + hkls_infrustums + ':' + rotid_infrustum);
+  WebsockSendMsg('InFrustum:[' + hkls_infrustums + ']:[' + rotid_infrustum + ']');
 }
 
 

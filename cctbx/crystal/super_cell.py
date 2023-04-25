@@ -7,9 +7,56 @@ from libtbx import group_args
 import math
 import iotbx.pdb.utils
 
+def get_siiu(pdb_hierarchy, crystal_symmetry, box_buffer_layer,
+             select_within_radius):
+  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  sst = crystal_symmetry.special_position_settings().site_symmetry_table(
+    sites_cart = sites_cart)
+  siiu = {}
+  # +1 is nonbonded buffer, to match nonbonded_distance_cutoff
+  cutoff = select_within_radius+1
+
+
+  conn_asu_mappings = crystal_symmetry.special_position_settings().\
+    asu_mappings(buffer_thickness=cutoff)
+
+  ###
+  #xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+  #conn_asu_mappings = xrs.asu_mappings(buffer_thickness=cutoff)
+  ###
+
+
+  conn_asu_mappings.process_sites_cart(
+    original_sites      = sites_cart,
+    site_symmetry_table = sst)
+  conn_pair_asu_table = cctbx.crystal.pair_asu_table(
+    asu_mappings=conn_asu_mappings)
+  conn_pair_asu_table.add_all_pairs(
+    distance_cutoff=cutoff)
+
+  pair_generator = cctbx.crystal.neighbors_fast_pair_generator(
+    conn_asu_mappings,
+    distance_cutoff=cutoff)
+  #pair_generator = cctbx.crystal.neighbors_simple_pair_generator(
+  #  asu_mappings   = conn_asu_mappings,
+  #  distance_cutoff = cutoff)
+
+
+  for pair in pair_generator:
+    rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
+    rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
+    rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+    #print(rt_mx_ji, str(rt_mx_ji))
+    #if str(rt_mx_ji)=="x,y,z": continue REF1
+    siiu.setdefault(pair.j_seq, []).append(rt_mx_ji)
+  for k,v in zip(siiu.keys(), siiu.values()): # remove duplicates!
+    siiu[k] = list(set(v))
+  return siiu
+
 def run(pdb_hierarchy,
         crystal_symmetry,
         select_within_radius,
+        grm=None,
         box_buffer_layer=10,
         link_min=1.0,
         link_max=2.0,
@@ -31,32 +78,38 @@ def run(pdb_hierarchy,
     #  get_symmetry_interacting_indices_unique(
     #    sites_cart = pdb_hierarchy.atoms().extract_xyz())
     #
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    sst = crystal_symmetry.special_position_settings().site_symmetry_table(
-      sites_cart = sites_cart)
-    siiu = {}
-    # +1 is nonbonded buffer, to match nonbonded_distance_cutoff
-    cutoff = select_within_radius+1
-    conn_asu_mappings = crystal_symmetry.special_position_settings().\
-      asu_mappings(buffer_thickness=cutoff)
-    conn_asu_mappings.process_sites_cart(
-      original_sites      = sites_cart,
-      site_symmetry_table = sst)
-    conn_pair_asu_table = cctbx.crystal.pair_asu_table(
-      asu_mappings=conn_asu_mappings)
-    conn_pair_asu_table.add_all_pairs(
-      distance_cutoff=cutoff)
-    pair_generator = cctbx.crystal.neighbors_fast_pair_generator(
-      conn_asu_mappings,
-      distance_cutoff=cutoff)
-    for pair in pair_generator:
-      rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
-      rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
-      rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-      #if str(rt_mx_ji)=="x,y,z": continue REF1
-      siiu.setdefault(pair.j_seq, []).append(rt_mx_ji)
-    for k,v in zip(siiu.keys(), siiu.values()): # remove duplicates!
-      siiu[k] = list(set(v))
+
+    siiu = get_siiu(
+      pdb_hierarchy        = pdb_hierarchy,
+      crystal_symmetry     = crystal_symmetry,
+      box_buffer_layer     = box_buffer_layer,
+      select_within_radius = select_within_radius)
+
+    #s1 = get_siiu(
+    #  pdb_hierarchy        = pdb_hierarchy,
+    #  crystal_symmetry     = crystal_symmetry,
+    #  box_buffer_layer     = box_buffer_layer,
+    #  select_within_radius = 11.2)
+    #
+    #s2 = get_siiu(
+    #  pdb_hierarchy        = pdb_hierarchy,
+    #  crystal_symmetry     = crystal_symmetry,
+    #  box_buffer_layer     = box_buffer_layer,
+    #  select_within_radius = 11.1)
+    #
+    #v1 = list(s1.values())
+    #v2 = list(s2.values())
+    #print(len(v1), len(v2))
+    #
+    #for i, j in zip(v1, v2):
+    #  i = [str(ii) for ii in i]
+    #  j = [str(jj) for jj in j]
+    #  #print(i, j)
+    #  print(i==j)
+    #
+    #STOP()
+
+
   c = iotbx.pdb.hierarchy.chain(id = "SS") # all symmetry related full residues
   fm = crystal_symmetry.unit_cell().fractionalization_matrix()
   om = crystal_symmetry.unit_cell().orthogonalization_matrix()

@@ -15,6 +15,7 @@ from libtbx import group_args, str_utils
 import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
+from cctbx import sgtbx
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 # from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
@@ -26,6 +27,7 @@ from cctbx import adptbx
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
 from cctbx import crystal
+from cctbx import uctbx
 
 import mmtbx.restraints
 import mmtbx.hydrogens
@@ -197,7 +199,8 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
-      skip_ss_annotations       = False):
+      skip_ss_annotations       = False,
+      reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
     if(model_input is not None): assert pdb_hierarchy is None
     if(pdb_hierarchy is not None):
@@ -302,6 +305,15 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     ########### Allow access to methods from pdb_hierarchy directly ######
     self.set_up_methods_from_hierarchy() # Allow methods from hierarchy
+    # !!! This must be the last call !!!
+    # This forces to use P1 box as crystal symmetry with specified buffer
+    # This needs to use BIOMT expanded model for the box to be meaningful
+    if(reset_crystal_symmetry_to_box_with_buffer is not None):
+      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+        sites_cart   = self.get_hierarchy().atoms().extract_xyz(),
+        buffer_layer = reset_crystal_symmetry_to_box_with_buffer)
+      self._crystal_symmetry = box.crystal_symmetry()
+      self.get_hierarchy().atoms().set_xyz(box.sites_cart)
 
   @classmethod
   def from_sites_cart(cls,
@@ -605,6 +617,9 @@ class manager(object):
     return state
 
   def __setstate__(self, state):
+    if sys.version_info.major >= 3:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
     self.__dict__.update(state)
 
     # Restore methods from pdb hierarchy
@@ -1437,6 +1452,11 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq() # redo the numbering
     self.unset_restraints_manager() # no longer applies
     self.unset_ncs_constraints_groups()
+
+  def adopt_xray_structure(self, xray_structure=None):
+    if(xray_structure is None):
+      xray_structure = self.get_xray_structure()
+    self.get_hierarchy().adopt_xray_structure(xray_structure)
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
@@ -2426,6 +2446,20 @@ class manager(object):
 
   def get_model_input(self):
     return self._model_input
+
+  def twin_law_from_model_input(self):
+    """
+    Extract twin_law from model_input, if available and extractable
+    """
+    twin_law = None
+    mi = self.get_model_input()
+    if(mi is None): return None
+    twin_law = mi.extract_f_model_core_constants().twin_law
+    if twin_law is not None:
+     try: sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+     except ValueError as e:
+       twin_law = None
+    return twin_law
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """

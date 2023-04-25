@@ -390,18 +390,22 @@ class _():
 
   def __setstate__(self, state):
     assert len(state) >= 3
+    if sys.version_info.major >= 3:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
     else: raise RuntimeError("Unknown version of pickled state.")
     self.info = state[-2]
     import iotbx.pdb
-    models = iotbx.pdb.input(
-      source_info="pickle",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False).models()
-    self.pre_allocate_models(number_of_additional_models=len(models))
-    for model in models:
-      self.append_model(model=model)
+    ph = iotbx.pdb.input(
+      source_info="string",
+      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+
+    self.pre_allocate_models(number_of_additional_models=len(ph.models()))
+    for model in ph.models():
+      self.append_model(model=model.detached_copy())
 
   def chains(self):
     """
@@ -1707,38 +1711,47 @@ class _():
     }
     data["TYR"]=data["PHE"]
 
+    for code, item in data.items():
+      current = item.get('pairs', [])
+      adds = []
+      for a1, a2 in current:
+        if a1[0]=='H' and a2[0]=='H':
+          adds.append(['D%s'%a1[1:], 'D%s'%a2[1:]])
+      item['pairs']+=adds
+
     sites_cart = self.atoms().extract_xyz()
     t0=time.time()
     info = ""
     for rg in self.residue_groups():
+      flip_it=False
       for ag in rg.atom_groups():
         flip_data = data.get(ag.resname, None)
         if flip_data is None: continue
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
-        flip_it=False
-        if 'dihedral' in flip_data:
-          sites = []
-          for d in flip_data["dihedral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          dihedral = dihedral_angle(sites=sites, deg=True)
-          if abs(dihedral)>360./flip_data["value"][1]/4:
-            flip_it=True
-        elif 'chiral' in flip_data:
-          sites = []
-          for d in flip_data["chiral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
-                                  volume_ideal=flip_data["value"][0],
-                                  both_signs=flip_data['value'][1],
-                                  )
-          if abs(delta)>2.:
-            flip_it=True
+        if not flip_it:
+          if 'dihedral' in flip_data:
+            sites = []
+            for d in flip_data["dihedral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            dihedral = dihedral_angle(sites=sites, deg=True)
+            if abs(dihedral)>360./flip_data["value"][1]/4:
+              flip_it=True
+          elif 'chiral' in flip_data:
+            sites = []
+            for d in flip_data["chiral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
+                                    volume_ideal=flip_data["value"][0],
+                                    both_signs=flip_data['value'][1],
+                                    )
+            if abs(delta)>2.:
+              flip_it=True
         if flip_it:
           info += '    Residue "%s %s %s":' % (
             rg.parent().id,

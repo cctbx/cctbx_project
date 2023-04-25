@@ -1,20 +1,24 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
+from libtbx.utils import Sorry
 import os, os.path, glob
 
-def external_cmd(parent, master_phil, firstpart, tempdir):
+def external_cmd(parent, master_phil, firstpart):
   from phasertng.scripts import xtricorder
-
+  # Provide a temp directory for xtricorder in current working directory and replace any
+  # backslashes on Windows with forwardslashes for the sake of phasertng. Append a random
+  # number to tempdir to avoid race conditions if another instance of xtricorder is running
+  import random
+  from pathlib import PurePath
+  tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerXtricorder")).as_posix() + str(random.randrange(100000))
   tabname = "Xtricorder"
   (retobj) = xtricorder.xtricorder(
   r'''phasertng {
               hklin.filename = "%s"
               reflections.wavelength = 1.0
-              suite.mute = True
               suite.store = logfile
               suite.level = logfile
               suite.database = "%s"
-              commensurate.patterson.percent = 10
             }
   ''' %(parent.loaded_file_name, tempdir)
   )

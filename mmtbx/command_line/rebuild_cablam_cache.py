@@ -39,10 +39,12 @@ def run():
         print('  Rebuilding CaBLAM contours skipped. Needs chem_data/cablam_data directory.')
         return
   #---end find cablam_data_dir---
+
+  target_db = dlite.try_loading_db(os.path.join(cablam_dir,'cablam.dlite'))
   rebuild_pickle_files(
     data_dir=cablam_dir,
     file_prefix='cablam.8000.',
-    target_db=dlite.target_db(os.path.join(cablam_dir,'cablam.dlite')),
+    target_db=target_db,
     suffixes=file_suffixes)
   os.chdir(starting_dir)
   print(format_cpu_times())

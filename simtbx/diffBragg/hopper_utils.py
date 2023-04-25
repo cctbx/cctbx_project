@@ -211,10 +211,14 @@ class DataModeler:
         self.target.hop_iter += 1
         #self.target.minima.append((f,self.target.x0,accept))
         self.target.lowest_x = x
-        if f < self.target.lowest_f:
-            self.target.lowest_f = f
-            MAIN_LOGGER.info("New minimum found!")
-            self.save_up(self.target.x0, self.rank)
+        try:
+            # TODO get SIM and i_exp in here so we can save_up each new global minima!
+            if f < self.target.lowest_f:
+                 self.target.lowest_f = f
+                 MAIN_LOGGER.info("New minimum found!")
+                 self.save_up(self.target.x0, SIM, self.rank, i_exp=i_exp)
+        except NameError:
+            pass
 
     def _abs_path_params(self):
         """adds absolute path to certain params"""
@@ -920,7 +924,7 @@ class DataModeler:
 
         return ret_subimgs
 
-    def Minimize(self, x0, SIM):
+    def Minimize(self, x0, SIM, i_exp=0):
         self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
@@ -954,7 +958,8 @@ class DataModeler:
             assert self.params.hopper_save_freq is None
             at_min = self.at_minimum
 
-        callback = lambda x: self.callback(x, verbose=self.params.logging.parameters, save_freq=self.params.hopper_save_freq)
+        callback_kwargs = {"SIM":SIM, "i_exp": i_exp, "save_freq": self.params.hopper_save_freq}
+        callback = lambda x: self.callback(x, callback_kwargs)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
@@ -1029,13 +1034,15 @@ class DataModeler:
 
         return target.x0
 
-    def callback(self, x, verbose=True, save_freq=None):
-
+    def callback(self, x, kwargs):
+        save_freq = kwargs["save_freq"]
+        i_exp = kwargs["i_exp"]
+        SIM = kwargs["SIM"]
         target = self.target
         if save_freq is not None and target.iteration % save_freq==0 and target.iteration> 0:
             xall = target.x0.copy()
             xall[target.vary] = x
-            self.save_up(xall,rank=self.rank)
+            self.save_up(xall, SIM, rank=self.rank, i_exp=i_exp)
         return
 
         rescaled_vals = np.zeros_like(xall)

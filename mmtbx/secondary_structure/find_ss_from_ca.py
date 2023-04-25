@@ -891,7 +891,7 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
   print("\nEvaluating sheet topology", file = out)
   ca_ph=hierarchy.apply_atom_selection("name ca")
   if chain_id:
-    ca_ph=ca_ph.apply_atom_selection("chain %s" %(chain_id))
+    ca_ph=ca_ph.apply_atom_selection("chain '%s'" %(chain_id))
   unique_chain_ids = ca_ph.chain_ids(unique_only = True)
   if len(unique_chain_ids) != 1:
     raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(

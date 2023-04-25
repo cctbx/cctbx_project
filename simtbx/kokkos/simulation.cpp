@@ -403,6 +403,29 @@ namespace Kokkos {
         // cudaSafeCall(cudaFree(cu_Fbg_of));
   }
 
+  af::flex_double
+  exascale_api::add_noise(simtbx::Kokkos::kokkos_detector & kdt) {
+        // put raw pixels into a temporary hold
+        af::flex_double tmp_hold_pixels = kdt.get_raw_pixels();
+        std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
+        af::flex_double panel_pixels = af::flex_double(af::flex_grid<>(kdt.m_slow_dim_size,kdt.m_fast_dim_size), af::init_functor_null<double>());
+        for (std::size_t panel_id = 0; panel_id < kdt.m_panel_count; panel_id++) {
+          double* dst_beg = panel_pixels.begin();
+          double* dst_end = panel_pixels.end();
+          double* dstptr = dst_beg;
+          for (double *srcptr = &(tmp_hold_pixels[panel_id*panel_size]); dstptr != dst_end; ){
+            *dstptr++ = *srcptr++;
+          } // get the pixels from one panel on GPU memory into panel_pixels for add_noise
+          SIM.add_noise(panel_pixels);
+          dstptr = dst_beg;
+          for (double *srcptr = &(tmp_hold_pixels[panel_id*panel_size]); dstptr != dst_end; ){
+            *srcptr++ = *dstptr++;
+          } // return the pixels from SIM.raw_pixels to temporary array
+        }
+        ::Kokkos::fence();
+        return tmp_hold_pixels;
+  }
+
   void
   exascale_api::allocate() {
     //cudaSafeCall(cudaSetDevice(SIM.device_Id));

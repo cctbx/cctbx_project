@@ -305,7 +305,7 @@ class ThreeProteinResidues(ProteinResidues):
     return proxies
 
 def id_str_for_phi_psi_2(residue, ignore_altloc=False):
-  id_str = residue.id_str().replace('pdbres=','').replace('"','')
+  id_str = residue.id_str(suppress_segid=True).replace('pdbres=','').replace('"','')
   if ignore_altloc:
     return ' %s' % id_str
   altloc=''
@@ -355,8 +355,9 @@ if __name__=="__main__":
       try: print("  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30)))
       except: print('  cis? is not valid') # intentional
       try: print("  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30)))
-      except: print('  tran? is not valid') # intentional
-      print('  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list()))
+      except: print('  trans? is not valid') # intentional
+      print(threes.cis_trans_twisted_list())
+      # print('  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list()))
       try: print("  rama    %s" % threes.get_ramalyze_key())
       except: print('  rama not specified') # intentional
       print('  conf    %s' % threes.is_pure_main_conf())

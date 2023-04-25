@@ -400,14 +400,14 @@ class SimData:
 
     # TODO: am I unnecessary?
     self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
-    self.update_Fhkl_tuple()
-    self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
-
     if self.using_diffBragg_spots:
       self.D.Omatrix = self.crystal.Omatrix
       self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
       self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
+    self.update_Fhkl_tuple()
+    self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
+    if self.using_diffBragg_spots:
       # init mosaic domain size:
       if self.crystal.isotropic_ncells:
         self.D.Ncells_abc = self.crystal.Ncells_abc[0]
