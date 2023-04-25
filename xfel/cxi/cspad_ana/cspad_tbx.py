@@ -26,7 +26,7 @@ from six.moves import zip
 from serialtbx import util
 import serialtbx.detector.cspad
 from serialtbx.detector.cspad import pixel_size
-from serialtbx.detector.xtc import old_address_to_new_address, get_ebeam, env_detz, address_split
+from serialtbx.detector.xtc import old_address_to_new_address, get_ebeam, env_detz, address_split # import dependency
 
 __version__ = "$Revision$"
 
@@ -732,64 +732,6 @@ def env_injector_xyz(env):
     return tuple([
       env.epicsStore().value("CXI:USR:MZM:0%i:ENCPOSITIONGET" %(i+1))
                              for i in range(3)])
-
-
-def env_detz(address, env):
-  """The env_detz() function returns the position of the detector with
-  the given address string on the z-axis in mm.  The zero-point is as
-  far away as possible from the sample, and values decrease as the
-  detector is moved towards the sample.
-  @param address Full data source address of the DAQ device
-  @param env     Environment object
-  @return        Detector z-position, in mm
-  """
-
-  if env is not None:
-    detector = address_split(address, env)[0]
-    if detector is None:
-      return None
-    elif detector == 'CxiDs1':
-      pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
-      if pv is None:
-        # Even though potentially unsafe, fall back on the commanded
-        # value if the corresponding read-back value cannot be read.
-        # According to Sébastien Boutet, this particular motor has not
-        # caused any problem in the past.
-        pv = env.epicsStore().value('CXI:DS1:MMS:06')
-      if pv is None:
-        # Try the other detector. These are sometimes inconsistent
-        pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
-    elif detector == 'CxiDsd' or detector == 'CxiDs2':
-      # XXX Note inconsistency in naming: Dsd vs Ds2!
-      pv = env.epicsStore().value('CXI:DS2:MMS:06.RBV')
-      if pv is None:
-        # Try the other detector. These are sometimes inconsistent
-        pv = env.epicsStore().value('CXI:DS1:MMS:06.RBV')
-    elif detector == 'XppGon':
-      # There is no distance recorded for the XPP's CSPAD on the robot
-      # arm.  Always return zero to allow the distance to be set using
-      # the offset.
-      return 0
-    elif detector == 'XppEndstation' or \
-         detector == 'MfxEndstation':
-      # There is no distance recorded for the XPP's or MFX's Rayonix
-      # on the robot arm.  Always return zero to allow the distance to
-      # be set using the offset.
-      return 0
-    else:
-      return None
-
-    if pv is None:
-      return None
-
-    if hasattr(pv, "values"):
-      if len(pv.values) == 1:
-        return pv.values[0]
-      else:
-        return None
-    return pv
-
-  return None
 
 
 def env_distance(*kwargs):
