@@ -53,7 +53,7 @@ struct stream_initializer {
         return *this;
     }
 
-    ~stream_initializer() {
+    KOKKOS_INLINE_FUNCTION ~stream_initializer() {
         assert((pointer+1)==vector.get_size() &&
                 "Too few coefficients to initialize with '<<'-operator!");
     }
