@@ -53,6 +53,7 @@ dependencies:
  - jinja2
  - msgpack-python
  - msgpack-c
+ - msgpack-cxx
  - orderedset
  - procrunner
  - python-blosc
