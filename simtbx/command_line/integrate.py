@@ -339,39 +339,39 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
-    with DeviceWrapper(script.dev) as _:
-        params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
-        if os.path.isfile(args.inputGlob):
-            df_all = pandas.read_pickle(args.inputGlob)
-            df_all.reset_index(inplace=True, drop=True)
-            def df_iter():
-                for i_f in range(len(df_all)):
-                    if i_f % COMM.size != COMM.rank:
-                        continue
-                    df_i = df_all.iloc[i_f:i_f+1].copy().reset_index(drop=True)
-                    yield i_f, df_i
-            Nf = len(df_all)
+    
+    params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
+    if os.path.isfile(args.inputGlob):
+        df_all = pandas.read_pickle(args.inputGlob)
+        df_all.reset_index(inplace=True, drop=True)
+        def df_iter():
+            for i_f in range(len(df_all)):
+                if i_f % COMM.size != COMM.rank:
+                    continue
+                df_i = df_all.iloc[i_f:i_f+1].copy().reset_index(drop=True)
+                yield i_f, df_i
+        Nf = len(df_all)
+    else:
+        if os.path.isdir(args.inputGlob):
+            glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
+            fnames = glob.glob(glob_s)
         else:
-            if os.path.isdir(args.inputGlob):
-                glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
-                fnames = glob.glob(glob_s)
-            else:
-                fnames = glob.glob(args.inputGlob)
-            def df_iter():
-                for i_f,f in enumerate(fnames):
-                    if i_f % COMM.size != COMM.rank:
-                        continue
-                    df = pandas.read_pickle(f)
-                    yield i_f, df
-            Nf = len(fnames)
+            fnames = glob.glob(args.inputGlob)
+        def df_iter():
+            for i_f,f in enumerate(fnames):
+                if i_f % COMM.size != COMM.rank:
+                    continue
+                df = pandas.read_pickle(f)
+                yield i_f, df
+        Nf = len(fnames)
 
-        if params.predictions.verbose:
-            params.predictions.verbose = COMM.rank==0
+    if params.predictions.verbose:
+        params.predictions.verbose = COMM.rank==0
 
-        dev = COMM.rank % args.numdev
+    dev = COMM.rank % args.numdev
 
-        print0("Found %d input files" % Nf)
-
+    print0("Found %d input files" % Nf)
+    with DeviceWrapper(dev) as _:
         all_dfs = []
         all_pred_names = []
         exp_ref_spec_lines = []
