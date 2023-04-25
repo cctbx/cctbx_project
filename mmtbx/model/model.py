@@ -1457,7 +1457,7 @@ class manager(object):
     if xray_structure is None:
       return
     self.get_hierarchy().adopt_xray_structure(xray_structure)
-    # self.update_xrs()
+    self.update_xrs()
     self._atom_selection_cache = None
     self.model_statistics_info = None
 
