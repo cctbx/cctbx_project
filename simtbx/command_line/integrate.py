@@ -61,6 +61,7 @@ from dials.array_family import flex
 from copy import deepcopy
 from collections import Counter
 
+from simtbx.diffBragg.device import DeviceWrapper
 
 def filter_refls(R):
     vec3_dbl_keys = 'xyzcal.px', 'xyzcal.mm', 'xyzobs.px.value', 'xyzobs.px.value', 'rlp', 's1'
@@ -338,148 +339,148 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
-    params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
-    if os.path.isfile(args.inputGlob):
-        df_all = pandas.read_pickle(args.inputGlob)
-        df_all.reset_index(inplace=True, drop=True)
-        def df_iter():
-            for i_f in range(len(df_all)):
-                if i_f % COMM.size != COMM.rank:
-                    continue
-                df_i = df_all.iloc[i_f:i_f+1].copy().reset_index(drop=True)
-                yield i_f, df_i
-        Nf = len(df_all)
-    else:
-        if os.path.isdir(args.inputGlob):
-            glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
-            fnames = glob.glob(glob_s)
+    with DeviceWrapper(script.dev) as _:
+        params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
+        if os.path.isfile(args.inputGlob):
+            df_all = pandas.read_pickle(args.inputGlob)
+            df_all.reset_index(inplace=True, drop=True)
+            def df_iter():
+                for i_f in range(len(df_all)):
+                    if i_f % COMM.size != COMM.rank:
+                        continue
+                    df_i = df_all.iloc[i_f:i_f+1].copy().reset_index(drop=True)
+                    yield i_f, df_i
+            Nf = len(df_all)
         else:
-            fnames = glob.glob(args.inputGlob)
-        def df_iter():
-            for i_f,f in enumerate(fnames):
-                if i_f % COMM.size != COMM.rank:
-                    continue
-                df = pandas.read_pickle(f)
-                yield i_f, df
-        Nf = len(fnames)
+            if os.path.isdir(args.inputGlob):
+                glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
+                fnames = glob.glob(glob_s)
+            else:
+                fnames = glob.glob(args.inputGlob)
+            def df_iter():
+                for i_f,f in enumerate(fnames):
+                    if i_f % COMM.size != COMM.rank:
+                        continue
+                    df = pandas.read_pickle(f)
+                    yield i_f, df
+            Nf = len(fnames)
 
-    if params.predictions.verbose:
-        params.predictions.verbose = COMM.rank==0
+        if params.predictions.verbose:
+            params.predictions.verbose = COMM.rank==0
 
-    dev = COMM.rank % args.numdev
+        dev = COMM.rank % args.numdev
 
-    print0("Found %d input files" % Nf)
+        print0("Found %d input files" % Nf)
 
-    all_dfs = []
-    all_pred_names = []
-    exp_ref_spec_lines = []
-    for i_f, df in df_iter():
-        printR("Shot %d / %d" % (i_f+1, Nf), flush=True)
+        all_dfs = []
+        all_pred_names = []
+        exp_ref_spec_lines = []
+        for i_f, df in df_iter():
+            printR("Shot %d / %d" % (i_f+1, Nf), flush=True)
 
-        expt_name = df.opt_exp_name.values[0]
-        tag = os.path.splitext(os.path.basename(expt_name))[0]
-        new_expt_name = "%s/%s_%d_predicted.expt" % (args.outdir,tag,  i_f)
-        new_expt_name = os.path.abspath(new_expt_name)
-        df["opt_exp_name"] = new_expt_name
+            expt_name = df.opt_exp_name.values[0]
+            tag = os.path.splitext(os.path.basename(expt_name))[0]
+            new_expt_name = "%s/%s_%d_predicted.expt" % (args.outdir,tag,  i_f)
+            new_expt_name = os.path.abspath(new_expt_name)
+            df["opt_exp_name"] = new_expt_name
 
-        shutil.copyfile(expt_name,  new_expt_name)
+            shutil.copyfile(expt_name,  new_expt_name)
 
-        data_exptList = ExperimentList.from_file(expt_name)
-        data_expt = data_exptList[0]
+            data_exptList = ExperimentList.from_file(expt_name)
+            data_expt = data_exptList[0]
 
-        try:
-            spectrum_override = None
-            if params.spectrum_from_imageset:
-                spectrum_override = downsamp_spec_from_params(params, data_expt)
-            pred = predictions.get_predicted_from_pandas(
-                df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
-            if args.filterDupes:
-                pred = filter_refls(pred)
-        except ValueError:
-            os.remove(new_expt_name)
-            continue
+            try:
+                spectrum_override = None
+                if params.spectrum_from_imageset:
+                    spectrum_override = downsamp_spec_from_params(params, data_expt)
+                pred = predictions.get_predicted_from_pandas(
+                    df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
+                if args.filterDupes:
+                    pred = filter_refls(pred)
+            except ValueError:
+                os.remove(new_expt_name)
+                continue
 
-        data = utils.image_data_from_expt(data_expt)
-        Rstrong = refls_from_sims(data, data_expt.detector, data_expt.beam, phil_file=args.procPhil )
-        Rstrong['id'] = flex.int(len(Rstrong), 0)
-        num_panels = len(data_expt.detector)
-        if num_panels > 1:
-            assert params.predictions.label_weak_col == "rlp"
+            data = utils.image_data_from_expt(data_expt)
+            Rstrong = refls_from_sims(data, data_expt.detector, data_expt.beam, phil_file=args.procPhil )
+            Rstrong['id'] = flex.int(len(Rstrong), 0)
+            num_panels = len(data_expt.detector)
+            if num_panels > 1:
+                assert params.predictions.label_weak_col == "rlp"
 
-        Rstrong.centroid_px_to_mm(data_exptList)
-        Rstrong.map_centroids_to_reciprocal_space(data_exptList)
-        predictions.label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut, col=params.predictions.label_weak_col )
+            Rstrong.centroid_px_to_mm(data_exptList)
+            Rstrong.map_centroids_to_reciprocal_space(data_exptList)
+            predictions.label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut, col=params.predictions.label_weak_col )
 
-        pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
-        strong_sel = np.logical_not(pred['is_weak'])
+            pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
+            strong_sel = np.logical_not(pred['is_weak'])
 
-        pred["refl_idx"] = flex.int(np.arange(len(pred)))
-        weaks = pred.select(pred['is_weak'])
-        weaks_sorted = np.argsort(weaks["scatter"])[::-1]
-        nweak = len(weaks)
-        num_keep = int(nweak*params.predictions.weak_fraction)
-        weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
+            pred["refl_idx"] = flex.int(np.arange(len(pred)))
+            weaks = pred.select(pred['is_weak'])
+            weaks_sorted = np.argsort(weaks["scatter"])[::-1]
+            nweak = len(weaks)
+            num_keep = int(nweak*params.predictions.weak_fraction)
+            weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
 
-        weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
-        keeps = np.logical_or( pred['is_strong'], weak_sel)
-        #printR("Sum keeps=%d; num_strong=%d, num_kept_weak=%d" % (sum(keeps), sum(strong_sel), sum(weak_sel)))
-        pred = pred.select(flex.bool(keeps))
-        nstrong = np.sum(strong_sel)
-        printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
-        pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( args.outdir, tag, i_f))
-        pred.as_file(pred_file)
+            weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
+            keeps = np.logical_or( pred['is_strong'], weak_sel)
+            #printR("Sum keeps=%d; num_strong=%d, num_kept_weak=%d" % (sum(keeps), sum(strong_sel), sum(weak_sel)))
+            pred = pred.select(flex.bool(keeps))
+            nstrong = np.sum(strong_sel)
+            printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
+            pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( args.outdir, tag, i_f))
+            pred.as_file(pred_file)
 
-        Rindexed = Rstrong.select(Rstrong['indexed'])
-        if len(Rindexed)==0:
-            print("No strong indexed refls for shot %s" % new_expt_name)
-            continue
+            Rindexed = Rstrong.select(Rstrong['indexed'])
+            if len(Rindexed)==0:
+                print("No strong indexed refls for shot %s" % new_expt_name)
+                continue
 
-        utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
-        try:
-            int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
+            utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
+            try:
+                int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
+            except RuntimeError:
+                print("Integration failed for %s" % pred_file)
+                continue
             int_expt_name = "%s/%s_%d_integrated.expt" % ( args.outdir,tag, i_f)
             int_expt.as_file(int_expt_name)
             int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
             int_refl_name = int_expt_name.replace(".expt", ".refl")
             int_refl.as_file(int_refl_name)
-        except RuntimeError as err:
-            print("Integration failed for %s because: '%s'" % (pred_file, str(err)))
+            all_dfs.append(df)
+            all_pred_names.append(pred_file)
+            spec_name = df.spectrum_filename.values[0]
+            if spec_name is None:
+                spec_name = ""
+            exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, int_refl_name, spec_name))
 
-        all_dfs.append(df)
-        all_pred_names.append(pred_file)
-        spec_name = df.spectrum_filename.values[0]
-        if spec_name is None:
-            spec_name = ""
-        exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, pred_file, spec_name))
+        if all_dfs:
+            all_dfs = pandas.concat(all_dfs)
+            all_dfs["predicted_refls"] = all_pred_names
+        else:
+            all_dfs = None
 
-    if all_dfs:
-        all_dfs = pandas.concat(all_dfs)
-        all_dfs["predicted_refls"] = all_pred_names
-        all_dfs["predictions"] = all_pred_names
-    else:
-        all_dfs = None
+        all_dfs = COMM.gather(all_dfs)
+        exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
+        print0("\nReflections written to folder %s.\n" % args.outdir)
+        if COMM.rank==0:
+            hopper_input_name = os.path.abspath(os.path.join(args.outdir , "%s.txt" % args.hopInputName))
+            o = open(hopper_input_name, "w")
+            for l in exp_ref_spec_lines:
+                o.write(l)
+            o.close()
+            all_dfs = [df for df in all_dfs if df is not None]
+            if not all_dfs:
+                raise ValueError("No dataframes to concat: prediction/integration failed for all shots..")
 
-    all_dfs = COMM.gather(all_dfs)
-    exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
-    print0("\nReflections written to folder %s.\n" % args.outdir)
-    if COMM.rank==0:
-        hopper_input_name = os.path.abspath(os.path.join(args.outdir , "%s.txt" % args.hopInputName))
-        o = open(hopper_input_name, "w")
-        for l in exp_ref_spec_lines:
-            o.write(l)
-        o.close()
-        all_dfs = [df for df in all_dfs if df is not None]
-        if not all_dfs:
-            raise ValueError("No dataframes to concat: prediction/integration failed for all shots..")
+            all_dfs = pandas.concat([df for df in all_dfs if df is not None])
+            all_dfs.reset_index(inplace=True, drop=True)
+            best_pkl_name = os.path.abspath(os.path.join(args.outdir , "%s.pkl" % args.hopInputName))
+            all_dfs.to_pickle(best_pkl_name)
+            print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper. Use the centroid=cal option to specify the predictions" % (best_pkl_name, hopper_input_name))
 
-        all_dfs = pandas.concat([df for df in all_dfs if df is not None])
-        all_dfs.reset_index(inplace=True, drop=True)
-        best_pkl_name = os.path.abspath(os.path.join(args.outdir , "%s.pkl" % args.hopInputName))
-        all_dfs.to_pickle(best_pkl_name)
-        print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper. Use the centroid=cal option to specify the predictions" % (best_pkl_name, hopper_input_name))
-
-        with open(args.outdir +".exectution.txt", "w") as o:
-            o.write("integrate was run from folder: %s\n" % os.getcwd())
-            o.write("The command line input was:\n")
-            o.write(" ".join(sys.argv))
-            #TODO: write the diff phils here:
+            with open(args.outdir +".exectution.txt", "w") as o:
+                o.write("integrate was run from folder: %s\n" % os.getcwd())
+                o.write("The command line input was:\n")
+                o.write(" ".join(sys.argv))
+                #TODO: write the diff phils here:
