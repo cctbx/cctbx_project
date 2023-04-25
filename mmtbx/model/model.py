@@ -1454,9 +1454,12 @@ class manager(object):
     self.unset_ncs_constraints_groups()
 
   def adopt_xray_structure(self, xray_structure=None):
-    if(xray_structure is None):
-      xray_structure = self.get_xray_structure()
+    if xray_structure is None:
+      return
     self.get_hierarchy().adopt_xray_structure(xray_structure)
+    # self.update_xrs()
+    self._atom_selection_cache = None
+    self.model_statistics_info = None
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
