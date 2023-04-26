@@ -33,6 +33,7 @@ class occupancy_affine_constraint(object):
     reparametrisation.asu_scatterer_parameters[sidx].occupancy = param
     for idx,i in enumerate(self.scatterer_indices[1:]):
       reparametrisation.shared_occupancies[i] = dependees[idx]
+    reparametrisation.shared_occupancies[sidx] = param
     self.value = param
 
 class occupancy_pair_affine_constraint(object):
@@ -51,11 +52,12 @@ class occupancy_pair_affine_constraint(object):
     (a0, a1), b = self.linear_form
     i0, i1 = self.scatterer_indices
     occ0 = reparametrisation.add_new_occupancy_parameter(i0)
+    reparametrisation.shared_occupancies[i0] = occ0
     param = reparametrisation.add(_.affine_asu_occupancy_parameter,
                                   dependee=occ0, a=-a0/a1, b=b/a1,
                                   scatterer=sc[i1])
     reparametrisation.asu_scatterer_parameters[i1].occupancy = param
-    reparametrisation.shared_occupancies[i1] = occ0
+    reparametrisation.shared_occupancies[i1] = param
 
 
 class dependent_occupancy(object):
@@ -70,8 +72,9 @@ class dependent_occupancy(object):
 
   @property
   def constrained_parameters(self):
-    return tuple((sc[0], 'occupancy')
-               for sc in itertools.chain(self.as_var, self.as_one_minus_var))
+    ids = [(sc[0], 'occupancy')
+            for sc in itertools.chain(self.as_var, self.as_one_minus_var)]
+    return tuple(ids[1:])
 
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
@@ -81,28 +84,29 @@ class dependent_occupancy(object):
     else:
       sc_idx = self.as_one_minus_var[0][0]
       original_mult = self.as_one_minus_var[0][1]
-    occupancy = reparametrisation.add_new_occupancy_parameter(sc_idx)
+    self.value = reparametrisation.add_new_occupancy_parameter(sc_idx)
+    if sc_idx not in reparametrisation.shared_occupancies:
+      reparametrisation.shared_occupancies[sc_idx] = self.value
     for sc in self.as_var:
       if sc[0] == sc_idx:  continue
       param = reparametrisation.add(
         _.dependent_occupancy,
-        occupancy = occupancy,
+        occupancy = self.value,
         original_multiplier = original_mult,
         multiplier = sc[1],
         as_one = True,
         scatterer = scatterers[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
-      reparametrisation.shared_occupancies[sc[0]] = occupancy
+      reparametrisation.shared_occupancies[sc[0]] = param
     as_one = len(self.as_var) == 0  # only if both lists are not empty
     for sc in self.as_one_minus_var:
       if sc[0] == sc_idx:  continue
       param = reparametrisation.add(
         _.dependent_occupancy,
-        occupancy = occupancy,
+        occupancy = self.value,
         original_multiplier = original_mult,
         multiplier = sc[1],
         as_one = as_one,
         scatterer = scatterers[sc[0]])
       reparametrisation.asu_scatterer_parameters[sc[0]].occupancy = param
-      reparametrisation.shared_occupancies[sc[0]] = occupancy
-    self.value = occupancy
+      reparametrisation.shared_occupancies[sc[0]] = param
