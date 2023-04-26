@@ -62,7 +62,8 @@ loose_chain_id = X
   .input_size = 48
 model_skip_expand_with_mtrix = False
   .type = bool
-  .help = If set to false then expand the model into NCS copies using matrix present in PDB file
+  .help = If set to false then expand the model into NCS copies using \
+    matrix (MTRIX) records present in PDB file
 """
 
 master_params = """
@@ -447,8 +448,9 @@ def validate_params(params):
     raise Sorry("Model file (%s) is missing." %(params.file_name))
   from iotbx.data_manager import DataManager
   if (params.model_skip_expand_with_mtrix):
-    # phenix.famos doesn't need NCS expanded model and sometimes expansion crashes
-    # in python 3. Use this keyword for phenix.famos to avoid expansion
+    # phenix.famos doesn't need NCS expanded model and some files in PDB contain
+    # faulty matrices causing a Sorry on expansion.
+    # Use this keyword for phenix.famos to avoid expansion
     dm = DataManager(custom_options=['model_skip_expand_with_mtrix'])
   else:
     dm = DataManager()
