@@ -23,7 +23,7 @@ from xfel.cxi.cspad_ana.parse_calib import Section
 import six
 from six.moves import zip
 
-from serialtbx import util
+import serialtbx.util.time
 import serialtbx.detector.cspad
 from serialtbx.detector.cspad import pixel_size
 from serialtbx.detector.xtc import old_address_to_new_address, get_ebeam, env_detz, address_split # import dependency
@@ -996,7 +996,7 @@ def evt_time(evt=None):
   """
 
   if evt is None:
-    return util.now_s_ms()
+    return serialtbx.util.time.now_s_ms()
 
   if hasattr(evt, "getTime"):
     t = evt.getTime()
@@ -1018,7 +1018,7 @@ def evt_timestamp(t=None):
   @return  Human-readable ISO 8601 timestamp in string representation
   """
 
-  return util.timestamp(t)
+  return serialtbx.util.time.timestamp(t)
 
 def evt_wavelength(*kwargs):
   """ thin wrapper """
