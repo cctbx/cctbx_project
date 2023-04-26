@@ -244,7 +244,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>460</width>
-                  <height>544</height>
+                  <height>547</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -345,6 +345,9 @@
                      <horstretch>0</horstretch>
                      <verstretch>2</verstretch>
                     </sizepolicy>
+                   </property>
+                   <property name="toolTip">
+                    <string>Highlighted datasets can be saved into a single datafile</string>
                    </property>
                    <property name="verticalScrollMode">
                     <enum>QAbstractItemView::ScrollPerPixel</enum>
@@ -2173,7 +2176,7 @@
   </action>
   <action name="actionSave_reflection_file">
    <property name="text">
-    <string>Save reflection file...</string>
+    <string>Save highligted datasets as a reflection file...</string>
    </property>
   </action>
   <action name="actionReset_View">
