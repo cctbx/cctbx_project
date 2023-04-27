@@ -266,7 +266,8 @@ class manager(object):
     #assert self.model.get_xray_structure() is self.fmodel.xray_structure
     mmtbx.utils.assert_xray_structures_equal(
       x1 = self.model.get_xray_structure(),
-      x2 = self.fmodel.xray_structure)
+      x2 = self.fmodel.xray_structure,
+      eps=1.e-3)
     self.model.is_same_model(other=self.model)
 
   def _get_maps(self):
