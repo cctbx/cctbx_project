@@ -98,7 +98,7 @@ class manager(object):
     self.__call__("citation", citation_info, accumulate=True)
 
   def showwarning(self, message, category, filename, lineno,
-      *args, file=None):
+      *args, **kwds):
     # XXX ADDED *args because some calls come in here incorrectly with extra
     #   arguments, this way we just throw those away as this is just a warning
     self.warn(message)
