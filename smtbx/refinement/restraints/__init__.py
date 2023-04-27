@@ -24,6 +24,7 @@ class manager(object):
   rigid_bond_proxies=None
   rigu_proxies=None
   isotropic_adp_proxies=None
+  sump_proxies=None
   #new
   fixed_u_eq_adp_proxies=None
   adp_u_eq_similarity_proxies=None
@@ -39,6 +40,7 @@ class manager(object):
     unit_cell = xray_structure.unit_cell()
     sites_cart = xray_structure.sites_cart()
     u_cart = xray_structure.scatterers().extract_u_cart(unit_cell)
+    occu = xray_structure.scatterers().extract_occupancies()
     u_iso = xray_structure.scatterers().extract_u_iso()
     use_u_aniso = xray_structure.use_u_aniso()
     site_labels = xray_structure.scatterers().extract_labels()
@@ -121,6 +123,10 @@ class manager(object):
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
       print(file=f)
+    if (self.sump_proxies is not None):
+      self.sump_proxies.show(
+        site_occupancies=occu, site_labels=site_labels, f=f, prefix=prefix + "SUMP")
+      print(file=f)
 
   def add_to_cif_block(self, cif_block, xray_structure):
     import iotbx.cif.restraints
@@ -137,7 +143,8 @@ class manager(object):
       isotropic_adp_proxies=self.isotropic_adp_proxies,
       adp_u_eq_similarity_proxies=self.adp_u_eq_similarity_proxies,
       adp_volume_similarity_proxies=self.adp_volume_similarity_proxies,
-      fixed_u_eq_adp_proxies=self.fixed_u_eq_adp_proxies
+      fixed_u_eq_adp_proxies=self.fixed_u_eq_adp_proxies,
+      sump_proxies=self.sump_proxies
     )
 
   def build_linearised_eqns(self, xray_structure, parameter_map):
@@ -157,6 +164,7 @@ class manager(object):
         n_restraints += 1
       geometry_proxies.append(self.chirality_proxies)
     adp_proxies = []
+    occu_proxies = []
     if self.adp_similarity_proxies is not None:
       adp_proxies.append(self.adp_similarity_proxies)
       n_restraints += 6 * self.adp_similarity_proxies.size()
@@ -180,6 +188,9 @@ class manager(object):
     if self.rigu_proxies is not None:
       adp_proxies.append(self.rigu_proxies)
       n_restraints += 3 * self.rigu_proxies.size()
+    if self.sump_proxies is not None:
+      occu_proxies.append(self.sump_proxies)
+      n_restraints += self.sump_proxies.size()
     # construct restraints matrix
     linearised_eqns = linearised_eqns_of_restraint(
       n_restraints, n_params)
@@ -198,4 +209,8 @@ class manager(object):
       linearise_restraints(
         xray_structure.unit_cell(), params,
         parameter_map, proxies, linearised_eqns)
+    if occu_proxies:
+      site_occupancies = xray_structure.scatterers().extract_occupancies()
+      for proxies in occu_proxies:
+        proxies.linearise(site_occupancies, parameter_map, linearised_eqns)
     return linearised_eqns
