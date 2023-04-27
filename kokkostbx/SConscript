@@ -11,7 +11,7 @@ if env_etc.enable_kokkos:
   # set environment variable defaults if necessary
   if os.getenv('KOKKOS_DEVICES') is None:
     os.environ['KOKKOS_DEVICES'] = "OpenMP"
-  use_openmp = "OpenMP" in os.getenv('KOKKOS_DEVICES')  
+  use_openmp = "OpenMP" in os.getenv('KOKKOS_DEVICES')
   use_cuda = "Cuda" in os.getenv('KOKKOS_DEVICES')
   use_hip = "HIP" in os.getenv('KOKKOS_DEVICES')
   use_sycl = "SYCL" in os.getenv('KOKKOS_DEVICES')
@@ -103,7 +103,7 @@ if env_etc.enable_kokkos:
   # - Verify that libraries from cmake version works the same as libkokkos.a
 
   OnOff = {True:'ON', False:'OFF'}
-  supported_architectures = ['Native', 'HSW', 'Zen', 'Zen2', 'Zen3', 'Volta70', 'Ampere80', 'Vega908', 'Vega90A', 'XeHP', 'PVC']
+  supported_architectures = ['Native', 'HSW', 'Zen', 'Zen2', 'Zen3', 'Volta70', 'Turing75', 'Ampere80', 'Vega908', 'Vega90A', 'XeHP', 'PVC']
   architectures = {}
   for arch in supported_architectures:
     architectures[arch] = OnOff[ arch in os.getenv('KOKKOS_ARCH') ]
@@ -129,6 +129,7 @@ if env_etc.enable_kokkos:
         '-DKokkos_ARCH_ZEN2={}'.format(architectures['Zen2']),
         '-DKokkos_ARCH_ZEN3={}'.format(architectures['Zen3']),
         '-DKokkos_ARCH_VOLTA70={}'.format(architectures['Volta70']),
+        '-DKokkos_ARCH_TURING75={}'.format(architectures['Turing75']),
         '-DKokkos_ARCH_AMPERE80={}'.format(architectures['Ampere80']),
         '-DKokkos_ARCH_VEGA908={}'.format(architectures['Vega908']),
         '-DKokkos_ARCH_VEGA90A={}'.format(architectures['Vega90A']),
