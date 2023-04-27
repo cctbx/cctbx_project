@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx import sgtbx
-from cctbx import adp_restraints, geometry_restraints
+from cctbx import adp_restraints, geometry_restraints, other_restraints
 from cctbx.adp_restraints import adp_restraint_params
 from cctbx.array_family import flex
 from iotbx.cif import model
@@ -21,7 +21,8 @@ def add_to_cif_block(cif_block, xray_structure,
                      isotropic_adp_proxies=None,
                      adp_u_eq_similarity_proxies=None,
                      adp_volume_similarity_proxies=None,
-                     fixed_u_eq_adp_proxies=None):
+                     fixed_u_eq_adp_proxies=None,
+                     sump_proxies=None):
   if bond_proxies is not None:
     cif_block.add_loop(distances_as_cif_loop(xray_structure, bond_proxies))
   if angle_proxies is not None:
@@ -54,6 +55,9 @@ def add_to_cif_block(cif_block, xray_structure,
   if fixed_u_eq_adp_proxies is not None:
     cif_block.add_loop(
       fixed_u_eq_adp_as_cif_loop(xray_structure, fixed_u_eq_adp_proxies))
+  if sump_proxies is not None:
+    loops = sump_as_cif_loops(xray_structure, sump_proxies)
+    for l in loops: cif_block.add_loop(l)
 
 def distances_as_cif_loop(xray_structure, proxies):
   space_group_info = sgtbx.space_group_info(group=xray_structure.space_group())
@@ -424,5 +428,37 @@ def adp_volume_similarity_as_cif_loops(xray_structure, proxies):
     for i, i_seq in enumerate(proxy.i_seqs):
       loop.add_row((site_labels[i_seq],
                     fmt % restraint.deltas()[i],
+                    class_id))
+  return class_loop, loop
+
+def sump_as_cif_loops(xray_structure, proxies):
+  site_labels = xray_structure.scatterers().extract_labels()
+  site_occupancies = xray_structure.scatterers().extract_occupancies()
+  fmt = "%.4f"
+  loop = model.loop(header=(
+    "_restr_affine_occupancy_atom_site_label",
+    "_restr_affine_occupancy_atom_coefficient",
+    "_restr_affine_occupancy_class_id",
+  ))
+  class_loop = model.loop(header=(
+    "_restr_affine_occupancy_class_class_id",
+    "_restr_affine_occupancy_class_target",
+    "_restr_affine_occupancy_class_target_weight_param",
+    "_restr_affine_occupancy_class_diff",
+    "_restr_affine_occupancy_class_esd",
+  ))
+  class_id = 0
+  for proxy in proxies:
+    restraint = other_restraints.sump(site_occupancies, proxy=proxy)
+    class_id += 1
+    esd = math.sqrt(restraint.delta**2 * (1./proxy.i_seqs.size()))
+    class_loop.add_row((class_id,
+                        fmt % restraint.target,
+                        fmt % math.sqrt(1/proxy.weight),
+                        fmt % restraint.delta,
+                        fmt % esd))
+    for i, i_seq in enumerate(proxy.i_seqs):
+      loop.add_row((site_labels[i_seq],
+                    fmt % proxy.coefficients[i],
                     class_id))
   return class_loop, loop
