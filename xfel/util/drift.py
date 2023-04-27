@@ -50,12 +50,12 @@ Read common detector origin position and average unit cell parameters for all
 expts merged in "batch*" datasets / directories, excluding "batch5":
 excluding those :
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.input.exclude=batch5/
+    scrap.input.glob=batch* scrap.input.exclude=batch5
 
 Example usage 2:
 Not only read, but also cache "batch*" results in a "name.pkl" pickle:
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.cache.action=write scrap.cache.glob=name.pkl
+    scrap.input.glob=batch* scrap.cache.action=write scrap.cache.glob=name.pkl
 
 Example usage 3:
 Read cached "batch*" results from all "*.pkl" files and save the plot:
@@ -66,7 +66,7 @@ Example usage 4:
 Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
     libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory
+    scrap.input.glob=r0*/039_rg084/task209 scrap.input.kind=tder_task_directory
 """
 
 
@@ -112,6 +112,15 @@ phil_scope_str = """
       by = chunk *merge run rungroup task trial
         .type = choice
         .help = Variable to color individual points on drift plot by;
+      correlation = seismic
+        .type = str
+        .help = Name of matplotlib colormap to be used on correlation plot
+      distribution = magma_r
+        .type = str
+        .help = Name of matplotlib colormap to be used on distribution heatmap
+      distribution_bg = white
+        .type = str
+        .help = Bg color of distribution plot. 'auto' to derive from gradient.
     }
     show = True
       .type = bool
@@ -287,11 +296,12 @@ def read_reflections(*refl_paths: str) -> flex.reflection_table:
   return flex.reflection_table.concat(r)
 
 
-def represent_range_as_str(sorted_iterable: Sequence) -> str:
-  """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
+def represent_range_as_str(sorted_iterable: Sequence, sep: str = None) -> str:
+  """Return range of str in iterable, e.g. "r081-94" for ["r081", "r094"]"""
   fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
   d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
-  return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
+  sep0, sep1 = (sep[0], sep[-1]) if sep is not None else ('', '')
+  return fs if not d else fs[:d] + sep0 + fs[d:] + '-' + ls[d:] + sep1
 
 
 def unique_elements(sequence: Sequence) -> List:
@@ -340,7 +350,7 @@ class DriftTable(object):
     return self[key] if key in self.data.columns else default
 
   def sort(self, by: Union[str, Sequence[str]]) -> None:
-    self.data.sort_values(by=by, ignore_index=True)
+    self.data.sort_values(by=by, ignore_index=True, inplace=True)
 
   def column_is_flat(self, key: str) -> bool:
     return not is_iterable(self[key][0])
@@ -796,7 +806,10 @@ class DriftArtist(object):
   def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.cov_colormap = plt.get_cmap('seismic')
+    self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
+    self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
+    dbc = str(parameters.plot.color.distribution_bg)
+    self.dist_bg_col = self.dist_colormap(0) if dbc.lower() == 'auto' else dbc
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
@@ -858,7 +871,8 @@ class DriftArtist(object):
 
   @property
   def x_tick_labels(self) -> pd.Series:
-    return self.table.data[self.x_keys].agg(':'.join, axis=1)
+    return self.table.data[self.x_keys].apply(
+      lambda x: ':'.join(x.astype(str)), axis=1)
 
   def _get_handles_and_labels(self) -> Tuple[List, List]:
     handles, unique_keys = [], []
@@ -898,7 +912,7 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
-          color = self.cov_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
+          color = self.corr_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
@@ -927,11 +941,14 @@ class DriftArtist(object):
     axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes: plt.Axes, values_key: str) -> None:
+    axes.set_facecolor(self.dist_bg_col)
     x = self.table_flat['original_index']
     y = self.table_flat[values_key]
-    b = (len(self.x), 100)
-    r = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
-    axes.hist2d(x, y, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)  # noqa
+    weights = self.table_flat['refls']
+    bins = (len(self.x), 100)
+    ranges = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
+    axes.hist2d(x, y, weights=weights, bins=bins, range=ranges,
+                cmap=self.dist_colormap, cmin=1E-10)
     axes.scatter(self.x, [average(val) for val in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
 
