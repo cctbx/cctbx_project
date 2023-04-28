@@ -24,15 +24,20 @@ namespace {
       return_value_policy<return_by_value> rbv;
       class_<w_t>("sump_proxy", no_init)
         .def(init<af::shared<unsigned> const&,
-                  af::shared<double> const& , double, double>((
-           arg("i_seqs"),
-           arg("coefficients"),
-           arg("weight"),
-           arg("target"))))
+                  af::shared<double> const& , double, double,
+                  af::shared<std::string> const&,
+                  af::shared<unsigned> const&,
+                  af::shared<unsigned> const&>((
+           arg("i_seqs"), arg("coefficients"), arg("weight"),
+           arg("target"), arg("labels"), arg("all_i_seqs"),
+           arg("group_size"))))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv))
         .add_property("coefficients", make_getter(&w_t::coefficients, rbv))
         .add_property("weight", &w_t::weight)
         .add_property("target", &w_t::target)
+        .add_property("labels", make_getter(&w_t::labels, rbv))
+        .add_property("all_i_seqs", make_getter(&w_t::all_i_seqs, rbv))
+        .add_property("group_sizes", make_getter(&w_t::group_sizes, rbv))
         ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
