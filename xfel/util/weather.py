@@ -138,4 +138,4 @@ if __name__ == '__main__':
     print(message)
     exit()
   params = params_from_phil(sys.argv[1:])
-run(params)
+  run(params)
