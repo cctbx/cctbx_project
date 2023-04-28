@@ -435,8 +435,12 @@ def sump_as_cif_loops(xray_structure, proxies):
   site_labels = xray_structure.scatterers().extract_labels()
   site_occupancies = xray_structure.scatterers().extract_occupancies()
   fmt = "%.4f"
+  group_loop = model.loop(header=(
+    "_restr_affine_occupancy_group_atom_site_label",
+    "_restr_affine_occupancy_group_id",
+  ))
   loop = model.loop(header=(
-    "_restr_affine_occupancy_atom_site_label",
+    "_restr_affine_occupancy_group_group_id",
     "_restr_affine_occupancy_atom_coefficient",
     "_restr_affine_occupancy_class_id",
   ))
@@ -447,7 +451,7 @@ def sump_as_cif_loops(xray_structure, proxies):
     "_restr_affine_occupancy_class_diff",
     "_restr_affine_occupancy_class_esd",
   ))
-  class_id = 0
+  group_id, class_id = 0, 0
   for proxy in proxies:
     restraint = other_restraints.sump(site_occupancies, proxy=proxy)
     class_id += 1
@@ -457,8 +461,14 @@ def sump_as_cif_loops(xray_structure, proxies):
                         fmt % math.sqrt(1/proxy.weight),
                         fmt % restraint.delta,
                         fmt % esd))
-    for i, i_seq in enumerate(proxy.i_seqs):
-      loop.add_row((site_labels[i_seq],
+    idx = 0
+    for i in range(proxy.i_seqs.size()):
+      group_id += 1
+      loop.add_row((group_id,
                     fmt % proxy.coefficients[i],
                     class_id))
-  return class_loop, loop
+      for j in range(proxy.group_sizes[i]):
+        i_seq = proxy.all_i_seqs[idx]
+        group_loop.add_row((site_labels[i_seq], group_id))
+        idx += 1
+  return group_loop, class_loop, loop

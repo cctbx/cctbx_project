@@ -11,21 +11,49 @@ namespace cctbx { namespace other_restraints {
     //! Default constructor. Some data members are not initialized!
     sump_proxy() {}
 
-    //! Constructor.
+    /*! Constructor
+    * arguments:
+    * @param i_seqs - indices of components into site occupancies
+    * @param coefficients - multiplication factor for particular component
+    * @param weight - the restraint weight
+    * @param target - the target value of sum_over_i(occu_i*coefficient_i)
+    * @param labels - could be empty - then site labels or indices will be used
+    * @param all_i_seqs - use this when restrain is over dependent occupancy
+    *   constraint
+    * @param group_sizes - defines structure of all_i_seq
+    *   group_sizes.size() = i_seqs.size() &&
+    *     sum_over_i(group_sizes_i) = all_i_seqs.size()
+    */
     sump_proxy(
       af::shared<unsigned> const& i_seqs,
       af::shared<double> const& coefficients,
-      double weight, double target)
+      double weight, double target,
+      af::shared<std::string> const& labels,
+      af::shared<unsigned> const& all_i_seqs,
+      af::shared<unsigned> const& group_sizes)
     : i_seqs(i_seqs),
       coefficients(coefficients),
       weight(weight),
-      target(target)
-    {}
+      target(target),
+      labels(labels),
+      all_i_seqs(all_i_seqs),
+      group_sizes(group_sizes)
+    {
+      CCTBX_ASSERT(i_seqs.size() == coefficients.size());
+      CCTBX_ASSERT(labels.size() == 0 || labels.size() == i_seqs.size());
+      CCTBX_ASSERT(group_sizes.size() == i_seqs.size());
+      CCTBX_ASSERT(all_i_seqs.size() >= i_seqs.size());
+      CCTBX_ASSERT(af::sum(group_sizes.const_ref()) == all_i_seqs.size());
+    }
 
-    //! Indices into array of sites.
+    //! Indices into array of occupancies.
     af::shared<unsigned> i_seqs;
     af::shared<double> coefficients;
     double weight, target;
+
+    af::shared<std::string> labels;
+    af::shared<unsigned> all_i_seqs;
+    af::shared<unsigned> group_sizes;
   };
 
   class sump {

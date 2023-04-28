@@ -16,7 +16,10 @@ class _():
     r = sump(site_occupancies, self)
     label = []
     for i, i_seq in enumerate(self.i_seqs):
-      l = "%s.occu" %(site_labels[i_seq] if site_labels else str(i_seq))
+      if self.labels:
+        l = self.labels[i]
+      else:
+        l = "%s.occu" %(site_labels[i_seq] if site_labels else str(i_seq))
       k = self.coefficients[i]
       if abs(k-1) < 1e-2:
         p = l
