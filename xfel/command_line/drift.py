@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.drift
 
+from __future__ import division
 import sys
 from xfel.util.drift import params_from_phil, run, message
 
