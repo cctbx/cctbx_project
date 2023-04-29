@@ -34,7 +34,7 @@ This script collects and visualizes the spatial drift of a detector and unit
 cell parameters as a function of experimental progress. It requires
 the directory structure to follow the one resulting from data processing
 (i.e. ensemble refinement) performed by cctbx.xfel.
-Data scraping can take a lot of time, especially for large datasets.
+Data scraping can take some time, especially for large datasets.
 For this reason, scraping results can be saved and loaded from a pickle cache.
 End result is a plot with detector origin position and unit cell lengths
 (vertical position) as a function of run & chunk number (horizontal position).
@@ -64,7 +64,7 @@ Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
     cctbx.xfel.drift
     scrap.input.glob=r0*/039_rg084/task209 scrap.input.kind=tder_task_directory
-"""
+""".strip()
 
 
 ################################ PHIL HANDLING ################################
@@ -354,7 +354,7 @@ class DriftTable(object):
 
   def assert_not_empty(self):
     if len(self.data) == 0:
-      raise ValueError(f"{self.__class__} has no rows. Did you read the data?")
+      raise ValueError(f"{self.__class__} has no rows. Did you read any data?")
 
   @property
   def flat(self) -> pd.DataFrame:
