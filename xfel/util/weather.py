@@ -8,14 +8,14 @@ from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from scitbx.math import five_number_summary
 
-message = ''' script to get a sense of the computational performance of every rank while processing data.
-              End product is a plot of wall time vs MPI rank number with every data point being that of a frame
-              processed by dials.stills_process. The information is read in from the debug files created by
-              dials.stills_process.
-              Example usage on cxic0415 processed demo data -
-              libtbx.python weather.py
-              input_path=cxic0415/output/debug
-'''
+message = """ 
+A script to get a sense of the computational performance of every rank while
+processing data. End product is a plot of wall time vs MPI rank number with
+every data point being that of a frame processed by dials.stills_process.
+The information is read in from the debug files created by dials.stills_process.
+Example usage on cxic0415 processed demo data:
+    cctbx.xfel.weather input_path=cxic0415/output/debug
+""".strip()
 phil_scope = parse('''
   input_path = .
     .type = str
