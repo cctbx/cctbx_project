@@ -8,7 +8,7 @@ from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from scitbx.math import five_number_summary
 
-message = """ 
+message = """
 A script to get a sense of the computational performance of every rank while
 processing data. End product is a plot of wall time vs MPI rank number with
 every data point being that of a frame processed by dials.stills_process.
