@@ -352,6 +352,10 @@ class DriftTable(object):
   def column_is_flat(self, key: str) -> bool:
     return not is_iterable(self[key][0])
 
+  def assert_not_empty(self):
+    if len(self.data) == 0:
+      raise ValueError(f"{self.__class__} has no rows. Did you read the data?")
+
   @property
   def flat(self) -> pd.DataFrame:
     """Pandas' data `DataFrame` with all iterable fields expanded over rows"""
@@ -379,6 +383,7 @@ class DriftTable(object):
     return flat_table
 
   def recalculate_dynamic_column(self, key: str) -> None:
+    self.assert_not_empty()
     if key == 'density':
       refls = self.data['refls'] if self.column_is_flat('refls') \
         else pd.Series([sum(refl) for refl in self.data['refls']])
