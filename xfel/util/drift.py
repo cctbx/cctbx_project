@@ -1,10 +1,9 @@
-from __future__ import absolute_import, print_function, division
 import abc
-import functools
-import itertools
 from collections import OrderedDict, UserList
-from json.decoder import JSONDecodeError
+import functools
 import glob
+import itertools
+from json.decoder import JSONDecodeError
 import os
 import pickle
 import six
@@ -48,24 +47,22 @@ position in laboratory reference system.
 Example usage 1:
 Read common detector origin position and average unit cell parameters for all
 expts merged in "batch*" datasets / directories, excluding "batch5":
-excluding those :
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch* scrap.input.exclude=batch5
+    cctbx.xfel.drift scrap.input.glob=batch* scrap.input.exclude=batch5
 
 Example usage 2:
 Not only read, but also cache "batch*" results in a "name.pkl" pickle:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    cctbx.xfel.drift
     scrap.input.glob=batch* scrap.cache.action=write scrap.cache.glob=name.pkl
 
 Example usage 3:
 Read cached "batch*" results from all "*.pkl" files and save the plot:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    cctbx.xfel.drift
     scrap.cache.action=read scrap.cache.glob=*.pkl plot.save=True
 
 Example usage 4:
 Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    cctbx.xfel.drift
     scrap.input.glob=r0*/039_rg084/task209 scrap.input.kind=tder_task_directory
 """
 
@@ -1005,4 +1002,4 @@ if __name__ == '__main__':
     print(message)
     exit()
   params = params_from_phil(sys.argv[1:])
-run(params)
+  run(params)
