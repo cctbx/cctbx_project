@@ -444,12 +444,18 @@ class ProcessDialog(wx.Dialog):
     self.process.abort()
     self._aborted = True
     self._timer.Stop()
-    self.EndModal(wx.ID_CANCEL)
+    try:
+      self.EndModal(wx.ID_CANCEL)
+    except Exception as e:
+      pass # C++ was deleted
 
   def OnError(self, event):
     self._error = event.data
     self._timer.Stop()
-    self.EndModal(wx.ID_CANCEL)
+    try:
+      self.EndModal(wx.ID_CANCEL)
+    except Exception as e:
+      pass # C++ was deleted
 
   def exception_raised(self):
     return (self._error is not None)
