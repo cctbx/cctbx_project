@@ -443,10 +443,12 @@ class ProcessDialog(wx.Dialog):
   def OnAbort(self, event):
     self.process.abort()
     self._aborted = True
+    self._timer.Stop()
     self.EndModal(wx.ID_CANCEL)
 
   def OnError(self, event):
     self._error = event.data
+    self._timer.Stop()
     self.EndModal(wx.ID_CANCEL)
 
   def exception_raised(self):
