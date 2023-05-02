@@ -1678,7 +1678,9 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False,
-      try_unique_with_biomt = False):
+      try_unique_with_biomt = False,
+      skip_restraints=False,
+      ):
     if try_unique_with_biomt:
       if not self.can_be_unique_with_biomt():
         return ""
@@ -1769,8 +1771,9 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
 
-    restraints = self.extract_restraints_as_cif_blocks()
-    cif.update(restraints)
+    if skip_restraints:
+      restraints = self.extract_restraints_as_cif_blocks()
+      cif.update(restraints)
 
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
