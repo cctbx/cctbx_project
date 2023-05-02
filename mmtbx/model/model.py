@@ -1771,7 +1771,7 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
 
-    if skip_restraints:
+    if not skip_restraints:
       restraints = self.extract_restraints_as_cif_blocks()
       cif.update(restraints)
 
