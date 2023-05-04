@@ -405,6 +405,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   inelastic_references = {
     "henke" : "Henke, Gullikson and Davis, At. Data and Nucl. Data Tables, 1993, 54, 2",
     "sasaki" : "Sasaki, KEK Report, 1989, 88-14, 1",
+    "brennan" : "Brennan, Cowan, Rev. Sci. Instrum., 1992, 63, 850",
   }
 
   scattering_type_registry = xray_structure.scattering_type_registry()
