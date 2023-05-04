@@ -94,11 +94,7 @@ class experiment_scaler(worker):
       exp_reflections['correlation'] = flex.double(len(exp_reflections), result.correlation)
       new_experiments.append(experiment)
       new_reflections.extend(exp_reflections)
-    
-    np.save(
-      '/net/dials/raid1/dwmoreau/KaptonAbsorption/grouping/cc_coef/correlations.npy',
-      new_reflections['correlation'].as_numpy_array()
-      )
+
     new_reflections.reset_ids()
     rejected_experiments = len(experiments) - len(new_experiments)
     assert rejected_experiments == experiments_rejected_because_of_low_signal + \
