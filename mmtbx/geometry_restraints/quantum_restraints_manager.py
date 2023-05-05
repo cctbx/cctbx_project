@@ -392,6 +392,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
             qmr.package.solvent_model,
             qmr.package.charge,
             qmr.package.multiplicity,
+            qmr.package.nproc,
             # preamble='%02d' % (i+1),
             )
   qmm.program=program
