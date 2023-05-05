@@ -167,7 +167,7 @@ class electron_distribution(dict):
       else:
         assert abs(electrons)<20
         if(show_unpaired and electrons) or show_all:
-          outl += '  %s  : %3d\n' % (atoms[key].quote(), electrons)
+          outl += '  %s  : %3de\n' % (atoms[key].quote(), electrons)
     if not outl:
       outl = '  molecule neutral'
     outl = '%s%s' % (header, outl)
@@ -191,6 +191,31 @@ class electron_distribution(dict):
       outl += '  %s : %2d\n' % (atom.parent().id_str(), sum_e)
     return outl
 
+  def show_dot(self, filename='molecule.png'):
+    import graphviz
+    f = graphviz.Digraph(filename=filename)
+    indx=[]
+    element=[]
+    edges=[]
+    atoms=self.hierarchy.atoms()
+    for key, electrons in self.items():
+      if type(key)==type(tuple([])):
+        if atoms[key[0]].element in ['H', 'D']: continue
+        if atoms[key[1]].element in ['H', 'D']: continue
+        for e in range(electrons):
+          edges.append([str(key[0]), str(key[1])])
+      else:
+        if atoms[key].element in ['H', 'D']: continue
+        indx.append(str(key))
+        element.append('%s' % (atoms[key].name))
+        if electrons: element[-1]+=' (%s)' % electrons
+    for name, position in zip(indx, element):
+      f.node(name, position)
+    for e1, e2 in edges:
+      f.edge(e1,e2)
+    print(f.source)
+    f.render(view=True)
+
   def _generate_atoms(self):
     for key, electrons in self.items():
       if type(key)==type(tuple([])): continue
@@ -210,21 +235,35 @@ class electron_distribution(dict):
   def _add_electron_to_bond(self, i_seqs, verbose=False):
     if verbose:
       atoms = self.hierarchy.atoms()
+      print('_add_electron_to_bond')
       print(i_seqs, atoms[i_seqs[0]].quote(), atoms[i_seqs[1]].quote())
       print(self)
     if i_seqs not in self:
       tmp = (i_seqs[1], i_seqs[0])
       i_seqs=tmp
+    print(self)
+    print(self.keys())
     self[i_seqs]+=1
     self[i_seqs[0]]-=1
     self[i_seqs[1]]-=1
-    if 0: print(self)
+
+  def _subtract_electron_from_bond(self, i_seqs, verbose=False):
+    if verbose:
+      atoms = self.hierarchy.atoms()
+      print('_subtract_electron_from_bond')
+      print(i_seqs, atoms[i_seqs[0]].quote(), atoms[i_seqs[1]].quote())
+      print(self)
+    if i_seqs not in self:
+      tmp = (i_seqs[1], i_seqs[0])
+      i_seqs=tmp
+    self[i_seqs]-=1
+    self[i_seqs[0]]+=1
+    self[i_seqs[1]]+=1
 
   def set_charges(self):
     atoms = self.hierarchy.atoms()
     for key, electrons in self.items():
       element = atoms[key].element.strip()
-      # print element, self.properties.is_metal(element)
       if element in default_metal_charges:
         self[key]=default_metal_charges[element]*-1
 
@@ -283,12 +322,16 @@ class electron_distribution(dict):
       ): return True
     return False
 
-  def _can_denote_electron_to_covalent_bond(self, i_seq, j_seq, verbose=False):
+  def _can_denote_electron_to_covalent_bond(self,
+                                            i_seq,
+                                            j_seq,
+                                            dangling=False,
+                                            verbose=1):
     if verbose:
       print('processing %s %s' % (self.atoms[i_seq].quote(), self.atoms[j_seq].quote()))
     if self[i_seq]>0 and self[j_seq]>0:
       if verbose:
-          print('bonding %s %s' % (self.atoms[i_seq].quote(), self.atoms[j_seq].quote()))
+        print('bonding %s %s' % (self.atoms[i_seq].quote(), self.atoms[j_seq].quote()))
       return True
     elif self[i_seq]==0 and self[j_seq]==0:
       return False
@@ -306,6 +349,12 @@ class electron_distribution(dict):
     elif atom2.element_is_hydrogen():
       hydrogen = atom2
       other = atom1
+    elif dangling and self.properties.get_lone_pairs(atom1.element)==0:
+      if verbose: print('atom has no lone pairs',atom1.quote())
+      return False
+    elif dangling and self.properties.get_lone_pairs(atom2.element)==0:
+      if verbose: print('atom has no lone pairs',atom2.quote())
+      return False
     else:
       an1 = self.properties.get_atomic_number(atom1.element)
       an2 = self.properties.get_atomic_number(atom2.element)
@@ -447,6 +496,94 @@ class electron_distribution(dict):
     # remove HG on sulfur bridge
     # self.check_sulfur_bridge()
 
+  def generate_bond_i_seqs(self, verbose=False):
+    for bpc in [self.simple, self.asu]:
+      for bp in bpc:
+        if hasattr(bp, 'j_seq'):
+          i_seqs = [bp.i_seq, bp.j_seq]
+          i_seqs.sort()
+          i_seqs=tuple(i_seqs)
+          # i_seq, j_seq = i_seqs
+        else:
+          i_seqs = bp.i_seqs
+          # i_seq, j_seq = bp.i_seqs
+        if verbose:
+          print(i_seqs,
+                self.atoms[i_seqs[0]].quote(),
+                self.atoms[i_seqs[1]].quote(),
+                )
+        yield i_seqs
+
+  def get_bonds_containing_i_seq(self, i_seq):
+    rc = []
+    for i_seqs in self.generate_bond_i_seqs():
+      if i_seq in i_seqs:
+        rc.append(i_seqs)
+    return rc
+
+  def get_cycle_charge_count(self, cycle):
+    tmp=[]
+    for c in cycle:
+      tmp.append(c[0])
+      tmp.append(c[1])
+    rc=0
+    for key, item in self.items():
+      if key in tmp:
+        if item: rc+=1
+    return rc
+
+  def get_cycle_charge(self, cycle):
+    tmp=[]
+    for c in cycle:
+      tmp.append(c[0])
+      tmp.append(c[1])
+    rc=0
+    for key, item in self.items():
+      if key in tmp:
+        if item: rc-=self[key]
+    return rc
+
+  def process_dangling_heavy_atoms(self, verbose=1):
+    for key, electrons in self.items():
+      bonds = self.get_bonds_containing_i_seq(key)
+      if len(bonds)==1:
+        i_seq, j_seq = bonds[0]
+        if self._can_denote_electron_to_covalent_bond(i_seq,
+                                                      j_seq,
+                                                      dangling=True,
+                                                      verbose=1):
+          self._add_electron_to_bond((i_seq, j_seq))
+          if verbose: print('dangling: %s-%s\n' % (self.atoms[i_seq].quote(),
+                                                   self.atoms[j_seq].quote(),
+                                                  ))
+
+  def does_using_hyper_remove_electrons(self, cycle):
+    def _generate_ij(cycle):
+      for i_seq, j_seq in cycle:
+        yield i_seq, j_seq
+        yield j_seq, i_seq
+    if self.get_cycle_charge(cycle)!=-1: return
+    for i_seq, j_seq in _generate_ij(cycle):
+      print('...',i_seq, self[i_seq],)
+      if self[i_seq]==1:
+        bonds = self.get_bonds_containing_i_seq(i_seq)
+        print(i_seq, bonds)
+        for b_i_seq, b_j_seq in bonds:
+          rc = self._can_denote_electron_to_covalent_bond(b_i_seq, b_j_seq)
+          print(b_i_seq,b_j_seq,rc)
+          if rc:
+            print('>>',self.get_cycle_charge_count(cycle))
+            self._add_electron_to_bond((i_seq, j_seq))
+            print(self)
+          print('""""',self.get_cycle_charge_count(cycle))
+          print(self.get_cycle_charge(cycle))
+          if self.get_cycle_charge(cycle)==1:
+            print('b1')
+            break
+      if self.get_cycle_charge(cycle)==1:
+        print('b2')
+        break
+
   def form_bonds_using_networkx(self, verbose=False):
     import networkx as nx
     g = nx.DiGraph()
@@ -458,41 +595,24 @@ class electron_distribution(dict):
                 'i_seq': atom.i_seq,
                })
     def generate_bond_edges(extend_based_on_proximity=False, verbose=False):
-      for bpc in [self.simple, self.asu]:
-        for bp in bpc:
-          if hasattr(bp, 'j_seq'):
-            i_seqs = [bp.i_seq, bp.j_seq]
-            i_seqs.sort()
-            i_seqs=tuple(i_seqs)
-            i_seq, j_seq = i_seqs
-          else:
-            i_seqs = bp.i_seqs
-            i_seq, j_seq = bp.i_seqs
-          if verbose:
-            print(i_seqs,
-                  self.atoms[i_seqs[0]].quote(),
-                  self.atoms[i_seqs[1]].quote(),
-                  )
-          if i_seqs in self: continue
-          self[i_seqs]=0
-          if self._can_denote_electron_to_covalent_bond(i_seq, j_seq):
-            self._add_electron_to_bond(i_seqs)
-            if verbose: print('single: %s-%s\n%s' % (self.atoms[i_seq].quote(),
-                                                     self.atoms[j_seq].quote(),
-                                                     self))
-          yield i_seqs
+      for i_seqs in self.generate_bond_i_seqs():
+        if i_seqs in self: continue
+        self[i_seqs]=0
+        i_seq, j_seq = i_seqs
+        if self._can_denote_electron_to_covalent_bond(i_seq, j_seq):
+          self._add_electron_to_bond(i_seqs)
+          if verbose: print('single: %s-%s\n%s' % (self.atoms[i_seq].quote(),
+                                                   self.atoms[j_seq].quote(),
+                                                   self))
+        yield i_seqs
     #
-    '''
-    g = nx.Graph()
-g.add_nodes_from(m.atoms)
-g.add_edges_from([b.atoms for b in m.atoms.intra_bonds])
-rings = [set(alist) for alist in nx.cycle_basis(g)]
-'''
     t0=time.time()
     g.add_nodes_from(generate_atom_nodes())
     g.add_edges_from(generate_bond_edges(verbose=verbose))
     h = g.to_undirected()
     if verbose: print('  Created graphs of molecule : %0.1fs' % (time.time()-t0))
+    self.process_dangling_heavy_atoms()
+    cycle_bases = nx.cycle_basis(h)
     done_cycles = []
     t0=time.time()
     for i_seq, (node, attrs) in enumerate(g.nodes(data=True)):
@@ -508,40 +628,77 @@ rings = [set(alist) for alist in nx.cycle_basis(g)]
                                                 ))
         # print('    Double : %0.1fs' % (time.time()-t1))
       # rings
-      cycle=None
-      try:
-        cycle = nx.find_cycle(g, i_seq, orientation='ignore')
-      except Exception:
-        pass
-      if cycle is None: continue
+      cycle=[]
+      print(cycle_bases)
+      for cb in cycle_bases:
+        print(i_seq,cb)
+        if i_seq in cb:
+          print(dir(g))
+          print(g.edges)
+          for e in g.edges:
+            if e[0]in cb and e[1] in cb:
+              cycle.append(e)
+
+      # try:
+      #   cycle = nx.find_cycle(g, i_seq, orientation='ignore')
+      # except Exception:
+      #   pass
+      if not cycle: continue
+      print(cycle)
       tmp = []
       for bond in list(cycle): tmp.append(bond[0])
       tmp.sort()
       if tmp in done_cycles: continue
       done_cycles.append(tmp)
-      for filter_non_tetra_coordinate in range(2,-1,-1):
-        for i_seq, j_seq, direction in cycle:
-          if filter_non_tetra_coordinate:
-            if not self._is_c_c_bond(i_seq, j_seq):
-              continue
-          if self[i_seq]>0 and self[j_seq]>0:
-            self._add_electron_to_bond((i_seq, j_seq))
-            if verbose: print('rings : %s-%s\n%s' % (self.atoms[i_seq].quote(),
-                                                     self.atoms[j_seq].quote(),
-                                                     self))
+      tries=10
+      cycle_charge_count=self.get_cycle_charge_count(cycle)
+      print('CYCLE',cycle, len(cycle), cycle_charge_count)
+      outl = 'CYCLE %s' % self.atoms[i_seq].quote()
+      for c in cycle:
+        outl += ' %s' % self.atoms[c[0]].name
+      print(outl)
+      subtract=[]
+      while cycle_charge_count and tries:
+        tries-=1
+        if not tries:
+          self.does_using_hyper_remove_electrons(cycle)
+        while subtract:
+          i_seqs = subtract.pop()
+          self._subtract_electron_from_bond(i_seqs)
+        for filter_non_tetra_coordinate in range(2,-1,-1):
+          import random
+          # cycle=_sort_on_element(cycle, self.atoms)
+          for i_seq, j_seq in cycle:
+            if filter_non_tetra_coordinate:
+              if not self._is_c_c_bond(i_seq, j_seq):
+                if verbose: print('skipping C-C bond')
+                continue
+            if self[i_seq]>0 and self[j_seq]>0:
+              self._add_electron_to_bond((i_seq, j_seq))
+              subtract.append((i_seq, j_seq))
+              if verbose: print('rings : %s-%s\n%s' % (self.atoms[i_seq].quote(),
+                                                       self.atoms[j_seq].quote(),
+                                                       self))
+        cycle_charge_count=self.get_cycle_charge_count(cycle)
+        random.shuffle(cycle)
     if verbose: print('  Double & rings : %0.1fs' % (time.time()-t0))
+    #
     # hyper and triple
+    #
     t0=time.time()
-    for bp in self.simple:
-      if bp.i_seqs not in self: continue
+    print('simple',self.simple)
+    for i_seqs in self.generate_bond_i_seqs():
+    # for bp in self.simple:
+      print(i_seqs, i_seqs not in self)
+      if i_seqs not in self: continue
       if verbose: print('hyper',self)
-      i_seq, j_seq = bp.i_seqs
+      i_seq, j_seq = i_seqs
       assert i_seq in self
       assert j_seq in self
       while self._can_denote_electron_to_covalent_bond(i_seq,
                                                        j_seq,
                                                        verbose=verbose):
-        self._add_electron_to_bond(bp.i_seqs)
+        self._add_electron_to_bond(i_seqs)
         if verbose: print('hyper : %s-%s\n' % (self.atoms[i_seq].quote(),
                                                self.atoms[j_seq].quote(),
                                               ))
@@ -639,7 +796,6 @@ rings = [set(alist) for alist in nx.cycle_basis(g)]
         if not (atom1.element_is_hydrogen() or atom2.element_is_hydrogen()):
           continue
         d2 = distance2(atoms[i_seq].xyz, atoms[j_seq].xyz)
-        # print(atom1.id_str(), atom2.id_str(),d2)
         if atom1.element_is_hydrogen() or atom2.element_is_hydrogen():
           if d2<1.5:
             rc.append([i_seq, j_seq])
@@ -789,9 +945,6 @@ rings = [set(alist) for alist in nx.cycle_basis(g)]
             outl += '\n     HINT: %s\n' % 'Too many hydrogen atoms'
           else:
             pass
-            # print(outl)
-            # print(key,item)
-            # assert 0
     if outl:
       outl = 'Validation report\n%s' % outl
       print(outl)
@@ -850,13 +1003,17 @@ Inputs:
     print('Distribution time : %01.fs' % (time.time()-t0))
     print('='*80)
     print(self.atom_valences)
-    report = self.atom_valences.report(
+    self.report = self.atom_valences.report(
       ignore_water=self.params.input.ignore_water,
       show_detailed=True,
       )
+    self.total_charge = self.atom_valences.get_total_charge()
 
   def get_results(self):
-    return group_args(atom_valences = self.atom_valences)
+    return group_args(atom_valences = self.atom_valences,
+                      validation = self.report,
+                      total_charge = self.total_charge,
+                      )
 
     # t0=time.time()
     # if verbose: print(atom_valences)
