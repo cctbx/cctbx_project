@@ -424,7 +424,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
                  '_atom_type%sscat_source' %separator,
                  '_atom_type%sscat_dispersion_source' %separator])
   atom_type_loop = model.loop(header=header)
-  gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
+  #gaussian_dict = scattering_type_registry.as_type_gaussian_dict()
   scattering_type_registry = xray_structure.scattering_type_registry()
   params = xray_structure.scattering_type_registry_params
   if covariance_matrix:
@@ -491,6 +491,9 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
       if not isinstance(fdp, str):
         fdp = "%.5f" %fdp
     row = [atom_type, fp, fdp]
+    lds = disp_source
+    if "(" in fp or "(" in fdp:
+      lds = "refined"
     #gaussian = gaussian_dict[sc.scattering_type]
     gaussian_a = ["%.5f" %a for a in gaussian.array_of_a()]
     gaussian_b = ["%.5f" %a for a in gaussian.array_of_b()]
@@ -498,7 +501,7 @@ Newsletter of the IUCr Commission on Crystallographic Computing 2004, 3, 22-31."
     gaussian_a.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     gaussian_b.extend(["."]*(max_n_gaussians-gaussian.n_terms()))
     row.extend(gaussian_a + gaussian_b)
-    row.extend([gaussian_c, scat_source, disp_source])
+    row.extend([gaussian_c, scat_source, lds])
     atom_type_loop.add_row(row)
 
   return atom_type_loop
