@@ -104,6 +104,7 @@ class electron_distribution(dict):
                hierarchy,
                grm,
                specific_atom_charges=None, # a list of selections and charges
+               specific_atom_multicities=None,
                alternative_location_id=None,
                alternative_location_index=None,
                log=None,
