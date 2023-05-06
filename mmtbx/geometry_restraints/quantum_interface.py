@@ -71,6 +71,18 @@ qm_restraints
   buffer = 3.5
     .type = float
     .help = distance to include entire residues into the enviroment of the core
+  specific_atom_charges
+    .optional = True
+    .multiple = True
+    .short_caption = Specify the charge for a specific atom (mostly metal ions)
+    .style = auto_align
+  {
+    atom_selection = None
+      .type = atom_selection
+      .input_size = 400
+    charge = None
+      .type = float
+  }
   calculate_starting_energy = False
     .type = bool
   calculate_final_energy = False
@@ -137,12 +149,13 @@ qm_restraints
   qm_restraints_scope = qm_restraints_scope % qm_package_scope
   return qm_restraints_scope
 
-def electrons(model, log=None):
+def electrons(model, specific_atom_charges=None, log=None):
   from libtbx.utils import Sorry
-  from elbow.quantum import electrons
+  from mmtbx.ligands import electrons
   atom_valences = electrons.electron_distribution(
     model.get_hierarchy(), # needs to be altloc free
     model.get_restraints_manager().geometry,
+    specific_atom_charges=specific_atom_charges,
     log=log,
     verbose=False,
   )
