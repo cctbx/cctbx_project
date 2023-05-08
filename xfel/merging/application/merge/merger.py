@@ -6,6 +6,8 @@ from cctbx.crystal import symmetry
 from cctbx import miller
 import os
 from six.moves import cStringIO as StringIO
+import numpy as np
+from scitbx.array_family import flex
 
 class merger(worker):
   """
@@ -19,8 +21,17 @@ class merger(worker):
 
   def run(self, experiments, reflections):
 
+    sel_col = "id"
+    if self.params.statistics.shuffle_ids:
+      refl_ids = list(set(reflections["id"]))
+      new_ids = np.random.permutation(refl_ids).astype(np.int32)
+      new_id_map = {old_id: new_id for old_id, new_id in zip(refl_ids, new_ids)}
+      new_id_col = [new_id_map[i] for i in reflections["id"]]
+      reflections["shuffled_id"] = flex.int(new_id_col)
+      sel_col = "shuffled_id"
+
     # select, merge and output odd reflections
-    odd_reflections = rt_util.select_odd_experiment_reflections(reflections)
+    odd_reflections = rt_util.select_odd_experiment_reflections(reflections, sel_col)
     odd_reflections_merged = rt_util.merge_reflections(
         odd_reflections,
         self.params.merging.minimum_multiplicity,
@@ -29,7 +40,7 @@ class merger(worker):
     self.gather_and_output_reflections(odd_reflections_merged, 'odd')
 
     # select, merge and output even reflections
-    even_reflections = rt_util.select_even_experiment_reflections(reflections)
+    even_reflections = rt_util.select_even_experiment_reflections(reflections, sel_col)
     even_reflections_merged = rt_util.merge_reflections(
         even_reflections,
         self.params.merging.minimum_multiplicity,
