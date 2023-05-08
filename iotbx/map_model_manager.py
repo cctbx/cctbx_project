@@ -4898,6 +4898,8 @@ class map_model_manager(object):
     setup_info = working_mmm._get_box_setup_info(map_id_1, map_id_2,
       resolution,
       d_min,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
       smoothing_radius = smoothing_radius,
       )
     if spectral_scaling and (not expected_rms_fc_list):
