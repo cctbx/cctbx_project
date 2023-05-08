@@ -569,6 +569,9 @@ output {
 
 statistics_phil = """
 statistics {
+  shuffle_ids = False
+    .type = bool
+    .help = shuffle the IDs when dividing into even/odd. This adds variation to half dataset stats like CC1/2
   n_bins = 10
     .type = int(value_min=1)
     .help = Number of resolution bins in statistics table
