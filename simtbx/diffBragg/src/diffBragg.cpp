@@ -2052,7 +2052,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
       bool use_cuda = false;
 #ifdef DIFFBRAGG_HAVE_CUDA
-      bool use_cuda = use_gpu
+      use_cuda = use_gpu
 #endif
 
       if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
