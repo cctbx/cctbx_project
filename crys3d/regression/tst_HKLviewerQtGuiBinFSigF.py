@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from crys3d.regression import tests_HKLviewer
 from libtbx.test_utils import contains_substring
-import os, subprocess
+import os, sys, subprocess
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
@@ -12,7 +12,7 @@ os.environ['PYTHONIOENCODING'] = 'UTF-8'
 # is run in a loop until it passes but no longer than maxruns times.
 
 # This test is creating the F/SigF dataset on the fly from iotbx/regression/data/phaser_1.mtz,
-# expands data to P! with Friedel pairs, slices with a clip plane at l=9 and only shows
+# expands data to P1 with Friedel pairs, slices with a clip plane at l=9 and only shows
 # reflections with F/SigF<=1. Then saves those reflections to a new file OSbrowserLowValueBinFSigF.mtz.
 # Then checks that this file matches the info in expectedstr
 
@@ -28,6 +28,8 @@ Job complete
 """
 
 def run():
+  if 'linux' in sys.platform and os.environ.get("DISPLAY", None) != "0:0":
+    return # Only run test if on a local linux machine with a connected monitor
   count = 0
   while True:
     print("running %d" %count)

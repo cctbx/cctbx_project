@@ -516,6 +516,8 @@ class CCTBXParser(ParserBase):
             except Sorry as e2:
               if e2.__str__().startswith('Unknown'):
                 self.unused_phil.append(phil)
+              else:
+                raise
           else:
             raise
         if processed_arg is not None:

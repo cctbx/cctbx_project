@@ -176,7 +176,7 @@ def fix_py2_pickle_orig(p):
 
   return p
 
-def fix_py2_pickle(p,max_count = 2, already_tested_keys = None):
+def fix_py2_pickle(p):
   '''
   Fix pickles from Python 2
   Version 3
@@ -188,19 +188,17 @@ def fix_py2_pickle(p,max_count = 2, already_tested_keys = None):
   Returns
   -------
   p: the fixed pickle
-  max_count: maximum number of times that a particular key is examined, to
-    prevent infinite recursion in cases with circular references
-  already_tested_keys : list of values of keys that have already been examined.
 
   Comments:
   ---------
 
   '''
-  if not already_tested_keys: already_tested_keys = []
-
+  from mmtbx.model.model import get_hierarchy_and_run_hierarchy_method
   from collections.abc import Mapping, MutableSequence
   from libtbx import group_args
   from scitbx_array_family_flex_ext import std_string
+  if isinstance(p, get_hierarchy_and_run_hierarchy_method):
+    return p
   if isinstance(p, group_args):
     p = p() # now it is a dict
     for key in list(p.keys()):    # fix the key
@@ -247,11 +245,8 @@ def fix_py2_pickle(p,max_count = 2, already_tested_keys = None):
         p.__dict__[str_key] = p.__dict__[key]
         del p.__dict__[key]
         key = str_key
-      if not key.startswith("__") and (
-         (not key in already_tested_keys) or
-         (already_tested_keys.count(key) < max_count)):
-        p.__dict__[key] = fix_py2_pickle(p.__dict__[key],
-          already_tested_keys = already_tested_keys+[key])
+      if not key.startswith("__"):
+        p.__dict__[key] = fix_py2_pickle(p.__dict__[key])
 
   else:
     # We have no idea...skip conversion (should never be here)

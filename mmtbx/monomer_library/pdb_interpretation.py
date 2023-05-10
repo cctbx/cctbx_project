@@ -1442,7 +1442,9 @@ class monomer_mapping(slots_getstate_setstate):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
-    caa = get_class(name=self.monomer.chem_comp.id[:3])=='common_amino_acid'
+    caa = get_class(name=self.monomer.chem_comp.id[:3]) in ['common_amino_acid',
+                                                            'modified_amino_acid',
+                                                            ]
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}

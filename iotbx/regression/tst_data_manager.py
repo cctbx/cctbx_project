@@ -108,6 +108,19 @@ data_manager {
   os.remove('c.dat')
   os.remove('e.dat')
 
+  # check datatypes with parent
+  datatypes = ['miller_array', 'map_coefficients']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['miller_array', 'map_coefficients', 'phil', 'model']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['phil', 'model', 'miller_array', 'map_coefficients',]
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
 # -----------------------------------------------------------------------------
 def test_model_datatype():
   import mmtbx.monomer_library.server
@@ -897,6 +910,24 @@ def test_fmodel_params():
   dm.load_phil_scope(phil)
   params = dm.get_fmodel_params()
   assert params.xray_data.french_wilson.max_bins == 1
+
+  new_params = dm.get_fmodel_params()
+  new_params.xray_data.r_free_flags.test_flag_value = 2
+  dm.set_fmodel_params(new_params)
+  params = dm.get_fmodel_params()
+  assert params.xray_data.r_free_flags.test_flag_value == 2
+
+  new_params = dm.export_phil_scope(as_extract=True)
+  new_params.data_manager.fmodel.xray_data.twin_law = 'h, k, l'
+  dm.set_fmodel_params(new_params)
+  params = dm.get_fmodel_params()
+  assert params.xray_data.twin_law == 'h, k, l'
+  assert params.xray_data.r_free_flags.test_flag_value == 2
+  assert params.xray_data.french_wilson.max_bins == 1
+  full_params = dm.export_phil_scope(as_extract=True)
+  assert full_params.data_manager.fmodel.xray_data.twin_law == 'h, k, l'
+  assert full_params.data_manager.fmodel.xray_data.r_free_flags.test_flag_value == 2
+  assert full_params.data_manager.fmodel.xray_data.french_wilson.max_bins == 1
 
   # test updated defaults
   dm = DataManager(['model', 'miller_array'])

@@ -15,6 +15,7 @@ from libtbx import group_args, str_utils
 import iotbx.pdb
 import iotbx.cif.model
 import iotbx.ncs
+from cctbx import sgtbx
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 # from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
@@ -1452,6 +1453,14 @@ class manager(object):
     self.unset_restraints_manager() # no longer applies
     self.unset_ncs_constraints_groups()
 
+  def adopt_xray_structure(self, xray_structure=None):
+    if xray_structure is None:
+      return
+    self.get_hierarchy().adopt_xray_structure(xray_structure)
+    self._xray_structure = xray_structure
+    self._atom_selection_cache = None
+    self.model_statistics_info = None
+
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
     # XXX are still consistent!
@@ -1669,7 +1678,9 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False,
-      try_unique_with_biomt = False):
+      try_unique_with_biomt = False,
+      skip_restraints=False,
+      ):
     if try_unique_with_biomt:
       if not self.can_be_unique_with_biomt():
         return ""
@@ -1760,8 +1771,9 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
 
-    restraints = self.extract_restraints_as_cif_blocks()
-    cif.update(restraints)
+    if not skip_restraints:
+      restraints = self.extract_restraints_as_cif_blocks()
+      cif.update(restraints)
 
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
@@ -2440,6 +2452,20 @@ class manager(object):
 
   def get_model_input(self):
     return self._model_input
+
+  def twin_law_from_model_input(self):
+    """
+    Extract twin_law from model_input, if available and extractable
+    """
+    twin_law = None
+    mi = self.get_model_input()
+    if(mi is None): return None
+    twin_law = mi.extract_f_model_core_constants().twin_law
+    if twin_law is not None:
+     try: sgtbx.rt_mx(symbol=twin_law, r_den=12, t_den=144)
+     except ValueError as e:
+       twin_law = None
+    return twin_law
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
