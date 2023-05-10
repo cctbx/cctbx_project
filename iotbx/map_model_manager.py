@@ -4898,6 +4898,8 @@ class map_model_manager(object):
     setup_info = working_mmm._get_box_setup_info(map_id_1, map_id_2,
       resolution,
       d_min,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
       smoothing_radius = smoothing_radius,
       )
     if spectral_scaling and (not expected_rms_fc_list):
@@ -6780,6 +6782,7 @@ class map_model_manager(object):
       d_min,
       smoothing_radius = smoothing_radius,
       n_boxes = n_boxes,
+      core_box_size = core_box_size,
        )
 
     resolution = setup_info.resolution
@@ -7432,16 +7435,18 @@ class map_model_manager(object):
       core_box_size=None,
       smoothing_radius=None,
       box_size_ratio = 6, # full box never smaller than this ratio to resolution
+      maximum_default_boxes = 2000,
       ):
     volume = self.crystal_symmetry().unit_cell().volume()
     if not resolution:
       resolution = self.resolution()
 
-    if (n_boxes is not None) or (not core_box_size):  # n_boxes overrides
-      if n_boxes:
-        core_box_size=int(0.5+ volume/n_boxes)**0.33
-      else:
-        core_box_size = int(0.5+ 3 * resolution)
+    if (n_boxes is not None) and (n_boxes > 0):  # n_boxes overrides
+      core_box_size=int((0.5+ volume/n_boxes)**0.33)
+    elif (not core_box_size):
+      min_core_box_size=int((0.5+ volume/maximum_default_boxes)**0.33)
+      core_box_size = max(min_core_box_size,
+        int(0.5+ 3 * resolution))
 
     if not box_cushion:
       box_cushion = max(2.5 * resolution,

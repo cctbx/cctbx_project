@@ -266,7 +266,8 @@ class manager(object):
     #assert self.model.get_xray_structure() is self.fmodel.xray_structure
     mmtbx.utils.assert_xray_structures_equal(
       x1 = self.model.get_xray_structure(),
-      x2 = self.fmodel.xray_structure)
+      x2 = self.fmodel.xray_structure,
+      eps=1.e-3)
     self.model.is_same_model(other=self.model)
 
   def _get_maps(self):
@@ -466,6 +467,10 @@ class manager(object):
   def _correct_drifted_waters(self):
     if(self.params.mode != "filter_only"): return
     if(not self.params.correct_drifted_waters): return
+    sol_sel = self.model.solvent_selection()
+    hd_sel  = self.model.get_hd_selection()
+    hd_sol = sol_sel & hd_sel
+    if(hd_sol.count(True)>0): return
     map_cutoff = self.params.secondary_map_and_map_cc_filter.poor_map_value_threshold/2
     find_peaks_params_drifted = find_peaks.master_params.extract()
     find_peaks_params_drifted.map_next_to_model.min_model_peak_dist=0.01
