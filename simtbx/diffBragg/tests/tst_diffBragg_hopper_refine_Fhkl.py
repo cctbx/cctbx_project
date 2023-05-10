@@ -18,6 +18,7 @@ import os
 
 if args.kokkos:
     os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
+from simtbx.diffBragg.utils import find_diffBragg_instances    
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(0) as _:
 
@@ -349,7 +350,7 @@ with DeviceWrapper(0) as _:
     r1 = ma_common.r1_factor(opt_common)
     assert r1 < 0.04
 
-    del SIM.D
+    print("OK")
     del modelers.SIM.D
     del SIM_from_hopper.D
-    print("OK")
+    for name in find_diffBragg_instances(globals()): del globals()[name]
