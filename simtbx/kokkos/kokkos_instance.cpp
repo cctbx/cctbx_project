@@ -17,7 +17,7 @@ namespace Kokkos {
   kokkos_instance::kokkos_instance(int const& t_deviceID) {
     if (!m_isInitialized) {
       initialize(InitializationSettings()
-		      .set_device_id(t_deviceID));
+                      .set_device_id(t_deviceID));
 
       m_isInitialized = true;
       m_isFinalized = false;

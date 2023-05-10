@@ -454,7 +454,7 @@ namespace boost_python { namespace {
 
   void initialize_kokkos(int dev){
     Kokkos::initialize(Kokkos::InitializationSettings()
-		           .set_device_id(dev));
+                           .set_device_id(dev));
   }
 #endif
 

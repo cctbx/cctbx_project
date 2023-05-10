@@ -570,7 +570,7 @@ void kokkos_sum_over_steps(
                                             CUDAREAL atom_y = atom_data(i_atom * 5 + 1);
                                             CUDAREAL atom_z = atom_data(i_atom * 5 + 2);
                                             CUDAREAL B = atom_data(i_atom * 5 + 3);  // B factor
-					    B = ::Kokkos::exp(
+                                            B = ::Kokkos::exp(
                                                 -B * S_2 / 4.0);  // TODO: speed me up?
                                             CUDAREAL occ = atom_data(i_atom * 5 + 4);  // occupancy
                                             CUDAREAL r_dot_h =

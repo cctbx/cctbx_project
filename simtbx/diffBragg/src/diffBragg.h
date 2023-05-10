@@ -172,10 +172,10 @@ class diffBragg: public nanoBragg{
 
     inline void gpu_free(){
 #ifdef DIFFBRAGG_HAVE_CUDA
-	    cuda_free();
+            cuda_free();
 #endif
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-	    kokkos_free();
+            kokkos_free();
 #endif
     }
 
