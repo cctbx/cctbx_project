@@ -18,7 +18,7 @@ import os
 
 if args.kokkos:
     os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
-from simtbx.diffBragg.utils import find_diffBragg_instances    
+from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(0) as _:
 
