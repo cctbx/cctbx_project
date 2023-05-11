@@ -476,7 +476,18 @@ citation {
   volume = 19
   pages = 679–682
   year = 2022
-  doi_id =  doi:10.1038/s41592-022-01488-
+  doi_id =  doi:10.1038/s41592-022-01488-1
+  pmid = 35637307
+}
+citation {
+  article_id = mmseqs2 
+  authors = Steinegger M, Söding J
+  title = MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets 
+  journal = Nature biotechnology 
+  volume = 35
+  pages = 1026-1028
+  year = 2017
+  doi_id =  10.1038/nbt.3988
   pmid = 35637307
 }
 
@@ -536,7 +547,7 @@ citation {
   volume = 58
   pages = 2213-5
   year = 2002
-  doi_id =  doi:10.1107/S0907444902016384
+  doi_id =  10.1107/S0907444902016384
   pmid = 12454504
 }
 
@@ -598,7 +609,7 @@ citation {
   journal = J. Appl. Cryst.
   volume = 35
   pages = 126-136
-  doi_id = doi:10.1107/S0021889801017824
+  doi_id = 10.1107/S0021889801017824
 }
 
 citation {
@@ -609,7 +620,7 @@ citation {
   journal = Acta Cryst. D
   volume = 59
   pages = 1966-1973.
-  doi_id = doi:10.1107/S0907444903018043
+  doi_id = 10.1107/S0907444903018043
 }
 
 citation {
@@ -660,7 +671,7 @@ citation {
   journal = Protein Science
   volume = 27
   pages = 293-315
-  doi_id =  doi:10.1002/pro.3330
+  doi_id =  10.1002/pro.3330
 }
 
 citation {
@@ -695,7 +706,7 @@ citation {
   volume = 58
   pages = 1948-54
   year = 2002
-  doi_id = doi:10.1107/S0907444902016657
+  doi_id = 10.1107/S0907444902016657
   pmid = 12393927
 }
 
@@ -744,7 +755,7 @@ citation {
   volume = 65
   pages = 297-300
   pmid = 19237753
-  doi_id = doi:10.1107/S0907444908044296
+  doi_id = 10.1107/S0907444908044296
 }
 
 citation {
