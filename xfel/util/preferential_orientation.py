@@ -7,6 +7,7 @@ from typing import List
 # from xfel.util.drift import params_from_phil, read_experiments
 
 import numpy as np
+import scipy as sp
 import scipy.spatial.transform
 from scipy.linalg import expm, logm
 
@@ -70,50 +71,42 @@ phil_scope_str = """
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
 
-class PreferentialOrientationCalculator:
-  """Calculator of the preferential orientation degree using IRLS algorithm"""
+class MisesFisherCalculator:
   EPSILON: float = 1e-6
   GUESS: np.ndarray = np.eye(3)
   MAX_ITER: int = 100
 
-  def irls_orientations(self, orientations: np.ndarray) -> np.ndarray:
-    """Estimates the average orientation matrix from a dataset of
-    3D orientation matrices using IRLS algorithm."""
+  @staticmethod
+  def a3(kappa: float) -> float:
+    """The normalization constant for the Bessel function of 1st kind in 3D."""
+    return sp.special.iv(1.5, kappa) / sp.special.iv(0.5, kappa)
 
-    # Initial guess for A (arithmetic mean)
-    A_old = self.GUESS
+  def x_avg(self, vectors: np.ndarray) -> np.ndarray:
+    """Sum of vectors divided by their count, bar{x}"""
+    return np.sum(vectors, axis=0) / vectors.shape[0]
 
-    # Initialize weights to identity matrices
-    W = np.tile(np.eye(3), (len(orientations), 1, 1))
+  def mu(self, vectors: np.ndarray) -> np.ndarray:
+    """Mean direction of `vectors` normalized to 1, mu."""
+    return self.x_avg(vectors) / self.r_avg(vectors)
 
-    for i in range(self.MAX_ITER):
-      # Compute residuals
-      R = np.array([logm(A_old.T @ ori) for ori in orientations])
-      r = np.array([R_i - R_i.T for R_i in R])
-      b = np.array([r_i / np.linalg.norm(r_i) if np.linalg.norm(r_i) > 1e-10
-                    else np.zeros(3) for r_i in r])
-      B = np.array([np.outer(b_i, b_i) for b_i in b])
+  def r_avg(self, vectors: np.ndarray) -> float:
+    """Length of the not-normalized mean direction of vectors, bar{R}"""
+    return np.linalg.norm(self.x_avg(vectors))
 
-      # Update the weights matrix W using the Bingham distribution.
-      B_inv = np.array([np.linalg.inv(B_i) for B_i in B])
-      w = np.array(
-        [np.exp(-b_i.T @ B_inv_i @ b_i) for b_i, B_inv_i in zip(b, B_inv)])
-      W = np.diag(w)
+  def kappa0(self, vectors: np.ndarray) -> float:
+    """Simple approximation of kappa, following (Sra, 2011), hat{kappa}"""
+    r = self.r_avg(vectors)
+    return r * (3 - r ** 2) / (1 - r ** 2)
 
-      # Calculate the Jacobian J and check for convergence.
-      J = np.zeros((3, 3))
-      for d, w_i in zip(orientations, w):
-        J += w_i * d.T @ A_old
-      J /= np.sum(w)
-      delta = np.linalg.norm(J - np.eye(3))
-      if delta < self.EPSILON:
-        break
-
-      # Update the orientation matrix.
-      A_new = expm((np.linalg.inv(J) @ np.sum(R * W[:, np.newaxis], axis=0)).T)
-      A_old = A_new
-
-    return A_new
+  def kappa(self, vectors):
+    """Von Mises-Fisher concentration parameter of vectors on sphere, kappa"""
+    k = self.kappa0(vectors)
+    if k != 0:
+      for i in range(10):
+        a3 = self.a3(k)
+        k = k - (a3 - self.r_avg(vectors)) / (1 - a3 ** 2 - (2 * a3 / k))
+        print(k)
+    return k
 
 
 ########################### ORIENTATION VISUALIZING ###########################
@@ -140,11 +133,16 @@ class PreferentialOrientationCalculator:
 
 
 def main2():
-  from scipy.spatial.transform import Rotation
-  oris = Rotation.random(3).as_matrix()
-  poc = PreferentialOrientationCalculator()
-  avg_ori = poc.irls_orientations(orientations=oris)
-  print(avg_ori)
+  mfc = MisesFisherCalculator()
+  vectors = np.array([(1, 0, 0),
+                      (0, 1, 0),
+                      (0, 0, 1),
+                      (-0.9, 0, 0),
+                      (0, -1.1, 0),
+                      (0, 0, -1)
+                      ])
+  print(f"{mfc.mu(vectors)}")
+  print(f"{mfc.kappa(vectors)}")
 
 if __name__ == '__main__':
   main2()
