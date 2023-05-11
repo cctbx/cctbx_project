@@ -480,10 +480,10 @@ citation {
   pmid = 35637307
 }
 citation {
-  article_id = mmseqs2 
+  article_id = mmseqs2
   authors = Steinegger M, Söding J
-  title = MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets 
-  journal = Nature biotechnology 
+  title = MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets
+  journal = Nature biotechnology
   volume = 35
   pages = 1026-1028
   year = 2017
