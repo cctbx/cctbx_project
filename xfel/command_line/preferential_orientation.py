@@ -1,8 +1,8 @@
-# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.drift
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.preferential_orientation
 
 from __future__ import division
 import sys
-from xfel.util.drift import params_from_phil, run, message
+from xfel.util.preferential_orientation import params_from_phil, run, message
 
 
 if __name__ == '__main__':
