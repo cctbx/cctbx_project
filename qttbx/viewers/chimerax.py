@@ -17,9 +17,9 @@ import sys
 import time
 
 try:
-  from urllib.parse import unquote
+  from urllib.parse import urlencode
 except ImportError:
-  from urllib import unquote
+  from urllib import urlencode
 
 from libtbx.utils import Sorry
 from qttbx.viewers import ModelViewer
@@ -93,7 +93,7 @@ class ChimeraXViewer(ModelViewer):
 
     return self.command
 
-  def start_viewer(self, timeout=60):
+  def start_viewer(self, timeout=60,json_response=False):
     '''
     Function for starting the ChimeraX REST server
 
@@ -102,6 +102,10 @@ class ChimeraXViewer(ModelViewer):
       timeout: int
         The number of seconds to wait for the REST server to become
         available before raising a Sorry
+
+      json_response: bool
+        Pass json true to ChimeraX remotecontrol. Returns the log as 
+        a json object for inspection.
 
     Returns
     -------
@@ -119,6 +123,10 @@ class ChimeraXViewer(ModelViewer):
 
     # set REST server information
     self.flags = ['--cmd', 'remotecontrol rest start port {}'.format(self.port)]
+    
+    if json_response:
+      self.flags[-1]+=" json true"
+
     self.url = "http://127.0.0.1:{}/".format(self.port)
 
     self.run_basic_checks()
@@ -174,17 +182,22 @@ class ChimeraXViewer(ModelViewer):
     Make requests call to REST server
     https://www.cgl.ucsf.edu/chimerax/docs/user/commands/remotecontrol.html
     '''
-    output = None
     try:
-      r = requests.Request('GET', self.url + 'run', params=params)
-      p = r.prepare()
-      p.url = unquote(p.url)
-      s = requests.Session()
-      output = s.send(p)
-      # output = requests.get(url=self.url + 'run', params=params)
+      # Encode query parameters using urllib.parse.urlencode
+      encoded_params = urlencode(params)
+
+      # Append the encoded query parameters to the URL
+      url = self.url+"run"
+      url_with_params = url+"?"+encoded_params
+
+      # Send a POST request with form data as query parameters in the URL
+      response = requests.post(url_with_params)
+
+      return response
+
     except requests.exceptions.ConnectionError:
-      pass
-    return output
+      return None
+
 
   # ---------------------------------------------------------------------------
   def close_viewer(self):
@@ -209,8 +222,10 @@ class ChimeraXViewer(ModelViewer):
     return self._run_command(params)
 
   # ---------------------------------------------------------------------------
-  def send_command(self, cmds=None):
-    params = {'command': "+".join(cmds)}
+  def send_command(self, cmds):
+    if not type(cmds)==list:
+        cmds = [cmds]
+    params = [("command",c) for c in cmds]
     return self._run_command(params)
 
   # ---------------------------------------------------------------------------
