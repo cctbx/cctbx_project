@@ -2576,14 +2576,14 @@ class UnitCellTab(BaseTab):
     # self.selection_columns_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
 
-    self.trial_number = gctr.ChoiceCtrl(self.selection_columns_sizer,
+    self.trial_number = gctr.ChoiceCtrl(self.selection_columns_panel,
                                         label='Trial:',
                                         label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
 
-    self.tag_checklist = gctr.CheckListCtrl(self.selection_columns_sizer,
+    self.tag_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
                                             label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
@@ -2591,7 +2591,7 @@ class UnitCellTab(BaseTab):
                                             direction='vertical',
                                             choices=[])
 
-    self.selection_type_radio = gctr.RadioCtrl(self.selection_columns_sizer,
+    self.selection_type_radio = gctr.RadioCtrl(self.selection_columns_panel,
                                                name='uc_selection_type',
                                                label='',
                                                label_style='normal',
@@ -2604,7 +2604,7 @@ class UnitCellTab(BaseTab):
                                      label='Add selection',
                                      size=(200, -1))
 
-    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_sizer,
+    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
                                                 label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
