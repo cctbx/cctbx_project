@@ -1,7 +1,7 @@
 from __future__ import division
 import glob
 import sys
-from typing import List
+from typing import List, Sequence
 
 # from dxtbx.model import ExperimentList
 # from xfel.util.drift import params_from_phil, read_experiments
@@ -109,6 +109,52 @@ class MisesFisherCalculator:
     return k
 
 
+class WatsonDistributionCalculator:
+  """The equations numbers given here refer to numbering in the book
+  "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
+
+  def r_avg(self, vectors: np.ndarray) -> float:
+    """Length of the not-normalized mean direction of vectors, bar{R}"""
+    return np.linalg.norm(self.x_avg(vectors))
+
+  def x_avg(self, vectors: np.ndarray) -> np.ndarray:
+    """Sum of vectors divided by their count, bar{x}"""
+    return np.sum(vectors, axis=0) / vectors.shape[0]
+
+  def mu0(self, vectors: np.ndarray) -> np.ndarray:
+    """Mean direction of `vectors` normalized to 1, mu."""
+    return self.x_avg(vectors) / self.r_avg(vectors)
+
+  def kummer_function(self, a: float, b: float, kappa: float) -> float:
+    """Confluent hypergeometric function 1F1, a.k.a. Kummer function"""
+    return sp.special.hyp1f1(a, b, kappa)
+
+  def scatter_matrix(self, vectors: np.ndarray) -> np.ndarray:
+    """Scatter matrix of `vectors` distribution (9.2.10)"""
+    return np.matmul(vectors.T, vectors) / len(vectors)
+
+  def log_likelihood(self, mu: np.ndarray, kappa: float,
+                     vectors: np.ndarray) -> float:
+    """Log likelihood of given mu, kappa parameters. (10.3.30)"""
+    t = self.scatter_matrix(vectors)
+    m = self.kummer_function(1/2, 3/2, kappa)
+    return len(vectors) * (kappa * mu.T @ t @ mu - np.log(m) + 100)
+
+  def neg_log_likelihood(self, params: Sequence[float], vectors: np.ndarray):
+    """Negative log likelihood with optimized variables and fixed vectors"""
+    mu, kappa = np.array(params[:3]), params[3]
+    return -self.log_likelihood(mu=mu, kappa=kappa, vectors=vectors)
+
+  def fit(self, vectors: np.ndarray):
+    print(self.scatter_matrix(vectors))
+    print(np.linalg.eig(self.scatter_matrix(vectors)))
+    print(np.linalg.eigvals(self.scatter_matrix(vectors)))
+    # assert 0
+    x0 = np.array([*self.mu0(vectors), -10])
+    print(x0)
+    res = sp.optimize.minimize(self.neg_log_likelihood, x0=x0, args=vectors)
+    print(res)
+
 ########################### ORIENTATION VISUALIZING ###########################
 
 
@@ -132,17 +178,46 @@ class MisesFisherCalculator:
 #   run(params)
 
 
-def main2():
-  mfc = MisesFisherCalculator()
-  vectors = np.array([(1, 0, 0),
-                      (0, 1, 0),
-                      (0, 0, 1),
-                      (-0.9, 0, 0),
-                      (0, -1.1, 0),
-                      (0, 0, -1)
+def main3():
+  x = np.array([(0.01, 0.6, 0.6),
+                (0, -0.5, 0.6),
+                (0, 0.6, -0.6),
+                (0, -0.6, -0.6),
+                (0, 1, 0),
+                (0, -1, 0),
+                (0, 0, -1),
+                (0, 0, 1),
                       ])
-  print(f"{mfc.mu(vectors)}")
-  print(f"{mfc.kappa(vectors)}")
+  x = np.array([(0.01, 1, 0.01),
+                (0.01, 1, -0.01),
+                (-0.01, 1, 0.01),
+                (-0.01, 1, -0.01),
+                (0.01, -1, 0.01),
+                (-0.01, -1, 0.01),
+                (0.01, -1, -0.01)])
+  # Set initial guess for the parameters
+  mu0 = np.mean(x, axis=0)
+  kappa0 = 1.0
+
+
+def main4():
+    x = np.array([(0.01, 1, 0.01),
+                  (0.01, 1, -0.01),
+                  (-0.01, 1, 0.01),
+                  (-0.01, 1, -0.01),
+                  (0.01, -1, 0.01),
+                  (-0.01, -1, 0.01),
+                  (0.01, -1, -0.01)])
+    wdc = WatsonDistributionCalculator()
+    wdc.fit(x)
+
+"""
+I can't quite get it to work. For references I used, see:
+- https://arxiv.org/pdf/1104.4422.pdf, page 3
+- http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
+ 
+"""
+
 
 if __name__ == '__main__':
-  main2()
+  main4()
