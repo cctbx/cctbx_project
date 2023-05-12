@@ -41,9 +41,9 @@ import getpass
 user = getpass.getuser()
 
 import libtbx.load_env
-license = os.path.join(libtbx.env.find_in_repositories('cctbx_project'), 'LICENSE.txt')
-if license is None or not os.path.exists(license):
-  license = libtbx.env.under_root(os.path.join('cctbx', 'LICENSE.txt')) # conda installations
+license = libtbx.env.under_root(os.path.join("modules","cctbx_project","LICENSE.txt"))
+if not os.path.exists(license):
+  license = libtbx.env.under_root(os.path.join("cctbx", "LICENSE.txt")) # conda installations
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing of serial crystallographic data from' \
