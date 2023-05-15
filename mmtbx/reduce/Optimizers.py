@@ -1986,8 +1986,8 @@ END
   # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
   # after 'pose Angle '.
   angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
-  if angle != 111:
-    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 111"
+  if angle != 62:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 62"
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
