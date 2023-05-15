@@ -657,18 +657,23 @@ class cache(slots_getstate_setstate):
             return (None, None)
           val, i_colon = try_compose_range()
           if (i_colon < 0):
+            # processing absence of colon, i.e. single residue/model or range with "through"
             if (lword == "resseq"):
+              # "resseq 6", does not support "through"
               result_stack.append(self.sel_resseq(pattern=arg))
             elif (lword in ["resid", "resi"]):
               start, stop = try_compose_sequence()
               if (start is None):
+                # "resid 6"
                 result_stack.append(self.sel_resid(pattern=arg))
               else :
+                # resid 5 through 6"
                 result_stack.append(self.sel_resid_sequence(start=start,
                   stop=stop))
             else:
               result_stack.append(self.sel_model_id(pattern=arg))
           else:
+            # processing colon
             start = val[:i_colon]
             stop = val[i_colon+1:]
             if (lword == "resseq"):
