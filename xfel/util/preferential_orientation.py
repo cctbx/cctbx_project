@@ -1,7 +1,7 @@
 from __future__ import division
 import glob
 import sys
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 # from dxtbx.model import ExperimentList
 # from xfel.util.drift import params_from_phil, read_experiments
@@ -138,22 +138,24 @@ class WatsonDistributionCalculator:
     """Log likelihood of given mu, kappa parameters. (10.3.30)"""
     t = self.scatter_matrix(vectors)
     m = self.kummer_function(1/2, 3/2, kappa)
-    return len(vectors) * (kappa * mu.T @ t @ mu - np.log(m) + 100)
+    return len(vectors) * (kappa * mu.T @ t @ mu - np.log(m))
 
-  def neg_log_likelihood(self, params: Sequence[float], vectors: np.ndarray):
+  def neg_log_likelihood(self, kappa: float,
+                         params: Dict[str, np.ndarray]) -> float:
     """Negative log likelihood with optimized variables and fixed vectors"""
-    mu, kappa = np.array(params[:3]), params[3]
+    mu, vectors = params['mu'], params['vectors']
     return -self.log_likelihood(mu=mu, kappa=kappa, vectors=vectors)
 
   def fit(self, vectors: np.ndarray):
-    print(self.scatter_matrix(vectors))
-    print(np.linalg.eig(self.scatter_matrix(vectors)))
-    print(np.linalg.eigvals(self.scatter_matrix(vectors)))
-    # assert 0
-    x0 = np.array([*self.mu0(vectors), -10])
-    print(x0)
-    res = sp.optimize.minimize(self.neg_log_likelihood, x0=x0, args=vectors)
-    print(res)
+    eig_val, eig_vec = np.linalg.eig(self.scatter_matrix(vectors))
+    fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
+    for eig_val, eig_vec in zip(eig_val, eig_vec.T):
+        params = {'mu': eig_vec, 'vectors': vectors}
+        res = sp.optimize.minimize(self.neg_log_likelihood, x0=0., args=params)
+        if (nll := res['fun']) < fitted['nll']:
+            fitted = {'mu': eig_vec, 'kappa': res['x'][0], 'nll': nll}
+    return fitted
+
 
 ########################### ORIENTATION VISUALIZING ###########################
 
@@ -178,8 +180,15 @@ class WatsonDistributionCalculator:
 #   run(params)
 
 
+def normalized(a, axis=-1, order=2):
+    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
+    l2[l2==0] = 1
+    return a / np.expand_dims(l2, axis)
+
+
 def main3():
-  x = np.array([(0.01, 0.6, 0.6),
+  x = normalized(
+      np.array([(0.01, 0.6, 0.6),
                 (0, -0.5, 0.6),
                 (0, 0.6, -0.6),
                 (0, -0.6, -0.6),
@@ -187,29 +196,51 @@ def main3():
                 (0, -1, 0),
                 (0, 0, -1),
                 (0, 0, 1),
-                      ])
-  x = np.array([(0.01, 1, 0.01),
+                      ]))
+  x = normalized(np.array([(0.01, 1, 0.01),
                 (0.01, 1, -0.01),
                 (-0.01, 1, 0.01),
                 (-0.01, 1, -0.01),
                 (0.01, -1, 0.01),
                 (-0.01, -1, 0.01),
-                (0.01, -1, -0.01)])
+                (0.01, -1, -0.01)]))
   # Set initial guess for the parameters
   mu0 = np.mean(x, axis=0)
   kappa0 = 1.0
 
 
 def main4():
-    x = np.array([(0.01, 1, 0.01),
-                  (0.01, 1, -0.01),
-                  (-0.01, 1, 0.01),
-                  (-0.01, 1, -0.01),
-                  (0.01, -1, 0.01),
-                  (-0.01, -1, 0.01),
-                  (0.01, -1, -0.01)])
+    x = normalized(np.array([
+        (0.01000124, 1, 0.01000234),
+        (0.0100065, 1, -0.010005),
+        (-0.010008, 1, 0.0100066),
+        #(-0.0100098, 1, -0.01000423),
+        #(0.01000234, -1, 0.010006),
+        (-0.0100065, -1, 0.010004),
+        (0.01000234, -1, -0.0100076),
+        (-0.0100035, -1, -0.01000)]))
+    # x = normalized(
+    #     np.array([(0.01, 0.6, 0.6),
+    #               (0, -0.5, 0.6),
+    #               (0, 0.6, -0.6),
+    #               (0, -0.6, -0.6),
+    #               (0, 1, 0),
+    #               (0, -1, 0),
+    #               (0, 0, -1),
+    #               (0, 0, 1),
+    #               ]))
     wdc = WatsonDistributionCalculator()
-    wdc.fit(x)
+    res = wdc.fit(x)
+    print(res)
+    assert 0
+    print(x.T)
+    print(x)
+    scatter = np.matmul(x.T, x) / len(x)
+    print(scatter)
+    print(np.linalg.eig(scatter)[0])
+    print(np.linalg.eig(scatter)[1].T)
+    for val, vec in zip(np.linalg.eig(scatter)[0], np.linalg.eig(scatter)[1].T):
+        print(f'val: {val:16f}, {vec=}')
 
 """
 I can't quite get it to work. For references I used, see:
