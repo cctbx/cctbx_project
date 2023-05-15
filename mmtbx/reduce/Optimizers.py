@@ -1951,8 +1951,9 @@ END
 
   ################################################################################
   # Test using a snippet from 7c31 to make sure the single-hydrogen rotator sets
-  # the orientation of the Hydrogen to point towards the nearby Oxygen. The B
-  # alternate has been removed and the A moved to the main alternate.
+  # the orientation of the Hydrogen to make good contact with a nearby Oxygen. The B
+  # alternate has been removed and the A moved to the main alternate. This is not
+  # close enough for a good Hydrogen bond, so it does not point straight at the Oxygen.
 
   pdb_7c31_two_residues = """\
 CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
@@ -1988,6 +1989,40 @@ END
   angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 62:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 62"
+
+  ################################################################################
+  # Test using a modified snippet from 7c31 to make sure the single-hydrogen rotator sets
+  # the orientation of the Hydrogen to make a good hydrogen bond qith a nearby Oxygen.
+  # The above example has been stripped down and has the Oxygen moved closer
+
+  pdb_7c31_two_residues_close_O = """\
+CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.035901  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.035901  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010040        0.00000
+ATOM     68  N   SER A   5     -31.155  49.742   0.887  1.00 10.02           N
+ATOM     69  CA  SER A   5     -32.274  48.937   0.401  1.00  9.76           C
+ATOM     70  C   SER A   5     -33.140  49.851  -0.454  1.00  9.47           C
+ATOM     71  O   SER A   5     -33.502  50.939  -0.012  1.00 10.76           O
+ATOM     72  CB  SER A   5     -33.086  48.441   1.599  1.00 12.34           C
+ATOM     73  OG  SER A   5     -34.118  47.569   1.179  1.00 19.50           O
+ATOM    761  O   VAL B   2     -33.862  46.385   1.577  1.00 18.97           O
+TER    1447      CYS B  47
+END
+"""
+  opt = _optimizeFragment(pdb_7c31_two_residues_close_O)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator H-bond test: " + str(len(movers))
+
+  # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
+  # after 'pose Angle '.
+  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  if angle != 109:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected 109"
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
