@@ -434,7 +434,6 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
   fp_fdp_table_fixed = {}
   fp_fdp_table_completeness = {}
   for i_seq, sc in enumerate(xray_structure.scatterers()):
-    sc_params = param_map[i_seq]
     completeness = fp_fdp_table_completeness.get(sc.scattering_type, None)
     if completeness is None:
       completeness = [1,1,1]
@@ -443,6 +442,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif", covariance_matrix=None):
       completeness[0] += 1
     fp, fdp = sc.fp, sc.fdp
     if covariance_matrix:
+      sc_params = param_map[i_seq]
       if sc.flags.grad_fp():
         fp = format_float_with_su(sc.fp,
                 math.sqrt(covariance_diagonal[sc_params.fp]))
