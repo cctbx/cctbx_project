@@ -35,7 +35,7 @@ set PATH={bin_dir};%PATH%
 '''
 
 # =============================================================================
-def write_files(program=None, prefix=None, bin_dir=None, version=None,
+def write_files(program=None, prefix=None, bin_dirs=None, version=None,
   destination=None):
   '''
   Populate template with arguments
@@ -64,7 +64,7 @@ def write_files(program=None, prefix=None, bin_dir=None, version=None,
       f.write(bat_template.format(
         program=program,
         prefix=prefix,
-        bin_dir=bin_dir,
+        bin_dir=';'.join(bin_dirs),
         version=version
       ))
   else:
@@ -73,7 +73,7 @@ def write_files(program=None, prefix=None, bin_dir=None, version=None,
         f.write(template.format(
           program=program,
           prefix=prefix,
-          bin_dir=bin_dir,
+          bin_dir=':'.join(bin_dirs),
           version=version
         ))
 
@@ -82,10 +82,10 @@ def run():
   parser = argparse.ArgumentParser(description=__doc__,
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-  default_prefix = sys.prefix
+  default_prefix = os.path.normpath(sys.prefix)
   if sys.platform == 'win32':
-    default_bin = os.path.join(default_prefix, 'Library', 'bin')
-  default_bin = os.path.join(default_prefix, 'bin')
+    default_bin_dirs = [os.path.join(default_prefix, 'Library', 'bin')]
+  default_bin_dirs = [os.path.join(default_prefix, 'bin')]
 
   parser.add_argument(
     '--program', default='cctbx', type=str,
@@ -98,10 +98,10 @@ def run():
       location of the calling python. ({default_prefix})'''.format(default_prefix=default_prefix)
   )
   parser.add_argument(
-    '--bin-dir', default=default_bin, type=str,
+    '--bin-dir', default=None, type=str, action='append',
     help='''The location to be added to $PATH, by default it is $PREFIX/bin.
       If the argument is a relative path, it will be appended to the
-      --prefix argument. ({default_bin})'''.format(default_bin=default_bin)
+      --prefix argument. ({default_bin_dirs})'''.format(default_bin_dirs=default_bin_dirs)
   )
   parser.add_argument(
     '--version', default=None, type=str,
@@ -114,10 +114,13 @@ def run():
 
   namespace = parser.parse_args()
 
-  bin_dir = namespace.bin_dir
-  if not os.path.isabs(bin_dir):
-    bin_dir = os.path.join(namespace.prefix, namespace.bin_dir)
-    bin_dir = os.path.abspath(bin_dir)
+  bin_dirs = namespace.bin_dir
+  if bin_dirs is None:
+    bin_dirs = default_bin_dirs
+  for i in range(len(bin_dirs)):
+    if not os.path.isabs(bin_dirs[i]):
+      bin_dirs[i] = os.path.join(namespace.prefix, bin_dirs[i])
+      bin_dirs[i] = os.path.abspath(bin_dirs[i])
 
   prefix = namespace.prefix
   if not os.path.isabs(prefix):
@@ -127,7 +130,7 @@ def run():
     write_files(
       program=namespace.program,
       prefix=prefix,
-      bin_dir=bin_dir,
+      bin_dirs=bin_dirs,
       version=namespace.version,
       destination=namespace.destination
     )

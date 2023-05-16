@@ -526,7 +526,7 @@ class DataModelers:
 
                 safe_vals = np.logical_and( channel_scales_var >= F32.min, channel_scales_var <= F32.max)
                 is_finite = np.logical_and(safe_vals, ~np.isinf(channel_scales_var))
-                
+
                 #is_finite = ~np.isinf(channel_scales_var.astype(np.float32))  # should be finite float32
                 is_reasonable = channel_scales_var < self.max_sigma
                 is_positive = channel_hessian > 0
