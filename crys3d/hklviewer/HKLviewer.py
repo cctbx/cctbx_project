@@ -303,7 +303,7 @@ class NGL_HKLViewer(hklviewer_gui.Ui_MainWindow):
     self.devmode = False
     self.make_new_factory_default_settings = False
     self.XtricorderBtn.setVisible(False)
-    self.XtriageBtn.setVisible(False)
+    self.XtriageBtn.setVisible(True)
     for e in sys.argv:
       if "UseOSBrowser" in e:
         self.UseOSBrowser = True
@@ -745,12 +745,12 @@ newarray._sigmas = sigs
   def onSaveReflectionFile(self):
     if len(self.millertable.selectedrows) ==0:
       QMessageBox.warning(self.window, "HKLviewer",
-        "First highlight one or more datasets in the table of datasets to save them as a new datafile", buttons=QMessageBox.Ok)
+        "First highlight one or more datasets in the table of datasets on the details tab to save them as a new datafile", buttons=QMessageBox.Ok)
       return
-
+    datasets2savestr = "', '".join([ e.text() for e in self.millertable.selectedItems()] )
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save datasets to a new reflection file", "",
+            "Save datasets '%s' to a reflection file" %datasets2savestr, "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
       self.send_message('''
@@ -893,9 +893,8 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
         self.infodict = eval(msgstr)
         if self.infodict:
 
-          if self.infodict.get("AddPhenixButtons", False):
+          if self.infodict.get("AddXtricorderButton", False):
             self.XtricorderBtn.setVisible(True)
-            self.XtriageBtn.setVisible(True)
 
           if self.infodict.get("closing_time"): # notified by cctbx in regression tests
             QTimer.singleShot(10000, self.closeEvent )
@@ -1141,7 +1140,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.send_message(current_philstr)
             self.colnames_select_lst = stored_colnames_select_lst
             self.select_millertable_column_dlg.make_new_selection_table()
-            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
     # Notify CCTBX that GUI has been initiated and it can now process messages.
     # This is critical as it releases a waiting semaphore in CCTBX
             self.send_message("", msgtype="initiated_gui")
@@ -1151,7 +1149,6 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
 
           if self.infodict.get("NewMillerArray"):
             self.NewMillerArray = self.infodict.get("NewMillerArray",False)
-            self.tabText.setCurrentIndex( self.tabText.indexOf(self.tabInfo) )
 
           if self.infodict.get("StatusBar") and self.Statusbartxtbox is not None:
             self.Statusbartxtbox.setText(self.infodict.get("StatusBar", "") )
@@ -2577,6 +2574,13 @@ clip_plane {
   def PersistQsettings(self, write_factory_default_settings = False):
     Qtversion = self.Qtversion
     if write_factory_default_settings:
+      # For developers only:
+      # When supplying the new_factory_defaults argument on the command line all the settings
+      # usually stored in the users Qsettings database will instead be stored in the file
+      # crys3d\HKLviewer\HKLviewerDefaults.ini which can then be committed to git repo if desired and
+      # work as new factory default settings. Adjust colours and sizes for datasets as well
+      # as other settings as desired to write a HKLviewerDefaults.ini with those new settings
+      # when exiting HKLviewer. The file should then be committed to the cctbx_project repo.
       self.settings = QSettings(self.factorydefaultfname,  QSettings.IniFormat)
       self.AddInfoText("Writing factory defaults to %s\n" %self.factorydefaultfname)
       self.AddAlertsText("Writing factory defaults to %s\n" %self.factorydefaultfname)

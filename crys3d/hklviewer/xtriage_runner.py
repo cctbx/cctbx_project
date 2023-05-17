@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from libtbx import group_args, phil
 
 
-def external_cmd(parent, master_phil, firstpart, tempdir):
+def external_cmd(parent, master_phil, firstpart):
   from mmtbx.scaling import xtriage
   from io import StringIO
   tabname = "Xtriage"

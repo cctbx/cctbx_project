@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>824</width>
-    <height>763</height>
+    <height>751</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -167,7 +167,7 @@
             </size>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <property name="elideMode">
             <enum>Qt::ElideNone</enum>
@@ -243,8 +243,8 @@
                  <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>374</width>
-                  <height>557</height>
+                  <width>460</width>
+                  <height>547</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_29">
@@ -345,6 +345,9 @@
                      <horstretch>0</horstretch>
                      <verstretch>2</verstretch>
                     </sizepolicy>
+                   </property>
+                   <property name="toolTip">
+                    <string>Highlighted datasets can be saved into a single datafile</string>
                    </property>
                    <property name="verticalScrollMode">
                     <enum>QAbstractItemView::ScrollPerPixel</enum>
@@ -460,7 +463,7 @@
                   <rect>
                    <x>0</x>
                    <y>0</y>
-                   <width>367</width>
+                   <width>453</width>
                    <height>395</height>
                   </rect>
                  </property>
@@ -1516,7 +1519,10 @@
                             </sizepolicy>
                            </property>
                            <property name="text">
-                            <string>True to Scale</string>
+                            <string>True to scale</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -1545,7 +1551,7 @@
                          <item row="0" column="2" rowspan="2">
                           <widget class="QLabel" name="label_4">
                            <property name="text">
-                            <string>Close to radius of sphere of reflections</string>
+                            <string>Roughly radius of highest resolution shell</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -1916,7 +1922,10 @@
                             </sizepolicy>
                            </property>
                            <property name="text">
-                            <string>True to Scale</string>
+                            <string>Bigger</string>
+                           </property>
+                           <property name="alignment">
+                            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -1964,7 +1973,7 @@
                             </sizepolicy>
                            </property>
                            <property name="text">
-                            <string>Close to radius of sphere of reflections</string>
+                            <string>Roughly radius of highest resolution shell</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -2167,7 +2176,7 @@
   </action>
   <action name="actionSave_reflection_file">
    <property name="text">
-    <string>Save reflection file...</string>
+    <string>Save highligted datasets as a reflection file...</string>
    </property>
   </action>
   <action name="actionReset_View">

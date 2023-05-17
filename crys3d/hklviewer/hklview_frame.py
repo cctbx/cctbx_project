@@ -93,20 +93,12 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
+      from .preset_buttons import buttonsdeflist
       try:
-        from .preset_buttons import cctbx_buttonsdeflist
-        buttonsdeflist = cctbx_buttonsdeflist
-        try:
-          from phasertng.scripts import xtricorder # then we are in phenix and can load phasertng
-          from .preset_buttons import phenix_buttonsdeflist
-          buttonsdeflist.extend(phenix_buttonsdeflist) # add phenix buttons to Quick View list
-        except Exception as e: # otherwise we only have cctbx
-          from .preset_buttons import cctbx_buttonsdeflist
-          buttonsdeflist = cctbx_buttonsdeflist
-      except Exception as e: # don't even have cctbx! Should never get here!
-        buttonsdeflist = []
-      if "phenix_buttonsdeflist" in dir():
-        self.SendInfoToGUI({"AddPhenixButtons": True})
+        from phasertng.scripts import xtricorder # then we can run xtricorder from phasertng
+        self.SendInfoToGUI({"AddXtricorderButton": True}) # show the button next to the xtriage button
+      except Exception as e: # no phasertng present, just a cctbx installation
+        pass # only xtriage button is shown
     else:
       now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
       self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
@@ -147,7 +139,7 @@ class HKLViewFrame() :
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
-    time.sleep(12)
+    #time.sleep(12) # for attaching debugger
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
     self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
@@ -166,8 +158,8 @@ class HKLViewFrame() :
     try:
       if 'hklin' in kwds or 'HKLIN' in kwds:
         self.hklin = kwds.get('hklin', kwds.get('HKLIN', "") )
-      self.LoadReflectionsFile(self.hklin)
-      self.validate_preset_buttons()
+        self.LoadReflectionsFile(self.hklin)
+        self.validate_preset_buttons()
       if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
         fname = kwds.get('phil_file', "" )
         if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
@@ -633,9 +625,7 @@ class HKLViewFrame() :
         if not ret:
           return
 
-      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
-        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
-      phl.savefilename = None # ensure the same action in succession can be executed
+      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -650,11 +640,13 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
+      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
+        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
+      phl.savefilename = None # ensure the same action in succession can be executed
+
       if jsview_3d.has_phil_path(diff_phil, "openfilename", "commit_subgroup_datasets"):
         self.list_vectors()
         self.validated_preset_buttons = False
-
-      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
 
       self.SendCurrentPhilValues()
@@ -885,6 +877,7 @@ class HKLViewFrame() :
   def update_arrayinfos(self):
     self.viewer.array_info_format_tpl = []
     colnames_select_lst = []
+    arrayinfo = []
     for array in self.procarrays:
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -978,16 +971,12 @@ Borrowing them from the first miller array""" %i)
 
   def run_external_cmd(self, diff_phil):
     # Run some python script like xtricorder with the exec function. Script can manipulate HKLViewFrame
-    # by accessing functions and attributes on 'self' that is exported as a local variable.
-    # Get logfile name and tabname assigned
-    # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
-    # in the script
-    from pathlib import PurePath
+    # by accessing functions and attributes on 'self' that is exported as a local variable in the
+    # exec() function.
+    # Get logfile name and tabname assigned by the script and send these to the HKLviewer GUI. Also
+    # expecting retval and errormsg to be assigned within the script
     firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
     firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
-    # Provide a temp directory for xtricorder in current working directory and
-    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
-    tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerTemp")).as_posix()
     if self.params.external_cmd == "runXtricorder":
       from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
     if self.params.external_cmd == "runXtriage":
@@ -1000,7 +989,7 @@ Borrowing them from the first miller array""" %i)
         parcpy = diff_phil.extract()
         parcpy.external_cmd = "None"
         diff2 = master_phil.fetch_diff(source =diff_phil.format(parcpy))
-        ret = external_cmd(self, master_phil, firstpart, tempdir)
+        ret = external_cmd(self, master_phil, firstpart)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
@@ -2196,11 +2185,17 @@ master_phil_str = """
     .type = choice
   tabulate_miller_array_ids = "[]"
     .type = str
+    .help = "Data used internally between QT GUI and CCTBX"
   tooltip_data = "[]"
     .type = str
+    .help = "Data used internally between QT GUI and CCTBX"
   use_wireframe = False
     .type = bool
     .help = "Draw objects using wireframe mesh"
+  max_reflections_in_frustum = 0
+    .type = int
+    .help = "Maximum number of reflections to count in frustum. Larger than around 30 or 50 may cause " \
+            "significant slow down of HKLviewer when displaying a large dataset"
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 

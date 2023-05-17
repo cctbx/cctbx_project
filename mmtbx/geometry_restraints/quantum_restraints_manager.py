@@ -320,14 +320,14 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
-  buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
+  buffer_model.process(make_restraints=True)
   add_additional_hydrogen_atoms_to_model(buffer_model,
                                          use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
-  buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
+  buffer_model.process(make_restraints=True)
   ligand_atoms = ligand_model.get_atoms()
   buffer_atoms = buffer_model.get_atoms()
   for atom1 in ligand_atoms:
@@ -364,6 +364,13 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
     outl += '      %s\n' % agi
   return outl
 
+def get_specific_atom_charges(qmr):
+  rc=[]
+  sacs = qmr.specific_atom_charges
+  for sac in sacs:
+    rc.append(sac)
+  return rc
+
 def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()):
   program = qmr.package.program
   if program=='test':
@@ -381,7 +388,12 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     electron_model = ligand_model
   elif program_goal in ['opt']:
     electron_model = buffer_model
-  total_charge = quantum_interface.electrons(electron_model, log=log)
+  specific_atom_charges = get_specific_atom_charges(qmr)
+  specific_atom_charges = qmr.specific_atom_charges
+  total_charge = quantum_interface.electrons(
+    electron_model,
+    specific_atom_charges=specific_atom_charges,
+    log=log)
   if total_charge!=qmr.package.charge:
     print(u'  Update charge %s ~> %s' % (qmr.package.charge, total_charge),
           file=log)
@@ -392,6 +404,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
             qmr.package.solvent_model,
             qmr.package.charge,
             qmr.package.multiplicity,
+            qmr.package.nproc,
             # preamble='%02d' % (i+1),
             )
   qmm.program=program

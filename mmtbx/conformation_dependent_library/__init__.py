@@ -364,6 +364,7 @@ def update_restraints(hierarchy,
       # print('cdl_svl %s %s' % (threes,restraint_values))
     else:
       if threes.cis_group():
+        if threes[1].resname!='PRO': continue
         if cis_pro_eh99:
           # returns cis-PRO EH99 values if asked
           restraint_values = get_restraint_values(threes, interpolate=interpolate)

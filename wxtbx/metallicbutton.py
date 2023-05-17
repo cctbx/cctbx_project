@@ -149,12 +149,12 @@ class MetallicButton(WxCtrl):
       bw, bh = bmp.GetSize()
       cw, ch = self.GetSize()
       if ch > (bh + 4) : # (self._margin * 2)):
-        ypos = ((ch - bh) / 2) - (self._margin / 2) + 1
-        xpos = self._margin + 2
+        ypos = int(((ch - bh) / 2) - (self._margin / 2) + 1)
+        xpos = int(self._margin + 2)
       else :
         ypos = 0
         xpos = 0
-      gc.DrawBitmap(bmp, xpos, ypos, bmp.GetMask() != None)
+      gc.DrawBitmap(bmp, xpos, ypos, useMask=bmp.GetMask() != None)
       return bw + 6
     else:
       return 6
@@ -282,7 +282,7 @@ class MetallicButton(WxCtrl):
 
       self.__DrawHighlight(gc, width, height)
       txt_x = self.__DrawBitmap(gc)
-      gc.DrawText(self.GetLabel(), txt_x + 2, txt_y)
+      gc.DrawText(self.GetLabel(), int(txt_x + 2), int(txt_y))
       self.__DrawCaption(gc, txt_x + 2, txt2_y)
       self.__DrawDropArrow(gc, width - 10, (height / 2) - 2)
 
@@ -303,7 +303,7 @@ class MetallicButton(WxCtrl):
     # Draw bitmap and text
     if self._state['cur'] != GRADIENT_PRESSED:
       txt_x = self.__DrawBitmap(gc)
-      gc.DrawText(self.GetLabel(), txt_x + 2, txt_y)
+      gc.DrawText(self.GetLabel(), int(txt_x + 2), int(txt_y))
       self.__DrawCaption(gc, txt_x + 2, txt2_y)
       #self.__DrawDropArrow(gc, txt_x + tw + 6, (height / 2) - 2)
 

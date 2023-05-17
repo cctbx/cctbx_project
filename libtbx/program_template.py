@@ -75,6 +75,10 @@ program {
 }
 '''
 
+  # the DataManager scope includes some shared PHIL parameters
+  # set this to true if the DataManager scope should be shown by default
+  show_data_manager_scope_by_default = False
+
   # unique citations for the program. list of citation phil extract objects
   # see libtbx/citations.py for the PHIL format.
   citations = None

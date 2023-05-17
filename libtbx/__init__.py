@@ -273,8 +273,11 @@ class group_args(dda):
 
   def __repr__(self):
     outl = "group_args"
+    from libtbx.utils import to_str,sys
     for attr in sorted(self.__dict__.keys()):
       tmp=getattr(self, attr)
+      if (sys.version_info.major < 3) and (isinstance(tmp,unicode)):
+        tmp = to_str(tmp)
       if str(tmp).find("ext.atom ")>-1:
         outl += "\n  %-30s : %s" % (attr, tmp.quote())
       else:
@@ -286,9 +289,22 @@ class group_args(dda):
     Overwrites matching fields!!!"""
     self.__dict__.update(other.__dict__)
 
+  def add_if_missing(self, other, add_if_self_is_none = False):
+    """ takes values from other only if not present at all in self
+      Optionally add if value in self is None"""
+    self_keys = list(self.keys())
+    for key in other.keys():
+      if key.startswith("__"): continue
+      if (not (key in self_keys)) or (add_if_self_is_none and
+          (self.get(key) is None)):
+        self.add(key,other.get(key))
+
   def add(self,key=None,value=None):
     self.__dict__[key]=value
 
+  def delete(self, key = None):
+    if key in self.keys():
+      self.__dict__[key] = None
   def copy(self):
     """ produce shallow copy of self by converting to dict and back"""
     return group_args(**self().copy())

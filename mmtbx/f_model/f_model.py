@@ -358,8 +358,10 @@ class manager(manager_mixin):
          _target_memory               = None,
          n_resolution_bins_output     = None,
          scale_method="combo",
-         origin=None):
+         origin=None,
+         data_type=None):
     self._origin = origin
+    self._data_type = data_type
     self.russ = None
     if(twin_law is not None): target_name = "twin_lsq_f"
     self.k_sol, self.b_sol, self.b_cart = k_sol, b_sol, b_cart
@@ -421,6 +423,8 @@ class manager(manager_mixin):
       self.mask_params = mask_params
     else:
       self.mask_params = mmtbx.masks.mask_master_params.extract()
+    if(self._data_type == "neutron"):
+      self.mask_params.ignore_hydrogens=False
     self.mask_manager = mask_manager
     if(self.mask_manager is None):
       self.mask_manager = masks.manager(
@@ -484,6 +488,9 @@ class manager(manager_mixin):
 
   def origin(self):
     return self._origin
+
+  def data_type(self):
+    return self._data_type
 
   def is_twin_fmodel_manager(self):
     return False
@@ -728,7 +735,8 @@ class manager(manager_mixin):
       k_sol                        = self.k_sol,
       b_sol                        = self.b_sol,
       b_cart                       = self.b_cart,
-      origin                       = self.origin())
+      origin                       = self.origin(),
+      data_type                    = self.data_type())
     result.twin = self.twin
     result.twin_law_str = self.twin_law_str
     result.k_h = self.k_h
@@ -1619,6 +1627,7 @@ class manager(manager_mixin):
                    alpha_beta_params            = None,
                    twin_fraction                = None,
                    xray_structure               = None,
+                   epsilons                     = None,
                    mask_params                  = None):
     self.update_core(
       f_calc = f_calc,
@@ -1626,6 +1635,8 @@ class manager(manager_mixin):
       f_part1 = f_part1,
       k_mask = k_mask,
       k_anisotropic=k_anisotropic)
+    if(epsilons is not None):
+      self.epsilons = epsilons
     if(mask_params is not None):
       self.mask_params = mask_params
     if(f_obs is not None):

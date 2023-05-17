@@ -456,8 +456,8 @@ class MillerArrayDataManager(DataManagerBase):
     if self.supports('model'):
       custom_phil_str += '''
 fmodel {
-  include scope iotbx.extract_xtal_data.xray_data_str
-  include scope iotbx.extract_xtal_data.neutron_data_str
+  include scope iotbx.extract_xtal_data.xray_data_str_no_filenames
+  include scope iotbx.extract_xtal_data.neutron_data_str_no_filenames
 }
 '''
 

@@ -33,7 +33,7 @@ class command_stream(object):
     self.close_when_deleted = close_when_deleted
 
   def __del__(self):
-    if self.close_when_deleted:
+    if hasattr(self,'close_when_deleted') and self.close_when_deleted:
       if hasattr(self,'file') and hasattr(self.file,'close'):
         self.file.close()
 
