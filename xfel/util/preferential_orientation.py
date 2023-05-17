@@ -109,49 +109,59 @@ class MisesFisherCalculator:
     return k
 
 
-class WatsonDistributionCalculator:
+class WatsonDistribution:
   """The equations numbers given here refer to numbering in the book
   "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
+  def __init__(self):
+    self.kappa: float = None
+    self.mu: np.ndarray = None
+    self.vectors: np.ndarray = None
 
-  def r_avg(self, vectors: np.ndarray) -> float:
+  @property
+  def r_avg(self) -> float:
     """Length of the not-normalized mean direction of vectors, bar{R}"""
-    return np.linalg.norm(self.x_avg(vectors))
+    return np.linalg.norm(self.x_avg)
 
-  def x_avg(self, vectors: np.ndarray) -> np.ndarray:
+  @property
+  def x_avg(self) -> np.ndarray:
     """Sum of vectors divided by their count, bar{x}"""
-    return np.sum(vectors, axis=0) / vectors.shape[0]
+    return np.sum(self.vectors, axis=0) / self.vectors.shape[0]
 
-  def mu0(self, vectors: np.ndarray) -> np.ndarray:
-    """Mean direction of `vectors` normalized to 1, mu."""
-    return self.x_avg(vectors) / self.r_avg(vectors)
+  @staticmethod
+  def normalized(vectors: np.ndarray, axis: int = -1,
+                 order: int = 2) -> np.ndarray:
+    """Return `vectors` normalized using `order` along `axis` """
+    l2 = np.atleast_1d(np.linalg.norm(vectors, order, axis))
+    l2[l2 == 0] = 1
+    return vectors / np.expand_dims(l2, axis)
 
-  def kummer_function(self, a: float, b: float, kappa: float) -> float:
+  @staticmethod
+  def kummer_function(a: float, b: float, kappa: float) -> float:
     """Confluent hypergeometric function 1F1, a.k.a. Kummer function"""
     return sp.special.hyp1f1(a, b, kappa)
 
-  def scatter_matrix(self, vectors: np.ndarray) -> np.ndarray:
+  @property
+  def scatter_matrix(self) -> np.ndarray:
     """Scatter matrix of `vectors` distribution (9.2.10)"""
-    return np.matmul(vectors.T, vectors) / len(vectors)
+    return np.matmul(self.vectors.T, self.vectors) / len(self.vectors)
 
-  def log_likelihood(self, mu: np.ndarray, kappa: float,
-                     vectors: np.ndarray) -> float:
-    """Log likelihood of given mu, kappa parameters. (10.3.30)"""
-    t = self.scatter_matrix(vectors)
+  def log_likelihood(self, mu: np.ndarray, kappa: float) -> float:
+    """Log likelihood of given mu, kappa given current vectors. (10.3.30)"""
+    t = self.scatter_matrix
     m = self.kummer_function(1/2, 3/2, kappa)
-    return len(vectors) * (kappa * mu.T @ t @ mu - np.log(m))
+    return len(self.vectors) * (kappa * mu.T @ t @ mu - np.log(m))
 
-  def neg_log_likelihood(self, kappa: float,
-                         params: Dict[str, np.ndarray]) -> float:
-    """Negative log likelihood with optimized variables and fixed vectors"""
-    mu, vectors = params['mu'], params['vectors']
-    return -self.log_likelihood(mu=mu, kappa=kappa, vectors=vectors)
+  def nll_of_kappa(self, kappa: float, mu: np.ndarray) -> float:
+    """Negative log likelihood of this Watson Distribution as a function
+    of kappa, with `mu` and `vectors` fixed and given in `params`"""
+    return -self.log_likelihood(mu=mu, kappa=kappa)
 
   def fit(self, vectors: np.ndarray):
-    eig_val, eig_vec = np.linalg.eig(self.scatter_matrix(vectors))
+    self.vectors = vectors
+    eig_val, eig_vec = np.linalg.eig(self.scatter_matrix)
     fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
     for eig_val, eig_vec in zip(eig_val, eig_vec.T):
-        params = {'mu': eig_vec, 'vectors': vectors}
-        res = sp.optimize.minimize(self.neg_log_likelihood, x0=0., args=params)
+        res = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
         if (nll := res['fun']) < fitted['nll']:
             fitted = {'mu': eig_vec, 'kappa': res['x'][0], 'nll': nll}
     return fitted
@@ -229,8 +239,8 @@ def main4():
     #               (0, 0, -1),
     #               (0, 0, 1),
     #               ]))
-    wdc = WatsonDistributionCalculator()
-    res = wdc.fit(x)
+    wd = WatsonDistribution()
+    res = wd.fit(x)
     print(res)
     assert 0
     print(x.T)
