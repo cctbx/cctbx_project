@@ -81,13 +81,11 @@ END
   ]
   dynamics.run(args=args, log=null_out())
   pdb_new = "tst_geo_min_ss_phil_shaken.pdb"
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file("tst_geo_min_ss_phil.pdb")
-  pdb_in.assert_file_type("pdb")
-  xrs_in = pdb_in.file_object.xray_structure_simple()
-  pdb_out = file_reader.any_file(pdb_new)
-  pdb_out.assert_file_type("pdb")
-  xrs_out = pdb_out.file_object.xray_structure_simple()
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input("tst_geo_min_ss_phil.pdb")
+  xrs_in = pdb_in.xray_structure_simple()
+  pdb_out = iotbx.pdb.input(pdb_new)
+  xrs_out = pdb_out.xray_structure_simple()
   sites_in = xrs_in.sites_cart()
   sites_out = xrs_out.sites_cart()
   assert (sites_in.rms_difference(sites_out) > 0.3)

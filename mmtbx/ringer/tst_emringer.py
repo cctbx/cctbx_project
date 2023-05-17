@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.ringer import em_scoring as score
 from mmtbx.programs import emringer
-from iotbx.file_reader import any_file
+import iotbx.pdb
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
@@ -76,13 +76,14 @@ def exercise_emringer_out_of_bounds():
     relative_path="phenix_regression/mmtbx/em_ringer/tst_emringer_map.ccp4",
     test=os.path.isfile)
   assert (not None in [pdb_file, map_file])
-  pdb_in = any_file(pdb_file)
-  xyz = pdb_in.file_object.hierarchy.atoms().extract_xyz()
+  pdb_in = iotbx.pdb.input(pdb_file)
+  hierarchy = pdb_in.construct_hierarchy()
+  xyz = hierarchy.atoms().extract_xyz()
   xyz += flex.vec3_double(xyz.size(), (200., 0.0, 0.0))
-  pdb_in.file_object.hierarchy.atoms().set_xyz(xyz)
+  hierarchy.atoms().set_xyz(xyz)
   with open("tst_emringer_shifted.pdb", "w") as f:
-    f.write(pdb_in.file_object.hierarchy.as_pdb_string(
-      crystal_symmetry=pdb_in.file_object.input.crystal_symmetry()))
+    f.write(hierarchy.as_pdb_string(
+      crystal_symmetry=pdb_in.crystal_symmetry()))
   args = ["tst_emringer_shifted.pdb", map_file]
   try:
     results, s, r = emringer.run(args, out=null_out())

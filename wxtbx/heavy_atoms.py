@@ -31,11 +31,10 @@ class SitesList(wx.ListCtrl): #wx.lib.mixins.listctrl.CheckListCtrlMixin):
     Read sites from a PDB file.  An error will be raised if the model contains
     other residue types (protein, NA, water, etc.).
     """
-    from iotbx import file_reader
-    pdb_in = file_reader.any_file(file_name, force_type="pdb")
-    pdb_in.check_file_type("pdb")
-    self._symm = pdb_in.file_object.crystal_symmetry()
-    hierarchy = pdb_in.file_object.hierarchy
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(file_name)
+    self._symm = pdb_in.crystal_symmetry()
+    hierarchy = pdb_in.construct_hierarchy()
     counts = hierarchy.overall_counts()
     if (counts.n_models > 1):
       raise Sorry("Multi-model PDB files not allowed.")

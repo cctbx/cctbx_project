@@ -62,9 +62,9 @@ def exercise_protein():
   #result.show()
   assert (str(mc.data()[2]) == ' A   5  THR  rota,cb,clash')
   import mmtbx.validation.molprobity
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(pdb_file)
-  model = mmtbx.model.manager(pdb_in.file_object.input)
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(pdb_file)
+  model = mmtbx.model.manager(pdb_in)
   result = mmtbx.validation.molprobity.molprobity(model)
   out3 = StringIO()
   result.show_summary(out=out3)

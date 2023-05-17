@@ -6,7 +6,6 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 from mmtbx import ias
 import iotbx.pdb
-from iotbx import file_reader
 import copy
 
 def exercise():
@@ -15,7 +14,6 @@ def exercise():
   ener_lib = monomer_library.server.ener_lib()
   cif_file = libtbx.env.find_in_repositories(
             relative_path="phenix_regression/pdb/tyr.cif", test=os.path.isfile)
-  # cif_objects = [(cif_file, file_reader.any_file(cif_file))]
   cif_objects = []
   mon_lib_srv.process_cif(file_name= cif_file)
   ener_lib.process_cif(file_name= cif_file)

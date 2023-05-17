@@ -357,7 +357,7 @@ Full parameters:
 
 %s
 """ % iotbx.phil.parse(master_params).as_str(prefix="  "))
-  from iotbx import file_reader
+  import iotbx.pdb
   from cctbx import crystal
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -365,8 +365,7 @@ Full parameters:
     pdb_file_def="file_name")
   params = cmdline.work.extract()
   validate_params(params)
-  pdb_in = file_reader.any_file(params.file_name, force_type="pdb")
-  pdb_in.check_file_type("pdb")
+  pdb_in = iotbx.pdb.input(params.file_name)
   pdb_symm = pdb_in.crystal_symmetry()
   space_group = params.space_group
   unit_cell = params.unit_cell
@@ -384,8 +383,8 @@ Full parameters:
     final_symm = crystal.symmetry(
       space_group_info=space_group,
       unit_cell=unit_cell)
-  pdb_hierarchy = pdb_in.file_object.hierarchy
-  xray_structure = pdb_in.file_object.xray_structure_simple(
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  xray_structure = pdb_in.xray_structure_simple(
     crystal_symmetry=final_symm)
   if (sorting_params is None):
     sorting_params = params
@@ -401,7 +400,7 @@ Full parameters:
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
   f = open(params.output_file, "w")
   if (params.preserve_remarks):
-    remarks = pdb_in.file_object.input.remark_section()
+    remarks = pdb_in.remark_section()
     if (len(remarks) > 0):
       f.write("\n".join(remarks))
       f.write("\n")

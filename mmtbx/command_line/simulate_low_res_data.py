@@ -6,6 +6,8 @@ from libtbx.math_utils import ifloor
 from libtbx.utils import Sorry
 from libtbx import easy_pickle
 from libtbx import adopt_init_args
+from iotbx import file_reader
+import iotbx.pdb
 import random
 import math
 import os
@@ -173,7 +175,6 @@ def run(args, out=None):
     else :
       master_phil.show()
     return
-  from iotbx import file_reader
   interpreter = master_phil.command_line_argument_interpreter(
     home_scope="simulate_data")
   pdb_in = None
@@ -222,15 +223,13 @@ class prepare_data(object):
         raise Sorry("noise_profile_file required when add_noise=True and "
           "hkl_file is undefined.")
     if (pdb_in is None) and (params.pdb_file is not None):
-      f = file_reader.any_file(params.pdb_file, force_type="pdb")
-      f.assert_file_type("pdb")
-      self.pdb_in = f.file_object
+      self.pdb_in = iotbx.pdb.input(params.pdb_file)
     if (self.hkl_in is None) and (params.hkl_file is not None):
       f = file_reader.any_file(params.hkl_File, force_type="hkl")
       f.assert_file_type("hkl")
       self.hkl_in = f.file_object
     if (self.pdb_in is not None):
-      self.pdb_hierarchy = self.pdb_in.hierarchy
+      self.pdb_hierarchy = self.pdb_in.construct_hierarchy()
     if (self.hkl_in is not None):
       make_header("Extracting experimental data", out=sys.stdout)
       f_raw, r_free = self.from_hkl()
@@ -305,7 +304,7 @@ class prepare_data(object):
     if (self.pdb_hierarchy is not None) and (params.write_modified_pdb):
       pdb_out = os.path.splitext(params.output_file)[0] + ".pdb"
       f = open(pdb_out, "w")
-      f.write("%s\n" % "\n".join(self.pdb_in.input.crystallographic_section()))
+      f.write("%s\n" % "\n".join(self.pdb_in.crystallographic_section()))
       f.write(self.pdb_hierarchy.as_pdb_string())
       f.close()
       print("  Wrote modified model to %s" % pdb_out, file=out)
@@ -452,7 +451,6 @@ class prepare_data(object):
   def import_r_free_flags(self, F):
     params = self.params.r_free_flags
     out = self.out
-    from iotbx import file_reader
     rfree_in = file_reader.any_file(params.file_name)
     rfree_in.assert_file_type("hkl")
     hkl_server = rfree_in.file_server
@@ -769,7 +767,7 @@ class profile_sigma_generator(object):
     if (wilson_b is not None) and (pdb_file is not None):
       print("  Correcting reference data intensity falloff...", file=out)
       f_obs = i_obs.f_sq_as_f()
-      pdb_hierarchy = any_file(pdb_file).file_object.hierarchy
+      pdb_hierarchy = iotbx.pdb.input(pdb_file).construct_hierarchy()
       n_residues, n_bases = get_counts(pdb_hierarchy)
       iso_scale, aniso_scale = wilson_scaling(
         F=f_obs,

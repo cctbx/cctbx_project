@@ -136,12 +136,11 @@ class analyze(object):
 
 def run(args=(), params=None, out=sys.stdout):
   pdb_file = params.b_plot.pdb_file
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_in.assert_file_type("pdb")
-  hierarchy = pdb_in.file_object.hierarchy
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(pdb_file)
+  hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
-  xrs = pdb_in.file_object.xray_structure_simple()
+  xrs = pdb_in.xray_structure_simple()
   return analyze(pdb_hierarchy=hierarchy,
     xray_structure=xrs,
     params=params.b_plot,
@@ -270,13 +269,13 @@ class b_plot_panel(plots.plot_container):
 
 def validate_params(params):
   import os
-  from iotbx import file_reader
+  import iotbx.pdb
   if (params.b_plot.pdb_file is None):
     raise Sorry("No PDB file defined!")
   if not os.path.isfile(params.b_plot.pdb_file):
     raise Sorry("The PDB file %s is missing" %(params.b_plot.pdb_file))
   try:
-    pdb_in = file_reader.any_file(params.b_plot.pdb_file, force_type="pdb")
+    pdb_in = iotbx.pdb.input(params.b_plot.pdb_file)
   except Exception as e:
     raise Sorry("The PDB file %s cannot be read or has no atoms?" %(params.b_plot.pdb_file))
 

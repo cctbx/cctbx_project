@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from iotbx.gui_tools import reflections, models
 from iotbx import file_reader
+import iotbx.pdb
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import Sorry
@@ -242,7 +243,7 @@ def exercise_reflections():
   hkl_server = file_reader.any_file(file_name).file_server
   map_labels = reflections.get_map_coeff_labels(hkl_server)
   assert (map_labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
-    '2FOFCWT_no_fill,PH2FOFCWT_no_fill',])
+    '2FOFCWT_no_fill,PH2FOFCWT_no_fill',]), map_labels
   map_labels = reflections.get_map_coeffs_for_build(hkl_server)
   assert map_labels == ['2FOFCWT,PH2FOFCWT','2FOFCWT_no_fill,PH2FOFCWT_no_fill']
   map_coeffs = reflections.extract_phenix_refine_map_coeffs(file_name)
@@ -354,7 +355,7 @@ def exercise_model():
           "113.068 113.068 53.292 90 90 90")
   f = model_handler.create_copy_with_fake_symmetry(pdb_file2,
     tmp_dir=os.getcwd())
-  pdb_in = file_reader.any_file(f, force_type="pdb")
+  pdb_in = iotbx.pdb.input(f)
   symm = pdb_in.crystal_symmetry()
   assert (str(symm.space_group_info()) == "P 1")
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==
