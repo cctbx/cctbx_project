@@ -1,26 +1,35 @@
 from __future__ import division
 import glob
+from typing import List
 import sys
-from typing import Dict, List, Sequence
 
-# from dxtbx.model import ExperimentList
-# from xfel.util.drift import params_from_phil, read_experiments
+from dxtbx.model import ExperimentList
+from xfel.util.drift import params_from_phil, read_experiments
 
 import numpy as np
 import scipy as sp
-import scipy.spatial.transform
-from scipy.linalg import expm, logm
 
 
 message = """
 This utility tool aims to determinate, characterise, and quantify the degree
-of preferential orientation in crystals. To this aim, it first uses
-the Iterative Reweighted Least Squares (IRLS) algorithm to estimate
-the concentration matrix A of the Bingham distributio
-from all experimental crystal matrices. Then it reports the type and degree
-of anisotropy as expressed in the eigenvalues of said matrix.
+of preferential orientation in crystals. To this aim, it investigates
+the distribution of vectors a, b, and c on a directions sphere in 3D.
+The code assumes each set of vectors follows Wilson Distribution, and attempts
+to model said distribution by fitting its parameter `mu` and `kappa`.
 
-This is work in progress.
+Wilson distribution describes a bimodal arrangement of points / unit vectors
+on a sphere around a central axis called `mu`. The distribution is invariant
+to any rotation around `mu` and inversion, and its exact type depends on the
+concentration parameter `kappa`. For `kappa` > 0, the points are focused in
+the polar region around +/- `mu`. In case of  `kappa` < 0, the points
+concentrate mostly in a equatorial region far from `mu`. `kappa` close to 0
+describes a distribution uniform on sphere: no preferential orientation. 
+
+This code has been prepared using the following books & papers as references:
+- http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
+- https://www.sciencedirect.com/science/article/pii/S0047259X12002084, sect. 2
+
+This is a work in progress.
 """.strip()
 
 
@@ -42,31 +51,31 @@ phil_scope_str = """
 ############################ ORIENTATION SCRAPPING ############################
 
 
-# class OrientationScraper:
-#   """Class responsible for scraping orientation matrices from expt files"""
-#   def __init__(self, parameters) -> None:
-#     self.parameters = parameters
-#
-#   @staticmethod
-#   def assemble_orientation_stack(expts: ExperimentList) -> np.ndarray:
-#     """Extract N orientation matrices from N expts into a Nx3x3 numpy array"""
-#     ori_list = [np.array(expt.crystal.get_U()).reshape(3,3) for expt in expts]
-#     return np.stack(arrays=ori_list, axis=0)
-#
-#   def locate_input_paths(self) -> List:
-#     """Return a list of expt paths in scrap.input.glob, but not in exclude"""
-#     input_paths, exclude_paths = [], []
-#     for ig in self.parameters.scrap.input.glob:
-#       input_paths.extend(glob.glob(ig))
-#     for ie in self.parameters.scrap.input.exclude:
-#       exclude_paths.extend(glob.glob(ie))
-#     return [it for it in input_paths if it not in exclude_paths]
-#
-#   def scrap(self) -> np.ndarray:
-#     """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
-#     expt_paths = self.locate_input_paths()
-#     expts = read_experiments(expt_paths)
-#     return self.assemble_orientation_stack(expts)
+class OrientationScraper:
+  """Class responsible for scraping orientation matrices from expt files"""
+  def __init__(self, parameters) -> None:
+    self.parameters = parameters
+
+  @staticmethod
+  def assemble_orientation_stack(expts: ExperimentList) -> np.ndarray:
+    """Extract N orientation matrices from N expts into a Nx3x3 numpy array"""
+    ori_list = [np.array(expt.crystal.get_U()).reshape(3,3) for expt in expts]
+    return np.stack(arrays=ori_list, axis=0)
+
+  def locate_input_paths(self) -> List:
+    """Return a list of expt paths in scrap.input.glob, but not in exclude"""
+    input_paths, exclude_paths = [], []
+    for ig in self.parameters.scrap.input.glob:
+      input_paths.extend(glob.glob(ig))
+    for ie in self.parameters.scrap.input.exclude:
+      exclude_paths.extend(glob.glob(ie))
+    return [it for it in input_paths if it not in exclude_paths]
+
+  def scrap(self) -> np.ndarray:
+    """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
+    expt_paths = self.locate_input_paths()
+    expts = read_experiments(expt_paths)
+    return self.assemble_orientation_stack(expts)
 
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
@@ -112,10 +121,17 @@ class MisesFisherCalculator:
 class WatsonDistribution:
   """The equations numbers given here refer to numbering in the book
   "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
-  def __init__(self):
-    self.kappa: float = None
-    self.mu: np.ndarray = None
+  def __init__(self, mu: np.ndarray = None, kappa: float = None) -> None:
+    self.kappa: float = kappa
+    self.mu: np.ndarray = mu
     self.vectors: np.ndarray = None
+
+  @classmethod
+  def from_vectors(cls, vectors: np.ndarray) -> 'WatsonDistribution':
+    """Define the distribution by fitting it to a list of vectors"""
+    new = WatsonDistribution()
+    new.fit(vectors=vectors)
+    return new
 
   @property
   def r_avg(self) -> float:
@@ -156,7 +172,8 @@ class WatsonDistribution:
     of kappa, with `mu` and `vectors` fixed and given in `params`"""
     return -self.log_likelihood(mu=mu, kappa=kappa)
 
-  def fit(self, vectors: np.ndarray):
+  def fit(self, vectors: np.ndarray) -> dict:
+    """Fit distribution to `vectors`, return dict with 'mu', 'kappa' & 'nll'"""
     self.vectors = vectors
     eig_val, eig_vec = np.linalg.eig(self.scatter_matrix)
     fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
@@ -166,6 +183,32 @@ class WatsonDistribution:
             fitted = {'mu': eig_vec, 'kappa': res['x'][0], 'nll': nll}
     return fitted
 
+  def sample(self, n: int) -> np.ndarray:
+    """Sample `n` vectors from self, based on doi 10.1080/03610919308813139"""
+    if n < 0:
+        return
+    k = self.kappa
+    rho = (4 * k) / (2 * k + 3 + ((2 * k + 3) ** 2 - 16 * k) ** 0.5)
+    r = ((3 * rho) / (2 * k)) ** 3 * np.exp(-3 + 2 * k / rho)
+    rng = np.random.default_rng()
+    def cos2_of_polar_angle(_n: int) -> np.ndarray:
+      u0 = rng.uniform(size=2*_n)
+      u1 = rng.uniform(size=2*_n)
+      s = u0 ** 2 / (1 - rho * (1 - u0 ** 2))
+      v = (r * u1 ** 2) / (1 - rho * s) ** 3
+      w = k * s
+      good_s = s[v <= np.exp(2 * w)]
+      return good_s[:_n] if (lgs := len(good_s)) > _n else \
+          np.concatenate([good_s, cos2_of_polar_angle(_n-lgs)], axis=None)
+    u2 = rng.uniform(size=n)
+    theta = np.arccos(cos2_of_polar_angle(n) ** 0.5)
+    phi = 4 * np.pi * u2
+    theta[u2 < 0.5] = np.pi - theta[u2 < 0.5]
+    phi[u2 >= 0.5] = 2 * np.pi * (2 * u2 - 1)
+    # add code to generate vectors from phi and theta
+
+
+
 
 ########################### ORIENTATION VISUALIZING ###########################
 
@@ -173,84 +216,24 @@ class WatsonDistribution:
 ################################ ENTRY POINTS #################################
 
 
-# def run(params_):
-#     os = OrientationScraper(parameters=params_)
-#     poc = PreferentialOrientationCalculator()
-#     ori = os.scrap()
-#     avg_ori = poc.irls_orientations(orientations=ori)
-#     print(avg_ori)
+def run(params_):
+    os = OrientationScraper(parameters=params_)
+    poc = PreferentialOrientationCalculator()
+    ori = os.scrap()
+    avg_ori = poc.irls_orientations(orientations=ori)
+    print(avg_ori)
 
 
-# params = []
-# if __name__ == '__main__':
-#   if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
-#     print(message)
-#     exit()
-#   params = params_from_phil(sys.argv[1:])
-#   run(params)
+params = []
+if __name__ == '__main__':
+  if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
+    print(message)
+    exit()
+  params = params_from_phil(sys.argv[1:])
+  run(params)
 
 
-def normalized(a, axis=-1, order=2):
-    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
-    l2[l2==0] = 1
-    return a / np.expand_dims(l2, axis)
 
-
-def main3():
-  x = normalized(
-      np.array([(0.01, 0.6, 0.6),
-                (0, -0.5, 0.6),
-                (0, 0.6, -0.6),
-                (0, -0.6, -0.6),
-                (0, 1, 0),
-                (0, -1, 0),
-                (0, 0, -1),
-                (0, 0, 1),
-                      ]))
-  x = normalized(np.array([(0.01, 1, 0.01),
-                (0.01, 1, -0.01),
-                (-0.01, 1, 0.01),
-                (-0.01, 1, -0.01),
-                (0.01, -1, 0.01),
-                (-0.01, -1, 0.01),
-                (0.01, -1, -0.01)]))
-  # Set initial guess for the parameters
-  mu0 = np.mean(x, axis=0)
-  kappa0 = 1.0
-
-
-def main4():
-    x = normalized(np.array([
-        (0.01000124, 1, 0.01000234),
-        (0.0100065, 1, -0.010005),
-        (-0.010008, 1, 0.0100066),
-        #(-0.0100098, 1, -0.01000423),
-        #(0.01000234, -1, 0.010006),
-        (-0.0100065, -1, 0.010004),
-        (0.01000234, -1, -0.0100076),
-        (-0.0100035, -1, -0.01000)]))
-    # x = normalized(
-    #     np.array([(0.01, 0.6, 0.6),
-    #               (0, -0.5, 0.6),
-    #               (0, 0.6, -0.6),
-    #               (0, -0.6, -0.6),
-    #               (0, 1, 0),
-    #               (0, -1, 0),
-    #               (0, 0, -1),
-    #               (0, 0, 1),
-    #               ]))
-    wd = WatsonDistribution()
-    res = wd.fit(x)
-    print(res)
-    assert 0
-    print(x.T)
-    print(x)
-    scatter = np.matmul(x.T, x) / len(x)
-    print(scatter)
-    print(np.linalg.eig(scatter)[0])
-    print(np.linalg.eig(scatter)[1].T)
-    for val, vec in zip(np.linalg.eig(scatter)[0], np.linalg.eig(scatter)[1].T):
-        print(f'val: {val:16f}, {vec=}')
 
 """
 I can't quite get it to work. For references I used, see:
