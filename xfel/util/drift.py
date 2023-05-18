@@ -280,17 +280,18 @@ def path_split(path: str) -> List[str]:
   return os.path.normpath(path).split(os.sep)
 
 
-def read_experiments(*expt_paths: str) -> ExperimentList:
+def read_experiments(expt_paths: Sequence[str]) -> ExperimentList:
   """Create an instance of ExperimentList from one or more `*expt_paths`"""
   expts = ExperimentList()
-  for expt_path in unique_elements(expt_paths):
+  for expt_path in unique_elements(tuple(expt_paths)):
     expts.extend(ExperimentList.from_file(expt_path, check_format=False))
   return expts
 
 
-def read_reflections(*refl_paths: str) -> flex.reflection_table:
+def read_reflections(refl_paths: Sequence[str]) -> flex.reflection_table:
   """Create an instance of flex.reflection_table from one/more `*refl_paths`"""
-  r = [flex.reflection_table.from_file(p) for p in unique_elements(refl_paths)]
+  r = [flex.reflection_table.from_file(p)
+       for p in unique_elements(tuple(refl_paths))]
   return flex.reflection_table.concat(r)
 
 
@@ -504,8 +505,8 @@ class BaseDriftScraper(object):
     path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
     expts_paths = path_lookup(path_stem + '_refined.expt')
     refls_paths = path_lookup(path_stem + '_refined.refl')
-    expts = read_experiments(*expts_paths)
-    refls = read_reflections(*refls_paths)
+    expts = read_experiments(expts_paths)
+    refls = read_reflections(refls_paths)
     return expts, refls
 
   @autoupdate_scrap_dict_with_return
@@ -571,7 +572,7 @@ class MergingDirectoryDriftScraper(BaseDriftScraper):
       merging_phil_paths.sort(key=os.path.getmtime)
       for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
         scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
-        scaled_expts = read_experiments(*scaled_expt_paths)
+        scaled_expts = read_experiments(scaled_expt_paths)
         scaled_identifiers = list(scaled_expts.identifiers())
         scaling_phil_paths = []
         for sep in scaled_expt_paths:
