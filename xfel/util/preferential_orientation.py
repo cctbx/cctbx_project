@@ -216,8 +216,8 @@ class WatsonDistribution(SphericalDistribution):
     of kappa, with `mu` and `vectors` fixed and given in `params`"""
     return -self.log_likelihood(mu=mu, kappa=kappa)
 
-  def fit(self, vectors: np.ndarray) -> dict:
-    """Fit distribution to `vectors`, return dict with 'mu', 'kappa' & 'nll'"""
+  def fit(self, vectors: np.ndarray) -> None:
+    """Fit distribution to `vectors`, update `self.mu` and `self.kappa`"""
     self.vectors = vectors
     eig_val, eig_vec = np.linalg.eig(self.scatter_matrix)
     fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
@@ -225,7 +225,8 @@ class WatsonDistribution(SphericalDistribution):
         res = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
         if (nll := res['fun']) < fitted['nll']:
             fitted = {'mu': eig_vec, 'kappa': res['x'][0], 'nll': nll}
-    return fitted
+    self.mu = fitted['mu']
+    self.kappa = fitted['kappa']
 
   def sample(self, n: int) -> np.ndarray:
     """Sample `n` vectors from self, based on doi 10.1080/03610919308813139"""
