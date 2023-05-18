@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.data_manager.map_coefficients import MapCoefficientsDataManager
 from iotbx.data_manager.real_map import RealMapDataManager
 from iotbx.map_model_manager import map_model_manager
+from libtbx import Auto
 from libtbx.utils import Sorry
 import mmtbx.utils
 from cctbx import crystal
@@ -225,7 +226,7 @@ class fmodel_mixins(object):
     #
     fmodel_params = self.get_fmodel_params()
     # Extract and set twin_law
-    if(parameters.twin_law is None):
+    if parameters.twin_law is None or parameters.twin_law is Auto:
       fmodel_params.xray_data.twin_law = model.twin_law_from_model_input()
     # Set test flag value
     fmodel_params.xray_data.r_free_flags.test_flag_value = data.test_flag_value
@@ -241,8 +242,7 @@ class fmodel_mixins(object):
       scattering_table = scattering_table,
       d_min            = data.f_obs.d_min())
     # Create and return fmodel
-    twin_law = \
-      self.export_phil_scope().extract().data_manager.fmodel.xray_data.twin_law
+    twin_law = fmodel_params.xray_data.twin_law
     fmodel = mmtbx.utils.fmodel_manager2(
       f_obs               = data.f_obs,
       r_free_flags        = data.r_free_flags,
