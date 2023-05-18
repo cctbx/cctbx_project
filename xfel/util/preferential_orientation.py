@@ -4,11 +4,10 @@ import glob
 from typing import List
 import sys
 
-import matplotlib.pyplot as plt
 from dxtbx.model import ExperimentList
 from xfel.util.drift import params_from_phil, read_experiments
 
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
@@ -56,16 +55,17 @@ phil_scope_str = """
 ############################ ORIENTATION SCRAPPING ############################
 
 
-class OrientationScraper:
-  """Class responsible for scraping orientation matrices from expt files"""
+class DirectSpaceVectorScraper:
+  """Class responsible for scraping vectors a, b, c from expt files"""
   def __init__(self, parameters) -> None:
     self.parameters = parameters
 
   @staticmethod
-  def assemble_orientation_stack(expts: ExperimentList) -> np.ndarray:
-    """Extract N orientation matrices from N expts into a Nx3x3 numpy array"""
-    ori_list = [np.array(expt.crystal.get_U()).reshape(3,3) for expt in expts]
-    return np.stack(arrays=ori_list, axis=0)
+  def assemble_abc_stack(expts: ExperimentList) -> np.ndarray:
+    """Extract N vectors a, b, c from N expts into a 3xNx3 numpy array.
+    return_value[0] is a list of vectors "a"; [1] of "b", and [2] of "c"."""
+    abc = [e.crystal.get_real_space_vectors().as_numpy_array() for e in expts]
+    return np.stack(abc, axis=1)
 
   def locate_input_paths(self) -> List:
     """Return a list of expt paths in scrap.input.glob, but not in exclude"""
@@ -80,7 +80,7 @@ class OrientationScraper:
     """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
     expt_paths = self.locate_input_paths()
     expts = read_experiments(expt_paths)
-    return self.assemble_orientation_stack(expts)
+    return self.assemble_abc_stack(expts)
 
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
@@ -131,7 +131,7 @@ class SphericalDistribution:
   def __init__(self):
     self.vectors: np.ndarray = None
     self.mu: np.ndarray = np.array([1, 0, 0])
-`
+
   @staticmethod
   def normalized(vectors: np.ndarray, axis: int = -1) -> np.ndarray:
     """Return `vectors` normalized using standard l2 norm along `axis` """
@@ -164,12 +164,18 @@ class SphericalDistribution:
 
 
 class WatsonDistribution(SphericalDistribution):
-  """The equations numbers given here refer to numbering in the book
-  "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
+  """Class for holding, fitting, and generating Watson distribution.
+  Description names reflect those used in respective references:
+  - https://arxiv.org/pdf/1104.4422.pdf, page 3
+  - http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
+  - https://www.tandfonline.com/doi/abs/10.1080/03610919308813139"""
   def __init__(self, mu: np.ndarray = None, kappa: float = None) -> None:
     super().__init__()
     self.kappa: float = kappa
     self.mu: np.ndarray = mu
+
+  def __str__(self):
+    return f'Watson Distribution around mu={self.mu} with kappa={self.mu}'
 
   @classmethod
   def from_vectors(cls, vectors: np.ndarray) -> 'WatsonDistribution':
@@ -250,9 +256,9 @@ class WatsonDistribution(SphericalDistribution):
 @dataclass
 class Hedgehog:
   """Class for holding any `SphericalDistribution` with its metadata"""
-  name: str
-  color: str
   distribution: SphericalDistribution
+  color: str
+  name: str
 
 
 class HedgehogArtist:
@@ -287,7 +293,7 @@ class HedgehogArtist:
     axes.set_zlim([-1, 1])
     axes.set_label(axes.get_label() + ' ' + name if axes.get_label() else name)
 
-  def add_hedgehog(self, hedgehog: Hedgehog) -> None:
+  def register_hedgehog(self, hedgehog: Hedgehog) -> None:
     self.hedgehogs.append(hedgehog)
 
   def plot(self):
@@ -301,12 +307,14 @@ class HedgehogArtist:
 
 
 def run(params_):
-    os = OrientationScraper(parameters=params_)
-
-    poc = PreferentialOrientationCalculator()
-    ori = os.scrap()
-    avg_ori = poc.irls_orientations(orientations=ori)
-    print(avg_ori)
+    abc_stack = DirectSpaceVectorScraper(parameters=params_).scrap()
+    hha = HedgehogArtist(parameters=params_)
+    for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
+      wd = WatsonDistribution.from_vectors(vectors)
+      print(name + ': ' + wd)
+      hh = Hedgehog(distribution=wd, color=color, name=name)
+      hha.register_hedgehog(hh)
+    hha.plot()
 
 
 params = []
@@ -316,17 +324,3 @@ if __name__ == '__main__':
     exit()
   params = params_from_phil(sys.argv[1:])
   run(params)
-
-
-
-
-"""
-I can't quite get it to work. For references I used, see:
-- https://arxiv.org/pdf/1104.4422.pdf, page 3
-- http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
- 
-"""
-
-
-if __name__ == '__main__':
-  main4()
