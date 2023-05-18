@@ -1,4 +1,5 @@
 from __future__ import division
+from dataclasses import dataclass
 import glob
 from typing import List
 import sys
@@ -123,12 +124,42 @@ class MisesFisherCalculator:
 
 
 class SphericalDistribution:
-  @classmethod
-  def from_orientations(cls, orientations: np.ndarray) -> 'SphericalDistribution':
-    a_vectors, b_vectors, c_vectors = [], [], []
-    for ori in orientations:
-      dist =
+  E1 = np.array([1, 0, 0])
+  E2 = np.array([0, 1, 0])
+  E3 = np.array([0, 0, 1])
 
+  def __init__(self):
+    self.vectors: np.ndarray = None
+    self.mu: np.ndarray = np.array([1, 0, 0])
+`
+  @staticmethod
+  def normalized(vectors: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Return `vectors` normalized using standard l2 norm along `axis` """
+    l2 = np.atleast_1d(np.linalg.norm(vectors, 2, axis))
+    l2[l2 == 0] = 1
+    return vectors / np.expand_dims(l2, axis)
+
+  @staticmethod
+  def are_parallel(v: np.ndarray, w: np.ndarray, eps: float = 1e-8) -> bool:
+    return abs(np.dot(v, w) / (np.linalg.norm(v) * np.linalg.norm(w))) < 1 - eps
+
+  @property
+  def mu_basis_vectors(self):
+    """Basis vector of cartesian system in which e1 = mu; e2 & e3 arbitrary"""
+    e1 = self.mu / np.linalg.norm(self.mu)
+    e0 = self.E1 if not self.are_parallel(e1, self.E1) else self.E2
+    e2 = np.cross(e1, e0)
+    e3 = np.cross(e1, e2)
+    return e1, e2, e3
+
+  def mu_sph2cart(self, vectors: np.ndarray):
+    """Convert spherical coordinates r, polar, azim to cartesian in mu basis"""
+    r, polar, azim = np.hsplit(vectors, 3)
+    e1, e2, e3 = self.mu_basis_vectors
+    e1_component = e1 * np.cos(polar)
+    e2_component = e2 * np.sin(polar) * np.cos(azim)
+    e3_component = e3 * np.sin(polar) * np.sin(azim)
+    return r * (e1_component + e2_component + e3_component)
 
 
 
@@ -136,9 +167,9 @@ class WatsonDistribution(SphericalDistribution):
   """The equations numbers given here refer to numbering in the book
   "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
   def __init__(self, mu: np.ndarray = None, kappa: float = None) -> None:
+    super().__init__()
     self.kappa: float = kappa
     self.mu: np.ndarray = mu
-    self.vectors: np.ndarray = None
 
   @classmethod
   def from_vectors(cls, vectors: np.ndarray) -> 'WatsonDistribution':
@@ -156,14 +187,6 @@ class WatsonDistribution(SphericalDistribution):
   def x_avg(self) -> np.ndarray:
     """Sum of vectors divided by their count, bar{x}"""
     return np.sum(self.vectors, axis=0) / self.vectors.shape[0]
-
-  @staticmethod
-  def normalized(vectors: np.ndarray, axis: int = -1,
-                 order: int = 2) -> np.ndarray:
-    """Return `vectors` normalized using `order` along `axis` """
-    l2 = np.atleast_1d(np.linalg.norm(vectors, order, axis))
-    l2[l2 == 0] = 1
-    return vectors / np.expand_dims(l2, axis)
 
   @staticmethod
   def kummer_function(a: float, b: float, kappa: float) -> float:
@@ -219,10 +242,18 @@ class WatsonDistribution(SphericalDistribution):
     phi = 4 * np.pi * u2
     theta[u2 < 0.5] = np.pi - theta[u2 < 0.5]
     phi[u2 >= 0.5] = 2 * np.pi * (2 * u2 - 1)
-    # TODO: add code to generate vectors from phi and theta
+    return self.mu_sph2cart(np.vstack(np.ones_like(theta), theta, phi).T)
 
 
 ########################### ORIENTATION VISUALIZING ###########################
+
+@dataclass
+class Hedgehog:
+  """Class for holding any `SphericalDistribution` with its metadata"""
+  name: str
+  color: str
+  distribution: SphericalDistribution
+
 
 class HedgehogArtist:
   """Class responsible for drawing distribution of vectors as "hedgehogs"."""
@@ -246,20 +277,18 @@ class HedgehogArtist:
       for w in range(gs_width):
         self.axes.append(self.fig.add_subplot(gs[h, w], projection='3d'))
 
-  def _plot_hedgehog(self, axes: plt.Axes, hedgehog: dict) -> None:
+  def _plot_hedgehog(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
     origin = [0., 0., 0.]
-    name = hedgehog['name']
-    v = hedgehog['distribution'].vectors
-    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog['color'])
+    name = hedgehog.name
+    v = hedgehog.distribution.vectors
+    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color)
     axes.set_xlim([-1, 1])
     axes.set_ylim([-1, 1])
     axes.set_zlim([-1, 1])
     axes.set_label(axes.get_label() + ' ' + name if axes.get_label() else name)
 
-  def add_hedgehog(self, distribution: WatsonDistribution, color: str = 'k',
-                   name: str = 'vectors') -> None:
-    hh = {'distribution': distribution, 'color': color, 'name': name}
-    self.hedgehogs.append(hh)
+  def add_hedgehog(self, hedgehog: Hedgehog) -> None:
+    self.hedgehogs.append(hedgehog)
 
   def plot(self):
     self._generate_axes()
