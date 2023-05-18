@@ -277,8 +277,8 @@ class HedgehogArtist:
     self.axes = []
 
   def _generate_axes(self) -> None:
-    gs_width = np.ceil(np.sqrt(len(self)))
-    gs_height = np.ceil(len(self) / gs_width)
+    gs_width = np.ceil(np.sqrt(len(self))).astype(int)
+    gs_height = np.ceil(len(self) / gs_width).astype(int)
     gs = GridSpec(gs_height, gs_width, hspace=0, wspace=0)
     for h in range(gs_height):
       for w in range(gs_width):
