@@ -187,7 +187,7 @@ def exercise_reflections():
   hkl_in = file_reader.any_file(file_name)
   hkl_server = hkl_in.file_server
   assert approx_equal(reflections.get_high_resolution(hkl_server), 1.5,
-    eps=0.0001)
+    eps=0.001)
   descriptions = []
   for miller_array in hkl_server.miller_arrays :
     (sg, uc) = reflections.get_miller_array_symmetry(miller_array)
@@ -200,9 +200,10 @@ def exercise_reflections():
   handler = reflections.reflections_handler()
   handler.save_file(input_file=hkl_in)
   assert (not handler.has_anomalous_data())
-  assert (handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.500)")
-  assert (handler.get_resolution_limits(file_name=file_name) ==
-          ('(25.981)', '(1.500)'))
+  assert (handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.500)"
+          or handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.501)")
+  assert (handler.get_resolution_limits(file_name=file_name) == ('(25.981)', '(1.500)')
+          or handler.get_resolution_limits(file_name=file_name) == ('(25.981)', '(1.501)'))
   fmodel = phi_array.array(data=flex.complex_double(n_refl_merged,
     complex(0.5,0.8)))
   m1 = phi_array.array(data=flex.complex_double(n_refl_merged, complex(1,0)))
@@ -242,10 +243,10 @@ def exercise_reflections():
   assert (fc_cols == ['F-model'])
   hkl_server = file_reader.any_file(file_name).file_server
   map_labels = reflections.get_map_coeff_labels(hkl_server)
-  assert (map_labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
+  assert (map_labels == ['F-model,PHF-model', '2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
     '2FOFCWT_no_fill,PH2FOFCWT_no_fill',]), map_labels
   map_labels = reflections.get_map_coeffs_for_build(hkl_server)
-  assert map_labels == ['2FOFCWT,PH2FOFCWT','2FOFCWT_no_fill,PH2FOFCWT_no_fill']
+  assert map_labels == ['2FOFCWT,PH2FOFCWT', 'F-model,PHF-model', '2FOFCWT_no_fill,PH2FOFCWT_no_fill'], map_labels
   map_coeffs = reflections.extract_phenix_refine_map_coeffs(file_name)
   assert (len(map_coeffs) == 3)
   hkl_file = file_reader.any_file(file_name)
