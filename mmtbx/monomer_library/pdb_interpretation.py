@@ -1910,9 +1910,8 @@ def evaluate_registry_process_result(
       show_residue_names=False,
       lines=lines))
   pdb_atoms = m_i.pdb_atoms
-  atoms = [pdb_atoms[i_seq] for i_seq in i_seqs]
   if (not registry_process_result.is_new
-      and not all_atoms_are_in_main_conf(atoms=atoms)):
+      and not all_atoms_are_in_main_conf(atoms=[pdb_atoms[i_seq] for i_seq in i_seqs])):
     raise Sorry(format_exception_message(
       m_i=m_i,
       m_j=m_j,
