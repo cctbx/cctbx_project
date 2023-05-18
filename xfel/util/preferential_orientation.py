@@ -3,9 +3,13 @@ import glob
 from typing import List
 import sys
 
+import matplotlib.pyplot as plt
 from dxtbx.model import ExperimentList
 from xfel.util.drift import params_from_phil, read_experiments
 
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import numpy as np
 import scipy as sp
 
@@ -118,7 +122,17 @@ class MisesFisherCalculator:
     return k
 
 
-class WatsonDistribution:
+class SphericalDistribution:
+  @classmethod
+  def from_orientations(cls, orientations: np.ndarray) -> 'SphericalDistribution':
+    a_vectors, b_vectors, c_vectors = [], [], []
+    for ori in orientations:
+      dist =
+
+
+
+
+class WatsonDistribution(SphericalDistribution):
   """The equations numbers given here refer to numbering in the book
   "Directional Statistics" by Kanti V. Mardia and Peter E. Jupp, Willey 2000"""
   def __init__(self, mu: np.ndarray = None, kappa: float = None) -> None:
@@ -205,12 +219,53 @@ class WatsonDistribution:
     phi = 4 * np.pi * u2
     theta[u2 < 0.5] = np.pi - theta[u2 < 0.5]
     phi[u2 >= 0.5] = 2 * np.pi * (2 * u2 - 1)
-    # add code to generate vectors from phi and theta
-
-
+    # TODO: add code to generate vectors from phi and theta
 
 
 ########################### ORIENTATION VISUALIZING ###########################
+
+class HedgehogArtist:
+  """Class responsible for drawing distribution of vectors as "hedgehogs"."""
+  def __init__(self, parameters) -> None:
+    self.parameters = parameters
+    self.hedgehogs = []
+    self._init_figure()
+
+  def __len__(self) -> int:
+    return len(self.hedgehogs)
+
+  def _init_figure(self) -> None:
+    self.fig = plt.figure()
+    self.axes = []
+
+  def _generate_axes(self) -> None:
+    gs_width = np.ceil(np.sqrt(len(self)))
+    gs_height = np.ceil(len(self) / gs_width)
+    gs = GridSpec(gs_height, gs_width, hspace=0, wspace=0)
+    for h in range(gs_height):
+      for w in range(gs_width):
+        self.axes.append(self.fig.add_subplot(gs[h, w], projection='3d'))
+
+  def _plot_hedgehog(self, axes: plt.Axes, hedgehog: dict) -> None:
+    origin = [0., 0., 0.]
+    name = hedgehog['name']
+    v = hedgehog['distribution'].vectors
+    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog['color'])
+    axes.set_xlim([-1, 1])
+    axes.set_ylim([-1, 1])
+    axes.set_zlim([-1, 1])
+    axes.set_label(axes.get_label() + ' ' + name if axes.get_label() else name)
+
+  def add_hedgehog(self, distribution: WatsonDistribution, color: str = 'k',
+                   name: str = 'vectors') -> None:
+    hh = {'distribution': distribution, 'color': color, 'name': name}
+    self.hedgehogs.append(hh)
+
+  def plot(self):
+    self._generate_axes()
+    for axes, hedgehog in zip(self.axes, self.hedgehogs):
+      self._plot_hedgehog(axes=axes, hedgehog=hedgehog)
+    plt.show()
 
 
 ################################ ENTRY POINTS #################################
@@ -218,6 +273,7 @@ class WatsonDistribution:
 
 def run(params_):
     os = OrientationScraper(parameters=params_)
+
     poc = PreferentialOrientationCalculator()
     ori = os.scrap()
     avg_ori = poc.irls_orientations(orientations=ori)
