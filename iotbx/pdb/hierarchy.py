@@ -347,6 +347,8 @@ class __hash_eq_mixin(object):
     return hash(self.memory_id())
 
   def __eq__(self, other):
+    if other == None:
+      return False
     if (isinstance(other, self.__class__)):
       return (self.memory_id() == other.memory_id())
     return False
