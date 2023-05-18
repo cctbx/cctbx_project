@@ -185,7 +185,7 @@ def run(args, out=None):
     if os.path.isfile(arg):
       f = file_reader.any_file(arg)
       if (f.file_type == "pdb"):
-        pdb_in = f.file_object
+        pdb_in = iotbx.pdb.input(arg)
         user_phil.append(interpreter.process(arg="pdb_file=%s" % f.file_name))
       elif (f.file_type == "hkl"):
         hkl_in = f.file_object

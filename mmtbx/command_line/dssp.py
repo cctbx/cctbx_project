@@ -17,7 +17,7 @@ def run(args, out=sys.stdout):
     raise Sorry("Please specify a PDB file.")
   pdb_inp = iotbx.pdb.input(params.file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
-  xray_structure = pdb_inp.xray_structure_simple()
+  xray_structure = pdb_hierarchy.extract_xray_structure()
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   t1 = time.time()
@@ -29,7 +29,7 @@ def run(args, out=sys.stdout):
     out=out,
     log=sys.stderr)
   if (params.atom_output):
-    out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=xray_structure))
+    out.write(pdb_hierarchy.as_pdb_string(crystal_symmetry=pdb_inp.crystal_symmetry()))
   t2 = time.time()
   if (params.verbosity >= 1):
     print("total DSSP runtime: %.3fs" % (t2-t1), file=sys.stderr)

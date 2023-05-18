@@ -243,6 +243,6 @@ class filter_pdb_file(object):
       print("\n".join(pdb_in.title_section()), file=f)
       print("\n".join(pdb_in.remark_section()), file=f)
       print(iotbx.pdb.format_cryst1_record(
-        crystal_symmetry=pdb_in.file_object.crystal_symmetry()), file=f)
+        crystal_symmetry=pdb_in.crystal_symmetry()), file=f)
       print(hierarchy_filtered.as_pdb_string(), file=f)
       f.close()

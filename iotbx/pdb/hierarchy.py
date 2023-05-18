@@ -2942,6 +2942,8 @@ class input_hierarchy_pair(object):
     Returns a reference to the existing hierarchy.  For backwards compatibility
     only, and issues a :py:class:`warnings.DeprecationWarning`.
     """
+    # import traceback
+    # traceback.print_stack()
     warnings.warn("Please access input.hierarchy directly.",
       DeprecationWarning)
     return self.hierarchy
