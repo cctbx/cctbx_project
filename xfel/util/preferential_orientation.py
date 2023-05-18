@@ -32,6 +32,7 @@ describes a distribution uniform on sphere: no preferential orientation.
 This code has been prepared using the following books & papers as references:
 - http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
 - https://www.sciencedirect.com/science/article/pii/S0047259X12002084, sect. 2
+- https://www.tandfonline.com/doi/abs/10.1080/03610919308813139
 
 This is a work in progress.
 """.strip()
