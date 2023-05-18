@@ -181,7 +181,7 @@ class fmodel_mixins(object):
     # Gather models of appropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
-      models.append(self.get_model(filename))
+      models.append(self.get_model(filename, model_type=array_type))
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
     if(len(models) > 1):
