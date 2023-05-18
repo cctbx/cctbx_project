@@ -312,7 +312,7 @@ def run(params_):
     hha = HedgehogArtist(parameters=params_)
     for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
       wd = WatsonDistribution.from_vectors(vectors)
-      print(name + ': ' + wd)
+      print(name + ': ' + str(wd))
       hh = Hedgehog(distribution=wd, color=color, name=name)
       hha.register_hedgehog(hh)
     hha.plot()
