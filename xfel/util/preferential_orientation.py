@@ -176,7 +176,7 @@ class WatsonDistribution(SphericalDistribution):
     self.mu: np.ndarray = mu
 
   def __str__(self):
-    return f'Watson Distribution around mu={self.mu} with kappa={self.mu}'
+    return f'Watson Distribution around mu={self.mu} with kappa={self.kappa}'
 
   @classmethod
   def from_vectors(cls, vectors: np.ndarray) -> 'WatsonDistribution':
