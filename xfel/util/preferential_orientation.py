@@ -182,7 +182,7 @@ class WatsonDistribution(SphericalDistribution):
   def from_vectors(cls, vectors: np.ndarray) -> 'WatsonDistribution':
     """Define the distribution by fitting it to a list of vectors"""
     new = WatsonDistribution()
-    new.fit(vectors=vectors)
+    new.fit(vectors=cls.normalized(vectors))
     return new
 
   @property
