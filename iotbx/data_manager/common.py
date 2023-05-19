@@ -190,7 +190,8 @@ class fmodel_mixins(object):
     # Get reflection file server
     rfs = self.get_reflection_file_server(
       array_type       = array_type,
-      crystal_symmetry = crystal_symmetry)
+      crystal_symmetry = crystal_symmetry,
+      ignore_intensities_if_amplitudes_present = True)
     # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
       params                 = crystal_symmetry_phil,

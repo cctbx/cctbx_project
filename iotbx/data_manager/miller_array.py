@@ -287,6 +287,7 @@ class MillerArrayDataManager(DataManagerBase):
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,
                                  crystal_symmetry=None, force_symmetry=None,
+                                 ignore_intensities_if_amplitudes_present=False,
                                  logger=None):
     '''
     Return the file server for a single miller_array file or mulitple files
@@ -296,6 +297,7 @@ class MillerArrayDataManager(DataManagerBase):
     :param array_type:        "x_ray", "neutron", "electron", or None
     :param crystal_symmetry:  cctbx.crystal.symmetry object or None
     :param force_symmetry:    bool or None
+    :param ignore_intensities_if_amplitudes_present: bool
     :param logger:            defaults to self.logger (multi_out)
 
     The order in filenames and labels should match, e.g. labels[0] should be the
@@ -304,6 +306,14 @@ class MillerArrayDataManager(DataManagerBase):
     to None, e.g. labels[0] = None.
 
     If array_type is None, files of any type are allowed.
+
+    If ignore_intensities_if_amplitudes_present is set to True, intensity
+    arrays are not automatically added to the reflection_file_server if
+    amplitude arrays have been selected (as user_selected_arrays). This
+    is to avoid fmodel from prioritizing intensity arrays if both are
+    present. If both intensity and amplitude arrays are selected,
+    setting this parameter to True will not ignore the selected intensity
+    arrays.
 
     None is returned if the file_server has no arrays
     '''
@@ -325,6 +335,17 @@ class MillerArrayDataManager(DataManagerBase):
     if len(filenames) > len(labels):
       labels += [None]*(len(filenames) - len(labels))
     assert len(filenames) == len(labels)
+    # determine types of selected arrays across all files and decide
+    # whether to ignore intensity arrays that are not explicitly selected
+    selected_types = set()
+    for i, filename in enumerate(filenames):
+      current_selected_labels = self.get_miller_array_user_selected_labels(filename)
+      if len(current_selected_labels) > 0:
+        for j, label in enumerate(current_selected_labels):
+          label = self._match_label(label, self.get_miller_arrays(filename=filename))
+          selected_types.add(self.get_miller_array_array_types(filename)[label])
+    if 'amplitude' in selected_types and ignore_intensities_if_amplitudes_present:
+      selected_types.add('intensity')
     # check for user selected labels
     selected_labels = deepcopy(labels)
     for i, filename in enumerate(filenames):
@@ -333,11 +354,9 @@ class MillerArrayDataManager(DataManagerBase):
       if labels[i] is None:
         current_all_labels = self.get_miller_array_all_labels(filename)
       if len(current_selected_labels) > 0:
-        selected_types = set()
         # add selected labels
         for j, label in enumerate(current_selected_labels):
           label = self._match_label(label, self.get_miller_arrays(filename=filename))
-          selected_types.add(self.get_miller_array_array_types(filename)[label])
           current_selected_labels[j] = label
         # add remaining labels that are a different type
         for label in current_all_labels:
