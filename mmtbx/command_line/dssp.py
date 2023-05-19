@@ -17,7 +17,8 @@ def run(args, out=sys.stdout):
     raise Sorry("Please specify a PDB file.")
   pdb_inp = iotbx.pdb.input(params.file_name)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
-  xray_structure = pdb_hierarchy.extract_xray_structure()
+  xray_structure = pdb_hierarchy.extract_xray_structure(
+      crystal_symmetry=pdb_inp.crystal_symmetry())
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   t1 = time.time()
