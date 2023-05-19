@@ -147,8 +147,8 @@ model
     model = self._get(ModelDataManager.datatype, filename)
     if self.supports('restraint'):
       restraint_objects = list()
-      for filename in self.get_restraint_names():
-        restraint_objects.append((filename, self.get_restraint(filename)))
+      for restraint_filename in self.get_restraint_names():
+        restraint_objects.append((filename, self.get_restraint(restraint_filename)))
       model.set_restraint_objects(restraint_objects)
     if hasattr(model,'info'):  # save filename if possible
       if filename is None:
