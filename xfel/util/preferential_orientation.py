@@ -105,43 +105,6 @@ class DirectSpaceVectorCollection:
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
 
-class MisesFisherCalculator:
-  EPSILON: float = 1e-6
-  GUESS: np.ndarray = np.eye(3)
-  MAX_ITER: int = 100
-
-  @staticmethod
-  def a3(kappa: float) -> float:
-    """The normalization constant for the Bessel function of 1st kind in 3D."""
-    return sp.special.iv(1.5, kappa) / sp.special.iv(0.5, kappa)
-
-  def x_avg(self, vectors: np.ndarray) -> np.ndarray:
-    """Sum of vectors divided by their count, bar{x}"""
-    return np.sum(vectors, axis=0) / vectors.shape[0]
-
-  def mu(self, vectors: np.ndarray) -> np.ndarray:
-    """Mean direction of `vectors` normalized to 1, mu."""
-    return self.x_avg(vectors) / self.r_avg(vectors)
-
-  def r_avg(self, vectors: np.ndarray) -> float:
-    """Length of the not-normalized mean direction of vectors, bar{R}"""
-    return np.linalg.norm(self.x_avg(vectors))
-
-  def kappa0(self, vectors: np.ndarray) -> float:
-    """Simple approximation of kappa, following (Sra, 2011), hat{kappa}"""
-    r = self.r_avg(vectors)
-    return r * (3 - r ** 2) / (1 - r ** 2)
-
-  def kappa(self, vectors):
-    """Von Mises-Fisher concentration parameter of vectors on sphere, kappa"""
-    k = self.kappa0(vectors)
-    if k != 0:
-      for i in range(10):
-        a3 = self.a3(k)
-        k = k - (a3 - self.r_avg(vectors)) / (1 - a3 ** 2 - (2 * a3 / k))
-        print(k)
-    return k
-
 
 class SphericalDistribution:
   E1 = np.array([1, 0, 0])
@@ -182,7 +145,6 @@ class SphericalDistribution:
     return r * (e1_component + e2_component + e3_component)
 
 
-
 class WatsonDistribution(SphericalDistribution):
   """Class for holding, fitting, and generating Watson distribution.
   Description names reflect those used in respective references:
@@ -193,8 +155,9 @@ class WatsonDistribution(SphericalDistribution):
     super().__init__()
     self.kappa: float = kappa
     self.mu: np.ndarray = mu
+    self.nll: float = np.Infinity
 
-  def __str__(self):
+  def __str__(self) -> str:
     return f'Watson Distribution around mu={self.mu} with kappa={self.kappa}'
 
   @classmethod
@@ -241,11 +204,12 @@ class WatsonDistribution(SphericalDistribution):
     eig_val, eig_vec = np.linalg.eig(self.scatter_matrix)
     fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
     for eig_val, eig_vec in zip(eig_val, eig_vec.T):
-        res = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
-        if (nll := res['fun']) < fitted['nll']:
-            fitted = {'mu': eig_vec, 'kappa': res['x'][0], 'nll': nll}
-    self.mu = fitted['mu']
+        result = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
+        if (nll := result['fun']) < fitted['nll']:
+            fitted = {'mu': eig_vec, 'kappa': result['x'][0], 'nll': nll}
     self.kappa = fitted['kappa']
+    self.mu = fitted['mu']
+    self.nll = fitted['nll']
 
   def sample(self, n: int) -> np.ndarray:
     """Sample `n` vectors from self, based on doi 10.1080/03610919308813139"""
@@ -260,9 +224,8 @@ class WatsonDistribution(SphericalDistribution):
       u1 = rng.uniform(size=2*_n)
       s = u0 ** 2 / (1 - rho * (1 - u0 ** 2))
       v = (r * u1 ** 2) / (1 - rho * s) ** 3
-      w = k * s
-      good_s = s[v <= np.exp(2 * w)]
-      return good_s[:_n] if (lgs := len(good_s)) > _n else \
+      good_s = s[v <= np.exp(2 * k * s)]
+      return good_s[:_n] if (lgs := len(good_s)) >= _n else \
           np.concatenate([good_s, cos2_of_polar_angle(_n-lgs)], axis=None)
     u2 = rng.uniform(size=n)
     theta = np.arccos(cos2_of_polar_angle(n) ** 0.5)
