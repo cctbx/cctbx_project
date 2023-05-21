@@ -12,6 +12,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
+import pandas as pd
 import scipy as sp
 
 
@@ -58,17 +59,17 @@ phil_scope_str = """
 
 
 @dataclass
-class DirectSpaceVectorCollection:
+class DirectSpaceVectors:
   """Class responsible for scraping and storing vectors a, b, c from expts"""
   abc: np.ndarray
 
   @classmethod
-  def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectorCollection':
+  def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectors':
     """Read and return a Nx3x3 orientation matrix based on ExperimentList"""
     return cls(abc=cls.assemble_abc_stack(expts))
 
   @classmethod
-  def from_glob(cls, parameters) -> 'DirectSpaceVectorCollection':
+  def from_glob(cls, parameters) -> 'DirectSpaceVectors':
     """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(expt_paths)
@@ -235,6 +236,40 @@ class WatsonDistribution(SphericalDistribution):
     self.vectors = self.mu_sph2cart(np.vstack([np.ones_like(theta), theta, phi]).T)
 
 
+class PQRArray:
+  """A collection of pseudo-vectors representing directions in direct space"""
+  RADIUS = 5
+
+  def __init__(self):
+    self.pqr: np.ndarray = np.array([0, 0, 0])
+    self.expand(around=np.array([0, 0, 0]))
+
+  def expand(self, around: np.ndarray) -> None:
+    """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
+    p_range = np.arange(around[0] - self.RADIUS, around[0] + self.RADIUS + 1)
+    q_range = np.arange(around[1] - self.RADIUS, around[1] + self.RADIUS + 1)
+    r_range = np.arange(around[2] - self.RADIUS, around[2] + self.RADIUS + 1)
+    pqr_mesh = np.meshgrid(p_range, q_range, r_range)
+    pqr = np.column_stack([mesh_comp.ravel() for mesh_comp in pqr_mesh])
+    pqr = pqr[np.linalg.norm(pqr, axis=1) <= self.RADIUS]
+    p, q, r = pqr.T
+    pqr = pqr[(p > 0) | ((p == 0) & (q > 0)) | ((p == 0) & (q == 0) & (r == 1))]
+    pqr = pqr // np.gcd(np.gcd(pqr[:, 0], pqr[:, 1]), pqr[:, 2])[:, np.newaxis]
+    pqr = np.vstack(self.pqr, pqr)
+    self.pqr = np.unique(pqr, axis=0)
+
+
+def find_preferential_orientation(dsv: DirectSpaceVectors, params_) -> dict:
+  """Look for a preferential orientation in any direct space direction pqr"""
+  pqr_array = PQRArray()
+  wds: List[WatsonDistribution] = []
+  for pqr in pqr_array.pqr:
+    vectors = dsv.a * pqr[0] + dsv.b * pqr[1] + dsv.c * pqr[2]
+    wds.append(WatsonDistribution.from_vectors(vectors))
+  i = np.argmin([wd.nll for wd in wds]) # index of distribution with best fit
+  print(f'Best fit found for direction {pqr_array.pqr[i]}: {str(wds[i])}')
+
+
 ########################### ORIENTATION VISUALIZING ###########################
 
 @dataclass
@@ -291,7 +326,7 @@ class HedgehogArtist:
 
 
 def run(params_):
-  abc_stack = DirectSpaceVectorCollection.from_glob(params_).abc
+  abc_stack = DirectSpaceVectors.from_glob(params_).abc
   hha = HedgehogArtist(parameters=params_)
   for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
     wd = WatsonDistribution.from_vectors(vectors)
