@@ -1,4 +1,5 @@
 from __future__ import division
+
 from dataclasses import dataclass
 import glob
 from typing import List
@@ -56,32 +57,50 @@ phil_scope_str = """
 ############################ ORIENTATION SCRAPPING ############################
 
 
-class DirectSpaceVectorScraper:
-  """Class responsible for scraping vectors a, b, c from expt files"""
-  def __init__(self, parameters) -> None:
-    self.parameters = parameters
+@dataclass
+class DirectSpaceVectorCollection:
+  """Class responsible for scraping and storing vectors a, b, c from expts"""
+  abc: np.ndarray
+
+  @classmethod
+  def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectorCollection':
+    """Read and return a Nx3x3 orientation matrix based on ExperimentList"""
+    return cls(abc=cls.assemble_abc_stack(expts))
+
+  @classmethod
+  def from_glob(cls, parameters) -> 'DirectSpaceVectorCollection':
+    """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
+    expt_paths = cls.locate_input_paths(parameters=parameters)
+    expts = read_experiments(expt_paths)
+    return cls(abc=cls.assemble_abc_stack(expts))
 
   @staticmethod
   def assemble_abc_stack(expts: ExperimentList) -> np.ndarray:
-    """Extract N vectors a, b, c from N expts into a 3xNx3 numpy array.
-    return_value[0] is a list of vectors "a"; [1] of "b", and [2] of "c"."""
+    """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
     abc = [e.crystal.get_real_space_vectors().as_numpy_array() for e in expts]
     return np.stack(abc, axis=1)
 
-  def locate_input_paths(self) -> List:
+  @staticmethod
+  def locate_input_paths(parameters) -> List[str]:
     """Return a list of expt paths in scrap.input.glob, but not in exclude"""
     input_paths, exclude_paths = [], []
-    for ig in self.parameters.scrap.input.glob:
+    for ig in parameters.scrap.input.glob:
       input_paths.extend(glob.glob(ig))
-    for ie in self.parameters.scrap.input.exclude:
+    for ie in parameters.scrap.input.exclude:
       exclude_paths.extend(glob.glob(ie))
     return [it for it in input_paths if it not in exclude_paths]
 
-  def scrap(self) -> np.ndarray:
-    """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
-    expt_paths = self.locate_input_paths()
-    expts = read_experiments(expt_paths)
-    return self.assemble_abc_stack(expts)
+  @property
+  def a(self) -> np.ndarray:
+    return self.abc[0]
+
+  @property
+  def b(self) -> np.ndarray:
+    return self.abc[1]
+
+  @property
+  def c(self) -> np.ndarray:
+    return self.abc[2]
 
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
@@ -249,8 +268,8 @@ class WatsonDistribution(SphericalDistribution):
     theta = np.arccos(cos2_of_polar_angle(n) ** 0.5)
     phi = 4 * np.pi * u2
     theta[u2 < 0.5] = np.pi - theta[u2 < 0.5]
-    phi[u2 >= 0.5] = 2 * np.pi * (2 * u2 - 1)
-    return self.mu_sph2cart(np.vstack(np.ones_like(theta), theta, phi).T)
+    phi[u2 >= 0.5] = 2 * np.pi * (2 * u2[u2 >= 0.5] - 1)
+    self.vectors = self.mu_sph2cart(np.vstack([np.ones_like(theta), theta, phi]).T)
 
 
 ########################### ORIENTATION VISUALIZING ###########################
@@ -289,7 +308,7 @@ class HedgehogArtist:
     origin = [0., 0., 0.]
     name = hedgehog.name
     v = hedgehog.distribution.vectors
-    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color)
+    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color, alpha=0.1)
     axes.set_xlim([-1, 1])
     axes.set_ylim([-1, 1])
     axes.set_zlim([-1, 1])
@@ -309,14 +328,26 @@ class HedgehogArtist:
 
 
 def run(params_):
-    abc_stack = DirectSpaceVectorScraper(parameters=params_).scrap()
-    hha = HedgehogArtist(parameters=params_)
-    for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
-      wd = WatsonDistribution.from_vectors(vectors)
-      print(name + ': ' + str(wd))
-      hh = Hedgehog(distribution=wd, color=color, name=name)
-      hha.register_hedgehog(hh)
-    hha.plot()
+  abc_stack = DirectSpaceVectorCollection.from_glob(params_).abc
+  hha = HedgehogArtist(parameters=params_)
+  for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
+    wd = WatsonDistribution.from_vectors(vectors)
+    print(name + ': ' + str(wd))
+    hh = Hedgehog(distribution=wd, color=color, name=name)
+    hha.register_hedgehog(hh)
+  hha.plot()
+
+
+def tst_watson_distribution():
+  hha = HedgehogArtist(parameters=None)
+  for kappa in [-1000, -100, -10, 0.000001, 10, 100]:
+    wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
+    wd.sample(1000)
+    wd.fit(wd.vectors)
+    print(wd)
+    hh = Hedgehog(distribution=wd, color='r', name='kappa=5.0')
+    hha.register_hedgehog(hh)
+  hha.plot()
 
 
 params = []
