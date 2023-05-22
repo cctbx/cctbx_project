@@ -2132,7 +2132,7 @@ class replace_with_segments_from_pdb:
           first_residue_number=cg1_model.hierarchy.first_resseq_as_int(),
           renumber=True)
 
-        sites=combined_model.hierarchy.extract_xray_structure().sites_cart()
+        sites=combined_model.hierarchy.atoms().extract_xyz()
 
         # now select a few possibilities with at least 1 res overlap on each end
         #  and no more than other.standard_length residues

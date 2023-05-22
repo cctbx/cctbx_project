@@ -6546,7 +6546,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
 """))
   h = pdb_inp.construct_hierarchy()
   h.atoms().reset_i_seq()
-  sites_cart = h.extract_xray_structure().sites_cart()
+  sites_cart = h.atoms().extract_xyz()
   #
   css = h.chunk_selections(residues_per_chunk=0)
   assert len(css)==0
@@ -6558,7 +6558,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==3
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   css = h.chunk_selections(residues_per_chunk=2)
   assert list(css[0]) == [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19, 20]
@@ -6566,7 +6566,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==2
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   css = h.chunk_selections(residues_per_chunk=3)
   assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -6574,7 +6574,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==1
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   # multiple chains
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
@@ -6618,12 +6618,12 @@ TER
 """))
   h = pdb_inp.construct_hierarchy()
   h.atoms().reset_i_seq()
-  sites_cart = h.extract_xray_structure().sites_cart()
+  sites_cart = h.atoms().extract_xyz()
   #
   css = h.chunk_selections(residues_per_chunk=3)
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
   assert list(css[1]) == [12, 13, 14, 15]

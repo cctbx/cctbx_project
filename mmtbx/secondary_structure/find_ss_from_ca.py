@@ -1453,13 +1453,13 @@ class segment:  # object for holding a helix or a strand or other
       self.sites=flex.vec3_double()
     else:
       # extract coordinates
-      self.sites=sele.extract_xray_structure().sites_cart()
+      self.sites=sele.atoms().extract_xyz()
 
     if sele.overall_counts().n_residues==0:
       self.sites=flex.vec3_double()
     else:
       # extract coordinates
-      self.sites=sele.extract_xray_structure().sites_cart()
+      self.sites=sele.atoms().extract_xyz()
 
   def get_start_resno(self):
     return self.start_resno
