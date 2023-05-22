@@ -118,7 +118,7 @@ if env_etc.enable_kokkos:
         '-DCMAKE_CXX_STANDARD={}'.format('17'),
         '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
         '-DCMAKE_INSTALL_LIBDIR=lib',
-        '-DBUILD_SHARED_LIBS={}'.format(OnOff[use_sycl]),
+        '-DBUILD_SHARED_LIBS={}'.format(OnOff[True]),
         '-DKokkos_ARCH_NATIVE={}'.format(architectures['Native']),
         '-DKokkos_ARCH_HSW={}'.format(architectures['HSW']),
         '-DKokkos_ARCH_ZEN={}'.format(architectures['Zen']),

@@ -113,6 +113,11 @@ namespace Kokkos {
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
     // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
 
+    ::Kokkos::resize(m_crystal_orientation, SIM.phisteps, SIM.mosaic_domains, 3);
+    calc_CrystalOrientations(
+      SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector, m_a0, m_b0, m_c0, SIM.mosaic_spread, 
+      SIM.mosaic_domains, m_mosaic_umats, m_crystal_orientation);
+
     // magic happens here(?): take pointer from singleton, temporarily use it for add Bragg iteration:
     vector_cudareal_t current_channel_Fhkl = kec.d_channel_Fhkl[ichannel];
 
@@ -138,10 +143,9 @@ namespace Kokkos {
       extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
       SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
       kdt.metrology.Xbeam[panel_id], kdt.metrology.Ybeam[panel_id],
-      SIM.dmin, SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector,
+      SIM.dmin, SIM.phisteps,
       SIM.sources, m_source_X, m_source_Y, m_source_Z,
-      m_source_I, m_source_lambda, m_a0, m_b0,
-      m_c0, SIM.xtal_shape, SIM.mosaic_spread, SIM.mosaic_domains, m_mosaic_umats,
+      m_source_I, m_source_lambda, SIM.xtal_shape, SIM.mosaic_domains, m_crystal_orientation,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
       m_water_size, m_water_F, m_water_MW, simtbx::nanoBragg::r_e_sqr, SIM.fluence,
       simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form, SIM.default_F,

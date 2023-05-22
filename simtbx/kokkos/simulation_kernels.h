@@ -16,6 +16,58 @@ using simtbx::nanoBragg::GAUSS;
 using simtbx::nanoBragg::GAUSS_ARGCHK;
 using simtbx::nanoBragg::TOPHAT;
 
+void calc_CrystalOrientations(CUDAREAL phi0, 
+                              CUDAREAL phistep, 
+                              int phisteps, 
+                              const vector_cudareal_t spindle_vector, 
+                              const vector_cudareal_t a0, 
+                              const vector_cudareal_t b0, 
+                              const vector_cudareal_t c0, 
+                              CUDAREAL mosaic_spread, 
+                              int mosaic_domains, 
+                              const vector_cudareal_t mosaic_umats,
+                              crystal_orientation_t crystal_orientation) {
+
+        vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
+        vec3 a0_tmp {a0(1), a0(2), a0(3)};
+        vec3 b0_tmp {b0(1), b0(2), b0(3)};
+        vec3 c0_tmp {c0(1), c0(2), c0(3)};
+
+        Kokkos::parallel_for("calc_CrystalOrientation", phisteps, KOKKOS_LAMBDA(const int& phi_tic) { 
+                // sweep over phi angles
+                CUDAREAL phi = phistep * phi_tic + phi0;
+
+                // rotate about spindle if necessary
+                vec3 ap = a0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
+                vec3 bp = b0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
+                vec3 cp = c0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
+
+                // enumerate mosaic domains
+                for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
+                        // apply mosaic rotation after phi rotation
+                        vec3 a, b, c;
+
+                        if (mosaic_spread > 0.0) {
+                                mat3 umat;
+                                for (int i=0; i<9; ++i) {
+                                        umat[i] = mosaic_umats(mos_tic * 9 + i);
+                                }
+                                a = umat.dot(ap);
+                                b = umat.dot(bp);
+                                c = umat.dot(cp);
+                        } else {
+                                a = ap;
+                                b = bp;
+                                c = cp;
+                        }
+                        crystal_orientation(phi_tic, mos_tic, 0) = a;
+                        crystal_orientation(phi_tic, mos_tic, 1) = b;
+                        crystal_orientation(phi_tic, mos_tic, 2) = c;
+                }
+        });
+        Kokkos::fence();
+}
+
 
 void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     int roi_ymin, int roi_ymax, int oversample, int point_pixel,
@@ -25,14 +77,11 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     const vector_cudareal_t odet_vector, const vector_cudareal_t pix0_vector,
     int curved_detector, CUDAREAL distance, CUDAREAL close_distance,
      const vector_cudareal_t beam_vector,
-    CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, CUDAREAL phi0, CUDAREAL phistep,
-    int phisteps, const vector_cudareal_t spindle_vector, int sources,
+    CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, int phisteps, int sources,
     const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
     const vector_cudareal_t source_Z,
-    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
-    const vector_cudareal_t a0, const vector_cudareal_t b0,
-    const vector_cudareal_t c0, shapetype xtal_shape, CUDAREAL mosaic_spread,
-    int mosaic_domains, const vector_cudareal_t mosaic_umats,
+    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda, 
+    shapetype xtal_shape, int mosaic_domains, crystal_orientation_t crystal_orientation,
     CUDAREAL Na, CUDAREAL Nb,
     CUDAREAL Nc, CUDAREAL V_cell,
     CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr,
@@ -69,11 +118,6 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                 vec3 pix0_tmp {pix0_vector(1), pix0_vector(2), pix0_vector(3)};
 
                 vec3 beam_vector_tmp {beam_vector(1), beam_vector(2), beam_vector(3)};
-                vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
-
-                vec3 a0_tmp {a0(1), a0(2), a0(3)};
-                vec3 b0_tmp {b0(1), b0(2), b0(3)};
-                vec3 c0_tmp {c0(1), c0(2), c0(3)};
 
                 vec3 polar_vector_tmp {polar_vector(1), polar_vector(2), polar_vector(3)};
 
@@ -197,34 +241,12 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
                                                 // sweep over phi angles
                                                 for (int phi_tic = 0; phi_tic < phisteps; ++phi_tic) {
-                                                        CUDAREAL phi = phistep * phi_tic + phi0;
-
-                                                        // rotate about spindle if necessary
-                                                        vec3 ap = a0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
-                                                        vec3 bp = b0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
-                                                        vec3 cp = c0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
-
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
                                                                 // apply mosaic rotation after phi rotation
-                                                                // CUDAREAL a[4];
-                                                                // CUDAREAL b[4];
-                                                                // CUDAREAL c[4];
-                                                                vec3 a, b, c;
-
-                                                                if (mosaic_spread > 0.0) {
-                                                                        mat3 umat;
-                                                                        for (int i=0; i<9; ++i) {
-                                                                                umat[i] = mosaic_umats(mos_tic * 9 + i);
-                                                                        }
-                                                                        a = umat.dot(ap);
-                                                                        b = umat.dot(bp);
-                                                                        c = umat.dot(cp);
-                                                                } else {
-                                                                        a = ap;
-                                                                        b = bp;
-                                                                        c = cp;
-                                                                }
+                                                                auto a = crystal_orientation(phi_tic, mos_tic, 0);
+                                                                auto b = crystal_orientation(phi_tic, mos_tic, 1);
+                                                                auto c = crystal_orientation(phi_tic, mos_tic, 2);
 
                                                                 // construct fractional Miller indicies
                                                                 CUDAREAL h = a.dot(scattering);
