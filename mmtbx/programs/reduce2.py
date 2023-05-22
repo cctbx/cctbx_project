@@ -35,13 +35,17 @@ from mmtbx.programs import probe2
 import copy
 import tempfile
 
-version = "0.6.0"
+version = "0.7.0"
 
 master_phil_str = '''
 approach = *add remove
   .type = choice
   .short_caption = Add or remove Hydrogens
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+keep_existing_H = False
+  .type = bool
+  .short_caption = Do not remove Hydrogens in the original model
+  .help = Keep existing H atoms in the model
 n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
@@ -914,7 +918,7 @@ NOTES:
       n_terminal_charge=self.params.n_terminal_charge,
       exclude_water=True,
       stop_for_unknowns=True,
-      keep_existing_H=False
+      keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(None)
