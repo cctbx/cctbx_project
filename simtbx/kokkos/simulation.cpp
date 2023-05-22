@@ -100,8 +100,6 @@ namespace Kokkos {
     simtbx::Kokkos::kokkos_detector & kdt,
     double const& weight
   ){
-    // cudaSafeCall(cudaSetDevice(SIM.device_Id));
-
     // transfer source_I, source_lambda
     // the int arguments are for sizes of the arrays
     int source_count = SIM.sources;
@@ -110,8 +108,6 @@ namespace Kokkos {
     for (std::size_t iwt = 0; iwt < source_count; iwt++){wptr[iwt] = weight*(SIM.source_I[iwt]);}
     kokkostbx::transfer_double2kokkos(m_source_I, wptr, source_count);
     kokkostbx::transfer_double2kokkos(m_source_lambda, SIM.source_lambda, source_count);
-    // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_I, SIM.source_I, SIM.sources));
-    // cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_source_lambda, SIM.source_lambda, SIM.sources));
 
     ::Kokkos::resize(m_crystal_orientation, SIM.phisteps, SIM.mosaic_domains, 3);
     calc_CrystalOrientations(
@@ -120,12 +116,6 @@ namespace Kokkos {
 
     // magic happens here(?): take pointer from singleton, temporarily use it for add Bragg iteration:
     vector_cudareal_t current_channel_Fhkl = kec.d_channel_Fhkl[ichannel];
-
-    // cudaDeviceProp deviceProps = { 0 };
-    // cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
-    // int smCount = deviceProps.multiProcessorCount;
-    // dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
-    // dim3 numBlocks(smCount * 8, 1);
 
     std::size_t panel_size = kdt.m_slow_dim_size * kdt.m_fast_dim_size;
 
@@ -137,14 +127,13 @@ namespace Kokkos {
       SIM.roi_xmax, SIM.roi_ymin, SIM.roi_ymax, SIM.oversample, SIM.point_pixel,
       SIM.pixel_size, m_subpixel_size, m_steps, SIM.detector_thickstep, SIM.detector_thicksteps,
       SIM.detector_thick, SIM.detector_attnlen,
-      extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
-      extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
+      extract_subview(kdt.m_sdet_vector, panel_id, 1),
+      extract_subview(kdt.m_fdet_vector, panel_id, 1),
+      extract_subview(kdt.m_odet_vector, panel_id, 1),
+      extract_subview(kdt.m_pix0_vector, panel_id, 1),
       SIM.curved_detector, kdt.metrology.dists[panel_id], kdt.metrology.dists[panel_id], m_beam_vector,
       kdt.metrology.Xbeam[panel_id], kdt.metrology.Ybeam[panel_id],
-      SIM.dmin, SIM.phisteps,
-      SIM.sources, m_source_X, m_source_Y, m_source_Z,
+      SIM.dmin, SIM.phisteps, SIM.sources, m_source_X, m_source_Y, m_source_Z,
       m_source_I, m_source_lambda, SIM.xtal_shape, SIM.mosaic_domains, m_crystal_orientation,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
       m_water_size, m_water_F, m_water_MW, simtbx::nanoBragg::r_e_sqr, SIM.fluence,
@@ -384,10 +373,10 @@ namespace Kokkos {
           SIM.oversample, override_source,
           SIM.pixel_size, kdt.m_slow_dim_size, kdt.m_fast_dim_size, SIM.detector_thicksteps,
           SIM.detector_thickstep, SIM.detector_attnlen,
-          extract_subview(kdt.m_sdet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_fdet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_odet_vector, panel_id, m_vector_length),
-          extract_subview(kdt.m_pix0_vector, panel_id, m_vector_length),
+          extract_subview(kdt.m_sdet_vector, panel_id, 1),
+          extract_subview(kdt.m_fdet_vector, panel_id, 1),
+          extract_subview(kdt.m_odet_vector, panel_id, 1),
+          extract_subview(kdt.m_pix0_vector, panel_id, 1),
           kdt.metrology.dists[panel_id], SIM.point_pixel, SIM.detector_thick,
           m_source_X, m_source_Y, m_source_Z,
           m_source_lambda, m_source_I,
