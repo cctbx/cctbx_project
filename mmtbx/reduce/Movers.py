@@ -180,7 +180,7 @@ class MoverNull(object):
 
 ##################################################################################
 class _MoverRotator(object):
-  def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 30.0,
+  def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 15.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
                 preferenceFunction = None, preferredOrientationScale = 1.0):
     """Constructs a Rotator, to be called by a derived class or test program but
@@ -487,7 +487,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 30.0,
+  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 15.0,
                 fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
        to the single bonded partner of its partner.  This is designed for use with NH3+,
@@ -565,7 +565,7 @@ class MoverNH3Rotator(_MoverRotator):
     atoms.extend(hydrogens)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 60, coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
@@ -646,7 +646,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
 
 ##################################################################################
 class MoverTetrahedralMethylRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 30.0,
+  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 15.0,
                   fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with tetrahedral
