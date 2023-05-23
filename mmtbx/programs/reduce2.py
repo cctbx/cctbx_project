@@ -37,7 +37,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "0.8.0"
+version = "0.8.1"
 
 master_phil_str = '''
 approach = *add remove
@@ -1166,6 +1166,7 @@ NOTES:
       table = [ ["Mover",
                  "Score from Reduce2",
                  "Score from {}".format(self.params.comparison_file),
+                 "Difference",
                  "Star if other is higher"] ]
 
       # Run Probe2 on each of the Movers for our current model and for
@@ -1249,7 +1250,7 @@ NOTES:
         mark = ''
         if otherScore > myScore:
           mark = '*'
-        table.append( [str(m), myScore, otherScore, mark] )
+        table.append( [str(m), myScore, otherScore, myScore - otherScore, mark] )
 
       # Write the table to our output CSV file
       with open(compareOutName, 'w', newline='') as csvfile:
