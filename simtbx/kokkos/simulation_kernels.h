@@ -274,7 +274,10 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                                         }
                                                                 } else {
                                                                         // handy radius in reciprocal space, squared
-                                                                        hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
+                                                                        const CUDAREAL hrad = (h - h0) * Na;
+                                                                        const CUDAREAL krad = (k - k0) * Nb;
+                                                                        const CUDAREAL lrad = (l - l0) * Nc;
+                                                                        hrad_sqr = hrad * hrad + krad * krad + lrad * lrad;
                                                                 }
                                                                 if (xtal_shape == ROUND) {
                                                                         // use sinc3 for elliptical xtal shape,
