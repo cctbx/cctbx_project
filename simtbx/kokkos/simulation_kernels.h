@@ -104,6 +104,8 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
         const int total_pixels = spixels * fpixels;
 
+        const CUDAREAL distance_r = 1 / distance;
+
         // add background from something amorphous, precalculate scaling
         const CUDAREAL F_bg = water_F;
         const CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
@@ -174,8 +176,8 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                 // construct detector pixel that is always "distance" from the sample
                                                 vec3 dbvector = distance * vec3{beam_vector(1), beam_vector(2), beam_vector(3)};
                                                 // treat detector pixel coordinates as radians
-                                                vec3 newvector = dbvector.rotate_around_axis(sdet_vector(0), pixel_pos.y_val() / distance );
-                                                pixel_pos = newvector.rotate_around_axis(fdet_vector(0), pixel_pos.z_val() / distance );
+                                                vec3 newvector = dbvector.rotate_around_axis(sdet_vector(0), pixel_pos.y_val() * distance_r );
+                                                pixel_pos = newvector.rotate_around_axis(fdet_vector(0), pixel_pos.z_val() * distance_r );
                                         }
 
                                         // construct the diffracted-beam unit vector to this sub-pixel
