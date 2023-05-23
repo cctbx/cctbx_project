@@ -105,6 +105,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
         const int total_pixels = spixels * fpixels;
 
         const CUDAREAL distance_r = 1 / distance;
+        const CUDAREAL dmin_r = (dmin > 0.0) ? 1/dmin : 0.0;
 
         // add background from something amorphous, precalculate scaling
         const CUDAREAL F_bg = water_F;
@@ -219,7 +220,8 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
                                                 // rough cut to speed things up when we aren't using whole detector
                                                 if (dmin > 0.0 && stol > 0.0) {
-                                                        if (dmin > 0.5 / stol) {
+                                                        // use reciprocal of (dmin > 0.5 / stol)
+                                                        if (dmin_r <= 2 * stol) {
                                                                 continue;
                                                         }
                                                 }
