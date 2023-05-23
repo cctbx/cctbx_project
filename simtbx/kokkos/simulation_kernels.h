@@ -104,9 +104,10 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
 
         const int total_pixels = spixels * fpixels;
 
-        // add background from something amorphous
-        CUDAREAL F_bg = water_F;
-        CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
+        // add background from something amorphous, precalculate scaling
+        const CUDAREAL F_bg = water_F;
+        const CUDAREAL I_bg = F_bg * F_bg * r_e_sqr * fluence * water_size * water_size * water_size * 1e6 * Avogadro / water_MW;
+        const CUDAREAL I_factor = r_e_sqr * spot_scale * fluence / steps;
 
        Kokkos::parallel_for("kokkosSpotsKernel", total_pixels, KOKKOS_LAMBDA(const int& pixIdx) {
 
@@ -328,7 +329,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                         // end of sub-pixel y loop
                 }
                 // end of sub-pixel x loop
-                const double photons = I_bg + (r_e_sqr * spot_scale * fluence * polar * I) / steps;
+                const double photons = I_bg + I_factor * polar * I;
                 floatimage( pixIdx ) = photons;
                 omega_reduction( pixIdx ) = omega_sub_reduction; // shared contention
                 max_I_x_reduction( pixIdx ) = max_I_x_sub_reduction;
