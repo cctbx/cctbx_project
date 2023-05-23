@@ -179,14 +179,14 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                         }
 
                                         // construct the diffracted-beam unit vector to this sub-pixel
-                                        CUDAREAL airpath = pixel_pos.length();
+                                        CUDAREAL airpath_r = 1 / pixel_pos.length();
                                         vec3 diffracted = pixel_pos.get_unit_vector();
 
                                         // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
-                                        CUDAREAL omega_pixel = pixel_size * pixel_size / airpath / airpath * close_distance / airpath;
+                                        CUDAREAL omega_pixel = pixel_size * pixel_size * airpath_r * airpath_r * close_distance * airpath_r;
                                         // option to turn off obliquity effect, inverse-square-law only
                                         if (point_pixel) {
-                                                omega_pixel = 1.0 / airpath / airpath;
+                                                omega_pixel = airpath_r * airpath_r;
                                         }
 
                                         // now calculate detector thickness effects
