@@ -34,8 +34,10 @@ from iotbx.pdb import common_residue_names_get_class
 from mmtbx.programs import probe2
 import copy
 import tempfile
+from iotbx.data_manager import DataManager
+import csv
 
-version = "0.7.0"
+version = "0.8.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -86,6 +88,10 @@ profile = False
   .type = bool
   .short_caption = Profile the entire run
   .help = Profile the performance of the entire run
+comparison_file = None
+  .type = str
+  .short_caption = Compare the Mover scores from this run with those in comparison_file
+  .help = Points to a comparison_file that is the result of running Hydrogenate or Reduce or Reduce2 or some other hydrogen-placement program. The Probe2 scores for the Movers found in the current run are compared against the scores for comparison_file and stored in a file with the same name as output.file_name with _comparison.csv appended. If None, no comparison is done.
 
 output
   .style = menu_item auto_align
@@ -1145,8 +1151,114 @@ NOTES:
     print('Wrote', self.params.output.filename,'and',
       self.params.output.description_file_name, file = self.logger)
 
+    # If we've been asked to do a comparison with another program's output, do it.
+    if self.params.comparison_file is not None:
+      make_sub_header('Comparing with other model', out=self.logger)
+
+      # Construct the file names we'll be using.
+      compareOutName = self.params.output.filename + "_comparison.csv"
+
+      # Find the list of all Movers in the model, which will be used to select
+      # each in turn for evaluation.
+      moverLocations = _FindMoversInOutputString(outString)
+
+      # Make the first line in our table be the header line
+      table = [ ["Mover",
+                 "Score from Reduce2",
+                 "Score from {}".format(self.params.comparison_file),
+                 "Star if other is higher"] ]
+
+      # Run Probe2 on each of the Movers for our current model and for
+      # comparison_file and determine the summary score of the Mover against
+      # the rest of the model in each case. Accumulate these into a table.
+      for i, m in enumerate(moverLocations):
+        print ('Computing scores for Mover',i,'of',len(moverLocations))
+
+        #============================================================
+        # Find the score for our output.
+
+        # Make the Probe2 Phil parameters, then overwrite the ones that were
+        # filled in with values that we want for our summaries.
+        source = [ m ]
+        tempName = tempfile.mktemp()
+        newParams = self._MakeProbePhil(source, tempName)
+        newParams.output.format = 'raw'
+        newParams.output.contact_summary = True
+        newParams.output.condensed = True
+        newParams.output.count_dots = True
+
+        # Run Probe2
+        p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
+          logger=self.logger)
+        p2.overrideModel(self.model)
+        dots, output = p2.run()
+
+        # Parse the output to find the scores for each of the two directions
+        # and sum them up. There is one per line and the number ends with #.
+        lines = output.strip().split('\n')
+        values = []
+        for line in lines:
+          stripped_line = line.strip()
+          if stripped_line:
+            number = float(stripped_line.split('#')[0].strip())
+            values.append(number)
+        myScore = sum(values)
+
+        print('My values for Mover', str(m), 'are', values, 'sum is', myScore, file=self.logger)
+        os.unlink(tempName)
+
+        #============================================================
+        # Find the score for the comparison file.
+
+        # Read the file using a new datamanager
+        dm = DataManager()
+        dm.process_model_file(self.params.comparison_file)
+        #otherModel = dm.get_model(self.params.comparison_file)
+
+        # Make the Probe2 Phil parameters, then overwrite the ones that were
+        # filled in with values that we want for our summaries.
+        tempName = tempfile.mktemp()
+        newParams = self._MakeProbePhil(source, tempName)
+        newParams.output.format = 'raw'
+        newParams.output.contact_summary = True
+        newParams.output.condensed = True
+        newParams.output.count_dots = True
+
+        # Run Probe2
+        p2 = probe2.Program(dm, newParams, master_phil=probe2.master_phil_str,
+          logger=self.logger)
+        p2.overrideModel(dm.get_model(self.params.comparison_file))
+        dots, output = p2.run()
+
+        # Parse the output to find the scores for each of the two directions
+        # and sum them up. There is one per line and the number ends with #.
+        lines = output.strip().split('\n')
+        values = []
+        for line in lines:
+          stripped_line = line.strip()
+          if stripped_line:
+            number = float(stripped_line.split('#')[0].strip())
+            values.append(number)
+        otherScore = sum(values)
+
+        print('Other values for Mover', str(m), 'are', values, 'sum is', otherScore, file=self.logger)
+        os.unlink(tempName)
+
+        #============================================================
+        # Add the line to the table, indicating if the other is better.
+        mark = ''
+        if otherScore > myScore:
+          mark = '*'
+        table.append( [str(m), myScore, otherScore, mark] )
+
+      # Write the table to our output CSV file
+      with open(compareOutName, 'w', newline='') as csvfile:
+          writer = csv.writer(csvfile)
+          writer.writerows(table)
+
     # If we've been asked to make Flipkins, then make each of them.
     if self.params.add_flip_movers and self.params.output.flipkin_directory is not None:
+      make_sub_header('Producing flipkins', out=self.logger)
 
       # Find the base name of the two output files we will produce.
       inName = self.data_manager.get_default_model_name()
