@@ -1570,8 +1570,8 @@ def Test():
     # Test coarseStepDegrees default behavior.
     rot = _MoverRotator(atoms,axis, 0, 0, 180)
     coarse = rot.CoarsePositions()
-    if len(coarse.positions) != 12:
-      return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
+    if len(coarse.positions) != 24:
+      return "Movers.Test() _MoverRotator Default coarse step: Expected 24, got "+str(len(coarse.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
     rot = _MoverRotator(atoms,axis, 0, 0, 180, 180, False)
@@ -1585,18 +1585,18 @@ def Test():
     # Test fineStepDegrees setting.
     rot = _MoverRotator(atoms,axis, 0, 0, 180, fineStepDegrees = 2)
     fine = rot.FinePositions(0)
-    # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
-    # rotation up.
-    if len(fine.positions) != 14:
-      return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
+    # +/- 7.5 degrees in 2-degree steps, but we wouldn't do the +7.5 because it will be handled by the next
+    # rotation up. So we get +/- 2, 4, and 6
+    if len(fine.positions) != 6:
+      return "Movers.Test() _MoverRotator setting fine step: Expected 6, got "+str(len(fine.positions))
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1, False) != "Angle -28.0 deg .":
+    if rot.PoseDescription(1,1, False) != "Angle -13.0 deg .":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1, False)
 
     # Test setting an offset and counterbalancing dihedral.
     rot = _MoverRotator(atoms,axis, -10, 10, 180, fineStepDegrees = 2)
-    if rot.PoseDescription(1,1, False) != "Angle -18.0 deg .":
+    if rot.PoseDescription(1,1, False) != "Angle -3.0 deg .":
       return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1, False)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
