@@ -28,14 +28,14 @@ void calc_CrystalOrientations(CUDAREAL phi0,
                               const vector_cudareal_t mosaic_umats,
                               crystal_orientation_t crystal_orientation) {
 
-        vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
-        vec3 a0_tmp {a0(1), a0(2), a0(3)};
-        vec3 b0_tmp {b0(1), b0(2), b0(3)};
-        vec3 c0_tmp {c0(1), c0(2), c0(3)};
-
         Kokkos::parallel_for("calc_CrystalOrientation", phisteps, KOKKOS_LAMBDA(const int& phi_tic) { 
                 // sweep over phi angles
                 CUDAREAL phi = phistep * phi_tic + phi0;
+
+                vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
+                vec3 a0_tmp {a0(1), a0(2), a0(3)};
+                vec3 b0_tmp {b0(1), b0(2), b0(3)};
+                vec3 c0_tmp {c0(1), c0(2), c0(3)};                
 
                 // rotate about spindle if necessary
                 vec3 ap = a0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
