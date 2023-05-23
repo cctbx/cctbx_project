@@ -320,15 +320,13 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                                 }
 
                                                                 // now we have the structure factor for this pixel
-                                                                const CUDAREAL amplitude = F_cell * F_latt;
+                                                                
                                                                 // convert amplitudes into intensity (photons per steradian)
-                                                                I += amplitude * amplitude;
+                                                                I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
                                                                 omega_sub_reduction += omega_pixel;
                                                         } // end of mosaic loop
                                                 } // end of phi loop
-                                                I *= source_fraction;
                                         } // end of source loop
-                                        I *= capture_fraction * omega_pixel;
                                 } // end of detector thickness loop
                         } // end of sub-pixel y loop
                 } // end of sub-pixel x loop
