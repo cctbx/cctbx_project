@@ -797,7 +797,7 @@ class StageTwoRefiner(BaseRefiner):
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         fname = os.path.join(outdir, "sigZ_iter%d_rank%d" % (self.iterations, self.rank))
-        np.save(fname, self._shot_Zscores)
+        np.save(fname, np.array(self._shot_Zscores, dtype=object))
 
     def _sanity_check_grad(self):
         pass
