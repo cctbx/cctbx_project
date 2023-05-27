@@ -548,6 +548,7 @@ KOKKOS_FUNCTION
 void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOKKOS_VEC3 Hmin, KOKKOS_VEC3 Hmax, KOKKOS_VEC3 Hrange, KOKKOS_MAT3 Ainv, const vector_cudareal_t FhklLinear, int num_laue_mats, const KOKKOS_MAT3 *laue_mats, KOKKOS_MAT3 anisoG_local, KOKKOS_MAT3 anisoU_local, const KOKKOS_MAT3 *dG_dgam, bool refine_diffuse, CUDAREAL *I0, CUDAREAL *step_diffuse_param){
   CUDAREAL four_mpi_sq = 4.*M_PI*M_PI;
   // loop over laue matrices
+  int num_stencil_points = (2*dHH[0] + 1) * (2*dHH[1] + 1) * (2*dHH[2] + 1);
   bool h_bounded= (H0[0]+dHH[0]<=Hmax[0]) && (H0[0]-dHH[0]>=Hmin[0]) ;
   bool k_bounded= (H0[1]+dHH[1]<=Hmax[1]) && (H0[1]-dHH[1]>=Hmin[1]) ;
   bool l_bounded= (H0[2]+dHH[2]<=Hmax[2]) && (H0[2]-dHH[2]>=Hmin[2]) ;
@@ -571,7 +572,8 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOK
           else
             _this_diffuse_scale = 1.0;
 
-          _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats;
+          _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats/
+            (CUDAREAL)num_stencil_points;
           // TODO: Apply discrete transformations to H0 and delta_H_offset
           //    like the following to reorient G and recover calmodulin diffuse
           // KOKKOS_MAT3 xform;
