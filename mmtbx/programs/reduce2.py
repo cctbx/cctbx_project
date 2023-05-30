@@ -1431,7 +1431,7 @@ NOTES:
 
         # Write the base information in the Flipkin, not including the moving atoms in
         # the Movers that will be placed, or atoms bonded to the moving atoms.
-        flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
+        flipkinText = _AddFlipkinBase(hists, views, self.params.output.filename, base, self.model,
           alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
 
         # Make two configurations, the one that Reduce picked and the one
@@ -1453,7 +1453,7 @@ NOTES:
           # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
           self._ReinterpretModel()
 
-          # Run optimization, locking the specified Amides into each configuration.
+          # Run optimization, locking the specified Histidines into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
           # avoid adding a comma on the first flip state that is added.
           flipStates = self.params.set_flip_states
