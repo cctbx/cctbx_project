@@ -6,7 +6,7 @@
     #define MemSpace Kokkos::CudaUVMSpace
 #endif
 #ifdef KOKKOS_ENABLE_HIP
-    #define MemSpace Kokkos::Experimental::HIPSpace
+    #define MemSpace Kokkos::HIPSpace
 #endif
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
     #define MemSpace Kokkos::OpenMPTargetSpace

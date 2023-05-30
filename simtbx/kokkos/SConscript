@@ -43,10 +43,6 @@ elif use_sycl:
   linked_libraries = ""
 os.environ['LDLIBS'] = linked_libraries
 
-cxx_standard = '14'
-if use_sycl:
-  cxx_standard = '17'
-
 
 print("-"*40)
 print("         Kokkos configuration\n")

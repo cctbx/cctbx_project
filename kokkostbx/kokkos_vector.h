@@ -261,7 +261,7 @@ struct vector_base {
 
     KOKKOS_FUNCTION NumType length() const {
         // return sqrt_func(length_sqr());
-        return ::Kokkos::Experimental::sqrt(length_sqr());
+        return ::Kokkos::sqrt(length_sqr());
     }
 
     KOKKOS_FUNCTION void normalize() {
