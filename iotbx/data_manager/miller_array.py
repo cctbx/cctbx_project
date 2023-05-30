@@ -402,7 +402,7 @@ class MillerArrayDataManager(DataManagerBase):
         if label_name in file_labels:
           # check array type
           if (array_type is None
-              or array_type == self.get_miller_array_type(filename, label_name)):
+              or [array_type] == self.get_miller_array_type(filename, label_name)):
             miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
@@ -425,7 +425,7 @@ class MillerArrayDataManager(DataManagerBase):
     # self._miller_array_arrays = {}                # [filename] = array dict
     # self._user_selected_miller_array_labels = {}  # [filename] = array dict
     setattr(self, self._type_str % datatype, {})
-    setattr(self, self._default_type_str % datatype, 'x_ray')
+    setattr(self, self._default_type_str % datatype, ['x_ray'])
     setattr(self, self._possible_types_str % datatype,
             ['x_ray', 'neutron', 'electron'])
     setattr(self, self._array_type_str % datatype, {})
@@ -457,7 +457,7 @@ class MillerArrayDataManager(DataManagerBase):
     name = None
       .type = str
     type = *%s
-      .type = choice(multi=False)
+      .type = choice(multi=True)
     array_type = *%s
       .type = choice(multi=False)
   }
@@ -470,7 +470,6 @@ class MillerArrayDataManager(DataManagerBase):
 ''' % (datatype,
        ' '.join(getattr(self, self._possible_types_str % datatype)),
        ' '.join(getattr(self, self._possible_array_types_str % datatype)))
-
     # add fmodel PHIL
     if self.supports('model'):
       custom_phil_str += '''
@@ -583,10 +582,11 @@ fmodel {
               label_name = label_match
           phil_labels.append(label_name)
           if hasattr(label, 'type'):
-            if label.type not in getattr(self, self._possible_types_str % datatype):
+            if not self._is_valid_miller_array_type(datatype, label.type):
               raise Sorry(self._unrecognized_type_error_str %
-                          (datatype, label.type, ', '.join(
-                            getattr(self, self._possible_types_str % datatype))))
+                          (datatype,
+                           ', '.join(label.type),
+                           ', '.join(getattr(self, self._possible_types_str % datatype))))
             phil_types[label_name] = label.type
           if hasattr(label, 'array_type'):
             if label.array_type not in getattr(self, self._possible_array_types_str % datatype):
@@ -617,10 +617,38 @@ fmodel {
           if label not in user_selected_labels_storage:
             user_selected_labels_storage.append(label)
 
+  def _is_valid_miller_array_type(self, datatype, array_type):
+    """
+    Convenience function for checking if the array type is valid
+    This will also check that model_type is a list to conform with the
+    PHIL parameter
+
+    Parameters
+    ----------
+    datatype: str
+      The datatype (i.e. miller_array)
+    array_type: list
+      The model_type(s) to check.
+
+    Returns
+    -------
+    bool:
+    """
+    if not isinstance(array_type, list):
+      raise Exception('oh no')
+      raise Sorry('The type argument must be a list.')
+    if len(array_type) == 0:
+      return False
+    valid = True
+    for at in array_type:
+      valid = valid and (at in getattr(self, self._possible_types_str % datatype))
+    return valid
+
   def _set_default_miller_array_type(self, datatype, array_type):
-    if array_type not in getattr(self, self._possible_types_str % datatype):
+    if not self._is_valid_miller_array_type(datatype, array_type):
       raise Sorry(self._unrecognized_type_error_str %
-                  (datatype, array_type,
+                  (datatype,
+                   ', '.join(array_type),
                    ', '.join(getattr(self, self._possible_types_str % datatype))))
     setattr(self, self._default_type_str % datatype, array_type)
 
@@ -644,12 +672,12 @@ fmodel {
     if label is None:
       label = self._get_all_array_labels(datatype, filename)[0]
     if array_type is None:
-      array_type = getattr(self, self._default_type_str % datatype)
-    elif array_type not in getattr(self, self._possible_types_str % datatype):
+      array_type = [getattr(self, self._default_type_str % datatype)]
+    if not self._is_valid_miller_array_type(datatype, array_type):
       raise Sorry(self._unrecognized_type_error_str %
                   (datatype,
-                   array_type,
-                   ', '.join(getattr(self, self._possible_types_str % datatype))))
+                  ', '.join(array_type),
+                  ', '.join(getattr(self, self._possible_types_str % datatype))))
     getattr(self, self._type_str % datatype)[filename][label] = array_type
 
   def _get_miller_array_type(self, datatype, filename=None, label=None):

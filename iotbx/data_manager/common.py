@@ -98,7 +98,7 @@ class fmodel_mixins(object):
       self.set_model_type(filename, model_type)
 
     # miller_array
-    array_type = checked_type
+    array_type = [checked_type]
     self.set_default_miller_array_type(array_type)
     for filename in self.get_miller_array_names():
       for label in self.get_miller_array_labels(filename):
