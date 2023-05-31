@@ -52,7 +52,7 @@ def make_figure(
   """ Plots skew-kurtosis plot and saves it to .png file
 
   Args:
-      file_name (str): file name without extension
+      file_name (str): file name for the produced figure without extension
       theta1_coords (iterabe): skew-kurtosis coordinates of theta1
       Rha_coords (iterable): skew-kurtosis coordinates of Rha
       type (str, optional): Type of contours to plot. Defaults to 'all'. Allowed 'all', 'alpha', 'beta'.

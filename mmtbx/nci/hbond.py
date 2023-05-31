@@ -104,6 +104,9 @@ hbond {
   output_skew_kurtosis_plot = False
     .type = bool
     .short_caption = Output skew-kurtosis plot with result in png format
+  plot_colorblind_friendly = True
+    .type = bool
+    .short_caption = Use colorblind friendly palette for skew-kurtosis plot
 }
 '''
 

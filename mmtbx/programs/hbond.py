@@ -3,6 +3,7 @@ from libtbx.program_template import ProgramTemplate
 import mmtbx.nci.hbond
 import mmtbx.nci.skew_kurt_plot
 from libtbx.utils import null_out
+import os
 
 # =============================================================================
 
@@ -37,7 +38,9 @@ Usage example:
     print("-"*79, file=self.logger)
     self.results.show_summary(log = self.logger)
     prefix=self.params.output.prefix
-    if not prefix: prefix='hbond'
+    if not prefix:
+      prefix='%s_hbond' % os.path.basename(
+          self.data_manager.get_default_model_name()).split('.')[0]
     if self.params.hbond.output_pymol_file:
       self.results.as_pymol(prefix=prefix)
     if self.params.hbond.output_restraint_file:
@@ -50,12 +53,15 @@ Usage example:
       Rha_data = self.results.get_counts().d_HA
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
       # like in stats().
+      fn = '%s_skew_kurtosis' % prefix
+      if self.params.hbond.plot_colorblind_friendly:
+        fn += "_cbf"
       mmtbx.nci.skew_kurt_plot.make_figure(
-          file_name='hbond_skew_kurtosis',
+          file_name=fn,
           theta1_coords=[theta1_data.skew, theta1_data.kurtosis],
           Rha_coords=[Rha_data.skew, Rha_data.kurtosis],
           type='all',
-          colorblind_friendly=False)
+          colorblind_friendly=self.params.hbond.plot_colorblind_friendly)
 
 
   # ---------------------------------------------------------------------------
