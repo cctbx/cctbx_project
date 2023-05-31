@@ -136,7 +136,8 @@ if env_etc.enable_kokkos:
         '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
         '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
         '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip]),
-        '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl])
+        '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl]),
+        '-DKokkos_ENABLE_IMPL_MDSPAN={}'.format(OnOff[True])
       ],
       cwd=kokkos_build_dir)
 
