@@ -38,6 +38,13 @@ Usage example:
     for m_name, model in inp_models:
       # model = self.data_manager.get_model()
       model.set_log(log = null_out())
+      if self.params.hbond.add_hydrogens_if_absent and not model.has_hd():
+        from elbow.command_line.ready_set import model_interface as ready_set_model_interface
+        model = ready_set_model_interface(
+            model=model,
+            params=["add_h_to_water=False",
+                    "optimise_final_geometry_of_hydrogens=False"],
+            )
       model.process(make_restraints=True)
       self.results = mmtbx.nci.hbond.find(model = model)
       if self.params.hbond.show_hbonds:

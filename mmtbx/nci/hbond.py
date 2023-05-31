@@ -107,6 +107,9 @@ hbond {
   plot_colorblind_friendly = True
     .type = bool
     .short_caption = Use colorblind friendly palette for skew-kurtosis plot
+  add_hydrogens_if_absent = False
+    .type = bool
+    .short_caption = Add hydrogens if they are not present in the model(s)
 }
 '''
 
