@@ -402,7 +402,7 @@ class MillerArrayDataManager(DataManagerBase):
         if label_name in file_labels:
           # check array type
           if (array_type is None
-              or [array_type] == self.get_miller_array_type(filename, label_name)):
+              or array_type in self.get_miller_array_type(filename, label_name)):
             miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
