@@ -198,10 +198,11 @@ class fmodel_mixins(object):
       model                  = model,
       reflection_file_server = rfs)
     #
-    if(  array_type=="x_ray" or array_type=="electron"): # XXX Really?
-      parameters = self.get_fmodel_params().xray_data
-    elif(array_type=="neutron"):
-      parameters = self.get_fmodel_params().neutron_data
+    fmodel_params = self.get_fmodel_params()
+    if array_type == 'neutron':
+      parameters = fmodel_params.neutron_data
+    else:
+      parameters = fmodel_params.xray_data
     #
     # XXX
     # XXX Temporary hack/work-around (REMOVE later) start
@@ -225,12 +226,11 @@ class fmodel_mixins(object):
     #
     # Set DataManager parameters extracted from inputs
     #
-    fmodel_params = self.get_fmodel_params()
     # Extract and set twin_law
     if parameters.twin_law is None or parameters.twin_law is Auto:
-      fmodel_params.xray_data.twin_law = model.twin_law_from_model_input()
+      parameters.twin_law = model.twin_law_from_model_input()
     # Set test flag value
-    fmodel_params.xray_data.r_free_flags.test_flag_value = data.test_flag_value
+    parameters.r_free_flags.test_flag_value = data.test_flag_value
     # Load all back
     self.set_fmodel_params(fmodel_params)
     #
