@@ -264,4 +264,34 @@ struct kokkos_detector {
 
 };
 
+struct kokkos_manager {
+    KOKKOS_VEC3 rot;
+    double ucell[6] = {0, 0, 0, 0, 0, 0};
+    double Ncells[6] = {0, 0, 0, 0, 0, 0};
+    KOKKOS_VEC3 pan_orig;
+    KOKKOS_VEC3 pan_rot;
+    double fcell = 0;
+    KOKKOS_VEC3 eta;
+    double lambda[2] = {0, 0};
+    double fp_fdp[2] = {0, 0};
+    double diffuse[6] = {0, 0, 0, 0, 0, 0};
+
+    KOKKOS_INLINE_FUNCTION void reset() {
+        for (int i=0; i<6; ++i) {
+            ucell[i] = 0;
+            Ncells[i] = 0;
+            diffuse[i] = 0;
+        }
+        for (int i=0; i<2; ++i) {
+            lambda[i] = 0;
+            fp_fdp[i] = 0;
+        }
+        rot.zero();
+        pan_orig.zero();
+        pan_rot.zero();
+        eta.zero();
+        fcell = 0;
+    }
+};
+
 #endif

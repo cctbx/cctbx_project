@@ -200,6 +200,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         }
 
         resize(m_panels_fasts_slows, db_cu_flags.Npix_to_allocate * 3);
+        resize(m_manager_dI, db_cu_flags.Npix_to_allocate);
+        resize(m_manager_dI2, db_cu_flags.Npix_to_allocate);
 
         m_npix_allocated = db_cu_flags.Npix_to_allocate;
         Kokkos::Tools::popRegion();
@@ -421,11 +423,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
         m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
         m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
-        m_d2_panel_orig_images, m_d_fp_fdp_images, db_steps.Nsteps, db_flags.printout_fpixel,
-        db_flags.printout_spixel, db_flags.printout, db_cryst.default_F, local_det.oversample,
-        db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
-        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+        m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps, 
+        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F, 
+        local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size, 
+        local_det.detector_thickstep, local_det.detector_thick, m_close_distances, 
+        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources, 
         db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
         local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
         to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,

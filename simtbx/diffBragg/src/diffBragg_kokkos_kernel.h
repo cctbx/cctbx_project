@@ -26,6 +26,8 @@ void kokkos_sum_over_steps(
     vector_cudareal_t d_panel_orig_images,
     vector_cudareal_t d2_panel_orig_images,
     vector_cudareal_t d_fp_fdp_images,
+    vector_manager_t manager_dI,
+    vector_manager_t manager_dI2,
     const int Nsteps,
     int printout_fpixel,
     int printout_spixel,

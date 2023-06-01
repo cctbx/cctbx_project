@@ -12,6 +12,7 @@
 
 using vector_vec3_t = view_1d_t<KOKKOS_VEC3>;
 using vector_mat3_t = view_1d_t<KOKKOS_MAT3>;
+using vector_manager_t = view_1d_t<kokkos_manager>;
 
 #define INTEGER_VIEW(varname) vector_int_t varname = vector_int_t(#varname, 0)
 #define CUDAREAL_VIEW(varname) vector_cudareal_t varname = vector_cudareal_t(#varname, 0)
@@ -107,6 +108,9 @@ class diffBraggKOKKOS {
     vector_bool_t m_refine_panel_origin = vector_bool_t("m_refine_panel_origin", 3);
     vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
     vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
+
+    vector_manager_t m_manager_dI = vector_manager_t("m_manager_dI", 0);
+    vector_manager_t m_manager_dI2 = vector_manager_t("m_manager_dI2", 0);
 
     bool m_Fhkl_gradient_mode;
     bool m_using_trusted_mask;
