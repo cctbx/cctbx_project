@@ -1,3 +1,11 @@
+2023.5
+======
+
+* DataManager updates for handling multiple uses (types) of models and Miller arrays
+* DataManager updates for handling priority of amplitudes and intensities
+* Migration from using any_file when file type is already known
+* Start checking atom names of non-standard amino acids
+
 2023.4
 ======
 
