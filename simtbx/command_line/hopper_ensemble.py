@@ -25,7 +25,6 @@ import pandas
 
 from simtbx.diffBragg.hopper_ensemble_utils import load_inputs
 from libtbx.mpi4py import MPI
-breakpoint()
 
 COMM= MPI.COMM_WORLD
 LOGGER = logging.getLogger("diffBragg.main")
