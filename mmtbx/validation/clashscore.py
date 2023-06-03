@@ -174,6 +174,7 @@ class clashscore(validation):
         use_segids=use_segids,
         verbose=verbose,
         model_id=model.id)
+      self.probe_clashscore_manager.run_probe_clashscore(input_str)
       if (save_modified_hierarchy):
         self.pdb_hierarchy = iotbx.pdb.input(
           pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
@@ -377,6 +378,7 @@ class probe_clashscore_manager(object):
       if (os.path.isfile(ccp4_probe) and not os.path.isfile(probe_command)):
         probe_command = ccp4_probe
     probe_command = '"%s"' % probe_command   # in case of spaces in path
+    self.probe_command = probe_command
     nuclear_flag = ""
     condensed_flag = ""
     if nuclear:
@@ -400,7 +402,7 @@ class probe_clashscore_manager(object):
           ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     self.h_pdb_string = h_pdb_string
-    self.run_probe_clashscore(self.h_pdb_string)
+    #self.run_probe_clashscore(self.h_pdb_string)
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
