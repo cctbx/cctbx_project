@@ -96,7 +96,6 @@ if __name__ == "__main__":
     modelers.max_sigma = args.maxSigma
     modelers.outdir = args.outdir if args.outdir is not None else modelers.params.outdir
     modelers.save_freq = args.saveFreq
-    breakpoint()
     modelers.prep_for_refinement()
     modelers.save_modeler_params = args.saveAll
 
