@@ -106,7 +106,7 @@ qm_restraints
     .style = new_file
   cleanup = all *most None
     .type = choice
-  run_in_macro_cycles = *first_only all test
+  run_in_macro_cycles = *first_only first_and_last all test
     .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
@@ -181,6 +181,7 @@ def get_safe_filename(s):
   s=s.replace('(','_lb_')
   s=s.replace(')','_rb_')
   s=s.replace('=', '_equals_')
+  s=s.replace(':', '_colon_')
   return s
 
 def populate_qmr_defaults(qmr):
@@ -215,6 +216,8 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
   s=''
   if macro_cycle is not None:
     s+='%02d_' % macro_cycle
+  # else:
+  #   s+='00_'
   if old_style:
     s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
   else:
@@ -367,10 +370,10 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
       rc=[]
       for i in range(number_of_macro_cycles+1):
         rc.append(unique_item_list())
+      if qmr.calculate_starting_energy:
+        rc[1].append('energy')
       if qmr.calculate_starting_strain:
         rc[1].append('strain')
-      elif qmr.calculate_starting_energy:
-        rc[1].append('energy')
       if not qmr.do_not_even_calculate_qm_restraints:
         if qmr.run_in_macro_cycles=='first_only':
           rc[1].append('restraints')
@@ -379,10 +382,10 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
             rc[j].append('restraints')
         elif qmr.run_in_macro_cycles=='test':
           rc[1].append('test')
+      if qmr.calculate_final_energy:
+        rc[-1].append('energy')
       if qmr.calculate_final_strain:
         rc[-1].append('strain')
-      elif qmr.calculate_final_energy:
-        rc[-1].append('energy')
     if verbose:
       print('    %s' % qmr.selection, file=log)
       for j, actions in enumerate(rc):
@@ -398,7 +401,7 @@ def digester(model, geometry, params, log=None):
   assert active
   if not model.has_hd():
     from libtbx.utils import Sorry
-    raise Sorry('Model must has Hydrogen atoms')
+    raise Sorry('Model must have Hydrogen atoms')
   if choice=='qm_restraints':
     from mmtbx.geometry_restraints import quantum_restraints_manager
     geometry = quantum_restraints_manager.digester(model,

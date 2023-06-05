@@ -111,7 +111,7 @@ def generate_flipping_his(ag,
       else:
         yield rc
 
-def get_selection_from_user(hierarchy):
+def get_selection_from_user(hierarchy, include_amino_acids=None):
   j=0
   opts = []
   for residue_group in hierarchy.residue_groups():
@@ -120,7 +120,7 @@ def get_selection_from_user(hierarchy):
     #   assert 0
     atom_group = residue_group.atom_groups()[0]
     rc = get_class(atom_group.resname)
-    if atom_group.resname in ['HIS']: pass
+    if include_amino_acids and atom_group.resname in include_amino_acids: pass
     elif (rc!='common_rna_dna' and
           atom_group.resname.strip() in ad_hoc_single_metal_residue_element_types):
       pass # ions
@@ -154,6 +154,8 @@ def get_selection_from_user(hierarchy):
     rc = opts[rc-1]
   except ValueError:
     pass
+  except IndexError:
+    rc = 'resid 1'
   return rc
 
 class Program(ProgramTemplate):
@@ -178,7 +180,7 @@ Usage examples:
       .type = atom_selection
       .help = what to select for buffer
       .style = hidden
-    format = *phenix_refine quantum_interface
+    format = *phenix_refine qi
       .type = choice
     write_qmr_phil = False
       .type = bool
@@ -187,6 +189,8 @@ Usage examples:
     randomise_selection = None
       .type = float
     run_directory = None
+      .type = str
+    include_amino_acids = None
       .type = str
     iterate_histidine = False
       .type = bool
@@ -208,7 +212,7 @@ Usage examples:
     print('Validating inputs', file=self.logger)
     model = self.data_manager.get_model()
     if not model.has_hd():
-      raise Sorry('Model must has Hydrogen atoms')
+      raise Sorry('Model must have Hydrogen atoms')
     if self.params.output.prefix is None:
       prefix = os.path.splitext(self.data_manager.get_default_model_name())[0]
       print('  Setting output prefix to %s' % prefix, file=self.logger)
@@ -226,17 +230,18 @@ Usage examples:
     #
     # get selection
     #
-    # cif_object = None
-    # if self.data_manager.has_restraints():
-    #   cif_object = self.data_manager.get_restraint()
+    include_amino_acids=self.params.qi.include_amino_acids
+    if include_amino_acids:
+      include_amino_acids=[include_amino_acids]
     if (not self.params.qi.selection and
         self.params.qi.iterate_histidine is False and
         len(self.params.qi.qm_restraints)==0 and
         not self.params.qi.each_amino_acid):
-      rc = get_selection_from_user(model.get_hierarchy())
+      rc = get_selection_from_user(model.get_hierarchy(),
+                                   include_amino_acids=include_amino_acids)
       if rc.find('resname HIS')>-1:
         self.params.qi.iterate_histidine=rc
-        self.params.qi.format='quantum_interface'
+        self.params.qi.format='qi'
       self.params.qi.selection = [rc]
     #
     # validate selection
@@ -257,7 +262,10 @@ Usage examples:
       outl = ''
       for rg in hierarchy.residue_groups():
         if len(rg.atom_groups())!=1: continue
-        gc = get_class(rg.atom_groups()[0].resname)
+        resname=rg.atom_groups()[0].resname
+        include_amino_acids=self.params.qi.include_amino_acids
+        if include_amino_acids and include_amino_acids!=resname: continue
+        gc = get_class(resname)
         if gc not in ['common_amino_acid', 'modified_amino_acid']: continue
         selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
         qi_phil_string = self.get_single_qm_restraints_scope(selection)
@@ -623,7 +631,7 @@ Usage examples:
         self.params,
         # macro_cycle=self.macro_cycle,
         pre_refinement=True,
-        # nproc=self.params.main.nproc,
+        nproc=self.params.main.nproc,
         log=log,
         )
       print('starting strain',rc)
@@ -696,8 +704,10 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                               'include_nearest_neighbours_in_optimisation = True')
 
-    if output_format=='quantum_interface':
+    if output_format=='qi':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
+
+    # qi_phil_string = qi_phil_string.replace('nproc = 1', 'nproc = 6')
 
     def safe_filename(s):
       s=s.replace('chain ','')
@@ -709,6 +719,7 @@ Usage examples:
       s=s.replace(' ','_')
       s=s.replace('(','')
       s=s.replace(')','')
+      s=s.replace(':','_')
       return s
 
     pf = '%s_%s.phil' % (
