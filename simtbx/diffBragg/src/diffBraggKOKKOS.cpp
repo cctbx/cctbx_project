@@ -180,7 +180,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
         if (std::count(
                 db_flags.refine_panel_origin.begin(), db_flags.refine_panel_origin.end(), true) >
-            0) {
+            0) {             
             resize(m_d_panel_orig_images, db_cu_flags.Npix_to_allocate * 3);
         }
 
@@ -348,6 +348,34 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
 
     //  BEGIN REFINEMENT FLAGS
+    m_refine_flag = 0;
+    m_refine_flag |= db_flags.refine_diffuse * REFINE_DIFFUSE;
+    m_refine_flag |= db_flags.refine_fcell * REFINE_FCELL;
+    m_refine_flag |= db_flags.refine_eta * REFINE_ETA;
+    m_refine_flag |= db_flags.refine_Umat[0] * REFINE_UMAT1;
+    m_refine_flag |= db_flags.refine_Umat[1] * REFINE_UMAT2;
+    m_refine_flag |= db_flags.refine_Umat[2] * REFINE_UMAT3;
+    m_refine_flag |= db_flags.refine_Ncells_def * REFINE_NCELLS_DEF;
+    m_refine_flag |= db_flags.refine_Ncells[0] * REFINE_NCELLS1;
+    m_refine_flag |= db_flags.refine_Ncells[1] * REFINE_NCELLS2;
+    m_refine_flag |= db_flags.refine_Ncells[2] * REFINE_NCELLS3;
+    m_refine_flag |= db_flags.refine_panel_rot[0] * REFINE_PANEL_ROT1;
+    m_refine_flag |= db_flags.refine_panel_rot[1] * REFINE_PANEL_ROT2;
+    m_refine_flag |= db_flags.refine_panel_rot[2] * REFINE_PANEL_ROT3;
+    m_refine_flag |= db_flags.refine_panel_origin[0] * REFINE_PANEL_ORIGIN1;
+    m_refine_flag |= db_flags.refine_panel_origin[1] * REFINE_PANEL_ORIGIN2;
+    m_refine_flag |= db_flags.refine_panel_origin[2] * REFINE_PANEL_ORIGIN3;
+    m_refine_flag |= db_flags.refine_lambda[0] * REFINE_LAMBDA1;
+    m_refine_flag |= db_flags.refine_lambda[1] * REFINE_LAMBDA2;
+    m_refine_flag |= db_flags.refine_Bmat[0] * REFINE_BMAT1;
+    m_refine_flag |= db_flags.refine_Bmat[1] * REFINE_BMAT2;
+    m_refine_flag |= db_flags.refine_Bmat[2] * REFINE_BMAT3;
+    m_refine_flag |= db_flags.refine_Bmat[3] * REFINE_BMAT4;
+    m_refine_flag |= db_flags.refine_Bmat[4] * REFINE_BMAT5;
+    m_refine_flag |= db_flags.refine_Bmat[5] * REFINE_BMAT6;
+    m_refine_flag |= db_flags.refine_fp_fdp * REFINE_FP_FDP;
+    m_refine_flag |= db_flags.refine_Icell * REFINE_ICELL;
+
     Kokkos::Tools::pushRegion("BEGIN REFINMENT FLAGS");
     if (db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_refine_Umat, db_flags.refine_Umat);
@@ -440,15 +468,14 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
         db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
         db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
-        m_Fhkl, m_Fhkl2, m_refine_Bmat, m_refine_Ncells, db_flags.refine_Ncells_def,
-        m_refine_panel_origin, m_refine_panel_rot, db_flags.refine_fcell, m_refine_lambda,
-        db_flags.refine_eta, m_refine_Umat, m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+        m_Fhkl, m_Fhkl2, m_refine_flag,
+        m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
         m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
         db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
-        m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, db_flags.refine_fp_fdp, m_nominal_hkl,
+        m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
         use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
-        m_d_diffuse_gamma_images, m_d_diffuse_sigma_images, db_flags.refine_diffuse,
-        db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img,
+        m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
+        db_flags.gamma_miller_units, db_flags.wavelength_img,
         db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
         db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
         db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,

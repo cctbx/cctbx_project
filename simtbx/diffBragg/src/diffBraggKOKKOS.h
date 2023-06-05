@@ -9,6 +9,7 @@
 #include "kokkostbx/kokkos_utils.h"
 #include "simtbx/diffBragg/src/util.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
+#include "simtbx/diffBragg/src/diffBragg_refine_flag.h"
 
 using vector_vec3_t = view_1d_t<KOKKOS_VEC3>;
 using vector_mat3_t = view_1d_t<KOKKOS_MAT3>;
@@ -102,6 +103,7 @@ class diffBraggKOKKOS {
     MATRIX3_VIEW(m_sausages_U);
     CUDAREAL_VIEW(m_sausages_scale);
 
+    uint32_t m_refine_flag = 0;
     vector_bool_t m_refine_Bmat = vector_bool_t("m_refine_Bmat", 6);
     vector_bool_t m_refine_Umat = vector_bool_t("m_refine_Umat", 3);
     vector_bool_t m_refine_Ncells = vector_bool_t("m_refine_Ncells", 3);
