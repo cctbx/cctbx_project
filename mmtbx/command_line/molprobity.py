@@ -17,6 +17,7 @@ def get_master_phil():
   phil_scope = generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
     enable_twin_law=True,
+    enable_experimental_phases=False,  # Off by default here in MolProbity
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
     enable_unmerged_data=True,
