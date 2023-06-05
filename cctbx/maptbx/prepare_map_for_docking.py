@@ -1013,7 +1013,7 @@ def add_ordered_volume_mask(
     raise Sorry("At least one of protein_mw and nucleic_mw must be defined")
   if (not mmm.map_manager_1().is_full_size()) or  (
       not mmm.map_manager_2().is_full_size()):
-    raise Sorry("Please supply half-maps that are full-size")
+    raise Sorry("Please supply half-maps that are full-size, not cut out from a larger box")
 
   if d_min is None or d_min <= 0:
     spacings = get_grid_spacings(mmm.map_manager().unit_cell(),
@@ -1858,6 +1858,11 @@ def assess_cryoem_errors(
   # Return a map_model_manager with the weighted map
   wEmean = dobs*expectE
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  sigmaA = 0.9 # Default for likelihood-weighted map
+  dosa = sigmaA*dobs.data()
+  lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
+  wEmean2 = lweight*expectE
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
   working_mmm.remove_map_manager_by_id(map_1_id)
   working_mmm.remove_map_manager_by_id(map_2_id)

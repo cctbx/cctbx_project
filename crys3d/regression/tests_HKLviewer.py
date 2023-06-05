@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env, os.path, re, os, time, subprocess
+import libtbx.load_env, os.path, re, sys, os, time, subprocess
 from crys3d.hklviewer import cmdlineframes, jsview_3d
 import traceback
 
+os.environ['PYTHONIOENCODING'] = 'UTF-8'
 
 
 # The tests below uses datasets in this file here
@@ -35,7 +37,7 @@ viewer {
 }
 hkls.expand_to_p1 = True
 hkls.expand_anomalous = True
-#use_wireframe = True
+max_reflections_in_frustum = 70
 
 """
 # These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections
@@ -70,7 +72,7 @@ viewer {
   show_vector = "['K-axis (0,1,0)', True]"
   fixorientation = *vector None
 }
-#use_wireframe = True
+max_reflections_in_frustum = 40
 
 """
 # These are the indices of visible reflections of phaser_1.mtz when the sphere of reflections
@@ -84,7 +86,7 @@ reflections2match2 = set(  [(-8, 4, 3), (-8, 4, 2), (-8, 3, 4), (-8, 4, 1), (-8,
 
 
 # Create an array of F/SigF values, make 6 bins of reflections of equal size sorted with values and
-# select only reflections from the two bins with the lowest F/SigF values
+# select only reflections from the two bins with the lowest F/SigF values. Then save those to a new file
 philstr3 = """
 miller_array_operation = "('newarray._data= array1.data()/array1.sigmas()\\nnewarray._sigmas = None', 'FoverSigF2', ['FOBS,SIGFOBS', 'Amplitude'], ['', ''])"
 clip_plane {
@@ -114,7 +116,10 @@ hkls {
   expand_to_p1 = True
   expand_anomalous = True
 }
-
+visible_dataset_label = "LowValuesFSigF"
+savefilename = "%s"
+datasets_to_save = 8
+max_reflections_in_frustum = 40
 """
 # These are the indices of visible reflections of phaser_1.mtz of the F/SigF dataset created on the fly
 # where the sphere of reflections have been sliced with a clip plane at l=9 and only reflections
@@ -146,14 +151,14 @@ def check_log_file(fname, refls2match):
 
 def Append2LogFile(fname, souterr):
   # write terminal output to our log file
-  with open(fname, "a") as f:
+  str1 = souterr.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
+  str2 = str(str1).encode(sys.stdout.encoding, errors='ignore').decode(sys.stdout.encoding)
+  with open(fname, "a", encoding="utf-8") as f:
     f.write("\nstdout, stderr in terminal: \n" + "-" * 80 + "\n")
-    f.write(souterr + "\n")
+    f.write(str2 + "\n")
 
 
 def exercise_OSbrowser(philstr, refl2match, prefix=""):
-  #if "linux" in sys.platform:
-  #  os.environ["DISPLAY"] = "O:O"
   assert os.path.isfile(datafname)
   outputfname = prefix + "HKLviewer.log"
 
@@ -174,7 +179,7 @@ def exercise_OSbrowser(philstr, refl2match, prefix=""):
 
   cmdargs = [datafname,
             "phil_file=%sHKLviewer_philinput.txt" %prefix,
-            "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+            "verbose=2_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
             "image_file=%sHKLviewer.png" %prefix,
             "UseOSBrowser=%s" %browser,
             "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
@@ -192,8 +197,6 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
             + " --enable-webgl-software-rendering --disable-gpu-compositing" \
             + " --disable_chromium_framebuffer_multisample --use-gl=swiftshader" \
             + " --swiftshader --swiftshader-webgl --ignore-gpu-blocklist"
-  #if "linux" in sys.platform:
-  #  os.environ["DISPLAY"] = "O:O"
   with open(prefix + "environ.txt","w") as mfile:
     # print environment variables to log file
     for k,v in os.environ.items():
@@ -208,8 +211,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  out,err = obj.communicate()
-  remove_settings_result = out.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
+  remove_settings_result,err = obj.communicate()
 
   print("Starting the real HKLviewer test...")
   with open(prefix + "HKLviewer_philinput.txt","w") as f:
@@ -222,7 +224,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
   cmdargs = ["cctbx.HKLviewer",
              datafname,
              "phil_file=%sHKLviewer_philinput.txt" %prefix,
-             "verbose=4_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
+             "verbose=2_frustum_threadingmsg_orientmsg_browser", # dump displayed hkls to stdout when clipplaning as well as verbose=2
              "image_file=%sHKLviewer.png" %prefix,
              "output_filename=" + outputfname, # file with stdout, stderr from hklview_frame
              "closing_time=%d" %closetime, # close HKLviewer after 25 seconds
@@ -234,8 +236,7 @@ def exerciseQtGUI(philstr, refl2match, prefix=""):
                          stdin = subprocess.PIPE,
                          stdout = subprocess.PIPE,
                          stderr = subprocess.STDOUT)
-  out,err = obj.communicate()
-  HKLviewer_result = out.decode().replace("\r\n", "\n") # omit \r\n line endings on Windows
+  HKLviewer_result,err = obj.communicate()
   # append terminal output to log file
   Append2LogFile(outputfname, remove_settings_result)
   Append2LogFile(outputfname, HKLviewer_result)

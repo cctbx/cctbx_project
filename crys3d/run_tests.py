@@ -13,11 +13,11 @@ tst_list_expected_unstable = [
 ]
 other_tests = [
   "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
-  "$D/regression/tst_HKLviewerQtGuiBinFSigF.py"
+  "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
 ]
 if sys.platform == "darwin" or sys.platform == "win32":
   tst_list.extend(other_tests)
-else:
+else: # no DISPLAY environment on Azure VMs running linux so tests fail by default
   tst_list_expected_unstable.extend(other_tests)
 
 # expected failure for Python 2

@@ -189,7 +189,7 @@ class with_bounds(object):
     lowest_value,highest_value = cube_relative_to_box( # 0 or neg, 0 or pos
       new_first, new_last, map_all,
        require_even_gridding = require_even_gridding)
-    if stay_inside_current_map and lowest_value != 0 or highest_value != 0:
+    if stay_inside_current_map and (lowest_value != 0 or highest_value != 0):
       print("Reboxing cubic map to stay inside current map", file = log)
       new_first = [a - lowest_value for a in new_first]
       new_last = [a - highest_value for a in new_last]

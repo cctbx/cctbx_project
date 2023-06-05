@@ -1,3 +1,12 @@
+2023.4
+======
+
+* Prevent potenially large memory usage when trying to read reflection data
+* CCTBXParser fix to properly re-raise an error when parsing PHIL
+* DataManager fix for handling datatypes with parent classes
+* Improved water picking
+* Improved atom selections to handle more than 10k atoms
+
 2023.3
 ======
 

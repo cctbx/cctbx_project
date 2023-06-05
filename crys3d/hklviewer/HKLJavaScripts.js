@@ -81,6 +81,7 @@ var pmleft = null;
 var pmbottom = null;
 var btnwidth = null;
 var StopAnimateBtn = null;
+var maxReflInFrustum = 0;
 var hklequationmsg = "";
 var animatheta = 0.0;
 var animaaxis = new NGL.Vector3();
@@ -1322,6 +1323,7 @@ function onMessage(e)
     if (msgtype === "GetReflectionsInFrustum")
     {
       RenderRequest();
+      maxReflInFrustum = parseInt(val[0]); 
       GetReflectionsInFrustum();
     }
 
@@ -1464,7 +1466,8 @@ function onMessage(e)
 
     if (msgtype ==="RenderStageObjects")
     {
-      if (shape != null) {
+      if (shape != null) 
+      {
         shapeComp = stage.addComponentFromObject(shape);
         MakeHKL_Axis();
         MakeXYZ_Axis();
@@ -2130,6 +2133,7 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
   if (buffer.parameters.opacity < 0.3) // use the same threshold as when tooltips won't show
     return [hkls_infrustums, rotid_infrustum];
 
+  let nrefl = 0;
   for (let i = 0; i < buffer.picking.cartpos.length; i++)
   {
     let radius = 0.05* Math.abs(stage.viewer.parameters.clipFar -stage.viewer.parameters.clipNear)
@@ -2148,11 +2152,14 @@ function GetReflectionsInFrustumFromBuffer(buffer) {
     // do rough exclusion of reflections from frustum with clipplanes for the sake of speed
     if ((childZ - radius) <stage.viewer.parameters.clipFar && (childZ + radius) > stage.viewer.parameters.clipNear)
     {
+      if (nrefl >= maxReflInFrustum) // limit to avoid calling stage.viewer.pick() excessively
+        return [hkls_infrustums, rotid_infrustum];
       let cv = webgl2CanvasPosition(x,y,z); 
       // stage.viewer.pick() calling readRenderTargetPixels() evaluates points in frustum
       let ret = stage.viewer.pick(cv[0], cv[1]); 
       if (ret.pid !== 0)
       {
+        nrefl++;
         let hklid = buffer.picking.ids[i + 1];
         let rotid = buffer.picking.ids[0];
         hkls_infrustums.push(hklid);

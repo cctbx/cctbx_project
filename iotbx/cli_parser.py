@@ -319,6 +319,11 @@ class CCTBXParser(ParserBase):
     if self.namespace.show_defaults is not None:
       if self.namespace.attributes_level is None:
         self.namespace.attributes_level = 0
+      if self.program_class.show_data_manager_scope_by_default:
+        self.data_manager.master_phil.show(
+          expert_level=self.namespace.show_defaults,
+          attributes_level=self.namespace.attributes_level,
+          out=self.logger)
       self.master_phil.show(expert_level=self.namespace.show_defaults,
                             attributes_level=self.namespace.attributes_level,
                             out=self.logger)
@@ -511,6 +516,8 @@ class CCTBXParser(ParserBase):
             except Sorry as e2:
               if e2.__str__().startswith('Unknown'):
                 self.unused_phil.append(phil)
+              else:
+                raise
           else:
             raise
         if processed_arg is not None:
