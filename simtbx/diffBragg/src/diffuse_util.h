@@ -592,13 +592,15 @@ void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VE
           MAT3 xform;
           xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
           */
+          MAT3 xform;
+          xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
-            VEC3 Q0 =Ainv*laue_mats[iL]*H0;
+            VEC3 Q0 =Ainv*laue_mats[iL]*xform*H0;
             REAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
             REAL dwf = exp(-exparg);
             VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
             VEC3 delta_H_offset = H_vec - H0_offset;
-            VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
+            VEC3 delta_Q = Ainv*laue_mats[iL]*xform*delta_H_offset;
             VEC3 anisoG_q = anisoG_local*delta_Q;
 
             REAL V_dot_V = anisoG_q.dot(anisoG_q);
