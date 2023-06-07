@@ -16,10 +16,11 @@ public:
 
   FrameInfo() {}
 
-  FrameInfo(int id, const cart_t &f_normal,
+  FrameInfo(int id, const cart_t &c_normal,
     FloatType alpha, FloatType beta, FloatType omega,
     FloatType angle, FloatType scale, mat3_t const& UB)
-    : id(id), tag(-1),
+    : id(id), tag(-1), original_normal(c_normal),
+    UB(UB),
     alpha(alpha), beta(beta), omega(omega),
     angle(angle), scale(scale),
     offset(~0)
@@ -32,7 +33,21 @@ public:
       rzo(co, -so, 0, so, co, 0, 0, 0, 1);
     RM = rzo * rxa * ryb;
     RMf = RM * UB;
-    normal = RM * f_normal;
+    normal = RM * c_normal;
+    normal /= normal.length();
+  }
+
+  void update_alpha(FloatType alpha) {
+    this->alpha = alpha;
+    FloatType ca = std::cos(alpha), sa = std::sin(alpha),
+      cb = std::cos(beta), sb = std::sin(beta),
+      co = std::cos(omega), so = std::sin(omega);
+    mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca),
+      ryb(cb, 0, sb, 0, 1, 0, -sb, 0, cb),
+      rzo(co, -so, 0, so, co, 0, 0, 0, 1);
+    RM = rzo * rxa * ryb;
+    RMf = RM * UB;
+    normal = RM * original_normal;
     normal /= normal.length();
   }
 
@@ -74,8 +89,8 @@ public:
     FloatType MinP);
 
   int id, tag;
-  cart_t normal;
-  mat3_t RM, RMf;
+  cart_t normal, original_normal;
+  mat3_t UB, RM, RMf;
   FloatType alpha, beta, omega, angle, scale;
   size_t offset; // for internal bookeeping
   // experimental data
@@ -100,7 +115,7 @@ struct BeamInfo {
     I(I), sig(sig)
   {}
   miller::index<> index;
-  FloatType I, sig;
+  FloatType I, sig, diffraction_angle;
 };
 
 template <typename FloatType>
