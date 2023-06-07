@@ -74,7 +74,9 @@ namespace boost_python {
       class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
         .add_property("h", make_getter(&wt::index, rbv))
         .add_property("I", &wt::I)
-        .add_property("s", &wt::sig);
+        .add_property("s", &wt::sig)
+        .def_readwrite("diffraction_angle", &wt::diffraction_angle)
+        ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_info");
     }
 
