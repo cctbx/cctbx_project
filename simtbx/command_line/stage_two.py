@@ -3,12 +3,12 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
-from simtbx.kokkos import gpu_instance
-kokkos_run = gpu_instance(deviceId = 0)
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
 from simtbx.diffBragg import mpi_logger
+
+from simtbx.diffBragg.device import DeviceWrapper
 
 COMM = MPI.COMM_WORLD
 
@@ -107,8 +107,10 @@ if __name__ == '__main__':
             logging.disable(level=logging.CRITICAL)  # disables CRITICAL and below
         else:
             mpi_logger.setup_logging_from_params(script.params)
-
-        RUN()
+            
+        dev = COMM.rank % script.params.refiner.num_devices
+        with DeviceWrapper(dev) as _:
+            RUN()
 
         if lp is not None:
             stats = lp.get_stats()
