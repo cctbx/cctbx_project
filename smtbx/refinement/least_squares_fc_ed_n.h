@@ -105,7 +105,7 @@ namespace least_squares {
     */
     struct process_frame {
       process_frame(ed_n_shared_data const& parent,
-        const FrameInfo<FloatType> &frame,
+        FrameInfo<FloatType> &frame,
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<FloatType>& Is,
@@ -124,9 +124,11 @@ namespace least_squares {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.mat_type == 3) { // 2-beam
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-              miller::index<> h = frame.indices[frame.strong_measured_beams[i]];
+              size_t beam_idx = frame.strong_measured_beams[i];
+              miller::index<> h = frame.indices[beam_idx];
               int ii = parent.mi_lookup.find_hkl(h);
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+              frame.update_alpha(frame.beams[beam_idx].diffraction_angle);
               complex_t ci = utils<FloatType>::calc_amp_2beam(
                 h, parent.Fc2Ug * Fc,
                 thickness,
@@ -229,7 +231,7 @@ namespace least_squares {
         }
       }
       ed_n_shared_data const& parent;
-      const FrameInfo<FloatType>& frame;
+      FrameInfo<FloatType>& frame;
       FloatType thickness;
       const af::shared<complex_t>& Fcs_k;
       af::shared<FloatType>& Is;
@@ -244,7 +246,7 @@ namespace least_squares {
       typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(frame_id);
       SMTBX_ASSERT(fi != frames_map.end());
-      FrameInfo<FloatType> const &frame= *fi->second;
+      FrameInfo<FloatType> &frame= *fi->second;
       af::shared<FloatType> Is_(frame.beams.size());
       af::shared<complex_t> CIs_;
       process_frame(*this, frame, Fcs_k, Is_, CIs_,
