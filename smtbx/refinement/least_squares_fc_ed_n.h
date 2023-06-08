@@ -49,7 +49,8 @@ namespace least_squares {
       frames(frames),
       thickness(thickness),
       compute_grad(compute_grad),
-      thread_n(static_cast<int>(params[5]))
+      thread_n(static_cast<int>(params[5])),
+      use_diff_angle(params[6] > 0)
     {
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
@@ -128,7 +129,9 @@ namespace least_squares {
               miller::index<> h = frame.indices[beam_idx];
               int ii = parent.mi_lookup.find_hkl(h);
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
-              frame.update_alpha(frame.beams[beam_idx].diffraction_angle);
+              if (parent.use_diff_angle) {
+                frame.update_alpha(frame.beams[beam_idx].diffraction_angle);
+              }
               complex_t ci = utils<FloatType>::calc_amp_2beam(
                 h, parent.Fc2Ug * Fc,
                 thickness,
@@ -412,6 +415,7 @@ namespace least_squares {
     af::versa<FloatType, af::c_grid<2> > design_matrix;
     lookup_t mi_lookup;
     int thread_n;
+    bool use_diff_angle;
   };
 
   template <typename FloatType>

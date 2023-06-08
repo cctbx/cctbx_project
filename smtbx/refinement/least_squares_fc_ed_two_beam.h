@@ -19,13 +19,16 @@ namespace least_squares {
   public:
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
     typedef scitbx::vec3<FloatType> cart_t;
+    typedef scitbx::mat3<FloatType> mat3_t;
     typedef builder_base<FloatType> data_t;
     typedef std::complex<FloatType> complex_t;
+    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
+    typedef boost::shared_ptr<lookup_t> lookup_ptr_t;
 
     f_calc_function_ed_two_beam(data_t const& data,
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
-      af::shared<FrameInfo<FloatType> > const& frames,
+      af::shared<FrameInfo<FloatType> > frames,
       cctbx::xray::thickness<FloatType> const& thickness,
       af::shared<FloatType> const& params)
       : data(data),
@@ -46,8 +49,16 @@ namespace least_squares {
         data.reflections().indices().const_ref(),
         space_group,
         anomalous_flag);
+      sgtbx::space_group P1("P 1");
       for (size_t i = 0; i < frames.size(); i++) {
-        frames_map.insert(std::make_pair(frames[i].id, &frames[i]));
+        FrameInfo<FloatType>& frame = frames[i];
+        frames_map.insert(std::make_pair(frame.id, &frame));
+        lookup_ptr_t mi_l(new lookup_t(
+          af::select(frame.indices.const_ref(),
+            frame.strong_measured_beams.const_ref()).const_ref(),
+          P1,
+          false));
+        frame_lookups.insert(std::make_pair(frame.id, mi_l));
       }
       frame = 0;
     } 
@@ -58,6 +69,7 @@ namespace least_squares {
       Fc2Ug(other.Fc2Ug),
       frames(other.frames),
       frames_map(other.frames_map),
+      frame_lookups(other.frame_lookups),
       thickness(other.thickness),
       mi_lookup(other.mi_lookup),
       observable_updated(false),
@@ -89,7 +101,7 @@ namespace least_squares {
         Fc = f_calc[index];
         Fsq = observables[index] * Fc2Ug * Fc2Ug;
       }
-      typename std::map<int, const FrameInfo<FloatType>*>::const_iterator fi =
+      typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(fraction->tag);
       SMTBX_ASSERT(fi != frames_map.end());
       frame = fi->second;
@@ -121,13 +133,21 @@ namespace least_squares {
 
     // Acta Cryst. (2013). A69, 171–188
     FloatType get_observable_pltns_2013() const {
-      cart_t g = frame->RMf * cart_t(h[0], h[1], h[2]);
+      typename std::map<int, lookup_ptr_t>::const_iterator frame_lkp =
+        frame_lookups.find(frame->id);
+      SMTBX_ASSERT(frame_lkp != frame_lookups.end());
+      long beam_idx = frame_lkp->second->find_hkl(h);
+      SMTBX_ASSERT(beam_idx >= 0);
+      std::pair<mat3_t, cart_t> FI = frame->compute_RMf_N(
+        frame->beams[beam_idx].diffraction_angle);
+
+      cart_t g = FI.first * cart_t(h[0], h[1], h[2]);
       cart_t K = cart_t(0, 0, -Kl);
 
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
         t = thickness.value,
-        t_part = ((scitbx::constants::pi * t) / (K * frame->normal)),
+        t_part = ((scitbx::constants::pi * t) / (K * FI.second)),
         P = t_part * std::sqrt(X);
       FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
         I = Fsq * sin_part / X;
@@ -254,8 +274,9 @@ namespace least_squares {
     af::shared<FloatType> observables;
     af::shared<FloatType> weights;
     af::versa<FloatType, af::c_grid<2> > design_matrix;
-    miller::lookup_utils::lookup_tensor<FloatType> mi_lookup;
-    std::map<int, const FrameInfo<FloatType>*> frames_map;
+    lookup_t mi_lookup;
+    typename std::map<int, lookup_ptr_t> frame_lookups;
+    std::map<int, FrameInfo<FloatType>*> frames_map;
     long index;
     const FrameInfo<FloatType>* frame;
     mutable bool observable_updated, computed;
