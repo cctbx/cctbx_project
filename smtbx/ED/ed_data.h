@@ -25,30 +25,26 @@ public:
     angle(angle), scale(scale),
     offset(~0)
   {
-    FloatType ca = std::cos(alpha), sa = std::sin(alpha),
-      cb = std::cos(beta), sb = std::sin(beta),
-      co = std::cos(omega), so = std::sin(omega);
-    mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca),
-      ryb(cb, 0, sb, 0, 1, 0, -sb, 0, cb),
-      rzo(co, -so, 0, so, co, 0, 0, 0, 1);
-    RM = rzo * rxa * ryb;
-    RMf = RM * UB;
-    normal = RM * c_normal;
-    normal /= normal.length();
+    update_alpha(alpha);
   }
 
-  void update_alpha(FloatType alpha) {
-    this->alpha = alpha;
-    FloatType ca = std::cos(alpha), sa = std::sin(alpha),
+  std::pair<mat3_t, cart_t> compute_RMf_N(FloatType alpha_) const {
+    FloatType ca = std::cos(alpha_), sa = std::sin(alpha_),
       cb = std::cos(beta), sb = std::sin(beta),
       co = std::cos(omega), so = std::sin(omega);
     mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca),
       ryb(cb, 0, sb, 0, 1, 0, -sb, 0, cb),
       rzo(co, -so, 0, so, co, 0, 0, 0, 1);
-    RM = rzo * rxa * ryb;
-    RMf = RM * UB;
-    normal = RM * original_normal;
-    normal /= normal.length();
+    mat3_t rm = rzo * rxa * ryb;
+    mat3_t rmf = rm * UB;
+    cart_t N = rm * original_normal;
+    return std::make_pair(rmf, N / N.length());
+  }
+  void update_alpha(FloatType alpha_) {
+    alpha = alpha_;
+    std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha_);
+    RMf = r.first;
+    normal = r.second;
   }
 
   bool is_excited_index(const miller::index<> &h,
@@ -90,7 +86,7 @@ public:
 
   int id, tag;
   cart_t normal, original_normal;
-  mat3_t UB, RM, RMf;
+  mat3_t UB, RMf;
   FloatType alpha, beta, omega, angle, scale;
   size_t offset; // for internal bookeeping
   // experimental data

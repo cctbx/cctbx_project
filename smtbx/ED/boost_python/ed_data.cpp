@@ -38,7 +38,6 @@ namespace boost_python {
         .def_readonly("id", &wt::id)
         .def_readwrite("tag", &wt::tag)
         .add_property("normal", make_getter(&wt::normal, rbv))
-        .add_property("RM", make_getter(&wt::RM, rbv))
         .add_property("RMf", make_getter(&wt::RMf, rbv))
         .add_property("alpha", &wt::alpha)
         .add_property("beta", &wt::beta)
