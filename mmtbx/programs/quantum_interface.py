@@ -631,7 +631,7 @@ Usage examples:
         self.params,
         # macro_cycle=self.macro_cycle,
         pre_refinement=True,
-        nproc=self.params.main.nproc,
+        nproc=self.params.qi.nproc,
         log=log,
         )
       print('starting strain',rc)
