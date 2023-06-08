@@ -316,6 +316,7 @@ class linking_mixins(object):
                                   log                         = None,
                                   verbose                     = False,
                                   ):
+    verbose=1
     assert hasattr(self, "_cif")
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
@@ -823,7 +824,14 @@ Residue classes
         print('link',link)
         print('link_key',link_key)
         print('link_atoms',link_atoms)
-      if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
+        for atoms in link_atoms:
+          for atom in atoms: print(atom.quote())
+      is_glyco_link = (key.find("ALPHA1")>-1 or
+                       key.find("BETA1")>-1 or
+                       key.find("ALPHA2")>-1 or
+                       key.find("BETA2")>-1
+                       )
+      if is_glyco_link: # is handled in elif
         key, cif, bond_i_seqs = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
             atom_group2,
