@@ -576,16 +576,16 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOK
             (CUDAREAL)num_stencil_points;
           // TODO: Apply discrete transformations to H0 and delta_H_offset
           //    like the following to reorient G and recover calmodulin diffuse
-          // KOKKOS_MAT3 xform;
-          // xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+           KOKKOS_MAT3 xform;
+           xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
 
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
-            KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*H0;
+            KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*xform*H0;
             CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
             CUDAREAL dwf = exp(-exparg);
             KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
             KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;
-            KOKKOS_VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
+            KOKKOS_VEC3 delta_Q = Ainv*laue_mats[iL]*xform*delta_H_offset;
             KOKKOS_VEC3 anisoG_q = anisoG_local*delta_Q;
 
             CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);
