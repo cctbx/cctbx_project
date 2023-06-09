@@ -101,15 +101,15 @@ struct flags{
     bool complex_miller = false;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are both defined)
     bool no_Nabc_scale = false; // no Nabc prefactor
     bool refine_diffuse = false; // flag for computing diffuse gradients
-    std::vector<bool> refine_Bmat(6, false);  //  Bmatrix
-    std::vector<bool> refine_Ncells(3, false); // mosaic domain size
+    std::vector<bool> refine_Bmat;  //  Bmatrix
+    std::vector<bool> refine_Ncells; // mosaic domain size
     bool refine_Ncells_def = false; // mosaic domain size off diag
-    std::vector<bool> refine_panel_origin(3, false); // panel shift
-    std::vector<bool> refine_panel_rot(3, false); // detector panel rotation
+    std::vector<bool> refine_panel_origin; // panel shift
+    std::vector<bool> refine_panel_rot; // detector panel rotation
     bool refine_fcell = false; // structure factor
-    std::vector<bool> refine_lambda(2, false); // spectrum affine correction
+    std::vector<bool> refine_lambda; // spectrum affine correction
     bool refine_eta = false; // mosaic spread
-    std::vector<bool> refine_Umat(3, false); // missetting angle umatrix
+    std::vector<bool> refine_Umat; // missetting angle umatrix
     bool refine_fp_fdp = false; // fprime and fbl prime
     bool use_lambda_coefficients = false; // affine correction lam0 , lam1
     bool oversample_omega = false; // omega is computed separately for each sub-pixel
