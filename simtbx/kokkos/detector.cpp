@@ -65,7 +65,8 @@ namespace simtbx { namespace Kokkos {
   };
 
   packed_metrology::packed_metrology(const simtbx::nanoBragg::nanoBragg& nB){
-    auto get_kokkos_vec3 = [](auto& src) { return vec3(src[0], src[1], src[2]); };
+    // Careful, 4-vectors! [length, x, y, z]
+    auto get_kokkos_vec3 = [](auto& src) { return vec3(src[1], src[2], src[3]); };
     sdet.push_back( get_kokkos_vec3(nB.sdet_vector) );
     fdet.push_back( get_kokkos_vec3(nB.fdet_vector) );
     odet.push_back( get_kokkos_vec3(nB.odet_vector) );
