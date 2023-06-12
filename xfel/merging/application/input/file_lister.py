@@ -85,16 +85,17 @@ class file_lister(object):
               file_stem = filename[:-refl_suffix_len]
               refl_paths[file_stem] = os.path.join(path, filename)
             if filename.endswith(self.params.input.experiments_suffix):
-              if self._is_accepted_expt(filename):
+              full_path = os.path.join(path, filename)
+              if self._is_accepted_expt(full_path):
                 file_stem = filename[:-expt_suffix_len]
-                expt_paths[file_stem] = os.path.join(path, filename)
+                expt_paths[file_stem] = full_path
         else:
           filename = os.path.basename(path)
           if filename.endswith(self.params.input.reflections_suffix):
             file_stem = filename[:-refl_suffix_len]
             refl_paths[file_stem] = path
           if filename.endswith(self.params.input.experiments_suffix):
-            if self._is_accepted_expt(filename):
+            if self._is_accepted_expt(path):
               file_stem = filename[:-expt_suffix_len]
               expt_paths[file_stem] = path
     for common_file_stem in set(expt_paths).intersection(set(refl_paths)):
