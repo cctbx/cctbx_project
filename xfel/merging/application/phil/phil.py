@@ -54,6 +54,11 @@ input {
     .help = however, validation is delayed until data are assigned to parallel ranks.
     .help = integrated experiments (.expt) and reflection tables (.refl) must both be
     .help = present as matching files.  Only one need be explicitly specified.
+  match_directories = True
+    .type = bool
+    .help = If True, matching experiment (.expt) and reflection table (.refl)
+    .help = must be in the same directory. Else, they might occupy directories,
+    .help = but their filenames must be unique across the entire input.
   reflections_suffix = _integrated.refl
     .type = str
     .help = Find file names with this suffix for reflections
