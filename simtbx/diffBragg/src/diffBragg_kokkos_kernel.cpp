@@ -406,6 +406,9 @@ void kokkos_sum_over_steps(
                             CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                             if (use_diffuse) {
                                 calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
+                                for (int i_diff = 0; i_diff < 6; i_diff++) {
+                                    step_diffuse_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic, i_diff) = step_diffuse_param[i_diff];
+                                }
                             } // end s_use_diffuse outer
 
                             CUDAREAL _F_cell = default_F;
@@ -689,8 +692,8 @@ void kokkos_sum_over_steps(
                             if (refine_flag & REFINE_DIFFUSE) {
                                 CUDAREAL step_scale = texture_scale * _F_cell * _F_cell;
                                 for (int i_diff = 0; i_diff < 6; i_diff++) {
-                                    dI.diffuse[i_diff] +=
-                                        step_scale * step_diffuse_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic, i_diff);
+                                    const CUDAREAL step_diffuse = step_diffuse_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic, i_diff);
+                                    dI.diffuse[i_diff] += step_scale * step_diffuse;
                                 }
                             }
 
