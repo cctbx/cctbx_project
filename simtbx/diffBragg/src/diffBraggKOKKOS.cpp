@@ -429,8 +429,14 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     Kokkos::resize(m_airpath_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
     Kokkos::resize(m_pixel_pos_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
     Kokkos::resize(m_texture_scale_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
+    Kokkos::resize(m_q_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
+    Kokkos::resize(m_V_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+    Kokkos::resize(m_H_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
     Kokkos::resize(m_Fcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
     Kokkos::resize(m_scaled_I0_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+    Kokkos::resize(m_c_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+    Kokkos::resize(m_d_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+    Kokkos::resize(m_Iincrement_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
     Kokkos::resize(m_step_diffuse_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
 
     gettimeofday(&t2, 0);
@@ -488,8 +494,8 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
         db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
         db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
-        m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer, 
-        m_Fcell_buffer, m_scaled_I0_buffer, m_step_diffuse_buffer,
+        m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer, m_q_vec_buffer,
+        m_V_buffer, m_H_vec_buffer, m_Fcell_buffer, m_scaled_I0_buffer, m_c_deriv_buffer, m_d_deriv_buffer, m_Iincrement_buffer, m_step_diffuse_buffer,
         m_data_residual, m_data_variance,
         m_data_freq, m_data_trusted,
         m_FhklLinear_ASUid,
