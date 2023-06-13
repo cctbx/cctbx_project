@@ -9,6 +9,7 @@ from mmtbx.maps import utils
 import iotbx.map_tools
 import iotbx.phil
 from iotbx import file_reader
+import iotbx.pdb
 from libtbx import runtime_utils
 import libtbx.phil
 from libtbx.utils import Sorry, Usage
@@ -176,8 +177,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
     if params.show_maps : return False
   pdb_file = None
   if len(params.pdb_file) > 0:
-    pdb_file = file_reader.any_file(params.pdb_file[0], force_type="pdb")
-    pdb_file.assert_file_type("pdb")
+    pdb_file = iotbx.pdb.input(params.pdb_file[0])
   miller_arrays = mtz_file.file_object.as_miller_arrays()
   r_free_flags = None
   if params.r_free_flags.remove :
@@ -196,7 +196,7 @@ def run(args, log=sys.stdout, run_in_current_working_directory=False):
       data=raw_array.data()==flag_value).map_to_asu().average_bijvoet_mates()
   sites_cart = None
   if pdb_file is not None :
-    pdb_hierarchy = pdb_file.file_object.hierarchy
+    pdb_hierarchy = pdb_file.construct_hierarchy()
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
     if params.selection is not None :
       selection_cache = pdb_hierarchy.atom_selection_cache()

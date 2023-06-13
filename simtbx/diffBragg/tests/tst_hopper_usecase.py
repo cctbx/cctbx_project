@@ -19,6 +19,7 @@ GPU_ID = COMM.rank % NGPU_PER_NODE
 beam = BeamFactory.from_dict(beam_descr)
 det = DetectorFactory.from_dict(det_descr)
 
+from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg.device import DeviceWrapper
 with DeviceWrapper(GPU_ID) as wrapper:
     for i in range(COMM.size*3):
@@ -36,5 +37,5 @@ with DeviceWrapper(GPU_ID) as wrapper:
 
     # TODO: the following deletion of the diffBragg instance is necessary to prevent the deallocation error
     # is there someway around this ????
-    del D
+    for name in find_diffBragg_instances(globals()): del globals()[name]
     print("OK!")

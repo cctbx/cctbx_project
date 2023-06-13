@@ -981,34 +981,34 @@ def get_sequence_n_copies(
 
 def get_sequence_n_copies_from_files(seq_file, pdb_file, **kwds):
   from iotbx import file_reader
+  import iotbx.pdb
   seq_in = file_reader.any_file(seq_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
   if (seq_in.file_type != "seq"):
     raise Sorry("Can't parse %s as a sequence file.")
-  pdb_in = file_reader.any_file(pdb_file,
-    raise_sorry_if_errors=True,
-    raise_sorry_if_not_expected_format=True)
-  if (pdb_in.file_type != "pdb"):
+  try:
+    pdb_in = iotbx.pdb.input(pdb_file)
+  except Exception:
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
-  kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
+  kwds['pdb_hierarchy'] = pdb_in.construct_hierarchy()
   kwds['sequences'] = seq_in.file_object
   return get_sequence_n_copies(**kwds)
 
 # XXX test needed
 def group_chains_and_sequences(seq_file, pdb_file, **kwds):
   from iotbx import file_reader
+  import iotbx.pdb
   seq_in = file_reader.any_file(seq_file,
     raise_sorry_if_errors=True,
     raise_sorry_if_not_expected_format=True)
   if (seq_in.file_type != "seq"):
     raise Sorry("Can't parse %s as a sequence file.")
-  pdb_in = file_reader.any_file(pdb_file,
-    raise_sorry_if_errors=True,
-    raise_sorry_if_not_expected_format=True)
-  if (pdb_in.file_type != "pdb"):
+  try:
+    pdb_in = iotbx.pdb.input(pdb_file)
+  except Exception:
     raise Sorry("Can't parse %s as a PDB or mmCIF file.")
-  kwds['pdb_hierarchy'] = pdb_in.file_object.hierarchy
+  kwds['pdb_hierarchy'] = pdb_in.construct_hierarchy()
   kwds['sequences'] = seq_in.file_object
   v = validation(**kwds)
   chain_to_sequence_mappings = {}

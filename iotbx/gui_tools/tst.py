@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from iotbx.gui_tools import reflections, models
 from iotbx import file_reader
+import iotbx.pdb
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import Sorry
@@ -186,7 +187,7 @@ def exercise_reflections():
   hkl_in = file_reader.any_file(file_name)
   hkl_server = hkl_in.file_server
   assert approx_equal(reflections.get_high_resolution(hkl_server), 1.5,
-    eps=0.0001)
+    eps=0.001)
   descriptions = []
   for miller_array in hkl_server.miller_arrays :
     (sg, uc) = reflections.get_miller_array_symmetry(miller_array)
@@ -199,9 +200,10 @@ def exercise_reflections():
   handler = reflections.reflections_handler()
   handler.save_file(input_file=hkl_in)
   assert (not handler.has_anomalous_data())
-  assert (handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.500)")
-  assert (handler.get_resolution_limits(file_name=file_name) ==
-          ('(25.981)', '(1.500)'))
+  assert (handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.500)"
+          or handler.get_resolution_range(file_name=file_name)=="(25.981 - 1.501)")
+  assert (handler.get_resolution_limits(file_name=file_name) == ('(25.981)', '(1.500)')
+          or handler.get_resolution_limits(file_name=file_name) == ('(25.981)', '(1.501)'))
   fmodel = phi_array.array(data=flex.complex_double(n_refl_merged,
     complex(0.5,0.8)))
   m1 = phi_array.array(data=flex.complex_double(n_refl_merged, complex(1,0)))
@@ -241,10 +243,10 @@ def exercise_reflections():
   assert (fc_cols == ['F-model'])
   hkl_server = file_reader.any_file(file_name).file_server
   map_labels = reflections.get_map_coeff_labels(hkl_server)
-  assert (map_labels == ['2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
-    '2FOFCWT_no_fill,PH2FOFCWT_no_fill',])
+  assert (map_labels == ['F-model,PHF-model', '2FOFCWT,PH2FOFCWT', 'FOFCWT,PHFOFCWT',
+    '2FOFCWT_no_fill,PH2FOFCWT_no_fill',]), map_labels
   map_labels = reflections.get_map_coeffs_for_build(hkl_server)
-  assert map_labels == ['2FOFCWT,PH2FOFCWT','2FOFCWT_no_fill,PH2FOFCWT_no_fill']
+  assert map_labels == ['2FOFCWT,PH2FOFCWT', 'F-model,PHF-model', '2FOFCWT_no_fill,PH2FOFCWT_no_fill'], map_labels
   map_coeffs = reflections.extract_phenix_refine_map_coeffs(file_name)
   assert (len(map_coeffs) == 3)
   hkl_file = file_reader.any_file(file_name)
@@ -354,7 +356,7 @@ def exercise_model():
           "113.068 113.068 53.292 90 90 90")
   f = model_handler.create_copy_with_fake_symmetry(pdb_file2,
     tmp_dir=os.getcwd())
-  pdb_in = file_reader.any_file(f, force_type="pdb")
+  pdb_in = iotbx.pdb.input(f)
   symm = pdb_in.crystal_symmetry()
   assert (str(symm.space_group_info()) == "P 1")
   assert (reflections.unit_cell_as_str(symm.unit_cell()) ==

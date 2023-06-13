@@ -347,6 +347,8 @@ class __hash_eq_mixin(object):
     return hash(self.memory_id())
 
   def __eq__(self, other):
+    if other == None:
+      return False
     if (isinstance(other, self.__class__)):
       return (self.memory_id() == other.memory_id())
     return False
@@ -2942,6 +2944,8 @@ class input_hierarchy_pair(object):
     Returns a reference to the existing hierarchy.  For backwards compatibility
     only, and issues a :py:class:`warnings.DeprecationWarning`.
     """
+    # import traceback
+    # traceback.print_stack()
     warnings.warn("Please access input.hierarchy directly.",
       DeprecationWarning)
     return self.hierarchy

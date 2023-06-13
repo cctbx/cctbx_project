@@ -57,13 +57,13 @@ def run (args, viewer_class=selection_editor_mixin) :
     out = cStringIO.StringIO()
   for file_name in pdb_files :
     print("Reading PDB file %s" % file_name)
-    from iotbx import file_reader
+    import iotbx.pdb
     from mmtbx.monomer_library import pdb_interpretation
     from mmtbx import secondary_structure
     t1 = time.time()
     if fast_connectivity :
-      pdb_in = file_reader.any_file(file_name, force_type="pdb")
-      pdb_hierarchy = pdb_in.file_object.hierarchy
+      pdb_in = iotbx.pdb.input(file_name)
+      pdb_hierarchy = pdb_in.construct_hierarchy()
       atomic_bonds = pdb_hierarchy.distance_based_simple_two_way_bond_sets()
       acp_selection = None
     else :

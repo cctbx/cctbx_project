@@ -43,10 +43,9 @@ Splits a multi-model PDB file into separate files for each model.
       directory_def="split_models.output_dir")
     params = cmdline.work.extract()
     validate_params(params)
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(params.split_models.file_name, force_type="pdb")
-  pdb_in.check_file_type("pdb")
-  hierarchy = pdb_in.file_object.hierarchy
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(params.split_models.file_name)
+  hierarchy = pdb_in.construct_hierarchy()
   if (len(hierarchy.models()) <= 1):
     raise Sorry("The PDB file %s already has a single model." %
       params.split_models.file_name)
@@ -61,7 +60,7 @@ Splits a multi-model PDB file into separate files for each model.
   output_base = os.path.join(params.split_models.output_dir, base_name)
   return split_models(
     hierarchy=hierarchy,
-    crystal_symmetry=pdb_in.file_object.crystal_symmetry(),
+    crystal_symmetry=pdb_in.crystal_symmetry(),
     output_base=output_base,
     original_file=params.split_models.file_name,
     log=out)

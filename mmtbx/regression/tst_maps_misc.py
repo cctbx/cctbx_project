@@ -6,11 +6,11 @@ def exercise_anomalous_maps_misc():
   from mmtbx.regression.make_fake_anomalous_data import generate_cd_cl_inputs
   import mmtbx.utils
   from iotbx import file_reader
+  import iotbx.pdb
   mtz_file, pdb_file = generate_cd_cl_inputs(
     file_base = "tst_mmtbx_maps_misc")
-  pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.hierarchy
-  xrs = pdb_in.file_object.xray_structure_simple()
+  pdb_in = iotbx.pdb.input(pdb_file)
+  xrs = pdb_in.xray_structure_simple()
   for s in xrs.scatterers():
     if (s.scattering_type == "Cd2+"):
       s.fp = -0.29

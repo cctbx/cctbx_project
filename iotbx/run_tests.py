@@ -5,6 +5,7 @@ import libtbx.load_env
 
 tst_list_base = [
   "$D/regression/tst_wildcard.py",
+  "$D/gui_tools/tst.py",
   "$D/regression/tst_simple_parser.py",
   "$D/regression/tst_phil.py",
   "$D/regression/tst_pdb_cif_inputs.py",

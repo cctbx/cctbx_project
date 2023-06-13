@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.validation import rotalyze
-from iotbx import file_reader
 from iotbx import pdb
 from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.utils import Sorry
@@ -22,8 +21,8 @@ def exercise_rotalyze():
   if (find_rotarama_data_dir(optional=True) is None):
     print("Skipping exercise_rotalyze(): rotarama_data directory not available")
     return
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   pdb_io = pdb.input(file_name=regression_pdb)
   r = rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,
@@ -99,8 +98,8 @@ def exercise_rotalyze():
   if (regression_pdb is None):
     print("Skipping exercise_ramalyze(): input pdb (pdb1jxt.ent) not available")
     return
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   pdb_io = pdb.input(file_name=regression_pdb)
   r = rotalyze.rotalyze(
     pdb_hierarchy=hierarchy,

@@ -19,7 +19,7 @@ def start_coot_and_wait(
     work_dir=None,
     coot_cmd="coot",
     log=None):
-  from iotbx import file_reader
+  import iotbx.pdb
   from libtbx.str_utils import make_header
   from libtbx import easy_run
   import cootbx
@@ -34,9 +34,8 @@ def start_coot_and_wait(
   ligand_xyzs = []
   for pdb_file in ligand_files :
     pdb_file = to_str(pdb_file)
-    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
-    coords = pdb_in.file_object.atoms().extract_xyz()
+    pdb_in = iotbx.pdb.input(pdb_file)
+    coords = pdb_in.atoms().extract_xyz()
     ligand_xyzs.append(coords.mean())
   ligand_info = list(zip(ligand_files, ligand_ccs, ligand_xyzs))
   f = open("edit_in_coot.py", "w")

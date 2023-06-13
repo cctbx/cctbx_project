@@ -10,7 +10,7 @@ def exercise_heavy():
   from mmtbx.regression import make_fake_anomalous_data
   from mmtbx.command_line import validate_waters
   import mmtbx.ions.utils
-  from iotbx.file_reader import any_file
+  import iotbx.pdb
   file_base = "tst_validate_waters_1"
   pdb_file = make_fake_anomalous_data.write_pdb_input_cd_cl(file_base=file_base)
   mtz_file = make_fake_anomalous_data.generate_mtz_file(
@@ -20,11 +20,11 @@ def exercise_heavy():
       group_args(selection="element CD", fp=-0.29, fdp=2.676),
       group_args(selection="element CL", fp=0.256, fdp=0.5),
     ])
-  pdb_in = any_file(pdb_file)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = iotbx.pdb.input(pdb_file)
+  hierarchy = pdb_in.construct_hierarchy()
   hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
   hierarchy.write_pdb_file("%s_start.pdb" % file_base,
-    crystal_symmetry=pdb_in.file_object.crystal_symmetry())
+    crystal_symmetry=pdb_in.crystal_symmetry())
   args = ["tst_validate_waters_1_start.pdb", "tst_validate_waters_1.mtz",
     "skip_twin_detection=True"]
   results = validate_waters.run(args=args, out=null_out())

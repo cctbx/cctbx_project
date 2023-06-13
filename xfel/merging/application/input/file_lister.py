@@ -16,7 +16,7 @@ class file_lister(object):
     alist_files = self.params.input.alist.file
     if alist_files is not None:
       for f in alist_files:
-        lines = np.loadtxt(f, str)
+        lines = np.loadtxt(f, str, ndmin=1)
         self.alist = self.alist.union(lines)
 
     if self.params.input.alist.type=="files":

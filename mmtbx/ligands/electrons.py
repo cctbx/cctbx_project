@@ -242,8 +242,6 @@ class electron_distribution(dict):
     if i_seqs not in self:
       tmp = (i_seqs[1], i_seqs[0])
       i_seqs=tmp
-    print(self)
-    print(self.keys())
     self[i_seqs]+=1
     self[i_seqs[0]]-=1
     self[i_seqs[1]]-=1
@@ -327,7 +325,7 @@ class electron_distribution(dict):
                                             i_seq,
                                             j_seq,
                                             dangling=False,
-                                            verbose=1):
+                                            verbose=False):
     if verbose:
       print('processing %s %s' % (self.atoms[i_seq].quote(), self.atoms[j_seq].quote()))
     if self[i_seq]>0 and self[j_seq]>0:
@@ -544,7 +542,7 @@ class electron_distribution(dict):
         if item: rc-=self[key]
     return rc
 
-  def process_dangling_heavy_atoms(self, verbose=1):
+  def process_dangling_heavy_atoms(self, verbose=False):
     for key, electrons in self.items():
       bonds = self.get_bonds_containing_i_seq(key)
       if len(bonds)==1:
@@ -552,7 +550,7 @@ class electron_distribution(dict):
         if self._can_denote_electron_to_covalent_bond(i_seq,
                                                       j_seq,
                                                       dangling=True,
-                                                      verbose=1):
+                                                      verbose=verbose):
           self._add_electron_to_bond((i_seq, j_seq))
           if verbose: print('dangling: %s-%s\n' % (self.atoms[i_seq].quote(),
                                                    self.atoms[j_seq].quote(),
@@ -565,24 +563,15 @@ class electron_distribution(dict):
         yield j_seq, i_seq
     if self.get_cycle_charge(cycle)!=-1: return
     for i_seq, j_seq in _generate_ij(cycle):
-      print('...',i_seq, self[i_seq],)
       if self[i_seq]==1:
         bonds = self.get_bonds_containing_i_seq(i_seq)
-        print(i_seq, bonds)
         for b_i_seq, b_j_seq in bonds:
           rc = self._can_denote_electron_to_covalent_bond(b_i_seq, b_j_seq)
-          print(b_i_seq,b_j_seq,rc)
           if rc:
-            print('>>',self.get_cycle_charge_count(cycle))
             self._add_electron_to_bond((i_seq, j_seq))
-            print(self)
-          print('""""',self.get_cycle_charge_count(cycle))
-          print(self.get_cycle_charge(cycle))
           if self.get_cycle_charge(cycle)==1:
-            print('b1')
             break
       if self.get_cycle_charge(cycle)==1:
-        print('b2')
         break
 
   def form_bonds_using_networkx(self, verbose=False):
@@ -627,15 +616,10 @@ class electron_distribution(dict):
           if verbose: print('double: %s-%s\n' % (self.atoms[i_seq].quote(),
                                                  self.atoms[j_seq].quote(),
                                                 ))
-        # print('    Double : %0.1fs' % (time.time()-t1))
       # rings
       cycle=[]
-      print(cycle_bases)
       for cb in cycle_bases:
-        print(i_seq,cb)
         if i_seq in cb:
-          print(dir(g))
-          print(g.edges)
           for e in g.edges:
             if e[0]in cb and e[1] in cb:
               cycle.append(e)
@@ -645,7 +629,6 @@ class electron_distribution(dict):
       # except Exception:
       #   pass
       if not cycle: continue
-      print(cycle)
       tmp = []
       for bond in list(cycle): tmp.append(bond[0])
       tmp.sort()
@@ -653,11 +636,6 @@ class electron_distribution(dict):
       done_cycles.append(tmp)
       tries=10
       cycle_charge_count=self.get_cycle_charge_count(cycle)
-      print('CYCLE',cycle, len(cycle), cycle_charge_count)
-      outl = 'CYCLE %s' % self.atoms[i_seq].quote()
-      for c in cycle:
-        outl += ' %s' % self.atoms[c[0]].name
-      print(outl)
       subtract=[]
       while cycle_charge_count and tries:
         tries-=1
@@ -687,10 +665,8 @@ class electron_distribution(dict):
     # hyper and triple
     #
     t0=time.time()
-    print('simple',self.simple)
     for i_seqs in self.generate_bond_i_seqs():
     # for bp in self.simple:
-      print(i_seqs, i_seqs not in self)
       if i_seqs not in self: continue
       if verbose: print('hyper',self)
       i_seq, j_seq = i_seqs
@@ -765,17 +741,6 @@ class electron_distribution(dict):
       self[(i_seq, j_seq)] = 1
       self[i_seq]-=1
       self[j_seq]-=1
-    # undo a hyper if it was not productive
-    # if hypers:
-    #   assert 0
-    #   for i_seqs in hypers:
-    #     if verbose: print('reverse hyper',self)
-    #     i_seq, j_seq = i_seqs
-    #     if self[i_seqs]>1:
-    #       if self[i_seq]<0 or self[j_seq]<0:
-    #         self[(i_seq, j_seq)] -= 1
-    #         self[i_seq]+=1
-    #         self[j_seq]+=1
 
   def get_possible_covalent_bonds(self):
     def distance2(xyz1, xyz2):
@@ -1016,13 +981,6 @@ Inputs:
                       total_charge = self.total_charge,
                       )
 
-    # t0=time.time()
-    # if verbose: print(atom_valences)
-    # total_charge = atom_valences.get_total_charge()
-    # rc = atom_valences.validate_atomic_formal_charges()
-    # if return_formal_charges: return atom_valences
-    # return total_charge
-
 def run(pdb_filename=None,
         raw_records=None,
         return_formal_charges=False,
@@ -1061,8 +1019,6 @@ def run(pdb_filename=None,
   )
   if verbose: print(atom_valences)
   total_charge = atom_valences.get_total_charge()
-  #print 'total_charge',total_charge
-  #print 'time %0.1f' % (time.time()-t0)
   rc = atom_valences.validate_atomic_formal_charges()
   if return_formal_charges: return atom_valences
   return total_charge

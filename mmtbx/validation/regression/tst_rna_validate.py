@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
-from iotbx import file_reader
+import iotbx.pdb
 from libtbx.easy_pickle import loads, dumps
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -27,9 +27,9 @@ def exercise_1():
   assert len(rv.suites.results) == 4, len(rv.suites.results)
   assert approx_equal(rv.suites.average_suiteness, 0.55, eps=0.01)
   pickle_unpickle(rv)
-  pdb_in = file_reader.any_file(regression_pdb)
+  pdb_in = iotbx.pdb.input(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(
-    pdb_hierarchy=pdb_in.file_object.hierarchy,
+    pdb_hierarchy=pdb_in.construct_hierarchy(),
     geometry_restraints_manager=None,
     params=None)
   pickle_unpickle(result)

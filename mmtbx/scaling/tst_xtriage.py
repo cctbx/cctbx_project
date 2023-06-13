@@ -4,6 +4,7 @@ from mmtbx.scaling import data_statistics as ds
 from mmtbx.scaling import xtriage
 from mmtbx.command_line import fmodel
 from iotbx import file_reader
+import iotbx.pdb
 from cctbx import crystal
 from cctbx import miller
 from cctbx import sgtbx
@@ -495,9 +496,9 @@ def exercise_2():
     test=os.path.isfile)
   f_calc = None
   if (pdb_file is not None):
-    pdb_in = file_reader.any_file(pdb_file).assert_file_type("pdb")
-    hierarchy = pdb_in.file_object.hierarchy
-    xrs = pdb_in.file_object.xray_structure_simple(
+    pdb_in = iotbx.pdb.input(pdb_file)
+    hierarchy = pdb_in.construct_hierarchy()
+    xrs = pdb_in.xray_structure_simple(
       crystal_symmetry=i_obs)
     f_calc = xrs.structure_factors(d_min=i_obs.d_min()).f_calc()
     f_calc = abs(f_calc).generate_bijvoet_mates()

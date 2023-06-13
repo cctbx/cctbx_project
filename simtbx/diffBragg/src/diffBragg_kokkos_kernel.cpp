@@ -182,8 +182,8 @@ void kokkos_sum_over_steps(
     KOKKOS_MAT3 anisoU_local;
     KOKKOS_MAT3 laue_mats[24];
     KOKKOS_MAT3 dG_dgam[3];
-    int num_laue_mats;
-    int dhh, dkk, dll;
+    int num_laue_mats = 0;
+    int dhh = 0, dkk = 0, dll = 0;
     KOKKOS_VEC3 Hmin, Hmax, dHH, Hrange;
 
     if (use_diffuse){

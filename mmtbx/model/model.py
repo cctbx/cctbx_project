@@ -2968,7 +2968,7 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     self._sync_xrs_labels()
 
-  def add_hydrogens(self, correct_special_position_tolerance,
+  def add_hydrogens(self, correct_special_position_tolerance=1.0,
         element = "H", neutron = False, occupancy=0.01):
     result = []
     xs = self.get_xray_structure()
@@ -3076,7 +3076,8 @@ class manager(object):
         sites_individual = True,
         s_occupancies    = neutron)
     self.reprocess_pdb_hierarchy_inefficient()
-    self.idealize_h_minimization()
+    self.idealize_h_minimization(
+        correct_special_position_tolerance=correct_special_position_tolerance)
 
   def pairs_within(self, radius):
     cs = self.crystal_symmetry()
@@ -3101,7 +3102,7 @@ class manager(object):
     """
     raw_records = self.model_as_pdb()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
-    pip = self._pdb_interpretation_params
+    pip = self.get_current_pdb_interpretation_params()
     pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
     pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
     pip.pdb_interpretation.proceed_with_excessive_length_bonds=True

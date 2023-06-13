@@ -44,11 +44,11 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
     raise Usage("phenix.model_vs_sequence model.pdb sequence.fa")
   import mmtbx.validation.sequence
   from iotbx.file_reader import any_file
-  pdb_in = any_file(params.input.pdb_file, force_type="pdb")
-  pdb_in.check_file_type("pdb")
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.inpu(params.input.pdb_file)
   seq_in = any_file(params.input.seq_file, force_type="seq")
   seq_in.check_file_type("seq")
-  pdb_hierarchy = pdb_in.file_object.hierarchy
+  pdb_hierarchy = pdb_in.construct_hierarchy()
   sequences = seq_in.file_object
   if (len(sequences) == 0):
     raise Sorry("There don't appear to be any valid sequences in %s!" %

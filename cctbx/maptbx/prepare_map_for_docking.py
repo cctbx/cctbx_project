@@ -1704,14 +1704,14 @@ def assess_cryoem_errors(
     study_params = False      # flag for calling studyparams procedure
   else:
     study_params = True
-  output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
+  level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
   refine_cryoem_signal = RefineCryoemSignal(
     sumfsqr_lm = sumfsqr_local_mean, f1f2cos_lm = f1f2cos_local_mean,
     deltafsqr_lm = deltafsqr_local_mean, r_star = r_star, ssqr_bins = ssqr_bins,
     target_spectrum = target_spectrum, start_x = start_params)
-  minimizer = Minimizer(output_level=output_level)
+  minimizer = Minimizer(output_level=level)
 
   # Run minimizer
   minimizer.run(refine_cryoem_signal, protocol, ncyc, minimizer_type, study_params)

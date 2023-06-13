@@ -116,9 +116,9 @@ END
   mtz_data.add_miller_array(flags,
     column_root_label="FreeR_flag")
   mtz_data.mtz_object().write("tst_start_model.mtz")
-  pdb_in = file_reader.any_file("tst_start_model_base.pdb")
-  hierarchy_in = pdb_in.file_object.hierarchy
-  xrs_in = pdb_in.file_object.xray_structure_simple()
+  pdb_in = iotbx.pdb.input("tst_start_model_base.pdb")
+  hierarchy_in = pdb_in.construct_hierarchy()
+  xrs_in = pdb_in.xray_structure_simple()
   selection = hierarchy_in.atom_selection_cache().selection
   # Model 1: very few changes, but shifted by (1,0,0.5)
   symm2 = xrs_in.crystal_symmetry().customized_copy(

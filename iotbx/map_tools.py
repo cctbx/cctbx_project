@@ -333,11 +333,8 @@ class server(object):
   def get_pdb_file(self, file_name):
     pdb_in, mtime = self._pdb_cache.get(file_name, (None, 0))
     if (pdb_in is None) or (os.path.getmtime(file_name) > mtime):
-      from iotbx import file_reader
-      f = file_reader.any_file(file_name, force_type="pdb",
-        raise_sorry_if_errors=True)
-      f.assert_file_type("pdb")
-      pdb_in = f.file_object
+      import iotbx.pdb
+      pdb_in = iotbx.pdb.input(file_name)
       self._pdb_cache[file_name] = (pdb_in, os.path.getmtime(file_name))
     return pdb_in
 
@@ -353,7 +350,7 @@ class server(object):
     sites_cart = None
     if (pdb_file is not None):
       pdb_in = self.get_pdb_file(pdb_file)
-      sites_cart = pdb_in.hierarchy.atoms().extract_xyz()
+      sites_cart = pdb_in.atoms().extract_xyz()
     if (output_file is None):
       if (simple_file_name):
         output_file = os.path.splitext(self.file_name)[0] + ".ccp4"

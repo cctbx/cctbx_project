@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 from iotbx.data_manager.map_coefficients import MapCoefficientsDataManager
 from iotbx.data_manager.real_map import RealMapDataManager
 from iotbx.map_model_manager import map_model_manager
+from libtbx import Auto
 from libtbx.utils import Sorry
 import mmtbx.utils
 from cctbx import crystal
@@ -97,7 +98,7 @@ class fmodel_mixins(object):
       self.set_model_type(filename, model_type)
 
     # miller_array
-    array_type = checked_type
+    array_type = [checked_type]
     self.set_default_miller_array_type(array_type)
     for filename in self.get_miller_array_names():
       for label in self.get_miller_array_labels(filename):
@@ -180,7 +181,7 @@ class fmodel_mixins(object):
     # Gather models of appropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
-      models.append(self.get_model(filename))
+      models.append(self.get_model(filename, model_type=array_type))
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
     if(len(models) > 1):
@@ -189,17 +190,19 @@ class fmodel_mixins(object):
     # Get reflection file server
     rfs = self.get_reflection_file_server(
       array_type       = array_type,
-      crystal_symmetry = crystal_symmetry)
+      crystal_symmetry = crystal_symmetry,
+      ignore_intensities_if_amplitudes_present = True)
     # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
       params                 = crystal_symmetry_phil,
       model                  = model,
       reflection_file_server = rfs)
     #
-    if(  array_type=="x_ray" or array_type=="electron"): # XXX Really?
-      parameters = self.get_fmodel_params().xray_data
-    elif(array_type=="neutron"):
-      parameters = self.get_fmodel_params().neutron_data
+    fmodel_params = self.get_fmodel_params()
+    if array_type == 'neutron':
+      parameters = fmodel_params.neutron_data
+    else:
+      parameters = fmodel_params.xray_data
     #
     # XXX
     # XXX Temporary hack/work-around (REMOVE later) start
@@ -223,12 +226,11 @@ class fmodel_mixins(object):
     #
     # Set DataManager parameters extracted from inputs
     #
-    fmodel_params = self.get_fmodel_params()
     # Extract and set twin_law
-    if(parameters.twin_law is None):
-      fmodel_params.xray_data.twin_law = model.twin_law_from_model_input()
+    if parameters.twin_law is None or parameters.twin_law is Auto:
+      parameters.twin_law = model.twin_law_from_model_input()
     # Set test flag value
-    fmodel_params.xray_data.r_free_flags.test_flag_value = data.test_flag_value
+    parameters.r_free_flags.test_flag_value = data.test_flag_value
     # Load all back
     self.set_fmodel_params(fmodel_params)
     #
@@ -241,8 +243,7 @@ class fmodel_mixins(object):
       scattering_table = scattering_table,
       d_min            = data.f_obs.d_min())
     # Create and return fmodel
-    twin_law = \
-      self.export_phil_scope().extract().data_manager.fmodel.xray_data.twin_law
+    twin_law = fmodel_params.xray_data.twin_law
     fmodel = mmtbx.utils.fmodel_manager2(
       f_obs               = data.f_obs,
       r_free_flags        = data.r_free_flags,

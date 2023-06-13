@@ -898,8 +898,8 @@ class sequence_window(object):
       self.control_panel.bind_events(self, self.seq_panel)
 
   def load_pdb_file(self, file_name, ignore_unk=False):
-    from iotbx import file_reader
-    pdb_in = file_reader.any_file(file_name, force_type="pdb").file_object
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(file_name)
     pdb_hierarchy = pdb_in.construct_hierarchy()
     pdb_hierarchy.atoms().reset_i_seq()
     self.set_pdb_data(pdb_hierarchy, ignore_unk=ignore_unk)

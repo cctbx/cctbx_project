@@ -3,7 +3,6 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel
 import mmtbx.model
-from iotbx import file_reader
 import iotbx.pdb
 import iotbx.phil
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -1225,9 +1224,9 @@ TER
       "output.file_name=%s.mtz" % prefix,
     ]
     fmodel.run(args=args, log=null_out())
-  pdb_file = file_reader.any_file(pdb_in)
-  hierarchy = pdb_file.file_object.hierarchy
-  xrs = pdb_file.file_object.xray_structure_simple()
+  pdb_file = iotbx.pdb.input(pdb_in)
+  hierarchy = pdb_file.construct_hierarchy()
+  xrs = pdb_file.xray_structure_simple()
   for atom in hierarchy.atoms():
     atom.b = 5
     if (atom.occ < 1.0):

@@ -81,7 +81,6 @@ def get_prefix(params):
     prefix = params.output.prefix
   else:
     prefix = 'qmr'
-    # print('changing prefix to %s' % prefix)
   return prefix
 
 def write_pdb_file(model, filename, log=None):
@@ -384,8 +383,10 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   qmr = quantum_interface.populate_qmr_defaults(qmr)
 
   electron_model = None
+  solvent_model = qmr.package.solvent_model
   if program_goal in ['energy', 'strain']:
     electron_model = ligand_model
+    solvent_model = 'EPS=78.4 PRECISE NSPA=92'
   elif program_goal in ['opt']:
     electron_model = buffer_model
   specific_atom_charges = get_specific_atom_charges(qmr)
@@ -401,7 +402,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   qmm = qmm(electron_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
-            qmr.package.solvent_model,
+            solvent_model,
             qmr.package.charge,
             qmr.package.multiplicity,
             qmr.package.nproc,
@@ -473,7 +474,10 @@ def running_this_macro_cycle(qmr,
                              ):
   if qmr.run_in_macro_cycles=='all':
     return True
-  elif qmr.run_in_macro_cycles=='first_only' and macro_cycle==1:
+  elif qmr.run_in_macro_cycles in ['first_only', 'first_and_last'] and macro_cycle==1:
+    return True
+  elif ( qmr.run_in_macro_cycles in ['first_and_last'] and
+        macro_cycle==number_of_macro_cycles):
     return True
   elif qmr.run_in_macro_cycles=='test' and macro_cycle in [0, None]:
     return True
@@ -581,18 +585,20 @@ def update_bond_restraints_simple(model):
     bond.distance_ideal=distance_model
 
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
-  program_goal='opt' # can be 'opt', 'energy', 'strain'
-  if not energy_only: return program_goal
+  program_goal=[] # can be 'opt', 'energy', 'strain'
+  if not energy_only:
+    program_goal=['opt']
+    return program_goal
   if macro_cycle==1:
     if qmr.calculate_starting_energy:
-      program_goal='energy'
+      program_goal.append('energy')
     if qmr.calculate_starting_strain:
-      program_goal='strain'
+      program_goal.append('strain')
   else: # only called with final energy on final macro cycle
     if qmr.calculate_final_energy:
-      program_goal='energy'
+      program_goal.append('energy')
     if qmr.calculate_final_strain:
-      program_goal='strain'
+      program_goal.append('strain')
   return program_goal
 
 def setup_qm_jobs(model,
@@ -623,21 +629,22 @@ def setup_qm_jobs(model,
     #
     # get appropriate QM manager
     #
-    program_goal = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
-    qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
-    preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
-    if not energy_only: # only write PDB files for restraints update
-      if qmr.write_pdb_core:
-        write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
-      if qmr.write_pdb_buffer:
-        write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
-    if not energy_only and qmr.do_not_even_calculate_qm_restraints:
-      print('    Skipping QM calculation : %s' % qmr.selection)
-      continue
-    qmm.preamble='%s_%s' % (prefix, preamble)
-    for attr in ['exclude_torsions_from_optimisation']:
-      setattr(qmm, attr, getattr(qmr, attr))
-    objects.append([ligand_model, buffer_model, qmm, qmr])
+    program_goals = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
+    for program_goal in   program_goals:
+      qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
+      preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
+      if not energy_only: # only write PDB files for restraints update
+        if qmr.write_pdb_core:
+          write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
+        if qmr.write_pdb_buffer:
+          write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
+      if not energy_only and qmr.do_not_even_calculate_qm_restraints:
+        print('    Skipping QM calculation : %s' % qmr.selection)
+        continue
+      qmm.preamble='%s_%s' % (prefix, preamble)
+      for attr in ['exclude_torsions_from_optimisation']:
+        setattr(qmm, attr, getattr(qmr, attr))
+      objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   return objects
 
@@ -657,8 +664,21 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         check_file_read_safe=not(qmr.package.ignore_input_differences),
         log=log,
         )
-      energy, units = qmm.read_energy()
-      energies.append(energy)
+      units=''
+      if qmm.program_goal in ['opt']:
+        energy, units = qmm.read_energy()
+      elif qmm.program_goal in ['energy', 'strain']:
+        energy=xyz
+        units=xyz_buffer
+        xyz=None
+        xyz_buffer=None
+      energies.append([qmm.program_goal,
+                      energy,
+                      ligand_model.get_number_of_atoms(),
+                      buffer_model.get_number_of_atoms()
+                      ])
+      xyzs.append(xyz)
+      xyzs_buffer.append(xyz_buffer)
       print('  Time for calculation of "%s" using %s %s %s: %s' % (
         qmr.selection,
         qmr.package.method,
@@ -666,8 +686,6 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         qmr.package.solvent_model,
         qmm.get_timings().split(':')[-1],
         ), file=log)
-      xyzs.append(xyz)
-      xyzs_buffer.append(xyz_buffer)
       # if qmm.program_goal in ['energy', 'strain']:
         # print('  Energy = %f' % xyz, file=log)
   else:
@@ -713,9 +731,17 @@ def run_energies(model,
   #
   # run jobs
   #
-  xyzs, xyzs_buffer, energies, units = run_jobs(objects, macro_cycle=macro_cycle, nproc=nproc, log=log)
+  xyzs, xyzs_buffer, energies, units = run_jobs(objects,
+                                                macro_cycle=macro_cycle,
+                                                nproc=nproc,
+                                                log=log)
   print('  Total time for QM energies: %0.1fs' % (time.time()-t0), file=log)
   print('%s%s' % ('<'*40, '>'*40), file=log)
+  return group_args(energies=energies,
+                    units=units,
+                    # rmsds=rmsds,
+                    # times=times,
+                    )
 
 def update_restraints(model,
                       params,
