@@ -3,14 +3,16 @@
 
 #include <simtbx/diffBragg/src/util.h>
 
-#define CUDA_COMPILE (defined(DIFFBRAGG_HAVE_CUDA) && defined(__CUDACC__))
+#if defined(DIFFBRAGG_HAVE_CUDA) && defined(__CUDACC__)
+#define CUDA_COMPILE
+#endif
 
 #define REAL double
 
-#if CUDA_COMPILE
+#ifdef CUDA_COMPILE
 __device__ __host__
 #endif
-#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
+#if defined(CUDA_COMPILE) || not defined(DIFFBRAGG_HAVE_CUDA)
 int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
   if ( laue_group_num < 1 or laue_group_num > 14) {
     return 0;
@@ -555,10 +557,10 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
 int gen_laue_mats(int laue_group_num, MAT3 *lmats);
 #endif
 
-#if CUDA_COMPILE
+#ifdef CUDA_COMPILE
 __device__ __host__
 #endif
-#if CUDA_COMPILE || not defined(DIFFBRAGG_HAVE_CUDA)
+#if defined(CUDA_COMPILE) || not defined(DIFFBRAGG_HAVE_CUDA)
 void calc_diffuse_at_hkl(VEC3 H_vec, VEC3 H0, VEC3 dHH, VEC3 Hmin, VEC3 Hmax, VEC3 Hrange, MAT3 Ainv, const REAL *FhklLinear, int num_laue_mats, MAT3 *laue_mats, MAT3 anisoG_local, MAT3 anisoU_local, MAT3 *dG_dgam, bool refine_diffuse, REAL *I0, REAL *step_diffuse_param){
   REAL four_mpi_sq = 4.*M_PI*M_PI;
   // loop over laue matrices
