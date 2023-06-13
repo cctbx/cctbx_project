@@ -87,7 +87,7 @@ class StageTwoRefiner(BaseRefiner):
         self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
-        self.refine_Fcell = False  # whether to refine Fhkl for each shoebox ROI
+        self.refine_Fcell = self.params.refiner.refine_Fcell  # whether to refine Fhkl for each shoebox ROI
         self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
         self.verbose = True  # whether to print during iterations
         self.iterations = 0  # iteration counter , used internally
@@ -376,11 +376,21 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("Done ")
 
             LOGGER.info("local refiner symbol=%s ; nanoBragg crystal symbol: %s" % (self.symbol, self.S.crystal.symbol))
-            ma = self.S.crystal.miller_array_high_symmetry.map_to_asu()
+            self.fcell_init_from_i_fcell = []
+            ma = self.S.crystal.miller_array
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
-            LOGGER.info("make fcell_init")
-            self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
+            Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+            # TODO: Vectorize
+            for i_fcell in range(self.n_global_fcell):
+                asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
+                P1_hkl = tuple(np.dot(Omatrix,asu_hkl).astype(int))
+                fcell_val = ma_map[P1_hkl]
+                self.fcell_init_from_i_fcell.append(fcell_val)
+            self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
+
+            # LOGGER.info("make fcell_init")
+            # self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
             self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 
@@ -626,7 +636,7 @@ class StageTwoRefiner(BaseRefiner):
         t = time.time()
         out = self._compute_functional_and_gradients()
         t = time.time()-t
-        LOGGER.info("TOok %.4f sec to compute functional and grad" % t)
+        LOGGER.info("Took %.4f sec to compute functional and grad" % t)
         return out
 
     def _compute_functional_and_gradients(self):
