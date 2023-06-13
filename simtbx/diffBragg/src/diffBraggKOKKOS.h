@@ -122,7 +122,7 @@ class diffBraggKOKKOS {
     view_6d_t<KOKKOS_VEC3> m_V_buffer;
     view_6d_t<KOKKOS_VEC3> m_H_vec_buffer;
     view_6d_t<CUDAREAL> m_Fcell_buffer;
-    view_6d_t<CUDAREAL> m_scaled_I0_buffer;
+    view_6d_t<CUDAREAL> m_I_noFcell_buffer;
     view_6d_t<CUDAREAL> m_c_deriv_buffer;
     view_6d_t<CUDAREAL> m_d_deriv_buffer;
     view_6d_t<CUDAREAL> m_Iincrement_buffer;

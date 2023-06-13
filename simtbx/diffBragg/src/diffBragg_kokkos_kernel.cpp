@@ -155,7 +155,7 @@ void kokkos_sum_over_steps(
     view_6d_t<KOKKOS_VEC3> V_buffer,
     view_6d_t<KOKKOS_VEC3> H_vec_buffer,
     view_6d_t<CUDAREAL> Fcell_buffer,
-    view_6d_t<CUDAREAL> scaled_I0_buffer,
+    view_6d_t<CUDAREAL> I_noFcell_buffer,
     view_6d_t<CUDAREAL> c_deriv_buffer,
     view_6d_t<CUDAREAL> d_deriv_buffer,
     view_6d_t<CUDAREAL> Iincrement_buffer,
@@ -400,6 +400,8 @@ void kokkos_sum_over_steps(
                                     I0 = (NABC_det_sq) *
                                             ::Kokkos::exp(-2 * exparg);
 
+                            I_noFcell_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic) = texture_scale * I0;
+
                             // are we doing diffuse scattering
                             CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                             if (use_diffuse) {
@@ -545,7 +547,7 @@ void kokkos_sum_over_steps(
                             _I += Iincrement;
                             if (save_wavelenimage)
                                 Ilambda += Iincrement * lambda_ang;
-
+                                
                             if (printout) {
                                 if (_subS == 0 && _subF == 0 && _thick_tic == 0 &&
                                     _source == 0 && _mos_tic == 0) {
@@ -692,7 +694,7 @@ void kokkos_sum_over_steps(
                                 }
                             }
 
-                            const CUDAREAL I_noFcell = scaled_I0_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
+                            const CUDAREAL I_noFcell = I_noFcell_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
                             const CUDAREAL c_deriv_Fcell = c_deriv_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
                             const CUDAREAL d_deriv_Fcell = d_deriv_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
 

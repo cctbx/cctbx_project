@@ -151,7 +151,7 @@ void kokkos_sum_over_steps(
     view_6d_t<KOKKOS_VEC3> V_buffer,
     view_6d_t<KOKKOS_VEC3> H_vec_buffer,
     view_6d_t<CUDAREAL> Fcell_buffer,
-    view_6d_t<CUDAREAL> scaled_I0_buffer,
+    view_6d_t<CUDAREAL> I_noFcell_buffer,
     view_6d_t<CUDAREAL> c_deriv_buffer,
     view_6d_t<CUDAREAL> d_deriv_buffer,
     view_6d_t<CUDAREAL> Iincrement_buffer,
