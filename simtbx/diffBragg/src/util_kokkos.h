@@ -217,7 +217,8 @@ struct kokkos_beam {
     int number_of_sources;                     // number of beams
 
     kokkos_beam(beam T)
-        : Fhkl_channels(T.Fhkl_channels),
+        : polarization_axis(to_vec3(T.polarization_axis)),
+          Fhkl_channels(T.Fhkl_channels),
           fluence(T.fluence),
           kahn_factor(T.kahn_factor),
           source_X(T.source_X),
@@ -227,8 +228,7 @@ struct kokkos_beam {
           source_I(T.source_I),
           lambda0(T.lambda0),
           lambda1(T.lambda1),
-          number_of_sources(T.number_of_sources),
-          polarization_axis(to_vec3(T.polarization_axis)){ };
+          number_of_sources(T.number_of_sources){ };
 };
 
 struct kokkos_detector {
