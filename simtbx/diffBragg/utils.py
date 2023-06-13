@@ -704,6 +704,7 @@ def image_data_from_expt(expt, as_double=True):
         raise ValueError("imageset should have only 1 shot. This expt has imageset with %d shots" % len(iset))
     try:
         flex_data = iset.get_raw_data(0)
+
     except Exception as err:
         assert str(type(err)) == "<class 'Boost.Python.ArgumentError'>", "something weird going on with imageset data"
         flex_data = iset.get_raw_data()

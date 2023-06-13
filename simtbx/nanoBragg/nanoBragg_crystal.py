@@ -61,6 +61,7 @@ class NBcrystal(object):
   @property
   def miller_array_high_symmetry(self):
     if self.symbol is not None and self.miller_array is not None:
+      breakpoint()
       return self.miller_array.customized_copy(space_group_info=self.space_group_info)
     else:
       raise AttributeError("Set the symbol and miller_array properties first!")
