@@ -111,7 +111,7 @@ namespace Kokkos {
 
     ::Kokkos::resize(m_crystal_orientation, SIM.phisteps, SIM.mosaic_domains, 3);
     calc_CrystalOrientations(
-      SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector, m_a0, m_b0, m_c0, SIM.mosaic_spread, 
+      SIM.phi0, SIM.phistep, SIM.phisteps, m_spindle_vector, m_a0, m_b0, m_c0, SIM.mosaic_spread,
       SIM.mosaic_domains, m_mosaic_umats, m_crystal_orientation);
 
     // magic happens here(?): take pointer from singleton, temporarily use it for add Bragg iteration:

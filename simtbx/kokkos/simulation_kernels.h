@@ -16,26 +16,26 @@ using simtbx::nanoBragg::GAUSS;
 using simtbx::nanoBragg::GAUSS_ARGCHK;
 using simtbx::nanoBragg::TOPHAT;
 
-void calc_CrystalOrientations(CUDAREAL phi0, 
-                              CUDAREAL phistep, 
-                              int phisteps, 
-                              const vector_cudareal_t spindle_vector, 
-                              const vector_cudareal_t a0, 
-                              const vector_cudareal_t b0, 
-                              const vector_cudareal_t c0, 
-                              CUDAREAL mosaic_spread, 
-                              int mosaic_domains, 
+void calc_CrystalOrientations(CUDAREAL phi0,
+                              CUDAREAL phistep,
+                              int phisteps,
+                              const vector_cudareal_t spindle_vector,
+                              const vector_cudareal_t a0,
+                              const vector_cudareal_t b0,
+                              const vector_cudareal_t c0,
+                              CUDAREAL mosaic_spread,
+                              int mosaic_domains,
                               const vector_cudareal_t mosaic_umats,
                               crystal_orientation_t crystal_orientation) {
 
-        Kokkos::parallel_for("calc_CrystalOrientation", phisteps, KOKKOS_LAMBDA(const int& phi_tic) { 
+        Kokkos::parallel_for("calc_CrystalOrientation", phisteps, KOKKOS_LAMBDA(const int& phi_tic) {
                 // sweep over phi angles
                 CUDAREAL phi = phistep * phi_tic + phi0;
 
                 vec3 spindle_vector_tmp {spindle_vector(1), spindle_vector(2), spindle_vector(3)};
                 vec3 a0_tmp {a0(1), a0(2), a0(3)};
                 vec3 b0_tmp {b0(1), b0(2), b0(3)};
-                vec3 c0_tmp {c0(1), c0(2), c0(3)};                
+                vec3 c0_tmp {c0(1), c0(2), c0(3)};
 
                 // rotate about spindle if necessary
                 vec3 ap = a0_tmp.rotate_around_axis(spindle_vector_tmp, phi);
@@ -79,7 +79,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
     CUDAREAL Xbeam, CUDAREAL Ybeam, CUDAREAL dmin, int phisteps, int sources,
     const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
     const vector_cudareal_t source_Z,
-    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda, 
+    const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
     shapetype xtal_shape, int mosaic_domains, crystal_orientation_t crystal_orientation,
     CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell,
     CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr,
@@ -320,7 +320,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                                 }
 
                                                                 // now we have the structure factor for this pixel
-                                                                
+
                                                                 // convert amplitudes into intensity (photons per steradian)
                                                                 I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
                                                                 omega_sub_reduction += omega_pixel;

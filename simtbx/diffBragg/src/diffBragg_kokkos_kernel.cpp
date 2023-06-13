@@ -30,7 +30,7 @@ void kokkos_sum_over_steps(
     vector_cudareal_t d2_panel_orig_images,
     vector_cudareal_t d_fp_fdp_images,
     vector_manager_t manager_dI,
-    vector_manager_t manager_dI2,    
+    vector_manager_t manager_dI2,
     const int Nsteps,
     int printout_fpixel,
     int printout_spixel,
@@ -286,7 +286,7 @@ void kokkos_sum_over_steps(
 
                     CUDAREAL pixposX = _Fdet * fx + _Sdet * sx + _Odet * ox + px;
                     CUDAREAL pixposY = _Fdet * fy + _Sdet * sy + _Odet * oy + py;
-                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;                    
+                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;
 
                     const KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
                     const CUDAREAL _airpath = _pixel_pos.length();
@@ -547,7 +547,7 @@ void kokkos_sum_over_steps(
                             _I += Iincrement;
                             if (save_wavelenimage)
                                 Ilambda += Iincrement * lambda_ang;
-                                
+
                             if (printout) {
                                 if (_subS == 0 && _subF == 0 && _thick_tic == 0 &&
                                     _source == 0 && _mos_tic == 0) {
@@ -609,21 +609,21 @@ void kokkos_sum_over_steps(
                                             "UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
                                             UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
                                             UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-                                        
+
                                         KOKKOS_VEC3 AA = (UMATS_RXYZ(_mos_tic)*eig_U*dB_mats(0)*eig_Otranspose).transpose()*q_vec;
                                         printf(
                                             "delta_H_prime :\n%f  %f  %f\n", AA[0], AA[1],
                                             AA[2]);
-                                        
+
                                         printf("Iincrement: %f\n", Iincrement);
                                         printf(
                                             "hkl= %f %f %f  hkl0= %d %d %d\n", _h, _k, _l, _h0,
                                             _k0, _l0);
-                                        
+
                                         printf(
                                             " F_cell=%g  F_cell2=%g I_latt=%g   I = %g\n",
                                             _F_cell, _F_cell2, I0, _I);
-                                        
+
                                         printf("I/steps %15.10g\n", _I / Nsteps);
                                         // printf("Ilatt diffuse %15.10g\n", I_latt_diffuse);
                                         printf("omega   %15.10g\n", _omega_pixel);
@@ -658,7 +658,7 @@ void kokkos_sum_over_steps(
 
         const int _pid = panels_fasts_slows(pixIdx * 3);
         const int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
-        const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);        
+        const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
         const int pid_x = _pid * 3;
         const int pid_y = _pid * 3 + 1;
@@ -668,7 +668,7 @@ void kokkos_sum_over_steps(
         const CUDAREAL oy = odet_vectors(pid_y);
         const CUDAREAL oz = odet_vectors(pid_z);
 
-        const KOKKOS_VEC3 _o_vec(ox, oy, oz);        
+        const KOKKOS_VEC3 _o_vec(ox, oy, oz);
 
         for (int _subS = 0; _subS < oversample; ++_subS) {
             CUDAREAL _Sdet = subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
@@ -969,7 +969,7 @@ void kokkos_sum_over_steps(
                                     nom_h = nominal_hkl(pixIdx * 3);
                                     nom_k = nominal_hkl(pixIdx * 3 + 1);
                                     nom_l = nominal_hkl(pixIdx * 3 + 2);
-                                }                                    
+                                }
                                 if (use_nominal_hkl) {
                                     if (_h0 == nom_h && _k0 == nom_k && _l0 == nom_l) {
                                         dI.fcell += value;
@@ -1044,7 +1044,7 @@ void kokkos_sum_over_steps(
 
         int _pid = panels_fasts_slows(pixIdx * 3);
         int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
-        int _spixel = panels_fasts_slows(pixIdx * 3 + 2);            
+        int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
         CUDAREAL _Fdet_ave = pixel_size * _fpixel + pixel_size / 2.0;
         CUDAREAL _Sdet_ave = pixel_size * _spixel + pixel_size / 2.0;
@@ -1119,7 +1119,7 @@ void kokkos_sum_over_steps(
         floatimage(pixIdx) *= _scale_term;
 
         auto& dI = manager_dI(pixIdx);
-        auto& dI2 = manager_dI2(pixIdx);        
+        auto& dI2 = manager_dI2(pixIdx);
 
         // udpate the rotation derivative images*
         for (int i_rot = 0; i_rot < 3; i_rot++) {

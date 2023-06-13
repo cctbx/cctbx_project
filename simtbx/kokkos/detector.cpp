@@ -25,7 +25,7 @@ namespace simtbx { namespace Kokkos {
 
     for (std::size_t panel_id = 0; panel_id < arg_detector.size(); panel_id++){
       // helper code arising from the nanoBragg constructor, with user_beam=True
-      
+
       // DETECTOR properties
       // typically: 1 0 0
       vec3 fdet_vector = get_kokkos_vec3(arg_detector[panel_id].get_fast_axis());
