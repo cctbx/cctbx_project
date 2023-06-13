@@ -21,6 +21,10 @@ using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
 template <typename T>
 using view_1d_t = Kokkos::View<T*, MemSpace>;
+using view_4d_t = Kokkos::View<T****, MemSpace>;
+using view_5d_t = Kokkos::View<T*****, MemSpace>;
+using view_6d_t = Kokkos::View<T******, MemSpace>;
+using view_6d6_t = Kokkos::View<T******[6], MemSpace>;
 
 using vector_bool_t = view_1d_t<bool>;
 using vector_double_t = view_1d_t<double>;

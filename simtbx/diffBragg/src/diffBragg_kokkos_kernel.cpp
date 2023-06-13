@@ -147,6 +147,13 @@ void kokkos_sum_over_steps(
     bool Fhkl_channels_empty,
     bool Fhkl_have_scale_factors,
     int Num_ASU,
+    view_4d_t<CUDAREAL> omega_pixel_buffer,
+    view_4d_t<CUDAREAL> airpath_buffer,
+    view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
+    view_5d_t<CUDAREAL> texture_scale_buffer,
+    view_6d_t<CUDAREAL> Fcell_buffer,
+    view_6d_t<CUDAREAL> scaled_I0_buffer,
+    view_6d6_t<CUDAREAL> step_diffuse_buffer,
     const vector_cudareal_t data_residual,
     const vector_cudareal_t data_variance,
     const vector_int_t data_freq,
@@ -197,7 +204,7 @@ void kokkos_sum_over_steps(
     const CUDAREAL overall_scale = r_e_sqr * spot_scale * fluence / Nsteps;
 
     Kokkos::parallel_for(
-        "sum_over_steps", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
+        "sum_over_steps_simulation", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
         // __syncthreads();
 
         // for (int pixIdx=tid; pixIdx < Npix_to_model; pixIdx+= thread_stride){
@@ -273,11 +280,11 @@ void kokkos_sum_over_steps(
 
                     CUDAREAL pixposX = _Fdet * fx + _Sdet * sx + _Odet * ox + px;
                     CUDAREAL pixposY = _Fdet * fy + _Sdet * sy + _Odet * oy + py;
-                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;
-                    KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
+                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;                    
 
-                    CUDAREAL _airpath = _pixel_pos.length();
-                    KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
+                    const KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
+                    const CUDAREAL _airpath = _pixel_pos.length();
+                    const KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                     CUDAREAL _omega_pixel = pixel_size * pixel_size / _airpath / _airpath *
@@ -301,6 +308,10 @@ void kokkos_sum_over_steps(
                                                 detector_attnlen / _parallax);
                     }
                     CUDAREAL cap_frac_times_omega = _capture_fraction * _omega_pixel;
+
+                    pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic) = _pixel_pos;
+                    airpath_buffer(pixIdx, _subS, _subF, _thick_tic) = _airpath;
+                    omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic) = _omega_pixel;
 
                     for (int _source = 0; _source < sources; ++_source) {
                         KOKKOS_VEC3 _incident(
@@ -348,6 +359,8 @@ void kokkos_sum_over_steps(
                         CUDAREAL texture_scale = 1;
                         texture_scale *= cap_frac_times_omega;
                         texture_scale *= sI;
+
+                        texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = texture_scale;
 
                         for (int _mos_tic = 0; _mos_tic < mosaic_domains; ++_mos_tic) {
                             int amat_idx = _mos_tic;
@@ -476,6 +489,15 @@ void kokkos_sum_over_steps(
                                         Freal * d_deriv_Fcell_real + Fimag * d_deriv_Fcell_imag;
                                 }
                             }
+                            Fcell_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic) = Fcell;
+                            c_deriv_buffer
+                            d_deriv_buffer
+
+                            if (verbose > 3)
+                                printf(
+                                    "hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h, _k, _l,
+                                    _h0, _k0, _l0, _F_cell);
+
                             if (!oversample_omega && ! Fhkl_gradient_mode)
                                 _omega_pixel = 1;
 
@@ -513,24 +535,134 @@ void kokkos_sum_over_steps(
                             if (save_wavelenimage)
                                 Ilambda += Iincrement * lambda_ang;
 
+                            if (printout) {
+                                if (_subS == 0 && _subF == 0 && _thick_tic == 0 &&
+                                    _source == 0 && _mos_tic == 0) {
+                                    if ((_fpixel == printout_fpixel &&
+                                            _spixel == printout_spixel) ||
+                                        printout_fpixel < 0) {
+                                        printf(
+                                            "%4d %4d :  lambda = %g\n", _fpixel, _spixel,
+                                            _lambda);
+                                        printf(
+                                            "at %g %g %g\n", _pixel_pos[0], _pixel_pos[1],
+                                            _pixel_pos[2]);
+                                        printf(
+                                            "Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet,
+                                            _Odet);
+                                        printf(
+                                            "PIX0: %f %f %f\n", pix0_vectors(pid_x),
+                                            pix0_vectors(pid_y), pix0_vectors(pid_z));
+                                        printf(
+                                            "F: %f %f %f\n", fdet_vectors(pid_x),
+                                            fdet_vectors(pid_y), fdet_vectors(pid_z));
+                                        printf(
+                                            "S: %f %f %f\n", sdet_vectors(pid_x),
+                                            sdet_vectors(pid_y), sdet_vectors(pid_z));
+                                        printf(
+                                            "O: %f %f %f\n", odet_vectors(pid_x),
+                                            odet_vectors(pid_y), odet_vectors(pid_z));
+                                        printf(
+                                            "pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y,
+                                            pid_z);
+
+                                        printf(
+                                            "QVECTOR: %f %f %f\n", q_vec[0], q_vec[1],
+                                            q_vec[2]);
+                                        KOKKOS_MAT3 UU = UMATS_RXYZ(_mos_tic);
+                                        printf(
+                                            "UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+                                        UU = Bmat_realspace;
+                                        printf(
+                                            "Bmat_realspace :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+                                        UU = UBO;
+                                        printf(
+                                            "UBO :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+
+                                        UU = UBOt;
+                                        printf(
+                                            "UBOt :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+
+                                        UU = UmosRxRyRzU;
+                                        printf(
+                                            "UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+                                        KOKKOS_VEC3 AA = delta_H_prime;
+                                        printf(
+                                            "delta_H_prime :\n%f  %f  %f\n", AA[0], AA[1],
+                                            AA[2]);
+                                        printf("Iincrement: %f\n", Iincrement);
+                                        printf(
+                                            "hkl= %f %f %f  hkl0= %d %d %d\n", _h, _k, _l, _h0,
+                                            _k0, _l0);
+                                        printf(
+                                            " F_cell=%g  F_cell2=%g I_latt=%g   I = %g\n",
+                                            _F_cell, _F_cell2, I0, _I);
+                                        printf("I/steps %15.10g\n", _I / Nsteps);
+                                        // printf("Ilatt diffuse %15.10g\n", I_latt_diffuse);
+                                        printf("omega   %15.10g\n", _omega_pixel);
+                                        printf("default_F= %f\n", default_F);
+                                        printf(
+                                            "Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n",
+                                            _incident[0], _incident[1], _incident[2]);
+                                        if (complex_miller)
+                                            printf("COMPLEX MILLER!\n");
+                                        if (no_Nabc_scale)
+                                            printf("No Nabc scale!\n");
+                                    }
+                                }
+                            } // end of printout if
+
+                        } // end of mos_tic loop
+                    } // end of source loop
+                } // end of thick step loop
+            } // end of fpos loop
+        } // end of spos loop
+        floatimage(pixIdx) = _I;
+        if (save_wavelenimage)
+            wavelenimage(pixIdx) = Ilambda / _I;
+    });                    // end pixIdx loop
+
+
+    Kokkos::parallel_for(
+        "sum_over_steps_derivatives", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
+
+        for (int _subS = 0; _subS < oversample; ++_subS) {
+            for (int _subF = 0; _subF < oversample; ++_subF) {
+                for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
+
+                    const KOKKOS_VEC3 _pixel_pos = pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic);
+                    const CUDAREAL _airpath = airpath_buffer(pixIdx, _subS, _subF, _thick_tic);
+                    const CUDAREAL _omega_pixel = omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic);
+
+                    for (int _source = 0; _source < sources; ++_source) {
+                        const CUDAREAL texture_scale = texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
+                        for (int _mos_tic = 0; _mos_tic < mosaic_domains; ++_mos_tic) {
+                            const CUDAREAL _F_cell = Fcell_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
+
                             if (refine_flag & REFINE_DIFFUSE) {
                                 CUDAREAL step_scale = texture_scale * _F_cell * _F_cell;
                                 for (int i_diff = 0; i_diff < 6; i_diff++) {
                                     dI.diffuse[i_diff] +=
-                                        step_scale * step_diffuse_param[i_diff];
+                                        step_scale * step_diffuse_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic, i_diff);
                                 }
                             }
 
+                            const CUDAREAL I_noFcell = scaled_I0_buffer(pixIdx, _subS, _subF, _thick_tic, _source, _mos_tic);
+
                             if (refine_flag & REFINE_FP_FDP) {
-                                CUDAREAL I_noFcell = texture_scale * I0;
                                 dI.fp_fdp[0] += 2 * I_noFcell * (c_deriv_Fcell);
                                 dI.fp_fdp[1] += 2 * I_noFcell * (d_deriv_Fcell);
                             }
-
-                            if (verbose > 3)
-                                printf(
-                                    "hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", _h, _k, _l,
-                                    _h0, _k0, _l0, _F_cell);
 
                             KOKKOS_MAT3 UBOt;
                             if (refine_flag & (REFINE_UMAT1 | REFINE_UMAT2 | REFINE_UMAT3 | REFINE_ETA)) {
@@ -767,14 +899,13 @@ void kokkos_sum_over_steps(
                             if (refine_flag & REFINE_FCELL) {
                                 CUDAREAL value;
                                 if (refine_flag & REFINE_ICELL)
-                                    value = I0 * texture_scale;
+                                    value = I_noFcell;
                                 else
-                                    value = 2 * I0 * _F_cell *
-                                            texture_scale;  // Iincrement/_F_cell ;
+                                    value = 2 * I_noFcell * _F_cell;  // Iincrement/_F_cell ;
                                 CUDAREAL value2 = 0;
                                 if (compute_curvatures) {
                                     //    NOTE if _Fcell >0
-                                    value2 = 2 * I0 * texture_scale;
+                                    value2 = 2 * I_noFcell;
                                 }
                                 // if (fcell_idx >=0 && fcell_idx <=2){
                                 if (use_nominal_hkl) {
@@ -836,93 +967,6 @@ void kokkos_sum_over_steps(
                                 }
                             }
                             // end of lambda deriv
-                            if (printout) {
-                                if (_subS == 0 && _subF == 0 && _thick_tic == 0 &&
-                                    _source == 0 && _mos_tic == 0) {
-                                    if ((_fpixel == printout_fpixel &&
-                                            _spixel == printout_spixel) ||
-                                        printout_fpixel < 0) {
-                                        printf(
-                                            "%4d %4d :  lambda = %g\n", _fpixel, _spixel,
-                                            _lambda);
-                                        printf(
-                                            "at %g %g %g\n", _pixel_pos[0], _pixel_pos[1],
-                                            _pixel_pos[2]);
-                                        printf(
-                                            "Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet,
-                                            _Odet);
-                                        printf(
-                                            "PIX0: %f %f %f\n", pix0_vectors(pid_x),
-                                            pix0_vectors(pid_y), pix0_vectors(pid_z));
-                                        printf(
-                                            "F: %f %f %f\n", fdet_vectors(pid_x),
-                                            fdet_vectors(pid_y), fdet_vectors(pid_z));
-                                        printf(
-                                            "S: %f %f %f\n", sdet_vectors(pid_x),
-                                            sdet_vectors(pid_y), sdet_vectors(pid_z));
-                                        printf(
-                                            "O: %f %f %f\n", odet_vectors(pid_x),
-                                            odet_vectors(pid_y), odet_vectors(pid_z));
-                                        printf(
-                                            "pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y,
-                                            pid_z);
-
-                                        printf(
-                                            "QVECTOR: %f %f %f\n", q_vec[0], q_vec[1],
-                                            q_vec[2]);
-                                        KOKKOS_MAT3 UU = UMATS_RXYZ(_mos_tic);
-                                        printf(
-                                            "UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-                                        UU = Bmat_realspace;
-                                        printf(
-                                            "Bmat_realspace :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-                                        UU = UBO;
-                                        printf(
-                                            "UBO :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-
-                                        UU = UBOt;
-                                        printf(
-                                            "UBOt :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-
-                                        UU = UmosRxRyRzU;
-                                        printf(
-                                            "UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-                                        KOKKOS_VEC3 AA = delta_H_prime;
-                                        printf(
-                                            "delta_H_prime :\n%f  %f  %f\n", AA[0], AA[1],
-                                            AA[2]);
-                                        printf("Iincrement: %f\n", Iincrement);
-                                        printf(
-                                            "hkl= %f %f %f  hkl0= %d %d %d\n", _h, _k, _l, _h0,
-                                            _k0, _l0);
-                                        printf(
-                                            " F_cell=%g  F_cell2=%g I_latt=%g   I = %g\n",
-                                            _F_cell, _F_cell2, I0, _I);
-                                        printf("I/steps %15.10g\n", _I / Nsteps);
-                                        // printf("Ilatt diffuse %15.10g\n", I_latt_diffuse);
-                                        printf("omega   %15.10g\n", _omega_pixel);
-                                        printf("default_F= %f\n", default_F);
-                                        printf(
-                                            "Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n",
-                                            _incident[0], _incident[1], _incident[2]);
-                                        if (complex_miller)
-                                            printf("COMPLEX MILLER!\n");
-                                        if (no_Nabc_scale)
-                                            printf("No Nabc scale!\n");
-                                    }
-                                }
-                            } // end of printout if
-
                         } // end of mos_tic loop
                     } // end of source loop
                 } // end of thick step loop
