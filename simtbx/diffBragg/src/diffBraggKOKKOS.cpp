@@ -458,8 +458,21 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     if (db_cryst.fpfdp.size() == 0) {
         num_atoms = 0;
     }
-    // int sm_size = number_of_sources*5*sizeof(CUDAREAL);
-    // gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
+    kokkos_geometry_calculation(
+        Npix_to_model, m_panels_fasts_slows, db_steps.Nsteps,
+        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, 
+        local_det.oversample, local_det.subpixel_size, local_det.pixel_size,
+        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+        db_flags.use_lambda_coefficients, local_beam.lambda0, local_beam.lambda1,
+        m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+        local_beam.kahn_factor, local_beam.polarization_axis, db_flags.verbose,
+        m_fdet_vectors, m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
+        db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask, 
+        m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer,
+        m_polar_buffer, m_q_vec_buffer, m_data_trusted
+        );
+
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
     bool use_nominal_hkl = !db_cryst.nominal_hkl.empty();
     kokkos_sum_over_steps(

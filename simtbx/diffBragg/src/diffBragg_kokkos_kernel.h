@@ -4,6 +4,50 @@
 #include "diffBraggKOKKOS.h"
 #include "util_kokkos.h"
 
+void kokkos_geometry_calculation(
+    int Npix_to_model,
+    vector_uint_t panels_fasts_slows,
+    const int Nsteps,
+    int printout_fpixel,
+    int printout_spixel,
+    bool printout,
+    int oversample,
+    CUDAREAL subpixel_size,
+    CUDAREAL pixel_size,
+    CUDAREAL detector_thickstep,
+    CUDAREAL detector_thick,
+    const vector_cudareal_t close_distances,
+    CUDAREAL detector_attnlen,
+    int detector_thicksteps,
+    int sources,
+    bool use_lambda_coefficients,
+    CUDAREAL lambda0,
+    CUDAREAL lambda1,
+    const vector_cudareal_t source_X,
+    const vector_cudareal_t source_Y,
+    const vector_cudareal_t source_Z,
+    const vector_cudareal_t source_lambda,
+    const vector_cudareal_t source_I,
+    CUDAREAL kahn_factor,
+    KOKKOS_VEC3 polarization_axis,
+    int verbose,
+    const vector_cudareal_t fdet_vectors,
+    const vector_cudareal_t sdet_vectors,
+    const vector_cudareal_t odet_vectors,
+    const vector_cudareal_t pix0_vectors,
+    bool nopolar,
+    bool point_pixel,
+    bool Fhkl_gradient_mode,
+    bool using_trusted_mask,
+    view_4d_t<CUDAREAL> omega_pixel_buffer,
+    view_4d_t<CUDAREAL> airpath_buffer,
+    view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
+    view_5d_t<CUDAREAL> texture_scale_buffer,
+    view_5d_t<CUDAREAL> polar_buffer,
+    view_5d_t<KOKKOS_VEC3> q_vec_buffer,
+    const vector_bool_t data_trusted
+);
+
 void kokkos_sum_over_steps(
     int Npix_to_model,
     vector_uint_t panels_fasts_slows,
@@ -165,7 +209,7 @@ void kokkos_sum_over_steps(
     const vector_cudareal_t Fhkl_channels,
     const vector_cudareal_t Fhkl_scale,
     vector_cudareal_t Fhkl_scale_deriv
-    );
+);
 
 
 #endif
