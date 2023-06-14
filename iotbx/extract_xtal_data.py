@@ -516,7 +516,7 @@ class run(object):
             label                    = params.label,
             test_flag_value          = params.test_flag_value,
             disable_suitability_test = params.disable_suitability_test,
-            parameter_scope          = "")
+            parameter_scope          = self.free_r_flags_scope)
       except reflection_file_utils.Sorry_No_array_of_the_required_type as e:
         if(self.parameters.r_free_flags.generate is not None):
           if(not self.keep_going):
