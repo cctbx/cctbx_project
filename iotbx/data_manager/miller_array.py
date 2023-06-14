@@ -37,14 +37,6 @@ class MillerArrayDataManager(DataManagerBase):
   _unrecognized_type_error_str = 'Unrecognized %s type, "%s," possible choices are %s.'
 
   # ---------------------------------------------------------------------------
-  # custom constructor for handling fmodel parameters
-  def __init__(self, **kwargs):
-    super(MillerArrayDataManager, self).__init__(**kwargs)
-    if self.supports('model'):
-      # keep the full DataManager PHIL scope and select fmodel when needed
-      self._fmodel_phil_scope = None
-
-  # ---------------------------------------------------------------------------
   # Miller arrays
 
   def add_miller_array_phil_str(self):
