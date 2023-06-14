@@ -75,7 +75,7 @@ class PathPairList(UserList):
     self.alist = set()  # contains image tags or absolute experiment paths
     self._load_alist()
     self._load_paths()
-    self.match_singlets()
+    self._match_singlets()
 
   def _load_alist(self):
     alist_files = self.params.input.alist.file
@@ -127,7 +127,7 @@ class PathPairList(UserList):
         return False
     return True
 
-  def match_singlets(self):
+  def _match_singlets(self):
     """Merge every matching pair of PathPair(expt, None) + PathPair(None, refl)
     in self.data with common stub name into a single PathPair(expt, refl)"""
     doublets, expt_singlets, refl_singlets = [], StemLocator(), StemLocator()
