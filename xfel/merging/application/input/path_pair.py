@@ -14,7 +14,7 @@ class StemLocator(UserDict):
 
   class StemExistsError(FileExistsError):
     MSG = 'Multiple files with stem {key} detected. Matching expts/refls ' \
-          'must EITHER be pairwise located in the same directory' \
+          'must EITHER be pairwise located in the same directory ' \
           'OR have unique names across all input directories.'
 
     @classmethod
