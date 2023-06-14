@@ -151,6 +151,7 @@ void kokkos_sum_over_steps(
     view_4d_t<CUDAREAL> airpath_buffer,
     view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
     view_5d_t<CUDAREAL> texture_scale_buffer,
+    view_5d_t<CUDAREAL> polar_buffer,
     view_5d_t<KOKKOS_VEC3> q_vec_buffer,
     view_6d_t<KOKKOS_VEC3> V_buffer,
     view_6d_t<KOKKOS_VEC3> H_vec_buffer,
@@ -282,7 +283,7 @@ void kokkos_sum_over_steps(
                         _capture_fraction = previous_layer - current_layer;
                         previous_layer = current_layer;
                     }
-                    pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic) = pixel_pos;
+                    pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic) = _pixel_pos;
                     airpath_buffer(pixIdx, _subS, _subF, _thick_tic) = _airpath;
                     omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic) = _omega_pixel;
 
@@ -330,6 +331,7 @@ void kokkos_sum_over_steps(
                         // TODO rename
                         CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;
 
+                        polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = polar_for_Fhkl_grad;
                         q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = q_vec;
                         texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = texture_scale;
 
@@ -416,6 +418,10 @@ void kokkos_sum_over_steps(
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
                 // absolute mm position on detector (relative to its origin)
+                CUDAREAL _Fdet =
+                    subpixel_size * (_fpixel * oversample + _subF) + subpixel_size / 2.0;
+                CUDAREAL _Sdet =
+                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
 
                 // assume "distance" is to the front of the detector sensor layer
                 int pid_x = _pid * 3;
@@ -587,7 +593,7 @@ void kokkos_sum_over_steps(
                             if (Fhkl_have_scale_factors)
                                 hkl = Fhkl_scale(i_hklasu + Fhkl_channel*Num_ASU);
                             if (Fhkl_gradient_mode){
-                                CUDAREAL Fhkl_deriv_scale = overall_scale*polar_for_Fhkl_grad;
+                                CUDAREAL Fhkl_deriv_scale = overall_scale*polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
                                 CUDAREAL I_noFcell=texture_scale*I0;
                                 CUDAREAL dfhkl = I_noFcell*_I_cell * Fhkl_deriv_scale;
                                 CUDAREAL grad_incr = dfhkl*Fhkl_deriv_coef;

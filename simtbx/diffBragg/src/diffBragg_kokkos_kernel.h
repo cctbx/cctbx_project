@@ -147,6 +147,7 @@ void kokkos_sum_over_steps(
     view_4d_t<CUDAREAL> airpath_buffer,
     view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
     view_5d_t<CUDAREAL> texture_scale_buffer,
+    view_5d_t<CUDAREAL> polar_buffer,
     view_5d_t<KOKKOS_VEC3> q_vec_buffer,
     view_6d_t<KOKKOS_VEC3> V_buffer,
     view_6d_t<KOKKOS_VEC3> H_vec_buffer,

@@ -118,14 +118,15 @@ class diffBraggKOKKOS {
     view_4d_t<CUDAREAL> m_airpath_buffer;
     view_4d_t<KOKKOS_VEC3> m_pixel_pos_buffer;
     view_5d_t<CUDAREAL> m_texture_scale_buffer;
+    view_5d_t<CUDAREAL> m_polar_buffer;
     view_5d_t<KOKKOS_VEC3> m_q_vec_buffer;
-    view_6d_t<KOKKOS_VEC3> m_V_buffer;
-    view_6d_t<KOKKOS_VEC3> m_H_vec_buffer;
     view_6d_t<CUDAREAL> m_Fcell_buffer;
     view_6d_t<CUDAREAL> m_I_noFcell_buffer;
     view_6d_t<CUDAREAL> m_c_deriv_buffer;
     view_6d_t<CUDAREAL> m_d_deriv_buffer;
     view_6d_t<CUDAREAL> m_Iincrement_buffer;
+    view_6d_t<KOKKOS_VEC3> m_V_buffer;
+    view_6d_t<KOKKOS_VEC3> m_H_vec_buffer;
     view_6d6_t<CUDAREAL> m_step_diffuse_buffer;
 
     bool m_Fhkl_gradient_mode;
