@@ -259,16 +259,16 @@ void kokkos_sum_over_steps(
                     CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;
                     KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
 
-                    CUDAREAL _airpath = _pixel_pos.length();
+                    CUDAREAL _airpath_r = 1 / _pixel_pos.length();
                     KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
-                    CUDAREAL _omega_pixel = pixel_size * pixel_size / _airpath / _airpath *
-                                            close_distance / _airpath;
+                    CUDAREAL _omega_pixel = pixel_size * pixel_size * _airpath_r * _airpath_r *
+                                            close_distance * _airpath_r;
 
                     // option to turn off obliquity effect, inverse-square-law only
                     if (point_pixel)
-                        _omega_pixel = 1.0 / _airpath / _airpath;
+                        _omega_pixel = _airpath_r * _airpath_r;
 
                     // now calculate detector thickness effects
                     CUDAREAL _capture_fraction = 1;
@@ -284,7 +284,7 @@ void kokkos_sum_over_steps(
                         previous_layer = current_layer;
                     }
                     pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic) = _pixel_pos;
-                    airpath_buffer(pixIdx, _subS, _subF, _thick_tic) = _airpath;
+                    airpath_buffer(pixIdx, _subS, _subF, _thick_tic) = _airpath_r;
                     omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic) = _omega_pixel;
 
                     for (int _source = 0; _source < sources; ++_source) {
@@ -437,7 +437,6 @@ void kokkos_sum_over_steps(
                     CUDAREAL _Odet = _thick_tic * detector_thickstep;
 
                     KOKKOS_VEC3 _pixel_pos = pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic);
-                    CUDAREAL _airpath = airpath_buffer(pixIdx, _subS, _subF, _thick_tic);
 
                     // solid angle subtended by a pixel, includes point_pixel option
                     CUDAREAL _omega_pixel = omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic);
@@ -810,10 +809,11 @@ void kokkos_sum_over_steps(
                                 }
                             }
 
+                            const CUDAREAL _airpath_r = airpath_buffer(pixIdx, _subS, _subF, _thick_tic);
                             // Checkpoint for Origin manager
                             for (int i_pan_orig = 0; i_pan_orig < 3; i_pan_orig++) {
                                 if (refine_flag & (REFINE_PANEL_ORIGIN1 << i_pan_orig)) {
-                                    CUDAREAL per_k = 1 / _airpath;
+                                    CUDAREAL per_k = _airpath_r;
                                     CUDAREAL per_k3 = pow(per_k, 3.);
                                     CUDAREAL per_k5 = pow(per_k, 5.);
 
@@ -844,7 +844,7 @@ void kokkos_sum_over_steps(
 
                             for (int i_pan_rot = 0; i_pan_rot < 3; i_pan_rot++) {
                                 if (refine_flag & (REFINE_PANEL_ROT1 << i_pan_rot)) {
-                                    CUDAREAL per_k = 1 / _airpath;
+                                    CUDAREAL per_k = _airpath_r;
                                     CUDAREAL per_k3 = pow(per_k, 3.);
                                     CUDAREAL per_k5 = pow(per_k, 5.);
                                     KOKKOS_MAT3 M = -two_C * (_NABC.dot(UBO)) / lambda_ang;
@@ -1044,10 +1044,10 @@ void kokkos_sum_over_steps(
 
         CUDAREAL close_distance = close_distances(_pid);
 
-        CUDAREAL _airpath_ave = _pixel_pos_ave.length();
+        CUDAREAL _airpath_ave_r = 1 / _pixel_pos_ave.length();
         KOKKOS_VEC3 _diffracted_ave = _pixel_pos_ave.get_unit_vector();
-        CUDAREAL _omega_pixel_ave = pixel_size * pixel_size / _airpath_ave / _airpath_ave *
-                                    close_distance / _airpath_ave;
+        CUDAREAL _omega_pixel_ave = pixel_size * pixel_size * _airpath_ave_r * _airpath_ave_r *
+                                    close_distance * _airpath_ave_r;
 
         CUDAREAL _polar = 1;
         if (!nopolar) {
