@@ -3,10 +3,30 @@ from __future__ import absolute_import, division, print_function
 from collections import namedtuple
 import glob
 import os
-from six.moves import UserList
+from six.moves import UserDict, UserList
 
 import numpy as np
 from orderedset import OrderedSet
+
+
+class StemLocator(UserDict):
+  """Subclass of dict which raises an error when overwriting existing value"""
+
+  class StemExistsError(FileExistsError):
+    MSG = 'Multiple files with stem {key} detected. Matching expts/refls ' \
+          'must EITHER be pairwise located in the same directory' \
+          'OR have unique names across all input directories.'
+
+    @classmethod
+    def from_stem(cls, stem, *args, **kwargs):
+      return cls(cls.MSG.format(stem), *args, **kwargs)  # noqa
+
+  def __setitem__(self, key, value):
+    if key in self.data:
+      if value != self.data.__getitem__(key):
+        raise self.StemExistsError.from_stem(key)
+    else:
+      self.data.__setitem__(key, value)
 
 
 def path_pair_class_factory(params):
@@ -55,7 +75,7 @@ class PathPairList(UserList):
     self.alist = set()  # contains image tags or absolute experiment paths
     self._load_alist()
     self._load_paths()
-    self._match_singlets()
+    self.match_singlets()
 
   def _load_alist(self):
     alist_files = self.params.input.alist.file
@@ -107,10 +127,17 @@ class PathPairList(UserList):
         return False
     return True
 
-  def _match_singlets(self):
-    doublets = [p for p in self if p.expt_path and p.refl_path]
-    expt_map = {p.expt_stem: p for p in self if p.expt_path and not p.refl_path}
-    refl_map = {p.refl_stem: p for p in self if p.refl_path and not p.expt_path}
-    common_stems = OrderedSet(expt_map).intersection(OrderedSet(refl_map))
-    matched = [self.PathPair(expt_map[cs], refl_map[cs]) for cs in common_stems]
-    self.data = doublets + matched
+  def match_singlets(self):
+    """Merge every matching pair of PathPair(expt, None) + PathPair(None, refl)
+    in self.data with common stub name into a single PathPair(expt, refl)"""
+    doublets, expt_singlets, refl_singlets = [], StemLocator(), StemLocator()
+    for path_pair in self.data:
+      if path_pair.expt_path and path_pair.refl_path:
+        doublets.append(path_pair)
+      elif path_pair.expt_path and not path_pair.refl_path:
+        expt_singlets[path_pair.expt_stem] = path_pair.expt_path
+      elif path_pair.refl_path and not path_pair.expt_path:
+        refl_singlets[path_pair.refl_stem] = path_pair.refl_path
+    common = OrderedSet(expt_singlets).intersection(OrderedSet(refl_singlets))
+    new = [self.PathPair(expt_singlets[c], refl_singlets[c]) for c in common]
+    self.data = doublets + new
