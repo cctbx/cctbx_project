@@ -272,7 +272,7 @@ void kokkos_sum_over_steps(
                     // now calculate detector thickness effects
                     CUDAREAL _capture_fraction = 1;
 
-                    CUDAREAL previous_layers = 1.0;
+                    CUDAREAL previous_layer = 1.0;
                     if (detector_thick > 0.0 && detector_attnlen > 0.0) {
                         // inverse of effective thickness increase
                         CUDAREAL _parallax = _diffracted.dot(_o_vec);
