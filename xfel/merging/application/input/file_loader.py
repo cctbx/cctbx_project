@@ -4,7 +4,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
 import json
-from xfel.merging.application.input.file_lister import PathPairList
+from xfel.merging.application.input.path_pair import PathPairList
 from xfel.merging.application.input.file_load_calculator import file_load_calculator
 from xfel.merging.application.utils.memory_usage import get_memory_usage
 
