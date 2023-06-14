@@ -1,27 +1,61 @@
 from __future__ import absolute_import, division, print_function
-import glob, os
-from six.moves import UserDict
+
+from collections import namedtuple
+import glob
+import os
+from six.moves import UserList
+
 import numpy as np
+from orderedset import OrderedSet
 
 
-class ImmutableValuesDict(UserDict):
-  def __setitem__(self, key, value):
-    try:
-      old_value = self.__getitem__(key)
-      if value != old_value:
-        raise ValueError("Attempting to change value of existing key: ", key)
-    except KeyError:
-      super(ImmutableValuesDict, self).__setitem__(key, value)
+def path_pair_class_factory(params):
+  """Factory function, dynamically makes `PathPair` class based on params"""
+  es = params.input.experiments_suffix
+  rs = params.input.reflections_suffix
+
+  class PathPair(namedtuple('PathPair', ['expt_path', 'refl_path'])):
+    """Named 2-el. tuple of expt & refl file paths with convenience methods"""
+    __slots__ = ()
+
+    @classmethod
+    def from_dir_expt_name(cls, base_path, expt_filename):
+      expt_path = os.path.join(base_path, expt_filename)
+      refl_path = expt_path.split(es, 1)[0] + rs
+      refl_path = refl_path if os.path.exists(refl_path) else None
+      return cls(expt_path, refl_path)
+
+    @classmethod
+    def from_dir_refl_name(cls, base_path, refl_filename):
+      refl_path = os.path.join(base_path, refl_filename)
+      expt_path = refl_path.split(rs, 1)[0] + es
+      expt_path = expt_path if os.path.exists(expt_path) else None
+      return cls(expt_path, refl_path)
+
+    @property
+    def expt_stem(self):
+      return os.path.basename(self.expt_path).split(es, 1)[0]
+
+    @property
+    def refl_stem(self):
+      return os.path.basename(self.refl_path).split(rs, 1)[0]
+
+  return PathPair
 
 
-class file_lister(object):
-  """ Class for matching jsons to reflection table pickles """
+class PathPairList(UserList):
+  """List of `PathPair` instances with some convenience creation methods"""
   def __init__(self, params):
+    """On creation, fill self with expt/refl `PathPair`s based on `params`"""
+    super(PathPairList, self).__init__()
     self.params = params
+    self.PathPair = path_pair_class_factory(params)
     self.reject_alisters = self.params.input.alist.op == "reject"
     self.keep_alisters = not self.reject_alisters
     self.alist = set()  # contains image tags or absolute experiment paths
     self._load_alist()
+    self._load_paths()
+    self._match_singlets()
 
   def _load_alist(self):
     alist_files = self.params.input.alist.file
@@ -29,93 +63,54 @@ class file_lister(object):
       for f in alist_files:
         lines = np.loadtxt(f, str, ndmin=1)
         self.alist = self.alist.union(lines)
-
-    if self.params.input.alist.type=="files":
+    if self.params.input.alist.type == "files":
       assert all(os.path.isabs(f) for f in self.alist)
 
   def _is_on_alist(self, exp_path):
-    if self.params.input.alist.type=="tags":
+    if self.params.input.alist.type == "tags":
       return any(tag in exp_path for tag in self.alist)
-    else:  # alist.type=="files"
+    else:  # alist.type == "files"
       return os.path.abspath(exp_path) in self.alist
 
   @property
   def num_alist(self):
     return len(self.alist)
 
-  @property
-  def filepair_generator(self):
-    """ Used by rank 0, client/server to yield a list of json/reflection table pairs """
-    if self.params.input.match_directories:
-      return self._matching_path_name_filepair_generator
-    else:
-      return self._matching_file_name_filepath_generator
+  def _load_path_if_expt_or_refl(self, path, filename):
+    if filename.endswith(self.params.input.experiments_suffix):
+      self.data.append(self.PathPair.from_dir_expt_name(path, filename))
+    if filename.endswith(self.params.input.reflections_suffix):
+      self.data.append(self.PathPair.from_dir_refl_name(path, filename))
 
-  def _matching_path_name_filepair_generator(self):
-    """File pair generator used when input expt/refl must come from same dir"""
+  def _load_paths(self):
     for pathstring in self.params.input.path:
       for path in glob.glob(pathstring):
         if os.path.isdir(path):
           for filename in os.listdir(path):
-            if filename.endswith(self.params.input.reflections_suffix):
-              experiments_path = os.path.join(path, filename.split(self.params.input.reflections_suffix)[0] +
-                 self.params.input.experiments_suffix)
-              if self._is_accepted_expt(experiments_path):
-                yield experiments_path, os.path.join(path, filename)
+            self._load_path_if_expt_or_refl(path, filename)
         else:
-          dirname = os.path.dirname(path)
-          filename = os.path.basename(path)
-          if filename.endswith(self.params.input.reflections_suffix):
-            experiments_path = os.path.join(dirname, filename.split(self.params.input.reflections_suffix)[0] +
-               self.params.input.experiments_suffix)
-            if self._is_accepted_expt(experiments_path):
-              yield experiments_path, path
-
-  def _matching_file_name_filepath_generator(self):
-    """File pair generator used when input expt/refl can be in different dir"""
-    expt_paths = ImmutableValuesDict()
-    refl_paths = ImmutableValuesDict()
-    expt_suffix_len = len(self.params.input.experiments_suffix)
-    refl_suffix_len = len(self.params.input.reflections_suffix)
-    for pathstring in self.params.input.path:
-      for path in glob.glob(pathstring):
-        if os.path.isdir(path):
-          for filename in os.listdir(path):
-            if filename.endswith(self.params.input.reflections_suffix):
-              file_stem = filename[:-refl_suffix_len]
-              refl_paths[file_stem] = os.path.join(path, filename)
-            if filename.endswith(self.params.input.experiments_suffix):
-              full_path = os.path.join(path, filename)
-              if self._is_accepted_expt(full_path):
-                file_stem = filename[:-expt_suffix_len]
-                expt_paths[file_stem] = full_path
-        else:
-          filename = os.path.basename(path)
-          if filename.endswith(self.params.input.reflections_suffix):
-            file_stem = filename[:-refl_suffix_len]
-            refl_paths[file_stem] = path
-          if filename.endswith(self.params.input.experiments_suffix):
-            if self._is_accepted_expt(path):
-              file_stem = filename[:-expt_suffix_len]
-              expt_paths[file_stem] = path
-    for common_file_stem in set(expt_paths).intersection(set(refl_paths)):
-      yield expt_paths[common_file_stem], refl_paths[common_file_stem]
-
+          filename, dir_name = os.path.split(path)
+          self._load_path_if_expt_or_refl(dir_name, filename)
+    accepted_pairs = []
+    for pp in OrderedSet(self.data):
+      if pp.expt_path is None or self._is_accepted_expt(pp.expt_path):
+        accepted_pairs.append(pp)
+    self.data = accepted_pairs
 
   def _is_accepted_expt(self, experiment_path):
     """returns True if the experiment is deemed worthy"""
-    if not os.path.exists(experiment_path):
-      return False
     if self.num_alist > 0:
       is_on_alist = self._is_on_alist(experiment_path)
       if is_on_alist and self.reject_alisters:
         return False
       if self.keep_alisters and not is_on_alist:
         return False
-
     return True
 
-  def filename_lister(self):
-    """ Used by rank 0, striping """
-    return list(self.filepair_generator())
-
+  def _match_singlets(self):
+    doublets = [p for p in self if p.expt_path and p.refl_path]
+    expt_map = {p.expt_stem: p for p in self if p.expt_path and not p.refl_path}
+    refl_map = {p.refl_stem: p for p in self if p.refl_path and not p.expt_path}
+    common_stems = OrderedSet(expt_map).intersection(OrderedSet(refl_map))
+    matched = [self.PathPair(expt_map[cs], refl_map[cs]) for cs in common_stems]
+    self.data = doublets + matched
