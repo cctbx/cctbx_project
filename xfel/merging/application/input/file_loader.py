@@ -74,9 +74,14 @@ def is_odd_numbered(file_name, use_hash = False):
 #  print is_odd_numbered("int_fake_19989.img")
 
 
+def identifiers_void(*uuids):
+  """True only if all uuids evaluate to False (eg. '', None)"""
+  return not any(*uuids)
+
+
 def identifiers_match(*uuids):
-  """True only if all uuids either match or evaluate to False (eg. '', None)"""
-  return len(set(*uuids)) <= 1 or not any(*uuids)
+  """True only if all uuids match"""
+  return len(set(*uuids)) <= 1
 
 
 from xfel.merging.application.worker import worker
@@ -171,15 +176,16 @@ class simple_file_loader(worker):
           if refls_sel.count(True) == 0: continue
 
           refls_sel_identifier = refls_sel.experiment_identifiers().values()[0]
-          if not identifiers_match(experiment.identifier, refls_sel_identifier):
+          if identifiers_void(experiment.identifier, refls_sel_identifier) \
+                  or self.params.input.override_identifiers:
+            new_identifier = create_experiment_identifier(
+              experiment, experiments_filename, experiment_id)
+            experiment.identifier = new_identifier
+            reflections.experiment_identifiers()['id'] = new_identifier
+          elif not identifiers_match(experiment.identifier, refls_sel_identifier):
             m = 'Expt and refl identifier mismatch: "{}" in {} vs "{}" in {}'
             raise KeyError(m.format(experiment.identifier, experiments_filename,
                                     refls_sel_identifier, reflections_filename))
-
-          if not experiment.identifier or self.params.input.override_identifiers:
-            new_identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
-            experiment.identifier = new_identifier
-            reflections.experiment_identifiers()['id'] = new_identifier
 
           if not self.params.input.keep_imagesets:
             experiment.imageset = None
