@@ -76,12 +76,12 @@ def is_odd_numbered(file_name, use_hash = False):
 
 def identifiers_void(*identifiers):
   """True only if all identifiers evaluate to False (eg. '', None)"""
-  return not any(*identifiers)
+  return not any(identifiers)
 
 
 def identifiers_match(*identifiers):
   """True only if all identifiers match"""
-  return len(set(*identifiers)) <= 1
+  return len(set(identifiers)) <= 1
 
 
 from xfel.merging.application.worker import worker
