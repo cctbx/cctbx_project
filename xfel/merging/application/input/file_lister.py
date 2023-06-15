@@ -13,7 +13,7 @@ class StemLocator(UserDict):
   """Subclass of dict which raises an error when overwriting existing value"""
 
   class StemExistsError(FileExistsError):
-    MSG = 'Multiple files with stem {key} detected. Matching expts/refls ' \
+    MSG = 'Multiple files with stem {} detected. Matching expts/refls ' \
           'must EITHER be pairwise located in the same directory ' \
           'OR have unique names across all input directories.'
 
