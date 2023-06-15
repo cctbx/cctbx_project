@@ -447,7 +447,7 @@ void kokkos_sum_over_steps(
         }
 
         // int fcell_idx=1;
-        int nom_h, nom_k, nom_l;
+        int nom_h = 0, nom_k = 0, nom_l = 0;
         if (use_nominal_hkl) {
             nom_h = nominal_hkl(pixIdx * 3);
             nom_k = nominal_hkl(pixIdx * 3 + 1);
