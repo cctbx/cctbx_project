@@ -1,9 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation import undowser
-from iotbx import pdb
-from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
-from libtbx.easy_pickle import loads, dumps
+from libtbx.easy_pickle import loads
 from iotbx.data_manager import DataManager
 import libtbx.load_env
 import time
@@ -192,7 +189,7 @@ A clashing HOH is very unlikely be be a real water, unless the clashing atom pos
 <br><br>
 &ast;<i>Displaced atom</i> indicates that a structural atom has been moved from its proper place in the model and replaced by HOH. Displaced sidechains are common. Moved atoms may be restored by local rebuilding.
 <br>
-<i>Missing atoms</i> have been entirely replaced by HOH. Removed atoms may be restored by modeling alternate conformations (especially sidechains), modeling ligands, or continuing a macromolecular mainchain. 
+<i>Missing atoms</i> have been entirely replaced by HOH. Removed atoms may be restored by modeling alternate conformations (especially sidechains), modeling ligands, or continuing a macromolecular mainchain.
 <br><br>
 These categories are general suggestions. Check your electron density; trust your intuition and experience.
 <br>

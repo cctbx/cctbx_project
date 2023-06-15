@@ -347,9 +347,9 @@ class cbetadev(validation):
     for model_id in self.n_total_by_model.keys():
       if self.n_total_by_model[model_id]:
         summary_results[model_id] = {
-          "num_outliers" : self.n_outliers_by_model[model_id], 
-          "num_cbeta_residues" : self.n_total_by_model[model_id], 
-          "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100, 
+          "num_outliers" : self.n_outliers_by_model[model_id],
+          "num_cbeta_residues" : self.n_total_by_model[model_id],
+          "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100,
           "outlier_goal" : 0,
         }
     data['summary_results'] = summary_results

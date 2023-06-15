@@ -4,7 +4,6 @@ import os
 from mmtbx.model import manager
 from mmtbx.validation.rna_validate import rna_bonds, rna_angles
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
 from libtbx.utils import null_out
 import json
 import pprint

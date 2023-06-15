@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.rna_validate import rna_puckers
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -57,5 +56,3 @@ Example:
       print(result.as_JSON(), file=self.logger)
     elif self.params.verbose:
       result.show(out=self.logger, verbose=True)
-    
-

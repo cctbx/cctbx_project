@@ -6,7 +6,6 @@ import iotbx.pdb
 from mmtbx.validation.rna_validate import rna_validation
 from libtbx.easy_pickle import loads, dumps
 from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
 from iotbx.data_manager import DataManager

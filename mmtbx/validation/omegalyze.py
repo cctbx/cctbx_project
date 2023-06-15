@@ -456,15 +456,15 @@ class omegalyze(validation):
     data['hierarchical_results'] = hierarchical_results
     for model_id in self.residue_count_by_model.keys():
       summary_results[model_id] = {
-        "num_cis_proline" : self.n_cis_proline_by_model(model_id), 
-        "num_twisted_proline" : self.n_twisted_proline_by_model(model_id), 
-        "num_proline" : self.n_proline_by_model(model_id), 
-        "num_cis_general" : self.n_cis_general_by_model(model_id), 
+        "num_cis_proline" : self.n_cis_proline_by_model(model_id),
+        "num_twisted_proline" : self.n_twisted_proline_by_model(model_id),
+        "num_proline" : self.n_proline_by_model(model_id),
+        "num_cis_general" : self.n_cis_general_by_model(model_id),
         "num_twisted_general" : self.n_twisted_general_by_model(model_id),
-        "num_general" : self.n_general_by_model(model_id), 
+        "num_general" : self.n_general_by_model(model_id),
       }
     data['summary_results'] = summary_results
-    
+
     return json.dumps(data, indent=2)
 
   def show_summary(self, out=sys.stdout, prefix=""):

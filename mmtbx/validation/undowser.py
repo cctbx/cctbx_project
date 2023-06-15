@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import os, sys
+import sys
 from libtbx import easy_run
 from mmtbx.validation import validation, atoms, residue, atom_info
 from mmtbx.validation.clashscore import check_and_add_hydrogen, probe_clashscore_manager
@@ -94,7 +94,7 @@ A clashing HOH is very unlikely be be a real water, unless the clashing atom pos
 <br><br>
 &ast;<i>Displaced atom</i> indicates that a structural atom has been moved from its proper place in the model and replaced by HOH. Displaced sidechains are common. Moved atoms may be restored by local rebuilding.
 <br>
-<i>Missing atoms</i> have been entirely replaced by HOH. Removed atoms may be restored by modeling alternate conformations (especially sidechains), modeling ligands, or continuing a macromolecular mainchain. 
+<i>Missing atoms</i> have been entirely replaced by HOH. Removed atoms may be restored by modeling alternate conformations (especially sidechains), modeling ligands, or continuing a macromolecular mainchain.
 <br><br>
 These categories are general suggestions. Check your electron density; trust your intuition and experience.
 <br>
@@ -280,7 +280,7 @@ These categories are general suggestions. Check your electron density; trust you
     data['hierarchical_results'] = hierarchical_results
 
     for model_id in self.n_total_by_model.keys():
-      summary_results[model_id] = { "num_outliers" : self.n_outliers_by_model[model_id], 
+      summary_results[model_id] = { "num_outliers" : self.n_outliers_by_model[model_id],
         "num_waters" : self.n_total_by_model[model_id],
       }
     data['summary_results'] = summary_results

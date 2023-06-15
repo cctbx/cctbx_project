@@ -296,11 +296,11 @@ class rotalyze(validation):
     data['hierarchical_results'] = hierarchical_results
     for model_id in self.n_total_by_model:
       summary_results[model_id] = {
-        "num_favored" : self.n_favored_by_model[model_id], 
-        "num_allowed" : self.n_allowed_by_model[model_id], 
-        "num_outliers" : self.n_outliers_by_model[model_id], 
-        "num_residues" : self.n_total_by_model[model_id], 
-        "outlier_percentage" : self.get_outliers_fraction_for_model(model_id) * 100, 
+        "num_favored" : self.n_favored_by_model[model_id],
+        "num_allowed" : self.n_allowed_by_model[model_id],
+        "num_outliers" : self.n_outliers_by_model[model_id],
+        "num_residues" : self.n_total_by_model[model_id],
+        "outlier_percentage" : self.get_outliers_fraction_for_model(model_id) * 100,
         "outlier_goal" : self.get_outliers_goal()
       }
     data['summary_results'] = summary_results

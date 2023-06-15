@@ -4,7 +4,6 @@ import os
 from mmtbx.model import manager
 from mmtbx.validation.rna_validate import rna_validation
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
 from libtbx.utils import null_out
 
 class Program(ProgramTemplate):
@@ -70,4 +69,3 @@ Example:
       print(result.as_JSON(), file=self.logger)
     elif self.params.verbose:
       result.show(out=self.logger, verbose=True)
-    

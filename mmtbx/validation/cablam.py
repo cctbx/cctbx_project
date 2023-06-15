@@ -1619,9 +1619,9 @@ class cablamalyze(validation):
         summary_results[model_id] = {
           "num_cablam_outliers" : num_cablam_outliers,
           "cablam_outliers_percentage" : cablam_outliers_percentage,
-          "num_cablam_disfavored" : num_cablam_disfavored, 
+          "num_cablam_disfavored" : num_cablam_disfavored,
           "cablam_disfavored_percentage" : cablam_disfavored_percentage,
-          "num_ca_geom_outliers" : num_ca_geom_outliers, 
+          "num_ca_geom_outliers" : num_ca_geom_outliers,
           "ca_geom_outliers_percentage" : ca_geom_outliers_percentage,
           "num_residues": num_residues,
         }

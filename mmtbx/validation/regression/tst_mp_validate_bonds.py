@@ -1,7 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.mp_validate_bonds import mp_bonds, mp_angles
-from iotbx import pdb
 from iotbx.data_manager import DataManager
 from mmtbx.model import manager
 from libtbx.utils import null_out

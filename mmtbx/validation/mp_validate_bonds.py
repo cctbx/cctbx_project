@@ -9,11 +9,9 @@ from mmtbx.validation import validation
 from mmtbx.validation import residue
 from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
-from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
-from libtbx.str_utils import make_sub_header, format_value
+from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
-from libtbx import easy_run
 from math import sqrt
 import sys
 import json

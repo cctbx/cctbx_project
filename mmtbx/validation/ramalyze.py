@@ -533,13 +533,13 @@ class ramalyze(validation):
     data['hierarchical_results'] = hierarchical_results
     data['summary_results'] = summary_results
     for model_id in self.n_total_by_model.keys():
-      summary_results[model_id] = {"num_favored" : self.n_favored_by_model[model_id], 
-        "num_allowed" : self.n_allowed_by_model[model_id], 
-        "num_outliers" : self.n_outliers_by_model[model_id], 
-        "num_residues" : self.n_total_by_model[model_id], 
-        "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100, 
+      summary_results[model_id] = {"num_favored" : self.n_favored_by_model[model_id],
+        "num_allowed" : self.n_allowed_by_model[model_id],
+        "num_outliers" : self.n_outliers_by_model[model_id],
+        "num_residues" : self.n_total_by_model[model_id],
+        "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100,
         "outlier_goal" : self.get_outliers_goal(),
-        "favored_percentage" : self.n_favored_by_model[model_id]/self.n_total_by_model[model_id]*100, 
+        "favored_percentage" : self.n_favored_by_model[model_id]/self.n_total_by_model[model_id]*100,
         "favored_goal" : self.get_favored_goal()
       }
     data['summary_results'] = summary_results

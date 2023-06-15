@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.undowser import undowserlyze
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')

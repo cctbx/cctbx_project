@@ -88,7 +88,7 @@ class entity(slots_getstate_setstate):
 
   def as_JSON(self):
     """
-    Returns a (empty) JSON object representing a single validation object. 
+    Returns a (empty) JSON object representing a single validation object.
     Should be overwritten by each validation script to actually output the data.
     """
     return json.dumps({})
@@ -564,7 +564,7 @@ class validation(slots_getstate_setstate):
                 pass # same leaf value
             else:
                 #raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
-                # should only get called for JSONs that have a list 
+                # should only get called for JSONs that have a list
                 # of different validations for a residue (e.g. clashes)
                 a[key] = a[key]+b[key]
         else:
