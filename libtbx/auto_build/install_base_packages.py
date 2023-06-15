@@ -246,6 +246,11 @@ class installer(object):
     for env_var in ["BLAS","ATLAS","LAPACK"]:
       os.environ[env_var] = "None"
 
+    # For non-conda build, add msgpack to includes
+    if not libtbx.env.build_options.use_conda:
+      msgpack = libtbx.env.dist_path("msgpack-3.1.1")
+      self.include_dirs.append(msgpack)
+
     # Select packages to build.
     packages = self.configure_packages(options)
     # Override and specified packages if provided.
