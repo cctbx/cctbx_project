@@ -164,6 +164,7 @@ class simple_file_loader(worker):
 
         new_ids = flex.int(len(reflections), -1)
         eid = reflections.experiment_identifiers()
+        eid_copy = dict(eid)
         for k in eid.keys():
           del eid[k]
 
@@ -175,13 +176,12 @@ class simple_file_loader(worker):
 
           if refls_sel.count(True) == 0: continue
 
-          refls_identifier = reflections.experiment_identifiers()[experiment_id]
+          refls_identifier = eid_copy[experiment_id]
           if identifiers_void(experiment.identifier, refls_identifier) \
                   or self.params.input.override_identifiers:
             new_identifier = create_experiment_identifier(
               experiment, experiments_filename, experiment_id)
             experiment.identifier = new_identifier
-            reflections.experiment_identifiers()[experiment_id] = new_identifier
           elif not identifiers_match(experiment.identifier, refls_identifier):
             m = 'Expt and refl identifier mismatch: "{}" in {} vs "{}" in {}'
             raise KeyError(m.format(experiment.identifier, experiments_filename,
