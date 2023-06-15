@@ -175,7 +175,7 @@ class simple_file_loader(worker):
 
           if refls_sel.count(True) == 0: continue
 
-          refls_identifier = reflections.experiment_identifiers().values()[experiment_id]
+          refls_identifier = reflections.experiment_identifiers()[experiment_id]
           if identifiers_void(experiment.identifier, refls_identifier) \
                   or self.params.input.override_identifiers:
             new_identifier = create_experiment_identifier(
