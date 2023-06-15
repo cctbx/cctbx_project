@@ -91,7 +91,7 @@ def list_input_pairs(params):
   # OR have unique filename stems across input; otherwise raise StemExistsError
   path_pairs = []
   PathPair.expt_suffix = params.input.experiments_suffix
-  PathPair.refl_suffix = params.input.experiments_suffix
+  PathPair.refl_suffix = params.input.reflections_suffix
 
   def load_path_if_expt_or_refl(path_, filename_):
     if filename.endswith(params.input.experiments_suffix):
