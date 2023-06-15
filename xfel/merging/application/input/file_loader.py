@@ -74,14 +74,14 @@ def is_odd_numbered(file_name, use_hash = False):
 #  print is_odd_numbered("int_fake_19989.img")
 
 
-def identifiers_void(*uuids):
-  """True only if all uuids evaluate to False (eg. '', None)"""
-  return not any(*uuids)
+def identifiers_void(*identifiers):
+  """True only if all identifiers evaluate to False (eg. '', None)"""
+  return not any(*identifiers)
 
 
-def identifiers_match(*uuids):
-  """True only if all uuids match"""
-  return len(set(*uuids)) <= 1
+def identifiers_match(*identifiers):
+  """True only if all identifiers match"""
+  return len(set(*identifiers)) <= 1
 
 
 from xfel.merging.application.worker import worker
