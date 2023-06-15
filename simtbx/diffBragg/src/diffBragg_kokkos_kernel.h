@@ -4,13 +4,13 @@
 #include "diffBraggKOKKOS.h"
 #include "util_kokkos.h"
 
+template <bool printout>
 void kokkos_geometry_calculation(
     int Npix_to_model,
     vector_uint_t panels_fasts_slows,
     const int Nsteps,
     int printout_fpixel,
     int printout_spixel,
-    bool printout,
     int oversample,
     CUDAREAL subpixel_size,
     CUDAREAL pixel_size,

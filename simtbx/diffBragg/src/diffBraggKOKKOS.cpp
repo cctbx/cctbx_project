@@ -4,6 +4,14 @@
 #include "diffBraggKOKKOS.h"
 #include "diffBragg_kokkos_kernel.h"
 
+#define PRINTOUT(flag, function, ...) \
+    if (flag) {                       \
+        function<true>(__VA_ARGS__);  \
+    } else {                          \
+        function<false>(__VA_ARGS__); \
+    }                                 \
+
+
 void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     int Npix_to_model,
     std::vector<unsigned int>& panels_fasts_slows,
@@ -458,9 +466,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     if (db_cryst.fpfdp.size() == 0) {
         num_atoms = 0;
     }
-    kokkos_geometry_calculation(
+
+    PRINTOUT(db_flags.printout, kokkos_geometry_calculation,
         Npix_to_model, m_panels_fasts_slows, db_steps.Nsteps,
-        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, 
+        db_flags.printout_fpixel, db_flags.printout_spixel, 
         local_det.oversample, local_det.subpixel_size, local_det.pixel_size,
         local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
         local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,

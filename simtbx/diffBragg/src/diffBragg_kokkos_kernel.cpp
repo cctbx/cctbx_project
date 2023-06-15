@@ -7,13 +7,13 @@
 // using ::Kokkos::Experimental::cos;
 // using ::Kokkos::Experimental::sqrt;
 
+template <bool printout>
 void kokkos_geometry_calculation(
     int Npix_to_model,
     vector_uint_t panels_fasts_slows,
     const int Nsteps,
     int printout_fpixel,
     int printout_spixel,
-    bool printout,
     int oversample,
     CUDAREAL subpixel_size,
     CUDAREAL pixel_size,
@@ -1266,3 +1266,48 @@ void kokkos_sum_over_steps(
     });    // end pixIdx loop
 
 }  // END of GPU kernel
+
+
+template void kokkos_geometry_calculation<true>(int, vector_uint_t, const int, int, int, int, CUDAREAL, CUDAREAL, CUDAREAL, CUDAREAL, const vector_cudareal_t, CUDAREAL, int, int, bool, CUDAREAL, CUDAREAL, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, CUDAREAL, KOKKOS_VEC3, int, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, bool, bool, bool, bool, view_4d_t<CUDAREAL>, view_4d_t<CUDAREAL>, view_4d_t<KOKKOS_VEC3>, view_5d_t<CUDAREAL>, view_5d_t<CUDAREAL>, view_5d_t<KOKKOS_VEC3>, const vector_bool_t);
+
+template void kokkos_geometry_calculation<false>(
+    int, 
+    vector_uint_t, 
+    const int, 
+    int, 
+    int, 
+    int, 
+    CUDAREAL, 
+    CUDAREAL, 
+    CUDAREAL, 
+    CUDAREAL, 
+    const vector_cudareal_t, 
+    CUDAREAL, 
+    int, 
+    int, 
+    bool, 
+    CUDAREAL, 
+    CUDAREAL, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    CUDAREAL, 
+    KOKKOS_VEC3, 
+    int, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    const vector_cudareal_t, 
+    bool, 
+    bool, 
+    bool, 
+    bool, 
+    view_4d_t<CUDAREAL>, 
+    view_4d_t<CUDAREAL>, 
+    view_4d_t<KOKKOS_VEC3>, 
+    view_5d_t<CUDAREAL>, 
+    view_5d_t<CUDAREAL>, 
+    view_5d_t<KOKKOS_VEC3>, 
+    const vector_bool_t);
