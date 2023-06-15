@@ -29,38 +29,34 @@ class StemLocator(UserDict):
       self.data.__setitem__(key, value)
 
 
-def path_pair_class_factory(params):
-  """Factory function, dynamically makes `PathPair` class based on params"""
-  es = params.input.experiments_suffix
-  rs = params.input.reflections_suffix
+class PathPair(namedtuple('PathPair', ['expt_path', 'refl_path'])):
+  """Named 2-el. tuple of expt & refl file paths with convenience methods"""
+  __slots__ = ()
 
-  class PathPair(namedtuple('PathPair', ['expt_path', 'refl_path'])):
-    """Named 2-el. tuple of expt & refl file paths with convenience methods"""
-    __slots__ = ()
+  expt_suffix = ''
+  refl_suffix = ''
 
-    @classmethod
-    def from_dir_expt_name(cls, base_path, expt_filename):
-      expt_path = os.path.join(base_path, expt_filename)
-      refl_path = expt_path.split(es, 1)[0] + rs
-      refl_path = refl_path if os.path.exists(refl_path) else None
-      return cls(expt_path, refl_path)
+  @classmethod
+  def from_dir_expt_name(cls, base_path, expt_filename):
+    expt_path = os.path.join(base_path, expt_filename)
+    refl_path = expt_path.split(cls.expt_suffix, 1)[0] + cls.refl_suffix
+    refl_path = refl_path if os.path.exists(refl_path) else None
+    return cls(expt_path, refl_path)
 
-    @classmethod
-    def from_dir_refl_name(cls, base_path, refl_filename):
-      refl_path = os.path.join(base_path, refl_filename)
-      expt_path = refl_path.split(rs, 1)[0] + es
-      expt_path = expt_path if os.path.exists(expt_path) else None
-      return cls(expt_path, refl_path)
+  @classmethod
+  def from_dir_refl_name(cls, base_path, refl_filename):
+    refl_path = os.path.join(base_path, refl_filename)
+    expt_path = refl_path.split(cls.refl_suffix, 1)[0] + cls.expt_suffix
+    expt_path = expt_path if os.path.exists(expt_path) else None
+    return cls(expt_path, refl_path)
 
-    @property
-    def expt_stem(self):
-      return os.path.basename(self.expt_path).split(es, 1)[0]
+  @property
+  def expt_stem(self):
+    return os.path.basename(self.expt_path).split(self.expt_suffix, 1)[0]
 
-    @property
-    def refl_stem(self):
-      return os.path.basename(self.refl_path).split(rs, 1)[0]
-
-  return PathPair
+  @property
+  def refl_stem(self):
+    return os.path.basename(self.refl_path).split(self.refl_suffix, 1)[0]
 
 
 def list_input_pairs(params):
@@ -94,13 +90,14 @@ def list_input_pairs(params):
   # pairs must have the same filename stem and EITHER be in the same directory
   # OR have unique filename stems across input; otherwise raise StemExistsError
   path_pairs = []
-  path_pair_class = path_pair_class_factory(params)
+  PathPair.expt_suffix = params.input.experiments_suffix
+  PathPair.refl_suffix = params.input.experiments_suffix
 
   def load_path_if_expt_or_refl(path_, filename_):
     if filename.endswith(params.input.experiments_suffix):
-      path_pairs.append(path_pair_class.from_dir_expt_name(path_, filename_))
+      path_pairs.append(PathPair.from_dir_expt_name(path_, filename_))
     if filename.endswith(params.input.reflections_suffix):
-      path_pairs.append(path_pair_class.from_dir_refl_name(path_, filename_))
+      path_pairs.append(PathPair.from_dir_refl_name(path_, filename_))
 
   for pathstring in params.input.path:
     for path in glob.glob(pathstring):
@@ -124,5 +121,5 @@ def list_input_pairs(params):
     elif path_pair.refl_path and not path_pair.expt_path:
       refl_singlets[path_pair.refl_stem] = path_pair.refl_path
   common_stems = OrderedSet(expt_singlets).intersection(OrderedSet(refl_singlets))
-  new = [path_pair_class(expt_singlets[c], refl_singlets[c]) for c in common_stems]
+  new = [PathPair(expt_singlets[c], refl_singlets[c]) for c in common_stems]
   return matched_pairs + new
