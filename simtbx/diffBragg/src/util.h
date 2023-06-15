@@ -202,7 +202,10 @@ struct beam{
 struct detector{
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs; // derivative of the panel fast direction
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs; // derivative of the panel slow direction
-    CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
+    CUDAREAL detector_thickstep;
+    int detector_thicksteps;
+    CUDAREAL detector_thick;
+    CUDAREAL detector_attnlen;
     std::vector<CUDAREAL> close_distances; // offsets to the detector origins (Z direction)
     int oversample; // determines the pixel subsampling rate
     CUDAREAL subpixel_size, pixel_size;

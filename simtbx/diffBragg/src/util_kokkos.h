@@ -234,7 +234,10 @@ struct kokkos_beam {
 struct kokkos_detector {
     std::vector<KOKKOS_VEC3> dF_vecs;  // derivative of the panel fast direction
     std::vector<KOKKOS_VEC3> dS_vecs;  // derivative of the panel slow direction
-    CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
+    CUDAREAL detector_thickstep;
+    int detector_thicksteps;
+    CUDAREAL detector_thick;
+    CUDAREAL detector_attnlen;
     std::vector<CUDAREAL> close_distances;  // offsets to the detector origins (Z direction)
     int oversample;                         // determines the pixel subsampling rate
     CUDAREAL subpixel_size, pixel_size;
