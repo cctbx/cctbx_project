@@ -175,17 +175,17 @@ class simple_file_loader(worker):
 
           if refls_sel.count(True) == 0: continue
 
-          refls_sel_identifier = refls_sel.experiment_identifiers().values()[0]
-          if identifiers_void(experiment.identifier, refls_sel_identifier) \
+          refls_identifier = reflections['id'].experiment_identifiers().values()[0]
+          if identifiers_void(experiment.identifier, refls_identifier) \
                   or self.params.input.override_identifiers:
             new_identifier = create_experiment_identifier(
               experiment, experiments_filename, experiment_id)
             experiment.identifier = new_identifier
             reflections.experiment_identifiers()['id'] = new_identifier
-          elif not identifiers_match(experiment.identifier, refls_sel_identifier):
+          elif not identifiers_match(experiment.identifier, refls_identifier):
             m = 'Expt and refl identifier mismatch: "{}" in {} vs "{}" in {}'
             raise KeyError(m.format(experiment.identifier, experiments_filename,
-                                    refls_sel_identifier, reflections_filename))
+                                    refls_identifier, reflections_filename))
 
           if not self.params.input.keep_imagesets:
             experiment.imageset = None
