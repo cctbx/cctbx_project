@@ -104,9 +104,9 @@ def list_input_pairs(params):
       if os.path.isdir(path):
         for filename in os.listdir(path):
           load_path_if_expt_or_refl(path, filename)
-        else:
-          filename, dir_name = os.path.split(path)
-          load_path_if_expt_or_refl(dir_name, filename)
+      else:
+        dir_name, filename = os.path.split(path)
+        load_path_if_expt_or_refl(dir_name, filename)
   accepted_pairs = [pp for pp in OrderedSet(path_pairs)
                     if is_accepted_expt(pp.expt_path) or not pp.expt_path]
 
