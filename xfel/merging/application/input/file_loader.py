@@ -4,7 +4,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
 import json
-from xfel.merging.application.input.path_pair import PathPairList
+from xfel.merging.application.input.file_lister import list_input_pairs
 from xfel.merging.application.input.file_load_calculator import file_load_calculator
 from xfel.merging.application.utils.memory_usage import get_memory_usage
 
@@ -113,7 +113,7 @@ class simple_file_loader(worker):
 
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
-      file_list = PathPairList(self.params)
+      file_list = list_input_pairs(self.params)
       self.logger.log("Built an input list of %d json/pickle file pairs"%(len(file_list)))
       self.params.input.path = None # Rank 0 has already parsed the input parameters
 
