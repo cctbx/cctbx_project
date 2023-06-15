@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from collections import namedtuple
 import glob
 import os
-from six.moves import UserDict, UserList
+from six.moves import UserDict
 
 import numpy as np
 from orderedset import OrderedSet
