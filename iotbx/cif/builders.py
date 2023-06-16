@@ -127,6 +127,9 @@ class crystal_symmetry_builder(builder_base):
     sym_ops = self.get_cif_item('_space_group_symop_operation_xyz')
     sym_op_ids = self.get_cif_item('_space_group_symop_id')
     space_group = None
+    space_group_from_ops = None
+    space_group_from_other = None
+    # Symmetry from operators
     if sym_ops is not None:
       if isinstance(sym_ops, string_types):
         sym_ops = flex.std_string([sym_ops])
@@ -135,7 +138,7 @@ class crystal_symmetry_builder(builder_base):
           sym_op_ids = flex.std_string([sym_op_ids])
         assert len(sym_op_ids) == len(sym_ops)
       self.sym_ops = {}
-      space_group = sgtbx.space_group()
+      space_group_from_ops = sgtbx.space_group()
       if isinstance(sym_ops, string_types): sym_ops = [sym_ops]
       for i, op in enumerate(sym_ops):
         try:
@@ -156,23 +159,39 @@ class crystal_symmetry_builder(builder_base):
             raise CifBuilderError("Error interpreting symmetry operator id: %s" %(
               str(e)))
         self.sym_ops[sym_op_id] = s
-        space_group.expand_smx(s)
-    else:
-      hall_symbol = self.get_cif_item('_space_group_name_Hall')
-      hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
-      sg_number = self.get_cif_item('_space_group_IT_number')
-      if space_group is None and hall_symbol not in (None, '?'):
-        try: space_group = sgtbx.space_group(hall_symbol)
-        except Exception: pass
-      if space_group is None and hm_symbol not in (None, '?'):
-        try: space_group = sgtbx.space_group_info(symbol=hm_symbol).group()
-        except Exception: pass
-      if space_group is not None and sg_number not in (None, '?'):
-        try: space_group = sgtbx.space_group_info(number=sg_number).group()
-        except Exception: pass
-      if (space_group is None and strict):
+        space_group_from_ops.expand_smx(s)
+    # Symmetry from other
+    hall_symbol = self.get_cif_item('_space_group_name_Hall')
+    hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
+    sg_number = self.get_cif_item('_space_group_IT_number')
+    if hall_symbol not in (None, '?'):
+      try: space_group_from_other = sgtbx.space_group(hall_symbol)
+      except Exception: pass
+    if hm_symbol not in (None, '?'):
+      try: space_group_from_other = sgtbx.space_group_info(symbol=hm_symbol).group()
+      except Exception: pass
+    if sg_number not in (None, '?'):
+      try: space_group_from_other = sgtbx.space_group_info(number=sg_number).group()
+      except Exception: pass
+    # Check consistency
+    if(space_group_from_other is not None and space_group_from_ops is not None):
+      ops1 = [o.as_xyz() for o in space_group_from_other.all_ops()]
+      ops2 = [o.as_xyz() for o in space_group_from_ops.all_ops()]
+      ops1.sort()
+      ops2.sort()
+      msg1 = "\n"+"\n".join(ops1)+"\n"
+      msg2 = "\n"+"\n".join(ops2)
+      if(ops1 != ops2):
         raise CifBuilderError(
-          "No symmetry instructions could be extracted from the cif block")
+          "Inconsistent symmetry information found:%s ---vs---%s"%(msg1, msg2))
+    for sg in [space_group_from_other, space_group_from_ops]:
+      if(sg is not None):
+        space_group = sg
+        break
+    if (space_group is None and strict):
+      raise CifBuilderError(
+        "No symmetry instructions could be extracted from the cif block")
+    #
     items = [self.get_cif_item("_cell_length_"+s) for s in "abc"]
     for i, item in enumerate(items):
       if isinstance(item, flex.std_string):
