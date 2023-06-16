@@ -131,6 +131,7 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
     new_expt.crystal = new_cryst
     new_expt.detector = expt.detector
     new_expt.beam = expt.beam
+    new_expt.identifier = expt.identifier
     new_expt.imageset = expt.imageset
     # expt.detector = refiner.get_optimized_detector()
     new_exp_list = ExperimentList()
