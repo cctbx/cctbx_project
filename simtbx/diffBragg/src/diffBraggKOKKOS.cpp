@@ -11,7 +11,7 @@
         function<false>(__VA_ARGS__); \
     }                                 \
 
-void diffBraggKOKKOS::prepare_refinement_flags(flags& db_flags, bool update_flags=false) {
+void diffBraggKOKKOS::prepare_refinement_flags(flags& db_flags, bool update_flags) {
     m_refine_flag = 0;
     m_refine_flag |= db_flags.refine_diffuse * REFINE_DIFFUSE;
     m_refine_flag |= db_flags.refine_fcell * REFINE_FCELL;
