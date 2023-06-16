@@ -3,10 +3,10 @@
 #include <Kokkos_Core.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
-    #define MemSpace Kokkos::CudaUVMSpace
+    #define MemSpace Kokkos::CudaSpace
 #endif
 #ifdef KOKKOS_ENABLE_HIP
-    #define MemSpace Kokkos::HIPManagedSpace
+    #define MemSpace Kokkos::HIPSpace
 #endif
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
     #define MemSpace Kokkos::OpenMPTargetSpace

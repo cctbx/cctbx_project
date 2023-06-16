@@ -23,29 +23,37 @@ inline KOKKOS_VEC3 to_vec3(const Eigen::Vector3d& v) {
 
 inline KOKKOS_MAT3 to_mat3(const Eigen::Matrix3d& m) {
     // Eigen matrix is column-major!
-    return KOKKOS_MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
+    return KOKKOS_MAT3(m(0, 0), m(0, 1), m(0, 2),
+                       m(1, 0), m(1, 1), m(1, 2),
+                       m(2, 0), m(2, 1), m(2, 2));
 }
 
 template <class T, class U>
-inline void transfer(T& target, U& source, int size=-1) {
-    const int length = size>=0 ? size : source.size();
+inline void transfer(T& dst, U& src, int size=-1) {
+    const int length = size>=0 ? size : src.size();
     for (int i=0; i<length; ++i) {
-        target(i) = source[i];
+        dst(i) = src[i];
     }
 }
 
 template <class T, class U>
-inline void transfer_KOKKOS_VEC3(T& target, U& source) {
-    for (int i=0; i<source.size(); ++i) {
-        target(i) = to_vec3(source[i]);
+inline void transfer_KOKKOS_VEC3(T& dst, U& src) {
+    auto host_view = Kokkos::create_mirror_view(dst);
+    auto src_ptr = src.begin();
+    for (int i = 0; i < src.size(); ++i) {
+        host_view(i) = to_vec3(src_ptr[i]);
     }
+    Kokkos::deep_copy(dst, host_view);
 }
 
 template <class T, class U>
-inline void transfer_KOKKOS_MAT3(T& target, U& source) {
-    for (int i=0; i<source.size(); ++i) {
-        target(i) = to_mat3(source[i]);
+inline void transfer_KOKKOS_MAT3(T& dst, U& src) {
+    auto host_view = Kokkos::create_mirror_view(dst);
+    auto src_ptr = src.begin();
+    for (int i = 0; i < src.size(); ++i) {
+        host_view(i) = to_mat3(src_ptr[i]);
     }
+    Kokkos::deep_copy(dst, host_view);
 }
 
 // CONTAINERS

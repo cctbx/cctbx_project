@@ -247,20 +247,20 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  END step position
     if (db_flags.Fhkl_gradient_mode){
-        transfer(m_data_residual, d_image.residual, Npix_to_model);
-        transfer(m_data_variance, d_image.variance, Npix_to_model);
-        transfer(m_data_trusted, d_image.trusted, Npix_to_model);
-        transfer(m_data_freq, d_image.freq, Npix_to_model);
+        kokkostbx::transfer_vector2kokkos(m_data_residual, d_image.residual);
+        kokkostbx::transfer_vector2kokkos(m_data_variance, d_image.variance);
+        kokkostbx::transfer_vector2kokkos(m_data_trusted, d_image.trusted);
+        kokkostbx::transfer_vector2kokkos(m_data_freq, d_image.freq);
     }
 
     if (db_flags.Fhkl_have_scale_factors && ALLOC){
-        transfer(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
+        kokkostbx::transfer_vector2kokkos(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
     }
 
     if (db_flags.Fhkl_have_scale_factors){
         //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
-        transfer(m_Fhkl_channels, db_beam.Fhkl_channels);
-        transfer(m_Fhkl_scale, d_image.Fhkl_scale);
+        kokkostbx::transfer_vector2kokkos(m_Fhkl_channels, db_beam.Fhkl_channels);
+        kokkostbx::transfer_vector2kokkos(m_Fhkl_scale, d_image.Fhkl_scale);
         ::Kokkos::deep_copy(m_Fhkl_scale_deriv, 0);
 
         // for (int i=0; i < d_image.Fhkl_scale.size(); i++){
@@ -315,9 +315,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
         auto Amat_init = db_cryst.eig_U*db_cryst.eig_B*1e10*(db_cryst.eig_O.transpose());
+        auto host_AMATS = Kokkos::create_mirror_view(m_AMATS);
         for (int i=0; i<db_cryst.UMATS_RXYZ.size(); ++i) {
-            m_AMATS(i) = to_mat3((db_cryst.UMATS_RXYZ[i]*Amat_init).transpose());
+            host_AMATS(i) = to_mat3((db_cryst.UMATS_RXYZ[i]*Amat_init).transpose());
         }
+        Kokkos::deep_copy(m_AMATS, host_AMATS);
         if (db_flags.verbose > 1)
             printf("H2D Done copying Amats\n");
     }
@@ -360,13 +362,13 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  END  DETECTOR VECTORS
 
     if (ALLOC || FORCE_COPY) {
-        transfer(m_nominal_hkl, db_cryst.nominal_hkl);
-        transfer(m_atom_data, db_cryst.atom_data);
+        kokkostbx::transfer_vector2kokkos(m_nominal_hkl, db_cryst.nominal_hkl);
+        kokkostbx::transfer_vector2kokkos(m_atom_data, db_cryst.atom_data);
         if (db_flags.verbose > 1)
             printf("H2D Done copying atom data\n");
 
-        transfer(m_fpfdp, db_cryst.fpfdp);
-        transfer(m_fpfdp_derivs, db_cryst.fpfdp_derivs);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp, db_cryst.fpfdp);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp_derivs, db_cryst.fpfdp_derivs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying fprime and fdblprime\n");
     }
@@ -417,9 +419,9 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BEGIN Fhkl
     Kokkos::Tools::pushRegion("Begin Fhkl");
     if (db_cu_flags.update_Fhkl || ALLOC || FORCE_COPY) {
-        transfer(m_Fhkl, db_cryst.FhklLinear);
+        kokkostbx::transfer_vector2kokkos(m_Fhkl, db_cryst.FhklLinear);
         if (db_flags.complex_miller) {
-            transfer(m_Fhkl2, db_cryst.Fhkl2Linear);
+            kokkostbx::transfer_vector2kokkos(m_Fhkl2, db_cryst.Fhkl2Linear);
         }
         if (db_flags.verbose > 1)
             printf("H2D Done copying step Fhkl\n");
@@ -551,12 +553,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
     if (db_flags.Fhkl_gradient_mode){
         if (db_flags.Fhkl_errors_mode){
-            for (int i=0; i < d_image.Fhkl_hessian.size(); i++)
-                d_image.Fhkl_hessian[i]= m_Fhkl_scale_deriv(i);
+            kokkostbx::transfer_kokkos2vector(d_image.Fhkl_hessian, m_Fhkl_scale_deriv);
         }
         else{
-            for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++)
-                d_image.Fhkl_scale_deriv[i]= m_Fhkl_scale_deriv(i);
+            kokkostbx::transfer_kokkos2vector(d_image.Fhkl_scale_deriv, m_Fhkl_scale_deriv);
         }
     }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0) {
