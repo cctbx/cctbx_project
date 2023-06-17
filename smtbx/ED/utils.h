@@ -18,9 +18,10 @@ namespace smtbx { namespace ED {
     typedef scitbx::vec3<FloatType> cart_t;
     typedef scitbx::mat3<FloatType> mat3_t;
     typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
+    typedef typename af::versa<complex_t, af::mat_grid> cmat_t;
 
     static void build_Ug_matrix(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       af::shared<complex_t> const& Fcs_k,
       lookup_t const& mi_lookup,
       af::shared<miller::index<> > indices, // implicit {0,0,0} at 0
@@ -57,9 +58,98 @@ namespace smtbx { namespace ED {
       }
     }
 
+    static void multily_diagonal_inplace(
+      af::shared<FloatType> &d,
+      af::shared<FloatType> const&c)
+    {
+      for (size_t i = 0; i < d.size(); i++) {
+        d[i] *= c[i];
+      }
+    }
+
+    static af::shared<FloatType> multily_diagonal(
+      af::shared<FloatType> const& d,
+      af::shared<FloatType> const& c)
+    {
+      af::shared<FloatType> rv(d.size());
+      for (size_t i = 0; i < d.size(); i++) {
+        rv[i] = d[i] * c[i];
+      }
+      return rv;
+    }
+
+    static cmat_t multily_diagonal(
+      cmat_t const& m,
+      af::shared<FloatType> const& d)
+    {
+      size_t sz = S.accessor().n_columns();
+      cmat_t rv(af::mat_grid(sz, sz));
+      for (size_t i = 0; i < sz; i++) {
+        for (size_t j = 0; j < sz; j++) {
+          rv(i, j) = m(i,j) * d[j];
+        }
+      }
+      return rv;
+    }
+
+    static cmat_t multily_diagonal(
+      af::shared<FloatType> const& d,
+      cmat_t const& m)
+    {
+      size_t sz = S.accessor().n_columns();
+      cmat_t rv(af::mat_grid(sz, sz));
+      for (size_t i = 0; i < sz; i++) {
+        for (size_t j = 0; j < sz; j++) {
+          rv(i, j) = m(i, j) * d[i];
+        }
+      }
+      return rv;
+    }
+
+    // derivatifes of A = V * D * V^-1
+    static cmat_t calc_dS_dx(
+      // derivatives of the Eigen matrix by params
+      cmat_t const& S,
+      // diagonal matrix
+      af::shared<complex_t> const& D,
+      // eigen values
+      af::shared<complex_t> const& L,
+      // eigen vectors
+      cmat_t const& V,
+      // inverse of eigen vectors
+      cmat_t const& V_1,
+      // derivatives of the diagonal matrix by eigen values
+      af::shared<complex_t> const& dD_dL)
+    {
+      size_t sz = S.accessor().n_columns();
+      cmat_t X = af::matrix_multiply(V_1, S);
+      cmat_t dV = af::matrix_multiply(X, V);
+      af::shared<FloatType> dD(sz);
+      for (size_t i = 0; i < sz; i++) {
+        dD[i] = dV(i, i) * dD_dL[i];
+      }
+
+      for (size_t i = 0; i < sz; i++) {
+        dV(i, i) = 0;
+        for (size_t j = i+1; j < sz; j++) {
+          FloatType k = 1. / (L[j] - L[i]);
+          dV(i, j) *= k;
+          dV(j, i) *= -k;
+        }
+      }
+      X = multiply_diagonal(D, V_1);
+      cmat_t res = af::matrix_multiply(dV, X) +
+        af::matrix_multiply(
+          multiply_diagonal(V, dD), V_1) +
+        af::matrix_multiply(
+          af::matrix_multiply(
+            af::matrix_multiply(V, X), dV), V_1);
+      return res;
+    }
+
     // considers the original matrix Hermitian
     static void modify_Ug_matrix(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       af::shared<miller::index<> > const& s_indices, // matrix beams
       af::shared<complex_t> const& Fcs_k,
       lookup_t const& mi_lookup,
@@ -97,7 +187,7 @@ namespace smtbx { namespace ED {
 
     /* Acta Cryst. (2013). A69, 171–188 */
     static void build_eigen_matrix_2013(
-      af::versa<complex_t, af::mat_grid>& A, // Ug matrix
+      cmat_t& A, // Ug matrix
       af::shared<miller::index<> > indices, // implicit {0,0,0} at 0
       cart_t const& K,
       mat3_t const& RMf,
@@ -120,7 +210,7 @@ namespace smtbx { namespace ED {
 
     /* Acta Cryst. (2015). A71, 235–244 */
     static void build_eigen_matrix_2015(
-      af::versa<complex_t, af::mat_grid>& A, // Ug matrix
+      cmat_t& A, // Ug matrix
       af::shared<miller::index<> > indices, // implicit {0,0,0} at 0
       cart_t const& K,
       mat3_t const& RMf,
@@ -159,7 +249,7 @@ namespace smtbx { namespace ED {
 
     /* J. Appl. Cryst. (2022). 55 */
     static void build_eigen_matrix_recipro(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       af::shared<miller::index<> > const& indices,
       cart_t const& K,
       mat3_t const& RMf,
@@ -187,7 +277,7 @@ namespace smtbx { namespace ED {
     }
 
     static void build_eigen_matrix_modified(
-      af::versa<complex_t, af::mat_grid>& A, // Ug matrix modified
+      cmat_t& A, // Ug matrix modified
       cart_t const& K,
       cart_t const& N,
       af::shared<cart_t> const& gs,
@@ -205,7 +295,7 @@ namespace smtbx { namespace ED {
     }
 
     static af::shared<complex_t> calc_amps_2013(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       af::shared<FloatType> const& ExpDen,
       FloatType thickness,
       size_t num)
@@ -234,7 +324,7 @@ namespace smtbx { namespace ED {
     }
 
     static af::shared<complex_t> calc_amps_2015(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       af::shared<FloatType> const& M,
       FloatType thickness,
       FloatType Kn,
@@ -264,7 +354,7 @@ namespace smtbx { namespace ED {
     }
 
     static af::shared<complex_t> calc_amps_recipro(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       const af::shared<FloatType>& Pgs,
       FloatType Kvac,
       FloatType thickness,
@@ -280,7 +370,7 @@ namespace smtbx { namespace ED {
       lapack_int info = geev(LAPACK_ROW_MAJOR, 'N', 'V', n_beams,
         A.begin(), n_beams, ev.begin(), 0, n_beams, B.begin(), n_beams);
       SMTBX_ASSERT(!info)(info);
-      af::versa<complex_t, af::mat_grid> Bi = B.deep_copy();
+      cmat_t Bi = B.deep_copy();
       // invert Bi now
       {
         af::shared<lapack_int> pivots(n_beams);
@@ -316,7 +406,7 @@ namespace smtbx { namespace ED {
     }
 
     static af::shared<complex_t> calc_amps_modified(
-      af::versa<complex_t, af::mat_grid>& A,
+      cmat_t& A,
       const af::shared<FloatType>& ExpDen,
       FloatType thickness,
       size_t num)
@@ -331,7 +421,7 @@ namespace smtbx { namespace ED {
       lapack_int info = geev(LAPACK_ROW_MAJOR, 'N', 'V', n_beams,
         A.begin(), n_beams, ev.begin(), 0, n_beams, B.begin(), n_beams);
       SMTBX_ASSERT(!info)(info);
-      af::versa<complex_t, af::mat_grid> Bi = B.deep_copy();
+      cmat_t Bi = B.deep_copy();
       // invert Bi now
       {
         af::shared<lapack_int> pivots(n_beams);
@@ -440,13 +530,19 @@ namespace smtbx { namespace ED {
         calc_amp_2beam_I_(Ug_sq - eps, s_2k, exp_k, Kn, K_gn));
       return (Ip - In) / (2 * eps);
     }
+    static FloatType calc_Sg(cart_t const& g,
+      cart_t const& K)
+    {
+      FloatType Kl = K.length();
+      cart_t Kg = K + g;
+      return (Kl * Kl - Kg.length_sq()) / (2 * Kl);
+    }
 
     static bool is_excited_g(cart_t const& g,
       cart_t const& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
-      FloatType gl = g.length(), Kl = K.length();
-      cart_t Kg = K + g;
-      FloatType Sg = std::abs((Kl * Kl - Kg.length_sq()) / (2 * Kl));
+      FloatType gl = g.length(),
+        Sg = std::abs(calc_Sg(g, K));
       return Sg < MaxSg && gl < MaxG && Sg / (gl * precession_angle) < 1.0;
     }
 

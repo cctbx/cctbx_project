@@ -67,7 +67,6 @@ namespace boost_python {
       using namespace boost::python;
       return_value_policy<return_by_value> rbv;
       typedef return_internal_reference<> rir_t;
-      rir_t rir;
       typedef BeamInfo<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
@@ -79,9 +78,23 @@ namespace boost_python {
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_info");
     }
 
+    static void wrap_peak_profile_point() {
+      using namespace boost::python;
+      typedef return_internal_reference<> rir_t;
+      typedef PeakProfilePoint<FloatType> wt;
+
+      class_<wt, std::auto_ptr<wt> >("peak_profile_point", no_init)
+        .add_property("I", &wt::I)
+        .add_property("Sg", &wt::Sg)
+        .add_property("angle", &wt::angle)
+        ;
+      scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("peak_profile_point");
+    }
+
     static void wrap() {
       wrap_frame();
       wrap_beam();
+      wrap_peak_profile_point();
     }
   };
 

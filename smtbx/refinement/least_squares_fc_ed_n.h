@@ -110,14 +110,16 @@ namespace least_squares {
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<FloatType>& Is,
-        af::shared<complex_t>& CIs, bool use_offset=true)
+        af::shared<complex_t>& CIs, bool use_offset,
+        bool use_diff_angle)
         : parent(parent),
         frame(frame),
         thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Is(Is),
         CIs(CIs),
-        offset(use_offset ? frame.offset : 0)
+        offset(use_offset ? frame.offset : 0),
+        use_diff_angle(use_diff_angle)
       {}
 
       void operator()() {
@@ -129,7 +131,7 @@ namespace least_squares {
               miller::index<> h = frame.indices[beam_idx];
               int ii = parent.mi_lookup.find_hkl(h);
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
-              if (parent.use_diff_angle) {
+              if (use_diff_angle) {
                 frame.update_alpha(frame.beams[beam_idx].diffraction_angle);
               }
               complex_t ci = utils<FloatType>::calc_amp_2beam(
@@ -240,6 +242,7 @@ namespace least_squares {
       af::shared<FloatType>& Is;
       af::shared<complex_t>& CIs;
       size_t offset;
+      bool use_diff_angle;
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
@@ -253,8 +256,37 @@ namespace least_squares {
       af::shared<FloatType> Is_(frame.beams.size());
       af::shared<complex_t> CIs_;
       process_frame(*this, frame, Fcs_k, Is_, CIs_,
-        false); // no offset - write to Is_ at 0;
+        false, false)(); // no offset - write to Is_ at 0;
       return Is_;
+    }
+
+    af::shared<PeakProfilePoint<FloatType> > build_profile(int frame_id,
+      af::shared<complex_t> const& Fcs_k, FloatType angle,
+      FloatType step)
+    {
+      typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
+        frames_map.find(frame_id);
+      SMTBX_ASSERT(fi != frames_map.end());
+      FrameInfo<FloatType>& frame = *fi->second;
+      af::shared<FloatType> Is_(frame.beams.size());
+      af::shared<complex_t> CIs_;
+      af::shared<PeakProfilePoint<FloatType> > rv;
+      FloatType alpha = frame.alpha;
+      const cart_t K = cart_t(0, 0, -Kl);
+      for (FloatType s = -angle; s <= angle; s+= step) {
+        frame.update_alpha(alpha + s);
+        process_frame(*this, frame, Fcs_k, Is_, CIs_,
+          false, false)(); // no offset - write to Is_ at 0;
+        for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+          size_t beam_idx = frame.strong_measured_beams[i];
+          miller::index<> h = frame.indices[beam_idx];
+          cart_t g = frame.RMf * cart_t(h[0], h[1], h[2]);
+          FloatType Sg = utils<FloatType>::calc_Sg(g, K);
+          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, frame.alpha));
+        }
+      }
+      frame.update_alpha(alpha);
+      return rv;
     }
 
     void process_frames_mt(af::shared<FloatType> &Is_,
@@ -279,7 +311,7 @@ namespace least_squares {
               frames[to],
               Fcs_k,
               Is_,
-              CIs_)
+              CIs_, true, use_diff_angle)
           );
           accumulators.push_back(pf);
           pool.create_thread(boost::ref(*pf));

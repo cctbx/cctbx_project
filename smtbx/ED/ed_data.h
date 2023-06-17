@@ -242,7 +242,8 @@ void FrameInfo<FloatType>::analyse_strength(
 }
 
 template <typename FloatType>
-size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group, bool anomalous)
+size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
+  bool anomalous)
 {
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
   lookup_t bm = lookup_t(space_group, anomalous);
@@ -259,5 +260,14 @@ size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group, bool a
 
 }
 
+template <typename FloatType>
+struct PeakProfilePoint {
+  FloatType I, Sg, angle;
+  PeakProfilePoint()
+  {}
+  PeakProfilePoint(FloatType I, FloatType Sg, FloatType angle)
+    : I(I), Sg(Sg), angle(angle)
+  {}
+};
 
 }}
