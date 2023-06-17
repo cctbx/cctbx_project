@@ -151,8 +151,8 @@ namespace detail {
           bool have_main_conf = false;
           bool have_blank_altloc = false;
           std::set<char> rg_altlocs;
-          std::set<str3> rg_resnames;
-          std::map<char, std::vector<str3> > altloc_resnames;
+          std::set<std::string> rg_resnames;
+          std::map<char, std::vector<std::string> > altloc_resnames;
           unsigned n_ag = rg.atom_groups_size();
           for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
             atom_group const& ag = rg.atom_groups()[i_ag];
@@ -179,14 +179,14 @@ namespace detail {
             }
           }
           {
-            typedef std::set<str3>::const_iterator it;
+            typedef std::set<std::string>::const_iterator it;
             it i_end = rg_resnames.end();
             for(it i=rg_resnames.begin();i!=i_end;i++) {
-              resnames[std::string((*i).elems)]++;
+              resnames[std::string((*i).c_str())]++;
             }
           }
           {
-            typedef std::map<char, std::vector<str3> >::const_iterator it;
+            typedef std::map<char, std::vector<std::string> >::const_iterator it;
             it i_end = altloc_resnames.end();
             for(it i=altloc_resnames.begin();i!=i_end;i++) {
               if (i->second.size() != 1U) {
