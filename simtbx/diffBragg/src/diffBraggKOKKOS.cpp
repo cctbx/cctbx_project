@@ -251,22 +251,6 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         resize(m_manager_dI, db_cu_flags.Npix_to_allocate);
         resize(m_manager_dI2, db_cu_flags.Npix_to_allocate);
 
-            // Prepare buffers
-        resize(m_omega_pixel_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_airpath_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_pixel_pos_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_texture_scale_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        resize(m_polar_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        resize(m_q_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        // resize(m_V_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_H_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_Fcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_I_noFcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_c_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_d_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_Iincrement_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_step_diffuse_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-
         m_npix_allocated = db_cu_flags.Npix_to_allocate;
         Kokkos::Tools::popRegion();
     }  // END of allocation
@@ -452,6 +436,30 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
     Kokkos::Tools::popRegion();
     //  END panels fasts slows
+
+    // BEGIN resize buffers if necessary
+    if (m_q_vec_buffer.extent(0)<Npix_to_model ||
+        m_q_vec_buffer.extent(1)<local_det.oversample ||
+        m_q_vec_buffer.extent(2)<local_det.oversample ||
+        m_q_vec_buffer.extent(3)<local_det.detector_thicksteps || 
+        m_q_vec_buffer.extent(4)<local_beam.number_of_sources) {
+
+        resize(m_omega_pixel_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
+        resize(m_airpath_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
+        resize(m_pixel_pos_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
+        resize(m_texture_scale_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
+        resize(m_polar_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
+        resize(m_q_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
+        // resize(m_V_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_H_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_Fcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_I_noFcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_c_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_d_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_Iincrement_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+        // resize(m_step_diffuse_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
+    }
+    // END resize buffers if necessary
 
     gettimeofday(&t2, 0);
     time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
