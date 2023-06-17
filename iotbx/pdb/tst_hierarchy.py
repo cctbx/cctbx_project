@@ -478,7 +478,7 @@ def exercise_atom_group():
   ag.resname = None
   assert ag.altloc == ""
   assert ag.resname == ""
-  assert ag.confid() == "    "
+  assert ag.confid() == "  ", "'%s'" % ag.confid()
   #
   ag.altloc = "l"
   ag.resname = "res"
@@ -769,10 +769,14 @@ def exercise_residue_group():
 def exercise_chain():
   c = pdb.hierarchy.chain()
   assert c.id == ""
+  c = pdb.hierarchy.chain(id=None)
+  assert c.id == ""
   c = pdb.hierarchy.chain(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
+  c.id = None
+  assert c.id == ""
   #
   m1 = pdb.hierarchy.model(id="1")
   m2 = pdb.hierarchy.model(id="2")
@@ -1032,8 +1036,12 @@ def exercise_model():
   assert m.id == ""
   m = pdb.hierarchy.model(id="42")
   assert m.id == "42"
+  m = pdb.hierarchy.model(id=None)
+  assert m.id == ""
   m.id = "-23"
   assert m.id == "-23"
+  m.id = None
+  assert m.id == ""
   #
   m = pdb.hierarchy.model(id="17")
   assert m.parent() is None

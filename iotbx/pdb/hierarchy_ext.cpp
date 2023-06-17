@@ -63,7 +63,7 @@ namespace {
     typedef atom_group w_t;
 
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(resname)
 
     static
     af::shared<atom>
@@ -503,7 +503,7 @@ namespace {
       return boost::python::object(*result);
     }
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resname)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET(resname)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resseq)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(icode)
 

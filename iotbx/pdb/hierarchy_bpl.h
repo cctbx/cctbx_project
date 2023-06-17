@@ -43,7 +43,7 @@
     void \
     set_##attr(w_t& self, const char* value) \
     { \
-      self.data->attr.assign(value); \
+      self.data->attr.assign( (value==0) ? "" : value ); \
     }
 
 #define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(attr) \
