@@ -568,7 +568,7 @@ class _SingletonOptimizer(object):
         # Compute and store the initial score for each Mover in its info
         for m in self._movers:
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          score = self._preferenceMagnitude * coarse.preferenceEnergies[0]
           self._setMoverState(coarse, 0)
           for a in coarse.atoms:
             score += self._scoreAtom(a)
@@ -615,7 +615,7 @@ class _SingletonOptimizer(object):
         # Print the final state and score for all Movers
         def _scoreMoverReportClash(self, m, index):
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[index] * self._preferenceMagnitude
+          score = self._preferenceMagnitude * coarse.preferenceEnergies[index]
           clash = False
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
@@ -1342,7 +1342,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       # update the best.
       score = 0
       for i in range(len(movers)):
-        score += states[i].preferenceEnergies[curStateValues[i]]
+        score += self._preferenceMagnitude * self._states[i].preferenceEnergies[curStateValues[i]]
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1358,7 +1358,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
       self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = states[i].preferenceEnergies[curStateValues[i]]
+      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
       self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1509,7 +1509,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
         # update the best.
         for i, m in enumerate(cutMovers):
-          score += states[m].preferenceEnergies[curStateValues[i]]
+          score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
           for a in states[m].atoms:
             score += self._scoreAtom(a)
         self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1526,7 +1526,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       for i,m in enumerate(movers):
         self._setMoverState(states[m], bestState[i])
         self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = states[m].preferenceEnergies[bestState[i]]
+        self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
         for a in states[m].atoms:
           self._highScores[m] += self._scoreAtom(a)
         self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
