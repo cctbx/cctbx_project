@@ -387,10 +387,6 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        tetrahedron, the starting orientation is aligned between two of the edges of
        the tetrahedron.  For partner-partner atoms that are bonded to two atoms, the
        starting orientation is in the plane of these atoms and the partner-partner atom.
-       The set of partner-partner atoms is studied to determine which one the hydrogen
-       should be pointing away from; if all are hydrogens then they are examined, if some are
-       not hydrogens then only these are examined; if multi atoms are examined then the one
-       with the lowest sort-order atom name is chosen.
        :param atom: Hydrogen atom that will be rotated.  It must be bonded to a single
        atom, and that atom must also be bonded to a single other atom.  NOTE: As a side
        effect, this Hydrogen is immediately rotated to lie either in the plane of the two
@@ -468,8 +464,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
-    # After getting the original coarse angles in the base class,
-    # add orientations that point in the direction of the potential acceptors.
+    # Now add orientations that point in the direction of the potential acceptors.
     # @todo The original C++ code aimed only at these (or near them for clashes) and in a
     # direction far from clashes.  We may need to do this for speed reasons and to reduce the
     # number of elements in each clique, but for now we try all coarse orientations and all
