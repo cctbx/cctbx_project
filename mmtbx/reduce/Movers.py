@@ -429,6 +429,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         friends.append(b)
 
     # Determine the preference function (180 or 120) based on friends bonding structure
+    # NOTE: We replace the preferenceFunction with None below to match original reduce
+    # behavior. We leave the math in here so that if we later decide to have a preference
+    # it will be correctly determined based on the number of neighbors.
     # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
     if len(friends) == 2:
       # There are two neighbors, so our function repeats every 180 degrees
@@ -439,6 +442,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     else:
       raise ValueError("MoverSingleHydrogenRotator(): Atom's bonded neighbor's neighbor does not have 2-3 other bonds "+
       "it has "+str(len(friends)))
+    # Original Reduce did not have a preference, so we remove that here.
+    preferenceFunction = None
 
     # Determine the axis to rotate around, which starts at the partner atom and points at the neighbor.
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
@@ -1680,6 +1685,7 @@ def Test():
     if h.xyz[2] != 1 or abs(-h.xyz[0]-math.sqrt(2)) > 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad H placement"
 
+    ''' Preference function has been removed from this class
     # Check fitness function preferring 0 and 180 rotations
     zero = mover._preferenceFunction(0)
     ninety = mover._preferenceFunction(90)
@@ -1688,6 +1694,7 @@ def Test():
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
     if zero - ninety < 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
+    '''
 
     # Check that one of the orientations has a dihedral angle of 0 compared to the original
     # 13-degree-off potential acceptor atom.
@@ -1782,6 +1789,7 @@ def Test():
     if not (h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5):
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad H placement"
 
+    ''' Preference function has been removed from this class
     # Check fitness function preferring 180 and +/- 120 from there rotations away from
     # the angle away from 180 degrees.
     zero = mover._preferenceFunction(angle+0)
@@ -1794,6 +1802,7 @@ def Test():
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
     if zero - oneEighty < 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
+    '''
 
   except Exception as e:
     return "Movers.Test() MoverSingleHydrogenRotator triple: Exception during test: "+str(e)+"\n"+traceback.format_exc()
