@@ -1334,9 +1334,9 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 
       # Set all movers to match the state list.
       # @todo Optimize this so that it only changes states that differed from last time.
-      for i in range(len(movers)):
+      for i,m in enumerate(movers):
         self._setMoverState(states[i], curStateValues[i])
-        self._coarseLocations[movers[i]] = curStateValues[i]
+        self._coarseLocations[m] = curStateValues[i]
 
       # Compute the score over all atoms in all Movers and see if it is the best.  If so,
       # update the best.
