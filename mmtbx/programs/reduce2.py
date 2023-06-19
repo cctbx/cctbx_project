@@ -1183,6 +1183,7 @@ NOTES:
         source = [ m ]
         tempName = tempfile.mktemp()
         newParams = self._MakeProbePhil(source, tempName)
+        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
         newParams.output.format = 'raw'
         newParams.output.contact_summary = True
         newParams.output.condensed = True
@@ -1220,6 +1221,7 @@ NOTES:
         # filled in with values that we want for our summaries.
         tempName = tempfile.mktemp()
         newParams = self._MakeProbePhil(source, tempName)
+        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
         newParams.output.format = 'raw'
         newParams.output.contact_summary = True
         newParams.output.condensed = True
