@@ -1163,6 +1163,10 @@ class Builder(object):
       hot = self.get_hot()
       if self.use_conda is not None:
         for module in ['scons']:
+          # SCons conda package may cause issues with procrunner on Python 2.7
+          # https://stackoverflow.com/questions/24453387/scons-attributeerror-builtin-function-or-method-object-has-no-attribute-disp
+          if module == 'scons' and self.python == '27':
+            continue
           try:
             hot.remove(module)
           except ValueError:
