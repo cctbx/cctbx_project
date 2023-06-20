@@ -1992,7 +1992,7 @@ END
 
   ################################################################################
   # Test using a modified snippet from 7c31 to make sure the single-hydrogen rotator sets
-  # the orientation of the Hydrogen to make a good hydrogen bond qith a nearby Oxygen.
+  # the orientation of the Hydrogen to make a good hydrogen bond with a nearby Oxygen.
   # The above example has been stripped down and has the Oxygen moved closer
 
   pdb_7c31_two_residues_close_O = """\
