@@ -106,6 +106,7 @@ https://conda.anaconda.org/cctbx202008/noarch/packaging-20.4-pyh9f0ad1d_0.tar.bz
 https://conda.anaconda.org/cctbx202008/osx-64/pexpect-4.8.0-py27h8c360ce_1.tar.bz2#c4e0c2f149636f8d53217ec0ceec7b02
 https://conda.anaconda.org/cctbx202008/osx-64/pillow-6.2.1-py27h43b43f3_1.tar.bz2#6a2ad1fd5f7b74c3fe198c4a42abe32f
 https://conda.anaconda.org/cctbx202008/osx-64/psutil-5.7.0-py27h89ed719_1.tar.bz2#8fe66bf65476244ba1d736ae1f63bd1e
+https://conda.anaconda.org/cctbx202008/osx-64/procrunner-1.1.0-py27h8c360ce_1.tar.bz2#3acae8855acb129ed91e64c97887ce16
 https://conda.anaconda.org/cctbx202008/osx-64/pyside2-5.13.2-py27ha8f7116_2.tar.bz2#b7f0b69c3ab884fb206bf1f1769c2217
 https://conda.anaconda.org/cctbx202008/osx-64/pysocks-1.7.1-py27h8c360ce_1.tar.bz2#5fb90fa1a3eaf2b837dae707a93ab550
 https://conda.anaconda.org/cctbx202008/noarch/python-dateutil-2.8.1-py_0.tar.bz2#0d0150ed9c2d25817f5324108d3f7571
