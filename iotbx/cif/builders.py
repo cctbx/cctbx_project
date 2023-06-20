@@ -164,14 +164,14 @@ class crystal_symmetry_builder(builder_base):
     hall_symbol = self.get_cif_item('_space_group_name_Hall')
     hm_symbol = self.get_cif_item('_space_group_name_H-M_alt')
     sg_number = self.get_cif_item('_space_group_IT_number')
+    if sg_number not in (None, '?'):
+      try: space_group_from_other = sgtbx.space_group_info(number=sg_number).group()
+      except Exception: pass
     if hall_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group(hall_symbol)
       except Exception: pass
     if hm_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group_info(symbol=hm_symbol).group()
-      except Exception: pass
-    if sg_number not in (None, '?'):
-      try: space_group_from_other = sgtbx.space_group_info(number=sg_number).group()
       except Exception: pass
     # Check consistency
     if(space_group_from_other is not None and space_group_from_ops is not None):
