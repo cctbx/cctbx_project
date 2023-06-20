@@ -16,7 +16,7 @@ int gen_laue_mats(int laue_group_num, MAT3 *lmats) {
     return 0;
   }
 
-  double one_over_root2 = 1./sqrt(2.);
+  const double one_over_root2 = 1./sqrt(2.);
 
   if ( laue_group_num == 1 ) {
   // P -1
