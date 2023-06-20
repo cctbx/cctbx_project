@@ -127,6 +127,7 @@ https://conda.anaconda.org/cctbx202008/linux-64/msgpack-python-1.0.0-py27h9e3301
 https://conda.anaconda.org/cctbx202008/noarch/packaging-20.4-pyh9f0ad1d_0.tar.bz2#6d160f7346ac815500b5475d9a0f88a9
 https://conda.anaconda.org/cctbx202008/linux-64/pexpect-4.8.0-py27h8c360ce_1.tar.bz2#e772596cb72ea97421227a22aefba64a
 https://conda.anaconda.org/cctbx202008/linux-64/pillow-6.2.1-py27hd70f55b_1.tar.bz2#f299e0f82d4735cbdeebf535b3ac7a8c
+https://conda.anaconda.org/cctbx202008/linux-64/procrunner-1.1.0-py27h8c360ce_1.tar.bz2#ac272b8a0721476ca442c948505fd50e
 https://conda.anaconda.org/cctbx202008/linux-64/psutil-5.7.0-py27hdf8410d_1.tar.bz2#6f38dad22ebeabf847e777192855950b
 https://conda.anaconda.org/cctbx202008/linux-64/pysocks-1.7.1-py27h8c360ce_1.tar.bz2#f8c68bb6d1b650ee357734d9c8af6d25
 https://conda.anaconda.org/cctbx202008/noarch/python-dateutil-2.8.1-py_0.tar.bz2#0d0150ed9c2d25817f5324108d3f7571
