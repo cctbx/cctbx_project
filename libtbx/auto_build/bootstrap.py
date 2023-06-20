@@ -1163,10 +1163,6 @@ class Builder(object):
       hot = self.get_hot()
       if self.use_conda is not None:
         for module in ['scons']:
-          # SCons conda package may cause issues with procrunner on Python 2.7
-          # https://stackoverflow.com/questions/24453387/scons-attributeerror-builtin-function-or-method-object-has-no-attribute-disp
-          if module == 'scons' and self.python == '27':
-            continue
           try:
             hot.remove(module)
           except ValueError:
@@ -2076,13 +2072,13 @@ class PhaserBuilder(CCIBuilder):
       self.skip_base = "hdf5,lz4_plugin,py2app,wxpython,docutils,pyopengl,pillow,tiff," + \
         "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
         "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml,libsvm,pyrtf,six,send2trash," + \
-         "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib,mrcfile"
+         "jinja2,orderedset,tabulate,scipy,scikit_learn,biopython,expat,glib,mrcfile"
     else:
       self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin','py2app',
          'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts','pyrtf','six','send2trash',
          'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
          'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml','libsvm',
-         'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython',
+         'jinja2', 'orderedset', 'tabulate', 'scipy', 'scikit_learn', 'biopython',
          'expat', 'glib', 'mrcfile'
          ])
     super(PhaserBuilder, self).add_base(
