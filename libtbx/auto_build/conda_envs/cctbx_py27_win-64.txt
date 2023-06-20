@@ -87,6 +87,7 @@ https://conda.anaconda.org/cctbx202008/noarch/more-itertools-5.0.0-py_0.tar.bz2#
 https://conda.anaconda.org/cctbx202008/win-64/msgpack-python-1.0.0-py27h6c69bd3_1.tar.bz2#d0b41b572cdef3d9c6a668307fc7f2b2
 https://conda.anaconda.org/cctbx202008/win-64/numpy-1.16.5-py27h0d21db5_0.tar.bz2#7af838138a9a49b78f4ecdfab4ee80af
 https://conda.anaconda.org/cctbx202008/noarch/packaging-20.4-pyh9f0ad1d_0.tar.bz2#6d160f7346ac815500b5475d9a0f88a9
+https://conda.anaconda.org/cctbx202008/win-64/procrunner-1.1.0-py27h8c360ce_1.tar.bz2#1a4c69925432edcbeff170e349c85c29
 https://conda.anaconda.org/cctbx202008/win-64/psutil-5.7.0-py27h462b5f4_1.tar.bz2#5c2cf7d3f5ab15159503561bcb4858cf
 https://conda.anaconda.org/cctbx202008/win-64/pysocks-1.7.1-py27h8c360ce_1.tar.bz2#b1bdf8cf84030ef4774c6dd24c88449a
 https://conda.anaconda.org/cctbx202008/noarch/python-dateutil-2.8.1-py_0.tar.bz2#0d0150ed9c2d25817f5324108d3f7571
