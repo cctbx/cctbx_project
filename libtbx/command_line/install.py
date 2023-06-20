@@ -108,7 +108,7 @@ def run(args):
             "once underlying problem solved, then 'make'"
             % " ".join(packages_to_configure))
     else:
-      proc = subprocess.Popen(['make']
+      proc = subprocess.Popen(['make'],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         cwd=abs(libtbx.env.build_path)
         )
