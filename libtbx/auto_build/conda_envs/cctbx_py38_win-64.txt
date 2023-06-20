@@ -105,6 +105,7 @@ https://conda.anaconda.org/cctbx202211/noarch/parso-0.8.3-pyhd8ed1ab_0.tar.bz2#1
 https://conda.anaconda.org/cctbx202211/noarch/pickleshare-0.7.5-py_1003.tar.bz2#415f0ebb6198cc2801c73438a9fb5761
 https://conda.anaconda.org/cctbx202211/noarch/pint-0.20.1-pyhd8ed1ab_0.tar.bz2#452ea302351c36e6c21f1ed5872d6cbf
 https://conda.anaconda.org/cctbx202211/noarch/pluggy-1.0.0-pyhd8ed1ab_5.tar.bz2#7d301a0d25f424d96175f810935f0da9
+https://conda.anaconda.org/cctbx202211/noarch/procrunner-2.3.3-pyhd8ed1ab_0.tar.bz2#3d57c29e25242b49e80d589f25492351
 https://conda.anaconda.org/cctbx202211/noarch/pure_eval-0.2.2-pyhd8ed1ab_0.tar.bz2#6784285c7e55cb7212efabc79e4c2883
 https://conda.anaconda.org/cctbx202211/noarch/py-1.11.0-pyh6c4a22f_0.tar.bz2#b4613d7e7a493916d867842a6a148054
 https://conda.anaconda.org/cctbx202211/noarch/pycparser-2.21-pyhd8ed1ab_0.tar.bz2#076becd9e05608f8dc72757d5f3a91ff
