@@ -150,7 +150,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       current_resname = comp_id[i_atom]
       if (current_altloc, current_resname) not in atom_groups:
         atom_group = hierarchy.atom_group(
-          altloc=current_altloc, resname=current_resname)
+          altloc=current_altloc, resname="%3s" % current_resname)
         atom_groups[(current_altloc, current_resname)] = atom_group
         if current_altloc == "":
           residue_group.insert_atom_group(0, atom_group)
