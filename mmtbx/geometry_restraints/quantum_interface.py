@@ -172,9 +172,17 @@ def electrons(model, specific_atom_charges=None, log=None):
   charged_atoms = atom_valences.get_charged_atoms()
   return atom_valences.get_total_charge()
 
-def get_safe_filename(s):
+def get_safe_filename(s, compact_selection_syntax=True):
+  assert compact_selection_syntax
+  if compact_selection_syntax:
+    s=s.replace('chain', '')
+    s=s.replace('resid', '')
+    s=s.replace('resseq', '')
+    s=s.replace('resname', '')
+    s=s.replace('and', '')
   while s.find('  ')>-1:
     s=s.replace('  ',' ')
+  if s[0]==' ': s=s[1:]
   s=s.replace(' ','_')
   s=s.replace("'",'_prime_')
   s=s.replace('*','_star_')
@@ -211,7 +219,7 @@ def populate_qmr_defaults(qmr):
     assert 0
   return qmr
 
-def get_preamble(macro_cycle, i, qmr, old_style=False):
+def get_preamble(macro_cycle, i, qmr, old_style=False, compact_selection_syntax=True):
   qmr = populate_qmr_defaults(qmr)
   s=''
   if macro_cycle is not None:
@@ -221,7 +229,9 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
   if old_style:
     s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
   else:
-    s+='%s_%s' % (get_safe_filename(qmr.selection), qmr.buffer)
+    s+='%s_%s' % (get_safe_filename(qmr.selection,
+                                    compact_selection_syntax=compact_selection_syntax),
+                  qmr.buffer)
   if qmr.capping_groups:
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:

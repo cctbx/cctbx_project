@@ -41,11 +41,25 @@ def _add_HIS_H_atom_to_atom_group(ag, name):
   ag.append_atom(atom)
   return ag
 
+def _merge_atom_groups(hierarchy):
+  bag=None
+  for i, ag in enumerate(hierarchy.atom_groups()):
+    if i:
+      rg=bag.parent()
+      tag=ag.detached_copy()
+      for atom in tag.atoms():
+        bag.append_atom(atom.detached_copy())
+      rg.remove_atom_group(ag)
+    else:
+      bag=ag
+  return hierarchy
+
 def add_histidine_H_atoms(hierarchy):
   '''
   HIS      ND1    HD1       coval       0.860    0.020    1.020
   HIS      NE2    HE2       coval       0.860    0.020    1.020
   '''
+  hierarchy=_merge_atom_groups(hierarchy)
   for i, ag in enumerate(hierarchy.atom_groups()): pass
   assert i==0
   ag = ag.detached_copy()
@@ -141,7 +155,8 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
             if altloc not in altlocs: altlocs.append(altloc)
           ts = []
           for altloc in altlocs:
-            ts.append('(%s and altloc %s)' % (sel_str, altloc))
+            if not altloc: altloc=' '
+            ts.append("(%s and altloc '%s')" % (sel_str, altloc))
           print(ts)
           opts.append(' or '.join(ts))
     j+=1
@@ -230,18 +245,23 @@ Usage examples:
     #
     # get selection
     #
+    if self.params.qi.iterate_histidine and len(self.params.qi.qm_restraints)==0:
+      rc = get_selection_from_user(model.get_hierarchy(),
+                                   include_amino_acids=['HIS'])
+      if rc.find('resname HIS')>-1:
+        self.params.qi.iterate_histidine=rc
+        self.params.qi.format='qi'
+      self.params.qi.selection = [rc]
+    #
     include_amino_acids=self.params.qi.include_amino_acids
     if include_amino_acids:
       include_amino_acids=[include_amino_acids]
     if (not self.params.qi.selection and
-        self.params.qi.iterate_histidine is False and
+        # self.params.qi.iterate_histidine is False and
         len(self.params.qi.qm_restraints)==0 and
         not self.params.qi.each_amino_acid):
       rc = get_selection_from_user(model.get_hierarchy(),
                                    include_amino_acids=include_amino_acids)
-      if rc.find('resname HIS')>-1:
-        self.params.qi.iterate_histidine=rc
-        self.params.qi.format='qi'
       self.params.qi.selection = [rc]
     #
     # validate selection
@@ -300,9 +320,9 @@ Usage examples:
                                output_format=self.params.qi.format,
                                )
       ih = ''
-      # if self.params.qi.iterate_histidine:
-      #   ih = 'iterate_histidine="%s"' % self.params.qi.iterate_histidine
-      #   ih = ih.replace('  ',' ')
+      if self.params.qi.iterate_histidine:
+        ih = 'iterate_histidine=True' # % self.params.qi.iterate_histidine
+        ih = ih.replace('  ',' ')
       print('''
 
       mmtbx.quantum_interface %s run_qmr=True %s %s
@@ -357,11 +377,6 @@ Usage examples:
     chain_id = atom.parent().parent().parent().id
     energies = []
     argstuples = []
-    # logs = []
-    # buffer_selection = ''
-    # buffer = self.params.qi.qm_restraints[0].buffer
-    # buffer *= buffer
-    # for i, flipping_his in enumerate(generate_flipping_his(his_ag)):
     for element in generate_metals(self.params.qi.iterate_metals):
       print('Substituting element : %s' % element)
       model = self.data_manager.get_model()
@@ -377,9 +392,9 @@ Usage examples:
           eag.resname = element
           eag.atoms()[0].element=element
           eag.atoms()[0].name=element
-          selection = selection.replace(' %s' % ag.resname.upper().strip(),
+          tselection = selection.replace(' %s' % ag.resname.upper().strip(),
                                         ' %s' % element)
-          self.params.qi.qm_restraints[0].selection = selection
+          self.params.qi.qm_restraints[0].selection = tselection
           rg.remove_atom_group(ag)
           rg.insert_atom_group(0, eag)
       self.params.output.prefix='iterate_metals_%s' % (element)
@@ -424,6 +439,7 @@ Usage examples:
       i+=1
 
   def iterate_NQH(self, nq_or_h, classify_nqh, add_nqh_H_atoms, generate_flipping, log=None):
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_histidine=True)
       print('Restart command with PHIL file')
@@ -516,6 +532,7 @@ Usage examples:
     adjust = []
     if resname=='HIS': adjust=[0,3]
     for i, energy in enumerate(energies):
+      energy=energy[1]
       if i in adjust:
         if units.lower() in ['kcal/mol']:
           # energy-=247.80642
@@ -529,7 +546,7 @@ Usage examples:
         else:
           assert 0
       te.append(energy)
-    return energies
+    return te
 
   def iterate_histidine(self, log=None):
     rc=self.iterate_NQH('HIS',
@@ -537,7 +554,7 @@ Usage examples:
                         add_histidine_H_atoms,
                         generate_flipping_his,
                         log=log)
-
+    if rc is None: return
 
     energies = []
     units = None
@@ -545,6 +562,14 @@ Usage examples:
     rotamers = []
     filenames = []
     for i, res in enumerate(rc):
+      print('  Energy %d %s : %07.1f %s # ligand atoms : %d # cluster atoms : %d' % (
+                                                  i+1,
+                                                  res.energies[0][0],
+                                                  res.energies[0][1],
+                                                  res.units,
+                                                  res.energies[0][2],
+                                                  res.energies[0][3],
+                                                  ))
       energies.append(res.energies[0])
       units=res.units
       rmsds.append(res.rmsds[0][1])
@@ -591,6 +616,8 @@ Usage examples:
       #
       n = hbondss[i].get_counts(min_data_size=1).n
       energy = energies[i]
+      #
+      # convert to kcal/mol
       #
       if units.lower() in ['hartree']:
         de = (energy-me)*627.503
@@ -697,6 +724,8 @@ Usage examples:
       #                                         'write_restraints = False')
       qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
                                               'exclude_protein_main_chain_to_delta_from_optimisation = True')
+      qi_phil_string = qi_phil_string.replace('exclude_torsions_from_optimisation = False',
+                                              'exclude_torsions_from_optimisation = True')
       # qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
       #                                         'exclude_protein_main_chain_from_optimisation = True')
 
@@ -710,16 +739,18 @@ Usage examples:
     # qi_phil_string = qi_phil_string.replace('nproc = 1', 'nproc = 6')
 
     def safe_filename(s):
+      while s.find('  ')>-1:
+        s=s.replace('  ',' ')
       s=s.replace('chain ','')
       s=s.replace('resname ','')
       s=s.replace('resid ','')
       s=s.replace('and ','')
-      s=s.replace('   ','_')
-      s=s.replace('  ','_')
+      s=s.replace('altloc ','')
       s=s.replace(' ','_')
       s=s.replace('(','')
       s=s.replace(')','')
       s=s.replace(':','_')
+      s=s.replace("'",'')
       return s
 
     pf = '%s_%s.phil' % (

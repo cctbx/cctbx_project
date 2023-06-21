@@ -38,10 +38,11 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
   import time
   from libtbx import easy_mp
   rc = []
+  name = func.__name__.replace('_',' ')
   if nproc==1:
     for i, args in enumerate(argstuples):
       t0=time.time()
-      print('  Running job %d' % (i+1), file=log)
+      print('  Running "%s" job %d' % (name, i+1), file=log)
       res = func(*args)
       rc.append(res)
       print('    Time : %0.1fs' % (time.time()-t0))
@@ -54,7 +55,7 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
                                                       nproc,
                                                       keep_input_order=True):
       assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      print('  Running job %d : %0.1fs' % (i+1, time.time()-t0), file=log)
+      print('  Running "%s" job %d : %0.1fs' % (name, i+1, time.time()-t0), file=log)
       rc.append(res)
       i+=1
   return rc
@@ -68,6 +69,7 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
                        'output_pymol_file=True',
                        'output_restraint_file=False',
                        'output_skew_kurtosis_plot=False',
+                       'min_data_size=0',
                        'prefix=%s' % filename.replace('.pdb',''),
                        ]])
     if restraint_filenames:
