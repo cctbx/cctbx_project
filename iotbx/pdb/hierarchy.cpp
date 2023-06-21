@@ -5,6 +5,7 @@
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
+#include <boost/algorithm/string/trim.hpp>
 #include <set>
 #include <string>
 
@@ -1210,7 +1211,7 @@ namespace {
 
     std::string result;
     result += (data->altloc.size() == 0) ? " " : data->altloc.elems;
-    result += (data->resname.size() == 0) ? " " : data->resname;
+    result += (data->resname.size() == 0) ? " " : boost::algorithm::trim_copy(data->resname);
     return result;
   }
 
