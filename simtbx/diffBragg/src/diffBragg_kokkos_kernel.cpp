@@ -52,11 +52,11 @@ void kokkos_geometry_calculation(
             if (!data_trusted(pixIdx))
                 return;
         }
-        int _pid = panels_fasts_slows(pixIdx * 3);
-        int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
-        int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
+        const int _pid = panels_fasts_slows(pixIdx * 3);
+        const int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
+        const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
-        CUDAREAL close_distance = close_distances(_pid);
+        const CUDAREAL close_distance = close_distances(_pid);
 
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
@@ -393,6 +393,27 @@ void kokkos_sum_over_steps(
     int dhh = 0, dkk = 0, dll = 0;
     KOKKOS_VEC3 Hmin, Hmax, dHH, Hrange;
 
+    Kokkos::View<KOKKOS_MAT3*[3]> UMATS_prime("UMATS_prime", mosaic_domains);
+    Kokkos::View<KOKKOS_MAT3*[3]> UMATS_dbl_prime("UMATS_dbl_prime", mosaic_domains);
+    Kokkos::View<KOKKOS_MAT3*[6]> BMATS_prime("BMATS_prime", mosaic_domains);
+    Kokkos::View<KOKKOS_MAT3*[6]> BMATS_dbl_prime("BMATS_dbl_prime", mosaic_domains);
+
+    Kokkos::parallel_for("prepare_UMATS", mosaic_domains, KOKKOS_LAMBDA(const int& _mos_tic) {
+        const KOKKOS_MAT3 UBOt = Amat_init;
+        UMATS_prime(_mos_tic, 0) = _NABC * (UMATS(_mos_tic) * dRotMats(0) * RotMats(1) * RotMats(2) * UBOt).transpose();
+        UMATS_prime(_mos_tic, 1) = _NABC * (UMATS(_mos_tic) * RotMats(0) * dRotMats(1) * RotMats(2) * UBOt).transpose();
+        UMATS_prime(_mos_tic, 2) = _NABC * (UMATS(_mos_tic) * RotMats(0) * RotMats(1) * dRotMats(2) * UBOt).transpose();
+
+        UMATS_dbl_prime(_mos_tic, 0) = _NABC * (UMATS(_mos_tic) * d2RotMats(0) * RotMats(1) * RotMats(2) * UBOt).transpose();
+        UMATS_dbl_prime(_mos_tic, 1) = _NABC * (UMATS(_mos_tic) * RotMats(0) * d2RotMats(1) * RotMats(2) * UBOt).transpose();
+        UMATS_dbl_prime(_mos_tic, 2) = _NABC * (UMATS(_mos_tic) * RotMats(0) * RotMats(1) * d2RotMats(2) * UBOt).transpose();
+
+        for (int i_uc=0; i_uc<6; i_uc++) {
+            BMATS_prime(_mos_tic, i_uc) = _NABC * (UMATS_RXYZ(_mos_tic) * eig_U * dB_mats(i_uc) * eig_O.transpose()).transpose();
+            BMATS_dbl_prime(_mos_tic, i_uc) = _NABC * (UMATS_RXYZ(_mos_tic) * eig_U * dB2_mats(i_uc) * eig_O.transpose()).transpose();
+        }
+    });
+
     if (use_diffuse){
         anisoG_local = anisoG;
         anisoU_local = anisoU;
@@ -425,9 +446,9 @@ void kokkos_sum_over_steps(
             if (!data_trusted(pixIdx))
                 return;
         }
-        int _pid = panels_fasts_slows(pixIdx * 3);
-        int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
-        int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
+        const int _pid = panels_fasts_slows(pixIdx * 3);
+        const int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
+        const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
         CUDAREAL Fhkl_deriv_coef=0;
         CUDAREAL Fhkl_hessian_coef=0;
@@ -498,8 +519,7 @@ void kokkos_sum_over_steps(
                         CUDAREAL texture_scale = texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
 
                         for (int _mos_tic = 0; _mos_tic < mosaic_domains; ++_mos_tic) {
-                            int amat_idx = _mos_tic;
-                            KOKKOS_MAT3 UBO = Amatrices(amat_idx);
+                            const KOKKOS_MAT3 UBO = Amatrices(_mos_tic);
 
                             KOKKOS_VEC3 H_vec = UBO * q_vec;
                             CUDAREAL _h = H_vec[0];
@@ -681,117 +701,61 @@ void kokkos_sum_over_steps(
                                     _h0, _k0, _l0, _F_cell);
 
                             KOKKOS_MAT3 UBOt;
-                            if (refine_flag & (REFINE_UMAT1 | REFINE_UMAT2 | REFINE_UMAT3 | REFINE_ETA)) {
+                             if (refine_flag & (REFINE_UMAT1 | REFINE_UMAT2 | REFINE_UMAT3 | REFINE_ETA)) {
                                 UBOt = Amat_init;
-                            }
+                            }                           
                             if (refine_flag & REFINE_UMAT1) {
-                                KOKKOS_MAT3 RyRzUBOt = RotMats(1) * RotMats(2) * UBOt;
-                                KOKKOS_VEC3 delta_H_prime =
-                                    (UMATS(_mos_tic) * dRotMats(0) * RyRzUBOt)
-                                        .transpose()
-                                        .dot(q_vec);
-                                CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
-                                CUDAREAL value = -two_C * V_dot_dV * Iincrement;
+                                const KOKKOS_VEC3 dV = UMATS_prime(_mos_tic, 0) * q_vec;
+                                const CUDAREAL V_dot_dV = V.dot(dV);
+                                const CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                                 CUDAREAL value2 = 0;
                                 if (compute_curvatures) {
-                                    KOKKOS_VEC3 delta_H_dbl_prime =
-                                        (UMATS(_mos_tic).dot(d2RotMats(0).dot(RyRzUBOt)))
-                                            .transpose()
-                                            .dot(q_vec);
-                                    CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
-                                                                .dot(_NABC.dot(delta_H_prime));
-                                    CUDAREAL dV2_dot_V =
-                                        (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
-                                    value2 =
-                                        two_C *
-                                        (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) *
-                                        Iincrement;
+                                    const CUDAREAL dV_dot_dV = dV.length_sqr();
+                                    const CUDAREAL dV2_dot_V = V.dot(UMATS_dbl_prime(_mos_tic, 0)*q_vec);
+                                    value2 = two_C * (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) * Iincrement;
                                 }
                                 dI.rot[0] += value;
                                 dI2.rot[0] += value2;
                             }
                             if (refine_flag & REFINE_UMAT2) {
-                                KOKKOS_MAT3 UmosRx = UMATS(_mos_tic).dot(RotMats(0));
-                                KOKKOS_MAT3 RzUBOt = RotMats(2).dot(UBOt);
-                                KOKKOS_VEC3 delta_H_prime = (UmosRx.dot(dRotMats(1).dot(RzUBOt)))
-                                                            .transpose()
-                                                            .dot(q_vec);
-                                CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
+                                KOKKOS_VEC3 dV = UMATS_prime(_mos_tic, 1) * q_vec;
+                                CUDAREAL V_dot_dV = V.dot(dV);
                                 CUDAREAL value = -two_C * V_dot_dV * Iincrement;
 
                                 CUDAREAL value2 = 0;
                                 if (compute_curvatures) {
-                                    KOKKOS_VEC3 delta_H_dbl_prime =
-                                        (UmosRx.dot(d2RotMats(1).dot(RzUBOt)))
-                                            .transpose()
-                                            .dot(q_vec);
-                                    CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
-                                                                .dot(_NABC.dot(delta_H_prime));
-                                    CUDAREAL dV2_dot_V =
-                                        (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
-                                    value2 =
-                                        two_C *
-                                        (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) *
-                                        Iincrement;
+                                    const CUDAREAL dV_dot_dV = dV.length_sqr();
+                                    CUDAREAL dV2_dot_V = V.dot(UMATS_dbl_prime(_mos_tic, 1)*q_vec);
+                                    value2 = two_C * (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) * Iincrement;
                                 }
                                 dI.rot[1] += value;
                                 dI2.rot[1] += value2;
                             }
                             if (refine_flag & REFINE_UMAT3) {
-                                KOKKOS_MAT3 UmosRxRy = UMATS(_mos_tic).dot(RotMats(0).dot(RotMats(1)));
-                                KOKKOS_VEC3 delta_H_prime = (UmosRxRy.dot(dRotMats(2).dot(UBOt)))
-                                                            .transpose()
-                                                            .dot(q_vec);
-                                CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
+                                KOKKOS_VEC3 dV = UMATS_prime(_mos_tic, 2) * q_vec;
+                                CUDAREAL V_dot_dV = V.dot(dV);
                                 CUDAREAL value = -two_C * V_dot_dV * Iincrement;
 
                                 CUDAREAL value2 = 0;
                                 if (compute_curvatures) {
-                                    KOKKOS_VEC3 delta_H_dbl_prime =
-                                        (UmosRxRy.dot(d2RotMats(2).dot(UBOt)))
-                                            .transpose()
-                                            .dot(q_vec);
-                                    CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
-                                                                .dot(_NABC.dot(delta_H_prime));
-                                    CUDAREAL dV2_dot_V =
-                                        (_NABC.dot(delta_H)).dot(_NABC.dot(delta_H_dbl_prime));
-                                    value2 =
-                                        two_C *
-                                        (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) *
-                                        Iincrement;
+                                    const CUDAREAL dV_dot_dV = dV.length_sqr();
+                                    CUDAREAL dV2_dot_V = V.dot(UMATS_dbl_prime(_mos_tic, 2)*q_vec);
+                                    value2 = two_C * (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) * Iincrement;
                                 }
                                 dI.rot[2] += value;
                                 dI2.rot[2] += value2;
                             }
                             // Checkpoint for unit cell derivatives
-                            // KOKKOS_MAT3 Ot = eig_O.transpose();
-                            KOKKOS_MAT3 UmosRxRyRzU;
-                            KOKKOS_VEC3 delta_H_prime;
                             for (int i_uc = 0; i_uc < 6; i_uc++) {
                                 if (refine_flag & (REFINE_BMAT1 << i_uc)) {
-                                    UmosRxRyRzU = UMATS_RXYZ(_mos_tic).dot(eig_U);
-                                    delta_H_prime =
-                                        (UmosRxRyRzU.dot(dB_mats(i_uc).dot(eig_Otranspose)))
-                                            .transpose()
-                                            .dot(q_vec);
-                                    CUDAREAL V_dot_dV = V.dot(_NABC.dot(delta_H_prime));
+                                    KOKKOS_VEC3 dV = BMATS_prime(_mos_tic, i_uc) * q_vec;
+                                    CUDAREAL V_dot_dV = V.dot(dV);
                                     CUDAREAL value = -two_C * V_dot_dV * Iincrement;
                                     CUDAREAL value2 = 0;
                                     if (compute_curvatures) {
-                                        KOKKOS_VEC3 delta_H_dbl_prime =
-                                            (UmosRxRyRzU.dot(
-                                                    dB2_mats(i_uc).dot(eig_Otranspose)))
-                                                .transpose()
-                                                .dot(q_vec);
-                                        CUDAREAL dV_dot_dV = (_NABC.dot(delta_H_prime))
-                                                                    .dot(_NABC.dot(delta_H_prime));
-                                        CUDAREAL dV2_dot_V =
-                                            (_NABC.dot(delta_H))
-                                                .dot(_NABC.dot(delta_H_dbl_prime));
-                                        value2 = two_C *
-                                                    (two_C * V_dot_dV * V_dot_dV - dV2_dot_V -
-                                                    dV_dot_dV) *
-                                                    Iincrement;
+                                        const CUDAREAL dV_dot_dV = dV.length_sqr();
+                                        CUDAREAL dV2_dot_V = V.dot(BMATS_dbl_prime(_mos_tic, i_uc)*q_vec);
+                                        value2 = two_C * (two_C * V_dot_dV * V_dot_dV - dV2_dot_V - dV_dot_dV) * Iincrement;
                                     }
                                     dI.ucell[i_uc] += value;
                                     dI2.ucell[i_uc] += value2;
@@ -1010,15 +974,15 @@ void kokkos_sum_over_steps(
                                             UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
                                             UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
 
-                                        UU = UmosRxRyRzU;
-                                        printf(
-                                            "UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
-                                            UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
-                                            UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
-                                        KOKKOS_VEC3 AA = delta_H_prime;
-                                        printf(
-                                            "delta_H_prime :\n%f  %f  %f\n", AA[0], AA[1],
-                                            AA[2]);
+                                        // UU = UmosRxRyRzU;
+                                        // printf(
+                                        //     "UmosRxRyRzU :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
+                                        //     UU(0, 0), UU(0, 1), UU(0, 2), UU(1, 0), UU(1, 1),
+                                        //     UU(1, 2), UU(2, 0), UU(2, 1), UU(2, 2));
+                                        // KOKKOS_VEC3 AA = delta_H_prime;
+                                        // printf(
+                                        //     "delta_H_prime :\n%f  %f  %f\n", AA[0], AA[1],
+                                        //     AA[2]);
                                         printf("Iincrement: %f\n", Iincrement);
                                         printf(
                                             "hkl= %f %f %f  hkl0= %d %d %d\n", _h, _k, _l, _h0,
