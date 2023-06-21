@@ -375,15 +375,18 @@ def get_C1_carbon(atom_group1,
 ##                )
   return None
 
-def get_ring_oxygen(anomeric_carbon, bonds):
+def get_ring_oxygen(anomeric_carbon, bonds, element='O'):
   for ba in bonds.get(anomeric_carbon.i_seq, []):
-    if ba.element.strip() not in ["O"]: continue
+    if ba.element.strip() not in [element]: continue
     # check in same atom group
     if ba.parent().id_str() == anomeric_carbon.parent().id_str():
       return ba
     # check in same residue group
     if ba.parent().parent().id_str() == anomeric_carbon.parent().parent().id_str():
       return ba
+
+def get_ring_oxygen_substitute(anomeric_carbon, bonds):
+  return get_ring_oxygen(anomeric_carbon, bonds, element='C')
 
 def get_ring_carbon(anomeric_carbon, bonds):
   for ba in bonds.get(anomeric_carbon.i_seq, []):
@@ -499,7 +502,11 @@ def get_glyco_link_atoms(atom_group1,
     return None
   if verbose: print('anomeric_carbon',anomeric_carbon.quote())
   ring_oxygen = get_ring_oxygen(anomeric_carbon, bonds)
-  if verbose: print('ring_oxygen',ring_oxygen.quote())
+  if verbose:
+    try: print('ring_oxygen',ring_oxygen.quote())
+    except AttributeError: print('ring_oxygen',ring_oxygen)
+  if ring_oxygen is None:
+    ring_oxygen = get_ring_oxygen_substitute(anomeric_carbon, bonds)
   ring_carbon = get_ring_carbon(anomeric_carbon, bonds)
   if verbose: print('ring_carbon',ring_carbon.quote())
   anomeric_hydrogen = get_anomeric_hydrogen(anomeric_carbon, bonds)
