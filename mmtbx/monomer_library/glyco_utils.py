@@ -547,7 +547,7 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
                                              link_carbon_dist=2.0,
                                              origin_id=None,
                                              ):
-  assert origin_id
+  origin_ids = geometry_restraints.linking_class.linking_class()
   def _add_bond(i_seqs,
                 bond_params_table,
                 bond_asu_table,
@@ -596,8 +596,6 @@ def apply_glyco_link_using_proxies_and_atoms(atom_group1,
 
   ########
   from mmtbx.monomer_library import glyco_utils
-#  anomeric_carbon, link_oxygen, ring_oxygen, ring_carbon, link_carbon, anomeric_hydrogen = \
-#      glyco_utils.get_glyco_link_atoms(atom_group1, atom_group2)
   gla = glyco_utils.get_glyco_link_atoms(atom_group1,
                                          atom_group2,
                                          link_carbon_dist=link_carbon_dist,
@@ -640,6 +638,8 @@ anomeric carbon.
              gla.link_carbon.quote(),
              gla)
              )
+  origin_id = origin_ids.get('link_%s' % gla.get_isomer(), None)
+  if not origin_id: origin_id=origin_ids['glycosidic custom']
   i_seqs = [gla.anomeric_carbon.i_seq, gla.link_oxygen.i_seq]
   bond_i_seqs = i_seqs
   # bonds

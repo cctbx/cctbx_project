@@ -316,7 +316,6 @@ class linking_mixins(object):
                                   log                         = None,
                                   verbose                     = False,
                                   ):
-    verbose=1
     assert hasattr(self, "_cif")
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
@@ -841,7 +840,7 @@ Residue classes
             geometry_proxy_registries,
             rt_mx_ji=link_rt_mx_ji,
             link_carbon_dist=carbohydrate_bond_cutoff,
-            origin_id=origin_ids['glycosidic custom'],
+            origin_id=None,
           )
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
