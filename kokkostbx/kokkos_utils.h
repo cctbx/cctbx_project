@@ -78,6 +78,8 @@ void transfer_kokkos2shared(af::shared<T>& dst, const view_1d_t<T>& src) {
     transfer_kokkos2X(dst, src);
 }
 
+void transfer_vector2kokkos(view_1d_t<bool>& dst, const std::vector<bool>& src);
+
 template <typename T>
 void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
     if (true) {
@@ -88,11 +90,9 @@ void transfer_vector2kokkos(view_1d_t<T>& dst, const std::vector<T>& src) {
         resize(dst, src.size());
         // printf(" - size changed, new size: %d\n", dst.span() );
     }
-    auto host_view = Kokkos::create_mirror_view(dst);
-    for (int i = 0; i < src.size(); ++i) {
-        host_view(i) = src[i];
-    }
-    Kokkos::deep_copy(dst, host_view);
+    auto host_view = Kokkos::View<const T*, Kokkos::HostSpace>(src.data(), src.size());
+    auto dst_subview = Kokkos::subview(dst, std::pair<int, int>(0, src.size()));
+    Kokkos::deep_copy(dst_subview, host_view);
 }
 
 template <typename T>
