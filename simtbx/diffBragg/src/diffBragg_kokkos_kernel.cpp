@@ -45,6 +45,8 @@ void kokkos_geometry_calculation(
     view_5d_t<KOKKOS_VEC3> q_vec_buffer,
     const vector_bool_t data_trusted) {  // BEGIN GPU kernel
 
+    const CUDAREAL detector_attnlen_r = 1 / detector_attnlen;
+
     Kokkos::parallel_for(
         "geometry_calculation", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
 
@@ -58,6 +60,26 @@ void kokkos_geometry_calculation(
 
         const CUDAREAL close_distance = close_distances(_pid);
 
+        // assume "distance" is to the front of the detector sensor layer
+        int pid_x = _pid * 3;
+        int pid_y = _pid * 3 + 1;
+        int pid_z = _pid * 3 + 2;
+
+        CUDAREAL fx = fdet_vectors(pid_x);
+        CUDAREAL fy = fdet_vectors(pid_y);
+        CUDAREAL fz = fdet_vectors(pid_z);
+        CUDAREAL sx = sdet_vectors(pid_x);
+        CUDAREAL sy = sdet_vectors(pid_y);
+        CUDAREAL sz = sdet_vectors(pid_z);
+        CUDAREAL ox = odet_vectors(pid_x);
+        CUDAREAL oy = odet_vectors(pid_y);
+        CUDAREAL oz = odet_vectors(pid_z);
+        CUDAREAL px = pix0_vectors(pid_x);
+        CUDAREAL py = pix0_vectors(pid_y);
+        CUDAREAL pz = pix0_vectors(pid_z);
+
+        KOKKOS_VEC3 _o_vec(ox, oy, oz);        
+
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
                 // absolute mm position on detector (relative to its origin)
@@ -65,26 +87,6 @@ void kokkos_geometry_calculation(
                     subpixel_size * (_fpixel * oversample + _subF) + subpixel_size / 2.0;
                 CUDAREAL _Sdet =
                     subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
-
-                // assume "distance" is to the front of the detector sensor layer
-                int pid_x = _pid * 3;
-                int pid_y = _pid * 3 + 1;
-                int pid_z = _pid * 3 + 2;
-
-                CUDAREAL fx = fdet_vectors(pid_x);
-                CUDAREAL fy = fdet_vectors(pid_y);
-                CUDAREAL fz = fdet_vectors(pid_z);
-                CUDAREAL sx = sdet_vectors(pid_x);
-                CUDAREAL sy = sdet_vectors(pid_y);
-                CUDAREAL sz = sdet_vectors(pid_z);
-                CUDAREAL ox = odet_vectors(pid_x);
-                CUDAREAL oy = odet_vectors(pid_y);
-                CUDAREAL oz = odet_vectors(pid_z);
-                CUDAREAL px = pix0_vectors(pid_x);
-                CUDAREAL py = pix0_vectors(pid_y);
-                CUDAREAL pz = pix0_vectors(pid_z);
-
-                KOKKOS_VEC3 _o_vec(ox, oy, oz);
 
                 for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
                     CUDAREAL _Odet = _thick_tic * detector_thickstep;
@@ -113,8 +115,8 @@ void kokkos_geometry_calculation(
                         // inverse of effective thickness increase
                         CUDAREAL _parallax = _diffracted.dot(_o_vec);
                         CUDAREAL current_layer = ::Kokkos::exp(
-                                                -(_thick_tic + 1) * detector_thickstep /
-                                                detector_attnlen / _parallax);
+                                                -(_thick_tic + 1) * detector_thickstep *
+                                                detector_attnlen_r / _parallax);
                         _capture_fraction = previous_layer - current_layer;
                         previous_layer = current_layer;
                     }
