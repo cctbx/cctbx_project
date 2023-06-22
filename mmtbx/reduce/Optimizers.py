@@ -460,11 +460,12 @@ class _SingletonOptimizer(object):
           for a in m.FixUp(0).atoms:
             moverAtoms.add(a)
 
-        # Get the excluded list for each atom in the set, making a dictionary
+        # Get the excluded list for each atom in the set, making a dictionary.
+        # We go at most 3 hops unless one end of the chain has a hydrogen.
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth)
+            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
