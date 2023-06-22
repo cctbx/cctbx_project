@@ -96,6 +96,10 @@ verbosity = 3
   .type = int
   .short_caption = Level of detail in description file
   .help = Level of detail in description file.
+bonded_neighbor_depth = 4
+  .type = int
+  .short_caption = How many neighbors to consider bonded (>3 only if hydrogen)
+  .help = When looking for interactions between atoms, this specifies how many hops we should take when looking for atoms that are excluded because we share a common chain of bonds. Lengths more than 3 only happen when one end is a hydrogen. This value should not be changed from the default except for regression tests against earlier versions.
 
 output
   .style = menu_item auto_align
@@ -1064,12 +1068,12 @@ NOTES:
       self._pr = cProfile.Profile()
       self._pr.enable()
 
-    # Set constants that may later be added to the Phil parameters.
-    self._bondedNeighborDepth = 3
-
 # ------------------------------------------------------------------------------
 
   def run(self):
+
+    # Set our bonded-neighbor depth
+    self._bondedNeighborDepth = self.params.bonded_neighbor_depth
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
