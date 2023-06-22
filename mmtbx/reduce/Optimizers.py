@@ -1342,7 +1342,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       # update the best.
       score = 0
       for i in range(len(movers)):
-        score += self._preferenceMagnitude * self._states[i].preferenceEnergies[curStateValues[i]]
+        score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
