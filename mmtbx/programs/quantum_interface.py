@@ -321,8 +321,11 @@ Usage examples:
                                )
       ih = ''
       if self.params.qi.iterate_histidine:
-        ih = 'iterate_histidine=True' # % self.params.qi.iterate_histidine
+        ih = 'iterate_histidine=True'
         ih = ih.replace('  ',' ')
+      if self.params.qi.iterate_metals:
+        ih = 'iterate_metals="%s"' % self.params.qi.iterate_metals
+
       print('''
 
       mmtbx.quantum_interface %s run_qmr=True %s %s
@@ -358,16 +361,19 @@ Usage examples:
     return hierarchy
 
   def iterate_metals(self, log=None):
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_metals=True)
       print('Restart command with PHIL file')
       return
     def generate_metals(s):
+      if s.lower()=='all': s='LI,NA,MG,K,CA,CU,ZN'
       s=s.replace(' ',',')
       for t in s.split(','):
         yield t.upper()
     selection = self.params.qi.qm_restraints[0].selection
     nproc = self.params.qi.nproc
+    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
     model = self.data_manager.get_model()
     selection_array = model.selection(selection)
     selected_model = model.select(selection_array)
@@ -376,7 +382,10 @@ Usage examples:
     rg_resseq = atom.parent().parent().resseq
     chain_id = atom.parent().parent().parent().id
     energies = []
+    rmsds = []
     argstuples = []
+    filenames = []
+    t0=time.time()
     for element in generate_metals(self.params.qi.iterate_metals):
       print('Substituting element : %s' % element)
       model = self.data_manager.get_model()
@@ -397,20 +406,25 @@ Usage examples:
           self.params.qi.qm_restraints[0].selection = tselection
           rg.remove_atom_group(ag)
           rg.insert_atom_group(0, eag)
-      self.params.output.prefix='iterate_metals_%s' % (element)
+      self.params.output.prefix='iterate_metals'
       arg_log=null_out()
       if self.params.qi.verbose:
         arg_log=log
-      if nproc==1:
+      filenames.append('%s_cluster_final_%s.pdb' % (self.params.output.prefix,
+                                                   preamble))
+      if nproc==-1:
         print('  Running metal swap %s' % (element), file=log)
         res = update_restraints(model,
                                 self.params,
                                 never_write_restraints=True,
                                 # never_run_strain=True,
                                 log=arg_log)
-        energies.append(res[2][0])
-        units=res[3]
-        # print('    Energy %s %s' % (energies[-1],units), file=log)
+        energies.append(res.energies[0])
+        units=res.units
+        rmsds.append(res.rmsds[0][1])
+        print('    Energy : %s %s' % (energies[-1],units), file=log)
+        print('    Time   : %ds' % (time.time()-t0), file=log)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
       else:
         import copy
         params = copy.deepcopy(self.params)
@@ -421,22 +435,11 @@ Usage examples:
                             1, # nproc=1,
                             null_out(),
                             ))
-    from libtbx import easy_mp
-    from mmtbx.geometry_restraints.quantum_interface import get_preamble
-    preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
-    if argstuples:
-      print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
-    i=0
-    for args, res, err_str in easy_mp.multi_core_run( update_restraints,
-                                                      argstuples,
-                                                      nproc,
-                                                      keep_input_order=True):
-      assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      print('  Running metal substitution %d' % (i+1), file=log)
-      energies.append(res[0][0])
-      units = res[1]
-      print('    Energy %s %s' % (energies[-1],units), file=log)
-      i+=1
+    results = run_serial_or_parallel(update_restraints, argstuples, nproc)
+    for i, filename in enumerate(filenames):
+      assert os.path.exists(filename), ' Output %s missing' % filename
+      results[i].filename = filename
+    return results
 
   def iterate_NQH(self, nq_or_h, classify_nqh, add_nqh_H_atoms, generate_flipping, log=None):
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
@@ -563,13 +566,13 @@ Usage examples:
     filenames = []
     for i, res in enumerate(rc):
       print('  Energy %d %s : %07.1f %s # ligand atoms : %d # cluster atoms : %d' % (
-                                                  i+1,
-                                                  res.energies[0][0],
-                                                  res.energies[0][1],
-                                                  res.units,
-                                                  res.energies[0][2],
-                                                  res.energies[0][3],
-                                                  ))
+        i+1,
+        res.energies[0][0],
+        res.energies[0][1],
+        res.units,
+        res.energies[0][2],
+        res.energies[0][3],
+        ))
       energies.append(res.energies[0])
       units=res.units
       rmsds.append(res.rmsds[0][1])
@@ -730,6 +733,7 @@ Usage examples:
       #                                         'exclude_protein_main_chain_from_optimisation = True')
 
     if iterate_metals:
+      qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                               'include_nearest_neighbours_in_optimisation = True')
 

@@ -37,6 +37,7 @@ def run_hbond(args):
 def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
   import time
   from libtbx import easy_mp
+  if nproc==-1: assert 0, 'testing using %s' % nproc
   rc = []
   name = func.__name__.replace('_',' ')
   if nproc==1:
