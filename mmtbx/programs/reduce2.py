@@ -1401,12 +1401,13 @@ NOTES:
           newParams = self._MakeProbePhil(amides, tempName)
 
           # Run the program and append its Kinemage output to ours, deleting
-          # the temporary file that it produced.
+          # the temporary file that it produced. Turn off the 2->1 dots by
+          # default, since they are not being used in the optimization calculations.
           p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
             logger=self.logger)
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
-          flipkinText += kinString
+          flipkinText += kinString.replace('@subgroup dominant {2->1}', '@subgroup {2->1} off dominant')
           os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
@@ -1524,12 +1525,13 @@ NOTES:
           newParams = self._MakeProbePhil(hists, tempName)
 
           # Run the program and append its Kinemage output to ours, deleting
-          # the temporary file that it produced.
+          # the temporary file that it produced. Turn off the 2->1 dots by
+          # default, since they are not being used in the optimization calculations.
           p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
             logger=self.logger)
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
-          flipkinText += kinString
+          flipkinText += kinString.replace('@subgroup dominant {2->1}', '@subgroup {2->1} off dominant')
           os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
