@@ -2215,7 +2215,7 @@ nanoBragg::init_sources()
         I = source_I[source];
         lambda = source_lambda[source];
 
-        if(verbose) printf("%g %g %g   %g %.6g\n",X,Y,Z,I,lambda);
+        if(verbose>1) printf("%g %g %g   %g %.6g\n",X,Y,Z,I,lambda);
     }
 }
 // end of init_sources()
