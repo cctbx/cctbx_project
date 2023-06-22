@@ -266,8 +266,9 @@ struct vector_base {
     }
 
     KOKKOS_FUNCTION void normalize() {
-        NumType l_r = 1 / length();
+        NumType l = length();
         if (l > 0) {
+            NumType l_r = 1 / l;
             for (size_t i = 0; i < size; ++i) {
                 data[i] *= l_r;
             }
@@ -275,9 +276,10 @@ struct vector_base {
     }
 
     KOKKOS_FUNCTION Derived get_unit_vector() const {
-        NumType l_r = 1 / length();
+        NumType l = length();
         Derived unit_vector{};
         if (l > 0) {
+            NumType l_r = 1 / l;
             for (size_t i = 0; i < size; ++i) {
                 unit_vector[i] = data[i] * l_r;
             }
