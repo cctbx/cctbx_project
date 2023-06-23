@@ -87,7 +87,7 @@ class StageTwoRefiner(BaseRefiner):
         self.x_init = None  # used to restart the refiner (e.g. self.x gets updated with this)
         self.log_fcells = True  # to refine Fcell using logarithms to avoid negative Fcells
         self.refine_crystal_scale = False  # whether to refine the crystal scale factor
-        self.refine_Fcell = self.params.refiner.refine_Fcell  # whether to refine Fhkl for each shoebox ROI
+        self.refine_Fcell = False  # whether to refine Fhkl for each shoebox ROI
         self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
         self.verbose = True  # whether to print during iterations
         self.iterations = 0  # iteration counter , used internally
@@ -547,6 +547,9 @@ class StageTwoRefiner(BaseRefiner):
 
         if self.refine_Fcell:
             dF = self.D.get_derivative_pixels(self._fcell_id)
+            # breakpoint()
+            # import IPython
+            # IPython.embed()
             self._extracted_fcell_deriv = dF[:npix].as_numpy_array()
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
@@ -586,6 +589,7 @@ class StageTwoRefiner(BaseRefiner):
         if self.refine_Fcell:
             SG = self.scale_fac
             self.fcell_deriv = SG*(self._extracted_fcell_deriv)
+            # breakpoint()
             # handles Nan's when Fcell is 0 for whatever reason
             if self.calc_curvatures:
                 self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv
@@ -837,6 +841,7 @@ class StageTwoRefiner(BaseRefiner):
         if not self.refine_Fcell:
             return
         MOD = self.Modelers[self._i_shot]
+        dumps = []
         for i_fcell in MOD.unique_i_fcell:
 
             multi = self.hkl_frequency[i_fcell]
@@ -846,6 +851,7 @@ class StageTwoRefiner(BaseRefiner):
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
             sig = 1
+            
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 
@@ -862,9 +868,14 @@ class StageTwoRefiner(BaseRefiner):
                 trust = MOD.all_trusted[slc]
                 # NOTE : no need to normalize Fhkl gradients by the overlap rate - they should arise from different HKLs
                 #freq = MOD.all_freq[slc]  # pixel frequency (1 is no overlaps)
-                self.grad[xpos] += (g_accum[trust].sum())*.5
+                dump = (g_accum[trust].sum())*.5
+                self.grad[xpos] += dump
+                dumps.append(dump)
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
+        # import IPython
+        # IPython.embed()
+        # breakpoint()
 
     def _accumulate_Nabc_derivatives(self):
         if not self.params.refiner.refine_Nabc:
