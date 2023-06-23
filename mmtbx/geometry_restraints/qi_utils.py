@@ -5,11 +5,6 @@ def classify_histidine(hierarchy, resname='HIS'):
   from mmtbx.validation.rotalyze import rotalyze
   result = rotalyze(
       pdb_hierarchy=hierarchy,
-      # data_version="8000",#was 'params.data_version', no options currently
-      # show_errors=self.params.show_errors,
-      # outliers_only=self.params.outliers_only,
-      # use_parent=self.params.use_parent,
-      # out=self.logger,
       quiet=False)
   names = []
   for rot in result.results:
@@ -75,7 +70,6 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
                        ]])
     if restraint_filenames:
       argstuples[-1][-1]+=self.restraint_filenames
-  # print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
 
   rc = run_serial_or_parallel(run_hbond, argstuples, nproc=6)
 
