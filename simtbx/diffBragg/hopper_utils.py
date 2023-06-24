@@ -562,6 +562,7 @@ class DataModeler:
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
+            # import IPython; IPython.embed()
             if self.Hi is not None:
                 self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
                 self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix
