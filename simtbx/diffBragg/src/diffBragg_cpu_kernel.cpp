@@ -912,16 +912,21 @@ void diffBragg_sum_over_steps(
                 int nom_l=l0;
                 //int f_cell_idx = 1;
                 if (use_nominal_hkl){
+
                     nom_h = db_cryst.nominal_hkl[i_pix*3];
                     nom_k = db_cryst.nominal_hkl[i_pix*3+1];
                     nom_l = db_cryst.nominal_hkl[i_pix*3+2];
                     //f_cell_idx = l0 - nom_l + 1;
+                    if (i_pix==0)
+                        printf("nom_h=%d, nom_k=%d, nom_l=%d\n", nom_h, nom_k, nom_l);
                 }
                 double value;
                 if (db_flags.refine_Icell)
                     value = I_noFcell;
                 else
                     value = 2*I_noFcell*F_cell; //2*Iincrement/F_cell ;
+                if (i_pix==0)
+                    printf("F_cell=%f, I_noFcell=%f, Iincrement=%f, value=%f\n", F_cell, I_noFcell, Iincrement, value);
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     if (F_cell > 0)
@@ -933,6 +938,11 @@ void diffBragg_sum_over_steps(
                     if (nom_h==h0 && nom_k==k0 && nom_l==l0 ){
                         fcell_manager_dI += value;
                         fcell_manager_dI2 += value2;
+                        printf("good\n");
+                    }
+                    else{
+                        if(i_pix==0)
+                            printf("bad\n");
                     }
                 }
                 else{
