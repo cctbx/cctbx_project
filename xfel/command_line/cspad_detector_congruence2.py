@@ -836,10 +836,7 @@ class Script(object):
     # initialize the color map
     values = flex.double(data.values())
     norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
-    if reverse_colormap:
-      cmap = plt.cm.get_cmap(self.params.colormap + "_r")
-    else:
-      cmap = plt.cm.get_cmap(self.params.colormap)
+    cmap = plt.get_cmap(self.params.colormap + ("_r" if reverse_colormap else ''))
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
     if len(values) == 0:
       print("no values")
