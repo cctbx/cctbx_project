@@ -119,10 +119,12 @@ jobs:
       if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
       if %errorlevel% neq 0 exit /b %errorlevel%
-      call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp
+      call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp pytest
       if %errorlevel% neq 0 exit /b %errorlevel%
-      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml pytest=7.0
+      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
       if %errorlevel% neq 0 exit /b %errorlevel%
+      call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
+      pip install pytest==7.0
     displayName: Create conda environment
     retryCountOnTaskFailure: 3
 
