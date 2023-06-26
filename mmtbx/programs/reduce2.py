@@ -98,8 +98,12 @@ verbosity = 3
   .help = Level of detail in description file.
 bonded_neighbor_depth = 4
   .type = int
-  .short_caption = How many neighbors to consider bonded (>3 only if hydrogen)
+  .short_caption = How many neighbors to consider bonded (>3 accepted only if hydrogen)
   .help = When looking for interactions between atoms, this specifies how many hops we should take when looking for atoms that are excluded because we share a common chain of bonds. Lengths more than 3 only happen when one end is a hydrogen. This value should not be changed from the default except for regression tests against earlier versions.
+stop_on_any_missing_hydrogen = True
+  .type = bool
+  .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
+  .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
 
 output
   .style = menu_item auto_align
@@ -942,6 +946,12 @@ NOTES:
       for res in missed_residues:
         bad += " " + res
       raise Sorry("Restraints were not found for the following residues:"+bad)
+    insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
+    if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
+      bad = insufficient_restraints[0]
+      for res in insufficient_restraints[1:]:
+        bad += "," + res
+      raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
     self.model = reduce_add_h_obj.get_model()
 
 # ------------------------------------------------------------------------------
