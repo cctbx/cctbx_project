@@ -1084,7 +1084,11 @@ class _():
     return self.get_auth_seq_id(self.atoms()[iseq].parent().parent())
 
   def get_auth_seq_id(self, rg):
-    return rg.resseq.strip()
+    resseq_strip = rg.resseq.strip()
+    if len(resseq_strip) == 4:
+      return str(hy36decode(4, rg.resseq.strip()))
+    else:
+      return resseq_strip
 
   def get_label_seq_id_iseq(self, iseq):
     assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)

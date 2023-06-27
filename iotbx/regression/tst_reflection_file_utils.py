@@ -510,7 +510,6 @@ def exercise_get_r_free_flags():
 No array of R-free flags found.
 
 For manual selection define:
-  r_free_flags.label
   r_free_flags.test_flag_value
   r_free_flags.disable_suitability_test=True"""
                 else:

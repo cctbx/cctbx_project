@@ -53,9 +53,7 @@ modify.cosym.min_reflections=15
 modify.cosym.normalisation=None
 modify.cosym.d_min=2.5
 modify.cosym.dimensions=2
-modify.cosym.cluster.n_clusters=2
 modify.cosym.min_pairs=3
-modify.cosym.nproc=1
 modify.cosym.weights=count
 modify.cosym.plot.interactive=True
 scaling.model=<path to pdb file containing the reference structure.pdb>
@@ -116,7 +114,13 @@ modify.cosym.space_group=P6
 ```
 If the correct space group of the crystal is known, we supply a symmorphic space group
 in the same point group, e.g. P6(3) -> P6 for hexagonal photosystem I. This applies
-algorithm 2 in Ref. 1. If no space group is supplied, then the clustering analysis is
+algorithm 2 in Ref. 1.  The symmorphic space groups relevant to protein crystallography are:  
+P1, P2, C2, P222, C222, I222, F222, P4, I4, P422, I422, P3, R3:H, P312, P321, R32:H, 
+P6, P622, P23, F23, I23, P432, F432, and I432.  
+Of these, the subset relevant to resolving
+indexing ambiguity from merohedral twin laws is P4, I4, P3, R3:H, P312, P321, P6, P23, F23, and I23.
+
+If no space group is supplied, then the clustering analysis is
 as described in Ref. 2 with the goal of assigning the Laue group.
 
 ```
@@ -146,23 +150,11 @@ This is absolutely critical.  We set this to 2 dimensions for space group P63, a
 in the final sort.  Setting this to the default (auto determine) has the unfortunate consequence of performing the embedding
 analysis in a higher dimensional space (6) where the clusters cannot be found!  So for the present use case, keep this at 2.
 ```
-modify.cosym.cluster.n_clusters=2
-```
-The number of clusters should match the number of dimensions.
-```
 modify.cosym.min_pairs=3
 ```
 Per-experiment, per-symmetry-operator minimum number of mutual Miller indices to form a correlation-coefficient cross-term with another
 expt/symop combination.  Takes the default from Gildea; increasing this will drastically reduce the data used for alignment, probably
 to our detriment.
-```
-modify.cosym.nproc=1
-```
-`nproc > 1` permits Python multiprocessing for the calculation of the rij matrix.  Note, rij is a time-consuming process, but the next step, LBFGS, is
-probably rate limiting, so it is not clear if `nproc` will really help.  Details:  `nproc` enables a hybrid parallelization model, where MPI ranks handle
-separate data tranches, while Python multiprocessing speeds up work within each MPI rank.  Therefore, `nproc` should not be set
-to the number of cores on the machine, but rather to the number of hyperthreads available to each rank.  For example, on Cori, one would use 68 ranks per
-node, and 4 nproc hyperthreads per core. Knowledge of the specific machine architecture is needed.
 ```
 modify.cosym.weights=count
 ```

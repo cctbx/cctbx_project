@@ -269,6 +269,9 @@ options are {options}.\
     # set program
     self._program = None
 
+    if self.supports('model') and self.supports('miller_array'):
+      self._fmodel_phil_scope = None
+
     # logger (currently used for models)
     self.logger = logger
     if self.logger is None:
@@ -356,6 +359,8 @@ options are {options}.\
       phil_extract.data_manager, 'default_output_filename', None)
     self._overwrite = getattr(
       phil_extract.data_manager, 'overwrite', False)
+    if self.supports('model') and self.supports('miller_array'):
+      self.set_fmodel_params(phil_extract)
 
   # ---------------------------------------------------------------------------
   def supports(self, datatype):

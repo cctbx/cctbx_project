@@ -37,6 +37,7 @@ default_metal_charges = {
   'Mg' : 2,
   'K'  : 1,
   'Ca' : 2,
+  'Cu' : 1,
   'Zn' : 2,
 }
 

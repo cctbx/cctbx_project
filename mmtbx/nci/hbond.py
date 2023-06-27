@@ -110,6 +110,9 @@ hbond {
   add_hydrogens_if_absent = False
     .type = bool
     .short_caption = Add hydrogens if they are not present in the model(s)
+  min_data_size = 10
+    .type = int
+    .style = hidden
 }
 '''
 

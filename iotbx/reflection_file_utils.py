@@ -762,7 +762,6 @@ class reflection_file_server(object):
         error_message_no_array
           ="No array of R-free flags found.\n\n"
           +"For manual selection define:\n"
-          +"  %s.label\n"%parameter_scope
           +"  %s.test_flag_value\n"%parameter_scope
           +"  %s.disable_suitability_test=True"%parameter_scope,
         error_message_not_a_suitable_array

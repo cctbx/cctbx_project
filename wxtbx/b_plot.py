@@ -26,6 +26,8 @@ b_plot
     .type = choice(multi=False)
     .short_caption = Average B-factors over
     .style = bold
+  use_z_scores = False
+    .type = bool
   plot_range = *by_chain each_100_residues
     .type = choice(multi=False)
     .short_caption = Range of plot
@@ -52,6 +54,7 @@ class analyze(object):
     self.chains = []
     self.residues = []
     b_isos = xray_structure.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.0)
+    if params.use_z_scores: b_isos.as_z_scores()
     occ = pdb_hierarchy.atoms().extract_occ()
     model = pdb_hierarchy.models()[0]
     for chain in model.chains():

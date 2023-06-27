@@ -55,7 +55,6 @@ dependencies:
  - msgpack-c
  - msgpack-cxx
  - orderedset
- - procrunner
  - python-blosc
  - scikit-learn
  - tqdm

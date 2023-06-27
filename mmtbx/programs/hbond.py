@@ -61,8 +61,9 @@ Usage example:
       #
       if self.params.hbond.output_stats_pdf:
         mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix)
-      theta1_data.append(self.results.get_counts().theta_1)
-      Rha_data.append(self.results.get_counts().d_HA)
+      min_data_size=self.params.hbond.min_data_size
+      theta1_data.append(self.results.get_counts(min_data_size=min_data_size).theta_1)
+      Rha_data.append(self.results.get_counts(min_data_size=min_data_size).d_HA)
     if self.params.hbond.output_skew_kurtosis_plot and self.results.get_counts():
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
       # like in stats().
