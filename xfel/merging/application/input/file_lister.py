@@ -64,7 +64,7 @@ def list_input_pairs(params):
 
   # Load alist of files/directories to be exclusively kept or specifically
   # rejected and define all associated alist functions
-  alist = {}
+  alist = set()
   alist_files = params.input.alist.file
   if alist_files is not None:
     for f in alist_files:
