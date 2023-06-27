@@ -15,6 +15,8 @@ from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
 from mmtbx.geometry_restraints.qi_utils import get_hbonds_via_filenames
 from mmtbx.geometry_restraints.qi_utils import get_rotamers_via_filenames
 
+from mmtbx.refinement.energy_monitor import energies as energy_monitor
+
 import iotbx.pdb
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -655,16 +657,20 @@ Usage examples:
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
-    if qmr.calculate_starting_strain:
+    if qmr.calculate_starting_strain or qi.calculate_starting_energy:
       rc = run_energies(
         model,
         self.params,
-        # macro_cycle=self.macro_cycle,
+        macro_cycle=1,
         pre_refinement=True,
         nproc=self.params.qi.nproc,
         log=log,
         )
-      print('starting strain',rc)
+      energies=energy_monitor()
+      energies.append([None,None,None])
+      energies[-1][0]=rc
+      outl = energies.as_string()
+      print(outl, file=log)
     #
     # minimise ligands geometry
     #
@@ -672,6 +678,11 @@ Usage examples:
                             self.params,
                             log=log,
                             )
+    energies=energy_monitor()
+    energies.append([None,None,None])
+    energies[-1][1]=rc
+    outl = energies.as_string()
+    print(outl, file=log)
 
   def get_single_qm_restraints_scope(self, selection):
     qi_phil_string = get_qm_restraints_scope()
