@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 import cctbx.uctbx # possibly implicit
 ext = bp.import_ext("simtbx_nanoBragg_ext")
+from libtbx.phil import parse
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
 from scitbx.matrix import col, sqr
@@ -12,7 +13,8 @@ from dxtbx.model.experiment_list import Experiment, ExperimentList
 from dxtbx.model import CrystalFactory
 from dxtbx.model import BeamFactory
 from dxtbx.model import DetectorFactory
-from dxtbx.format import cbf_writer
+from dxtbx.format.Format import Format
+from dxtbx.format import cbf_writer, nxmx_writer
 
 
 @bp.inject_into(ext.nanoBragg)
@@ -152,15 +154,15 @@ class _():
                      'identifier': '',
                      'image_size': im_shape,
                      'mask': [],
-                     'material': '',  # TODO
+                     'material': 'Si',
                      'mu': 0.0,  # TODO
                      'name': 'Panel',
                      'origin': origin,
                      'pedestal': 0.0,
                      'pixel_size': (pixsize, pixsize),
                      'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
-                     'raw_image_offset': (0, 0),  # TODO
-                     'thickness': 0.0,  # TODO
+                     'raw_image_offset': (0, 0),
+                     'thickness': 0.00001,  # TODO
                      'trusted_range': (-1e3, 1e10),  # TODO
                      'type': ''}]}
     detector = DetectorFactory.from_dict(det_descr)
@@ -171,7 +173,7 @@ class _():
     format_class = FormatBraggInMemory(self.raw_pixels)
     reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
     reader.format_class = FormatBraggInMemory
-    imageset_data = ImageSetData(reader, None)
+    imageset_data = ImageSetData(reader, None, vendor="", params={'raw_pixels': self.raw_pixels}, format=FormatBraggInMemory)
     imageset = ImageSet(imageset_data)
     imageset.set_beam(self.beam)
     imageset.set_detector(self.detector)
@@ -242,6 +244,60 @@ class _():
       self.raw_pixels = cache_pixels
       # print("switch back to cached")
 
+  def to_nexus_nxmx(self, nxmx_filename, toggle_conventions=False, intfile_scale=1.0):
+    """write a NeXus NXmx-format image file to disk from the raw pixel array
+    intfile_scale: multiplicative factor applied to raw pixels before output
+         intfile_scale > 0 : value of the multiplicative factor
+         intfile_scale = 1 (default): do not apply a factor
+         intfile_scale = 0 : compute a reasonable scale factor to set max pixel to 55000; given by get_intfile_scale()"""
+
+    if intfile_scale != 1.0:
+      cache_pixels = self.raw_pixels
+      if intfile_scale > 0: self.raw_pixels = self.raw_pixels * intfile_scale
+      else: self.raw_pixels = self.raw_pixels * self.get_intfile_scale()
+      # print("switch to scaled")
+
+    if toggle_conventions:
+      # switch to DIALS convention before writing CBF
+      CURRENT_CONV = self.beamcenter_convention
+      self.beamcenter_convention=DIALS
+
+    params = nxmx_writer.phil_scope.fetch(parse("""
+    output_file=%s
+    nexus_details {
+      instrument_name=nanoBragg
+      source_name=nanoBragg
+      start_time=NA
+      end_time_estimated=NA
+      sample_name=nanoBragg
+    }
+    """%nxmx_filename)).extract()
+    writer = nxmx_writer.NXmxWriter(params)
+    writer(imageset=self.imageset)
+
+    if toggle_conventions:
+      self.beamcenter_convention=CURRENT_CONV
+
+    if intfile_scale != 1.0:
+      self.raw_pixels = cache_pixels
+      # print("switch back to cached")
+
+def nexus_factory(nxmx_filename):
+    params = nxmx_writer.phil_scope.fetch(parse("""
+    output_file=%s
+    nexus_details {
+      instrument_name=nanoBragg
+      source_name=nanoBragg
+      start_time=NA
+      end_time_estimated=NA
+      sample_name=nanoBragg
+    }
+    dtype=int32
+    """%nxmx_filename)).extract()
+    writer = nxmx_writer.NXmxWriter(params)
+    return writer
+
+
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)
   reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
@@ -279,7 +335,7 @@ class FormatBraggInMemoryMultiPanel:
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask
 
-class FormatBraggInMemory:
+class FormatBraggInMemory(Format):
 
   def __init__(self, raw_pixels):
     self.raw_pixels = raw_pixels
@@ -304,6 +360,10 @@ class FormatBraggInMemory:
   def get_mask(self, goniometer=None):
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask,
+
+  @classmethod
+  def get_instance(Class, filename, **kwargs):
+    return Class(raw_pixels = kwargs.pop('raw_pixels'), **kwargs)
 
   #def paths(self):
   #  return ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path

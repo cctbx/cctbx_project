@@ -128,7 +128,7 @@ class RefineLauncher:
             the pandas table is expected to have been written by diffBragg.hopper or
             diffBragg.hopper_process . See method save_to_pandas in simtbx/command_line/hopper.py
             For example, if the outputdir of diffBragg.hopper was set to `all_shots`, then
-            there should be a golder all_shots/pandas created which contains all of the per-shot pandas
+            there should be a folder all_shots/pandas created which contains all of the per-shot pandas
             dataframes. They should be concatenated as follows, forming a suitable argument for this method
             >> import glob,pandas
             >> fnames = glob.glob("all_shots/pandas/rank*/*pkl")
@@ -486,6 +486,7 @@ class RefineLauncher:
         x_init = None
         nmacro = self.params.refiner.num_macro_cycles
         n_trials = len(self.params.refiner.max_calls)
+
         for i_trial in range(n_trials*nmacro):
 
             self.RUC = StageTwoRefiner(self.Modelers, self.symbol, self.params)
@@ -552,9 +553,10 @@ class RefineLauncher:
             #        more_sel_flags[i_shot] = [flag1 and flag2 for flag1,flag2 in zip(sel_flags, res_flags)]
             #    self.RUC.selection_flags = more_sel_flags
 
-            LOGGER.info("_launcher runno setup")
+            LOGGER.info("_launcher running optimization")
+
             self.RUC.run(setup=False)
-            LOGGER.info("_launcher done runno setup")
+            LOGGER.info("_launcher done running optimization")
             if self.RUC.hit_break_to_use_curvatures:
                 self.RUC.fix_params_with_negative_curvature = False
                 self.RUC.num_positive_curvatures = 0

@@ -312,6 +312,7 @@ class DataModeler:
         return is_duplicate
 
     def GatherFromReflectionTable(self, exp, ref, sg_symbol=None):
+
         self.set_experiment(exp, load_imageset=False)
         self.refls = self.load_refls(ref)
         nref = len(self.refls)
@@ -360,8 +361,9 @@ class DataModeler:
                 sb_trust = mask==fg_code
             else:
                 sb_trust = np.logical_or(mask==fg_code, mask==bg_code)
-
-            below_zero = sb_bkgrnd <= 0
+            
+            # below_zero = sb_bkgrnd <= 0
+            below_zero = sb_bkgrnd < 0
             if np.any(below_zero):
                 nbelow = np.sum(below_zero)
                 ntot = sb_bkgrnd.size
@@ -369,7 +371,7 @@ class DataModeler:
                 sb_trust[below_zero] = False
 
             is_trusted[pid, dat_sliceY,dat_sliceX] = sb_trust
-
+            
             self.rois[i_ref] = x1_onPanel, x2_onPanel, y1_onPanel, y2_onPanel
 
 
@@ -560,6 +562,7 @@ class DataModeler:
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
+            # import IPython; IPython.embed()
             if self.Hi is not None:
                 self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
                 self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix

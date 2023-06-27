@@ -376,11 +376,21 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("Done ")
 
             LOGGER.info("local refiner symbol=%s ; nanoBragg crystal symbol: %s" % (self.symbol, self.S.crystal.symbol))
-            ma = self.S.crystal.miller_array_high_symmetry.map_to_asu()
+            self.fcell_init_from_i_fcell = []
+            ma = self.S.crystal.miller_array
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
-            LOGGER.info("make fcell_init")
-            self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
+            Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+            # TODO: Vectorize
+            for i_fcell in range(self.n_global_fcell):
+                asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
+                P1_hkl = tuple(np.dot(Omatrix,asu_hkl).astype(int))
+                fcell_val = ma_map[P1_hkl]
+                self.fcell_init_from_i_fcell.append(fcell_val)
+            self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
+
+            # LOGGER.info("make fcell_init")
+            # self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
             self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 
@@ -537,6 +547,9 @@ class StageTwoRefiner(BaseRefiner):
 
         if self.refine_Fcell:
             dF = self.D.get_derivative_pixels(self._fcell_id)
+            # breakpoint()
+            # import IPython
+            # IPython.embed()
             self._extracted_fcell_deriv = dF[:npix].as_numpy_array()
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
@@ -576,6 +589,7 @@ class StageTwoRefiner(BaseRefiner):
         if self.refine_Fcell:
             SG = self.scale_fac
             self.fcell_deriv = SG*(self._extracted_fcell_deriv)
+            # breakpoint()
             # handles Nan's when Fcell is 0 for whatever reason
             if self.calc_curvatures:
                 self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv
@@ -626,7 +640,7 @@ class StageTwoRefiner(BaseRefiner):
         t = time.time()
         out = self._compute_functional_and_gradients()
         t = time.time()-t
-        LOGGER.info("TOok %.4f sec to compute functional and grad" % t)
+        LOGGER.info("Took %.4f sec to compute functional and grad" % t)
         return out
 
     def _compute_functional_and_gradients(self):
@@ -827,6 +841,7 @@ class StageTwoRefiner(BaseRefiner):
         if not self.refine_Fcell:
             return
         MOD = self.Modelers[self._i_shot]
+        dumps = []
         for i_fcell in MOD.unique_i_fcell:
 
             multi = self.hkl_frequency[i_fcell]
@@ -836,6 +851,7 @@ class StageTwoRefiner(BaseRefiner):
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
             sig = 1
+            
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 
@@ -852,9 +868,14 @@ class StageTwoRefiner(BaseRefiner):
                 trust = MOD.all_trusted[slc]
                 # NOTE : no need to normalize Fhkl gradients by the overlap rate - they should arise from different HKLs
                 #freq = MOD.all_freq[slc]  # pixel frequency (1 is no overlaps)
-                self.grad[xpos] += (g_accum[trust].sum())*.5
+                dump = (g_accum[trust].sum())*.5
+                self.grad[xpos] += dump
+                dumps.append(dump)
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
+        # import IPython
+        # IPython.embed()
+        # breakpoint()
 
     def _accumulate_Nabc_derivatives(self):
         if not self.params.refiner.refine_Nabc:
