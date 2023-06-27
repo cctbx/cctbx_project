@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 import mmtbx.command_line.fmodel
 import mmtbx.utils
-from iotbx import file_reader
 import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
@@ -97,10 +96,9 @@ class crystal_model(worker):
       model_ext = os.path.splitext(model_file_path)[-1].lower()
       assert model_ext in [".pdb", ".cif"]
       if model_ext == ".pdb":
-        from iotbx import file_reader
-        pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
-        pdb_in.assert_file_type("pdb")
-        xray_structure = pdb_in.file_object.xray_structure_simple()
+        import iotbx.pdb
+        pdb_in = iotbx.pdb.input(model_file_path)
+        xray_structure = pdb_in.xray_structure_simple()
       elif model_ext == ".cif":
         from libtbx.utils import Sorry
         try:
