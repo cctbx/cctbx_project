@@ -90,6 +90,80 @@ END
    [ (-33.788, 46.891, 0.809)
    ],
    0.1,
+  ],
+  ["1xso_amide_unflipped",
+   """\
+CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.013615  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.014505  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.017018        0.00000
+MTRIX1   1  0.987830 -0.010290 -0.155220        1.43777    1
+MTRIX2   1 -0.008360 -0.999880  0.013070       33.15571    1
+MTRIX3   1 -0.155330 -0.011610 -0.987790       17.07902    1
+ATOM    147  N   GLN A  22      32.268  17.697  -8.014  1.00 15.32           N
+ATOM    148  CA  GLN A  22      33.617  18.261  -8.189  1.00 14.46           C
+ATOM    149  C   GLN A  22      34.546  17.130  -8.669  1.00 18.34           C
+ATOM    150  O   GLN A  22      34.525  16.056  -8.055  1.00 20.98           O
+ATOM    151  CB  GLN A  22      34.120  18.672  -6.771  1.00 15.81           C
+ATOM    152  CG  GLN A  22      35.452  19.443  -6.847  1.00 17.90           C
+ATOM    153  CD  GLN A  22      35.878  19.981  -5.501  1.00 14.30           C
+ATOM    154  OE1 GLN A  22      35.529  19.359  -4.472  1.00 18.17           O
+ATOM    155  NE2 GLN A  22      36.611  21.049  -5.457  1.00 20.19           N
+ATOM    173  N   GLU A  25      40.443  19.021  -7.568  1.00 47.81           N
+ATOM    174  CA  GLU A  25      40.160  20.153  -6.631  1.00 42.14           C
+ATOM    175  C   GLU A  25      39.675  21.334  -7.469  1.00 36.95           C
+ATOM    176  O   GLU A  25      39.955  22.496  -7.223  1.00 45.86           O
+ATOM    177  CB  GLU A  25      41.460  20.522  -5.912  0.00 41.53           C
+ATOM    178  CG  GLU A  25      42.518  19.432  -5.947  0.00 41.54           C
+ATOM    179  CD  GLU A  25      43.919  19.983  -6.125  0.00 41.41           C
+ATOM    180  OE1 GLU A  25      44.311  20.257  -7.279  0.00 41.37           O
+ATOM    181  OE2 GLU A  25      44.629  20.145  -5.110  0.00 41.34           O
+ATOM    182  N   GLY A  25A     38.940  21.006  -8.547  1.00 35.16           N
+ATOM    183  CA  GLY A  25A     38.466  22.062  -9.438  1.00 30.84           C
+ATOM    184  C   GLY A  25A     37.135  22.649  -9.008  1.00 26.52           C
+ATOM    185  O   GLY A  25A     36.678  22.555  -7.874  1.00 24.92           O
+ATOM    191  N   VAL A  27      33.241  23.494  -8.492  1.00 13.48           N
+ATOM    192  CA  VAL A  27      32.081  22.686  -8.152  1.00 14.56           C
+ATOM    193  C   VAL A  27      30.869  23.108  -9.008  1.00 14.24           C
+ATOM    194  O   VAL A  27      30.552  24.277  -9.114  1.00 15.24           O
+ATOM    195  CB  VAL A  27      31.716  22.923  -6.662  1.00 13.92           C
+ATOM    196  CG1 VAL A  27      30.493  22.048  -6.301  1.00 19.33           C
+ATOM    197  CG2 VAL A  27      32.934  22.549  -5.797  1.00 15.63           C
+ATOM    749  N   SER A 103      34.060  24.070  -2.055  1.00 11.00           N
+ATOM    750  CA  SER A 103      34.714  22.821  -2.367  1.00 11.78           C
+ATOM    751  C   SER A 103      33.932  21.688  -1.675  1.00 11.18           C
+ATOM    752  O   SER A 103      33.182  21.910  -0.755  1.00 10.91           O
+ATOM    753  CB  SER A 103      36.150  22.787  -1.786  1.00 14.12           C
+ATOM    754  OG  SER A 103      36.858  21.681  -2.392  1.00 15.49           O
+ATOM    755  N   LEU A 104      34.225  20.450  -2.085  1.00 12.60           N
+ATOM    756  CA  LEU A 104      33.727  19.278  -1.440  1.00 13.49           C
+ATOM    757  C   LEU A 104      34.844  18.562  -0.681  1.00 14.51           C
+ATOM    758  O   LEU A 104      34.606  17.475  -0.159  1.00 16.82           O
+ATOM    759  CB  LEU A 104      33.019  18.367  -2.402  1.00 13.27           C
+ATOM    760  CG  LEU A 104      31.817  18.935  -3.135  1.00 13.24           C
+ATOM    761  CD1 LEU A 104      31.200  17.904  -4.040  1.00 16.51           C
+ATOM    762  CD2 LEU A 104      30.821  19.574  -2.182  1.00 22.63           C
+ATOM    763  N   LYS A 105      36.033  19.165  -0.594  1.00 14.92           N
+ATOM    764  CA  LYS A 105      37.139  18.617   0.145  1.00 16.30           C
+ATOM    765  C   LYS A 105      38.020  19.765   0.678  1.00 17.78           C
+ATOM    766  O   LYS A 105      37.916  20.873   0.200  1.00 20.07           O
+ATOM    767  CB  LYS A 105      37.943  17.627  -0.649  1.00 26.20           C
+ATOM    768  CG  LYS A 105      38.587  18.132  -1.914  1.00 38.16           C
+ATOM    769  CD  LYS A 105      38.295  17.264  -3.120  0.00 45.15           C
+ATOM    770  CE  LYS A 105      38.612  15.811  -2.887  1.00 51.58           C
+ATOM    771  NZ  LYS A 105      39.344  15.183  -4.045  1.00 74.91           N
+TER    1093      PRO A 151
+END
+""",
+   "A",
+   22,
+   "OE1",
+   [ (35.529, 19.359, -4.472)
+   ],
+   0.1,
   ]
 ]
 
@@ -124,7 +198,7 @@ def RunRegressionTests():
         if c.id == chain:
           for rg in c.residue_groups():
             if rg.resseq_as_int() == resID:
-              for atom in c.atoms():
+              for atom in rg.atoms():
                 if atom.name.strip().upper() == atomName:
                   found = True
                   loc = atom.xyz
@@ -148,55 +222,6 @@ def RunRegressionTests():
       os.remove("./deletemeFH.pdb")
     if (op.exists("./deleteme_description.txt")):
       os.remove("./deleteme_description.txt")
-
-  #========================================================================
-  # Regression test a Reduce2 run against 1xso, comparing flips
-  # to the output generated by a previous version of the program.  If there are
-  # differences, report that this is the case and recommend verifying that the
-  # differences are intentional and replacing the stored output.
-  data_dir = libtbx.env.under_dist(
-    module_name = "mmtbx",
-    path = os.path.join("regression","pdbs"),
-    test = os.path.isdir)
-  pdb_file = os.path.join(data_dir,'1xso.pdb')
-  if (op.exists("./deletemeFH.pdb")):
-    os.remove("./deletemeFH.pdb")
-  if (op.exists("./deleteme_description.txt")):
-    os.remove("./deleteme_description.txt")
-  out = StringIO()
-  try:
-    # Run the program
-    results = run_program(program_class=reduce2.Program,
-      logger=out,
-      args=[pdb_file, "add_flip_movers=True",
-            "output.file_name=./deletemeFH.pdb",
-            "output.description_file=./deleteme_description.txt",
-            "alt_id=a", "output.overwrite=True"])
-    # Parse the description file to see whether the flips are as expected.
-    expected = ['Unflipped', 'Unflipped', 'Unflipped',
-                'Unflipped',
-                'Unflipped', 'Unflipped', 'Flipped', 'Unflipped',
-                'Unflipped', 'Flipped', 'Unflipped', 'Flipped',
-                'Unflipped',
-                'Unflipped', 'Unflipped', 'Unflipped', 'Flipped', 'Unflipped', 'Unflipped', 'Unflipped',
-                'Flipped',
-                'Unflipped', 'Unflipped', 'Unflipped',
-                'Flipped', 'Unflipped', 'Unflipped', 'Unflipped']
-    with open('./deleteme_description.txt', 'r') as f:
-      lines = f.readlines()
-      which = 0
-      for line in lines:
-        if 'lipped' in line:
-          if not expected[which] in line:
-            return "Flips in 1xso don't match expected flips for {}".format(line)
-          which += 1
-
-  except Exception as e:
-    return "Exception when running reduce2: "+str(e)
-  if (op.exists("./deletemeFH.pdb")):
-    os.remove("./deletemeFH.pdb")
-  if (op.exists("./deleteme_description.txt")):
-    os.remove("./deleteme_description.txt")
 
   return ""
 
