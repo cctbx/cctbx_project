@@ -139,14 +139,14 @@ def IsAromaticAcceptor(resName, atomName):
 def Test(inFileName = None):
 
   #========================================================================
-  # Check IsAromatic() to ensure it gives results when expected and not when not.
+  # Check IsAromaticAcceptor() to ensure it gives results when expected and not when not.
   aromaticChecks = [
       ['PHE', 'CE2', True],
       ['  U', 'HN3', True],
       ['ASN',   'O', False]
     ]
   for a in aromaticChecks:
-    assert IsAromatic(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
+    assert IsAromaticAcceptor(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
 
 if __name__ == '__main__':
 
