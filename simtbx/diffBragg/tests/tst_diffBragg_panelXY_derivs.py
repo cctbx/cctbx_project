@@ -121,6 +121,7 @@ with DeviceWrapper(0) as _:
     assert l.rvalue > .99
     assert l.slope > 0
     assert l.pvalue < 1e-6
-
+    assert l.intercept < 0.1*l.slope # line should go through origin
+    
     print("OK!")
     for name in find_diffBragg_instances(globals()): del globals()[name]

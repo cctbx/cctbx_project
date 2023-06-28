@@ -136,11 +136,13 @@ with DeviceWrapper(0) as _:
         assert l.rvalue > .999  # this is definitely a line!
         assert l.slope > 0
         assert l.pvalue < 1e-5
+        assert l.intercept < 0.1*l.slope # line should go through origin
         if args.curvatures:
             l = linregress(shifts2, all_error2)
             assert l.rvalue > .999  # this is definitely a line!
             assert l.slope > 0
             assert l.pvalue < 1e-5
+            assert l.intercept < 0.1*l.slope # line should go through origin
 
         print("OK!")
     for name in find_diffBragg_instances(globals()): del globals()[name]

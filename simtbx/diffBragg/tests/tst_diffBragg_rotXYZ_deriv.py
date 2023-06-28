@@ -157,11 +157,13 @@ with DeviceWrapper(0) as _:
     assert l.rvalue > .9999, "%2.7g" % l.rvalue
     assert l.slope > 0, "%2.7g" % l.slope
     assert l.pvalue < 1e-6, "%2.7g" % l.pvalue
+    assert l.intercept < 0.1*l.slope, "%2.7g" % l.intercept
     if args.curvatures:
         l = stats.linregress(delta_h2, error_vals2)
         assert l.rvalue > .9999, "2nd deriv rvalue %2.7g" % l.rvalue
         assert l.slope > 0, "2nd deriv slope %2.7g" % l.slope
         assert l.pvalue < 1e-6, "2nd deriv pvalue %2.7g" % l.pvalue
+        assert l.intercept < 0.1*l.slope, "2nd deriv pvalue %2.7g" % l.intercept
     if args.kokkos:
         D.gpu_free()
     print("OK!")
