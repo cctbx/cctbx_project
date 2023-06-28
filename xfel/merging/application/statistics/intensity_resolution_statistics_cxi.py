@@ -476,11 +476,12 @@ class intensity_resolution_statistics_cxi(worker):
        (it is necessary to pick which indexing choice gives the sensible CC iso):'''%self.params.scaling.model_reindex_op)
 
     try:
-
-      #TODO: respect params.statistics.cciso.mtz_column_F
-
-      data_SR = mtz.object(self.params.statistics.cciso.mtz_file)
-
+      model_file_path = self.params.statistics.cciso.mtz_file
+      assert model_file_path.endswith("mtz") or model_file_path.endswith("sf.cif")
+      # support both old-style *.mtz and structure factor *-sf.cif
+      from iotbx import reflection_file_reader
+      data_SR = reflection_file_reader.any_reflection_file(
+                file_name = model_file_path)
       have_iso_ref = True
     except RuntimeError:
       data_SR = None
@@ -517,7 +518,7 @@ class intensity_resolution_statistics_cxi(worker):
            self.logger.main_log(this_label + ' ' + str(array.observation_type()))
            uniform.append(array.as_intensity_array())
            break
-         if this_label.find(self.params.statistics.cciso.mtz_column_F) == 0:
+         if self.params.statistics.cciso.mtz_column_F in this_label:
            self.logger.main_log(this_label + ' ' + str(array.observation_type()))
            uniform.append(array.as_intensity_array())
            break
