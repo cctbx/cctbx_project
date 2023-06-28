@@ -542,13 +542,19 @@ class MoverNH3Rotator(_MoverRotator):
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
-    if len(friends) != 3:
-      raise ValueError("MoverNH3Rotator(): Partner does not have three bonded friends")
+    if len(friends) < 3:
+      raise ValueError("MoverNH3Rotator(): Partner does not have at least three bonded friends")
 
-    # Set the preference function to like 120-degree rotations away from the starting location.
-    # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
-    # (for example, we might use preferredOrientationScale for this and not set a separate one?)
-    def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
+    preferenceFunction = None
+
+    # If we have exactly three neighbors, then we set a preference function that prefers
+    # the staggered orientation. If there are more, we just leave things alone.
+    if len(friends) == 3:
+
+      # Set the preference function to prefer 120-degree rotations away from the starting location.
+      # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
+      # (for example, we might use preferredOrientationScale for this and not set a separate one?)
+      def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
