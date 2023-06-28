@@ -59,6 +59,7 @@ def RunReduceTests():
 # a list of possible locations for the atom (for sets of 3 hydrogens, any 60-degree
 # rotation is equivalent in score), and a maximum distance threshold.
 testCases = [
+
   ["7c31_single_hydrogen_rotator",
    """\
 CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
@@ -91,6 +92,7 @@ END
    ],
    0.1,
   ],
+
   ["1xso_amide_unflipped",
    """\
 CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
@@ -164,7 +166,66 @@ END
    [ (35.529, 19.359, -4.472)
    ],
    0.1,
+  ],
+
+  ["1xso_amide_flipped",
+   """\
+CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.013615  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.014505  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.017018        0.00000
+MTRIX1   1  0.987830 -0.010290 -0.155220        1.43777    1
+MTRIX2   1 -0.008360 -0.999880  0.013070       33.15571    1
+MTRIX3   1 -0.155330 -0.011610 -0.987790       17.07902    1
+ATOM    924  N   GLY A 127      23.876  47.136  -0.439  1.00 18.38           N
+ATOM    925  CA  GLY A 127      22.692  47.748   0.105  1.00 17.97           C
+ATOM    926  C   GLY A 127      22.873  49.006   0.862  1.00 18.02           C
+ATOM    927  O   GLY A 127      21.908  49.714   1.225  1.00 24.20           O
+ATOM    932  N   ASN A 129      24.271  49.439   3.964  1.00 14.98           N
+ATOM    933  CA  ASN A 129      24.135  49.362   5.428  1.00 15.72           C
+ATOM    934  C   ASN A 129      24.971  48.198   5.914  1.00 13.04           C
+ATOM    935  O   ASN A 129      25.459  47.398   5.129  1.00 14.62           O
+ATOM    936  CB  ASN A 129      22.691  49.260   5.878  1.00 15.14           C
+ATOM    937  CG  ASN A 129      21.911  48.176   5.160  1.00 19.11           C
+ATOM    938  OD1 ASN A 129      22.371  47.040   5.114  1.00 15.87           O
+ATOM    939  ND2 ASN A 129      20.811  48.560   4.517  1.00 30.20           N
+ATOM    948  N   GLU A 131      24.275  45.568   7.628  1.00 14.32           N
+ATOM    949  CA  GLU A 131      23.665  44.242   7.404  1.00 15.35           C
+ATOM    950  C   GLU A 131      23.963  43.701   6.022  1.00 13.39           C
+ATOM    951  O   GLU A 131      24.150  42.499   5.830  1.00 13.14           O
+ATOM    952  CB  GLU A 131      22.201  44.278   7.753  1.00 18.42           C
+ATOM    953  CG  GLU A 131      21.474  42.964   7.698  1.00 23.30           C
+ATOM    954  CD  GLU A 131      21.905  42.014   8.811  1.00 27.07           C
+ATOM    955  OE1 GLU A 131      22.005  42.457   9.969  1.00 37.65           O
+ATOM    956  OE2 GLU A 131      22.106  40.834   8.513  1.00 32.51           O
+ATOM    957  N   SER A 132      24.016  44.584   5.024  1.00 13.86           N
+ATOM    958  CA  SER A 132      24.353  44.193   3.664  1.00 12.64           C
+ATOM    959  C   SER A 132      25.696  43.468   3.641  1.00 12.67           C
+ATOM    960  O   SER A 132      25.800  42.483   2.891  1.00 13.76           O
+ATOM    961  CB  SER A 132      24.320  45.391   2.737  1.00 14.43           C
+ATOM    962  OG  SER A 132      24.685  45.044   1.405  1.00 13.58           O
+ATOM    991  N   ASN A 137      20.989  41.281   3.329  1.00 12.56           N
+ATOM    992  CA  ASN A 137      19.607  41.651   3.597  1.00 13.15           C
+ATOM    993  C   ASN A 137      18.639  40.676   2.991  1.00 10.75           C
+ATOM    994  O   ASN A 137      17.511  41.040   2.611  1.00 15.89           O
+ATOM    995  CB  ASN A 137      19.280  43.097   3.159  1.00 13.87           C
+ATOM    996  CG  ASN A 137      19.949  44.125   4.040  1.00 16.63           C
+ATOM    997  OD1 ASN A 137      19.570  44.245   5.254  1.00 19.77           O
+ATOM    998  ND2 ASN A 137      20.916  44.887   3.583  1.00 16.13           N
+TER    1093      PRO A 151
+END
+""",
+   "A",
+   129,
+   "OD1",
+   [ (22.371, 47.040, 5.114)
+   ],
+   0.1,
   ]
+
 ]
 
 def RunRegressionTests():
@@ -200,6 +261,7 @@ def RunRegressionTests():
             if rg.resseq_as_int() == resID:
               for atom in rg.atoms():
                 if atom.name.strip().upper() == atomName:
+                  print('XXX Atom', atomName, 'at', atom.xyz, 'res', rg.resseq_as_int())
                   found = True
                   loc = atom.xyz
                   closeEnough = False
