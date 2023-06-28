@@ -100,7 +100,7 @@ bonded_neighbor_depth = 4
   .type = int
   .short_caption = How many neighbors to consider bonded (>3 accepted only if hydrogen)
   .help = When looking for interactions between atoms, this specifies how many hops we should take when looking for atoms that are excluded because we share a common chain of bonds. Lengths more than 3 only happen when one end is a hydrogen. This value should not be changed from the default except for regression tests against earlier versions.
-stop_on_any_missing_hydrogen = True
+stop_on_any_missing_hydrogen = False
   .type = bool
   .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
   .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
@@ -935,7 +935,7 @@ NOTES:
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
       exclude_water=True,
-      stop_for_unknowns=True,
+      stop_for_unknowns=False,
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
