@@ -1297,9 +1297,9 @@ def _rotateAroundAxis(atom, axis, degrees):
      :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
      scitbx.matrix.rec(xyz, (3,1)) to be moved.
      :param axis: flex array with two scitbx::vec3<double> points, the first
-     of which is the origin and the second is a vector pointing in the direction
-     of the axis of rotation.  Positive rotations will be right-handed rotations
-     around this axis.
+     of which is the origin in space around which to rotate and the second is
+     a vector pointing in the direction of the axis of rotation.
+     Positive rotations will be right-handed rotations around this axis.
      :param degrees: How much to rotate the atom around the axis.
      Positive rotation is right-handed around the axis.
      :returns the new location for the atom.
@@ -1311,27 +1311,13 @@ def _rotateAroundAxis(atom, axis, degrees):
   except Exception:
     pos = rvec3(atom)
 
-  # Project the atom position onto the axis, finding its closest point on the axis.
-  # The position lies on a plane whose normal points along the axis vector.  The
-  # point we seek is the intersection of the axis with this plane.
-  # The plane equation will be the normalized axis direction vector and the offset
-  # from the origin such that N.point + d = 0 defines the plane.
-  # Solve for the time at which the line's ray crosses the plane and then solve for
-  # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
-  # (lineDirection * planeNormal).  Because the line direction and normal are the
-  # same, the divisor is 1.
-  normal = lvec3(axis[1]).normalize()
-  d = -normal*pos
-  t = - (d + (normal * rvec3(axis[0])))
-  nearPoint = lvec3(axis[0]) + t * normal
-
-  # Find the vector from the closest point towards the atom, which is its offset
-  offset = lvec3(pos) - nearPoint
-
-  # Rotate the offset vector around the axis by the specified angle.  Add the new
-  # offset to the closest point. Store this as the new location for this atom and angle.
-  newOffset = offset.rotate_around_origin(lvec3(axis[1]), degrees*math.pi/180)
-  return nearPoint + newOffset
+  # We rotate around this center of projection.
+  ctr = scitbx.matrix.col(axis[0])
+  # We rotate around this axis.
+  r = scitbx.matrix.col(axis[1]).axis_and_angle_as_r3_rotation_matrix(angle=degrees, deg=True)
+  # Make a rotation and translation to handle the nested translate-rotate-translate and
+  # then apply it to the atom position.
+  return scitbx.matrix.rt((r, ctr - r*ctr)) * pos
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
