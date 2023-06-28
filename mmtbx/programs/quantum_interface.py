@@ -657,7 +657,10 @@ Usage examples:
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
-    if qmr.calculate_starting_strain or qi.calculate_starting_energy:
+    if (qmr.calculate_starting_strain or
+        qmr.calculate_starting_energy or
+        qmr.calculate_starting_bound
+        ):
       rc = run_energies(
         model,
         self.params,

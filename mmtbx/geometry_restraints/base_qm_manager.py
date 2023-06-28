@@ -387,6 +387,22 @@ class base_qm_manager(base_manager):
     self.preamble = old_preamble
     return self.strain, self.units
 
+  def get_bound(self,
+                cleanup=False,
+                file_read=True,
+                redirect_output=False,
+                log=StringIO(),
+                **kwds
+                ):
+    old_preamble = self.preamble
+    self.preamble += '_bound'
+    energy, units = self.get_energy(optimise_h=True,
+                                    redirect_output=redirect_output,
+                                    cleanup=cleanup,
+                                    log=log)
+    self.preamble = old_preamble
+    return energy, units
+
   def get_timings(self, energy=None):
     if not self.times: return '-'
     f='  Timings : %0.2fs (%ss)' % (

@@ -387,9 +387,11 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   if program_goal in ['energy', 'strain']:
     electron_model = ligand_model
     solvent_model = 'EPS=78.4 PRECISE NSPA=92'
-  elif program_goal in ['opt']:
+  elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
-  specific_atom_charges = get_specific_atom_charges(qmr)
+  else:
+    assert 0, 'program_goal %s not in list' % program_goal
+  # specific_atom_charges = get_specific_atom_charges(qmr)
   specific_atom_charges = qmr.specific_atom_charges
   total_charge = quantum_interface.electrons(
     electron_model,
@@ -484,10 +486,16 @@ def running_this_macro_cycle(qmr,
   if energy_only:
     # if macro_cycle in [0, None]: return False
     if pre_refinement:
-      if qmr.calculate_starting_energy or qmr.calculate_starting_strain:
+      if (qmr.calculate_starting_energy or
+          qmr.calculate_starting_strain or
+          qmr.calculate_starting_bound
+         ):
         return True
     else:
-      if qmr.calculate_final_energy or qmr.calculate_final_strain:
+      if (qmr.calculate_final_energy or
+          qmr.calculate_final_strain or
+          qmr.calculate_final_bound
+         ):
         if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
           return True
   return False
@@ -594,11 +602,15 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('energy')
     if qmr.calculate_starting_strain:
       program_goal.append('strain')
+    if qmr.calculate_starting_bound:
+      program_goal.append('bound')
   else: # only called with final energy on final macro cycle
     if qmr.calculate_final_energy:
       program_goal.append('energy')
     if qmr.calculate_final_strain:
       program_goal.append('strain')
+    if qmr.calculate_final_bound:
+      program_goal.append('bound')
   return program_goal
 
 def setup_qm_jobs(model,
@@ -630,7 +642,8 @@ def setup_qm_jobs(model,
     # get appropriate QM manager
     #
     program_goals = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
-    for program_goal in   program_goals:
+    for program_goal in program_goals:
+      print('program_goal',program_goal)
       qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
       preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
       if not energy_only: # only write PDB files for restraints update
@@ -667,11 +680,13 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
-      elif qmm.program_goal in ['energy', 'strain']:
+      elif qmm.program_goal in ['energy', 'strain', 'bound']:
         energy=xyz
         units=xyz_buffer
         xyz=None
         xyz_buffer=None
+      else:
+        assert 0, 'program_goal %s not in list' % qmm.program_goal
       energies.append([qmm.program_goal,
                       energy,
                       ligand_model.get_number_of_atoms(),
