@@ -57,7 +57,8 @@ def RunReduceTests():
 
 # Each test case has a name, a raw PDB file, a chain ID, a residue ID, an atom name,
 # a list of possible locations for the atom (for sets of 3 hydrogens, any 60-degree
-# rotation is equivalent in score), and a maximum distance threshold.
+# rotation is equivalent in score), a maximum distance threshold, and a list of extra
+# arguments to make to Reduce2 for this case.
 testCases = [
 
   ["7c31_single_hydrogen_rotator",
@@ -91,6 +92,7 @@ END
    [ (-33.788, 46.891, 0.809)
    ],
    0.1,
+   []
   ],
 
   ["1xso_amide_unflipped",
@@ -166,6 +168,7 @@ END
    [ (35.529, 19.359, -4.472)
    ],
    0.1,
+   []
   ],
 
   ["1xso_amide_flipped",
@@ -224,6 +227,7 @@ END
    [ (22.371, 47.040, 5.114)
    ],
    0.1,
+   []
   ],
 
   ["1xso_histidine_unflipped",
@@ -269,6 +273,7 @@ END
    [ (22.149, 15.200, -6.888)
    ],
    0.1,
+   []
   ],
 
   ["1xso_histidine_flipped",
@@ -319,9 +324,61 @@ END
    [ (22.666, 16.182, 21.033)
    ],
    0.1,
+   []
   ],
 
-  ["1ehz_aromatic_methyl_rotator",
+  ["1xso_histidine_large_unflip_preference",
+   """\
+CRYST1   73.450   68.940   58.760  90.00  90.00  90.00 P 21 21 21    8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.013615  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.014505  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.017018        0.00000
+MTRIX1   1  0.987830 -0.010290 -0.155220        1.43777    1
+MTRIX2   1 -0.008360 -0.999880  0.013070       33.15571    1
+MTRIX3   1 -0.155330 -0.011610 -0.987790       17.07902    1
+ATOM   1115  N   VAL B   5      26.079  16.885  14.997  1.00  8.83           N
+ATOM   1116  CA  VAL B   5      24.686  16.588  15.374  1.00  8.78           C
+ATOM   1117  C   VAL B   5      23.969  16.005  14.172  1.00  9.25           C
+ATOM   1118  O   VAL B   5      24.335  16.257  13.044  1.00 10.86           O
+ATOM   1119  CB  VAL B   5      23.982  17.879  15.867  1.00 10.17           C
+ATOM   1120  CG1 VAL B   5      23.763  18.899  14.740  1.00 14.21           C
+ATOM   1121  CG2 VAL B   5      22.685  17.620  16.633  1.00 14.81           C
+ATOM   1196  N   VAL B  17      17.298  13.044  18.182  1.00 10.96           N
+ATOM   1197  CA  VAL B  17      18.457  13.879  18.007  1.00  9.04           C
+ATOM   1198  C   VAL B  17      19.658  13.118  18.600  1.00 11.44           C
+ATOM   1199  O   VAL B  17      19.557  12.560  19.692  1.00 14.98           O
+ATOM   1200  CB  VAL B  17      18.288  15.251  18.678  1.00 13.50           C
+ATOM   1201  CG1 VAL B  17      19.502  16.123  18.558  1.00 17.18           C
+ATOM   1202  CG2 VAL B  17      17.090  16.002  18.108  1.00 20.25           C
+ATOM   1210  N   HIS B  19      23.916  13.702  19.282  1.00  9.93           N
+ATOM   1211  CA  HIS B  19      25.062  14.561  19.425  1.00  9.29           C
+ATOM   1212  C   HIS B  19      26.366  13.749  19.441  1.00  8.50           C
+ATOM   1213  O   HIS B  19      26.409  12.668  20.031  1.00 12.76           O
+ATOM   1214  CB  HIS B  19      24.996  15.427  20.688  1.00 12.81           C
+ATOM   1215  CG  HIS B  19      23.810  16.312  20.701  1.00 19.55           C
+ATOM   1216  ND1 HIS B  19      23.897  17.622  20.251  1.00 24.11           N
+ATOM   1217  CD2 HIS B  19      22.556  16.137  21.208  1.00 25.44           C
+ATOM   1218  CE1 HIS B  19      22.723  18.181  20.377  1.00 27.18           C
+ATOM   1219  NE2 HIS B  19      21.897  17.308  20.959  1.00 29.89           N
+HETATM 2413  O   HOH B 195      10.371  -1.926  15.288  1.00 30.69           O
+HETATM 2486  O   HOH B 268      10.982   5.736  29.100  1.00 46.97           O
+HETATM 2528  O   HOH B 310      19.641  17.849  22.382  1.00 61.47           O
+TER    1093      PRO A 151
+END
+""",
+   "B",
+   19,
+   "ND1",
+   [ (23.897, 17.622, 20.251)
+   ],
+   0.1,
+   ["non_flip_preference=1000"]
+  ],
+
+["1ehz_aromatic_methyl_rotator",
    """\
 CRYST1   54.981   33.389   61.921  90.00  90.20  90.00 P 1 21 1      2
 ORIGX1      1.000000  0.000000  0.000000        0.00000
@@ -382,6 +439,7 @@ END
    [ (64.602, 52.635, 37.674), (65.188, 53.997, 38.160), (65.153, 53.663, 36.637)
    ],
    0.1,
+   []
   ]
 
 ]
@@ -395,6 +453,7 @@ def RunRegressionTests():
     atomName = tc[4]
     positions = tc[5]
     maxDist = tc[6]
+    extraArgs = tc[7]
 
     print('Testing regression on', name)
 
@@ -408,9 +467,9 @@ def RunRegressionTests():
     out = StringIO()
     try:
       # Run the program
-      results = run_program(program_class=reduce2.Program,
-        logger=out,
-        args=[pdb_file, "add_flip_movers=True", "output.description_file=./deleteme_description.txt"])
+      args = [pdb_file, "add_flip_movers=True", "output.description_file=./deleteme_description.txt"]
+      args.extend(extraArgs)
+      results = run_program(program_class=reduce2.Program, logger=out, args=args)
       # Check the position of the atom to see if it is near enough to one of the expected locations.
       found = False
       for c in results.model.chains():

@@ -2259,9 +2259,6 @@ END
   print('Testing FastOptimizer')
   opt = FastOptimizer(probePhil, True, model,probeRadius=0.25)
 
-  # Test specifying the flip states.
-  # @todo
-
   # Write debugging output if we've been asked to
   if dumpAtoms:
     f = open("deleteme.pdb","w")
