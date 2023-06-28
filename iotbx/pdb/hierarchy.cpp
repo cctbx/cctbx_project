@@ -1198,17 +1198,6 @@ namespace {
   std::string
   atom_group::confid() const
   {
-    // char blank = ' ';
-    // char result[5];
-    // data->altloc.copy_left_justified(result, 1U, blank);
-    // // XXX
-    // // data->resname.copy_right_justified(result+1, 3U, blank);
-    // // result[1] = 'D';
-    // // result[2] = 'U';
-    // // result[3] = 'M';
-    // result[4] = '\0';
-    // return std::string(result);
-
     std::string result;
     result += (data->altloc.size() == 0) ? " " : data->altloc.elems;
     result += (data->resname.size() == 0) ? " " : boost::algorithm::trim_copy(data->resname);
@@ -1346,7 +1335,6 @@ namespace {
   }
 
 
-
 } // namespace <anonymous>
 
   void
@@ -1379,7 +1367,6 @@ namespace {
     }
   }
 
-
   boost::optional<atom>
   atom_group::get_atom(char const* name) const
   {
@@ -1397,18 +1384,6 @@ namespace {
     }
     return boost::optional<atom>();
   }
-
-  // str4
-  // atom_group::confid_small_str() const
-  // {
-  //   char blank = ' ';
-  //   str4 result;
-  //   data->altloc.copy_left_justified(result.elems, 1U, blank);
-  //   // XXX
-  //   // data->resname.copy_right_justified(result.elems+1, 3U, blank);
-  //   result.elems[4] = '\0';
-  //   return result;
-  // }
 
 namespace {
 
