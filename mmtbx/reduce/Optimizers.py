@@ -1037,7 +1037,7 @@ class _SingletonOptimizer(object):
         if numH == 3:
           # See if the Carbon's other neighbor is attached to two other atoms (3 total).  If so,
           # then insert a MoverAromaticMethylRotator and if not, generate a MoverTetrahedralMethylRotator
-          # so that they Hydrogens will be staggered but do not add it to those to be optimized.
+          # so that the Hydrogens will be staggered but do not add it to those to be optimized.
           if len(bondedNeighborLists[neighbor]) == 3:
             try:
               self._movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists, hParameters))
@@ -2192,10 +2192,6 @@ END
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
-  # Check a case where a HisFlip would be flipped and locked down and have its Hydrogen removed.
-  # @todo
-
-  #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
   # @todo
 
@@ -2237,7 +2233,7 @@ END
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
   # Run each type of optimizer on the model.
-  # @todo Verify that they all get equivalent results
+  # @todo Verify that they all get results with equivalent scores
   print('Testing _BruteForceOptimizer')
   opt = _BruteForceOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
