@@ -188,7 +188,7 @@ def RunRegressionTests():
       for line in lines:
         if 'lipped' in line:
           if not expected[which] in line:
-           return "Flips in 1xso don't match expected flips for flip {}".format(which)
+            return "Flips in 1xso don't match expected flips for {}".format(line)
           which += 1
 
   except Exception as e:
