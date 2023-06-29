@@ -42,7 +42,7 @@ class CosymAnalysis(BaseClass):
             yy.append(self.coords[(item,1)])
           from matplotlib import pyplot as plt
           plt.plot(xx,yy,"r.")
-          # denminator of 12 is specific to the use case of P6 (# symops in the metric superlattice)
+          # denominator of 12 is specific to the use case of P6 (# symops in the metric superlattice)
           plt.plot(xx[::len(xx)//12],yy[::len(yy)//12],"b.")
           plt.plot(xx[:1],yy[:1],"g.")
           plt.axes().set_aspect("equal")
@@ -62,6 +62,9 @@ class CosymAnalysis(BaseClass):
           plt.plot(xx[0:1], yy[0:1], 'k.')
           plt.plot([0,0],[-0.01,0.01],"k-")
           plt.plot([-0.01,0.01],[0,0],"k-")
+          plt.xlim(-0.2,1.0)
+          plt.ylim(-0.2,1.0)
+          plt.title("$<w_{ij}>$=%.1f"%(np.mean(self.target.wij_matrix)))
           ax = plt.gca()
           ax.set_aspect("equal")
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
