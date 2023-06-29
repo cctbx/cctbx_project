@@ -33,7 +33,7 @@ def main():
       j+=1
       tmp.append([])
       tmp[-1].append(block)
-      tmp[-1].append('Taken from Monomer Library or GeoStd')
+      tmp[-1].append('%s from Monomer Library or GeoStd' % block.replace('link_', ''))
       #tmp[-1].append('')
       #tmp[-1].append([block]*6)
       #tmp[-1].append([0,1,2,3,4,5])

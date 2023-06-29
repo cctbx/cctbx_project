@@ -82,6 +82,14 @@ class ramachandran(residue):
       self.ramalyze_type(), self.score,
       ",".join([ "%.1f" % x for x in [self.phi, self.psi] ]))
 
+  def as_csv(self):
+    rc = [self.chain_id.strip(), self.resseq.strip(),
+      # self.icode, self.altloc,
+      self.resname.strip()]
+    rc += [self.residue_type(), self.ramalyze_type(), '%0.1f' % (self.score)]
+    rc += [ "%.1f" % x for x in [self.phi, self.psi]]
+    return ','.join(rc)
+
   # Backwards compatibility
   def id_str_old(self):
     return "%s%4s%1s %1s%s" % (self.chain_id, self.resseq, self.icode,

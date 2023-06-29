@@ -92,6 +92,8 @@ def compute(hierarchies, params, log, quiet=False, plot_file_base_default=None):
       app = wxtbx.app.CCTBXApp(0)
       result.display_wx_plots()
       app.MainLoop()
+  else:
+    return result
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -130,9 +132,12 @@ Example:
       hierarchies.append(hierarchy)
     fb = os.path.splitext(os.path.basename(
       self.data_manager.get_model_names()[0]))[0]
-    compute(
+    self.results = compute(
       hierarchies            = hierarchies,
       params                 = self.params,
       log                    = self.logger,
       quiet                  = False,
       plot_file_base_default = fb)
+
+  def get_results(self):
+    return self.results

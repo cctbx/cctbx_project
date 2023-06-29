@@ -91,6 +91,10 @@ qm_restraints
     .type = bool
   calculate_final_strain = False
     .type = bool
+  calculate_starting_bound = False
+    .type = bool
+  calculate_final_bound = False
+    .type = bool
   write_pdb_core = False
     .type = bool
   write_pdb_buffer = False
@@ -172,9 +176,17 @@ def electrons(model, specific_atom_charges=None, log=None):
   charged_atoms = atom_valences.get_charged_atoms()
   return atom_valences.get_total_charge()
 
-def get_safe_filename(s):
+def get_safe_filename(s, compact_selection_syntax=True):
+  assert compact_selection_syntax
+  if compact_selection_syntax:
+    s=s.replace('chain', '')
+    s=s.replace('resid', '')
+    s=s.replace('resseq', '')
+    s=s.replace('resname', '')
+    s=s.replace('and', '')
   while s.find('  ')>-1:
     s=s.replace('  ',' ')
+  if s[0]==' ': s=s[1:]
   s=s.replace(' ','_')
   s=s.replace("'",'_prime_')
   s=s.replace('*','_star_')
@@ -211,7 +223,7 @@ def populate_qmr_defaults(qmr):
     assert 0
   return qmr
 
-def get_preamble(macro_cycle, i, qmr, old_style=False):
+def get_preamble(macro_cycle, i, qmr, old_style=False, compact_selection_syntax=True):
   qmr = populate_qmr_defaults(qmr)
   s=''
   if macro_cycle is not None:
@@ -221,7 +233,9 @@ def get_preamble(macro_cycle, i, qmr, old_style=False):
   if old_style:
     s+='%02d_%s_%s' % (i+1, get_safe_filename(qmr.selection), qmr.buffer)
   else:
-    s+='%s_%s' % (get_safe_filename(qmr.selection), qmr.buffer)
+    s+='%s_%s' % (get_safe_filename(qmr.selection,
+                                    compact_selection_syntax=compact_selection_syntax),
+                  qmr.buffer)
   if qmr.capping_groups:
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
@@ -295,38 +309,6 @@ def is_quantum_interface_active(params, verbose=False):
     if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
       return True, 'qm_restraints' # includes restraints and energy
   return False
-
-def is_qi_energy_pre_refinement(params,
-                                macro_cycle,
-                                ):
-  assert 0
-  qi = is_quantum_interface_active(params)
-  if qi:
-    rc = []
-    if qi[1]=='qm_restraints':
-      for i, qmr in enumerate(params.qi.qm_restraints):
-        if macro_cycle==1:
-          if qmr.calculate_starting_energy or qmr.calculate_starting_strain:
-            rc.append(True)
-    return True in rc
-  else:
-    return False
-
-def is_qi_energy_post_refinement(params,
-                                macro_cycle,
-                                ):
-  assert 0
-  qi = is_quantum_interface_active(params)
-  if qi:
-    rc = []
-    if qi[1]=='qm_restraints':
-      for i, qmr in enumerate(params.qi.qm_restraints):
-        if macro_cycle==params.main.number_of_macro_cycles:
-          if qmr.calculate_final_energy or qmr.calculate_final_strain:
-            rc.append(True)
-    return True in rc
-  else:
-    return False
 
 def is_quantum_interface_active_this_macro_cycle(params,
                                                  macro_cycle,

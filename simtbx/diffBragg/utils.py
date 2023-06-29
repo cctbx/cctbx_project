@@ -24,7 +24,6 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 import libtbx
 from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
-from iotbx import file_reader
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
@@ -285,8 +284,8 @@ ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O
 ATOM      6 SED  MSE A   6       1.000   2.000   3.000  1.00 20.00          SE
 END
 """
-    from iotbx import pdb
-    pdb_inp = pdb.input(source_info=None, lines=pdb_lines)
+    import iotbx.pdb
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_lines)
     xray_structure = pdb_inp.xray_structure_simple()
     if ucell is not None:
         assert symbol is not None
@@ -898,10 +897,9 @@ def get_complex_fcalc_from_pdb(
     produce a structure factor from PDB coords, see mmtbx/command_line/fmodel.py for formulation
     k_sol, b_sol form the solvent component of the Fcalc: Fprotein + k_sol*exp(-b_sol*s^2/4) (I think)
     """
-
-    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
-    xray_structure = pdb_in.file_object.xray_structure_simple()
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(pdb_file)
+    xray_structure = pdb_in.xray_structure_simple()
     if show_pdb_summary:
         xray_structure.show_summary()
     for sc in xray_structure.scatterers():

@@ -94,6 +94,17 @@ namespace iotbx { namespace pdb {
     }
   }
 
+  // inline
+  // void
+  // copy_right_justified_std_string(
+  //   std::string dest,
+  //   const char *src,
+  //   unsigned src_size,
+  //   char pad_with)
+  // {
+
+  // }
+
   enum small_str_no_init_t { small_str_no_init };
 
   template <unsigned N>

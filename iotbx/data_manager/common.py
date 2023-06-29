@@ -158,7 +158,7 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
-                 free_r_flags_scope = None,
+                 free_r_flags_scope = 'xray_data',
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
