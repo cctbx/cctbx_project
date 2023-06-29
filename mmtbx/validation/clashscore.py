@@ -48,6 +48,7 @@ class clash(atoms):
     atom0_slots_as_dict = ({s: getattr(self.atoms_info[0], s) for s in atom0_slots_list if s != 'xyz' })
     atom1_slots_list = [s for s in self.atoms_info[1].__slots__]
     atom1_slots_as_dict = ({"target_"+s: getattr(self.atoms_info[1], s) for s in atom1_slots_list if s != 'xyz' })
+    atoms_dict = self.merge_two_dicts(atom0_slots_as_dict, atom1_slots_as_dict)
     #atom0_slots_as_dict["resid"] = atom0_slots_as_dict['resseq']+atom0_slots_as_dict['icode']
     #print("atom0_dict: " + str(atom0_slots_as_dict))
     serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s) ]
@@ -55,7 +56,8 @@ class clash(atoms):
     #print("slots_dict: " + str(slots_as_dict))
     #print("combo:")
     #print({**slots_as_dict, **atom0_slots_as_dict})
-    return json.dumps({**slots_as_dict, **atom0_slots_as_dict, **atom1_slots_as_dict}, indent=2)
+    return json.dumps(self.merge_two_dicts(slots_as_dict, atoms_dict), indent=2)
+    #return json.dumps({**slots_as_dict, **atom0_slots_as_dict, **atom1_slots_as_dict}, indent=2)
 
   def as_hierarchical_JSON(self):
     hierarchical_dict = {}

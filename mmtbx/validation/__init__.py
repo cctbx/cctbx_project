@@ -287,6 +287,12 @@ class atoms(entity):
       return [json.loads(self.as_JSON())]
     return upper_dict
 
+  def merge_two_dicts(self, x, y):
+    """Given two dictionaries, merge them into a new dict as a shallow copy, for json output."""
+    z = x.copy()
+    z.update(y)
+    return z
+
 class atom_base(slots_getstate_setstate):
   """
   Container for metadata for a single atom, in the context of validation
