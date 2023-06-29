@@ -1117,7 +1117,7 @@ roi {
     .type = str
     .help = panel list for refinement as a string, e.g. "0-8,10,32-40" . The ranges are inclusive,
     .help = e.g. 0-8 means panels 0,1,2,3,4,5,6,7,8
-  fit_tilt_using_weights = True
+  fit_tilt_using_weights = False
     .type = bool
     .help = if not using robust estimation for background, and instead using tilt plane fit,
     .help = then this parameter will toggle the use of weights. Weights are the estimated

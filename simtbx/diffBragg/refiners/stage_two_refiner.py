@@ -484,7 +484,6 @@ class StageTwoRefiner(BaseRefiner):
                 vals = sigs*(xvals - 1) + inits
                 vals[vals < 0] = 0
         else:
-            exit()
             if self.log_fcells:
                 vals = np.exp(xvals)
             else:
@@ -806,7 +805,6 @@ class StageTwoRefiner(BaseRefiner):
     def _gain_region_derivatives(self):
         if not self.params.refiner.refine_gain_map:
             return
-        exit()
         MOD = self.Modelers[self._i_shot]
 
         #dL_dG = 0.5*self.one_over_v* (MOD.all_background + 2*self.u*(MOD.all_data-MOD.all_background) - \
@@ -827,7 +825,6 @@ class StageTwoRefiner(BaseRefiner):
 
     def _Fcell_derivatives(self):
         if not self.refine_Fcell:
-            exit()
             return
         MOD = self.Modelers[self._i_shot]
         for i_fcell in MOD.unique_i_fcell:
@@ -847,7 +844,6 @@ class StageTwoRefiner(BaseRefiner):
                     sig_times_fcell = sig*Famp
                     d = sig_times_fcell*self.fcell_dI_dtheta
                 else:
-                    exit()
                     # case 1 rescaling
                     d = sig*self.fcell_dI_dtheta
 
@@ -871,7 +867,6 @@ class StageTwoRefiner(BaseRefiner):
 
     def _spot_scale_derivatives(self, return_derivatives=False):
         if not self.refine_crystal_scale:
-            exit()
             return
         S = np.sqrt(self.scale_fac_no_gains)
         dI_dtheta = (2./S)*self.model_bragg_spots
@@ -893,7 +888,6 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("derivatives of Bfactors for shot %d: current B=%e Ang^2" % (self._i_shot, self.b_fac**2))
         if self.params.fix.B:
             return
-        exit()
         dI_dtheta = -.5*self.model_bragg_spots*self.Bfactor_qterm * self.b_fac
         d2I_dtheta2 = 0 #-.5*self.model_bragg_spots*self.Bfactor_qterm
         # second derivative is 0 with respect to scale factor

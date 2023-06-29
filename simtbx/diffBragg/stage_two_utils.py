@@ -186,7 +186,6 @@ def PAR_from_params(params, experiment, best=None):
                           fix=params.fix.spec,
                           minval=params.mins.spec[i_p], maxval=params.maxs.spec[i_p])
         PAR.spec_coef.append(p)
-    from IPython import embed;embed()
 
     return PAR
 
