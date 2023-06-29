@@ -804,7 +804,7 @@ class _SingletonOptimizer(object):
     # :side_effect: self._setMoverState() is called to put the Mover's atoms into its best state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
-    # selected
+    # selected.
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies[:]
     for i in range(len(scores)):
@@ -1334,10 +1334,11 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     for curStateValues in _generateAllStates(numStates):
 
       # Set all movers to match the state list.
-      # @todo Optimize this so that it only changes states that differed from last time.
       for i,m in enumerate(movers):
-        self._setMoverState(states[i], curStateValues[i])
-        self._coarseLocations[m] = curStateValues[i]
+        # Only change this Mover if it is different from the last time.
+        if self._coarseLocations[m] != curStateValues[i]:
+          self._setMoverState(states[i], curStateValues[i])
+          self._coarseLocations[m] = curStateValues[i]
 
       # Compute the score over all atoms in all Movers and see if it is the best.  If so,
       # update the best.
@@ -1352,8 +1353,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
         bestScore = score
         bestState = curStateValues[:]
 
-    # Put each Mover into its best state and compute its high-score value.
-    # Compute the best individual scores for these Movers for use in later fine-motion
+    # Put each Mover into its state in the best configuration and compute its high-score value.
+    # Store the individual scores for these Movers in the best config for use in later fine-motion
     # processing.  Return the total score.
     ret = 0.0
     for i,m in enumerate(movers):
@@ -1382,7 +1383,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
               ):
     """Constructor for _CliqueOptimizer.  This uses a recursive algorithm to break down the total
     clique into sets of smaller cliques.  It looks for a vertex cut in the Clique it is called with
-    that will separate the remaining vertices into two more more connected subcomponents.  It then tests
+    that will separate the remaining vertices into two or more more connected subcomponents.  It then tests
     each combined state of the set of Movers in the vertex cut to find the one with the best overall
     maximum score.  For each state, it first recursively optimizes all of the connected subcomponents
     and then (with each of the subcomponents in its optimal state) computes the score for the Movers in
@@ -1448,7 +1449,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
 
   def _optimizeCliqueCoarse(self, clique):
     """
-    Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
+    Looks for a vertex cut in the Clique that will separate the remaining vertices into two or more
     more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
     to find the one with the best overall maximum score.
       For each state, recursively optimize all of the connected subcomponents and then (with each
@@ -1493,10 +1494,11 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         numStates.append(len(states[m].positions))
       for curStateValues in _generateAllStates(numStates):
         # Set all cutMovers to match the state list.
-        # @todo Optimize this so that it only changes states that differed from last time.
         for i,m in enumerate(cutMovers):
-          self._setMoverState(states[m], curStateValues[i])
-          self._coarseLocations[m] = curStateValues[i]
+          # Only change this Mover if it is different from the last time.
+          if self._coarseLocations[m] != curStateValues[i]:
+            self._setMoverState(states[m], curStateValues[i])
+            self._coarseLocations[m] = curStateValues[i]
 
         # Recursively compute the best score across all connected components in the cutGraph.
         # This will leave each subgraph in its best state for this set of cutMovers states.
@@ -1617,12 +1619,23 @@ class FastOptimizer(_CliqueOptimizer):
     # it calls.
     self._doScoreCaching = False
 
+    # Keep track of the ratio of calculated vs. cached results.
+    self._numCalculated = 0
+    self._numCached = 0
+
     super(FastOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
+
+    if self._numCalculated > 0:
+      self._infoString += _VerboseCheck(self._verbosity, 1,
+          'Calculated : cached atom scores: {} : {}; fraction calculated {:.2f}\n'.format(
+          self._numCalculated, self._numCached,
+          self._numCalculated/(self._numCalculated + self._numCached)))
+
 
   def _initializeAlternate(self):
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
@@ -1646,11 +1659,14 @@ class FastOptimizer(_CliqueOptimizer):
       # compute and store it and then return that value.
       state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
       try:
+        self._numCached += 1
         return self._scoreCache[atom][state]
       except Exception:
+        self._numCalculated += 1
         self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
         return self._scoreCache[atom][state]
     else:
+      self._numCalculated += 1
       return super(FastOptimizer, self)._scoreAtom(atom)
 
   def _optimizeCliqueCoarse(self, clique):
@@ -2190,6 +2206,11 @@ END
     if name in ["HD1", "HE2"]:
       if not a in opt._deleteMes:
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
+
+  #========================================================================
+  # Check a clique with multiple elements to be sure that it was properly
+  # globally optimized.
+  # @todo
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
