@@ -145,6 +145,7 @@ tst_list_base = [
   "$D/regression/tst_group_rounding.py",
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
   "$D/regression/tst_hierarchy_long_chain_ids_1.py",
+  "$D/regression/tst_hierarchy_long_resname_1.py",
   ]
 
 # failing tests on Windows, Python 2.7

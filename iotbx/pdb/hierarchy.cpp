@@ -1343,7 +1343,7 @@ namespace {
     std::string ag_class;
     // Using correct overloaded function so residue name would be padded.
     // Crucial for mmCIF.
-    ag_class = common_residue_names::get_class(std::string(data->resname.c_str()));
+    ag_class = common_residue_names::get_class(data->resname);
     if (ag_class == "common_rna_dna" || ag_class == "modified_rna_dna") {
       if (!get_atom("N9")) {
         std::sort(
