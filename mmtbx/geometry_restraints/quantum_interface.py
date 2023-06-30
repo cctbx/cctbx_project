@@ -91,6 +91,10 @@ qm_restraints
     .type = bool
   calculate_final_strain = False
     .type = bool
+  calculate_starting_bound = False
+    .type = bool
+  calculate_final_bound = False
+    .type = bool
   write_pdb_core = False
     .type = bool
   write_pdb_buffer = False
@@ -305,38 +309,6 @@ def is_quantum_interface_active(params, verbose=False):
     if validate_qm_restraints(params.qi.qm_restraints, verbose=verbose):
       return True, 'qm_restraints' # includes restraints and energy
   return False
-
-def is_qi_energy_pre_refinement(params,
-                                macro_cycle,
-                                ):
-  assert 0
-  qi = is_quantum_interface_active(params)
-  if qi:
-    rc = []
-    if qi[1]=='qm_restraints':
-      for i, qmr in enumerate(params.qi.qm_restraints):
-        if macro_cycle==1:
-          if qmr.calculate_starting_energy or qmr.calculate_starting_strain:
-            rc.append(True)
-    return True in rc
-  else:
-    return False
-
-def is_qi_energy_post_refinement(params,
-                                macro_cycle,
-                                ):
-  assert 0
-  qi = is_quantum_interface_active(params)
-  if qi:
-    rc = []
-    if qi[1]=='qm_restraints':
-      for i, qmr in enumerate(params.qi.qm_restraints):
-        if macro_cycle==params.main.number_of_macro_cycles:
-          if qmr.calculate_final_energy or qmr.calculate_final_strain:
-            rc.append(True)
-    return True in rc
-  else:
-    return False
 
 def is_quantum_interface_active_this_macro_cycle(params,
                                                  macro_cycle,

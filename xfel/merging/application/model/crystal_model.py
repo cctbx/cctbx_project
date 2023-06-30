@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 import mmtbx.command_line.fmodel
 import mmtbx.utils
-from iotbx import file_reader
 import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
@@ -53,7 +52,7 @@ class crystal_model(worker):
           self.logger.main_log("No reference for statistics has been provided")
 
     if model_file_path is not None:
-      if model_file_path.endswith(".mtz"):
+      if model_file_path.endswith(".mtz") or model_file_path.endswith("sf.cif"):
         i_model = self.create_model_from_mtz(model_file_path)
       elif model_file_path.endswith(".pdb"):
         i_model = self.create_model_from_pdb(model_file_path)
@@ -97,10 +96,9 @@ class crystal_model(worker):
       model_ext = os.path.splitext(model_file_path)[-1].lower()
       assert model_ext in [".pdb", ".cif"]
       if model_ext == ".pdb":
-        from iotbx import file_reader
-        pdb_in = file_reader.any_file(model_file_path, force_type="pdb")
-        pdb_in.assert_file_type("pdb")
-        xray_structure = pdb_in.file_object.xray_structure_simple()
+        import iotbx.pdb
+        pdb_in = iotbx.pdb.input(model_file_path)
+        xray_structure = pdb_in.xray_structure_simple()
       elif model_ext == ".cif":
         from libtbx.utils import Sorry
         try:
@@ -192,11 +190,12 @@ class crystal_model(worker):
   def create_model_from_mtz(self, model_file_path):
 
     if self.mpi_helper.rank == 0:
-      from iotbx import mtz
-      data_SR = mtz.object(model_file_path)
-      arrays = data_SR.as_miller_arrays()
-      space_group = data_SR.space_group().info()
-      unit_cell   = data_SR.crystals()[0].unit_cell()
+      assert model_file_path.endswith("mtz") or model_file_path.endswith("sf.cif")
+      # support both old-style *.mtz and structure factor *-sf.cif
+      from iotbx import reflection_file_reader
+      arrays = reflection_file_reader.any_reflection_file(file_name = model_file_path).as_miller_arrays()
+      space_group = arrays[0].space_group().info()
+      unit_cell   = arrays[0].unit_cell()
     else:
       arrays = space_group = unit_cell = None
 
@@ -215,7 +214,7 @@ class crystal_model(worker):
 
     for array in arrays:
       this_label = array.info().label_string().lower()
-      if True not in ["sig"+tag in this_label for tag in ["iobs","imean", mtz_column_F]]:
+      if True not in [tag in this_label for tag in ["iobs","imean", mtz_column_F]]:
         continue
 
       return array.as_intensity_array().change_basis(self.params.scaling.model_reindex_op).map_to_asu()

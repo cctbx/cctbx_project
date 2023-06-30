@@ -204,7 +204,7 @@ namespace hierarchy {
       weak_ptr<residue_group_data> parent;
     public:
       str1 altloc;
-      str3 resname;
+      std::string resname;
     protected:
       std::vector<atom> atoms;
 
@@ -348,7 +348,7 @@ namespace hierarchy {
       friend struct atom_label_columns_formatter;
       weak_ptr<conformer_data> parent;
     public:
-      str3 resname;
+      std::string resname;
       str4 resseq;
       str1 icode;
       bool link_to_previous;
@@ -878,7 +878,7 @@ namespace hierarchy {
       :
         data(new atom_group_data(
           other->altloc.elems,
-          other->resname.elems))
+          other->resname.c_str()))
       {}
 
       atom_group(
@@ -939,8 +939,8 @@ namespace hierarchy {
       get_atom(char const* name) const;
 
       //! Not available in Python.
-      str4
-      confid_small_str() const;
+      // str4
+      // confid_small_str() const;
 
       //! Not available in Python.
       bool
@@ -1679,7 +1679,7 @@ namespace hierarchy {
       str4 resseq;
       str1 icode;
       str1 altloc;
-      str3 resname;
+      std::string resname;
       bool is_first_in_chain;
       bool is_first_after_break;
 
@@ -1742,11 +1742,15 @@ namespace hierarchy {
     const char* id_)
   :
     parent(parent_),
-    id(id_)
+    id((id_ == 0) ? "" : id_)
   {}
 
   inline
-  model_data::model_data(const char* id_) : id(id_) {}
+  model_data::model_data(
+    const char* id_)
+  :
+    id((id_ == 0) ? "" : id_)
+  {}
 
   inline
   model_data::model_data(
@@ -1771,14 +1775,15 @@ namespace hierarchy {
     const char* id_)
   :
     parent(parent_),
-    id(id_)
+    id((id_ == 0) ? "" : id_)
+
   {}
 
   inline
   chain_data::chain_data(
     const char* id_)
   :
-    id(id_)
+    id((id_ == 0) ? "" : id_)
   {}
 
   inline
@@ -1851,7 +1856,7 @@ namespace hierarchy {
   :
     parent(parent_),
     altloc(altloc_),
-    resname(resname_)
+    resname((resname_ == 0) ? "" : resname_)
   {}
 
   inline
@@ -1860,7 +1865,7 @@ namespace hierarchy {
     const char* resname_)
   :
     altloc(altloc_),
-    resname(resname_)
+    resname((resname_ == 0) ? "" : resname_)
   {}
 
   inline

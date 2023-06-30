@@ -572,12 +572,6 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int
                         _this_diffuse_scale = 1.0;
 
                      _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats/(CUDAREAL)num_stencil_points;
-                     // TODO: Apply discrete transformations to H0 and delta_H_offset
-                     //    like the following to reorient G and recover calmodulin diffuse
-                     KOKKOS_MAT3 rotate_principal_axes;
-                     rotate_principal_axes << 0.70710678,-0.70710678,0.,
-                                              0.70710678, 0.70710678,0.,
-                                              0.,0.,1.;
 
                      const KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
                      const KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;

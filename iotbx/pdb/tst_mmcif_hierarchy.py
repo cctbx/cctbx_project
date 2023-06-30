@@ -233,7 +233,7 @@ model id="" #chains=1
         " CB "
         " OG "
     resid=" 505 " #atom_groups=1
-      altloc="" resname="MN" #atoms=1
+      altloc="" resname=" MN" #atoms=1
         "MN  "
 """)
   cif_block = hierarchy.as_cif_block(crystal_symmetry=builder.crystal_symmetry)
@@ -392,7 +392,7 @@ _atom_site.pdbx_PDB_model_num
 model id="" #chains=2
   chain id="C" #residue_groups=1
     resid="1123 " #atom_groups=1
-      altloc="" resname="CA" #atoms=1
+      altloc="" resname=" CA" #atoms=1
         "CA  "
   chain id="F" #residue_groups=1
     resid="1653 " #atom_groups=1
