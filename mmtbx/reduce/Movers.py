@@ -1311,13 +1311,9 @@ def _rotateAroundAxis(atom, axis, degrees):
   except Exception:
     pos = rvec3(atom)
 
-  # We rotate around this center of projection.
-  ctr = scitbx.matrix.col(axis[0])
-  # We rotate around this axis.
-  r = scitbx.matrix.col(axis[1]).axis_and_angle_as_r3_rotation_matrix(angle=degrees, deg=True)
-  # Make a rotation and translation to handle the nested translate-rotate-translate and
-  # then apply it to the atom position.
-  return scitbx.matrix.rt((r, ctr - r*ctr)) * pos
+  return scitbx.matrix.rotate_point_around_axis(
+      axis_point_1 = axis[0], axis_point_2 = axis[1],
+      point = pos, angle = degrees, deg = True)
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
