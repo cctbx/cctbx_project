@@ -205,7 +205,7 @@ with DeviceWrapper(0) as _:
         assert l.rvalue > .99
         assert l.slope > 0
         assert l.pvalue < 1e-6
-        assert l.intercept < 0.1*l.slope 
+        assert l.intercept < 0.1*l.slope
 
         if args.curvatures:
             l2 = linregress(np.array(h_vals)**2, error2)
@@ -213,7 +213,7 @@ with DeviceWrapper(0) as _:
             assert l2.rvalue > .99
             assert l2.slope > 0
             assert l2.pvalue < 1e-6
-            assert l2.intercept < 0.1*l2.slope 
+            assert l2.intercept < 0.1*l2.slope
 
         if args.plot:
             plt.close()

@@ -361,7 +361,7 @@ class DataModeler:
                 sb_trust = mask==fg_code
             else:
                 sb_trust = np.logical_or(mask==fg_code, mask==bg_code)
-            
+
             # below_zero = sb_bkgrnd <= 0
             below_zero = sb_bkgrnd < 0
             if np.any(below_zero):
@@ -371,7 +371,7 @@ class DataModeler:
                 sb_trust[below_zero] = False
 
             is_trusted[pid, dat_sliceY,dat_sliceX] = sb_trust
-            
+
             self.rois[i_ref] = x1_onPanel, x2_onPanel, y1_onPanel, y2_onPanel
 
 

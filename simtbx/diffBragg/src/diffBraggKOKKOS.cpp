@@ -441,7 +441,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     if (m_q_vec_buffer.extent(0)<Npix_to_model ||
         m_q_vec_buffer.extent(1)<local_det.oversample ||
         m_q_vec_buffer.extent(2)<local_det.oversample ||
-        m_q_vec_buffer.extent(3)<local_det.detector_thicksteps || 
+        m_q_vec_buffer.extent(3)<local_det.detector_thicksteps ||
         m_q_vec_buffer.extent(4)<local_beam.number_of_sources) {
 
         resize(m_omega_pixel_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
@@ -482,7 +482,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     PRINTOUT(db_flags.printout, kokkos_geometry_calculation,
         Npix_to_model, m_panels_fasts_slows, db_steps.Nsteps,
-        db_flags.printout_fpixel, db_flags.printout_spixel, 
+        db_flags.printout_fpixel, db_flags.printout_spixel,
         local_det.oversample, local_det.subpixel_size, local_det.pixel_size,
         local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
         local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
@@ -490,7 +490,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
         local_beam.kahn_factor, local_beam.polarization_axis, db_flags.verbose,
         m_fdet_vectors, m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
-        db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask, 
+        db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask,
         m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer,
         m_polar_buffer, m_q_vec_buffer, m_data_trusted
         );

@@ -64,7 +64,7 @@ void kokkos_geometry_calculation(
                 CUDAREAL _Fdet =
                     subpixel_size * (_fpixel * oversample + _subF) + subpixel_size / 2.0;
                 CUDAREAL _Sdet =
-                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0; 
+                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
 
                 for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
 
@@ -112,7 +112,7 @@ void kokkos_geometry_calculation(
                     CUDAREAL previous_layer = 1.0;
                     if (detector_thick > 0.0 && detector_attnlen_r > 0.0) {
                         // inverse of effective thickness increase
-                        KOKKOS_VEC3 _o_vec(ox, oy, oz); 
+                        KOKKOS_VEC3 _o_vec(ox, oy, oz);
                         CUDAREAL _parallax = _diffracted.dot(_o_vec);
                         CUDAREAL current_layer = ::Kokkos::exp(
                                                 -(_thick_tic + 1) * detector_thickstep *
@@ -167,7 +167,7 @@ void kokkos_geometry_calculation(
                         q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = q_vec;
 
                         // TODO rename
-                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;                       
+                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;
                         texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = texture_scale;
 
                         if (printout) {
@@ -390,7 +390,7 @@ void kokkos_sum_over_steps(
     KOKKOS_MAT3 anisoU_local;
     vector_mat3_t laue_mats = vector_mat3_t("laue_mats", 24);
     vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam", 3);
-    vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace", 3);    
+    vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace", 3);
     int num_laue_mats = 0;
     int dhh = 0, dkk = 0, dll = 0;
 
@@ -418,7 +418,7 @@ void kokkos_sum_over_steps(
     if (use_diffuse){
         anisoG_local = anisoG;
         anisoU_local = anisoU;
-        
+
         if (gamma_miller_units){
             anisoG_local = anisoG_local * Bmat_realspace;
         }
@@ -426,7 +426,7 @@ void kokkos_sum_over_steps(
             num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats);
             KOKKOS_MAT3 rotate_principal_axes;
             rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
-          
+
             for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
                 laue_mats(iL) = Ainv * laue_mats(iL) * rotate_principal_axes;
             }
@@ -434,7 +434,7 @@ void kokkos_sum_over_steps(
             for (int i=0; i<9; ++i) {
                 printf(" %g", Bmat_realspace[i]);
             }
-            printf("\n");            
+            printf("\n");
             const KOKKOS_MAT3 Ginv = anisoG_local.inverse();
             printf("Ginv =");
             for (int i=0; i<9; ++i) {
@@ -446,7 +446,7 @@ void kokkos_sum_over_steps(
             for (int i=0; i<9; ++i) {
                 printf(" %g", dG[i]);
             }
-            printf("\n");            
+            printf("\n");
             for (int i_gam=0; i_gam<3; i_gam++){
                 if (gamma_miller_units) {
                     dG_dgam(i_gam) = KOKKOS_VEC3(Bmat_realspace(i_gam, 0), Bmat_realspace(i_gam, 1), Bmat_realspace(i_gam, 2));
@@ -592,8 +592,8 @@ void kokkos_sum_over_steps(
                             CUDAREAL _F_cell2 = 0;
                             int i_hklasu=0;
 
-                            if ((_h0 <= h_max) && (_h0 >= h_min) && 
-                                (_k0 <= k_max) && (_k0 >= k_min) && 
+                            if ((_h0 <= h_max) && (_h0 >= h_min) &&
+                                (_k0 <= k_max) && (_k0 >= k_min) &&
                                 (_l0 <= l_max) && (_l0 >= l_min)) {
                                 int Fhkl_linear_index = (_h0 - h_min) * k_range * l_range +
                                                         (_k0 - k_min) * l_range + (_l0 - l_min);
@@ -744,7 +744,7 @@ void kokkos_sum_over_steps(
                             KOKKOS_MAT3 UBOt;
                              if (refine_flag & (REFINE_UMAT | REFINE_ETA)) {
                                 UBOt = Amat_init;
-                            }                           
+                            }
                             if (refine_flag & REFINE_UMAT1) {
                                 const KOKKOS_VEC3 dV = UMATS_prime(_mos_tic, 0) * q_vec;
                                 const CUDAREAL V_dot_dV = V.dot(dV);
@@ -1216,7 +1216,7 @@ void kokkos_sum_over_steps(
                 CUDAREAL val = dI.diffuse[i_sig + 3] * _scale_term;
                 int img_idx = Npix_to_model * i_sig + pixIdx;
                 d_diffuse_sigma_images(img_idx) = val;
-            }            
+            }
         }
 
         // update eta derivative image
@@ -1270,43 +1270,43 @@ void kokkos_sum_over_steps(
 template void kokkos_geometry_calculation<true>(int, vector_uint_t, const int, int, int, int, CUDAREAL, CUDAREAL, CUDAREAL, CUDAREAL, const vector_cudareal_t, CUDAREAL, int, int, bool, CUDAREAL, CUDAREAL, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, CUDAREAL, KOKKOS_VEC3, int, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, bool, bool, bool, bool, view_4d_t<CUDAREAL>, view_4d_t<CUDAREAL>, view_4d_t<KOKKOS_VEC3>, view_5d_t<CUDAREAL>, view_5d_t<CUDAREAL>, view_5d_t<KOKKOS_VEC3>, const vector_bool_t);
 
 template void kokkos_geometry_calculation<false>(
-    int, 
-    vector_uint_t, 
-    const int, 
-    int, 
-    int, 
-    int, 
-    CUDAREAL, 
-    CUDAREAL, 
-    CUDAREAL, 
-    CUDAREAL, 
-    const vector_cudareal_t, 
-    CUDAREAL, 
-    int, 
-    int, 
-    bool, 
-    CUDAREAL, 
-    CUDAREAL, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    CUDAREAL, 
-    KOKKOS_VEC3, 
-    int, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    const vector_cudareal_t, 
-    bool, 
-    bool, 
-    bool, 
-    bool, 
-    view_4d_t<CUDAREAL>, 
-    view_4d_t<CUDAREAL>, 
-    view_4d_t<KOKKOS_VEC3>, 
-    view_5d_t<CUDAREAL>, 
-    view_5d_t<CUDAREAL>, 
-    view_5d_t<KOKKOS_VEC3>, 
+    int,
+    vector_uint_t,
+    const int,
+    int,
+    int,
+    int,
+    CUDAREAL,
+    CUDAREAL,
+    CUDAREAL,
+    CUDAREAL,
+    const vector_cudareal_t,
+    CUDAREAL,
+    int,
+    int,
+    bool,
+    CUDAREAL,
+    CUDAREAL,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    CUDAREAL,
+    KOKKOS_VEC3,
+    int,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    const vector_cudareal_t,
+    bool,
+    bool,
+    bool,
+    bool,
+    view_4d_t<CUDAREAL>,
+    view_4d_t<CUDAREAL>,
+    view_4d_t<KOKKOS_VEC3>,
+    view_5d_t<CUDAREAL>,
+    view_5d_t<CUDAREAL>,
+    view_5d_t<KOKKOS_VEC3>,
     const vector_bool_t);

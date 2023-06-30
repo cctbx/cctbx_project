@@ -339,7 +339,7 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
-    
+
     params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
     if os.path.isfile(args.inputGlob):
         df_all = pandas.read_pickle(args.inputGlob)

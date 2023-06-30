@@ -107,7 +107,7 @@ if __name__ == '__main__':
             logging.disable(level=logging.CRITICAL)  # disables CRITICAL and below
         else:
             mpi_logger.setup_logging_from_params(script.params)
-            
+
         dev = COMM.rank % script.params.refiner.num_devices
         with DeviceWrapper(dev) as _:
             RUN()

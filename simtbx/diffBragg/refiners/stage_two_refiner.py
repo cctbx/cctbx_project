@@ -851,7 +851,7 @@ class StageTwoRefiner(BaseRefiner):
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
             sig = 1
-            
+
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 

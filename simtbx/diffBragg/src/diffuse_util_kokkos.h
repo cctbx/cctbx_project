@@ -577,7 +577,7 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int
                      KOKKOS_MAT3 rotate_principal_axes;
                      rotate_principal_axes << 0.70710678,-0.70710678,0.,
                                               0.70710678, 0.70710678,0.,
-                                              0.,0.,1.;                     
+                                              0.,0.,1.;
 
                      const KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
                      const KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;
@@ -599,8 +599,8 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int
                            for (int i_gam=0; i_gam<3; i_gam++){
                                  const CUDAREAL dV = dG_dgam(i_gam).dot(delta_Q);
                                  const CUDAREAL V_dot_dV = anisoG_q[i_gam] * dV;
-                                 const CUDAREAL deriv = dG_trace(i_gam) - 4.*four_mpi_sq*V_dot_dV*gamma_portion_denom;                                 
-                                 step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;                                
+                                 const CUDAREAL deriv = dG_trace(i_gam) - 4.*four_mpi_sq*V_dot_dV*gamma_portion_denom;
+                                 step_diffuse_param_this[i_gam] += gamma_portion*deriv*dwf*exparg;
                            }
                            for (int i_sig = 0;i_sig<3; i_sig++){
                                  const CUDAREAL dexparg = 2 * four_mpi_sq * sqrt(anisoU_local(i_sig,i_sig)) * Q0[i_sig] * Q0[i_sig];
