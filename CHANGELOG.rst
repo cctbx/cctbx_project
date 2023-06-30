@@ -1,3 +1,11 @@
+2023.6
+======
+
+* Basic space group check when reading mmCIF
+* Fix hybrid36 output in mmCIF
+* Updates to lists of modified amino and nucleic acids
+* DataManager updates for handling multiple uses (types) for generating fmodel
+
 2023.5
 ======
 
