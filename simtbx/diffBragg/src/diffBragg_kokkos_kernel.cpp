@@ -2,217 +2,6 @@
 #include "diffBraggKOKKOS.h"
 #include <simtbx/diffBragg/src/diffuse_util_kokkos.h>
 
-template <bool printout>
-void kokkos_geometry_calculation(
-    int Npix_to_model,
-    vector_uint_t panels_fasts_slows,
-    const int Nsteps,
-    int printout_fpixel,
-    int printout_spixel,
-    int oversample,
-    CUDAREAL subpixel_size,
-    CUDAREAL pixel_size,
-    CUDAREAL detector_thickstep,
-    CUDAREAL detector_thick,
-    const vector_cudareal_t close_distances,
-    CUDAREAL detector_attnlen,
-    int detector_thicksteps,
-    int sources,
-    bool use_lambda_coefficients,
-    CUDAREAL lambda0,
-    CUDAREAL lambda1,
-    const vector_cudareal_t source_X,
-    const vector_cudareal_t source_Y,
-    const vector_cudareal_t source_Z,
-    const vector_cudareal_t source_lambda,
-    const vector_cudareal_t source_I,
-    CUDAREAL kahn_factor,
-    KOKKOS_VEC3 polarization_axis,
-    int verbose,
-    const vector_cudareal_t fdet_vectors,
-    const vector_cudareal_t sdet_vectors,
-    const vector_cudareal_t odet_vectors,
-    const vector_cudareal_t pix0_vectors,
-    bool nopolar,
-    bool point_pixel,
-    bool Fhkl_gradient_mode,
-    bool using_trusted_mask,
-    view_4d_t<CUDAREAL> omega_pixel_buffer,
-    view_4d_t<CUDAREAL> airpath_buffer,
-    view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
-    view_5d_t<CUDAREAL> texture_scale_buffer,
-    view_5d_t<CUDAREAL> polar_buffer,
-    view_5d_t<KOKKOS_VEC3> q_vec_buffer,
-    const vector_bool_t data_trusted) {  // BEGIN GPU kernel
-
-    const CUDAREAL detector_attnlen_r = (detector_attnlen>0) ? 1 / detector_attnlen : 0;
-
-    Kokkos::parallel_for(
-        "geometry_calculation", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
-
-        if (using_trusted_mask) {
-            if (!data_trusted(pixIdx))
-                return;
-        }
-        const int _pid = panels_fasts_slows(pixIdx * 3);
-        const int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
-        const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
-
-        for (int _subS = 0; _subS < oversample; ++_subS) {
-            for (int _subF = 0; _subF < oversample; ++_subF) {
-                // absolute mm position on detector (relative to its origin)
-                CUDAREAL _Fdet =
-                    subpixel_size * (_fpixel * oversample + _subF) + subpixel_size / 2.0;
-                CUDAREAL _Sdet =
-                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
-
-                for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
-
-                    // assume "distance" is to the front of the detector sensor layer
-                    int pid_x = _pid * 3;
-                    int pid_y = _pid * 3 + 1;
-                    int pid_z = _pid * 3 + 2;
-
-                    CUDAREAL fx = fdet_vectors(pid_x);
-                    CUDAREAL fy = fdet_vectors(pid_y);
-                    CUDAREAL fz = fdet_vectors(pid_z);
-                    CUDAREAL sx = sdet_vectors(pid_x);
-                    CUDAREAL sy = sdet_vectors(pid_y);
-                    CUDAREAL sz = sdet_vectors(pid_z);
-                    CUDAREAL ox = odet_vectors(pid_x);
-                    CUDAREAL oy = odet_vectors(pid_y);
-                    CUDAREAL oz = odet_vectors(pid_z);
-                    CUDAREAL px = pix0_vectors(pid_x);
-                    CUDAREAL py = pix0_vectors(pid_y);
-                    CUDAREAL pz = pix0_vectors(pid_z);
-
-                    CUDAREAL _Odet = _thick_tic * detector_thickstep;
-
-                    CUDAREAL pixposX = _Fdet * fx + _Sdet * sx + _Odet * ox + px;
-                    CUDAREAL pixposY = _Fdet * fy + _Sdet * sy + _Odet * oy + py;
-                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;
-                    KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
-
-                    CUDAREAL _airpath_r = 1 / _pixel_pos.length();
-                    KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
-
-                    const CUDAREAL close_distance = close_distances(_pid);
-
-                    // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
-                    CUDAREAL _omega_pixel = pixel_size * pixel_size * _airpath_r * _airpath_r *
-                                            close_distance * _airpath_r;
-
-                    // option to turn off obliquity effect, inverse-square-law only
-                    if (point_pixel)
-                        _omega_pixel = _airpath_r * _airpath_r;
-
-                    // now calculate detector thickness effects
-                    CUDAREAL _capture_fraction = 1;
-
-                    CUDAREAL previous_layer = 1.0;
-                    if (detector_thick > 0.0 && detector_attnlen_r > 0.0) {
-                        // inverse of effective thickness increase
-                        KOKKOS_VEC3 _o_vec(ox, oy, oz);
-                        CUDAREAL _parallax = _diffracted.dot(_o_vec);
-                        CUDAREAL current_layer = ::Kokkos::exp(
-                                                -(_thick_tic + 1) * detector_thickstep *
-                                                detector_attnlen_r / _parallax);
-                        _capture_fraction = previous_layer - current_layer;
-                        previous_layer = current_layer;
-                    }
-                    pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic) = _pixel_pos;
-                    airpath_buffer(pixIdx, _subS, _subF, _thick_tic) = _airpath_r;
-                    omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic) = _omega_pixel;
-
-                    for (int _source = 0; _source < sources; ++_source) {
-                        KOKKOS_VEC3 _incident(
-                            -source_X(_source), -source_Y(_source), -source_Z(_source));
-                        CUDAREAL _lambda = source_lambda(_source);
-                        CUDAREAL sI = source_I(_source);
-                        CUDAREAL lambda_ang = _lambda * 1e10;
-                        if (use_lambda_coefficients) {
-                            lambda_ang = lambda0 + lambda1 * lambda_ang;
-                            _lambda = lambda_ang * 1e-10;
-                        }
-
-                        // polarization
-                        CUDAREAL polar_for_Fhkl_grad=1;
-                        if (!nopolar && Fhkl_gradient_mode){
-
-                            // component of diffracted unit vector along incident beam unit vector
-                            CUDAREAL cos2theta = _incident.dot(_diffracted);
-                            CUDAREAL cos2theta_sqr = cos2theta*cos2theta;
-                            CUDAREAL sin2theta_sqr = 1-cos2theta_sqr;
-
-                            CUDAREAL _psi=0;
-                            if(kahn_factor != 0.0){
-                                // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
-                                KOKKOS_VEC3 B_in = polarization_axis.cross(_incident);
-                                // cross product with incident beam to get E-vector direction
-                                KOKKOS_VEC3 E_in = _incident.cross(B_in);
-                                // get components of diffracted ray projected onto the E-B plane
-                                CUDAREAL _kEi = _diffracted.dot(E_in);
-                                CUDAREAL _kBi = _diffracted.dot(B_in);
-                                // compute the angle of the diffracted ray projected onto the incident E-B plane
-                                _psi = -atan2(_kBi,_kEi);
-                            }
-                            // correction for polarized incident beam
-                            polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
-                        }
-                        polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = polar_for_Fhkl_grad;
-
-                        KOKKOS_VEC3 _scattering = (_diffracted - _incident) / _lambda;
-
-                        KOKKOS_VEC3 q_vec = _scattering * 1e-10;
-                        q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = q_vec;
-
-                        // TODO rename
-                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;
-                        texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = texture_scale;
-
-                        if (printout) {
-                            if (_subS == 0 && _subF == 0 && _thick_tic == 0 && _source == 0) {
-                                if ((_fpixel == printout_fpixel && _spixel == printout_spixel) ||
-                                    printout_fpixel < 0) {
-                                    printf("%4d %4d :  lambda = %g\n", _fpixel, _spixel, _lambda);
-                                    printf(
-                                        "at %g %g %g\n", _pixel_pos[0], _pixel_pos[1],
-                                        _pixel_pos[2]);
-                                    printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
-                                    printf(
-                                        "PIX0: %f %f %f\n", pix0_vectors(pid_x),
-                                        pix0_vectors(pid_y), pix0_vectors(pid_z));
-                                    printf(
-                                        "F: %f %f %f\n", fdet_vectors(pid_x),
-                                        fdet_vectors(pid_y), fdet_vectors(pid_z));
-                                    printf(
-                                        "S: %f %f %f\n", sdet_vectors(pid_x),
-                                        sdet_vectors(pid_y), sdet_vectors(pid_z));
-                                    printf(
-                                        "O: %f %f %f\n", odet_vectors(pid_x),
-                                        odet_vectors(pid_y), odet_vectors(pid_z));
-                                    printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
-                                    printf(
-                                        "QVECTOR: %f %f %f\n", q_vec[0], q_vec[1], q_vec[2]);
-                                    printf("omega   %15.10g\n", _omega_pixel);
-                                    printf(
-                                        "Incident: %g %g %g\n",
-                                        _incident[0], _incident[1], _incident[2]);
-                                }
-                            }
-                        } // end of printout if
-                    } // end of source loop
-                } // end of thick step loop
-            } // end of fpos loop
-        } // end of spos loop
-    }); // end pixIdx loop
-}
-
-
-
-
-
-
 void kokkos_sum_over_steps(
     int Npix_to_model,
     vector_uint_t panels_fasts_slows,
@@ -353,20 +142,6 @@ void kokkos_sum_over_steps(
     bool Fhkl_channels_empty,
     bool Fhkl_have_scale_factors,
     int Num_ASU,
-    view_4d_t<CUDAREAL> omega_pixel_buffer,
-    view_4d_t<CUDAREAL> airpath_buffer,
-    view_4d_t<KOKKOS_VEC3> pixel_pos_buffer,
-    view_5d_t<CUDAREAL> texture_scale_buffer,
-    view_5d_t<CUDAREAL> polar_buffer,
-    view_5d_t<KOKKOS_VEC3> q_vec_buffer,
-    view_6d_t<KOKKOS_VEC3> V_buffer,
-    view_6d_t<KOKKOS_VEC3> H_vec_buffer,
-    view_6d_t<CUDAREAL> Fcell_buffer,
-    view_6d_t<CUDAREAL> I_noFcell_buffer,
-    view_6d_t<CUDAREAL> c_deriv_buffer,
-    view_6d_t<CUDAREAL> d_deriv_buffer,
-    view_6d_t<CUDAREAL> Iincrement_buffer,
-    view_6d6_t<CUDAREAL> step_diffuse_buffer,
     const vector_cudareal_t data_residual,
     const vector_cudareal_t data_variance,
     const vector_int_t data_freq,
@@ -475,7 +250,7 @@ void kokkos_sum_over_steps(
 
     const CUDAREAL overall_scale = r_e_sqr * spot_scale * fluence / Nsteps;
 
-
+    const CUDAREAL detector_attnlen_r = (detector_attnlen>0) ? 1 / detector_attnlen : 0;
 
     Kokkos::parallel_for(
         "sum_over_steps", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
@@ -532,28 +307,100 @@ void kokkos_sum_over_steps(
                 int pid_y = _pid * 3 + 1;
                 int pid_z = _pid * 3 + 2;
 
+
+                CUDAREAL fx = fdet_vectors(pid_x);
+                CUDAREAL fy = fdet_vectors(pid_y);
+                CUDAREAL fz = fdet_vectors(pid_z);
+                CUDAREAL sx = sdet_vectors(pid_x);
+                CUDAREAL sy = sdet_vectors(pid_y);
+                CUDAREAL sz = sdet_vectors(pid_z);
                 CUDAREAL ox = odet_vectors(pid_x);
                 CUDAREAL oy = odet_vectors(pid_y);
                 CUDAREAL oz = odet_vectors(pid_z);
+                CUDAREAL px = pix0_vectors(pid_x);
+                CUDAREAL py = pix0_vectors(pid_y);
+                CUDAREAL pz = pix0_vectors(pid_z);
                 KOKKOS_VEC3 _o_vec(ox, oy, oz);
 
                 for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
 
-                    KOKKOS_VEC3 _pixel_pos = pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic);
+                    CUDAREAL _Odet = _thick_tic * detector_thickstep;
 
-                    // solid angle subtended by a pixel, includes point_pixel option
-                    CUDAREAL _omega_pixel = omega_pixel_buffer(pixIdx, _subS, _subF, _thick_tic);
+                    CUDAREAL pixposX = _Fdet * fx + _Sdet * sx + _Odet * ox + px;
+                    CUDAREAL pixposY = _Fdet * fy + _Sdet * sy + _Odet * oy + py;
+                    CUDAREAL pixposZ = _Fdet * fz + _Sdet * sz + _Odet * oz + pz;
+                    KOKKOS_VEC3 _pixel_pos(pixposX, pixposY, pixposZ);
+
+                    CUDAREAL _airpath_r = 1 / _pixel_pos.length();
+                    KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
+
+                    const CUDAREAL close_distance = close_distances(_pid);
+
+                    // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
+                    CUDAREAL _omega_pixel = pixel_size * pixel_size * _airpath_r * _airpath_r *
+                                            close_distance * _airpath_r;
+
+                    // option to turn off obliquity effect, inverse-square-law only
+                    if (point_pixel)
+                        _omega_pixel = _airpath_r * _airpath_r;
+
+                    // now calculate detector thickness effects
+                    CUDAREAL _capture_fraction = 1;
+
+                    CUDAREAL previous_layer = 1.0;
+                    if (detector_thick > 0.0 && detector_attnlen_r > 0.0) {
+                        // inverse of effective thickness increase
+                        KOKKOS_VEC3 _o_vec(ox, oy, oz);
+                        CUDAREAL _parallax = _diffracted.dot(_o_vec);
+                        CUDAREAL current_layer = ::Kokkos::exp(
+                                                -(_thick_tic + 1) * detector_thickstep *
+                                                detector_attnlen_r / _parallax);
+                        _capture_fraction = previous_layer - current_layer;
+                        previous_layer = current_layer;
+                    }
 
                     for (int _source = 0; _source < sources; ++_source) {
-                        CUDAREAL lambda_ang = 1e10 * source_lambda(_source);
+
+                        KOKKOS_VEC3 _incident(
+                            -source_X(_source), -source_Y(_source), -source_Z(_source));
+                        CUDAREAL _lambda = source_lambda(_source);
+                        CUDAREAL sI = source_I(_source);
+                        CUDAREAL lambda_ang = _lambda * 1e10;
                         if (use_lambda_coefficients) {
                             lambda_ang = lambda0 + lambda1 * lambda_ang;
+                            _lambda = lambda_ang * 1e-10;
                         }
 
-                        KOKKOS_VEC3 q_vec = q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
+                        // polarization
+                        CUDAREAL polar_for_Fhkl_grad=1;
+                        if (!nopolar && Fhkl_gradient_mode){
+
+                            // component of diffracted unit vector along incident beam unit vector
+                            CUDAREAL cos2theta = _incident.dot(_diffracted);
+                            CUDAREAL cos2theta_sqr = cos2theta*cos2theta;
+                            CUDAREAL sin2theta_sqr = 1-cos2theta_sqr;
+
+                            CUDAREAL _psi=0;
+                            if(kahn_factor != 0.0){
+                                // cross product to get "vertical" axis that is orthogonal to the cannonical "polarization"
+                                KOKKOS_VEC3 B_in = polarization_axis.cross(_incident);
+                                // cross product with incident beam to get E-vector direction
+                                KOKKOS_VEC3 E_in = _incident.cross(B_in);
+                                // get components of diffracted ray projected onto the E-B plane
+                                CUDAREAL _kEi = _diffracted.dot(E_in);
+                                CUDAREAL _kBi = _diffracted.dot(B_in);
+                                // compute the angle of the diffracted ray projected onto the incident E-B plane
+                                _psi = -atan2(_kBi,_kEi);
+                            }
+                            // correction for polarized incident beam
+                            polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
+                        }
+                        KOKKOS_VEC3 _scattering = (_diffracted - _incident) / _lambda;
+
+                        KOKKOS_VEC3 q_vec = _scattering * 1e-10;
 
                         // TODO rename
-                        CUDAREAL texture_scale = texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
+                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;
 
                         for (int _mos_tic = 0; _mos_tic < mosaic_domains; ++_mos_tic) {
                             const KOKKOS_MAT3 UBO = Amatrices(_mos_tic);
@@ -695,7 +542,7 @@ void kokkos_sum_over_steps(
                             if (Fhkl_have_scale_factors)
                                 hkl = Fhkl_scale(i_hklasu + Fhkl_channel*Num_ASU);
                             if (Fhkl_gradient_mode){
-                                CUDAREAL Fhkl_deriv_scale = overall_scale*polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source);
+                                CUDAREAL Fhkl_deriv_scale = overall_scale*polar_for_Fhkl_grad;
                                 CUDAREAL I_noFcell=texture_scale*I0;
                                 CUDAREAL dfhkl = I_noFcell*_I_cell * Fhkl_deriv_scale;
                                 CUDAREAL grad_incr = dfhkl*Fhkl_deriv_coef;
@@ -858,7 +705,6 @@ void kokkos_sum_over_steps(
                                 }
                             }
 
-                            const CUDAREAL _airpath_r = airpath_buffer(pixIdx, _subS, _subF, _thick_tic);
                             // Checkpoint for Origin manager
                             for (int i_pan_orig = 0; i_pan_orig < 3; i_pan_orig++) {
                                 if (refine_flag & (REFINE_PANEL_ORIGIN1 << i_pan_orig)) {
@@ -992,6 +838,31 @@ void kokkos_sum_over_steps(
                                     if ((_fpixel == printout_fpixel &&
                                             _spixel == printout_spixel) ||
                                         printout_fpixel < 0) {
+                                        printf("%4d %4d :  lambda = %g\n", _fpixel, _spixel, _lambda);
+                                        printf(
+                                            "at %g %g %g\n", _pixel_pos[0], _pixel_pos[1],
+                                            _pixel_pos[2]);
+                                        printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
+                                        printf(
+                                            "PIX0: %f %f %f\n", pix0_vectors(pid_x),
+                                            pix0_vectors(pid_y), pix0_vectors(pid_z));
+                                        printf(
+                                            "F: %f %f %f\n", fdet_vectors(pid_x),
+                                            fdet_vectors(pid_y), fdet_vectors(pid_z));
+                                        printf(
+                                            "S: %f %f %f\n", sdet_vectors(pid_x),
+                                            sdet_vectors(pid_y), sdet_vectors(pid_z));
+                                        printf(
+                                            "O: %f %f %f\n", odet_vectors(pid_x),
+                                            odet_vectors(pid_y), odet_vectors(pid_z));
+                                        printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
+                                        printf(
+                                            "QVECTOR: %f %f %f\n", q_vec[0], q_vec[1], q_vec[2]);
+                                        printf("omega   %15.10g\n", _omega_pixel);
+                                        printf(
+                                            "Incident: %g %g %g\n",
+                                            _incident[0], _incident[1], _incident[2]);
+                                                                                        
                                         KOKKOS_MAT3 UU = UMATS_RXYZ(_mos_tic);
                                         printf(
                                             "UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
@@ -1265,48 +1136,3 @@ void kokkos_sum_over_steps(
     });    // end pixIdx loop
 
 }  // END of GPU kernel
-
-
-template void kokkos_geometry_calculation<true>(int, vector_uint_t, const int, int, int, int, CUDAREAL, CUDAREAL, CUDAREAL, CUDAREAL, const vector_cudareal_t, CUDAREAL, int, int, bool, CUDAREAL, CUDAREAL, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, CUDAREAL, KOKKOS_VEC3, int, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, const vector_cudareal_t, bool, bool, bool, bool, view_4d_t<CUDAREAL>, view_4d_t<CUDAREAL>, view_4d_t<KOKKOS_VEC3>, view_5d_t<CUDAREAL>, view_5d_t<CUDAREAL>, view_5d_t<KOKKOS_VEC3>, const vector_bool_t);
-
-template void kokkos_geometry_calculation<false>(
-    int,
-    vector_uint_t,
-    const int,
-    int,
-    int,
-    int,
-    CUDAREAL,
-    CUDAREAL,
-    CUDAREAL,
-    CUDAREAL,
-    const vector_cudareal_t,
-    CUDAREAL,
-    int,
-    int,
-    bool,
-    CUDAREAL,
-    CUDAREAL,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    CUDAREAL,
-    KOKKOS_VEC3,
-    int,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    const vector_cudareal_t,
-    bool,
-    bool,
-    bool,
-    bool,
-    view_4d_t<CUDAREAL>,
-    view_4d_t<CUDAREAL>,
-    view_4d_t<KOKKOS_VEC3>,
-    view_5d_t<CUDAREAL>,
-    view_5d_t<CUDAREAL>,
-    view_5d_t<KOKKOS_VEC3>,
-    const vector_bool_t);

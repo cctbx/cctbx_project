@@ -437,30 +437,6 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     Kokkos::Tools::popRegion();
     //  END panels fasts slows
 
-    // BEGIN resize buffers if necessary
-    if (m_q_vec_buffer.extent(0)<Npix_to_model ||
-        m_q_vec_buffer.extent(1)<local_det.oversample ||
-        m_q_vec_buffer.extent(2)<local_det.oversample ||
-        m_q_vec_buffer.extent(3)<local_det.detector_thicksteps ||
-        m_q_vec_buffer.extent(4)<local_beam.number_of_sources) {
-
-        resize(m_omega_pixel_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_airpath_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_pixel_pos_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps);
-        resize(m_texture_scale_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        resize(m_polar_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        resize(m_q_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources);
-        // resize(m_V_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_H_vec_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_Fcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_I_noFcell_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_c_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_d_deriv_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_Iincrement_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-        // resize(m_step_diffuse_buffer, Npix_to_model, local_det.oversample, local_det.oversample, local_det.detector_thicksteps, local_beam.number_of_sources, db_cryst.UMATS.size());
-    }
-    // END resize buffers if necessary
-
     gettimeofday(&t2, 0);
     time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
     if (TIMERS.recording)
@@ -480,21 +456,6 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         num_atoms = 0;
     }
 
-    PRINTOUT(db_flags.printout, kokkos_geometry_calculation,
-        Npix_to_model, m_panels_fasts_slows, db_steps.Nsteps,
-        db_flags.printout_fpixel, db_flags.printout_spixel,
-        local_det.oversample, local_det.subpixel_size, local_det.pixel_size,
-        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
-        db_flags.use_lambda_coefficients, local_beam.lambda0, local_beam.lambda1,
-        m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
-        local_beam.kahn_factor, local_beam.polarization_axis, db_flags.verbose,
-        m_fdet_vectors, m_sdet_vectors, m_odet_vectors, m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel,
-        db_flags.Fhkl_gradient_mode, db_flags.using_trusted_mask,
-        m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer,
-        m_polar_buffer, m_q_vec_buffer, m_data_trusted
-        );
-
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
     bool use_nominal_hkl = !db_cryst.nominal_hkl.empty();
     kokkos_sum_over_steps(
@@ -502,11 +463,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
         m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
         m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
-        m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
-        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F,
-        local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
-        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+        m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps, 
+        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F, 
+        local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size, 
+        local_det.detector_thickstep, local_det.detector_thick, m_close_distances, 
+        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources, 
         db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
         local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
         to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
@@ -530,8 +491,6 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
         db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
         db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
-        m_omega_pixel_buffer, m_airpath_buffer, m_pixel_pos_buffer, m_texture_scale_buffer, m_polar_buffer, m_q_vec_buffer,
-        m_V_buffer, m_H_vec_buffer, m_Fcell_buffer, m_I_noFcell_buffer, m_c_deriv_buffer, m_d_deriv_buffer, m_Iincrement_buffer, m_step_diffuse_buffer,
         m_data_residual, m_data_variance,
         m_data_freq, m_data_trusted,
         m_FhklLinear_ASUid,
