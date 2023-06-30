@@ -205,23 +205,23 @@ void kokkos_sum_over_steps(
             for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
                 laue_mats(iL) = Ainv * laue_mats(iL) * rotate_principal_axes;
             }
-            printf("Bmat =");
-            for (int i=0; i<9; ++i) {
-                printf(" %g", Bmat_realspace[i]);
-            }
-            printf("\n");
+            // printf("Bmat =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", Bmat_realspace[i]);
+            // }
+            // printf("\n");
             const KOKKOS_MAT3 Ginv = anisoG_local.inverse();
-            printf("Ginv =");
-            for (int i=0; i<9; ++i) {
-                printf(" %g", Ginv[i]);
-            }
-            printf("\n");
+            // printf("Ginv =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", Ginv[i]);
+            // }
+            // printf("\n");
             const KOKKOS_MAT3 dG = Bmat_realspace * Ginv;
-            printf("dG   =");
-            for (int i=0; i<9; ++i) {
-                printf(" %g", dG[i]);
-            }
-            printf("\n");
+            // printf("dG   =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", dG[i]);
+            // }
+            // printf("\n");
             for (int i_gam=0; i_gam<3; i_gam++){
                 if (gamma_miller_units) {
                     dG_dgam(i_gam) = KOKKOS_VEC3(Bmat_realspace(i_gam, 0), Bmat_realspace(i_gam, 1), Bmat_realspace(i_gam, 2));
@@ -233,12 +233,12 @@ void kokkos_sum_over_steps(
                 temp_dgam(i_gam, 1) = dG_dgam(i_gam)[1];
                 temp_dgam(i_gam, 2) = dG_dgam(i_gam)[2];
                 dG_trace(i_gam) = (Ginv*temp_dgam).trace();
-                printf("TRACE %g\n", dG_trace(i_gam));
-                printf("dgam =");
-                for (int i=0; i<9; ++i) {
-                    printf(" %g", temp_dgam[i]);
-                }
-                printf("\n");
+                // printf("TRACE %g\n", dG_trace(i_gam));
+                // printf("dgam =");
+                // for (int i=0; i<9; ++i) {
+                //     printf(" %g", temp_dgam[i]);
+                // }
+                // printf("\n");
 
                 // dG(i_gam, i_gam);
             }
