@@ -862,7 +862,7 @@ void kokkos_sum_over_steps(
                                         printf(
                                             "Incident: %g %g %g\n",
                                             _incident[0], _incident[1], _incident[2]);
-                                                                                        
+
                                         KOKKOS_MAT3 UU = UMATS_RXYZ(_mos_tic);
                                         printf(
                                             "UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
