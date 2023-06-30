@@ -45,7 +45,7 @@ void kokkos_geometry_calculation(
     view_5d_t<KOKKOS_VEC3> q_vec_buffer,
     const vector_bool_t data_trusted) {  // BEGIN GPU kernel
 
-    const CUDAREAL detector_attnlen_r = 1 / detector_attnlen;
+    const CUDAREAL detector_attnlen_r = (detector_attnlen>0) ? 1 / detector_attnlen : 0;
 
     Kokkos::parallel_for(
         "geometry_calculation", Npix_to_model, KOKKOS_LAMBDA(const int& pixIdx) {
@@ -58,37 +58,34 @@ void kokkos_geometry_calculation(
         const int _fpixel = panels_fasts_slows(pixIdx * 3 + 1);
         const int _spixel = panels_fasts_slows(pixIdx * 3 + 2);
 
-        const CUDAREAL close_distance = close_distances(_pid);
-
-        // assume "distance" is to the front of the detector sensor layer
-        int pid_x = _pid * 3;
-        int pid_y = _pid * 3 + 1;
-        int pid_z = _pid * 3 + 2;
-
-        CUDAREAL fx = fdet_vectors(pid_x);
-        CUDAREAL fy = fdet_vectors(pid_y);
-        CUDAREAL fz = fdet_vectors(pid_z);
-        CUDAREAL sx = sdet_vectors(pid_x);
-        CUDAREAL sy = sdet_vectors(pid_y);
-        CUDAREAL sz = sdet_vectors(pid_z);
-        CUDAREAL ox = odet_vectors(pid_x);
-        CUDAREAL oy = odet_vectors(pid_y);
-        CUDAREAL oz = odet_vectors(pid_z);
-        CUDAREAL px = pix0_vectors(pid_x);
-        CUDAREAL py = pix0_vectors(pid_y);
-        CUDAREAL pz = pix0_vectors(pid_z);
-
-        KOKKOS_VEC3 _o_vec(ox, oy, oz);        
-
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
                 // absolute mm position on detector (relative to its origin)
                 CUDAREAL _Fdet =
                     subpixel_size * (_fpixel * oversample + _subF) + subpixel_size / 2.0;
                 CUDAREAL _Sdet =
-                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0;
+                    subpixel_size * (_spixel * oversample + _subS) + subpixel_size / 2.0; 
 
                 for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
+
+                    // assume "distance" is to the front of the detector sensor layer
+                    int pid_x = _pid * 3;
+                    int pid_y = _pid * 3 + 1;
+                    int pid_z = _pid * 3 + 2;
+
+                    CUDAREAL fx = fdet_vectors(pid_x);
+                    CUDAREAL fy = fdet_vectors(pid_y);
+                    CUDAREAL fz = fdet_vectors(pid_z);
+                    CUDAREAL sx = sdet_vectors(pid_x);
+                    CUDAREAL sy = sdet_vectors(pid_y);
+                    CUDAREAL sz = sdet_vectors(pid_z);
+                    CUDAREAL ox = odet_vectors(pid_x);
+                    CUDAREAL oy = odet_vectors(pid_y);
+                    CUDAREAL oz = odet_vectors(pid_z);
+                    CUDAREAL px = pix0_vectors(pid_x);
+                    CUDAREAL py = pix0_vectors(pid_y);
+                    CUDAREAL pz = pix0_vectors(pid_z);
+
                     CUDAREAL _Odet = _thick_tic * detector_thickstep;
 
                     CUDAREAL pixposX = _Fdet * fx + _Sdet * sx + _Odet * ox + px;
@@ -98,6 +95,8 @@ void kokkos_geometry_calculation(
 
                     CUDAREAL _airpath_r = 1 / _pixel_pos.length();
                     KOKKOS_VEC3 _diffracted = _pixel_pos.get_unit_vector();
+
+                    const CUDAREAL close_distance = close_distances(_pid);
 
                     // solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta)
                     CUDAREAL _omega_pixel = pixel_size * pixel_size * _airpath_r * _airpath_r *
@@ -111,8 +110,9 @@ void kokkos_geometry_calculation(
                     CUDAREAL _capture_fraction = 1;
 
                     CUDAREAL previous_layer = 1.0;
-                    if (detector_thick > 0.0 && detector_attnlen > 0.0) {
+                    if (detector_thick > 0.0 && detector_attnlen_r > 0.0) {
                         // inverse of effective thickness increase
+                        KOKKOS_VEC3 _o_vec(ox, oy, oz); 
                         CUDAREAL _parallax = _diffracted.dot(_o_vec);
                         CUDAREAL current_layer = ::Kokkos::exp(
                                                 -(_thick_tic + 1) * detector_thickstep *
@@ -159,17 +159,15 @@ void kokkos_geometry_calculation(
                             // correction for polarized incident beam
                             polar_for_Fhkl_grad = 0.5*(1.0 + cos2theta_sqr - kahn_factor*cos(2*_psi)*sin2theta_sqr);
                         }
+                        polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = polar_for_Fhkl_grad;
 
                         KOKKOS_VEC3 _scattering = (_diffracted - _incident) / _lambda;
 
-                        KOKKOS_VEC3 q_vec(_scattering[0], _scattering[1], _scattering[2]);
-                        q_vec *= 1e-10;
+                        KOKKOS_VEC3 q_vec = _scattering * 1e-10;
+                        q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = q_vec;
 
                         // TODO rename
-                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;
-
-                        polar_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = polar_for_Fhkl_grad;
-                        q_vec_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = q_vec;
+                        CUDAREAL texture_scale = _capture_fraction * _omega_pixel * sI;                       
                         texture_scale_buffer(pixIdx, _subS, _subF, _thick_tic, _source) = texture_scale;
 
                         if (printout) {
@@ -388,12 +386,13 @@ void kokkos_sum_over_steps(
     const CUDAREAL C = 2 / 0.63 * fudge;
     const CUDAREAL two_C = 2 * C;
     KOKKOS_MAT3 anisoG_local;
+    CUDAREAL anisoG_determ = 0;
     KOKKOS_MAT3 anisoU_local;
-    KOKKOS_MAT3 laue_mats[24];
-    KOKKOS_MAT3 dG_dgam[3];
+    vector_mat3_t laue_mats = vector_mat3_t("laue_mats", 24);
+    vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam", 3);
+    vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace", 3);    
     int num_laue_mats = 0;
     int dhh = 0, dkk = 0, dll = 0;
-    KOKKOS_VEC3 Hmin, Hmax, dHH, Hrange;
 
     Kokkos::View<KOKKOS_MAT3*[3]> UMATS_prime("UMATS_prime", mosaic_domains);
     Kokkos::View<KOKKOS_MAT3*[3]> UMATS_dbl_prime("UMATS_dbl_prime", mosaic_domains);
@@ -419,23 +418,60 @@ void kokkos_sum_over_steps(
     if (use_diffuse){
         anisoG_local = anisoG;
         anisoU_local = anisoU;
-        num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
-        for (int i_gam=0; i_gam<3; i_gam++){
-            dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
-            dG_dgam[i_gam](i_gam, i_gam) = 1;
-        }
+        
         if (gamma_miller_units){
             anisoG_local = anisoG_local * Bmat_realspace;
-            for (int i_gam=0; i_gam<3; i_gam++){
-            dG_dgam[i_gam] = dG_dgam[i_gam] * Bmat_realspace;
-            }
         }
+        Kokkos::parallel_reduce("prepare diffuse mats", 1, KOKKOS_LAMBDA (const int& i, int& num_laue_mats_temp){
+            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats);
+            KOKKOS_MAT3 rotate_principal_axes;
+            rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+          
+            for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
+                laue_mats(iL) = Ainv * laue_mats(iL) * rotate_principal_axes;
+            }
+            printf("Bmat =");
+            for (int i=0; i<9; ++i) {
+                printf(" %g", Bmat_realspace[i]);
+            }
+            printf("\n");            
+            const KOKKOS_MAT3 Ginv = anisoG_local.inverse();
+            printf("Ginv =");
+            for (int i=0; i<9; ++i) {
+                printf(" %g", Ginv[i]);
+            }
+            printf("\n");
+            const KOKKOS_MAT3 dG = Bmat_realspace * Ginv;
+            printf("dG   =");
+            for (int i=0; i<9; ++i) {
+                printf(" %g", dG[i]);
+            }
+            printf("\n");            
+            for (int i_gam=0; i_gam<3; i_gam++){
+                if (gamma_miller_units) {
+                    dG_dgam(i_gam) = KOKKOS_VEC3(Bmat_realspace(i_gam, 0), Bmat_realspace(i_gam, 1), Bmat_realspace(i_gam, 2));
+                } else {
+                    dG_dgam(i_gam)[i_gam] = 1;
+                }
+                KOKKOS_MAT3 temp_dgam;
+                temp_dgam(i_gam, 0) = dG_dgam(i_gam)[0];
+                temp_dgam(i_gam, 1) = dG_dgam(i_gam)[1];
+                temp_dgam(i_gam, 2) = dG_dgam(i_gam)[2];
+                dG_trace(i_gam) = (Ginv*temp_dgam).trace();
+                printf("TRACE %g\n", dG_trace(i_gam));
+                printf("dgam =");
+                for (int i=0; i<9; ++i) {
+                    printf(" %g", temp_dgam[i]);
+                }
+                printf("\n");
+
+                // dG(i_gam, i_gam);
+            }
+        }, num_laue_mats);
+        anisoG_determ = anisoG_local.determinant();
         dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
     }
-    Hmin << h_min, k_min, l_min;
-    Hmax << h_max, k_max, l_max;
-    dHH << dhh, dkk, dll;
-    Hrange << h_range, k_range, l_range;
+    const KOKKOS_VEC3 dHH (dhh, dkk, dll);
 
     const CUDAREAL overall_scale = r_e_sqr * spot_scale * fluence / Nsteps;
 
@@ -502,7 +538,6 @@ void kokkos_sum_over_steps(
                 KOKKOS_VEC3 _o_vec(ox, oy, oz);
 
                 for (int _thick_tic = 0; _thick_tic < detector_thicksteps; ++_thick_tic) {
-                    CUDAREAL _Odet = _thick_tic * detector_thickstep;
 
                     KOKKOS_VEC3 _pixel_pos = pixel_pos_buffer(pixIdx, _subS, _subF, _thick_tic);
 
@@ -536,7 +571,7 @@ void kokkos_sum_over_steps(
 
                             KOKKOS_VEC3 delta_H = H_vec - H0;
                             KOKKOS_VEC3 V = _NABC * delta_H;
-                            CUDAREAL _hrad_sqr = V.dot(V);
+                            CUDAREAL _hrad_sqr = V.length_sqr();
                             CUDAREAL exparg = _hrad_sqr * C / 2;
                             CUDAREAL I0 = 0;
 
@@ -550,15 +585,16 @@ void kokkos_sum_over_steps(
                             // are we doing diffuse scattering
                             CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                             if (use_diffuse) {
-                                calc_diffuse_at_hkl(H_vec,H0,dHH,Hmin,Hmax,Hrange,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
+                                calc_diffuse_at_hkl(H_vec,H0,dHH,h_min,k_min,l_min,h_max,k_max,l_max,h_range,k_range,l_range,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
                             } // end s_use_diffuse outer
 
                             CUDAREAL _F_cell = default_F;
                             CUDAREAL _F_cell2 = 0;
                             int i_hklasu=0;
 
-                            if ((_h0 <= h_max) && (_h0 >= h_min) && (_k0 <= k_max) &&
-                                (_k0 >= k_min) && (_l0 <= l_max) && (_l0 >= l_min)) {
+                            if ((_h0 <= h_max) && (_h0 >= h_min) && 
+                                (_k0 <= k_max) && (_k0 >= k_min) && 
+                                (_l0 <= l_max) && (_l0 >= l_min)) {
                                 int Fhkl_linear_index = (_h0 - h_min) * k_range * l_range +
                                                         (_k0 - k_min) * l_range + (_l0 - l_min);
                                 //_F_cell = __ldg(&FhklLinear[Fhkl_linear_index]);
@@ -691,6 +727,9 @@ void kokkos_sum_over_steps(
                                 }
                             }
 
+                            //*************************************************
+                            // START REFINEMENT
+
                             if (refine_flag & REFINE_FP_FDP) {
                                 CUDAREAL I_noFcell = texture_scale * I0;
                                 dI.fp_fdp[0] += 2 * I_noFcell * (c_deriv_Fcell);
@@ -703,7 +742,7 @@ void kokkos_sum_over_steps(
                                     _h0, _k0, _l0, _F_cell);
 
                             KOKKOS_MAT3 UBOt;
-                             if (refine_flag & (REFINE_UMAT1 | REFINE_UMAT2 | REFINE_UMAT3 | REFINE_ETA)) {
+                             if (refine_flag & (REFINE_UMAT | REFINE_ETA)) {
                                 UBOt = Amat_init;
                             }                           
                             if (refine_flag & REFINE_UMAT1) {
@@ -786,7 +825,6 @@ void kokkos_sum_over_steps(
                                     CUDAREAL value = 2 * Iincrement * deriv_coef;
                                     CUDAREAL value2 = 0;
                                     if (compute_curvatures) {
-                                        dN(i_nc, i_nc) = 0;  // TODO check maths
                                         value2 = (-1 / N_i / N_i - C * (dV_dN.dot(dV_dN))) * 2 *
                                                     Iincrement;
                                         value2 += deriv_coef * 2 * value;
@@ -1178,7 +1216,7 @@ void kokkos_sum_over_steps(
                 CUDAREAL val = dI.diffuse[i_sig + 3] * _scale_term;
                 int img_idx = Npix_to_model * i_sig + pixIdx;
                 d_diffuse_sigma_images(img_idx) = val;
-            }
+            }            
         }
 
         // update eta derivative image
