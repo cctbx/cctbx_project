@@ -116,8 +116,6 @@ Example:
   known_article_ids = ['molprobity']
 
   def validate(self):
-    from mmtbx.suitename.suitealyze import usage
-    usage()
     self.data_manager.has_models(raise_sorry=True)
 
   def run(self):
