@@ -128,7 +128,9 @@ def generate_residue_tuples(hierarchy,
     assert length<=2
     LinkedResidues = TwoNucleicResidues
     residue_lookup = ['common_rna_dna']
-    assert not include_non_standard_residues
+    #assert not include_non_standard_residues
+    if include_non_standard_residues:
+      residue_lookup.append('modified_rna_dna')
   else:
     assert length<=10
     if length==3:
