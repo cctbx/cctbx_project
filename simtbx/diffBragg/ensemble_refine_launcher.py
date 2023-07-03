@@ -28,6 +28,8 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    pandas_table = pandas_table.iloc[:300]
+    print("****************************\n******** CHOPPER *********** \n**************")
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
         work_distribution = prep_dataframe(pandas_table)
@@ -520,7 +522,7 @@ class RefineLauncher:
             self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement',
                                                  self.params.refiner.update_oversample_during_refinement)
             self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
-            self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
+            #self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
             self.RUC.use_curvatures_threshold = self.params.refiner.use_curvatures_threshold
             if not self.params.refiner.curvatures:
                 self.RUC.S.update_nanoBragg_instance('compute_curvatures', False)

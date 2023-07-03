@@ -416,6 +416,8 @@ class DataModeler:
             hotpix_mask = ~is_trusted
         self.nominal_sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
 
+        # from IPython import embed;embed()
+
         roi_packet = utils.get_roi_background_and_selection_flags(
             refls, img_data, shoebox_sz=self.params.roi.shoebox_size,
             reject_edge_reflections=self.params.roi.reject_edge_reflections,
