@@ -1298,7 +1298,7 @@ def _rotateAroundAxis(atom, axis, degrees):
      scitbx.matrix.rec(xyz, (3,1)) to be moved.
      :param axis: flex array with two scitbx::vec3<double> points, the first
      of which is the origin in space around which to rotate and the second is
-     a vector pointing in the direction of the axis of rotation.
+     a vector pointing from the origin in the direction of the axis of rotation.
      Positive rotations will be right-handed rotations around this axis.
      :param degrees: How much to rotate the atom around the axis.
      Positive rotation is right-handed around the axis.
@@ -1311,9 +1311,12 @@ def _rotateAroundAxis(atom, axis, degrees):
   except Exception:
     pos = rvec3(atom)
 
-  return scitbx.matrix.rotate_point_around_axis(
-      axis_point_1 = axis[0], axis_point_2 = axis[1],
-      point = pos, angle = degrees, deg = True)
+  # The axis of rotation for this function is specified as the two ends of the axis.
+  # The axis passed in has the point around which to rotate and the direction vector
+  # from the origin, so we need to add those.
+  return lvec3(scitbx.math.rotate_point_around_axis(
+      axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
+      point = pos, angle = degrees, deg = True))
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
