@@ -9,10 +9,10 @@ namespace detail {
 
   struct cmp_atom_labels_functor
   {
-    const small_str<19>* labels;
+    std::vector<std::string> const& labels;
 
     cmp_atom_labels_functor(
-      const small_str<19>* labels_)
+      std::vector<std::string> const& labels_)
     :
       labels(labels_)
     {}
@@ -22,7 +22,7 @@ namespace detail {
       unsigned i,
       unsigned j) const
     {
-      return (std::memcmp(labels[i].elems, labels[j].elems, 19U) < 0);
+      return (labels[i] < labels[j]);
     }
   };
 
@@ -39,7 +39,7 @@ namespace detail {
     af::shared<af::shared<atom> >& duplicate_atom_labels,
     hierarchy::model const& model,
     unsigned model_atoms_size,
-    const small_str<19>* model_atom_labels)
+    std::vector<std::string> const& model_atom_labels)
   {
     if (model_atoms_size == 0) return 0;
     boost::scoped_array<unsigned> indices(new unsigned[model_atoms_size]);
@@ -55,9 +55,7 @@ namespace detail {
     unsigned j_start = 0;
     for(unsigned j=1;j<model_atoms_size+1U;j++) {
       if (j != model_atoms_size) {
-        if (std::memcmp(
-              model_atom_labels[indices[j_start]].elems,
-              model_atom_labels[indices[j      ]].elems, 19U) == 0) continue;
+        if (model_atom_labels[indices[j_start]] == model_atom_labels[indices[j]]) continue;
       }
       if (j_start+1U == j) {
         j_start++;
@@ -125,8 +123,7 @@ namespace detail {
       model_ids[model.data->id]++;
       std::map<std::string, unsigned> model_chain_ids;
       unsigned model_atoms_size = model.atoms_size();
-      boost::scoped_array<small_str<19> > model_atom_labels(
-        new small_str<19>[model_atoms_size]);
+      std::vector<std::string > model_atom_labels;
       unsigned i_model_atom = 0;
       unsigned n_ch = model.chains_size();
       n_chains += n_ch;
@@ -173,8 +170,9 @@ namespace detail {
             for(unsigned i_at=0;i_at<n_ats;i_at++) {
               hierarchy::atom const& atom = ag.atoms()[i_at];
               if (atom.uij_is_defined()) n_anisou++;
-              model_atom_labels[i_model_atom++] =
-                atom.pdb_label_columns_segid_small_str();
+              model_atom_labels.push_back(atom.pdb_label_columns_segid_small_str());
+              i_model_atom++;
+              // std::cout << "'" << atom.pdb_label_columns_segid_small_str() << "'\n";
               element_charge_types[atom.pdb_element_charge_columns()]++;
             }
           }
@@ -264,7 +262,7 @@ namespace detail {
         duplicate_atom_labels,
         model,
         model_atoms_size,
-        model_atom_labels.get());
+        model_atom_labels);
     }
     {
       typedef std::map<std::string, unsigned>::const_iterator it;

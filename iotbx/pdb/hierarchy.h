@@ -709,7 +709,7 @@ namespace hierarchy {
       pdb_label_columns() const;
 
       //! Not available in Python.
-      small_str<19>
+      std::string
       pdb_label_columns_segid_small_str() const;
 
       std::string
