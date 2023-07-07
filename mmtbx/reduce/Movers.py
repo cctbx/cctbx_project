@@ -1314,7 +1314,7 @@ def _rotateAroundAxis(atom, axis, degrees):
   # The axis of rotation for this function is specified as the two ends of the axis.
   # The axis passed in has the point around which to rotate and the direction vector
   # from the origin, so we need to add those.
-  return lvec3(scitbx.math.rotate_point_around_axis(
+  return lvec3(scitbx.matrix.rotate_point_around_axis(
       axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
       point = pos, angle = degrees, deg = True))
 
