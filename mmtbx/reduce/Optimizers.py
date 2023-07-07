@@ -2209,8 +2209,164 @@ END
 
   #========================================================================
   # Check a clique with multiple elements to be sure that it was properly
-  # globally optimized.
-  # @todo
+  # globally optimized. This is a set of ACT residues that are offset
+  # such that they want to line up the same way.  A carbon is placed to
+  # force the orientaion away from the initial solution.
+  pdb_multi_act = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+SCALE1      0.010685  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007819  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.003973        0.00000
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  101  C   ACT A 101       8.994 -49.773 -37.606  1.00 16.65           C
+HETATM  102  O   ACT A 101       8.154 -50.481 -38.245  1.00 15.33           O
+HETATM  103  CH3 ACT A 101       9.290 -49.910 -36.148  1.00 17.13           C
+HETATM  104  OXT ACT A 101       9.610 -48.925 -38.299  1.00 17.05           O
+HETATM  111  C   ACT A 111      11.494 -52.273 -38.206  1.00 16.65           C
+HETATM  112  O   ACT A 111      10.654 -52.981 -38.845  1.00 15.33           O
+HETATM  113  CH3 ACT A 111      11.790 -52.410 -36.748  1.00 17.13           C
+HETATM  114  OXT ACT A 111      12.110 -51.425 -38.899  1.00 17.05           O
+HETATM  121  C   ACT A 121      13.994 -54.773 -38.806  1.00 16.65           C
+HETATM  122  O   ACT A 121      13.154 -55.481 -39.445  1.00 15.33           O
+HETATM  123  CH3 ACT A 121      14.290 -54.910 -37.348  1.00 17.13           C
+HETATM  124  OXT ACT A 121      14.610 -53.925 -39.499  1.00 17.05           O
+HETATM  131  C   ACT A 131      16.494 -57.273 -39.406  1.00 16.65           C
+HETATM  132  O   ACT A 131      15.654 -57.981 -40.045  1.00 15.33           O
+HETATM  133  CH3 ACT A 131      16.790 -57.410 -37.948  1.00 17.13           C
+HETATM  134  OXT ACT A 131      17.110 -56.425 -40.099  1.00 17.05           O
+HETATM  141  C   ACT A 141      18.994 -59.773 -40.006  1.00 16.65           C
+HETATM  142  O   ACT A 141      18.154 -60.481 -40.645  1.00 15.33           O
+HETATM  143  CH3 ACT A 141      19.290 -59.910 -38.548  1.00 17.13           C
+HETATM  144  OXT ACT A 141      19.610 -58.925 -40.699  1.00 17.05           O
+HETATM  200  C   ACT A 200       4.500 -45.500 -35.000  1.00 16.65           C
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_multi_act.pdb",pdb_multi_act)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers. Make sure we got as many as we expected.
+  # Make sure that the orientation for all of the movers is correct.
+  # Test with each type of optimizer, from the base to the more derived, so
+  # that we find out about failures on the base classes first.
+  probePhil = philLike(False)
+
+  print('Testing _BruteForceOptimizer')
+  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
+
+  print('Testing _CliqueOptimizer')
+  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer multi-ACT test"
+
+  print('Testing FastOptimizer')
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer multi-ACT test"
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
@@ -2253,11 +2409,9 @@ END
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
-  # Run each type of optimizer on the model.
-  # @todo Verify that they all get results with equivalent scores
-  print('Testing _BruteForceOptimizer')
-  opt = _BruteForceOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
+  # Run each type of optimizer on the model to make sure they don't crash.
+  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.02,
@@ -2266,9 +2420,8 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  print('Testing _CliqueOptimizer')
-  opt = _CliqueOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
+  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.02,
@@ -2277,8 +2430,7 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  print('Testing FastOptimizer')
-  opt = FastOptimizer(probePhil, True, model,probeRadius=0.25)
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25)
 
   # Write debugging output if we've been asked to
   if dumpAtoms:
