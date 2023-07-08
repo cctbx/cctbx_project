@@ -220,6 +220,7 @@ def _PairsOverlap(mover1, atoms1, positions1,
   for ai2 in range(len(atoms2)):
     radii2.append(extraAtomInfoMap.getMappingFor(atoms2[ai2]).vdwRadius)
 
+  ret = False
   for p1 in positions1:
     for ai1 in range(len(p1)):
       r1 = radii1[ai1]
@@ -240,8 +241,11 @@ def _PairsOverlap(mover1, atoms1, positions1,
             # Add the opposite Mover to each atom; they interact
             atomMoverSets[atoms1[ai1]].add(mover2)
             atomMoverSets[atoms2[ai2]].add(mover1)
-            return True
-  return False
+            # Set the return value to True but do not quit looking
+            # because we need to catalog all of the atomMoverSets
+            # interactions, not just the first one found.
+            ret = True
+  return ret
 
 #######################################################################################################
 # Test code and objects below here
