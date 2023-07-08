@@ -1507,7 +1507,8 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         for g in components:
           subMovers = [cutGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(cutGraph, subMovers)
-          score += self._optimizeCliqueCoarse(subset)
+          # Call this exact same method, not a derived class method
+          score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
 
         # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
         # update the best.
