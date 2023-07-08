@@ -101,6 +101,9 @@ master_params_str = """\
             after ferst few macro-cycles, filter_only - remove water only, \
             every_macro_cycle - do water update every macro-cycle
     .short_caption = Mode
+  keep_existing = False
+    .type = bool
+    .help = Keep existing in the model water
   n_cycles = 3
     .type = int
     .short_caption = Number of cycles
@@ -235,6 +238,7 @@ class manager(object):
     self._peaks     = None
     self.n_water    = None
     self.model_size_init = self.model.size()
+    self.existing_solvent = self.model.solvent_selection().iselection()
     #
     self._call(msg="Start")
     self._call(msg="Compute maps",     func=self._get_maps)
@@ -277,7 +281,7 @@ class manager(object):
       map_2_type = self.params.secondary_map_and_map_cc_filter.cc_map_2_type)
 
   def _filter_solvent(self):
-    sol_sel   = self.model.solvent_selection()
+    sol_sel   = self.model.solvent_selection(offset = self.existing_solvent)
     hd_sel    = self.model.get_hd_selection()
     n_sol_start = self.n_water
     mfp = self.params.secondary_map_and_map_cc_filter
@@ -310,6 +314,8 @@ class manager(object):
             for atom in r.atoms():
               if(atom.element_is_hydrogen()): continue
               i_seq = atom.i_seq
+              if(self.params.keep_existing and i_seq in self.existing_solvent):
+                continue
               if(not distance_selection[i_seq]): keep = False
               if(atom.occ > self.params.occupancy_max or
                  atom.occ < self.params.occupancy_min): keep = False
@@ -321,7 +327,8 @@ class manager(object):
                 atom      = atom,
                 min_cc    = mfp.poor_cc_threshold,
                 min_value = mfp.poor_map_value_threshold)
-              if(not good_map): keep = False
+              if(not good_map):
+                keep = False
               #
               # XXX It does not work for 1f8t. WHY? XXX
               #
@@ -412,7 +419,7 @@ class manager(object):
        ):
       hd_sel     = self.model.get_hd_selection()
       not_hd_sel = ~hd_sel
-      sol_sel    = self.model.solvent_selection()
+      sol_sel    = self.model.solvent_selection(offset=self.existing_solvent)
       not_sol_sel= ~sol_sel
       selection_aniso = self.model.get_xray_structure().use_u_aniso().deep_copy()
       if(self.params.new_solvent == "anisotropic"):
@@ -447,7 +454,8 @@ class manager(object):
        ):
       self.fmodels.fmodel_xray().xray_structure.scatterers().flags_set_grads(
         state = False)
-      i_selection = self.model.solvent_selection().iselection()
+      i_selection = self.model.solvent_selection(
+        offset=self.existing_solvent).iselection()
       self.fmodels.fmodel_xray().xray_structure.scatterers(
         ).flags_set_grad_occupancy(iselection = i_selection)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -467,7 +475,7 @@ class manager(object):
   def _correct_drifted_waters(self):
     if(self.params.mode != "filter_only"): return
     if(not self.params.correct_drifted_waters): return
-    sol_sel = self.model.solvent_selection()
+    sol_sel = self.model.solvent_selection(offset=self.existing_solvent)
     hd_sel  = self.model.get_hd_selection()
     hd_sol = sol_sel & hd_sel
     if(hd_sol.count(True)>0): return
