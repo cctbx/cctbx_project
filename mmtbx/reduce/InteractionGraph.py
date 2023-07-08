@@ -198,7 +198,7 @@ def _PairsOverlap(mover1, atoms1, positions1,
   :param mover1: The first Mover
   :param atoms1: Atom list for the first Mover
   :param positions1: probe.PositionReturn.positions holding possible positions for each.
-  :param mover2: The first Mover
+  :param mover2: The second Mover
   :param atoms2: Atom list for the second Mover
   :param positions2: probe.PositionReturn.positions holding possible positions for each.
   :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
