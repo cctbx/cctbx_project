@@ -238,7 +238,9 @@ class manager(object):
     self._peaks     = None
     self.n_water    = None
     self.model_size_init = self.model.size()
-    self.existing_solvent = self.model.solvent_selection().iselection()
+    self.existing_solvent = None
+    if(self.params.keep_existing):
+      self.existing_solvent = self.model.solvent_selection().iselection()
     #
     self._call(msg="Start")
     self._call(msg="Compute maps",     func=self._get_maps)
