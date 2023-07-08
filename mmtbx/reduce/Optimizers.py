@@ -430,8 +430,8 @@ class _SingletonOptimizer(object):
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers, self._extraAtomInfo,
-          probeRadius=probeRadius)
+        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers,
+          self._extraAtomInfo, probeRadius=probeRadius)
         components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
@@ -1556,7 +1556,7 @@ class FastOptimizer(_CliqueOptimizer):
                 verbosity = 1
               ):
     """Constructor for FastOptimizer.  This uses the same algorithm as the
-    parent-class but first constructs a cache for every atom in every Mover
+    parent class but first constructs a cache for every atom in every Mover
     of all the Movers whose positions can affect its answer.  The _scoreAtom() method
     is overridden to use this cached value in clique optimization (but not in singleton
     or fine optimization) when it has already been computed for a given configuration
@@ -1662,6 +1662,7 @@ class FastOptimizer(_CliqueOptimizer):
         self._numCached += 1
         return self._scoreCache[atom][state]
       except Exception:
+        self._numCached -= 1      # Undo the increment above
         self._numCalculated += 1
         self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
         return self._scoreCache[atom][state]
