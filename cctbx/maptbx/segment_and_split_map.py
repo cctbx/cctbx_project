@@ -3231,7 +3231,8 @@ def get_ncs_from_map(params = None,
 
   score, cc_avg, ncs_obj, ncs_info = results_list[0]
   # check for offset by gridding
-  if  params.reconstruction_symmetry.check_grid_offset:
+  if  hasattr(params.reconstruction_symmetry,'check_grid_offset') and \
+     params.reconstruction_symmetry.check_grid_offset:
     symmetry_center, cc_avg, score, ncs_obj = optimize_center_position(
        map_data, sites_orth,
        crystal_symmetry,
