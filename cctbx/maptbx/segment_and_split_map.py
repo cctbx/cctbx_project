@@ -3266,7 +3266,7 @@ def get_ncs_from_map(params = None,
        helical_trans_z_angstrom = helical_trans_z_angstrom, out = out)
     print("New center: (%7.3f, %7.3f, %7.3f)" %(tuple(symmetry_center)), file = out)
 
-  if cc_avg < min_ncs_cc:
+  if (not cc_avg) or (cc_avg < min_ncs_cc):
     print("No suitable symmetry found", file = out)
     return None, None, None
 
@@ -3294,6 +3294,7 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
 
   if ncs_info is None:
     ncs_info = "None"
+
   symmetry = ncs_info.split()[0]
   if check_grid_offset:
     print(
@@ -3313,6 +3314,8 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   best_ncs_obj = ncs_obj
   best_score = score
   best_cc_avg = cc_avg
+  if (ncs_info.find("Helical") > -1) and check_grid_offset:
+    return best_center, best_cc_avg, best_score, best_ncs_obj
   print("Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center)), file = out)
   if check_grid_offset:
     n_range = 1
