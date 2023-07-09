@@ -2899,12 +2899,17 @@ def find_symmetry_center(map_data, crystal_symmetry = None, out = sys.stdout):
   return xyz_cart
 
 def get_center_of_map(map_data, crystal_symmetry,
+    round_down = True,
     place_on_grid_point = True):
   all = list(map_data.all())
   origin = list(map_data.origin())
   if place_on_grid_point:
-    sx, sy, sz = [int(all[0]/2)+origin[0], int(all[1]/2)+origin[1],
-       int(all[2]/2)+origin[2]]
+    if round_down:
+      sx, sy, sz = [int(all[0]/2)+origin[0], int(all[1]/2)+origin[1],
+         int(all[2]/2)+origin[2]]
+    else:
+      sx, sy, sz = [int(1+all[0]/2)+origin[0], int(1+all[1]/2)+origin[1],
+         int(1+all[2]/2)+origin[2]]
   else:
     sx, sy, sz = [all[0]/2+origin[0], all[1]/2+origin[1],
   all[2]/2+origin[2]]
@@ -2983,19 +2988,35 @@ def run_get_ncs_from_map(params = None,
       wrapping=False)
     mm.resolution_filter(d_min=params.crystal_info.resolution)
     map_data = mm.map_data()
+  sym_cen = params.reconstruction_symmetry.symmetry_center
 
   ncs_obj_to_check = None
+
   if params.reconstruction_symmetry.symmetry and (
      not ncs_obj or ncs_obj.max_operators()<2):
     if params.reconstruction_symmetry.optimize_center:
-      center_try_list = [True, False]
+                       # [use_center_of_map, round_down, symmetry_center]
+      center_try_list = [[True,True,sym_cen],
+                         [False,True,sym_cen],
+                         [True,True,None],
+                         [True,False,None],
+                        ]
     else:
-      center_try_list = [True]
+      center_try_list = [[True,True,sym_cen],
+                         [True,True,None],
+                         [True,False,None],
+                        ]
   elif ncs_obj:
-    center_try_list = [True]
+    center_try_list = [[True,True,sym_cen],
+                         [True,True,None],
+                         [True,False,None],
+                        ]
     ncs_obj_to_check = ncs_obj
   elif params.reconstruction_symmetry.optimize_center:
-    center_try_list = [None]
+    center_try_list = [[True,True,sym_cen],
+                         [True,True,None],
+                         [True,False,None],
+                        ]
   else:
     return None, None, None # did not even try
   # check separately for helical symmetry
@@ -3010,9 +3031,10 @@ def run_get_ncs_from_map(params = None,
     helical_list = [False]
 
   new_ncs_obj, ncs_cc, ncs_score = None, None, None
-  for use_center_of_map in center_try_list:
+  for [use_center_of_map, round_down, symmetry_center] in center_try_list:
    for include_helical in helical_list:
     local_params = deepcopy(params)
+    local_params.reconstruction_symmetry.symmetry_center=None
     local_params.reconstruction_symmetry.include_helical_symmetry = \
        include_helical
     new_ncs_obj, ncs_cc, ncs_score = get_ncs_from_map(params = local_params,
@@ -3021,6 +3043,8 @@ def run_get_ncs_from_map(params = None,
       use_center_of_map_as_center = use_center_of_map,
       crystal_symmetry = crystal_symmetry,
       ncs_obj_to_check = ncs_obj_to_check,
+      symmetry_center = symmetry_center,
+      round_down = round_down,
       out = out
       )
     if new_ncs_obj:
@@ -3046,6 +3070,7 @@ def get_ncs_from_map(params = None,
       identify_ncs_id = None,
       ncs_obj_to_check = None,
       ncs_in_cell_only = False,
+      round_down = True,
       out = sys.stdout):
 
 
@@ -3057,6 +3082,8 @@ def get_ncs_from_map(params = None,
   # Center of symmetry is as supplied, or center of map or center of density
   #  If center is not supplied and use_center_of_map_as_center, try that
   #  and return None if it fails to achieve a map cc of min_ncs_cc
+
+  # round_down defines where to guess center if gridding has even number of pts
 
   if ncs_in_cell_only is None:
     ncs_in_cell_only = (not params.crystal_info.use_sg_symmetry)
@@ -3088,10 +3115,9 @@ def get_ncs_from_map(params = None,
   if ncs_obj_to_check and ncs_obj_to_check.max_operators()>1:
     symmetry = "SUPPLIED NCS"
 
-
   if map_symmetry_center is None:
-    map_symmetry_center = get_center_of_map(map_data, crystal_symmetry)
-
+    map_symmetry_center = get_center_of_map(map_data, crystal_symmetry,
+      round_down = round_down)
   if optimize_center is None:
     if symmetry_center is None and (not use_center_of_map_as_center):
       optimize_center = True
@@ -3157,20 +3183,27 @@ def get_ncs_from_map(params = None,
   if n_rescore and not ncs_obj_to_check:
     print("Rescoring top %d results" %(min(n_rescore, len(results_list))), file = out)
     rescore_list = results_list[n_rescore:]
+    all_rescore = []
     new_sites_orth = get_points_in_map(
       map_data, n = 10*random_points, crystal_symmetry = crystal_symmetry)
     new_sites_orth.extend(sites_orth)
+    found_ok = False
     for orig_score, orig_cc_avg, ncs_obj, symmetry in results_list[:n_rescore]:
       score, cc_avg = score_ncs_in_map(map_data = map_data, ncs_object = ncs_obj,
         identify_ncs_id = identify_ncs_id,
         ncs_in_cell_only = ncs_in_cell_only,
         sites_orth = new_sites_orth, crystal_symmetry = crystal_symmetry, out = out)
+      all_rescore.append([score, cc_avg, ncs_obj, symmetry])
       if cc_avg is None or cc_avg < min_ncs_cc:
         score = 0. # Do not allow low CC values to be used
+      else:
+        found_ok = True
       if score is None:
         print("symmetry:", symmetry, " no score", ncs_obj.max_operators(), file = out)
       else:
         rescore_list.append([score, cc_avg, ncs_obj, symmetry])
+    if not found_ok:
+      rescore_list = all_rescore
     rescore_list.sort(key=itemgetter(0))
     rescore_list.reverse()
     results_list = rescore_list
@@ -3197,6 +3230,23 @@ def get_ncs_from_map(params = None,
        score, cc_avg, ncs_obj.max_operators(), symmetry.strip(), ), file = out)
 
   score, cc_avg, ncs_obj, ncs_info = results_list[0]
+  # check for offset by gridding
+  if  params.reconstruction_symmetry.check_grid_offset:
+    symmetry_center, cc_avg, score, ncs_obj = optimize_center_position(
+       map_data, sites_orth,
+       crystal_symmetry,
+       ncs_info, symmetry_center, ncs_obj, score, cc_avg,
+       params = params,
+       helical_rot_deg = helical_rot_deg,
+       two_fold_along_x = two_fold_along_x,
+       op_max = op_max,
+       min_ncs_cc = min_ncs_cc,
+       identify_ncs_id = identify_ncs_id,
+       ncs_obj_to_check = ncs_obj_to_check,
+       ncs_in_cell_only = ncs_in_cell_only,
+       helical_trans_z_angstrom = helical_trans_z_angstrom,
+       check_grid_offset = True,
+       out = out)
 
   # Optimize center if necessary
   if optimize_center:
@@ -3237,12 +3287,19 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
      ncs_obj_to_check = None,
      ncs_in_cell_only = None,
      min_ncs_cc = None,
-     helical_trans_z_angstrom = None, out = sys.stdout):
+     helical_trans_z_angstrom = None,
+     check_grid_offset = False,
+     out = sys.stdout):
 
   if ncs_info is None:
     ncs_info = "None"
   symmetry = ncs_info.split()[0]
-  print("Optimizing center position...type is %s" %(ncs_info), file = out)
+  if check_grid_offset:
+    print(
+      "Checking for improvement with offset by +/-1 grid unit...type is %s" %(
+       ncs_info), file = out)
+  else:
+    print("Optimizing center position...type is %s" %(ncs_info), file = out)
 
   if len(ncs_info.split())>1 and ncs_info.split()[1] == '(a)':
     two_fold_along_x = True
@@ -3256,13 +3313,33 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   best_score = score
   best_cc_avg = cc_avg
   print("Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center)), file = out)
+  if check_grid_offset:
+    n_range = 1
+    k_range = list(range(-1,2))
+    i_range = list(range(-1,2))
+    j_range = list(range(-1,2))
+    abc = crystal_symmetry.unit_cell().parameters()[:3]
+    N_ = map_data.all()
+
+    scale_x = abc[0]/N_[0]
+    scale_y = abc[1]/N_[1]
+    scale_z = abc[2]/N_[2]
+  else:
+    n_range = 6
+    k_range = range(0,1)
+    i_range = range(-4,5)
+    j_range = range(-4,5)
+    scale_x = 1
+    scale_y = 1
+    scale_z = 1
   from libtbx.utils import null_out
   scale = 5.
-  for itry in range(6):
-    scale = scale/5.
-    for i in range(-4, 5):
-     for j in range(-4, 5):
-      local_center = matrix.col(symmetry_center)+matrix.col((scale*i, scale*j, 0., ))
+  for itry in range(n_range):
+   scale = scale/5.
+   for k in k_range:
+    for i in i_range:
+     for j in j_range:
+      local_center = matrix.col(symmetry_center)+matrix.col((scale_x*i, scale_y*j, scale_z*k, ))
       ncs_list = get_ncs_list(params = params, symmetry = symmetry,
        symmetry_center = local_center,
        helical_rot_deg = helical_rot_deg,
@@ -3295,6 +3372,7 @@ def optimize_center_position(map_data, sites_orth, crystal_symmetry,
   cc_avg = best_cc_avg
   score = best_score
   ncs_obj = best_ncs_obj
+  print("Optimized center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center)), file = out)
   return best_center, best_cc_avg, best_score, best_ncs_obj
 
 
