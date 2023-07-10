@@ -1428,7 +1428,6 @@ def local_mean_density(mm, radius):
 
 def assess_cryoem_errors(
     mmm, d_min,
-    map_1_id="map_manager_1", map_2_id="map_manager_2",
     determine_ordered_volume=True,
     ordered_mask_id='ordered_volume_mask', sphere_points=500,
     sphere_cent=None, radius=None,
@@ -1444,9 +1443,6 @@ def assess_cryoem_errors(
     target region
 
   Optional arguments:
-  map_1_id: identifier of first half-map, if different from default of
-    map_manager_1
-  map_2_id: same for second half-map
   determine_ordered_volume: flag for whether ordered volume should be assessed
   ordered_mask_id: identifier for mask defining ordered volume
   sphere_cent: center of sphere defining target region for analysis
@@ -1479,7 +1475,17 @@ def assess_cryoem_errors(
     raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
-  # Keep track of shifted origin
+
+  # Keep track of shifted origin, only allowing origin_shift_grid_units method
+  # that is specified by NXSTART, NYSTART, NZSTART in map header.
+  # Files in .mrc format can have non-zero ORIGIN (Angstrom units), referred to
+  # here as external_origin, but this must be redefined in grid units outside
+  # this program, e.g. with method implemented in em_placement_script.py.
+  external_origin = flex.double(mmm.map_manager().external_origin)
+  if external_origin is not None:
+    if flex.sum(flex.abs(external_origin)) > 0:
+      raise Sorry("Non-zero origin must be specified by origin_shift_grid_units, not Angstrom units (.mrc ORIGIN)")
+
   origin_shift = mmm.map_manager().origin_shift_grid_units
   if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
     shifted_origin = True
@@ -1590,8 +1596,8 @@ def assess_cryoem_errors(
   minimum_possible_d_min = 2.*max(spacings)
   d_min = max(d_min, minimum_possible_d_min)
   d_min_extended = 1./(1./d_min + r_star)
-  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+  mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+  mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   success = False
   while guess_d_min and not success:
@@ -1607,8 +1613,8 @@ def assess_cryoem_errors(
       else:
         success = True # d_min is already highest possible value
     d_min_extended = 1./(1./d_min + r_star)
-    mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-    mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+    mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+    mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   f1 = flex.abs(mc1.data())
   f2 = flex.abs(mc2.data())
@@ -1864,8 +1870,8 @@ def assess_cryoem_errors(
   wEmean2 = lweight*expectE
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
-  working_mmm.remove_map_manager_by_id(map_1_id)
-  working_mmm.remove_map_manager_by_id(map_2_id)
+  working_mmm.remove_map_manager_by_id('map_manager_1')
+  working_mmm.remove_map_manager_by_id('map_manager_2')
 
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
