@@ -641,7 +641,8 @@ class map_manager(map_reader, write_ccp4_map):
     current_origin = self.map_data().origin()
 
     self._warning_message = ""
-    if tuple(self.external_origin) != (0,0,0): # check for external origin
+    if apply_external_origin_if_present and \
+         tuple(self.external_origin) != (0,0,0): # check for external origin
       if self.external_origin_is_compatible_with_gridding():
          external_origin_as_grid_units = self.external_origin_as_grid_units()
       else:

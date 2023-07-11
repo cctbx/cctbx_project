@@ -287,6 +287,7 @@ class map_model_manager(object):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
+    mmmn.set_log(self.log)
     mmmn.add_map_manager(any_map_manager)
     for m in extra_model_list: # Check all extra models
       mmmn.add_model(m.deep_copy(),
@@ -513,7 +514,7 @@ class map_model_manager(object):
     else:
       self.log = log
 
-  def _print(self, m):
+  def _print(self, m, force = False):
     '''
       Print to log if it is present
     '''
@@ -521,6 +522,8 @@ class map_model_manager(object):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
+    elif force:
+      print(m)
 
   # Methods for obtaining models, map_managers, symmetry, ncs_objects
 
@@ -8670,10 +8673,12 @@ class match_map_model_ncs(object):
     else:
       self.log = log
 
-  def _print(self, m):
+  def _print(self, m, force = False):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
-      self._print(m, file = self.log)
+      print(m, file = self.log)
+    elif force:
+      print(m)
 
   def write_map(self, file_name = None):
     if not self._map_manager:
@@ -8873,8 +8878,11 @@ class match_map_model_ncs(object):
 
     # Apply shift to model, map and ncs object
 
-    # Shift origin of map_manager
+    # Shift origin of map_manager. Note if there was any problem
+    self._map_manager._warning_message = ''
     self._map_manager.shift_origin(desired_origin = desired_origin)
+    if self._map_manager.warning_message():
+      self._print("\n%s\n" %(self._map_manager.warning_message()), force=True)
 
     # Shift origin of model  Note this sets model shift_cart
     if self._model:
