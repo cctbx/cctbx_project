@@ -1482,7 +1482,7 @@ def assess_cryoem_errors(
   # here as external_origin, but this must be redefined in grid units outside
   # this program, e.g. with method implemented in em_placement_script.py.
   external_origin = mmm.map_manager().external_origin
-  if (external_origin is not None) and (flex.sum(flex.abs(external_origin)) > 0):
+  if (external_origin is not None) and (flex.sum(flex.abs(flex.double(external_origin))) > 0):
     raise Sorry("Non-zero origin must be specified by origin_shift_grid_units, not Angstrom units (.mrc ORIGIN)")
 
   origin_shift = mmm.map_manager().origin_shift_grid_units

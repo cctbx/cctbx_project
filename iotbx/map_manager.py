@@ -327,7 +327,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.unit_cell_grid = unit_cell_grid
       self._unit_cell_crystal_symmetry = unit_cell_crystal_symmetry
       self._wrapping = wrapping
-      self.external_origin = (0, 0, 0)
+      self.external_origin = (0., 0., 0.)
 
       # Calculate values for self._crystal_symmetry
       # Must always run this method after changing
