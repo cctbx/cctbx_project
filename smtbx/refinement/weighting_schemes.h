@@ -59,7 +59,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
       where
 
-      \f[ P = 1/3 \max(F_o^2, 0)] + 2/3 K F_c^2 \f]
+      \f[ P = 1/3 \max(F_o^2, 0) + 2/3 K F_c^2 \f]
 
     The formula differs from that in SHELXL documentation because SHELXL
     uses \f$ F_o^2/K, \sigma(F_o^2)/K and F_c^2 \f$ in its full computation

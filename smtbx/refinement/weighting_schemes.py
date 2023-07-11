@@ -71,13 +71,13 @@ class _():
     fc2 = fc_sq.data()
 
     # determine starting values for a and b, formulae taken from shelxl code
-    p = (fo2 + 2 * fc2)/3
+    p = (fo2 + 2. * fc2)/3.
     p_sq = flex.pow2(p)
     x = flex.sum((flex.pow2(fo2-fc2)-sigmas) * (p_sq/sigmas_sq))
     y = flex.sum( flex.pow2(p_sq)/sigmas_sq)
     z = flex.sum(p)
-    start_a = math.sqrt(max(0.0001, 0.64*x/max(1e-8, y)))
-    start_b = 0.5 * z * start_a**2 /fo_sq.size()
+    start_a = math.sqrt(max(0.0001, 0.64 * x / max(1e-8, y)))
+    start_b = 0.5 * z * start_a**2 / fo_sq.size()
     a_step = 0.2 * start_a
     b_step = 0.4 * start_b
 
