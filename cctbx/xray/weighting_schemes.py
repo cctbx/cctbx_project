@@ -67,7 +67,6 @@ class simple_shelx_weighting(object):
     assert(self.observed.is_xray_intensity_array())
     assert(self.calculated.is_complex_array())
     a,b = self._params
-    f_c = self.calculated.data()
     f_c = self.calculated.data().deep_copy()
     if scale_factor is None:
       scale_factor = self.observed.scale_factor(
