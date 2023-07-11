@@ -64,6 +64,9 @@ Example:
       string=False
         .type=bool
         .help="output in string format, 3 characters per suite"
+      json=False
+        .type=bool
+        .help="output in JSON format, useful for machine parsing"
       kinemage=False
         .type=bool
         .help="output in kinemage format, useful for visualization"
@@ -125,6 +128,8 @@ Example:
       suite_results.display_suitestrings(blockform=True)
     elif self.params.suitename.markup:# == "markup":
       print(suite_results.as_kinemage_markup())
+    elif self.params.suitename.json:
+      print(suite_results.as_JSON())
     elif self.params.suitename.report:# == "report":
       suite_results.show_old_output(verbose=True)
     else:

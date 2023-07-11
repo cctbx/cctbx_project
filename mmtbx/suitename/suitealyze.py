@@ -5,6 +5,7 @@ from __future__ import with_statement, print_function
 from mmtbx.validation import residue, validation
 from mmtbx.suitename.suitename import compute
 from mmtbx.suitename.suitenamedefs import findBase
+import json
 import sys
 
 #reasons is a simple list version of an Enum from suitenamedefs
@@ -56,6 +57,7 @@ class suite(residue):
     self.is_outlier = False #False by default, set True in suitealyze after computations if needed
     self.atoms = atoms
     assert len(self.atoms) == 3, "wrong # of atom positions passed to suite"
+    self.xyz = atoms[1]
     self.base = findBase("%3s" % self.resname)
 
   def validate(self):
@@ -92,6 +94,26 @@ class suite(residue):
 
   def as_string(self, prefix=""):
     return prefix + self.format_values()
+
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s) and s != "bin" and s != "cluster" and s != "issue"]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict["bin"] = self.bin.name
+    slots_as_dict["cluster"] = self.cluster.name
+    reason = ""
+    note = ""
+    if self.issue:
+      reason = reasons[self.issue.value]
+    if self.cluster.status == "wannabe":
+      note = "wannabe"
+    slots_as_dict["reason"] = reason
+    slots_as_dict["note"] = note
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   def as_table_row_phenix(self):
     return [self.suite_id, self.suite, self.suiteness, self.triaged_angle]
@@ -148,8 +170,14 @@ def setOptions(optionsIn):
      or the result of an argparse parse_args operation"""
   from mmtbx.suitename.suitename import loadOptions
   from suitenamedefs import globals
-  globals.options = optionsIn.suitename
-  loadOptions(optionsIn.suitename)
+  from mmtbx.suitename import suites
+  if not optionsIn:
+    optionsIn = suites.parseOptions("report=true")
+    globals.options = optionsIn
+    loadOptions(optionsIn)
+  else:
+    globals.options = optionsIn.suitename
+    loadOptions(optionsIn.suitename)
 
 class suitealyze(validation):
   def __init__(self,
@@ -294,6 +322,24 @@ class suitealyze(validation):
     print(self.suiteness_summary_block(include_suites=["1a"]), file=out)
     print(self.suiteness_summary_block(exclude_suites=["1a","__"]), file=out)
 
+  def as_JSON(self):
+    data = {"validation_type": "rna_suites"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    for mod_id in self.model_list:
+      summary_results[mod_id] = {"num_outliers": self.count_outliers(mod_id),
+                                 "num_suites": self.count_suites(mod_id)}
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
+
   def show_old_output(self, out=sys.stdout, verbose=False):
     for result in self.results:
       print(result.as_text_output(), file=out)
@@ -372,7 +418,7 @@ class suitealyze(validation):
         first_altloc = [conf.altloc for conf in residue_pair[1].parent().parent().conformers()][0]
         first_altloc_by_chain[chainid] = first_altloc
       conformer_altloc = residue_pair[1].parent().altloc
-      if chainid != prev_chain:
+      if chainid != prev_chain or modelid != prev_model:
         #The first residue of a chain is handled separately
         #It will be incomplete, but it's important for counts and suitestring representation
         res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None}
@@ -390,6 +436,7 @@ class suitealyze(validation):
                    res1atoms[" O3'"] and res1atoms[" O3'"].xyz]
           results.append(suite(resid, [deltaMinus, epsilon, zeta, alpha, beta, gamma, delta], atoms))
           prev_chain = chainid
+          prev_model = modelid
       #first residue done, resume normal path
       if residue_pair.are_linked():
         res0atoms = self.get_res0atoms(residue_pair[0])

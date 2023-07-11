@@ -75,7 +75,7 @@ philOptions = """
         .help="output extra details concerning the causes of each assignment made"
       test=False
         .type=bool
-        .help="display a lat of additional information about program internals"
+        .help="display a lot of additional information about program internals"
     # compute
       satellites=False
         .type=bool
