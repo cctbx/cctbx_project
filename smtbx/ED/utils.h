@@ -82,7 +82,7 @@ namespace smtbx { namespace ED {
       cmat_t const& m,
       af::shared<FloatType> const& d)
     {
-      size_t sz = S.accessor().n_columns();
+      size_t sz = m.accessor().n_columns();
       cmat_t rv(af::mat_grid(sz, sz));
       for (size_t i = 0; i < sz; i++) {
         for (size_t j = 0; j < sz; j++) {
@@ -96,7 +96,7 @@ namespace smtbx { namespace ED {
       af::shared<FloatType> const& d,
       cmat_t const& m)
     {
-      size_t sz = S.accessor().n_columns();
+      size_t sz = m.accessor().n_columns();
       cmat_t rv(af::mat_grid(sz, sz));
       for (size_t i = 0; i < sz; i++) {
         for (size_t j = 0; j < sz; j++) {
