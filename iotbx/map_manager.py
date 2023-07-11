@@ -598,6 +598,9 @@ class map_manager(map_reader, write_ccp4_map):
     #  This is position of the origin of the new map in the full unit cell grid
     self.origin_shift_grid_units = shift_info.new_origin_shift_grid_units
 
+    # Set external_origin to zero as it has now been used
+    self.external_origin = (0, 0, 0)
+
     # Shift map_data if necessary
     if shift_info.shift_to_apply !=  (0, 0, 0):
       # map will start at desired_origin and have current size:
