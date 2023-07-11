@@ -68,6 +68,7 @@ class simple_shelx_weighting(object):
     assert(self.calculated.is_complex_array())
     a,b = self._params
     f_c = self.calculated.data()
+    f_c = self.calculated.data().deep_copy()
     if scale_factor is None:
       scale_factor = self.observed.scale_factor(
         self.calculated, cutoff_factor=0.99)
@@ -77,9 +78,9 @@ class simple_shelx_weighting(object):
     f_obs_square_plus = self.observed.data().deep_copy()
     negatives = self.observed.data() < 0
     f_obs_square_plus.set_selected(negatives, 0)
-    p = (f_obs_square_plus + 2*flex.norm(f_c))/3
-    w = 1/(sigmas_square + flex.pow2(a*p) + b*p)
-    dw_dfc = -(2*a*a*p + b) * flex.pow2(w) * (4./3*f_c)
+    p = (f_obs_square_plus + 2.*flex.norm(f_c))/3.
+    w = 1./(sigmas_square + flex.pow2(a*p) + b*p)
+    dw_dfc = -(2*a*a*p + b) * flex.pow2(w) * (4./3.*f_c)
     self.weights, self.derivatives_wrt_f_c = w, dw_dfc
 
 
