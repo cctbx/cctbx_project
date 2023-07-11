@@ -77,10 +77,13 @@ class reader(object):
           break
         data = line.split()
         assert len(data) == self.number_of_items_in_each_data_record
+        sigma_value = float(data[self.sigma_iobs_column])
+        if sigma_value < 0:
+          continue # negative sigma values should be ignored (outliers)
         h = [int(data[i]) for i in self.miller_index_columns]
         self.miller_indices.append(h)
         self.iobs.append(float(data[self.iobs_column]))
-        self.sigma_iobs.append(float(data[self.sigma_iobs_column]))
+        self.sigma_iobs.append(sigma_value)
         if (self.zd_column is not None):
           self.zd.append(float(data[self.zd_column]))
 
