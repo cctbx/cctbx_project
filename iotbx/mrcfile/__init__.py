@@ -51,8 +51,9 @@ class map_reader:
      NOTE phenix calls "origin" the position of the lower left corner
        of the map.
      mrcfile calls "origin" the value of the field "origin" which is 3
-       real numbers indicating the placement of the grid point (0,0,0) relative
-       to an external reference frame (typically that of a model)
+       real numbers (A units, not grid units) indicating the placement
+       of the grid point (0,0,0) relative to an external reference frame
+       (typically that of a big map that this map is cut out from).
 
      Here we will use "external_origin" to refer to the mrc origin and
      "origin" for nxstart_nystart_nzstart.
