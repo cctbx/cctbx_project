@@ -66,7 +66,7 @@ def IsSpecialAminoAcidCarbonyl(resName, atomName):
 # a list of residue names with trailing spaces trimmed.  The second is a list of atoms that qualify
 # for all of the entries in the residue names.  In both cases, the strings are stripped of all
 # spaces to the left and right.
-_AromaticTable = [
+_AromaticAcceptorTable = [
   # Note: Some atoms from these residues are listed in other sections.  The combination of
   # reside and atom name is not duplicated, but there are multiple entries for some residues --
   # this is not a set.
@@ -122,14 +122,15 @@ _AromaticTable = [
 ]
 
 # Is a carbon or nitrogen or hydrogen atom part of an aromatic ring?
-def IsAromatic(resName, atomName):
-  """Given a residue and atom name, determine whether that atom is part of an aromatic ring.
+def IsAromaticAcceptor(resName, atomName):
+  """Given a residue and atom name, determine whether that atom is and acceptor because it is
+  part of an aromatic ring.
   :param resName: String containing the 1-3-character residue name in all caps, including leading space.
   :param atomName: String containing the 1-4-character atom name in all caps, including leading space.
   :returns True if the atom is aromatic in a standard residue, False if not.  Does not handle HET atoms.
   """
 
-  for e in _AromaticTable:
+  for e in _AromaticAcceptorTable:
     if resName.strip() in e[0] and atomName.strip() in e[1]:
       return True
   return False
@@ -138,14 +139,14 @@ def IsAromatic(resName, atomName):
 def Test(inFileName = None):
 
   #========================================================================
-  # Check IsAromatic() to ensure it gives results when expected and not when not.
+  # Check IsAromaticAcceptor() to ensure it gives results when expected and not when not.
   aromaticChecks = [
       ['PHE', 'CE2', True],
       ['  U', 'HN3', True],
       ['ASN',   'O', False]
     ]
   for a in aromaticChecks:
-    assert IsAromatic(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
+    assert IsAromaticAcceptor(a[0],a[1]) == a[2], "AtomTypes.Test(): {} {} not marked as aromatic {}".format(a[0],a[1],a[2])
 
 if __name__ == '__main__':
 

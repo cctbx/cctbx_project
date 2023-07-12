@@ -198,7 +198,7 @@ def _PairsOverlap(mover1, atoms1, positions1,
   :param mover1: The first Mover
   :param atoms1: Atom list for the first Mover
   :param positions1: probe.PositionReturn.positions holding possible positions for each.
-  :param mover2: The first Mover
+  :param mover2: The second Mover
   :param atoms2: Atom list for the second Mover
   :param positions2: probe.PositionReturn.positions holding possible positions for each.
   :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
@@ -211,24 +211,41 @@ def _PairsOverlap(mover1, atoms1, positions1,
   :returns True if a pair of atoms with one from each overlap, False if not.
   """
 
-  for i1, p1 in enumerate(positions1):
+  # Construct look-up tables for the radii of each atom to pull these calculations
+  # outside of the loops.
+  radii1 = []
+  for ai1 in range(len(atoms1)):
+    radii1.append(extraAtomInfoMap.getMappingFor(atoms1[ai1]).vdwRadius)
+  radii2 = []
+  for ai2 in range(len(atoms2)):
+    radii2.append(extraAtomInfoMap.getMappingFor(atoms2[ai2]).vdwRadius)
+
+  ret = False
+  for p1 in positions1:
     for ai1 in range(len(p1)):
-      r1 = extraAtomInfoMap.getMappingFor(atoms1[ai1]).vdwRadius
-      for i2, p2 in enumerate(positions2):
+      r1 = radii1[ai1]
+      x1 = p1[ai1][0]
+      y1 = p1[ai1][1]
+      z1 = p1[ai1][2]
+      limit1 = 2*probeRad + r1
+      for p2 in positions2:
         for ai2 in range(len(p2)):
-          r2 = extraAtomInfoMap.getMappingFor(atoms2[ai2]).vdwRadius
-          dx = p1[ai1][0] - p2[ai2][0]
-          dy = p1[ai1][1] - p2[ai2][1]
-          dz = p1[ai1][2] - p2[ai2][2]
+          r2 = radii2[ai2]
+          dx = x1 - p2[ai2][0]
+          dy = y1 - p2[ai2][1]
+          dz = z1 - p2[ai2][2]
           dSquared = dx*dx + dy*dy + dz*dz
-          limit = r1 + r2 + 2*probeRad
+          limit = limit1 + r2
           limitSquared = limit*limit
           if dSquared <= limitSquared:
             # Add the opposite Mover to each atom; they interact
             atomMoverSets[atoms1[ai1]].add(mover2)
             atomMoverSets[atoms2[ai2]].add(mover1)
-            return True
-  return False
+            # Set the return value to True but do not quit looking
+            # because we need to catalog all of the atomMoverSets
+            # interactions, not just the first one found.
+            ret = True
+  return ret
 
 #######################################################################################################
 # Test code and objects below here
@@ -341,7 +358,7 @@ def Test():
     if maxLen != e[2]:
       return "Expected max sized component of "+str(e[2])+", found "+str(maxLen)+" for case "+str(i)
 
-    # Check atom/Mover overlaps by finding the set of lengths that are present accross all atoms.
+    # Check atom/Mover overlaps by finding the set of lengths that are present across all atoms.
     lengths = set()
     for a in atoms:
       lengths.add(len(am[a]))

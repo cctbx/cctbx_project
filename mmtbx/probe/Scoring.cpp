@@ -105,6 +105,19 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   Point absoluteDotLocation = sourceAtom.data->xyz + dotOffset;
   Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
 
+  // Check to see if the dot should be removed from consideration because it is inside an excluded atom.
+  // Doing this test ahead of the neighbor-interaction test makes things faster for the long-running
+  // 4fen test case.
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
+    e != exclude.end(); e++) {
+    // The original Probe code does internal checks for Phantom Hydrogens, but we handle that
+    // in the calling routine by properly adjusting the list of atoms to be excluded.
+    double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+    if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
+      return ret;
+    }
+  }
+
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
   double hydrogenBondMinDist = 0;       ///< Hydrogen bond minimum distance based on the atom types (will be set below).
@@ -172,20 +185,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       causeIsDummy = bExtra.getIsDummyHydrogen();
       ret.gap = gap;
       ret.cause = *b;
-    }
-  }
-
-  // Check to see if the dot should be removed from consideration because it is also inside an excluded atom.
-  if (keepDot) {
-    for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
-         e != exclude.end(); e++) {
-      // The original Probe code does internal checks for Phantom Hydrogens, but we handle that
-      // in the calling routine by properly adjusting the list of atoms to be excluded.
-      double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-      if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
-        keepDot = false;
-        break;
-      }
     }
   }
 
