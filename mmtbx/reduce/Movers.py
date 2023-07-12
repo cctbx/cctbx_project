@@ -2763,13 +2763,6 @@ def Test():
     if 'AnglesNotAdjusted' != mover.PoseDescription(0, 0, False).split()[-1]:
       return "Movers.Test() MoverHisFlip: Unexpected angle description Flipped, got "+mover.PoseDescription(0, 0, False)
 
-    # Test whether Hydrogen placement optimization is happening when we do only flipped or only
-    # not flipped.
-    # @todo
-
-    # Test whether we can control fixup behavior when locking down in flipped state.
-    # @todo
-
   except Exception as e:
     return "Movers.Test() MoverHisFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()
 
