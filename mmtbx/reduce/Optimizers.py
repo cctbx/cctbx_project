@@ -2378,7 +2378,100 @@ END
   # Check that the occupancy and B-factor cut-offs for water Oxygens are causing them
   # to be ignored in the calculations by putting an atom in the way and making sure it
   # is ignored.
-  # @todo
+  pdb_b_factor = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+SCALE1      0.010685  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007819  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.003973        0.00000
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  200  O   HOH A 200       8.200 -48.610 -35.148  1.00 50.00           O
+HETATM  201  O   HOH A 201       5.800 -46.810 -34.548  1.00 20.00           O
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_b_factor.pdb",pdb_b_factor)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers. Make sure we got as many as we expected.
+  # Make sure that the orientation for all of the movers is correct.
+  probePhil = philLike(False)
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
