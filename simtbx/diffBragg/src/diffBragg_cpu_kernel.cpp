@@ -925,8 +925,6 @@ void diffBragg_sum_over_steps(
                     value = I_noFcell;
                 else
                     value = 2*I_noFcell*F_cell; //2*Iincrement/F_cell ;
-                if (i_pix==0)
-                    printf("F_cell=%f, I_noFcell=%f, Iincrement=%f, value=%f\n", F_cell, I_noFcell, Iincrement, value);
                 double value2=0;
                 if (db_flags.compute_curvatures){
                     if (F_cell > 0)

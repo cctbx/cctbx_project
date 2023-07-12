@@ -464,7 +464,7 @@ void gpu_sum_over_steps(
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
-           int i_hklasu=0;
+            int i_hklasu=0;
 
             if ( (_h0<=s_h_max) && (_h0>=s_h_min) && (_k0<=s_k_max) && (_k0>=s_k_min) && (_l0<=s_l_max) && (_l0>=s_l_min)  ) {
                 int Fhkl_linear_index = (_h0-s_h_min) * s_k_range * s_l_range + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);

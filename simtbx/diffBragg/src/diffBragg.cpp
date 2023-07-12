@@ -2022,7 +2022,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
-    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL && getenv("DIFFBRAGG_USE_KOKKOS")==NULL ) || force_cpu){
+    if ((! use_gpu && getenv("DIFFBRAGG_USE_CUDA")==NULL && getenv("DIFFBRAGG_USE_KOKKOS")==NULL ) || force_cpu){
         diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,
@@ -2050,6 +2050,11 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
+      bool use_cuda = false;
+#ifdef DIFFBRAGG_HAVE_CUDA
+      use_cuda = use_gpu;
+#endif
+
       if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
 #ifdef DIFFBRAGG_HAVE_CUDA
         diffBragg_sum_over_steps_cuda(
@@ -2072,7 +2077,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         SCITBX_ASSERT(DIFFBRAGG_USE_CUDA_flag_unsupported);
 #endif
       }
-      else {
+      else if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
 #ifdef DIFFBRAGG_HAVE_KOKKOS
         if (!diffBragg_runner) {
           diffBragg_runner = std::make_shared<diffBraggKOKKOS>();
@@ -2093,10 +2098,10 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         if (verbose)
             printf("Ran the Kokkos kernel\n");
 #else
-    bool DIFFBRAGG_USE_KOKKOS_flag_unsupported=false;
-    SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_flag_unsupported);
+        bool DIFFBRAGG_USE_KOKKOS_flag_unsupported=false;
+        SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_flag_unsupported);
 #endif
-    }
+        }
     last_kernel_on_GPU=true;
 #else
     bool DIFFBRAGG_USE_KOKKOS_and_DIFFBRAGG_USE_CUDA_flags_unsupported=false;
@@ -2112,7 +2117,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         printf("Nsteps=%d\noversample=%d\ndet_thick_steps=%d\nsources=%d\nphisteps=%d\nmosaic_domains=%d\n",
                 db_steps.Nsteps,oversample,detector_thicksteps,sources,phisteps,mosaic_domains);
         printf("DIFFBRAGG isotropic Ncells=%d\n", isotropic_ncells);
-        if(use_cuda || getenv("DIFFBRAGG_USE_CUDA")!= NULL)
+        if(use_gpu || getenv("DIFFBRAGG_USE_CUDA")!= NULL || getenv("DIFFBRAGG_USE_KOKKOS")!= NULL)
             printf("TIME TO RUN DIFFBRAGG -GPU- (%llu iterations):  %3.10f ms \n",n_total_iter, time);
         else
             printf("TIME TO RUN DIFFBRAGG -CPU- (%llu iterations):  %3.10f ms \n",n_total_iter, time);
