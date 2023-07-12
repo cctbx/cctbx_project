@@ -24,8 +24,6 @@ from mmtbx.reduce import Optimizers
 from mmtbx.programs import reduce2
 from iotbx.cli_parser import run_program
 from six.moves import cStringIO as StringIO
-from libtbx.utils import Sorry, Usage, null_out
-import libtbx.load_env
 import os.path as op
 import os
 import math
