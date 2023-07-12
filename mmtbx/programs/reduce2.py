@@ -1,5 +1,5 @@
 ##################################################################################
-# Copyright(c) 2021, Richardson Lab at Duke
+# Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -37,7 +37,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "0.9.1"
+version = "1.0.0"
 
 master_phil_str = '''
 approach = *add remove
