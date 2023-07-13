@@ -160,7 +160,7 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
 
 def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, pidx=0, beam_size_mm=0.001,
-                   Fbg_vs_stol=None, sample_thick_mm=100, density_gcm3=1, molecular_weight=18):
+                   Fbg_vs_stol=None, sample_thick_mm=100, density_gcm3=1, molecular_weight=18, roi=None):
   """
   :param DETECTOR:
   :param BEAM: see sim_spots
@@ -192,6 +192,8 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   SIM.amorphous_density_gcm3 = density_gcm3
   SIM.amorphous_molecular_weight_Da = molecular_weight
   SIM.progress_meter = False
+  if roi is not None:
+    SIM.region_of_interest=roi
   SIM.add_background()
   background_raw_pixels = SIM.raw_pixels.deep_copy()
   SIM.free_all()
