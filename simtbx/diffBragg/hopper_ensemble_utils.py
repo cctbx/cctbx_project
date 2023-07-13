@@ -459,7 +459,6 @@ class DataModelers:
         asu_hkls = [idx_to_asu[i] for i in range(self.SIM.Num_ASU)]
         inds, amps = self.SIM.D.Fhkl_tuple
         amplitude_map = {h: amp for h, amp in zip(inds, amps)}
-        breakpoint()
         assert set(asu_hkls).intersection(amplitude_map) == set(asu_hkls)
         self.initial_intens = np.array([amplitude_map[h]**2 for h in asu_hkls])
         self.flex_asu = flex.miller_index(asu_hkls)
