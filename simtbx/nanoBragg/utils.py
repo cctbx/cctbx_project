@@ -173,6 +173,9 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   :param sample_thick_mm: path length of background that is exposed by the beam
   :param density_gcm3: density of background  (defaults to water)
   :param molecular_weight: molecular weight of background (defaults to water)
+  :param roi: region of interst on detector ((fast_min, fast_max), (slow_min, slow_max)),
+              e.g., ((10,20), (30,35)) would simulate in the 10x5 pixel region of interest
+              starting at pixel 10,30 (fast, slow). See also region_of_interest in nanoBragg_ext.cpp
   :return: raw_pixels as flex array, these can be passed to sim_spots function below
   """
   wavelength_weights = np.array(wavelength_weights)
