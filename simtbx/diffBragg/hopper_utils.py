@@ -150,7 +150,6 @@ class DataModeler:
         self.pids=None  # panel id (per spot)
         self.tilt_abc=None  # background plane constants (per spot), a,b are fast,slow scan components, c is offset
         self.selection_flags=None  # whether the spot was selected for refinement (sometimes poorly conditioned spots are rejected)
-        self.background=None  # background for entire image (same shape as the detector)
         self.tilt_cov = None  # covariance estimates from background fitting (not used)
         self.simple_weights = None  # not used
         self.refls_idx = None  # position of modeled spot in original refl array
@@ -432,7 +431,7 @@ class DataModeler:
         if roi_packet is None:
             return False
 
-        self.rois, self.pids, self.tilt_abc, self.selection_flags, self.background, self.tilt_cov = roi_packet
+        self.rois, self.pids, self.tilt_abc, self.selection_flags, background, self.tilt_cov = roi_packet
 
         if remove_duplicate_hkl and not self.no_rlp_info:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
@@ -475,7 +474,7 @@ class DataModeler:
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
 
-        self.data_to_one_dim(img_data, is_trusted, self.background)
+        self.data_to_one_dim(img_data, is_trusted, background)
         return True
 
     def data_to_one_dim(self, img_data, is_trusted, background):
