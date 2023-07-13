@@ -651,16 +651,20 @@ class map_manager(map_reader, write_ccp4_map):
       else:
         external_origin_as_grid_units = (0,0,0)
         self._warning_message="External origin is not on a grid point" +\
-         "...ignoring external origin"
+         "...ignoring external origin" +\
+         "\n***Please contact the Phenix "+\
+          "developers if you need Phenix to use this external_origin***\n"
     else:
       external_origin_as_grid_units = (0,0,0)
 
     if self.external_origin_as_grid_units and \
         (external_origin_as_grid_units != (0,0,0)):
-      if  current_origin and \
+      if current_origin and \
           (current_origin != (0,0,0)):
-        self._warning_message="Map has external origin as well as existing" +\
-         "origin shift...ignoring external origin"
+        self._warning_message="Map has external origin as well as existing " +\
+         "origin shift...ignoring external origin" +\
+         "\n***Please contact the Phenix "+\
+          "developers if you need Phenix to use this external_origin***\n"
       else:  # take it
         self._warning_message="Map has external origin " +\
          "...using external origin as origin shift after "+\
