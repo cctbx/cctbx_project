@@ -367,10 +367,6 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   s0 = col(beam.get_s0())
   s0u = s0.normalize()
 
-  raw_data = imageset[0]
-  if not isinstance(raw_data, tuple):
-    raw_data = (raw_data,)
-
   recip_coords = flex.vec3_double()
   radial_labs = flex.vec3_double()
   radial_sizes = flex.double()
@@ -967,6 +963,9 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
     s1 = flex.vec3_double()
     bbox = flex.int6()
 
+    raw_data = imageset[0]
+    if not isinstance(raw_data, tuple):
+      raw_data = (raw_data,)
     rmsd = 0
     rmsd_n = 0
     for spot in indexed:
