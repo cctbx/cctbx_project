@@ -508,7 +508,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   print("Total sf spots:    %d"%len(reflections))
 
   max_clique_len = 0
-  integrated_count = 0
+  integrated_count = 0 # XXX This is always zero in this function!
 
   print("Finding spot connections...")
 
@@ -932,7 +932,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
       break
     # end finding preds and crystal orientation matrix refinement loop
 
-  return ori, indexed
+  return max_clique_len, len(all_spots), ori, indexed
 
 def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
   """ Index an image with a few spots and a known, small unit cell,
@@ -946,7 +946,12 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   detector = imageset.get_detector()
   beam = imageset.get_beam()
 
-  ori, indexed = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
+  lattice_results = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
+  if not lattice_results:
+    return None
+
+  max_clique_len, all_spots_len, ori, indexed = zip(*lattice_results)
+  integrated_count = 0
 
   if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
     write_cell(ori,beam,indexed,horiz_phil)
@@ -1130,7 +1135,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
     else:
       print(" Cannot calculate RMSD.  Not enough integrated spots or not enough clique spots near predictions.")
 
-  print("IMAGE STATS %s: spots %5d, max clique: %5d, integrated %5d spots"%(path,len(all_spots),max_clique_len,integrated_count))
+  print("IMAGE STATS %s: spots %5d, max clique: %5d, integrated %5d spots"%(path,all_spots_len,max_clique_len,integrated_count))
   return max_clique_len, experiments, refls
 
 def spots_rmsd(spots):
