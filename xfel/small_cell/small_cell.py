@@ -352,9 +352,7 @@ def small_cell_index(path, horiz_phil):
   max_clique_len, experiments, refls = small_cell_index_detail(experiments, reflections, horiz_phil)
   return max_clique_len
 
-def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
-  """ Index an image with a few spots and a known, small unit cell,
-  with unknown basis vectors """
+def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   imagesets = experiments.imagesets()
   assert len(imagesets) == 1
   imageset = imagesets[0]
@@ -937,6 +935,14 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
       print("Done refining unit cell.  No new spots to add.")
       break
     # end finding preds and crystal orientation matrix refinement loop
+
+  return ori, indexed
+
+def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
+  """ Index an image with a few spots and a known, small unit cell,
+  with unknown basis vectors """
+
+  ori, indexed = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
 
   if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
     write_cell(ori,beam,indexed,horiz_phil)
