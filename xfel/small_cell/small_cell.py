@@ -8,6 +8,7 @@ from six.moves import zip
 
 """ Series of functions used by cctbx.small_cell """
 
+import os
 import numpy as np
 from scipy.optimize import minimize
 import math
@@ -354,8 +355,6 @@ def small_cell_index(path, horiz_phil):
 def small_cell_index_detail(experiments, reflections, horiz_phil, write_output = True):
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
-  import os,math
-
   imagesets = experiments.imagesets()
   assert len(imagesets) == 1
   imageset = imagesets[0]
