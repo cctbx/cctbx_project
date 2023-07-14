@@ -938,6 +938,14 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   """ Index an image with a few spots and a known, small unit cell,
   with unknown basis vectors """
 
+  imagesets = experiments.imagesets()
+  assert len(imagesets) == 1
+  imageset = imagesets[0]
+  path = imageset.paths()[0]
+
+  detector = imageset.get_detector()
+  beam = imageset.get_beam()
+
   ori, indexed = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
 
   if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
