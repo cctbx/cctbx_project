@@ -356,139 +356,117 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
   inline
   void
   initialize_set(
-    std::set<str3>& name_set,
+    std::set<std::string>& name_set,
     const char** names)
   {
     if (name_set.size() != 0) return;
-    for(const char** n=names; *n; n++) name_set.insert(str3(*n));
+    for(const char** n=names; *n; n++) name_set.insert(std::string(*n));
   }
 
   inline
-  str3
-  std_string_as_str3(std::string const& name)
-  {
-    if (name.size() > 3) {
-      throw std::runtime_error(
-        "residue name with more than 3 characters: \""+name+"\"");
-    }
-    return str3(name.data(), name.size(), /*i_begin*/ 0, /*pad_with*/ ' ');
-  }
-
-  inline
-  void
-  initialize_set(
-    std::set<str3>& name_set,
-    scitbx::af::const_ref<std::string> const& names)
-  {
-    for(std::size_t i=0;i<names.size();i++) {
-      name_set.insert(std_string_as_str3(names[i]));
-    }
-  }
-
-  inline
-  const std::set<str3>&
+  const std::set<std::string>&
   amino_acid_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, amino_acid);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   d_amino_acid_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, d_amino_acid);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   modified_amino_acid_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, modified_amino_acid);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   rna_dna_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, rna_dna);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   modified_rna_dna_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, modified_rna_dna);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   ccp4_mon_lib_rna_dna_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, ccp4_mon_lib_rna_dna);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   water_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, water);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   small_molecule_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, small_molecule);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   saccharide_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, common_saccharide);
     return result;
   }
 
   inline
-  const std::set<str3>&
+  const std::set<std::string>&
   element_set()
   {
-    static std::set<str3> result;
+    static std::set<std::string> result;
     initialize_set(result, element);
     return result;
   }
 
   inline
   std::string const&
-  get_class(str3 const& name, bool consider_ccp4_mon_lib_rna_dna=false)
+  get_class(std::string const& name, bool consider_ccp4_mon_lib_rna_dna=false)
   {
-    static const std::set<str3>& aa_set = amino_acid_set();
-    static const std::set<str3>& d_aa_set = d_amino_acid_set();
-    static const std::set<str3>& modified_aa_set = modified_amino_acid_set();
-    static const std::set<str3>& na_set = rna_dna_set();
-    static const std::set<str3>& modified_na_set = modified_rna_dna_set();
-    static const std::set<str3>& ml_na_set = ccp4_mon_lib_rna_dna_set();
-    static const std::set<str3>& w_set = water_set();
-    static const std::set<str3>& sm_set = small_molecule_set();
-    static const std::set<str3>& s_set = saccharide_set();
-    static const std::set<str3>& e_set = element_set();
+    static const std::set<std::string>& aa_set = amino_acid_set();
+    static const std::set<std::string>& d_aa_set = d_amino_acid_set();
+    static const std::set<std::string>& modified_aa_set = modified_amino_acid_set();
+    static const std::set<std::string>& na_set = rna_dna_set();
+    static const std::set<std::string>& modified_na_set = modified_rna_dna_set();
+    static const std::set<std::string>& ml_na_set = ccp4_mon_lib_rna_dna_set();
+    static const std::set<std::string>& w_set = water_set();
+    static const std::set<std::string>& sm_set = small_molecule_set();
+    static const std::set<std::string>& s_set = saccharide_set();
+    static const std::set<std::string>& e_set = element_set();
     static const std::string common_amino_acid("common_amino_acid");
     static const std::string d_amino_acid("d_amino_acid");
     static const std::string modified_amino_acid("modified_amino_acid");
@@ -500,45 +478,42 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     static const std::string common_saccharide("common_saccharide");
     static const std::string common_element("common_element");
     static const std::string other("other");
-    if (aa_set.find(name) != aa_set.end()) {
+    std::string padded(name);
+    if (padded.size() < 3) {
+      padded.insert(padded.begin(), 3-padded.size(), ' ');
+    }
+    if (aa_set.find(padded) != aa_set.end()) {
       return common_amino_acid;
     }
-    if (d_aa_set.find(name) != d_aa_set.end()) {
+    if (d_aa_set.find(padded) != d_aa_set.end()) {
       return d_amino_acid;
     }
-    if (modified_aa_set.find(name) != modified_aa_set.end()) {
+    if (modified_aa_set.find(padded) != modified_aa_set.end()) {
       return modified_amino_acid;
     }
-    if (na_set.find(name) != na_set.end()) {
+    if (na_set.find(padded) != na_set.end()) {
       return common_rna_dna;
     }
-    if (modified_na_set.find(name) != modified_na_set.end()) {
+    if (modified_na_set.find(padded) != modified_na_set.end()) {
       return modified_rna_dna;
     }
     if (   consider_ccp4_mon_lib_rna_dna
-        && ml_na_set.find(name) != ml_na_set.end()) {
+        && ml_na_set.find(padded) != ml_na_set.end()) {
       return ccp4_mon_lib_rna_dna;
     }
-    if (w_set.find(name) != w_set.end()) {
+    if (w_set.find(padded) != w_set.end()) {
       return common_water;
     }
-    if (sm_set.find(name) != sm_set.end()) {
+    if (sm_set.find(padded) != sm_set.end()) {
       return common_small_molecule;
     }
-    if (s_set.find(name) != s_set.end()) {
+    if (s_set.find(padded) != s_set.end()) {
       return common_saccharide;
     }
-    if (e_set.find(name) != e_set.end()) {
+    if (e_set.find(padded) != e_set.end()) {
       return common_element;
     }
     return other;
-  }
-
-  inline
-  std::string const&
-  get_class(std::string const& name, bool consider_ccp4_mon_lib_rna_dna=false)
-  {
-    return get_class(std_string_as_str3(name), consider_ccp4_mon_lib_rna_dna);
   }
 
 }}} // namespace iotbx::pdb::common_residue_names

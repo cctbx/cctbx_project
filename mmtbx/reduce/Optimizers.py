@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, time, itertools
+import argparse, itertools, re
 
 from mmtbx.reduce import Movers
 from mmtbx.reduce import InteractionGraph
@@ -25,7 +25,6 @@ from boost_adaptbx.graph import connected_component_algorithm as cca
 
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
-from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
@@ -108,9 +107,10 @@ def _ResNameAndID(a):
   chainID = a.parent().parent().parent().id
   resName = a.parent().resname.strip().upper()
   resID = str(a.parent().parent().resseq_as_int())
+  altLoc = a.parent().altloc
   # Don't print the code if it is a space (blank).
   insertionCode = a.parent().parent().icode.strip()
-  return "chain "+str(chainID)+" "+resName+" "+resID+insertionCode
+  return "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
 
 ##################################################################################
 # Helper classes
@@ -430,8 +430,8 @@ class _SingletonOptimizer(object):
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers, self._extraAtomInfo,
-          probeRadius=probeRadius)
+        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers,
+          self._extraAtomInfo, probeRadius=probeRadius)
         components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
@@ -460,11 +460,12 @@ class _SingletonOptimizer(object):
           for a in m.FixUp(0).atoms:
             moverAtoms.add(a)
 
-        # Get the excluded list for each atom in the set, making a dictionary
+        # Get the excluded list for each atom in the set, making a dictionary.
+        # We go at most 3 hops unless one end of the chain has a hydrogen.
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth)
+            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -568,7 +569,7 @@ class _SingletonOptimizer(object):
         # Compute and store the initial score for each Mover in its info
         for m in self._movers:
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[0] * self._preferenceMagnitude
+          score = self._preferenceMagnitude * coarse.preferenceEnergies[0]
           self._setMoverState(coarse, 0)
           for a in coarse.atoms:
             score += self._scoreAtom(a)
@@ -576,7 +577,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
-        # the multi-element Cliques and then to do indepenedent fine adjustment of all
+        # the multi-element Cliques and then to do independent fine adjustment of all
         # Cliques.  Subclasses should overload the called routines, but the global approach
         # taken here will be the same for all of them.  If we want to change the recipe
         # so that we can do global fine optimization, we'll do that here rather than in the
@@ -605,7 +606,7 @@ class _SingletonOptimizer(object):
         # each of them, whether they are part of a multi-Mover Clique or not.
         self._fineLocations = {}
         for m in self._movers:
-          self._fineLocations[m] = 0
+          self._fineLocations[m] = None
         self._infoString += _VerboseCheck(self._verbosity, 1,"Fine optimization on all Movers\n")
         for m in self._movers:
           self._optimizeSingleMoverFine(m)
@@ -615,7 +616,7 @@ class _SingletonOptimizer(object):
         # Print the final state and score for all Movers
         def _scoreMoverReportClash(self, m, index):
           coarse = m.CoarsePositions()
-          score = coarse.preferenceEnergies[index] * self._preferenceMagnitude
+          score = self._preferenceMagnitude * coarse.preferenceEnergies[index]
           clash = False
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
@@ -803,7 +804,7 @@ class _SingletonOptimizer(object):
     # :side_effect: self._setMoverState() is called to put the Mover's atoms into its best state.
     # :side_effect: self._coarseLocations is set to the Mover's best state.
     # :side_effect: Changes the value of self._highScores[mover] to the score at the coarse position
-    # selected
+    # selected.
     coarse = mover.CoarsePositions()
     scores = coarse.preferenceEnergies[:]
     for i in range(len(scores)):
@@ -887,8 +888,8 @@ class _SingletonOptimizer(object):
 
       # Put the Mover into its final position (which may be back to its initial position)
       # and update the high score.
-      self._fineLocations[mover] = maxIndex
       if maxScore > self._highScores[mover]:
+        self._fineLocations[mover] = maxIndex
         self._infoString += _VerboseCheck(self._verbosity, 3,"Setting single Mover to fine orientation {}".format(maxIndex)+
           ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
@@ -897,6 +898,7 @@ class _SingletonOptimizer(object):
         self._highScores[mover] = maxScore
       else:
         # Put us back to the initial coarse location and don't change the high score.
+        self._fineLocations[mover] = None
         self._infoString += _VerboseCheck(self._verbosity, 3,"Leaving single Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
     return maxScore
@@ -1035,7 +1037,7 @@ class _SingletonOptimizer(object):
         if numH == 3:
           # See if the Carbon's other neighbor is attached to two other atoms (3 total).  If so,
           # then insert a MoverAromaticMethylRotator and if not, generate a MoverTetrahedralMethylRotator
-          # so that they Hydrogens will be staggered but do not add it to those to be optimized.
+          # so that the Hydrogens will be staggered but do not add it to those to be optimized.
           if len(bondedNeighborLists[neighbor]) == 3:
             try:
               self._movers.append(Movers.MoverAromaticMethylRotator(a, bondedNeighborLists, hParameters))
@@ -1087,7 +1089,7 @@ class _SingletonOptimizer(object):
           try:
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and don't insert the Mover. If not, then insert the Mover.
-            s = _FindFlipState(a.parent().parent(), fs)
+            s = _FindFlipState(a, fs)
             if s is not None:
               self._infoString += _VerboseCheck(self._verbosity, 1,"Setting MoverAmideFlip for "+resNameAndID+": flipped = "+
                 str(s.flipped)+", angles adjusted = "+str(s.fixedUp)+"\n")
@@ -1204,7 +1206,7 @@ class _SingletonOptimizer(object):
             # Check to see if the state of this Mover has been specified. If so, place it in
             # the requested state and insert the Mover as a non-flipping Histidine.
             # If not, then insert the Histidine flip Mover.
-            s = _FindFlipState(a.parent().parent(), fs)
+            s = _FindFlipState(a, fs)
             if s is not None:
               if s.flipped:
                 enabledFlips = 2
@@ -1332,16 +1334,17 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     for curStateValues in _generateAllStates(numStates):
 
       # Set all movers to match the state list.
-      # @todo Optimize this so that it only changes states that differed from last time.
-      for i in range(len(movers)):
-        self._setMoverState(states[i], curStateValues[i])
-        self._coarseLocations[movers[i]] = curStateValues[i]
+      for i,m in enumerate(movers):
+        # Only change this Mover if it is different from the last time.
+        if self._coarseLocations[m] != curStateValues[i]:
+          self._setMoverState(states[i], curStateValues[i])
+          self._coarseLocations[m] = curStateValues[i]
 
       # Compute the score over all atoms in all Movers and see if it is the best.  If so,
       # update the best.
       score = 0
       for i in range(len(movers)):
-        score += states[i].preferenceEnergies[curStateValues[i]]
+        score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
         for a in states[i].atoms:
           score += self._scoreAtom(a)
       self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1350,14 +1353,14 @@ class _BruteForceOptimizer(_SingletonOptimizer):
         bestScore = score
         bestState = curStateValues[:]
 
-    # Put each Mover into its best state and compute its high-score value.
-    # Compute the best individual scores for these Movers for use in later fine-motion
+    # Put each Mover into its state in the best configuration and compute its high-score value.
+    # Store the individual scores for these Movers in the best config for use in later fine-motion
     # processing.  Return the total score.
     ret = 0.0
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
       self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = states[i].preferenceEnergies[curStateValues[i]]
+      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
       for a in states[i].atoms:
         self._highScores[m] += self._scoreAtom(a)
       self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1380,7 +1383,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
               ):
     """Constructor for _CliqueOptimizer.  This uses a recursive algorithm to break down the total
     clique into sets of smaller cliques.  It looks for a vertex cut in the Clique it is called with
-    that will separate the remaining vertices into two more more connected subcomponents.  It then tests
+    that will separate the remaining vertices into two or more more connected subcomponents.  It then tests
     each combined state of the set of Movers in the vertex cut to find the one with the best overall
     maximum score.  For each state, it first recursively optimizes all of the connected subcomponents
     and then (with each of the subcomponents in its optimal state) computes the score for the Movers in
@@ -1446,7 +1449,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
 
   def _optimizeCliqueCoarse(self, clique):
     """
-    Looks for a vertex cut in the Clique that will separate the remaining vertices into two more
+    Looks for a vertex cut in the Clique that will separate the remaining vertices into two or more
     more connected subcomponents.  Test each combined state of the set of Movers in the vertex cut
     to find the one with the best overall maximum score.
       For each state, recursively optimize all of the connected subcomponents and then (with each
@@ -1491,10 +1494,11 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         numStates.append(len(states[m].positions))
       for curStateValues in _generateAllStates(numStates):
         # Set all cutMovers to match the state list.
-        # @todo Optimize this so that it only changes states that differed from last time.
         for i,m in enumerate(cutMovers):
-          self._setMoverState(states[m], curStateValues[i])
-          self._coarseLocations[m] = curStateValues[i]
+          # Only change this Mover if it is different from the last time.
+          if self._coarseLocations[m] != curStateValues[i]:
+            self._setMoverState(states[m], curStateValues[i])
+            self._coarseLocations[m] = curStateValues[i]
 
         # Recursively compute the best score across all connected components in the cutGraph.
         # This will leave each subgraph in its best state for this set of cutMovers states.
@@ -1503,12 +1507,13 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         for g in components:
           subMovers = [cutGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(cutGraph, subMovers)
-          score += self._optimizeCliqueCoarse(subset)
+          # Call this exact same method, not a derived class method
+          score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
 
         # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
         # update the best.
         for i, m in enumerate(cutMovers):
-          score += states[m].preferenceEnergies[curStateValues[i]]
+          score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
           for a in states[m].atoms:
             score += self._scoreAtom(a)
         self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1525,7 +1530,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
       for i,m in enumerate(movers):
         self._setMoverState(states[m], bestState[i])
         self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = states[m].preferenceEnergies[bestState[i]]
+        self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
         for a in states[m].atoms:
           self._highScores[m] += self._scoreAtom(a)
         self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
@@ -1552,7 +1557,7 @@ class FastOptimizer(_CliqueOptimizer):
                 verbosity = 1
               ):
     """Constructor for FastOptimizer.  This uses the same algorithm as the
-    parent-class but first constructs a cache for every atom in every Mover
+    parent class but first constructs a cache for every atom in every Mover
     of all the Movers whose positions can affect its answer.  The _scoreAtom() method
     is overridden to use this cached value in clique optimization (but not in singleton
     or fine optimization) when it has already been computed for a given configuration
@@ -1615,12 +1620,23 @@ class FastOptimizer(_CliqueOptimizer):
     # it calls.
     self._doScoreCaching = False
 
+    # Keep track of the ratio of calculated vs. cached results.
+    self._numCalculated = 0
+    self._numCached = 0
+
     super(FastOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
                 probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
+
+    if self._numCalculated > 0:
+      self._infoString += _VerboseCheck(self._verbosity, 1,
+          'Calculated : cached atom scores: {} : {}; fraction calculated {:.2f}\n'.format(
+          self._numCalculated, self._numCached,
+          self._numCalculated/(self._numCalculated + self._numCached)))
+
 
   def _initializeAlternate(self):
     # Ensure that we have a per-atom _scoreCache dictionary that will store already-computed
@@ -1644,11 +1660,15 @@ class FastOptimizer(_CliqueOptimizer):
       # compute and store it and then return that value.
       state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
       try:
+        self._numCached += 1
         return self._scoreCache[atom][state]
       except Exception:
+        self._numCached -= 1      # Undo the increment above
+        self._numCalculated += 1
         self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
         return self._scoreCache[atom][state]
     else:
+      self._numCalculated += 1
       return super(FastOptimizer, self)._scoreAtom(atom)
 
   def _optimizeCliqueCoarse(self, clique):
@@ -1704,19 +1724,22 @@ def _ParseFlipStates(fs):
   return ret
 
 
-def _FindFlipState(rg, flipStates):
-  '''Is a residue group in the list of residues that have flip states? If so, return the associated state
-  :param rg: residue group
+def _FindFlipState(a, flipStates):
+  '''Is an atom in the list of residues that have flip states? If so, return the associated state
+  :param a: atom
   :param flipStates: List of FlipMoverState objects
   :return: FlipMoverState if the residue is in the list, None if not
   '''
+  ag = a.parent()
+  rg = ag.parent()
+  chain = rg.parent()
   for fs in flipStates:
-    chain = rg.parent()
     modelId = chain.parent().id
     # We must offset the index of the model by 1 to get to the 1-based model ID
     if ( (modelId == fs.modelId + 1 or modelId == '') and
           (chain.id == fs.chain) and
           (rg.resseq_as_int() == fs.resId) and
+          (ag.altloc.strip() == '' or fs.altId == '.' or ag.altloc.strip().lower() == fs.altId.lower()) and
           (rg.icode.strip() == fs.iCode.strip())
         ):
       return fs
@@ -1837,6 +1860,75 @@ def _generateAllStates(numStates):
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
+def _optimizeFragment(pdb_raw):
+  """Returns an optimizer constructed based on the raw PDB data snippet passed in.
+  :param pdb_raw: A string that includes a snippet of a PDB file. Should have no alternates.
+  :return: FastOptimizer initialized based on the snippet.
+  """
+  dm = DataManager(['model'])
+  dm.process_model_str("my_data.pdb", pdb_raw)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers, which should be none because the Histidine flip
+  # will be constrained by the ionic bonds.
+  probePhil = philLike(False)
+  return FastOptimizer(probePhil, True, model)
+
 def Test(inFileName = None, dumpAtoms = False):
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
@@ -1875,6 +1967,124 @@ END
 
   #========================================================================
   # Unit tests for each type of Optimizer.
+
+  ################################################################################
+  # Test using a snippet from 7c31 to make sure the single-hydrogen rotator sets
+  # the orientation of the Hydrogen to make good contact with a nearby Oxygen. The B
+  # alternate has been removed and the A moved to the main alternate. This is not
+  # close enough for a good Hydrogen bond, so it does not point straight at the Oxygen.
+
+  pdb_7c31_two_residues = """\
+CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.035901  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.035901  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010040        0.00000
+ATOM     68  N   SER A   5     -31.155  49.742   0.887  1.00 10.02           N
+ATOM     69  CA  SER A   5     -32.274  48.937   0.401  1.00  9.76           C
+ATOM     70  C   SER A   5     -33.140  49.851  -0.454  1.00  9.47           C
+ATOM     71  O   SER A   5     -33.502  50.939  -0.012  1.00 10.76           O
+ATOM     72  CB  SER A   5     -33.086  48.441   1.599  1.00 12.34           C
+ATOM     73  OG  SER A   5     -34.118  47.569   1.179  1.00 19.50           O
+ATOM    758  N   VAL B   2     -34.430  42.959   3.043  1.00 19.95           N
+ATOM    759  CA  VAL B   2     -32.994  42.754   2.904  0.50 18.09           C
+ATOM    760  C   VAL B   2     -32.311  44.083   2.629  1.00 17.65           C
+ATOM    761  O   VAL B   2     -32.869  44.976   1.975  1.00 18.97           O
+ATOM    762  CB  VAL B   2     -32.703  41.738   1.778  0.50 19.70           C
+ATOM    763  CG1 VAL B   2     -33.098  42.307   0.419  0.50 19.61           C
+ATOM    764  CG2 VAL B   2     -31.224  41.334   1.755  0.50 16.49           C
+TER    1447      CYS B  47
+END
+"""
+  opt = _optimizeFragment(pdb_7c31_two_residues)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator test: " + str(len(movers))
+
+  # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
+  # after 'pose Angle '.
+  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  if angle != 62:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 62"
+
+  ################################################################################
+  # Test using a modified snippet from 7c31 to make sure the single-hydrogen rotator sets
+  # the orientation of the Hydrogen to make a good hydrogen bond with a nearby Oxygen.
+  # The above example has been stripped down and has the Oxygen moved closer
+
+  pdb_7c31_two_residues_close_O = """\
+CRYST1   27.854   27.854   99.605  90.00  90.00  90.00 P 43          8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.035901  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.035901  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010040        0.00000
+ATOM     68  N   SER A   5     -31.155  49.742   0.887  1.00 10.02           N
+ATOM     69  CA  SER A   5     -32.274  48.937   0.401  1.00  9.76           C
+ATOM     70  C   SER A   5     -33.140  49.851  -0.454  1.00  9.47           C
+ATOM     71  O   SER A   5     -33.502  50.939  -0.012  1.00 10.76           O
+ATOM     72  CB  SER A   5     -33.086  48.441   1.599  1.00 12.34           C
+ATOM     73  OG  SER A   5     -34.118  47.569   1.179  1.00 19.50           O
+ATOM    761  O   VAL B   2     -33.862  46.385   1.577  1.00 18.97           O
+TER    1447      CYS B  47
+END
+"""
+  opt = _optimizeFragment(pdb_7c31_two_residues_close_O)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator H-bond test: " + str(len(movers))
+
+  # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
+  # after 'pose Angle '.
+  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  if angle != 109:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected 109"
+
+  ################################################################################
+  # Test using a modified snippet from 1ubq to make sure the NH3 rotator sets
+  # the orientation as expected to align with a nearby Oxygen and waters.
+
+  pdb_1ubq_two_residues_close_O = """\
+CRYST1   50.840   42.770   28.950  90.00  90.00  90.00 P 21 21 21    4
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.019670  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.023381  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.034542        0.00000
+ATOM      1  N   MET A   1      27.340  24.430   2.614  1.00  9.67           N
+ATOM      2  CA  MET A   1      26.266  25.413   2.842  1.00 10.38           C
+ATOM      3  C   MET A   1      26.913  26.639   3.531  1.00  9.62           C
+ATOM      4  O   MET A   1      27.886  26.463   4.263  1.00  9.62           O
+ATOM      5  CB  MET A   1      25.112  24.880   3.649  1.00 13.77           C
+ATOM      6  CG  MET A   1      25.353  24.860   5.134  1.00 16.29           C
+ATOM      7  SD  MET A   1      23.930  23.959   5.904  1.00 17.17           S
+ATOM      8  CE  MET A   1      24.447  23.984   7.620  1.00 16.11           C
+ATOM    127  N   VAL A  17      30.310  25.458   5.384  1.00  8.99           N
+ATOM    128  CA  VAL A  17      30.288  24.245   6.193  1.00  8.85           C
+ATOM    129  C   VAL A  17      29.279  23.227   5.641  1.00  8.04           C
+ATOM    130  O   VAL A  17      28.478  23.522   4.725  1.00  8.99           O
+ATOM    131  CB  VAL A  17      29.903  24.590   7.665  1.00  9.78           C
+ATOM    132  CG1 VAL A  17      30.862  25.496   8.389  1.00 12.05           C
+ATOM    133  CG2 VAL A  17      28.476  25.135   7.705  1.00 10.54           C
+TER     603      GLY A  76
+HETATM  625  O   HOH A  98      25.928  21.774   2.325  1.00 13.70           O
+HETATM  637  O   HOH A 110      28.824  25.094   0.886  0.77 36.99           O
+END
+"""
+  opt = _optimizeFragment(pdb_1ubq_two_residues_close_O)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for NH3 rotator test: " + str(len(movers))
+
+  # See what the pose angle is on the Mover. It should be 163 degrees, and is reported
+  # after 'pose Angle '.
+  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  if angle != 163:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 163"
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
@@ -1980,9 +2190,6 @@ END
     if a.element.upper() == "ZN":
       a.xyz = origPositionZN
 
-  # Get the spatial-query information needed to quickly determine which atoms are nearby
-  sq = probeExt.SpatialQuery(atoms)
-
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
   probePhil = philLike(False)
@@ -2003,8 +2210,165 @@ END
         return 'Optimizers.Test(): '+name+' in 1xso Histidine test was not set for deletion'
 
   #========================================================================
-  # Check a case where a HisFlip would be flipped and locked down and have its Hydrogen removed.
-  # @todo
+  # Check a clique with multiple elements to be sure that it was properly
+  # globally optimized. This is a set of ACT residues that are offset
+  # such that they want to line up the same way.  A carbon is placed to
+  # force the orientaion away from the initial solution.
+  pdb_multi_act = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+SCALE1      0.010685  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007819  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.003973        0.00000
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  101  C   ACT A 101       8.994 -49.773 -37.606  1.00 16.65           C
+HETATM  102  O   ACT A 101       8.154 -50.481 -38.245  1.00 15.33           O
+HETATM  103  CH3 ACT A 101       9.290 -49.910 -36.148  1.00 17.13           C
+HETATM  104  OXT ACT A 101       9.610 -48.925 -38.299  1.00 17.05           O
+HETATM  111  C   ACT A 111      11.494 -52.273 -38.206  1.00 16.65           C
+HETATM  112  O   ACT A 111      10.654 -52.981 -38.845  1.00 15.33           O
+HETATM  113  CH3 ACT A 111      11.790 -52.410 -36.748  1.00 17.13           C
+HETATM  114  OXT ACT A 111      12.110 -51.425 -38.899  1.00 17.05           O
+HETATM  121  C   ACT A 121      13.994 -54.773 -38.806  1.00 16.65           C
+HETATM  122  O   ACT A 121      13.154 -55.481 -39.445  1.00 15.33           O
+HETATM  123  CH3 ACT A 121      14.290 -54.910 -37.348  1.00 17.13           C
+HETATM  124  OXT ACT A 121      14.610 -53.925 -39.499  1.00 17.05           O
+HETATM  131  C   ACT A 131      16.494 -57.273 -39.406  1.00 16.65           C
+HETATM  132  O   ACT A 131      15.654 -57.981 -40.045  1.00 15.33           O
+HETATM  133  CH3 ACT A 131      16.790 -57.410 -37.948  1.00 17.13           C
+HETATM  134  OXT ACT A 131      17.110 -56.425 -40.099  1.00 17.05           O
+HETATM  141  C   ACT A 141      18.994 -59.773 -40.006  1.00 16.65           C
+HETATM  142  O   ACT A 141      18.154 -60.481 -40.645  1.00 15.33           O
+HETATM  143  CH3 ACT A 141      19.290 -59.910 -38.548  1.00 17.13           C
+HETATM  144  OXT ACT A 141      19.610 -58.925 -40.699  1.00 17.05           O
+HETATM  200  C   ACT A 200       4.500 -45.500 -35.000  1.00 16.65           C
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_multi_act.pdb",pdb_multi_act)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers. Make sure we got as many as we expected.
+  # Make sure that the orientation for all of the movers is correct.
+  # Test with each type of optimizer, from the base to the more derived, so
+  # that we find out about failures on the base classes first.
+  probePhil = philLike(False)
+
+  print('Testing _BruteForceOptimizer')
+  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
+
+  print('Testing _CliqueOptimizer')
+  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer multi-ACT test"
+
+  print('Testing FastOptimizer')
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer multi-ACT test"
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
@@ -2014,7 +2378,100 @@ END
   # Check that the occupancy and B-factor cut-offs for water Oxygens are causing them
   # to be ignored in the calculations by putting an atom in the way and making sure it
   # is ignored.
-  # @todo
+  pdb_b_factor = (
+"""
+CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2
+SCALE1      0.010685  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.007819  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.003973        0.00000
+HETATM    1  C   ACT A   1       6.494 -47.273 -37.006  1.00 16.65           C
+HETATM    2  O   ACT A   1       5.654 -47.981 -37.645  1.00 15.33           O
+HETATM    3  CH3 ACT A   1       6.790 -47.410 -35.548  1.00 17.13           C
+HETATM    4  OXT ACT A   1       7.110 -46.425 -37.699  1.00 17.05           O
+HETATM  200  O   HOH A 200       8.200 -48.610 -35.148  1.00 50.00           O
+HETATM  201  O   HOH A 201       5.800 -46.810 -34.548  1.00 20.00           O
+END
+"""
+    )
+  dm = DataManager(['model'])
+  dm.process_model_str("pdb_b_factor.pdb",pdb_b_factor)
+  model = dm.get_model()
+
+  # Make sure we have a valid unit cell.  Do this before we add hydrogens to the model
+  # to make sure we have a valid unit cell.
+  model = shift_and_box_model(model = model)
+
+  # Add Hydrogens to the model
+  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model)
+  reduce_add_h_obj.run()
+  model = reduce_add_h_obj.get_model()
+
+  # Interpret the model after adding Hydrogens to it so that
+  # all of the needed fields are filled in when we use them below.
+  # @todo Remove this once place_hydrogens() does all the interpretation we need.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
+
+  # Get the first model in the hierarchy.
+  firstModel = model.get_hierarchy().models()[0]
+
+  # Get the list of alternate conformation names present in all chains for this model.
+  alts = AlternatesInModel(firstModel)
+
+  # Get the atoms from the first conformer in the first model (the empty string is the name
+  # of the first conformation in the model; if there is no empty conformation, then it will
+  # pick the first available conformation for each atom group.
+  atoms = GetAtomsForConformer(firstModel, "")
+
+  # Get the Cartesian positions of all of the atoms we're considering for this alternate
+  # conformation.
+  carts = flex.vec3_double()
+  for a in atoms:
+    carts.append(a.xyz)
+
+  # Get the bond proxies for the atoms in the model and conformation we're using and
+  # use them to determine the bonded neighbor lists.
+  bondProxies = model.get_restraints_manager().geometry.get_all_bond_proxies(sites_cart = carts)[0]
+  bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
+
+  # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
+  class philLike:
+    def __init__(self, useImplicitHydrogenDistances = False):
+      self.implicit_hydrogens = useImplicitHydrogenDistances
+      self.set_polar_hydrogen_radius = True
+  probePhil = philLike(False)
+  ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
+      useNeutronDistances=False,probePhil=probePhil)
+  extra = ret.extraAtomInfo
+
+  # Also compute the maximum VDW radius among all atoms.
+  maxVDWRad = 1
+  for a in atoms:
+    maxVDWRad = max(maxVDWRad, extra.getMappingFor(a).vdwRadius)
+
+  # Optimization will place the movers. Make sure we got as many as we expected.
+  # Make sure that the orientation for all of the movers is correct.
+  probePhil = philLike(False)
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 1:
+    return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
 
   #========================================================================
   # Generate an example data model with a small molecule in it or else read
@@ -2047,11 +2504,9 @@ END
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
-  # Run each type of optimizer on the model.
-  # @todo Verify that they all get equivalent results
-  print('Testing _BruteForceOptimizer')
-  opt = _BruteForceOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
+  # Run each type of optimizer on the model to make sure they don't crash.
+  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.02,
@@ -2060,9 +2515,8 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  print('Testing _CliqueOptimizer')
-  opt = _CliqueOptimizer(probePhil, True, model,probeRadius=0.25, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
+  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 probeDensity = 16.0,
                 minOccupancy = 0.02,
@@ -2071,11 +2525,7 @@ END
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  print('Testing FastOptimizer')
-  opt = FastOptimizer(probePhil, True, model,probeRadius=0.25)
-
-  # Test specifying the flip states.
-  # @todo
+  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25)
 
   # Write debugging output if we've been asked to
   if dumpAtoms:

@@ -248,12 +248,22 @@ ATOM     62  O   SERA-   2      73.055  70.333  61.737  1.00 65.10           O
     """)
 
 def test2():
+  """ Overall counts duplicate atom labels due to incorrect long chain processing
+  """
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   h = inp.construct_hierarchy()
-  for c in h.chains():
-    for rg in c.residue_groups():
-      for ag in rg.atom_groups():
-        print(c.id, rg.resseq, ag.resname)
+  print("here")
+  oc = h.overall_counts()
+  print("here1")
+  oc.show()
+  print("here2")
+  print(oc.errors())
+  print("here3")
+  # h = inp.construct_hierarchy()
+  # for c in h.chains():
+  #   for rg in c.residue_groups():
+  #     for ag in rg.atom_groups():
+  #       print(c.id, rg.resseq, ag.resname)
 
 if (__name__ == "__main__"):
   t0 = time.time()

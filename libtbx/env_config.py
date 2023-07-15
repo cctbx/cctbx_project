@@ -582,11 +582,14 @@ class environment:
     return abs(self.build_path / '..' / path)
 
   def under_base(self, path, return_relocatable_path=False):
-    if self.build_options.use_conda:
-      return abs(self.build_path / '..' / 'conda_base' / path)
-    else:
-      return abs(self.build_path / '..' / 'base' / path)
-    # return abs(os.path.join(abs(self.build_path), '..', 'base', path))
+    result = self.build_path / '..' / 'conda_base' / path
+    if self.installed:
+      result = self.bin_path.anchor / path
+    elif not self.build_options.use_conda:
+      result = self.build_path / '..' / 'base' / path
+    if not return_relocatable_path:
+      result = abs(result)
+    return result
 
   def under_build(self, path, return_relocatable_path=False):
     result = self.as_relocatable_path(path)

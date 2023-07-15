@@ -83,6 +83,10 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:
         diff_sig_b = diff_sig_c = diff_sig_a
+
+    if params.simulator.crystal.has_isotropic_ncells:
+        Nb = Nc = Na
+
     eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, Mod, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 

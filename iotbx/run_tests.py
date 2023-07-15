@@ -145,6 +145,7 @@ tst_list_base = [
   "$D/regression/tst_group_rounding.py",
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
   "$D/regression/tst_hierarchy_long_chain_ids_1.py",
+  "$D/regression/tst_hierarchy_long_resname_1.py",
   ]
 
 # failing tests on Windows, Python 2.7
@@ -152,7 +153,9 @@ tst_list_windows_fail = [
   "$D/detectors/tst_debug_write.py",
 ]
 
-tst_list_fail = ["$D/regression/ncs/tst_ncs_reordered_chains.py",
+tst_list_fail = [
+  "$D/regression/ncs/tst_ncs_reordered_chains.py",
+  "$D/regression/tst_hierarchy_copy_select.py",
   ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail

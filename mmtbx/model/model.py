@@ -3341,7 +3341,7 @@ class manager(object):
     )
     return result
 
-  def solvent_selection(self, include_ions=False):
+  def solvent_selection(self, include_ions=False, offset=None):
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.get_hierarchy().atoms():
@@ -3351,6 +3351,9 @@ class manager(object):
       elif (a.segid.strip() == "ION") and (include_ions):
         result.append(True)
       else: result.append(False)
+    if(offset is not None):
+      for i in offset:
+        result[i] = False
     return result
 
   def xray_structure_macromolecule(self):

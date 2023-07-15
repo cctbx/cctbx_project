@@ -628,15 +628,16 @@ namespace {
     return std::string(result, 15U);
   }
 
-  small_str<19>
+  std::string
   atom::pdb_label_columns_segid_small_str() const
+  // Only used in overall_counts in find_duplicate_atom_labels()
   {
     char blank = ' ';
     small_str<19> result(small_str_no_init);
     atom_label_columns_formatter().format(result.elems, *this);
     data->segid.copy_left_justified(result.elems+15, 4U, blank);
     result.elems[19] = '\0';
-    return result;
+    return std::string(result.elems);
   }
 
   std::string
@@ -1343,7 +1344,7 @@ namespace {
     std::string ag_class;
     // Using correct overloaded function so residue name would be padded.
     // Crucial for mmCIF.
-    ag_class = common_residue_names::get_class(std::string(data->resname.c_str()));
+    ag_class = common_residue_names::get_class(data->resname);
     if (ag_class == "common_rna_dna" || ag_class == "modified_rna_dna") {
       if (!get_atom("N9")) {
         std::sort(

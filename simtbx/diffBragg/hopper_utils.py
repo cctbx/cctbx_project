@@ -1406,6 +1406,9 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
 
     Ndef_params = [Mod.P["Ndef%d" % (i_n,)] for i_n in range(3)]
     Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
+    if SIM.D.isotropic_ncells:
+        Ne = Nd
+        Nf = Nd
     SIM.D.Ncells_def = Nd, Ne, Nf
 
     # diffuse signals
