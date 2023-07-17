@@ -875,6 +875,21 @@ namespace {
       arg("thresholds"),
       arg("average")));
 
+
+
+    def("sf_from_map_simple",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<cctbx::miller::index<> > const&,
+         af::const_ref<int, af::c_grid<3> > const&,
+         af::shared<double> const&,
+         double const& )) sf_from_map_simple, (
+      arg("miller_indices"),
+      arg("map_data"),
+      arg("abc"),
+      arg("d_min")));
+
+
+
     def("rotate_translate_map",
       (af::versa<double, af::c_grid<3> >(*)
         (uctbx::unit_cell const&,
