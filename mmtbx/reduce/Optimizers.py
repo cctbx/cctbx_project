@@ -112,6 +112,13 @@ def _ResNameAndID(a):
   insertionCode = a.parent().parent().icode.strip()
   return "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
 
+def _DescribeMover(m):
+  type_str = str(type(m))
+  type_str = type_str.split("'")[1]  # Extract the type name between the quotes
+  type_str = type_str.split(".")[-1]  # Extract the class name from the module path
+  info = _ResNameAndID(m.CoarsePositions().atoms[0])
+  return type_str + ' ' + info
+
 ##################################################################################
 # Helper classes
 
@@ -814,7 +821,9 @@ class _SingletonOptimizer(object):
 
       for a in coarse.atoms:
         scores[i] += self._scoreAtom(a)
-      self._infoString += _VerboseCheck(self._verbosity, 5,"Single Mover score at orientation {} = {:.2f}\n".format(i,scores[i]))
+      self._infoString += _VerboseCheck(
+        self._verbosity, 5,"Single Mover {} score at orientation {} = {:.2f}\n".format(
+          _DescribeMover(mover), i, scores[i]))
 
     # Find the maximum score, keeping track of the best score and its index.
     maxScore = scores[0]
