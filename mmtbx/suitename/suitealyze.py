@@ -2,9 +2,10 @@ from __future__ import division
 from __future__ import nested_scopes, generators, absolute_import
 from __future__ import with_statement, print_function
 
-from mmtbx.validation import residue, validation
+from mmtbx.validation import residue
 from mmtbx.suitename.suitename import compute
 from mmtbx.suitename.suitenamedefs import findBase
+from mmtbx.validation import rna_geometry
 import json
 import sys
 
@@ -35,6 +36,7 @@ class suite(residue):
     "base"
   ]
   def __init__(self,resid,angles,atoms):
+    residue.__init__(self)
     self.model_id = resid["model"]
     self.chain_id = resid["chain"]
     self.resseq = resid["resseq"]
@@ -59,6 +61,9 @@ class suite(residue):
     assert len(self.atoms) == 3, "wrong # of atom positions passed to suite"
     self.xyz = atoms[1]
     self.base = findBase("%3s" % self.resname)
+    if self.base is None:
+      # covers the case where there is a DNA residue in the chain
+      self.base = "?"
 
   def validate(self):
     # make sure that angles deltaMinus through delta exist and are in range
@@ -179,13 +184,19 @@ def setOptions(optionsIn):
     globals.options = optionsIn.suitename
     loadOptions(optionsIn.suitename)
 
-class suitealyze(validation):
+class suitealyze(rna_geometry):
+  output_header = "#suiteID:suite:suiteness:triaged_angle"
+  label = "Backbone torsion suites"
+  gui_list_headers = ["Suite ID", "Suite", "Suiteness", "Triaged angles",]
+  gui_formats = ["%s"] * 4
+  wx_column_widths = [200] * 4
   def __init__(self,
                pdb_hierarchy = None,
                model = None,
                options = None,
                outliers_only = False):
     assert (pdb_hierarchy is not None) or (model is not None),"no model or hierarchy passed to suitealyze"
+    rna_geometry.__init__(self)
     if pdb_hierarchy is None:
       pdb_hierarchy = model.get_hierarchy()
     setOptions(options)
@@ -194,9 +205,17 @@ class suitealyze(validation):
     for result in self.results:
       if result.suite == "!!":
         result.is_outlier=True
+    if outliers_only:
+      outlier_results = []
+      for outlier in self.select_results(include_suites=["!!"]):
+        outlier_results.append(outlier)
+      self.results = outlier_results
     self.model_list = list(set([result.model_id for result in self.results]))
     self.chain_list = list(set([result.chain_id for result in self.results]))
+    self.n_outliers = self.count_outliers()
+    self.n_total    = self.count_suites()
 
+  def get_result_class(self) : return suite
 
   def select_results(self, model=None, chain=None, include_suites=[], exclude_suites=[]):
     for result in self.results:
@@ -338,6 +357,7 @@ class suitealyze(validation):
       summary_results[mod_id] = {"num_outliers": self.count_outliers(mod_id),
                                  "num_suites": self.count_suites(mod_id)}
     data['summary_results'] = summary_results
+    data['suitestrings'] = self.as_suitestrings()
     return json.dumps(data, indent=2)
 
   def show_old_output(self, out=sys.stdout, verbose=False):

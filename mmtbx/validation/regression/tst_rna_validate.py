@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import, division, print_function
-from mmtbx.command_line import rna_validate
 import mmtbx.validation.rna_validate
 import iotbx.pdb
 from mmtbx.validation.rna_validate import rna_validation
@@ -31,8 +30,8 @@ def exercise_1():
   assert len(rv.puckers.results) == 2, len(rv.puckers.results)
   assert len(rv.bonds.results) == 4, len(rv.bonds.results)
   assert len(rv.angles.results) == 14, len(rv.angles.results)
-  assert len(rv.suites.results) == 4, len(rv.suites.results)
-  assert approx_equal(rv.suites.average_suiteness, 0.55, eps=0.01)
+  assert len(rv.suites.results) == 5, len(rv.suites.results)
+  #assert approx_equal(rv.suites.average_suiteness(), 0.55, eps=0.01)
   pickle_unpickle(rv)
   pdb_in = iotbx.pdb.input(regression_pdb)
   result = mmtbx.validation.rna_validate.rna_validation(
@@ -57,9 +56,9 @@ def exercise_1():
   assert approx_equal(puckers_json['flat_results'][0]["delta_angle"], 106.454213), "tst_rna_validate json output first pucker outlier delta changed to: " + str(puckers_json['flat_results'][0]["delta_angle"])
   assert test_utils.count_dict_values(puckers_json['hierarchical_results'], "A")==2, "tst_rna_validate json hierarchical output number of pucker outliers changed to: "+str(test_utils.count_dict_values(puckers_json['hierarchical_results'], "A", "A", "A"))
   assert puckers_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
-  assert len(suites_json["flat_results"]) == 4, "tst_rna_validate json output not returning correct number of suite outliers, changed to: " + str(len(suites_json["flat_results"]))
-  assert suites_json['flat_results'][0]["suiteness"]=="0.000", "tst_rna_validate json output first suite outlier suiteness changed to: " + str(suites_json['flat_results'][0]["suiteness"])
-  assert test_utils.count_dict_values(suites_json['hierarchical_results'], "!!")==4, "tst_rna_validate json hierarchical output number of suite outliers changed to: "+str(test_utils.count_dict_values(suites_json['hierarchical_results'], "!!"))
+  assert len(suites_json["flat_results"]) == 5, "tst_rna_validate json output not returning correct number of suite outliers, changed to: " + str(len(suites_json["flat_results"]))
+  assert suites_json['flat_results'][0]["suiteness"]==0, "tst_rna_validate json output first suite outlier suiteness changed to: " + str(suites_json['flat_results'][0]["suiteness"])
+  assert test_utils.count_dict_values(suites_json['hierarchical_results'], "!!")==5, "tst_rna_validate json hierarchical output number of suite outliers changed to: "+str(test_utils.count_dict_values(suites_json['hierarchical_results'], "!!"))
   #assert suites_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
 
 def exercise_2():

@@ -6,7 +6,7 @@ from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.validation import utils
 from mmtbx import monomer_library
-from mmtbx.validation import validation
+from mmtbx.validation import rna_geometry
 from mmtbx.validation import residue
 from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
@@ -14,8 +14,8 @@ from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx import slots_getstate_setstate
-from libtbx import easy_run
 from math import sqrt
+from mmtbx.suitename import suitealyze
 import sys
 import json
 
@@ -141,52 +141,6 @@ class rna_pucker(residue):
 
   def as_table_row_phenix(self):
     return [ self.id_str(), self.delta_angle, self.epsilon_angle ]
-
-class rna_suite(residue):
-  """
-  RNA backbone "suite", analyzed using the external program 'suitename'.
-  """
-  __slots__ = residue.__slots__ + [
-    "suite_id",
-    "suite",
-    "suiteness",
-    "triaged_angle",
-  ]
-
-  @staticmethod
-  def header():
-    return "%-20s  %8s  %9s  %12s" % ("Suite ID", "suite", "suiteness",
-      "triaged angle")
-
-  def format_values(self):
-    return "%-20s  %8s  %9s  %8s" % (self.suite_id, self.suite, self.suiteness,
-      self.triaged_angle)
-
-  def as_string(self, prefix=""):
-    return prefix + self.format_values()
-
-  def as_JSON(self):
-    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
-    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
-    return json.dumps(slots_as_dict, indent=2)
-
-  def as_hierarchical_JSON(self):
-    hierarchical_dict = {}
-    hierarchy_nest_list = ['chain_id', 'resid', 'altloc']
-    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
-
-  def as_table_row_phenix(self):
-    return [ self.suite_id, self.suite, self.suiteness, self.triaged_angle ]
-
-class rna_geometry(validation):
-  #__slots__ = validation.__slots__ + ["n_outliers_small_by_model", "n_outliers_large_by_model"]
-
-  def show(self, out=sys.stdout, prefix="  ", verbose=True):
-    if (len(self.results) > 0):
-      print(prefix + self.get_result_class().header(), file=out)
-      for result in self.results :
-        print(result.as_string(prefix=prefix), file=out)
-    self.show_summary(out=out, prefix=prefix)
 
 # analysis objects
 class rna_bonds(rna_geometry):
@@ -512,105 +466,6 @@ class rna_puckers(rna_geometry):
         return altloc
     return ""
 
-
-class rna_suites(rna_geometry):
-  output_header = "#suiteID:suite:suiteness:triaged_angle"
-  label = "Backbone torsion suites"
-  gui_list_headers = ["Suite ID", "Suite", "Suiteness", "Triaged angles",]
-  gui_formats = ["%s"] * 4
-  wx_column_widths = [200] * 4
-  __slots__ = rna_geometry.__slots__ + ["n_incomplete", "n_triaged",
-    "n_suites", "average_suiteness"]
-  def __init__(self, pdb_hierarchy, geometry_restraints_manager,
-      outliers_only=True):
-    rna_geometry.__init__(self)
-    self.n_triaged = self.n_incomplete = self.n_suites = 0
-    self.average_suiteness = None
-    total_suiteness = 0
-    suitename = "molprobity.suitename_old -report -pointIDfields 7 -altIDfield 6  -"
-    backbone_dihedrals = utils.get_rna_backbone_dihedrals(
-      processed_pdb_file=None,
-      pdb_hierarchy=pdb_hierarchy,
-      geometry=geometry_restraints_manager)
-    suitename_out = easy_run.fully_buffered(suitename,
-                         stdin_lines=backbone_dihedrals).stdout_lines
-
-    for line in suitename_out:
-      if line.startswith(' :'):
-        temp = line.split(":")
-        altloc = temp[5]
-        chain_id = temp[2]
-        resname = temp[6][0:3]
-        resseq = temp[3]
-        icode = temp[4]
-        key = temp[5]+temp[6][0:3]+temp[2]+temp[3]+temp[4] # ewwwww....
-        suite = temp[6][9:11]
-        suiteness = temp[6][12:17]
-        temp2 = temp[6].split(" ")
-        triaged_angle = None
-        is_outlier = False
-        self.n_total += 1
-        if ('!!' in line):
-          if (temp2[3] == 'trig'):
-            triaged_angle = temp2[6]
-            self.n_triaged += 1
-          is_outlier = True
-          self.n_outliers += 1
-        if (is_outlier or not outliers_only):
-          self.results.append(rna_suite(
-            altloc = temp[5],
-            chain_id = temp[2],
-            resname = temp[6][0:3],
-            resseq = temp[3],
-            icode = temp[4],
-            suite = temp[6][9:11],
-            suite_id = key,
-            suiteness = suiteness,
-            triaged_angle=triaged_angle,
-            outlier=is_outlier))
-        if (triaged_angle is None):
-          try :
-            total_suiteness += float(suiteness)
-            self.n_suites += 1
-          except ValueError :
-            self.n_incomplete += 1
-    if (self.n_suites > 0):
-      self.average_suiteness = total_suiteness / self.n_suites
-
-  def get_result_class(self) : return rna_suite
-
-  def as_JSON(self):
-    data = {"validation_type": "rna_suites"}
-    flat_results = []
-    hierarchical_results = {}
-    summary_results = {}
-    for result in self.results:
-      flat_results.append(json.loads(result.as_JSON()))
-      hier_result = json.loads(result.as_hierarchical_JSON())
-      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
-
-    data['flat_results'] = flat_results
-    data['hierarchical_results'] = hierarchical_results
-    data['summary_results'] = summary_results
-    return json.dumps(data, indent=2)
-
-  def show_summary(self, out=sys.stdout, prefix=""):
-    if (self.n_total == 0):
-      print(prefix + "No RNA suites found.", file=out)
-    else :
-      if hasattr(self, "n_triaged"):
-        print(prefix + \
-          "%d suites triaged and %d incomplete leaving %d suites" %\
-          (self.n_triaged, self.n_incomplete, self.n_suites), file=out)
-      if (self.n_outliers == 0):
-        print(prefix + "All RNA torsion suites are reasonable.", file=out)
-      else :
-        print(prefix + "%d/%d suite outliers present" % \
-          (self.n_outliers, self.n_total), file=out)
-      if hasattr(self, "average_suiteness"):
-        print(prefix + "Average suiteness: %s" % format_value("%.3f",
-          self.average_suiteness), file=out)
-
 class rna_validation(slots_getstate_setstate):
   __slots__ = ["bonds", "angles", "puckers", "suites"]
 
@@ -646,10 +501,13 @@ class rna_validation(slots_getstate_setstate):
       pdb_hierarchy=pdb_hierarchy,
       params=getattr(params, "rna_sugar_pucker_analysis", None),
       outliers_only=outliers_only)
-    self.suites = rna_suites(
+    self.suites = suitealyze.suitealyze(
       pdb_hierarchy=pdb_hierarchy,
-      geometry_restraints_manager=geometry_restraints_manager,
       outliers_only=outliers_only)
+    #self.suites = rna_suites(
+    #  pdb_hierarchy=pdb_hierarchy,
+    #  geometry_restraints_manager=geometry_restraints_manager,
+    #  outliers_only=outliers_only)
 
   def show_summary(self, out=sys.stdout, prefix=""):
     pass

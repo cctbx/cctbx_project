@@ -618,6 +618,16 @@ class validation(slots_getstate_setstate):
       return self.results[i_res]
     return None
 
+class rna_geometry(validation):
+  #__slots__ = validation.__slots__ + ["n_outliers_small_by_model", "n_outliers_large_by_model"]
+
+  def show(self, out=sys.stdout, prefix="  ", verbose=True):
+    if (len(self.results) > 0):
+      print(prefix + self.get_result_class().header(), file=out)
+      for result in self.results :
+        print(result.as_string(prefix=prefix), file=out)
+    self.show_summary(out=out, prefix=prefix)
+
 class test_utils(object):
 
   def count_dict_values(prod, count_key, c=0):

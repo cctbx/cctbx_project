@@ -30,6 +30,8 @@ def exercise_suitename_json():
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "__")==2, "tst_suitename json hierarchical output total number of __ changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "__"))
   assert sz_dict['summary_results'][""]["num_outliers"] == 5, "tst_suitename json summary output total number of outliers changed"
   assert sz_dict['summary_results'][""]["num_suites"] == 63, "tst_suitename json summary output total number of suites changed"
+  assert sz_dict['suitestrings'][""]["A"] == "__G1aG1aA1aU1aG1aU1aA7rC0aU1aA1aC1aC1aA1cG1bC4aU1gG1aA1[U6gG9aA1aG1aU1aC1aC1aC1aA!!A!!A2aU1bA!!G1aG1aA1aC1aG&aA1aA1aA1aC1aG1aC1cC", "model 1 chain A suitestring changed"
+  assert sz_dict['suitestrings'][""]["B"] == "__G1aG1aC1aG1aU1bC!!C1aU1aG1cG1a?1aA1bU4aC1bC!!A1aA1a?1aC1a?", "model 1 chain B suitestring changed"
 
 multimod_2goz_pdb_str = """MODEL        1
 ATOM    539  P     C A  26     -19.024  25.068  -5.945  1.00 46.81           P
