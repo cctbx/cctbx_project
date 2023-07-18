@@ -578,8 +578,7 @@ class _SingletonOptimizer(object):
           coarse = m.CoarsePositions()
           score = self._preferenceMagnitude * coarse.preferenceEnergies[0]
           self._setMoverState(coarse, 0)
-          for a in coarse.atoms:
-            score += self._scoreAtom(a)
+          score += self._scorePosition(coarse, 0)
           self._moverInfo[m] += " Initial score: {:.2f}".format(score)
 
         ################################################################################
@@ -801,6 +800,19 @@ class _SingletonOptimizer(object):
       maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
       self._probeDensity, False).totalScore()
 
+  def _scorePosition(self, positions, index):
+    # Score the atoms in the positions object, skipping those that are marked for deletion.
+    # :param positions: the positions object to score.
+    # :param index: the index of the positions entry to score.
+    # :return: the score for the atoms in the positions object.
+
+    ret = 0.0
+    for i in range(len(positions.atoms)):
+      # There may not be as many deleteMes as there are atoms, so we need to check for that.
+      if i >= len(positions.deleteMes[index]) or not positions.deleteMes[index][i]:
+        ret += self._scoreAtom(positions.atoms[i])
+    return ret
+
   def _optimizeSingleMoverCoarse(self, mover):
     # Find the coarse score for the Mover in all orientations by moving each atom into the
     # specified position and summing the scores over all of them.  Determine the best
@@ -819,8 +831,7 @@ class _SingletonOptimizer(object):
     for i in range(len(coarse.positions)):
       self._setMoverState(coarse, i)
 
-      for a in coarse.atoms:
-        scores[i] += self._scoreAtom(a)
+      scores[i] += self._scorePosition(coarse, i)
       self._infoString += _VerboseCheck(
         self._verbosity, 5,"Single Mover {} score at orientation {} = {:.2f}\n".format(
           _DescribeMover(mover), i, scores[i]))
@@ -883,8 +894,7 @@ class _SingletonOptimizer(object):
       for i in range(len(fine.positions)):
         self._setMoverState(fine, i)
 
-        for a in fine.atoms:
-          scores[i] += self._scoreAtom(a)
+        scores[i] += self._scorePosition(fine, i)
         self._infoString += _VerboseCheck(self._verbosity, 5,"Single Mover score at orientation {} = {:.2f}\n".format(i,scores[i]))
 
       # Find the maximum score, keeping track of the best score and its index.
@@ -1354,8 +1364,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       score = 0
       for i in range(len(movers)):
         score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-        for a in states[i].atoms:
-          score += self._scoreAtom(a)
+        score += self._scorePosition(states[i], curStateValues[i])
       self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
       if score > bestScore or bestState is None:
         self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1370,8 +1379,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       self._setMoverState(states[i], bestState[i])
       self._coarseLocations[m] = bestState[i]
       self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-      for a in states[i].atoms:
-        self._highScores[m] += self._scoreAtom(a)
+      self._highScores[m] += self._scorePosition(states[i], curStateValues[i])
       self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
         ", max score = {:.2f}\n".format(self._highScores[m]))
       ret += self._highScores[m]
@@ -1523,8 +1531,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         # update the best.
         for i, m in enumerate(cutMovers):
           score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
-          for a in states[m].atoms:
-            score += self._scoreAtom(a)
+          score += self._scorePosition(states[m], curStateValues[i])
         self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
         if score > bestScore or bestState is None:
           self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
@@ -1540,8 +1547,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         self._setMoverState(states[m], bestState[i])
         self._coarseLocations[m] = bestState[i]
         self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
-        for a in states[m].atoms:
-          self._highScores[m] += self._scoreAtom(a)
+        self._highScores[m] += self._scorePosition(states[m], bestState[i])
         self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
           ", max score = {:.2f}\n".format(self._highScores[m]))
         ret += self._highScores[m]
@@ -2094,6 +2100,62 @@ END
   angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 163:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 163"
+
+  ################################################################################
+  # Test using snippet from 1dfu to ensure that the Histidine optimzization code will
+  # properly skip hydrogens that are going to be deleted when scoring.
+  pdb_1dfu_his80 = (
+"""
+CRYST1   75.600   76.600   95.100  90.00  90.00  90.00 C 2 2 21      8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.013257  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.013063  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.010515        0.00000
+ATOM   1443  N   HIS P  80      27.889  23.654 -11.281  1.00 41.74           N
+ATOM   1444  CA  HIS P  80      28.738  24.315 -10.299  1.00 45.36           C
+ATOM   1445  C   HIS P  80      29.467  25.487 -10.941  1.00 46.80           C
+ATOM   1446  O   HIS P  80      29.927  25.397 -12.080  1.00 47.32           O
+ATOM   1447  CB  HIS P  80      29.765  23.342  -9.714  1.00 47.26           C
+ATOM   1448  CG  HIS P  80      30.457  23.865  -8.492  1.00 48.91           C
+ATOM   1449  ND1 HIS P  80      29.947  23.705  -7.221  1.00 49.73           N
+ATOM   1450  CD2 HIS P  80      31.593  24.589  -8.351  1.00 49.34           C
+ATOM   1451  CE1 HIS P  80      30.739  24.306  -6.351  1.00 49.69           C
+ATOM   1452  NE2 HIS P  80      31.745  24.850  -7.011  1.00 50.50           N
+ATOM   1453  N   PRO P  81      29.581  26.606 -10.211  1.00 48.50           N
+ATOM   1454  CA  PRO P  81      30.255  27.810 -10.698  1.00 49.93           C
+ATOM   1455  C   PRO P  81      31.662  27.557 -11.236  1.00 51.19           C
+ATOM   1456  O   PRO P  81      32.041  28.115 -12.265  1.00 51.83           O
+ATOM   1457  CB  PRO P  81      30.264  28.714  -9.468  1.00 50.10           C
+ATOM   1458  CG  PRO P  81      29.003  28.336  -8.774  1.00 49.68           C
+ATOM   1459  CD  PRO P  81      29.026  26.831  -8.864  1.00 49.20           C
+ATOM   1460  N   TYR P  82      32.432  26.716 -10.549  1.00 51.94           N
+ATOM   1461  CA  TYR P  82      33.797  26.440 -10.985  1.00 52.99           C
+ATOM   1462  C   TYR P  82      34.257  24.985 -10.876  1.00 52.34           C
+ATOM   1463  O   TYR P  82      35.456  24.712 -10.890  1.00 52.96           O
+ATOM   1464  CB  TYR P  82      34.769  27.349 -10.225  1.00 54.88           C
+ATOM   1465  CG  TYR P  82      34.757  27.162  -8.722  1.00 56.85           C
+ATOM   1466  CD1 TYR P  82      35.404  26.078  -8.127  1.00 57.60           C
+ATOM   1467  CD2 TYR P  82      34.096  28.070  -7.895  1.00 57.47           C
+ATOM   1468  CE1 TYR P  82      35.394  25.903  -6.743  1.00 58.41           C
+ATOM   1469  CE2 TYR P  82      34.080  27.904  -6.510  1.00 58.47           C
+ATOM   1470  CZ  TYR P  82      34.730  26.819  -5.942  1.00 58.59           C
+ATOM   1471  OH  TYR P  82      34.718  26.650  -4.577  1.00 59.33           O
+HETATM 1782  O   HOH P 134      28.550  22.420  -4.280  1.00 33.59           O
+END
+"""
+    )
+  opt = _optimizeFragment(pdb_1dfu_his80)
+  movers = opt._movers
+  if len(movers) != 2:
+    return "Optimizers.Test(): Incorrect number of Movers for His placement test: " + str(len(movers))
+  info = opt.getInfo()
+  if not 'HD1NotPlaced' in info:
+    return "Optimizers.Test(): Unexpected HD1 placement for His."
+  if not 'HE2Placed' in info:
+    return "Optimizers.Test(): Missing HE2 placement for His."
+
 
   ################################################################################
   # Test using snippet from 1xso to ensure that the Histidine placement code will lock down the
