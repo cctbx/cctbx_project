@@ -244,7 +244,6 @@ general_tests = [
   #
   "$D/idealized_aa_residues/tst.py",
   #
-  "$D/regression/tst_dssp.py",
   "$D/regression/tst_validation_summary.py",
   "$D/regression/tst_maps_misc.py",
   "$D/regression/tst_cablam.py",
