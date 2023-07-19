@@ -37,7 +37,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.0"
+version = "1.2.1"
 
 master_phil_str = '''
 approach = *add remove
@@ -111,7 +111,7 @@ output
   description_file_name = None
     .type = str
     .short_caption = Description output file name
-    .help = Description output file name
+    .help = This file holds a description of the operations that Reduce2 performed when placing and optimize hydrogens. Its creation is required because it can contain important warnings that must be attended to by the person running the program. It also includes a REPORT section that lists the final orientation along with initial and final score for each Mover that can be parsed to determine the results. The REPORT information and some additional information used to be included in the resulting PDB file produced by Reduce.
   flipkin_directory = None
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
