@@ -1097,7 +1097,7 @@ class _SingletonOptimizer(object):
             if n.element_is_positive_ion():
               dist = (Helpers.rvec3(oxygen.xyz) - Helpers.rvec3(n.xyz)).length()
               expected = myRad + self._extraAtomInfo.getMappingFor(n).vdwRadius
-              self._infoString += _VerboseCheck(self._verbosity, 5,'Checking AmideFlip '+str(i)+' against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(pos)+
+              self._infoString += _VerboseCheck(self._verbosity, 5,'Checking AmideFlip against '+n.name.strip()+' at '+str(n.xyz)+' from '+str(oxygen.xyz)+
                 ' dist = '+str(dist)+', expected = '+str(expected)+'; N rad = '+str(myRad)+
                 ', '+n.name.strip()+' rad = '+str(self._extraAtomInfo.getMappingFor(n).vdwRadius)+'\n')
               # @todo Why are we using -0.65 here and -0.55 for Histidine?
