@@ -30,14 +30,14 @@ from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from libtbx.development.timers import work_clock
 from scitbx.array_family import flex
-from iotbx.pdb import common_residue_names_get_class
+from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
 from mmtbx.programs import probe2
 import copy
 import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.1.0"
+version = "1.2.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -303,6 +303,25 @@ def _DescribeMainchainLink(a0s, a1s, group):
         ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
+def _IsStandardResidue(resname):
+  amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
+  return resname.strip().upper() in amino_acid_resnames
+
+def _IsNucleicAcidResidue(resname):
+  nucleic_acids = [
+        "A", "C", "G", "T",  # DNA bases
+        "U", "I",            # RNA bases (I for inosine, a modified RNA base)
+  ]
+  return resname.strip().upper() in nucleic_acids
+
+def _MainChainAtomsWithHydrogen(resname):
+  # Find the main chain atoms with hydrogen bonds
+  if _IsStandardResidue(resname):
+    return ['N', 'CA', 'C', 'O']
+  elif _IsNucleicAcidResidue(resname):
+    return ["OP2", "OP3", "C5'", "C4'", "C3'", "C2'", "C1'", "O3'", "O2'"]
+  return []
+
 
 def _DescribeMainchainResidue(r, group, prevCs):
   '''Return a string that describes the mainchain for a specified residue.
@@ -310,25 +329,66 @@ def _DescribeMainchainResidue(r, group, prevCs):
   (none for the first) and lines to the N, Ca, C, and O.
   :param r: Residue to describe.
   :param group: The dominant group name the point or line is part of.
-  :param prevCs: Atom(s) that is the mainchain C in all conformations
-  of the previous residue.
+  :param prevCs: Atom(s) that is the mainchain last connection in all conformations
+  of the previous residue. For protein, this is C and for nucleic acid, this is O3'.
   '''
 
   ret = ''
 
-  # Find the lists of atoms that we might need.
-  Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
-  CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
-  Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
-  Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
-  OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
 
-  # Make all of the connections.
-  ret += _DescribeMainchainLink(prevCs, Ns, group)
-  ret += _DescribeMainchainLink(Ns, CAs, group)
-  ret += _DescribeMainchainLink(CAs, Cs, group)
-  ret += _DescribeMainchainLink(Cs, Os, group)
-  ret += _DescribeMainchainLink(Cs, OXTs, group)
+    # Find the lists of atoms that we might need.
+    Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
+    CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
+    Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
+    Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
+    OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ns, group)
+    ret += _DescribeMainchainLink(Ns, CAs, group)
+    ret += _DescribeMainchainLink(CAs, Cs, group)
+    ret += _DescribeMainchainLink(Cs, Os, group)
+    ret += _DescribeMainchainLink(Cs, OXTs, group)
+
+  ############################################################
+  # Nucleic acid main chain
+  if _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Find the lists of atoms that we might need.
+    Ps = [a for a in r.atoms() if a.name.strip().upper() == "P"]
+    OP3s = [a for a in r.atoms() if a.name.strip().upper() == "OP3"]
+    OP2s = [a for a in r.atoms() if a.name.strip().upper() == "OP2"]
+    OP1s = [a for a in r.atoms() if a.name.strip().upper() == "OP1"]
+    O5Ps = [a for a in r.atoms() if a.name.strip().upper() == "O5'"]
+    O4Ps = [a for a in r.atoms() if a.name.strip().upper() == "O4'"]
+    O3Ps = [a for a in r.atoms() if a.name.strip().upper() == "O3'"]
+    O2Ps = [a for a in r.atoms() if a.name.strip().upper() == "O2'"]
+    C5Ps = [a for a in r.atoms() if a.name.strip().upper() == "C5'"]
+    C4Ps = [a for a in r.atoms() if a.name.strip().upper() == "C4'"]
+    C3Ps = [a for a in r.atoms() if a.name.strip().upper() == "C3'"]
+    C2Ps = [a for a in r.atoms() if a.name.strip().upper() == "C2'"]
+    C1Ps = [a for a in r.atoms() if a.name.strip().upper() == "C1'"]
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ps, group)
+    ret += _DescribeMainchainLink(Ps, OP1s, group)
+    ret += _DescribeMainchainLink(Ps, OP2s, group)
+    ret += _DescribeMainchainLink(Ps, OP3s, group)
+    ret += _DescribeMainchainLink(Ps, O5Ps, group)
+    ret += _DescribeMainchainLink(O5Ps, C5Ps, group)
+    ret += _DescribeMainchainLink(C5Ps, C4Ps, group)
+    ret += _DescribeMainchainLink(C4Ps, C3Ps, group)
+    ret += _DescribeMainchainLink(C3Ps, C2Ps, group)
+    ret += _DescribeMainchainLink(C2Ps, O2Ps, group)
+
+    ret += _DescribeMainchainLink(C4Ps, O4Ps, group)
+    ret += _DescribeMainchainLink(O4Ps, C1Ps, group)
+    ret += _DescribeMainchainLink(C1Ps, C2Ps, group)
+
+    ret += _DescribeMainchainLink(C3Ps, O3Ps, group)
 
   return ret
 
@@ -349,7 +409,7 @@ def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -367,20 +427,42 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
   '''
   ret = ''
 
-  # Start with the CA atom and mark as handled all links that go back to the main chain
-  # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
   described = []   # A list of sets of two atoms that we have already described bonds between
   queued = []
-  try:
-    # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
-    # Do this for all CAs found because there may be multiple atom groups (alts)
-    for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
-      queued.append(aCA)
-      known = [a for a in bondedNeighborLists[aCA] if a.name.strip().upper() in ['N','C']]
-      for a in known:
-        described.append({aCA, a})
-  except Exception as e:
-    pass
+
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
+
+    # Start with the CA atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
+      # Do this for all CAs found because there may be multiple atom groups (alts)
+      for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
+        queued.append(aCA)
+        known = [a for a in bondedNeighborLists[aCA]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ['N','C']]
+        for a in known:
+          described.append({aCA, a})
+    except Exception:
+      pass
+
+  elif _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Start with the C1' atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the C1' to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not C2' or O4'.  Queue them for testing.
+      # Do this for all Cs found because there may be multiple atom groups (alts)
+      for aC in [a for a in r.atoms() if a.name.strip().upper() == "C1'"]:
+        queued.append(aC)
+        known = [a for a in bondedNeighborLists[aC]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ["C2'","O4'"]]
+        for a in known:
+          described.append({aC, a})
+    except Exception:
+      pass
 
   # Cycle through the list of queued atoms until we run out of them.
   # For each, look for a non-hydrogen neighbor that we've not yet described a bond
@@ -432,7 +514,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if not n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if not n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -601,6 +683,9 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _DescribeMainchainResidue(rg, fileBaseName, prevCs)
       try:
         prevCs = [a for a in rg.atoms() if a.name.strip().upper() == 'C']
+        # If not protein, check nucleic acid
+        if len(prevCs) == 0:
+          prevCs = [a for a in rg.atoms() if a.name.strip().upper() == "O3'"]
       except Exception:
         pass
 
