@@ -1550,7 +1550,7 @@ class _():
     ''' Apply atom selection string and return deep copy with selected atoms'''
     asc=self.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    return self.deep_copy().select(sel)  # deep copy is required
+    return self.select(sel, copy_atoms=True)  # independent copy is required
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
                               always_group_adjacent=True,
