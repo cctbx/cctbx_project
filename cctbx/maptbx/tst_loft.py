@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 import math, time
 from cctbx import miller
@@ -181,9 +182,9 @@ def run(d_min=3):
   #
   # Check all three Fmask structure factors are the same
   #
-  cc12 = f1.map_correlation(other=f2))
-  cc13 = f1.map_correlation(other=f3))
-  cc23 = f2.map_correlation(other=f3))
+  cc12 = f1.map_correlation(other=f2)
+  cc13 = f1.map_correlation(other=f3)
+  cc23 = f2.map_correlation(other=f3)
   print()
   print("t1/t3: ", t1/t3)
   print()
