@@ -65,7 +65,7 @@ def regionize_detector(det_shape, region_shape, gain_map_values=None):
     Y,X = region_shape
     regions = np.zeros(det_shape)
     if gain_map_values is None:
-        regions = regions.astype(int)
+        regions = regions.astype(np.int32)
     numPan, slowDim, fastDim = det_shape
     nx = np.array_split(np.arange(fastDim),int(fastDim/X)+1)
     ny = np.array_split(np.arange(slowDim),int(slowDim/Y)+1)
