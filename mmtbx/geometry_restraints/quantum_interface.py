@@ -122,6 +122,8 @@ qm_restraints
     .type = bool
   exclude_torsions_from_optimisation = False
     .type = bool
+  include_inter_residue_restraints = False
+    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
   do_not_update_restraints = False
@@ -152,6 +154,8 @@ qm_restraints
   qm_package_scope = qm_package_scope % programs
   qm_restraints_scope = qm_restraints_scope % qm_package_scope
   return qm_restraints_scope
+
+master_phil_str = get_qm_restraints_scope()
 
 def electrons(model, specific_atom_charges=None, log=None):
   from libtbx.utils import Sorry

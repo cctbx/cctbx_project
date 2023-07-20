@@ -87,7 +87,7 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
     pymols += '  phenix.pymol %s &\n' % pf
   return hbondss, pymols
 
-def get_rotamers_via_filenames(filenames, selection):
+def get_rotamers_via_filenames(filenames, selection, resname='HIS'):
   from iotbx import pdb
   rotamers=[]
   for i, filename in enumerate(filenames):
@@ -95,7 +95,7 @@ def get_rotamers_via_filenames(filenames, selection):
     asc1 = hierarchy.atom_selection_cache()
     sel = asc1.selection(selection)
     hierarchy = hierarchy.select(sel)
-    rc = classify_histidine(hierarchy)
+    rc = classify_histidine(hierarchy, resname=resname)
     rotamers.append(rc[0])
     i+=1
   return rotamers

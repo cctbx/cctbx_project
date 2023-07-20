@@ -425,9 +425,12 @@ def _hierarchy_into_slots(hierarchy,
         slots.append(False)
         continue
       if slots:
-        if _is_linked(residue_group,
-                      slots[-1],
-                      geometry_restraints_manager.bond_params_table):
+        bonded = _is_linked(residue_group,
+                            slots[-1],
+                            geometry_restraints_manager.bond_params_table)
+        if getattr(bonded, 'origin_id', None)!=0: # default for peptide links...
+          bonded=False
+        if bonded:
           pass
         else:
           slots.append(None)
@@ -653,7 +656,7 @@ def delete_charged_n_terminal_hydrogens(hierarchy):
 
 def add_water_hydrogen_atoms_simple(hierarchy, log=None):
   for atom_group in hierarchy.atom_groups():
-    if atom_group.resname=='HOH':
+    if atom_group.resname in ['HOH', 'DOD']:
       if len(atom_group.atoms())==3: continue
       o_atom = atom_group.atoms()[0]
       xyz = (o_atom.xyz[0]+1, o_atom.xyz[1], o_atom.xyz[2])

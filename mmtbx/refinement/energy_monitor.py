@@ -14,7 +14,7 @@ def print_energy_in_kcal(ga):
   if ga is None: return s
   for d, e, l, b in ga.energies:
     units=ga.units.lower()
-    if d in ['opt']: atoms=b
+    if d in ['opt', 'bound']: atoms=b
     elif d in ['energy', 'strain']: atoms=l
     s.append('%-12s %s (atoms %4d)  ' % (d,
                                           _print_energy_in_kcal(e, units), atoms))
@@ -25,8 +25,8 @@ class energies(list):
     pass
 
   def as_string(self, verbose=False):
-    from libtbx import easy_pickle
-    easy_pickle.dump('ga.pickle', self)
+    # from libtbx import easy_pickle
+    # easy_pickle.dump('ga.pickle', self)
     s='QM energies\n'
     for i, gas in enumerate(self):
       t=''
