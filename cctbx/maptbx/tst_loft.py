@@ -144,13 +144,12 @@ def run(d_min=3):
   # Compute structure factors using mask_FT_05.docx
   #
   #f3 = sf_direct(miller_array=f1, mask=mask)
+  t0 = time.time()
   o3 = maptbx.loft(
     miller_indices = ms.indices(),
     map_data       = mask,
     abc            = flex.double([a,b,c]),
     d_min          = d_min)
-  t0 = time.time()
-  o3.compute()
   t3 = time.time()-t0
   print("time f3:", t3)
   ms = miller.set(crystal_symmetry=cs, indices=o3.indices())
