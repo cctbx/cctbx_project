@@ -46,6 +46,9 @@ public:
     sressq(1.0 / (d_min*d_min)),
     map_data(map_data_)
   {
+      //
+      // Various initializations
+      //
       dtable = two_pi / maxtab;
       for(int i = 0; i < maxtab+1; i++) {
         tabcos.push_back(std::cos(i*dtable));
@@ -74,6 +77,9 @@ public:
         }
       }
       result.resize(mhkltot, 0);
+      // This is faster than using 'result' directly in the deepest loop
+      std::complex<double> TMP[mhkltot];
+      for (int i=0; i<mhkltot; i++) TMP[i]=std::complex<double>(0,0);
 
       stepx = two_pi / nx;
       stepy = two_pi / ny;
@@ -87,10 +93,9 @@ public:
           for (int ih = 0; ih < maxhkl[ik][il]; ih++) {
             all_indices.push_back(cctbx::miller::index<>(ih,ik,il));
       }}}
-    }
-
-    void compute() {
-
+      //
+      // Main calculations
+      //
       double delht  = 0;
       double arg    = 0;
       int karg      = 0;
@@ -148,11 +153,9 @@ public:
               dells = tabsin[iarg] * (1.0-delarg) + tabsin[iarg+1] * delarg;
 
               //define initial values for the reflection (000)
-              //int iref = 0;
+              int iref = 0;
               double sfrref = 1.0;
               double sfiref = 0.0;
-
-              std::complex<double>* result_ = result.begin(); // this is slightly faster
 
               double sfrl = sfrref;
               double sfil = sfiref;
@@ -164,11 +167,9 @@ public:
                     double sfrhkl = sfrkl;
                     double sfihkl = sfikl;
                     for (int ih = 0; ih < maxhkl[ik][il]; ih++) {
-                       //result[iref] += std::complex<double>(sfrhkl,sfihkl);
-                       *result_ += std::complex<double>(sfrhkl,sfihkl);
-                       ++result_;
+                       TMP[iref] += std::complex<double>(sfrhkl,sfihkl);
 
-                       //iref = iref + 1;
+                       iref = iref + 1;
                        sfrtmp = sfrhkl * delhc - sfihkl * delhs;
                        sfihkl = sfihkl * delhc + sfrhkl * delhs;
                        sfrhkl = sfrtmp;
@@ -183,6 +184,9 @@ public:
               }
             }
       }}}
+
+      for(int i=0; i<result.size(); i++) result[i]=std::complex<double>(TMP[i]);
+
     }
 
   af::shared<std::complex<double> >  structure_factors() { return result; }

@@ -445,7 +445,6 @@ namespace {
                      arg("d_min"))))
         .def("structure_factors", &w_t::structure_factors)
         .def("indices", &w_t::indices)
-        .def("compute", &w_t::compute)
       ;
     }
 
