@@ -163,7 +163,7 @@ end
     return outl
 
   def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    assert not constrain_torsions
+    assert not constrain_torsions, 'constrain_torsions %s' % constrain_torsions
     outl = self._input_header()
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
