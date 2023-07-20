@@ -37,7 +37,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.1"
+version = "1.2.2"
 
 master_phil_str = '''
 approach = *add remove
@@ -491,8 +491,8 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       described.append({last,curr})
       ret += _AddPosition(curr, 'L', group, last) + '\n'
       links = [a for a in bondedNeighborLists[curr]
-                if (not {curr, a} in described) and not a.element_is_hydrogen()
-                and curr.parent().parent() == a.parent().parent()
+                if (not {curr, a} in described) and (not a.element_is_hydrogen())
+                and (curr.parent().parent() == a.parent().parent())
               ]
       last = curr
   return ret
@@ -837,7 +837,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
           described.append({a,n})
 
   # Add bonded structures for het groups that are Movers
-  ret += '@vectorlist {het} color= cyan  master= {hets}\n'
+  ret += '@vectorlist {het} color= orange  master= {hets}\n'
   for c in model.chains():
     for rg in c.residue_groups():
       if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
