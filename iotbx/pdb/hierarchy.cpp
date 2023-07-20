@@ -410,7 +410,10 @@ namespace {
     bool add_model,
     bool add_segid) const
   {
-    /* At this point all members have the information, so we just put it into string
+    /* This is replacement for the below function.
+    Presently is called exclusively from overall_counts for constructing duplicate
+    atom labels.
+    At this point all members have the information, so we just put it into string
     and return. */
     std::string result;
     if (add_model) {
@@ -542,7 +545,10 @@ namespace {
     bool add_segid,
     bool pdbres)
   {
-    /* Here we populate members of atom_label_columns_formatter, such as name, segid etc
+    /* This is replacement for the below function.
+    Presently is called exclusively from overall_counts for constructing duplicate
+    atom labels.
+    Here we populate members of atom_label_columns_formatter, such as name, segid etc
     and then call format where this info will be put into string */
     name = (pdbres ? 0 : atom.data->name.elems);
     segid = atom.data->segid.elems;
@@ -734,28 +740,10 @@ namespace {
   // new implementation
   {
     std::string result;
-    // char blank = ' ';
-    // atom_label_columns_formatter().format(&result[0], *this);
-    // data->segid.copy_left_justified(&result[15], 4U, blank);
-
     result = atom_label_columns_formatter().format(*this);
     result += (boost::format("%-4s") % data->segid.elems).str();
     return result;
   }
-
-  // std::string
-  // atom::pdb_label_columns_segid_small_str() const
-  // // Only used in overall_counts in find_duplicate_atom_labels()
-  // // Original implementation
-  // {
-  //   char blank = ' ';
-  //   small_str<19> result(small_str_no_init);
-  //   atom_label_columns_formatter().format(result.elems, *this);
-  //   data->segid.copy_left_justified(result.elems+15, 4U, blank);
-  //   result.elems[19] = '\0';
-  //   return std::string(result.elems);
-  // }
-
 
   std::string
   atom::pdb_element_charge_columns() const
