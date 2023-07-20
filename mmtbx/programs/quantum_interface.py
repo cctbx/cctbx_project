@@ -69,6 +69,8 @@ def _add_NQ_H_atom_to_atom_group(ag, name):
   from mmtbx.ligands.ready_set_basics import get_hierarchy_h_atom
   bonded = {'HD21' : ['ND2', 'CG', 'CB'], #ASN
             'HD22' : ['ND2', 'CG', 'OD1'],#ASN
+            'HE21' : ['NE2', 'CD', 'CG'], #GLN
+            'HE22' : ['NE2', 'CD', 'OE1'],#GLN
            }
   atoms = []
   for i in range(3):
@@ -175,10 +177,14 @@ def generate_flipping_NQ(ag,
                          return_hierarchy=False,
                          chain_id=None,
                          resseq=None):
-  for atom in ag.atoms(): print(atom.quote())
   if ag.resname=='ASN':
     hs = ['HD21', 'HD22']
     nos = [' ND2', ' OD1']
+  elif ag.resname=='GLN':
+    hs = ['HE21', 'HE22']
+    nos = [' NE2', ' OE1']
+  else:
+    assert ag.resname in ['ASN', 'GLN'], 'resname %s' % ag.resname
   for atom in ag.atoms():
     if atom.name.strip() in hs:
       ag.remove_atom(atom)
@@ -196,7 +202,6 @@ def generate_flipping_NQ(ag,
     for atom in ag.atoms():
       atom = atom.detached_copy()
       rc.append_atom(atom)
-    for atom in rc.atoms(): print(atom.quote())
     for name in hs:
       _add_NQ_H_atom_to_atom_group(rc, name)
     if return_hierarchy:
@@ -208,9 +213,6 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
   j=0
   opts = []
   for residue_group in hierarchy.residue_groups():
-    # if len(residue_group.atom_groups())>1:
-    #   print('skip')
-    #   assert 0
     atom_group = residue_group.atom_groups()[0]
     rc = get_class(atom_group.resname)
     if include_amino_acids and atom_group.resname in include_amino_acids: pass
@@ -236,7 +238,6 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
           for altloc in altlocs:
             if not altloc: altloc=' '
             ts.append("(%s and altloc '%s')" % (sel_str, altloc))
-          print(ts)
           opts.append(' or '.join(ts))
     j+=1
   print('\n\n')
@@ -286,7 +287,7 @@ Usage examples:
       .type = str
     include_amino_acids = None
       .type = str
-    iterate_NQH = HIS ASN
+    iterate_NQH = HIS ASN GLN
       .type = choice
     only_i = None
       .type = int
@@ -463,7 +464,6 @@ Usage examples:
       ih = ''
       if self.params.qi.iterate_NQH:
         ih = 'iterate_NQH=%s' % self.params.qi.iterate_NQH
-        print('ih',ih)
         ih = ih.replace('  ',' ')
       if self.params.qi.iterate_metals:
         ih = 'iterate_metals="%s"' % self.params.qi.iterate_metals
@@ -494,6 +494,8 @@ Usage examples:
         self.iterate_histidine()
       elif self.params.qi.iterate_NQH=='ASN':
         self.iterate_ASN()
+      elif self.params.qi.iterate_NQH=='GLN':
+        self.iterate_GLN()
       else:
         assert 0
 
@@ -810,14 +812,6 @@ Usage examples:
         rotamers[i],
         )
       print(outl % args, file=log)
-      # results.setdefault(pro, {})
-      # results[pro]['delta E'] = de
-      # results[pro]['H bonds'] = n
-      # results[pro]['rmsd'] = rmsds[i]
-
-    # d = dict(sorted(results.items(), key=lambda item: item[1]['delta E']))
-    # for i, (key, item) in enumerate(d.items()):
-    #   print('%-20s %s' % (key,item))
 
     cmd += '\n\n'
     print(cmd)
