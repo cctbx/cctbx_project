@@ -127,7 +127,6 @@ namespace detail {
       unsigned i_model_atom = 0;
       unsigned n_ch = model.chains_size();
       n_chains += n_ch;
-      std::cout << "Before chain loop\n";
       for(unsigned i_ch=0;i_ch<n_ch;i_ch++) {
         hierarchy::chain const& chain = model.chains()[i_ch];
         if (chain.residue_groups_size() == 0) n_empty_chains += 1;
@@ -139,7 +138,6 @@ namespace detail {
         bool suppress_chain_break = true;
         boost::optional<residue_group> prev_rg;
         unsigned n_rg = chain.residue_groups_size();
-        std::cout << "Before rg loop\n";
         for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
           residue_group const& rg = chain.residue_groups()[i_rg];
           if (rg.atom_groups_size() == 0) n_empty_residue_groups++;
@@ -153,7 +151,6 @@ namespace detail {
           std::set<std::string> rg_resnames;
           std::map<char, std::vector<std::string> > altloc_resnames;
           unsigned n_ag = rg.atom_groups_size();
-          std::cout << "Before ag loop\n";
           for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
             atom_group const& ag = rg.atom_groups()[i_ag];
             if (ag.atoms_size() == 0) n_empty_atom_groups++;
@@ -170,24 +167,14 @@ namespace detail {
             rg_resnames.insert(ag.data->resname);
             altloc_resnames[altloc].push_back(ag.data->resname);
             unsigned n_ats = ag.atoms_size();
-            std::cout << "Before atom loop\n";
             for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              std::cout << "i_at " << i_at << "\n";
               hierarchy::atom const& atom = ag.atoms()[i_at];
-              // std::cout << "pdb_label_columns_segid_small_str: '" << atom.pdb_label_columns_segid_small_str() << "'\n";
-              std::string lab_str;
-              std::cout << "before label_columns segid\n";
-              lab_str = atom.pdb_label_columns_segid_small_str();
-              std::cout << "pdb_label_columns_segid_small_str: '" << lab_str << "'\n";
-              std::cout << "after label_columns segid\n";
               if (atom.uij_is_defined()) n_anisou++;
               model_atom_labels.push_back(atom.pdb_label_columns_segid_small_str());
               i_model_atom++;
               element_charge_types[atom.pdb_element_charge_columns()]++;
             }
-            std::cout << "After atom loop\n";
           }
-          std::cout << "Here 1\n";
           {
             typedef std::set<std::string>::const_iterator it;
             it i_end = rg_resnames.end();
@@ -195,7 +182,6 @@ namespace detail {
               resnames[std::string((*i).c_str())]++;
             }
           }
-          std::cout << "Here 2\n";
           {
             typedef std::map<char, std::vector<std::string> >::const_iterator it;
             it i_end = altloc_resnames.end();
@@ -206,7 +192,6 @@ namespace detail {
               }
             }
           }
-          std::cout << "Here 3\n";
           if (have_blank_altloc) {
             n_alt_conf_improper++;
             if (!chain_alt_conf_improper) {
@@ -227,7 +212,6 @@ namespace detail {
           else if (rg_altlocs.size() != 0) {
             n_alt_conf_pure++;
           }
-          std::cout << "Here 4\n";
           chain_altlocs.insert(rg_altlocs.begin(), rg_altlocs.end());
           if (rg_resnames.size() == 1) {
             n_residues++;

@@ -410,81 +410,41 @@ namespace {
     bool add_model,
     bool add_segid) const
   {
+    /* At this point all members have the information, so we just put it into string
+    and return. */
     std::string result;
-    std::cout << "format 1\n";
     if (add_model) {
       if (model_id != 0) {
         std::size_t l = std::strlen(model_id);
         IOTBX_ASSERT(l <= 8);
         unsigned n = static_cast<unsigned>(l);
         unsigned m = std::max(4U, n);
-        // std::memcpy(result, "model=\"", 7U);
         result += "model=\"";
-        // result += 7;
         result += (boost::format("%s") % boost::io::group(std::setw(n), model_id)).str();
-        // copy_right_justified(result, m, model_id, n, blank);
-        // result += m;
         result += "\" ";
-        // std::memcpy(result, "\" ", 2U);
-        // result += 2;
       }
       if (name != 0) {
-        // std::memcpy(result, "pdb=\"", 5U);
-        // result += 5;
         result += "pdb=\"";
       }
       else {
-        // std::memcpy(result, "pdbres=\"", 8U);
-        // result += 8;
         result += "pdbres=\"";
       }
     }
-    std::cout << "format 2\n";
-    // std::cout << "result: " << result << "\n";
-    // return result;
     if (name != 0) {
-      std::cout << "name:" << name <<":"<< "\n";
       result += (boost::format("%-4s") % name).str();
-      // result += name;
-      // std::cout << "altloc:" << altloc <<":"<< "\n";
-      std::cout << "format 2-1\n";
-      result += (boost::format("%-1s") % altloc).str();
-      // result += altloc;
-      // copy_left_justified(result, 4U, name, 4U, blank);
-      // copy_left_justified(result+4, 1U, altloc, 1U, blank);
-      // result += 5;
+      result += (boost::format("%-1s") % (altloc==0 ? " " : altloc)).str();
     }
-    // problems: altloc, resname, chain id,resseq, icode
-    //
-    std::cout << resname << "format 3\n";
-    result += (boost::format("%3s") % resname).str();
-    std::cout << "format 3 1\n";
-    result += (boost::format("%2s") % chain_id).str();
-    std::cout << "format 3 2\n";
-    result += (boost::format("%4s") % resseq).str();
-    std::cout << "format 3 3\n";
-    result += (boost::format("%1s") % icode).str();
-    std::cout << "format 4\n";
-    // copy_right_justified(result, 3U, resname, 3U, blank);
-    // copy_right_justified(result+3, 2U, chain_id, 2U, blank);
-    // copy_right_justified(result+5, 4U, resseq, 4U, blank);
-    // copy_left_justified(result+9, 1U, icode, 1U, blank);
-    // result += 10;
+    result += (boost::format("%3s") % (resname ==0 ? " " : resname)).str();
+    result += (boost::format("%2s") % (chain_id == 0 ? " " : chain_id)).str();
+    result += (boost::format("%4s") % (resseq == 0 ? " " : resseq)).str();
+    result += (boost::format("%1s") % (icode == 0 ? " " : icode)).str();
     if (add_model) {
       result += '"';
-      // result[0] = '"';
-      // result++;
     }
-    std::cout << "format 5\n";
     if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
       result += " segid=\"";
       result += (boost::format("%-4s") % segid).str();
-      // std::memcpy(result, " segid=\"", 8U);
-      // copy_left_justified(result+8, 4U, segid, 4U, blank);
-      // result[12] = '"';
-      // result += 13;
     }
-    std::cout << "format 6\n";
     return result;
   }
 
@@ -582,13 +542,14 @@ namespace {
     bool add_segid,
     bool pdbres)
   {
+    /* Here we populate members of atom_label_columns_formatter, such as name, segid etc
+    and then call format where this info will be put into string */
     name = (pdbres ? 0 : atom.data->name.elems);
     segid = atom.data->segid.elems;
     shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
     const atom_group_data* ag = ag_lock.get();
     if (ag == 0) {
       altloc = resname = resseq = icode = chain_id = model_id = 0;
-      return format(add_model, add_segid);
     }
     else {
       altloc = ag->altloc.elems;
@@ -597,7 +558,6 @@ namespace {
       const residue_group_data* rg = rg_lock.get();
       if (rg == 0) {
         resseq = icode = chain_id = model_id = 0;
-        return format(add_model, add_segid);
       }
       else {
         resseq = rg->resseq.elems;
@@ -608,30 +568,26 @@ namespace {
         chain_data const* ch = rg->parent.lock().get();
         if (ch == 0) {
           chain_id = model_id = 0;
-          return format(add_model, add_segid);
         }
         else {
           chain_id = ch->id.c_str();
           if (!add_model) {
             model_id = 0;
-            return format(add_model, add_segid);
           }
           else {
             shared_ptr<model_data> md_lock = ch->parent.lock();
             model_data const* md = md_lock.get();
             if (md == 0) {
               model_id = 0;
-              return format(add_model, add_segid);
             }
             else {
               model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
-              return format(add_model, add_segid);
             }
           }
         }
       }
     }
-
+    return format(add_model, add_segid);
   }
 
 

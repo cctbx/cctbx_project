@@ -270,55 +270,17 @@ ATOM     62  O   SERA-   2      73.055  70.333  61.737  1.00 65.10           O
     """)
 
 def test2():
-  """ Overall counts duplicate atom labels due to incorrect long chain processing
+  """ Overall counts duplicate atom labels should be 0 if long chain ids
+  are processing correctly
   """
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   h = inp.construct_hierarchy()
-  print("here")
   oc = h.overall_counts()
-  print("here1")
   oc.show()
-  print("here2")
-  print(oc.errors())
-  print("here3")
-  # h = inp.construct_hierarchy()
-  # for c in h.chains():
-  #   for rg in c.residue_groups():
-  #     for ag in rg.atom_groups():
-  #       print(c.id, rg.resseq, ag.resname)
-
-def test3():
-  """mimic from_ca
-  """
-  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
-  # inp = iotbx.pdb.input(lines=norm_str.split("\n"), source_info=None)
-  h = inp.construct_hierarchy()
-  # asc = h.atom_selection_cache()
-  # cp = h.contains_protein()
-  # assert cp
-  # h = h.deep_copy()
-  # h.remove_alt_confs(always_keep_one_conformer=False)
-  # h=h.apply_atom_selection("protein")
-  # print(h.as_pdb_string())
-  print("PYTHON begin")
-  asc=h.atom_selection_cache()
-  print("PYTHON asc done")
-  sel = asc.selection(string = "protein")
-  print("PYTHON sel done")
-  # print(list(sel))
-  h1 = h.select(sel).deep_copy() # deep copy required for failure
-  print("PYTHON sel dc and sel done")
-  oc_h = h.overall_counts()
-  oc_h1 = h1.overall_counts()
-  print("PYTHON overall_counts done")
-  print ("n_duplicate_atom_labels", oc_h.n_duplicate_atom_labels)
-  print ("n_duplicate_atom_labels", oc_h1.n_duplicate_atom_labels)
-  # print('h overall ', h.overall_counts().n_residues)
-  # print('h1 overall ', h1.overall_counts().n_residues)
+  assert oc.errors() == []
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  # test1()
-  # test2()
-  test3()
+  test1()
+  test2()
   print("OK. Time: %8.3f"%(time.time()-t0))
