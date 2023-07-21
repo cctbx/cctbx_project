@@ -77,9 +77,6 @@ public:
         }
       }
       result.resize(mhkltot, 0);
-      // This is faster than using 'result' directly in the deepest loop
-      std::complex<double> TMP[mhkltot];
-      for (int i=0; i<mhkltot; i++) TMP[i]=std::complex<double>(0,0);
 
       stepx = two_pi / nx;
       stepy = two_pi / ny;
@@ -153,12 +150,15 @@ public:
               dells = tabsin[iarg] * (1.0-delarg) + tabsin[iarg+1] * delarg;
 
               //define initial values for the reflection (000)
-              int iref = 0;
+              //int iref = 0;
               double sfrref = 1.0;
               double sfiref = 0.0;
 
               double sfrl = sfrref;
               double sfil = sfiref;
+
+              // This is a little bit faster than result[iref]
+              std::complex<double>* result_ = result.begin();
 
               for (int il = 0; il < maxl; il++) {
                  double sfrkl = sfrl;
@@ -167,9 +167,11 @@ public:
                     double sfrhkl = sfrkl;
                     double sfihkl = sfikl;
                     for (int ih = 0; ih < maxhkl[ik][il]; ih++) {
-                       TMP[iref] += std::complex<double>(sfrhkl,sfihkl);
+                       //result[iref] += std::complex<double>(sfrhkl,sfihkl);
+                       *result_ += std::complex<double>(sfrhkl,sfihkl);
+                       ++result_;
 
-                       iref = iref + 1;
+                       //iref = iref + 1;
                        sfrtmp = sfrhkl * delhc - sfihkl * delhs;
                        sfihkl = sfihkl * delhc + sfrhkl * delhs;
                        sfrhkl = sfrtmp;
@@ -184,9 +186,6 @@ public:
               }
             }
       }}}
-
-      for(int i=0; i<result.size(); i++) result[i]=std::complex<double>(TMP[i]);
-
     }
 
   af::shared<std::complex<double> >  structure_factors() { return result; }
