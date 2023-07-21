@@ -25,7 +25,7 @@ def is_mopac_installed(env, var):
     return env_exists_exists(env, var)
 
 def is_qm_test_installed(env, var):
-  return env_exists_exists(env, var, check=False)
+  return True #env_exists_exists(env, var, check=False)
 
 program_options = {
   'orca' : (is_orca_installed, 'PHENIX_ORCA'),
@@ -352,7 +352,9 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
   for i in range(number_of_macro_cycles+1):
     tmp.append(unique_item_list())
   if qi:
+    data=[]
     for i, qmr in enumerate(params.qi.qm_restraints):
+      data.append([qmr.selection])
       rc=[]
       for i in range(number_of_macro_cycles+1):
         rc.append(unique_item_list())
@@ -361,22 +363,25 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
       if qmr.calculate_starting_strain:
         rc[1].append('strain')
       if not qmr.do_not_even_calculate_qm_restraints:
-        if qmr.run_in_macro_cycles=='first_only':
+        if qmr.run_in_macro_cycles in ['first_only', 'first_and_last']:
           rc[1].append('restraints')
         elif qmr.run_in_macro_cycles=='all':
           for j in range(1,number_of_macro_cycles+1):
             rc[j].append('restraints')
         elif qmr.run_in_macro_cycles=='test':
           rc[1].append('test')
+      if qmr.run_in_macro_cycles in ['first_and_last']:
+        rc[-1].append('restraints')
       if qmr.calculate_final_energy:
         rc[-1].append('energy')
       if qmr.calculate_final_strain:
         rc[-1].append('strain')
-    if verbose:
-      print('    %s' % qmr.selection, file=log)
-      for j, actions in enumerate(rc):
-        if actions:
-          print('      %2d : %s' % (j, ' '.join(actions)), file=log)
+      data.append(rc)
+      if verbose:
+        print('    %s' % qmr.selection, file=log)
+        for j, actions in enumerate(rc):
+          if actions:
+            print('      %2d : %s' % (j, ' '.join(actions)), file=log)
     for j, actions in enumerate(rc):
       for action in actions:
         tmp[j].append(action)

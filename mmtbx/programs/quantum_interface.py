@@ -376,8 +376,10 @@ Usage examples:
         selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
         qi_phil_string = self.get_single_qm_restraints_scope(selection)
         qi_phil_string = self.set_all_write_to_true(qi_phil_string)
-        qi_phil_string = qi_phil_string.replace('run_in_macro_cycles = *first_only first_and_last all test',
-                                                'run_in_macro_cycles = first_only first_and_last *all test')
+        # qi_phil_string = qi_phil_string.replace('run_in_macro_cycles = *first_only first_and_last all test',
+        #                                         'run_in_macro_cycles = first_only *first_and_last all test')
+        qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                                'include_nearest_neighbours_in_optimisation = True')
         print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
         outl += '%s' % qi_phil_string
       pf = '%s_all.phil' % (
@@ -392,6 +394,7 @@ Usage examples:
       return
 
     if self.params.qi.each_water:
+      print(self.params.qi.each_water)
       merge_water(('1yjp.updated_cluster_final_A_8_3.5_C_PM6-D3H4.pdb',
                    '1yjp.updated_cluster_final_A_9_3.5_C_PM6-D3H4.pdb',
                    '1yjp.updated_cluster_final_A_10_3.5_C_PM6-D3H4.pdb',

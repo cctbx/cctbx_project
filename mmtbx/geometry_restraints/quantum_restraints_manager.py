@@ -883,7 +883,7 @@ def run_energies(model,
     model.log=null_out()
     model.process(make_restraints=True)
   if macro_cycle in [None, 0]: run_program=False
-  qi_array = quantum_interface.get_qi_macro_cycle_array(params)
+  # qi_array = quantum_interface.get_qi_macro_cycle_array(params)
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,
                                                                     energy_only=energy_only,
