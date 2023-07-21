@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import null_out
+# from libtbx.utils import null_out
 
 from iotbx.pdb import common_residue_names_get_class as get_class
 

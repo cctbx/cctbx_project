@@ -54,7 +54,7 @@ def get_h_restraints(resname, strict=True):
       # partial_charge=a.partial_charge,
       ))
   conf =  molecule.GetConformer()
-  from rdkit import Chem
+  from rdkit import Chem # needed import
   from rdkit.Chem import rdMolTransforms
   for b in cc_cif.get('_chem_comp_bond',[]):
     if strict:
