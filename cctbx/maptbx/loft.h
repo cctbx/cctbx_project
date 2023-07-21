@@ -76,7 +76,7 @@ public:
            mhkltot = mhkltot + maxhkl[ik][il];
         }
       }
-      result.resize(mhkltot, 0);
+      result.resize(mhkltot, std::complex<double>(0,0));
 
       stepx = two_pi / nx;
       stepy = two_pi / ny;
