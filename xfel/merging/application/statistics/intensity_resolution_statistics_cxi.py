@@ -477,7 +477,7 @@ class intensity_resolution_statistics_cxi(worker):
 
     try:
       model_file_path = self.params.statistics.cciso.mtz_file
-      assert model_file_path.endswith("mtz") or model_file_path.endswith("sf.cif")
+      assert model_file_path.endswith(("mtz", "sf.cif"))
       # support both old-style *.mtz and structure factor *-sf.cif
       from iotbx import reflection_file_reader
       data_SR = reflection_file_reader.any_reflection_file(
