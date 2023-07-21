@@ -483,7 +483,7 @@ class intensity_resolution_statistics_cxi(worker):
       data_SR = reflection_file_reader.any_reflection_file(
                 file_name = model_file_path)
       have_iso_ref = True
-    except RuntimeError:
+    except (RuntimeError, AttributeError): # Attribute error if model_file_path is None
       data_SR = None
       have_iso_ref = False
 
