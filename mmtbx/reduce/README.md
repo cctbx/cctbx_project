@@ -84,19 +84,19 @@ scores point to a set of outstanding issues with hydrogen placement that are sti
 - 1crn: Reduce2 better.
 - 1ehz: Reduce2 better.
 - 1otf: Reduce2 better.
-- 1pq7_fragment: Same
+- 1pq7_fragment: Same.
 - 1ubq-nh3_test: **Reduce2 worse**.
 - 1xso: Reduce2 better.
 - 1yk4_snip: Reduce2 better.
 - 2mbw_fragment: **Reduce2 worse**.
 - 3cp5_fragment: Reduce2 better.
-- 4fen: 
-- 5dka_fragment:
-- 6xhv:
-- 6t5h_fragment:
-- 6tte_fragment:
-- 6vw1_fragment:
-- 7c31:
+- 4fen: Reduce2 better.
+- 5dka_fragment: Reduce2 better.
+- 6xhv: Reduce2 better.
+- 6t5h_fragment: Reduce2 better.
+- 6tte_fragment: **Reduce2 worse**.
+- 6vw1_fragment: **Reduce2 worse**.
+- 7c31: Reduce2 better.
 
 Additional tests were performed using the **comparison_file** command-line option to compare the
 behavior of reduce2 with original reduce on a Mover-by-Mover basis. 3VYK was studied along
