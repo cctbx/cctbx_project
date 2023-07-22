@@ -37,7 +37,7 @@ def generate_selections(hierarchy):
                   ]:
     yield None, sel_str
   for ag in hierarchy.atom_groups():
-    if ag.resname not in ['HOH', 'DOD']: continue
+    if (get_class(name=ag.resname) != "common_water"): continue
     yield ag.id_str(), 'within(5, chain %s and resseq %s and name O)' % (
       ag.parent().parent().id,
       ag.parent().resseq,
@@ -67,7 +67,7 @@ def process_water_b_factors(model):
     mean = bs_selected.min_max_mean().mean
     ssd = bs_selected.sample_standard_deviation()
     for ag in hierarchy.atom_groups():
-      if ag.resname not in ['HOH', 'DOD']: continue
+      if (get_class(name=ag.resname) != "common_water"): continue
       if id_str is not None:
         if ag.id_str()!=id_str: continue
       atom = ag.atoms()[0]
