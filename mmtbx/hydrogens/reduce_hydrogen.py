@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import six
-import sys, time
+import os, sys, time
 import mmtbx.model
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
@@ -25,7 +25,7 @@ def get_h_restraints(resname, strict=True):
   from mmtbx.chemical_components import get_cif_filename
   from mmtbx.ligands.rdkit_utils import read_chemical_component_filename
   filename = get_cif_filename(resname)
-  assert filename
+  if not os.path.exists(filename): return None
   molecule = read_chemical_component_filename(filename)
   cc_cif = get_cif_dictionary(resname)
   cc = cc_cif['_chem_comp'][0]
