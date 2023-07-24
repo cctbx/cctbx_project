@@ -996,8 +996,7 @@ class kernel_normalisation(object):
         number=number_of_sorted_reflections_for_auto_kernel
       else:
         number=int(auto_kernel)
-      if number > d_star_sq_hkl.size():
-        number = d_star_sq_hkl.size()-1
+      number = min(number, d_star_sq_hkl.size()-1)
       self.kernel_width = d_star_sq_hkl[sort_permut[number]]-d_star_sq_low
       if self.kernel_width ==0:
         original_number=number

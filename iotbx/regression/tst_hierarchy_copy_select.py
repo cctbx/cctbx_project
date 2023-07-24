@@ -24,29 +24,69 @@ ATOM     18  CG  ASN A   3      -2.006   1.739   6.861  1.00 12.82           C
 ATOM     19  OD1 ASN A   3      -1.702   2.925   7.072  1.00 15.05           O
 """
 
-def test1():
-  """mimic from_ca
-  """
-  inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+def get_h_and_sel():
+  inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
   h = inp.construct_hierarchy()
-  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
   asc=h.atom_selection_cache()
-  sel = asc.selection(string = "protein")
-  h1 = h.deep_copy().select(sel) # deep copy required for failure
-  oc_h = h.overall_counts()
-  oc_h1 = h1.overall_counts()
-  # for a in h1.atoms():
-  #   print (a.id_str())
-  # resname, chain id and resnum are gone!
-  # 'pdb=" N             "'
-  #
-  assert h1.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h1.atoms()[0].id_str()
-  assert oc_h.n_duplicate_atom_labels == 0
-  # Overall counts are also broken since atom labels are mostly the same
-  assert oc_h1.n_duplicate_atom_labels == 0, oc_h1.n_duplicate_atom_labels # This is the problem
-  # exactly labels are not in h1 anymore
+  sel = asc.selection(string = "all")
+  return h, sel
+
+
+# In these tests we will use id_str() to show if the information is available in the hierarchy
+# These tests show how .select() can corrupt resulting hierarchy if not done carefully.
+
+def test1():
+  """Normal operations  """
+  h, sel = get_h_and_sel()
+  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
+  sel_h = h.select(sel)
+  assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
+
+def test2():
+  """ Still works"""
+  h, sel = get_h_and_sel()
+  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
+  copy_h = h.deep_copy()
+  sel_h = copy_h.select(sel)
+  assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
+
+def test3():
+  """ Does not work"""
+  h, sel = get_h_and_sel()
+  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
+  sel_h = h.deep_copy().select(sel)
+  print("There is no info:", sel_h.atoms()[0].id_str())
+  print("And no parent:", sel_h.atoms()[0].parent())
+  # assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
+
+def test4():
+  """ What happened in test3(): """
+  h, sel = get_h_and_sel()
+  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
+  copy_h = h.deep_copy()
+  sel_h = copy_h.select(sel)
+  # Everything is good for now
+  assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
+  del copy_h
+  # but when the copy_h is deleted (or garbage collector removes it) the info is gone:
+  # That's exactly what happens when one does sel_h = h.deep_copy().select(), the result of
+  # h.deep_copy() is dropped immediately.
+  print("Info is gone:", sel_h.atoms()[0].id_str())
+  # assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
+
+def test5():
+  """ That's how test3 should be written, note copy_atoms=True """
+  h, sel = get_h_and_sel()
+  assert h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % h.atoms()[0].id_str()
+  sel_h = h.deep_copy().select(sel, copy_atoms=True)
+  print("Info is still here:", sel_h.atoms()[0].id_str())
+  assert sel_h.atoms()[0].id_str() == 'pdb=" N   GLY A   1 "', "'%s'" % sel_h.atoms()[0].id_str()
 
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
+  test2()
+  test3()
+  test4()
+  test5()
   print("OK. Time: %8.3f"%(time.time()-t0))
