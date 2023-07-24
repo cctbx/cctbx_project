@@ -15,13 +15,12 @@ namespace least_squares {
 
   template <typename FloatType>
   struct ed_n_shared_data {
-    typedef std::complex<FloatType> complex_t;
+    ED_UTIL_TYPEDEFS;
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
     typedef boost::shared_ptr< f_calc_function_base_t> f_calc_function_base_ptr_t;
     typedef builder_base<FloatType> data_t;
     typedef af::shared<const BeamInfo<FloatType>*> beam_at;
     typedef std::pair<int, af::shared<const BeamInfo<FloatType>*> > beam_me;
-    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
     typedef boost::shared_ptr<lookup_t> lookup_ptr_t;
     typedef cctbx::xray::fc_correction<FloatType> fc_correction_t;
     typedef boost::shared_ptr< fc_correction_t> fc_correction_ptr_t;
@@ -66,6 +65,7 @@ namespace least_squares {
           all_indices.push_back(frame.indices[hi]);
           for (size_t hj = hi+1; hj < frame.indices.size(); hj++) {
             all_indices.push_back(frame.indices[hi] - frame.indices[hj]);
+            all_indices.push_back(frame.indices[hj] - frame.indices[hi]);
           }
         }
         lookup_ptr_t mi_l(new lookup_t(
@@ -126,44 +126,78 @@ namespace least_squares {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.mat_type == 3) { // 2-beam
+            FloatType angle = scitbx::deg_as_rad(3.0),
+              step = scitbx::deg_as_rad(0.05);
+            int steps = round(angle / step);
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
               miller::index<> h = frame.indices[beam_idx];
               int ii = parent.mi_lookup.find_hkl(h);
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
-              if (use_diff_angle) {
-                frame.update_alpha(frame.beams[beam_idx].diffraction_angle);
-              }
-              complex_t ci = utils<FloatType>::calc_amp_2beam(
-                h, parent.Fc2Ug * Fc,
-                thickness,
-                K, frame.RMf, frame.normal);
-              Is[offset + i] = std::norm(ci);
-              if (CIs.size() != 0) {
-                CIs[offset + i] = ci;
+              FloatType I1 = -1, g1 = -1;
+              for (int st = -steps; st <= steps; st++) {
+                std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
+                  frame.alpha + st * step);
+                cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
+
+                FloatType I = std::norm(utils<FloatType>::calc_amp_2beam(
+                  h, Fc,
+                  thickness,
+                  K, r.first, r.second));
+                FloatType g = K_g.length();
+                if (g1 > 0) {
+                  Is[offset + i] += (I + I1)*std::abs(g-g1)/2;
+                }
+                g1 = g;
+                I1 = I;
               }
             }
+
+            //for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+            //  size_t beam_idx = frame.strong_measured_beams[i];
+            //  miller::index<> h = frame.indices[beam_idx];
+            //  int ii = parent.mi_lookup.find_hkl(h);
+            //  complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+            //  mat3_t RMf;
+            //  cart_t N;
+            //  if (use_diff_angle) {
+            //    std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
+            //      frame.beams[beam_idx].diffraction_angle);
+            //    RMf = r.first;
+            //    N = r.second;
+            //  }
+            //  else {
+            //    RMf = frame.RMf;
+            //    N = frame.normal;
+            //  }
+            //  complex_t ci = utils<FloatType>::calc_amp_2beam(
+            //    h, Fc,
+            //    thickness,
+            //    K, RMf, N);
+            //  Is[offset + i] = std::norm(ci);
+            //  if (CIs.size() != 0) {
+            //    CIs[offset + i] = ci;
+            //  }
+            //}
             return;
           }
           // modified Ug
           if (parent.mat_type == 4) {
-            af::versa<complex_t, af::mat_grid> A;
+            cmat_t A;
             af::shared<miller::index<> >
               s = af::select(frame.indices.const_ref(), frame.strong_beams.const_ref());
 
             utils<FloatType>::build_Ug_matrix(
               A, Fcs_k,
               parent.mi_lookup,
-              s,
-              parent.Fc2Ug
+              s
             );
 
             utils<FloatType>::modify_Ug_matrix(
               A, s, Fcs_k,
               parent.mi_lookup,
               af::select(frame.indices.const_ref(), frame.weak_beams.const_ref()),
-              af::select(frame.excitation_errors.const_ref(), frame.weak_beams.const_ref()),
-              parent.Fc2Ug);
+              af::select(frame.excitation_errors.const_ref(), frame.weak_beams.const_ref()));
 
             af::shared<FloatType> ExpDen;
             utils<FloatType>::build_eigen_matrix_modified(
@@ -184,30 +218,63 @@ namespace least_squares {
             }
             return;
           }
-          af::versa<complex_t, af::mat_grid> A;
+          cmat_t A;
           af::shared<miller::index<> >
             strong_indices = af::select(frame.indices.const_ref(),
               frame.strong_beams.const_ref());
           utils<FloatType>::build_Ug_matrix(
             A, Fcs_k,
             parent.mi_lookup,
-            strong_indices,
-            parent.Fc2Ug
+            strong_indices
           );
           af::shared<complex_t> amps;
           // 2013
           if (parent.mat_type == 0) {
-            af::shared<FloatType> ExpDen;
-            utils<FloatType>::build_eigen_matrix_2013(A, strong_indices, K,
-              frame.RMf, frame.normal, ExpDen, parent.Fc2Ug
-            );
-            amps = utils<FloatType>::calc_amps_2013(A, ExpDen,
-              thickness, frame.strong_measured_beams.size());
+            FloatType angle = scitbx::deg_as_rad(2.0),
+              step = scitbx::deg_as_rad(0.05);
+            size_t beam_n = frame.strong_measured_beams.size();
+            af::shared<FloatType> Is1(beam_n), K_g_ls(beam_n);
+            int steps = round(angle / step);
+            bool second_step = false;
+            for (int st = -steps; st <= steps; st++) {
+              std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
+                frame.alpha + st * step);
+              af::shared<FloatType> ExpDen;
+              cmat_t A1 = A.deep_copy();
+              utils<FloatType>::build_eigen_matrix_2013(A1, strong_indices, K,
+                r.first, r.second, ExpDen
+              );
+              amps = utils<FloatType>::calc_amps_2013(A1, ExpDen,
+                thickness, frame.strong_measured_beams.size());
+
+              if (second_step) {
+                for (size_t ai = 0; ai < amps.size(); ai++) {
+                  miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
+                  cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
+                  FloatType K_g_l = K_g.length();
+                  FloatType I = std::norm(amps[ai]);
+                  Is[offset + ai] += (Is1[ai] + I) *
+                    std::abs(K_g_ls[ai] - K_g_l)/2;
+                  Is1[ai] = I;
+                  K_g_ls[ai] = K_g_l;
+                }
+              }
+              else {
+                for (size_t ai = 0; ai < amps.size(); ai++) {
+                  miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
+                  cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
+                  K_g_ls[ai] = K_g.length();
+                  Is1[ai] = std::norm(amps[ai]);
+                }
+                second_step = true;
+              }
+            }
+            return;
           }
           else if (parent.mat_type == 1) { // 2015
             af::shared<FloatType> M;
             utils<FloatType>::build_eigen_matrix_2015(A, strong_indices, K,
-              frame.RMf, frame.normal, M, parent.Fc2Ug
+              frame.RMf, frame.normal, M
             );
             const FloatType Kn = -frame.normal[2] * parent.Kl;
             amps = utils<FloatType>::calc_amps_2015(A, M,
@@ -216,7 +283,7 @@ namespace least_squares {
           else if (parent.mat_type == 2) { // ReciPro
             af::shared<FloatType> Pgs;
             utils<FloatType>::build_eigen_matrix_recipro(A, strong_indices, K,
-              frame.RMf, frame.normal, Pgs, parent.Fc2Ug
+              frame.RMf, frame.normal, Pgs
             );
             amps = utils<FloatType>::calc_amps_recipro(A, Pgs, parent.Kvac,
               thickness, frame.strong_measured_beams.size());
@@ -273,8 +340,10 @@ namespace least_squares {
       af::shared<PeakProfilePoint<FloatType> > rv;
       FloatType alpha = frame.alpha;
       const cart_t K = cart_t(0, 0, -Kl);
-      for (FloatType s = -angle; s <= angle; s+= step) {
-        frame.update_alpha(alpha + s);
+      int steps = round(angle / step);
+      for (int st = -steps; st <= steps; st++) {
+        frame.update_alpha(alpha + st*step);
+        std::fill(Is_.begin(), Is_.end(), 0);
         process_frame(*this, frame, Fcs_k, Is_, CIs_,
           false, false)(); // no offset - write to Is_ at 0;
         for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
@@ -282,7 +351,7 @@ namespace least_squares {
           miller::index<> h = frame.indices[beam_idx];
           cart_t g = frame.RMf * cart_t(h[0], h[1], h[2]);
           FloatType Sg = utils<FloatType>::calc_Sg(g, K);
-          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, frame.alpha));
+          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, frame.alpha, (K+g).length()));
         }
       }
       frame.update_alpha(alpha);
@@ -334,7 +403,7 @@ namespace least_squares {
         if (Fcs_k.size() != indices.size()) {
           Fcs_k.resize(indices.size());
           for (size_t ih = 0; ih < indices.size(); ih++) {
-            Fcs_k[ih] = calc_one_h(indices[ih]);
+            Fcs_k[ih] = calc_one_h(indices[ih]) * Fc2Ug;
           }
           // expand uniq Fc to frame indices
           size_t offset = 0;
@@ -350,6 +419,7 @@ namespace least_squares {
         }
         // replacing dummy with Fc will allow to collect complex amplitudes
         af::shared<complex_t> dummy;
+        std::fill(Is.begin(), Is.end(), 0);
         process_frames_mt(Is, dummy, Fcs_k);
         if (!compute_grad) {
           return;
@@ -361,7 +431,7 @@ namespace least_squares {
       for (size_t i = 0; i < params.size(); i++) {
         param_n += params[i]->components().size();
       }
-      design_matrix.resize(af::c_grid<2>(beam_n, param_n));
+      design_matrix.resize(af::mat_grid(beam_n, param_n));
       // Generate Arrays for storing positive and negative epsilon Fcs for numerical
       // generation of gradients
       af::shared<complex_t> Fc_eps(indices.size()), dummy;
@@ -378,9 +448,10 @@ namespace least_squares {
             cp->store(reparamn.unit_cell());
           }
           for (size_t i_h = 0; i_h < indices.size(); i_h++) {
-            Fc_eps[i_h] = calc_one_h(indices[i_h]);
+            Fc_eps[i_h] = calc_one_h(indices[i_h]) * Fc2Ug;
           }
           //Generate Fcs at x+eps
+          std::fill(Is_p.begin(), Is_p.end(), 0);
           process_frames_mt(Is_p, dummy, Fc_eps);
 
           x[j] -= t_eps;
@@ -389,9 +460,10 @@ namespace least_squares {
             cp->store(reparamn.unit_cell());
           }
           for (size_t i_h = 0; i_h < indices.size(); i_h++) {
-            Fc_eps[i_h] = calc_one_h(indices[i_h]);
+            Fc_eps[i_h] = calc_one_h(indices[i_h]) * Fc2Ug;
           }
           //Generate Fcs at x-eps
+          std::fill(Is_m.begin(), Is_m.end(), 0);
           process_frames_mt(Is_m, dummy, Fc_eps);
           
           // compute grads
@@ -444,7 +516,7 @@ namespace least_squares {
     af::shared<complex_t> Fcs, Fcs_k;
     af::shared<FloatType> Is;
     // 
-    af::versa<FloatType, af::c_grid<2> > design_matrix;
+    af::versa<FloatType, af::mat_grid> design_matrix;
     lookup_t mi_lookup;
     int thread_n;
     bool use_diff_angle;
@@ -453,9 +525,9 @@ namespace least_squares {
   template <typename FloatType>
   class f_calc_function_ed_n : public f_calc_function_base<FloatType> {
   public:
+    ED_UTIL_TYPEDEFS;
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
     typedef ed_n_shared_data<FloatType> data_t;
-    typedef scitbx::vec3<FloatType> cart_t;
 
     f_calc_function_ed_n(ed_n_shared_data<FloatType> const& data)
       : data(data),
@@ -486,6 +558,10 @@ namespace least_squares {
     }
     virtual std::complex<FloatType> get_f_calc() const {
       return data.Fcs[index];
+    }
+    virtual af::const_ref<complex_t> get_grad_f_calc() const {
+      SMTBX_NOT_IMPLEMENTED();
+      throw 1;
     }
     virtual af::const_ref<FloatType> get_grad_observable() const {
       typedef af::versa_plain<FloatType> one_dim_type;

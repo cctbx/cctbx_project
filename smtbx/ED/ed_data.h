@@ -10,9 +10,7 @@ template <typename FloatType> struct BeamInfo;
 template <typename FloatType>
 class FrameInfo {
 public:
-  typedef scitbx::vec3<FloatType> cart_t;
-  typedef scitbx::mat3<FloatType> mat3_t;
-  typedef std::complex<FloatType> complex_t;
+  ED_UTIL_TYPEDEFS;
 
   FrameInfo() {}
 
@@ -75,7 +73,8 @@ public:
   /* removes symmetry equivalents beams (and corresponding indices) and
   return the number of removed elements
   */
-  size_t unify(sgtbx::space_group const& space_group, bool anomalous);
+  size_t unify(sgtbx::space_group const& space_group, bool anomalous,
+    bool exclude_sys_abs);
 
   void analyse_strength(
     af::shared<complex_t> const& Fcs_k,
@@ -243,12 +242,15 @@ void FrameInfo<FloatType>::analyse_strength(
 
 template <typename FloatType>
 size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
-  bool anomalous)
+  bool anomalous, bool exclude_sys_abs)
 {
   typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
   lookup_t bm = lookup_t(space_group, anomalous);
   size_t cnt = 0;
   for (size_t i = 0; i < beams.size(); i++) {
+    if (exclude_sys_abs && space_group.is_sys_absent(beams[i].index)) {
+      continue;
+    }
     if (!bm.add_hkl(beams[i].index)) {
       beams.erase(&beams[i]);
       indices.erase(&indices[i]);
@@ -262,11 +264,12 @@ size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
 
 template <typename FloatType>
 struct PeakProfilePoint {
-  FloatType I, Sg, angle;
+  FloatType I, Sg, angle, g;
   PeakProfilePoint()
   {}
-  PeakProfilePoint(FloatType I, FloatType Sg, FloatType angle)
-    : I(I), Sg(Sg), angle(angle)
+  PeakProfilePoint(FloatType I, FloatType Sg, FloatType angle,
+    FloatType g)
+    : I(I), Sg(Sg), angle(angle), g(g)
   {}
 };
 
