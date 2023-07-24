@@ -994,15 +994,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
         - a member function raw_fork to implement member function fork.
      */
     template <typename FloatType,
-              template<typename> class ObservableType,
               template<typename> class ExpI2PiFunctor,
               class Heir>
-    class base
-    {
+    class base_fc {
     public:
       typedef FloatType float_type;
       typedef std::complex<float_type> complex_type;
-      typedef ObservableType<float_type> observable_type;
       typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
       typedef boost::shared_ptr<Heir> pointer_type;
       typedef one_scatterer_one_h::scatterer_contribution<float_type>
@@ -1022,9 +1019,6 @@ namespace smtbx { namespace structure_factors { namespace direct {
     public:
       complex_type f_calc;
       af::ref_owning_shared<complex_type> grad_f_calc;
-      float_type observable;
-      af::ref_owning_shared<float_type> grad_observable;
-
     public:
       /** @brief The evaluation or linearisation of \f$F_c\f$
           for the given structure is to be computed.
@@ -1040,7 +1034,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
           Not only the computation will be incorrect but illegal memory
           accesses will be prone to occur.
        */
-      base(uctbx::unit_cell const &unit_cell,
+      base_fc(uctbx::unit_cell const &unit_cell,
            sgtbx::space_group const &space_group,
            af::shared< xray::scatterer<float_type> > const &scatterers,
            scatterer_contribution_type *h_scatterer_contribution,
@@ -1053,14 +1047,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
           scatterers(scatterers),
           grad_f_calc(grad_flags_counts.n_parameters(),
                       af::init_functor_null<complex_type>()),
-          grad_observable(grad_flags_counts.n_parameters(),
-                          af::init_functor_null<float_type>()),
           has_computed_grad(false),
           h_scatterer_contribution(h_scatterer_contribution),
           own_scatterer_contribution(own_scatterer_contribution)
       {}
 
-      ~base() {
+      ~base_fc() {
         if (own_scatterer_contribution) {
           delete h_scatterer_contribution;
         }
@@ -1117,22 +1109,32 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (!origin_centric_case) {
           generic_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                              heir.exp_i_2pi);
-          compute(h,
+          compute_(h,
             h_scatterer_contribution->at_d_star_sq(d_star_sq),
             lin_for_h, f_mask, compute_grad);
         }
         else {
           origin_centric_linearisation_t lin_for_h(space_group, h, d_star_sq,
                                                    heir.exp_i_2pi);
-          compute(h,
+          compute_(h,
             h_scatterer_contribution->at_d_star_sq(d_star_sq),
             lin_for_h, f_mask, compute_grad);
         }
       }
+      // this is needed for compilation
+      const af::ref_owning_shared<float_type>& get_grad_observable() const {
+        SMTBX_NOT_IMPLEMENTED();
+        throw 1;
+      }
 
-    private:
+      float_type get_observable() const {
+        SMTBX_NOT_IMPLEMENTED();
+        throw 1;
+      }
+
+    protected:
       template <class LinearisationForMillerIndex>
-      void compute(miller::index<> const &h,
+      void compute_(miller::index<> const &h,
                    scatterer_contribution_type const&scatter_contrib,
                    LinearisationForMillerIndex &l,
                    boost::optional<complex_type> const &f_mask,
@@ -1187,11 +1189,107 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (f_mask) {
           f_calc += *f_mask;
         }
-        observable_type::compute(origin_centric_case,
-                                 f_calc, grad_f_calc,
-                                 observable, grad_observable,
-                                 compute_grad);
         has_computed_grad = compute_grad;
+      }
+    };
+
+    template <typename FloatType,
+      template<typename> class ObservableType,
+      template<typename> class ExpI2PiFunctor,
+      class Heir>
+    class base_obs : public base_fc<FloatType, ExpI2PiFunctor, Heir> {
+    public:
+      typedef base_fc<FloatType, ExpI2PiFunctor, Heir> parent_t;
+      typedef FloatType float_type;
+      typedef std::complex<float_type> complex_type;
+      typedef ExpI2PiFunctor<float_type> exp_i_2pi_functor;
+      typedef ObservableType<float_type> observable_type;
+      typedef boost::shared_ptr<Heir> pointer_type;
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
+    public:
+      float_type observable;
+      af::ref_owning_shared<float_type> grad_observable;
+
+    public:
+      base_obs(uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::shared< xray::scatterer<float_type> > const& scatterers,
+        scatterer_contribution_type* h_scatterer_contribution,
+        bool own_scatterer_contribution)
+        : parent_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
+          own_scatterer_contribution),
+        grad_observable(parent_t::grad_flags_counts.n_parameters(),
+          af::init_functor_null<float_type>())
+      {}
+
+      /// Evaluate the structure factors
+      void evaluate(miller::index<> const& h,
+        boost::optional<complex_type> const& f_mask = boost::none)
+      {
+        compute(h, f_mask, false);
+      }
+
+      /// Linearise the structure factors
+      void linearise(miller::index<> const& h,
+        boost::optional<complex_type> const& f_mask = boost::none)
+      {
+        compute(h, f_mask, true);
+      }
+
+      /// Compute the evaluation or the linearisation
+      void compute(miller::index<> const& h,
+        boost::optional<complex_type> const& f_mask = boost::none,
+        bool compute_grad = true)
+      {
+        float_type d_star_sq = parent_t::unit_cell.d_star_sq(h);
+        Heir& heir = static_cast<Heir&>(*this);
+
+        typedef typename one_scatterer_one_h::in_generic_space_group<
+          float_type, exp_i_2pi_functor>
+          generic_linearisation_t;
+
+        typedef typename one_scatterer_one_h::in_origin_centric_space_group<
+          float_type, exp_i_2pi_functor>
+          origin_centric_linearisation_t;
+
+        if (!parent_t::origin_centric_case) {
+          generic_linearisation_t lin_for_h(parent_t::space_group, h, d_star_sq,
+            heir.exp_i_2pi);
+          compute_(h,
+            parent_t::h_scatterer_contribution->at_d_star_sq(d_star_sq),
+            lin_for_h, f_mask, compute_grad);
+        }
+        else {
+          origin_centric_linearisation_t lin_for_h(parent_t::space_group, h, d_star_sq,
+            heir.exp_i_2pi);
+          compute_(h,
+            parent_t::h_scatterer_contribution->at_d_star_sq(d_star_sq),
+            lin_for_h, f_mask, compute_grad);
+        }
+      }
+
+      const af::ref_owning_shared<float_type>& get_grad_observable() const {
+        return grad_observable;
+      }
+
+      float_type get_observable() const {
+        return observable;
+      }
+
+    private:
+      template <class LinearisationForMillerIndex>
+      void compute_(miller::index<> const& h,
+        scatterer_contribution_type const& scatter_contrib,
+        LinearisationForMillerIndex& l,
+        boost::optional<complex_type> const& f_mask,
+        bool compute_grad)
+      {
+        parent_t::compute_(h, scatter_contrib, l, f_mask, compute_grad);
+        observable_type::compute(parent_t::origin_centric_case,
+          parent_t::f_calc, parent_t::grad_f_calc,
+          observable, grad_observable,
+          compute_grad);
       }
     };
 
@@ -1202,12 +1300,12 @@ namespace smtbx { namespace structure_factors { namespace direct {
               template<typename> class ObservableType,
               template<typename> class ExpI2PiFunctor>
     class custom_trigonometry
-      : public base<FloatType, ObservableType, ExpI2PiFunctor,
+      : public base_obs<FloatType, ObservableType, ExpI2PiFunctor,
                     custom_trigonometry<
                       FloatType, ObservableType, ExpI2PiFunctor> >
     {
     public:
-      typedef base<FloatType, ObservableType, ExpI2PiFunctor,
+      typedef base_obs<FloatType, ObservableType, ExpI2PiFunctor,
                    custom_trigonometry<
                      FloatType, ObservableType, ExpI2PiFunctor> >
               base_t;
@@ -1243,17 +1341,14 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
     /// Specialisation of class base computing trigonometric functions
     /// with the C++ standard library
-    template <typename FloatType,
-              template<typename> class ObservableType>
-    class std_trigonometry
-      : public base<FloatType, ObservableType,
-                    cctbx::math::cos_sin_exact,
-                    std_trigonometry<FloatType, ObservableType> >
+    template <typename FloatType>
+    class std_trigonometry_fc
+      : public base_fc<FloatType, cctbx::math::cos_sin_exact,
+                    std_trigonometry_fc<FloatType> >
     {
     public:
-      typedef base<FloatType, ObservableType,
-                   cctbx::math::cos_sin_exact,
-                   std_trigonometry<FloatType, ObservableType> >
+      typedef base_fc<FloatType, cctbx::math::cos_sin_exact,
+                   std_trigonometry_fc<FloatType> >
               base_t;
 
       typedef FloatType float_type;
@@ -1262,7 +1357,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
 
       cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
 
-      std_trigonometry(
+      std_trigonometry_fc(
         uctbx::unit_cell const &unit_cell,
         sgtbx::space_group const &space_group,
         af::shared< xray::scatterer<float_type> > const &scatterers,
@@ -1273,12 +1368,51 @@ namespace smtbx { namespace structure_factors { namespace direct {
           own_scatterer_contribution)
       {}
 
-      std_trigonometry *raw_fork() const {
-        return new std_trigonometry(this->unit_cell,
+      std_trigonometry_fc *raw_fork() const {
+        return new std_trigonometry_fc(this->unit_cell,
                                     this->space_group,
                                     this->scatterers.array(),
                                     this->h_scatterer_contribution->raw_fork(),
                                     true);
+      }
+    };
+
+    template <typename FloatType,
+      template<typename> class ObservableType>
+    class std_trigonometry
+      : public base_obs<FloatType, ObservableType,
+      cctbx::math::cos_sin_exact,
+      std_trigonometry<FloatType, ObservableType> >
+    {
+    public:
+      typedef base_obs<FloatType, ObservableType,
+        cctbx::math::cos_sin_exact,
+        std_trigonometry<FloatType, ObservableType> >
+        base_t;
+
+      typedef FloatType float_type;
+      typedef one_scatterer_one_h::scatterer_contribution<float_type>
+        scatterer_contribution_type;
+
+      cctbx::math::cos_sin_exact<float_type> exp_i_2pi;
+
+      std_trigonometry(
+        uctbx::unit_cell const& unit_cell,
+        sgtbx::space_group const& space_group,
+        af::shared< xray::scatterer<float_type> > const& scatterers,
+        scatterer_contribution_type* h_scatterer_contribution,
+        bool own_scatterer_contribution)
+
+        : base_t(unit_cell, space_group, scatterers, h_scatterer_contribution,
+          own_scatterer_contribution)
+      {}
+
+      std_trigonometry* raw_fork() const {
+        return new std_trigonometry(this->unit_cell,
+          this->space_group,
+          this->scatterers.array(),
+          this->h_scatterer_contribution->raw_fork(),
+          true);
       }
     };
 

@@ -249,6 +249,10 @@ namespace least_squares {
       }
       return Fc;
     }
+    virtual af::const_ref<complex_t> get_grad_f_calc() const {
+      SMTBX_NOT_IMPLEMENTED();
+      throw 1;
+    }
     virtual af::const_ref<FloatType> get_grad_observable() const {
       if (!computed) {
         typedef af::versa_plain<FloatType> one_dim_type;

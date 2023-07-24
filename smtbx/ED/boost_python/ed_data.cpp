@@ -87,6 +87,7 @@ namespace boost_python {
         .add_property("I", &wt::I)
         .add_property("Sg", &wt::Sg)
         .add_property("angle", &wt::angle)
+        .add_property("g", &wt::g)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("peak_profile_point");
     }
