@@ -12,19 +12,19 @@ namespace smtbx {
       /* Need inheritance to achive more flexibility */
       template <typename FloatType>
       struct f_calc_function_base {
-
+        typedef std::complex<FloatType> complex_t;
         virtual ~f_calc_function_base() {}
 
         virtual void compute(
           miller::index<> const& h,
-          boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          boost::optional<complex_t > const& f_mask = boost::none,
           twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true) = 0;
 
         void compute(
           miller::index<> const& h,
           twin_fraction<FloatType> const& fraction,
-          std::complex<FloatType> const& f_mask,
+          complex_t const& f_mask,
           bool compute_grad = true)
         {
           compute(h, f_mask, &fraction, compute_grad);
@@ -38,7 +38,7 @@ namespace smtbx {
 
         /// Evaluate the structure factors
         void evaluate(miller::index<> const& h,
-          std::complex<FloatType> const& f_mask)
+          complex_t const& f_mask)
         {
           compute(h, f_mask, 0, false);
         }
@@ -51,7 +51,7 @@ namespace smtbx {
 
         /// Linearise the structure factors
         void linearise(miller::index<> const& h,
-          std::complex<FloatType> const& f_mask)
+          complex_t const& f_mask)
         {
           compute(h, f_mask, 0, true);
         }
@@ -59,7 +59,8 @@ namespace smtbx {
         virtual boost::shared_ptr<f_calc_function_base> fork() const = 0;
 
         virtual FloatType get_observable() const = 0;
-        virtual std::complex<FloatType> get_f_calc() const = 0;
+        virtual complex_t get_f_calc() const = 0;
+        virtual af::const_ref<complex_t > get_grad_f_calc() const = 0;
         virtual af::const_ref<FloatType> get_grad_observable() const = 0;
         /* returns true if grads are for all and not independent only params */
         virtual bool raw_gradients() const { return true; }
@@ -69,6 +70,7 @@ namespace smtbx {
       template <typename FloatType,
         class OneMillerIndexFcalc>
       struct f_calc_function_default : public f_calc_function_base<FloatType> {
+        typedef std::complex<FloatType> complex_t;
         typedef f_calc_function_base<FloatType> f_calc_function_base_t;
 
         f_calc_function_default(boost::shared_ptr<OneMillerIndexFcalc> f_calc_function)
@@ -77,7 +79,7 @@ namespace smtbx {
 
         virtual void compute(
           miller::index<> const& h,
-          boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          boost::optional<complex_t > const& f_mask = boost::none,
           twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true)
         {
@@ -90,13 +92,16 @@ namespace smtbx {
         }
 
         virtual FloatType get_observable() const {
-          return f_calc_function->observable;
+          return f_calc_function->get_observable();
         }
-        virtual std::complex<FloatType> get_f_calc() const {
+        virtual complex_t get_f_calc() const {
           return f_calc_function->f_calc;
         }
+        virtual af::const_ref<complex_t> get_grad_f_calc() const {
+          return f_calc_function->grad_f_calc.const_ref();
+        }
         virtual af::const_ref<FloatType> get_grad_observable() const {
-          return f_calc_function->grad_observable.const_ref();
+          return f_calc_function->get_grad_observable().const_ref();
         }
 
         boost::shared_ptr<OneMillerIndexFcalc> f_calc_function;
@@ -109,21 +114,24 @@ namespace smtbx {
       template <typename FloatType>
       struct f_calc_function_with_cache : public f_calc_function_base<FloatType>
       {
+        typedef std::complex<FloatType> complex_t;
         typedef f_calc_function_base<FloatType> f_calc_function_base_t;
         struct f_calc_function_result {
           f_calc_function_result(
             FloatType const& observable,
-            std::complex<FloatType> const& f_calc,
+            complex_t const& f_calc,
+            af::const_ref<complex_t> const& grad_f_calc,
             af::const_ref<FloatType> const& grad_observable)
             :
             observable(observable),
             f_calc(f_calc),
+            grad_f_calc(grad_f_calc.begin(), grad_f_calc.end()),
             grad_observable(grad_observable.begin(), grad_observable.end())
           {}
 
           f_calc_function_result(
             FloatType const& observable,
-            std::complex<FloatType> const& f_calc)
+            complex_t const& f_calc)
             :
             observable(observable),
             f_calc(f_calc),
@@ -131,12 +139,14 @@ namespace smtbx {
           {}
 
           FloatType const observable;
-          std::complex<FloatType> const f_calc;
-          af::shared<FloatType> const grad_observable;
+          complex_t const f_calc;
+          af::shared<complex_t> grad_f_calc;
+          af::shared<FloatType> grad_observable;
         };
 
         f_calc_function_with_cache(
-          boost::shared_ptr<f_calc_function_base_t> f_calc_function, bool use_cache = false)
+          boost::shared_ptr<f_calc_function_base_t> f_calc_function,
+            bool use_cache = false)
           : f_calc_function(f_calc_function),
           use_cache(use_cache),
           length_sq(0)
@@ -144,13 +154,14 @@ namespace smtbx {
 
         virtual void compute(
           miller::index<> const& h,
-          boost::optional<std::complex<FloatType> > const& f_mask = boost::none,
+          boost::optional<complex_t > const& f_mask = boost::none,
           twin_fraction<FloatType> const* fraction = 0,
           bool compute_grad = true)
         {
           if (!use_cache) {
             f_calc_function->compute(h, f_mask, fraction, compute_grad);
             observable = f_calc_function->get_observable();
+            grad_f_calc = f_calc_function->get_grad_f_calc();
             grad_observable = f_calc_function->get_grad_observable();
             f_calc = f_calc_function->get_f_calc();
           }
@@ -164,6 +175,7 @@ namespace smtbx {
             if (iter == cache.end()) {
               f_calc_function->compute(h, f_mask, fraction, compute_grad);
               observable = f_calc_function->get_observable();
+              grad_f_calc = f_calc_function->get_grad_f_calc();
               grad_observable = f_calc_function->get_grad_observable();
               f_calc = f_calc_function->get_f_calc();
               cache.insert(
@@ -171,11 +183,13 @@ namespace smtbx {
                   h, f_calc_function_result(
                     observable,
                     f_calc,
+                    grad_f_calc,
                     grad_observable)));
             }
             else {
               observable = iter->second.observable;
               f_calc = iter->second.f_calc;
+              grad_f_calc = iter->second.grad_f_calc.const_ref();
               grad_observable = iter->second.grad_observable.const_ref();
             }
           }
@@ -196,8 +210,11 @@ namespace smtbx {
         virtual FloatType get_observable() const {
           return observable;
         }
-        virtual std::complex<FloatType> get_f_calc() const {
+        virtual complex_t get_f_calc() const {
           return f_calc;
+        }
+        virtual af::const_ref<complex_t> get_grad_f_calc() const {
+          return grad_f_calc;
         }
         virtual af::const_ref<FloatType> get_grad_observable() const {
           return grad_observable;
@@ -207,8 +224,9 @@ namespace smtbx {
 
         boost::shared_ptr<f_calc_function_base_t> f_calc_function;
         FloatType observable;
+        af::const_ref<complex_t> grad_f_calc;
         af::const_ref<FloatType> grad_observable;
-        std::complex<FloatType> f_calc;
+        complex_t f_calc;
         bool use_cache;
         FloatType length_sq;
         cache_t cache;

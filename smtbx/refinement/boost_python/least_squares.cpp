@@ -167,6 +167,18 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
+      static void wrap_default_fc() {
+        using namespace boost::python;
+        typedef structure_factors::direct::one_h::std_trigonometry_fc<double>
+          default_f_calc_func_t;
+        typedef f_calc_function_default<FloatType, default_f_calc_func_t> wt;
+        class_<wt, bases<f_calc_function_base<FloatType> >,
+          std::auto_ptr<wt> >("f_calc_function_default_fc", no_init)
+          .def(init<boost::shared_ptr<default_f_calc_func_t> >(
+            (arg("f_calc_function"))))
+          ;
+      }
+
       static void wrap_caching() {
         using namespace boost::python;
         typedef f_calc_function_with_cache<FloatType> wt;
@@ -177,24 +189,35 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
+      static void wrap_ed_shared_data() {
+        using namespace boost::python;
+        typedef ed_shared_data<FloatType> wt;
+        class_<wt, std::auto_ptr<wt> >("ed_shared_data", no_init)
+          .def(init<const scitbx::sparse::matrix<FloatType>&,
+            f_calc_function_base<FloatType>&,
+            sgtbx::space_group const&,
+            bool,
+            af::shared<FrameInfo<FloatType> >,
+            cctbx::xray::thickness<FloatType> const&,
+            // Kvac, Kl, Fc2Ug, reserved, mat_type, threads_n
+            af::shared<FloatType> const&,
+            bool, bool>(
+              (arg("Jt_matching_grad_fc"),
+                arg("f_calc_function"),
+                arg("space_group"), arg("anomalous_flag"),
+                arg("frames"), arg("thickness"),
+                arg("params"), arg("compute_grad"), arg("build") = true)))
+          .def("build", &wt::build)
+          ;
+      }
+
       static void wrap_ed() {
         using namespace boost::python;
         typedef f_calc_function_ed<FloatType> wt;
-        typedef f_calc_function_base<FloatType> at;
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed", no_init)
-          .def(init<builder_base<FloatType> const&,
-            sgtbx::space_group const&, FloatType,
-            bool,
-            scitbx::mat3<FloatType> const&,
-            af::shared<FrameInfo<FloatType> >,
-            af::shared<BeamInfo<FloatType> >,
-            cctbx::xray::thickness<FloatType> const&,
-            FloatType>(
-              (arg("data"),
-                arg("space_group"), arg("wavelength"), arg("anomalous_flag"),
-                arg("UB"), arg("frames"), arg("beams"), arg("thickness"),
-                arg("maxSg"))))
+          .def(init<ed_shared_data<FloatType> const&>(
+              (arg("data"))))
           ;
       }
 
@@ -285,7 +308,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static void wrap() {
         wrap_base();
         wrap_default();
+        wrap_default_fc();
         wrap_caching();
+        wrap_ed_shared_data();
         wrap_ed();
         wrap_ed_n_shared_data();
         wrap_ed_n();
