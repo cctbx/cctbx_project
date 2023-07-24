@@ -100,7 +100,9 @@ scores point to a set of outstanding issues with hydrogen placement that are sti
 
 Additional tests were performed using the **comparison_file** command-line option to compare the
 behavior of reduce2 with original reduce on a Mover-by-Mover basis. 3VYK was studied along
-with 1DFU. These tests turned up other issues that are being investigated.
+with 1DFU. These tests turned up other issues that are being investigated. The 1XSO file was
+also studied, which has 164 Movers; the overall score was 75 higher for Reduce2, issues were
+created (and then resolved) for individual residues that were significantly lower.
 
 As of 7/21/2023, the issues under investigation are described in the status and issues document at
 https://docs.google.com/document/d/1ogzS6QlBnPJRGU2CNzHvw0KhV8E5fXdwO1TwUEM7GQc/edit?usp=sharing 
