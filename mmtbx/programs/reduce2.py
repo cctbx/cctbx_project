@@ -37,7 +37,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.2"
+version = "1.2.3"
 
 master_phil_str = '''
 approach = *add remove
@@ -264,20 +264,24 @@ def _AddPosition(a, tag, group, partner=None):
   else:
     tagString = ''
   if a.parent().altloc in ['', ' ']:
+    altLoc = ''
     altTag = ''
   else:
+    altLoc = a.parent().altloc.lower()
     altTag = " '{}'".format(a.parent().altloc.lower())
   if (partner is not None) and not (partner.parent().altloc in ['', ' ']):
+    altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
-  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.strip().lower(),               # Atom name
+  return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
+    a.name.lower(),               # Atom name
+    altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
     a.parent().parent().resseq_as_int(),  # Residue number
     a.b,                                  # B factor
     group,                                # Dominant group name
     tagString,                            # Tag (P or L)
-    altTag,                               # Alternate, if any
+    altTag,                               # Tag for alternate, if any
     a.xyz[0],                             # location
     a.xyz[1],
     a.xyz[2]
