@@ -26,7 +26,11 @@ jobs:
 
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
-    options: "--name ci-container -v /usr/bin/docker:/tmp/docker:ro"
+    options: --name ci-container
+    volumes:
+      - /usr/bin/docker:/tmp/docker:ro
+      - /usr:/tmp/host_usr:rw
+      - /opt:/tmp/host_opt:rw
 
   variables:
     artifact_name: ${{ parameters.prefix }}${{ parameters.distribution }}_${{ join('.', parameters.version) }}_$(PYTHON_VERSION)
@@ -98,6 +102,24 @@ jobs:
       echo $(System.TeamProjectId)
       echo $(System.DefinitionID)
     displayName: Show System variables
+
+  - script: |
+      sudo mkdir -p /tmp/empty_dir
+      sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_opt/hostedtoolcache
+      for d in \
+          lib/jvm \
+          local/.ghcup \
+          local/lib/android \
+          local/share/powershell \
+          share/dotnet \
+          share/swift \
+        ; do
+        echo Deleting $d
+        sudo rsync --stats -a --delete /tmp/empty_dir/ /tmp/host_usr/$d
+      done
+      df -h
+    displayName: Clean up host image
+    continueOnError: true
 
   # download daily cached build directory for builds
   # always do builds from scratch for "Update build cache" on Saturday night (Pacific)
