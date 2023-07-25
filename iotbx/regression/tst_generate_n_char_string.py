@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from iotbx.regression.ncs.tst_mtrix_biomt_cmdl import pdb_str_0
 
 def test_1():
   """

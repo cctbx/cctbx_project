@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
-from libtbx.test_utils import assert_lines_in_text
 
 # ------------------------------------------------------------------------------
 

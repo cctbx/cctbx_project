@@ -593,5 +593,3 @@ class pdb_v3_cif_conversion:
     assert self._is_allowed(pdb_v3_text, self._max_chars_dict[key])
 
     return pdb_v3_text
-
-
