@@ -172,7 +172,6 @@ namespace detail {
               if (atom.uij_is_defined()) n_anisou++;
               model_atom_labels.push_back(atom.pdb_label_columns_segid_small_str());
               i_model_atom++;
-              // std::cout << "'" << atom.pdb_label_columns_segid_small_str() << "'\n";
               element_charge_types[atom.pdb_element_charge_columns()]++;
             }
           }

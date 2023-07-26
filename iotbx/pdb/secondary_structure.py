@@ -81,7 +81,7 @@ def segments_are_similar(atom_selection_1=None,
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection_1)
     try:
-      h1=hierarchy.deep_copy().select(sel)  # keep original hierarchy too
+      h1=hierarchy.select(sel, copy_atoms=True)  # detach from original hierarchy
       number_self=h1.overall_counts().n_residues
     except Exception as e:
       return False
@@ -89,7 +89,7 @@ def segments_are_similar(atom_selection_1=None,
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection_2)
     try:
-      h2=hierarchy.deep_copy().select(sel)
+      h2=hierarchy.select(sel, copy_atoms=True)
       number_other=h2.overall_counts().n_residues
     except Exception as e:
       return False
@@ -102,7 +102,7 @@ def segments_are_similar(atom_selection_1=None,
     atom_selection="(%s) and (%s)" %(atom_selection_1,atom_selection_2)
     sel=asc.selection(string = atom_selection)
     try:
-      h12=hierarchy.deep_copy().select(sel)
+      h12=hierarchy.select(sel, copy_atoms=True)
       number_both=h12.overall_counts().n_residues
     except Exception as e:
       return False
@@ -273,7 +273,7 @@ class registration_atoms:
        self.strand_1b.as_atom_selections(), self.strand_2b.as_atom_selections())
     asc=self.hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
-    ph=self.hierarchy.deep_copy().select(sel)  # keep original hierarchy too
+    ph=self.hierarchy.select(sel, copy_atoms=True)  # detach from original hierarchy
     # now ph is list of CA by residue.  Find the position of our N or O
 
     if not self.registration_1 or not self.registration_2:
@@ -473,7 +473,7 @@ class structure_base(object):
 
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    ph=hierarchy.deep_copy().select(sel)
+    ph=hierarchy.select(sel, copy_atoms=True)
     return ph.overall_counts().n_residues
 
   def present_in_hierarchy(self, hierarchy):
@@ -511,7 +511,7 @@ class structure_base(object):
 
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    ph=hierarchy.deep_copy().select(sel)
+    ph=hierarchy.select(sel, copy_atoms=True)
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
       find_secondary_structure
@@ -589,7 +589,7 @@ class structure_base(object):
     if atom_selection:
       asc=hierarchy.atom_selection_cache()
       sel = asc.selection(string = atom_selection)
-      ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+      ph=hierarchy.select(sel, copy_atoms=True)  #ph = needed part of hierarchy
       if ph.overall_counts().n_residues>0:
         return True
     return False
@@ -1449,7 +1449,7 @@ class annotation(structure_base):
       return None # nothing to do
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+    ph=hierarchy.select(sel, copy_atoms=True)  #ph = needed part of hierarchy
     # Split all sheets into pairs
     a1=self.split_sheets()
     a2=other.split_sheets()
@@ -2991,13 +2991,13 @@ class pdb_sheet(structure_base):
           atom_selection=self.combine_atom_selections(pair_1,require_all=True)
           if not atom_selection: continue
           sel = asc.selection(string = atom_selection)
-          ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+          ph=hierarchy.select(sel, copy_atoms=True)  #ph = needed part of hierarchy
           if ph.overall_counts().n_residues==0: continue
 
           atom_selection=self.combine_atom_selections(pair_2,require_all=True)
           if not atom_selection: continue
           sel = asc.selection(string = atom_selection)
-          ph=hierarchy.deep_copy().select(sel)  #ph = needed part of hierarchy
+          ph=hierarchy.select(sel, copy_atoms=True)  #ph = needed part of hierarchy
           if ph.overall_counts().n_residues>0:
             return True  # both match
     return False

@@ -1745,6 +1745,10 @@ class manager(manager_mixin):
     return self.k_isotropic()*self.k_anisotropic()*self.scale_k1()*\
       self.arrays.core.k_isotropic_exp
 
+  def k_total_work(self):
+    return self.k_isotropic_work()*self.k_anisotropic_work()*self.scale_k1_w()*\
+      self.arrays.core.k_isotropic_exp.select(self.arrays.work_sel)
+
   def f_obs_work(self):
     return self.arrays.f_obs_work
 

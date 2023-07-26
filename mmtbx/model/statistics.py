@@ -274,9 +274,9 @@ class geometry(object):
     r = self.result()
     f="bond: %6.3f angle: %6.2f dihedral: %6.2f"
     if assert_zero:
-      assert abs(r.bond.mean)<1e-3, 'bond rmsd is not zero'
-      assert abs(r.angle.mean)<1e-3, 'angle rmsd is not zero'
-      assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero'
+      assert abs(r.bond.mean)<1e-3, 'bond rmsd is not zero : %0.5f' % r.bond.mean
+      assert abs(r.angle.mean)<1e-3, 'angle rmsd is not zero : %0.5f' % r.angle.mean
+      assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero : %0.5f' % r.dihedral.mean
     return f%(r.bond.mean, r.angle.mean, r.dihedral.mean)
 
   def show_planarity_details(self):

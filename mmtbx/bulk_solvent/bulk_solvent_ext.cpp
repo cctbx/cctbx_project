@@ -79,6 +79,27 @@ namespace {
       .def("scaled", &f_kb_scaled<>::scaled)
    ;
 
+   class_<add_complex_f_kb_scaled<> >(
+      "add_complex_f_kb_scaled")
+      .def(init<
+           af::const_ref<double> const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const& >(
+             (arg("f0"),
+              arg("f1"),
+              arg("f2"),
+              arg("k_range"),
+              arg("b_range"),
+              arg("ss"))))
+      .def("k",      &add_complex_f_kb_scaled<>::k)
+      .def("b",      &add_complex_f_kb_scaled<>::b)
+      .def("r",      &add_complex_f_kb_scaled<>::r)
+      .def("scaled", &add_complex_f_kb_scaled<>::scaled)
+   ;
+
    class_<complex_f_kb_scaled<> >(
       "complex_f_kb_scaled")
       .def(init<

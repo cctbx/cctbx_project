@@ -172,8 +172,9 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     self.times.append(time.time()-t0)
 
 
-  def read_energy(self):
-    filename = self.get_log_filename()
+  def read_energy(self, filename=None):
+    if filename is None:
+      filename = self.get_log_filename()
     f=open(filename, 'r')
     lines=f.read()
     del f

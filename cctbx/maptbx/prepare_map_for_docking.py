@@ -1222,7 +1222,7 @@ def next_allowed_grid_size(i, largest_prime=5):
     j += 2
   return j
 
-def get_sharpening_b(miller_intensities):
+def get_sharpening_b(intensities):
 
   # Initialise data for Wilson plot
   sumw = 0.
@@ -1232,9 +1232,11 @@ def get_sharpening_b(miller_intensities):
   sumwx2 = 0.
 
   # Assume that binning has been defined and get data in bins
-  for i_bin in miller_intensities.binner().range_used():
-    sel = miller_intensities.binner().selection(i_bin)
-    int_sel = miller_intensities.select(sel)
+  int_binned = intensities.customized_copy(data = intensities.data())
+  int_binned.setup_binner_d_star_sq_bin_size()
+  for i_bin in int_binned.binner().range_used():
+    sel = int_binned.binner().selection(i_bin)
+    int_sel = int_binned.select(sel)
     ssqr = int_sel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
     mean_int_sel_data = flex.mean_default(int_sel.data(),0)
@@ -1323,7 +1325,7 @@ def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map
   miller_array = marray.customized_copy(data = miller_data)
   return miller_array
 
-def local_mean_intensities(mm, d_min, intensities, r_star):
+def local_mean_intensities(mm, d_min, intensities, r_star, b_sharpen):
   """
   Compute local means of input intensities (or amplitudes) using a convolution
   followed optionally by a resolution-dependent renormalisation
@@ -1340,10 +1342,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   assert d_star_sq_max > 1/d_min**2
 
   # Sharpen intensities to reduce dynamic range for numerical stability
-  # Save the overall B to put back at end
+  # Put the overall B back at end
   int_sharp = intensities.customized_copy(data = intensities.data())
-  int_sharp.setup_binner_d_star_sq_bin_size()
-  b_sharpen = get_sharpening_b(int_sharp)
   all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   int_sharp = int_sharp.customized_copy(data = intensities.data()*b_terms_miller.data())
@@ -1476,15 +1476,7 @@ def assess_cryoem_errors(
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
 
-  # Keep track of shifted origin, only allowing origin_shift_grid_units method
-  # that is specified by NXSTART, NYSTART, NZSTART in map header.
-  # Files in .mrc format can have non-zero ORIGIN (Angstrom units), referred to
-  # here as external_origin, but this must be redefined in grid units outside
-  # this program, e.g. with method implemented in em_placement_script.py.
-  external_origin = mmm.map_manager().external_origin
-  if (external_origin is not None) and (flex.sum(flex.abs(flex.double(external_origin))) > 0):
-    raise Sorry("Non-zero origin must be specified by origin_shift_grid_units, not Angstrom units (.mrc ORIGIN)")
-
+  # Keep track of shifted origin
   origin_shift = mmm.map_manager().origin_shift_grid_units
   if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
     shifted_origin = True
@@ -1627,8 +1619,11 @@ def assess_cryoem_errors(
   # but return results to desired resolution
   # Calculating sumfsqr_local_mean from f1f2cos and deltafsqr local means turns out to have
   # improved numerical stability, i.e. don't end up with negative or zero deltafsqr_local_mean
-  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos, r_star)
-  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr, r_star)
+  b_sharpen = get_sharpening_b(sumfsqr)
+  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos,
+                                              r_star, b_sharpen)
+  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr,
+                                                r_star, b_sharpen)
   sumfsqr_local_mean = f1f2cos_local_mean.customized_copy(data = 2*f1f2cos_local_mean.data() + deltafsqr_local_mean.data())
 
   # Trim starting sumfsqr back to desired resolution limit, setup binning

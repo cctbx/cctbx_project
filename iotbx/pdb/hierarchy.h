@@ -391,6 +391,11 @@ namespace hierarchy {
       bool add_model=false,
       bool add_segid=false) const;
 
+    std::string
+    format(
+      bool add_model=false,
+      bool add_segid=false) const;
+
     //! Extracts chain_id and model_id, then calls format(char*, bool).
     void
     format(
@@ -408,6 +413,13 @@ namespace hierarchy {
     void
     format(
       char* result,
+      hierarchy::atom const& atom,
+      bool add_model=false,
+      bool add_segid=false,
+      bool pdbres=false);
+
+    std::string
+    format(
       hierarchy::atom const& atom,
       bool add_model=false,
       bool add_segid=false,

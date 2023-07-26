@@ -8,6 +8,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <set>
 #include <string>
+#include <iomanip>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -404,6 +405,52 @@ namespace {
     return result;
   }
 
+  std::string
+  atom_label_columns_formatter::format(
+    bool add_model,
+    bool add_segid) const
+  {
+    /* This is replacement for the below function.
+    Presently is called exclusively from overall_counts for constructing duplicate
+    atom labels.
+    At this point all members have the information, so we just put it into string
+    and return. */
+    std::string result;
+    if (add_model) {
+      if (model_id != 0) {
+        std::size_t l = std::strlen(model_id);
+        IOTBX_ASSERT(l <= 8);
+        unsigned n = static_cast<unsigned>(l);
+        unsigned m = std::max(4U, n);
+        result += "model=\"";
+        result += (boost::format("%s") % boost::io::group(std::setw(n), model_id)).str();
+        result += "\" ";
+      }
+      if (name != 0) {
+        result += "pdb=\"";
+      }
+      else {
+        result += "pdbres=\"";
+      }
+    }
+    if (name != 0) {
+      result += (boost::format("%-4s") % name).str();
+      result += (boost::format("%-1s") % (altloc==0 ? " " : altloc)).str();
+    }
+    result += (boost::format("%3s") % (resname ==0 ? " " : resname)).str();
+    result += (boost::format("%2s") % (chain_id == 0 ? " " : chain_id)).str();
+    result += (boost::format("%4s") % (resseq == 0 ? " " : resseq)).str();
+    result += (boost::format("%1s") % (icode == 0 ? " " : icode)).str();
+    if (add_model) {
+      result += '"';
+    }
+    if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
+      result += " segid=\"";
+      result += (boost::format("%-4s") % segid).str();
+    }
+    return result;
+  }
+
   void
   atom_label_columns_formatter::format(
     char* result,
@@ -490,6 +537,65 @@ namespace {
       }
     }
   }
+
+  std::string
+  atom_label_columns_formatter::format(
+    hierarchy::atom const& atom,
+    bool add_model,
+    bool add_segid,
+    bool pdbres)
+  {
+    /* This is replacement for the below function.
+    Presently is called exclusively from overall_counts for constructing duplicate
+    atom labels.
+    Here we populate members of atom_label_columns_formatter, such as name, segid etc
+    and then call format where this info will be put into string */
+    name = (pdbres ? 0 : atom.data->name.elems);
+    segid = atom.data->segid.elems;
+    shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
+    const atom_group_data* ag = ag_lock.get();
+    if (ag == 0) {
+      altloc = resname = resseq = icode = chain_id = model_id = 0;
+    }
+    else {
+      altloc = ag->altloc.elems;
+      resname = ag->resname.c_str();
+      shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
+      const residue_group_data* rg = rg_lock.get();
+      if (rg == 0) {
+        resseq = icode = chain_id = model_id = 0;
+      }
+      else {
+        resseq = rg->resseq.elems;
+        icode = rg->icode.elems;
+        // rg->parent is chain, we can do the extraction right here and
+        // then just go with the final format() call
+        // format(rg->parent.lock(), add_model, add_segid);
+        chain_data const* ch = rg->parent.lock().get();
+        if (ch == 0) {
+          chain_id = model_id = 0;
+        }
+        else {
+          chain_id = ch->id.c_str();
+          if (!add_model) {
+            model_id = 0;
+          }
+          else {
+            shared_ptr<model_data> md_lock = ch->parent.lock();
+            model_data const* md = md_lock.get();
+            if (md == 0) {
+              model_id = 0;
+            }
+            else {
+              model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
+            }
+          }
+        }
+      }
+    }
+    return format(add_model, add_segid);
+  }
+
 
   void
   atom_label_columns_formatter::format(
@@ -631,13 +737,12 @@ namespace {
   std::string
   atom::pdb_label_columns_segid_small_str() const
   // Only used in overall_counts in find_duplicate_atom_labels()
+  // new implementation
   {
-    char blank = ' ';
-    small_str<19> result(small_str_no_init);
-    atom_label_columns_formatter().format(result.elems, *this);
-    data->segid.copy_left_justified(result.elems+15, 4U, blank);
-    result.elems[19] = '\0';
-    return std::string(result.elems);
+    std::string result;
+    result = atom_label_columns_formatter().format(*this);
+    result += (boost::format("%-4s") % data->segid.elems).str();
+    return result;
   }
 
   std::string

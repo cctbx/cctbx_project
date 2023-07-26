@@ -220,6 +220,28 @@ ATOM   37705  H HG22 . THR A-5  1 5   ? 59.639  150.453 158.716 1.00 48.55  ? ? 
 ATOM   37706  H HG23 . THR A-5  1 5   ? 59.158  149.694 160.014 1.00 48.55  ? ? ? ? ? ? 5   THR A-5  HG23 1
 '''
 
+norm_str = """
+ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      -7.523   2.521   5.381  1.00 16.78           O
+ATOM      5  N   ASN A   2      -7.656   2.923   3.155  1.00 15.02           N
+ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM      7  C   ASN A   2      -5.241   2.537   3.427  1.00 13.13           C
+ATOM      8  O   ASN A   2      -4.978   3.742   3.426  1.00 11.91           O
+ATOM      9  CB  ASN A   2      -6.346   1.881   1.341  1.00 15.38           C
+ATOM     10  CG  ASN A   2      -7.584   1.342   0.692  1.00 14.08           C
+ATOM     11  OD1 ASN A   2      -8.025   0.227   1.016  1.00 17.46           O
+ATOM     12  ND2 ASN A   2      -8.204   2.155  -0.169  1.00 11.72           N
+ATOM     13  N   ASN A   3      -4.438   1.590   3.905  1.00 12.26           N
+ATOM     14  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     15  C   ASN A   3      -1.955   1.332   3.895  1.00 11.10           C
+ATOM     16  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
+ATOM     17  CB  ASN A   3      -3.259   1.378   6.042  1.00 12.15           C
+ATOM     18  CG  ASN A   3      -2.006   1.739   6.861  1.00 12.82           C
+ATOM     19  OD1 ASN A   3      -1.702   2.925   7.072  1.00 15.05           O
+"""
+
 def test1():
   """
   Test correct reading of long chain ids from mmCIF file into hierarchy.
@@ -248,25 +270,17 @@ ATOM     62  O   SERA-   2      73.055  70.333  61.737  1.00 65.10           O
     """)
 
 def test2():
-  """ Overall counts duplicate atom labels due to incorrect long chain processing
+  """ Overall counts duplicate atom labels should be 0 if long chain ids
+  are processing correctly
   """
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   h = inp.construct_hierarchy()
-  print("here")
   oc = h.overall_counts()
-  print("here1")
   oc.show()
-  print("here2")
-  print(oc.errors())
-  print("here3")
-  # h = inp.construct_hierarchy()
-  # for c in h.chains():
-  #   for rg in c.residue_groups():
-  #     for ag in rg.atom_groups():
-  #       print(c.id, rg.resseq, ag.resname)
+  assert oc.errors() == []
 
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
-  # test2()
+  test2()
   print("OK. Time: %8.3f"%(time.time()-t0))

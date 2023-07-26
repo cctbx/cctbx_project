@@ -208,22 +208,15 @@ class base_manager():
     assert len(selection_array)==len(self.atoms)
     self.ligand_atoms_array = selection_array
 
-  # def set_frozen_atoms(self, selection_array):
-  #   """Summary
+  def get_energy(self, *args, **kwds): return 0, 'dirac'
 
-  #   Args:
-  #       selection_array (TYPE): Description
-  #   """
-  #   assert len(selection_array)==len(self.atoms)
-  #   self.freeze_a_ray = selection_array
+  def read_energy(self, *args, **kwds): return 0, 'dirac'
 
-  def get_opt(self,
-              cleanup=False,
-              file_read=False,
-              coordinate_filename_ext='.xyz',
-              log_filename_ext='.log',
-              redirect_output=True,
-              log=None):
+  def get_strain(self, *args, **kwds): return 0, 'dirac'
+
+  def get_bound(self, *args, **kwds): return 0, 'dirac'
+
+  def get_opt(self, *args, **kwds):
     import random
     rc = []
     for atom in self.atoms:
