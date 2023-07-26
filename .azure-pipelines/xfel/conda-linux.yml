@@ -192,3 +192,7 @@ jobs:
           eq(variables['System.StageAttempt'], 1),
           eq('${{ parameters.modules }}', 'xfel_modules'))
     continueOnError: true
+
+  # check disk space at the end
+  - script: df -h
+    displayName: Check disk space
