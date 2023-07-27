@@ -950,7 +950,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   if not lattice_results:
     return None
 
-  max_clique_len, all_spots_len, ori, indexed = zip(*lattice_results)
+  max_clique_len, all_spots_len, ori, indexed = lattice_results
   integrated_count = 0
 
   if ori is not None and horiz_phil.small_cell.write_gnuplot_input:
