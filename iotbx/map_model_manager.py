@@ -8081,28 +8081,7 @@ class map_model_manager(object):
     self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
 
 
-  def remove_origin_shift_and_unit_cell_crystal_symmetry(self):
-    '''Do not use this method if you want to use the map_model_manager or any
-       of its maps and models in the usual way.  This is a method to create
-       a set of maps and model that have no reference to their original
-       locations.
-
-       This method causes the map_model_manager and all of its maps and
-       models to forget the existing value of the origin shift and sets
-       the unit_cell_crystal_symmetry for each map and model to be the
-       crystal_symmetry.
-
-       In effect, this method makes the crystal_symmetry be the
-       unit_cell_crystal_symmetry and sets the origin of the current map
-       to be (0,0,0)
-    '''
-    assert self.map_data() is not None
-    self.set_original_origin_grid_units(original_origin_grid_units = (0,0,0),
-      gridding = self.map_data().all())
-
-
-  def set_original_origin_grid_units(self, original_origin_grid_units = None,
-      gridding = None):
+  def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an
       origin shift in effect).
@@ -8110,23 +8089,16 @@ class map_model_manager(object):
      Procedure is: calculate shift_cart and set origin_shift_grid_units and
        shift_cart everywhere
 
-     Optional: set gridding of unit_cell_grid. This changes the definition of
-     the unit cell box, but it does not change the spacing of the gridding.  It
-     just changes where in this grid the unit cell is located, and changes
-     the dimensions of the unit cell to match
-
     '''
     assert self.map_manager() is not None
 
     shift_cart=self.map_manager().grid_units_to_cart(
       [-i for i in original_origin_grid_units])
+    for model in self.models():
+      model.set_shift_cart(shift_cart)
     for map_manager in self.map_managers():
       map_manager.set_original_origin_and_gridding(
-      original_origin=original_origin_grid_units,
-      gridding = gridding)
-    for model in self.models():
-      self.shift_any_model_to_match(model,
-         set_unit_cell_crystal_symmetry = True)
+      original_origin=original_origin_grid_units)
 
 
   def _generate_new_map_id(self, prefix = 'temp'):
