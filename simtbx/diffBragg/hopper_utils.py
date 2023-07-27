@@ -360,7 +360,7 @@ class DataModeler:
                 sb_trust = mask==fg_code
             else:
                 sb_trust = np.logical_or(mask==fg_code, mask==bg_code)
-            
+
             # below_zero = sb_bkgrnd <= 0
             below_zero = sb_bkgrnd < 0
             if np.any(below_zero):
@@ -370,7 +370,7 @@ class DataModeler:
                 sb_trust[below_zero] = False
 
             is_trusted[pid, dat_sliceY,dat_sliceX] = sb_trust
-            
+
             self.rois[i_ref] = x1_onPanel, x2_onPanel, y1_onPanel, y2_onPanel
 
 
@@ -2122,9 +2122,23 @@ def generate_gauss_spec(central_en=9500, fwhm=10, res=1, nchan=20, total_flux=1e
     else:
         return ens, wt
 
+def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
+    """
 
-def downsamp_spec_from_params(params, expt):
-    dxtbx_spec = expt.imageset.get_spectrum(0)
+    :param params:  hopper phil params extracted
+    :param expt: a dxtbx experiment (optional)
+    :param imgset: an dxtbx imageset (optional)
+    :param i_img: index of the image in the imageset (only matters if imgset is not None)
+    :return: dxtbx spectrum with parameters applied
+    """
+    if expt is not None:
+        dxtbx_spec = expt.imageset.get_spectrum(0)
+        starting_wave = expt.beam.get_wavelength()
+    else:
+        assert imgset is not None
+        dxtbx_spec = imgset.get_spectrum(i_img)
+        starting_wave = imgset.get_beam(i_img).get_wavelength()
+
     spec_en = dxtbx_spec.get_energies_eV()
     spec_wt = dxtbx_spec.get_weights()
     if params.downsamp_spec.skip:
@@ -2154,11 +2168,12 @@ def downsamp_spec_from_params(params, expt):
         downsamp_wave = utils.ENERGY_CONV / downsamp_en
         spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
-    starting_wave = expt.beam.get_wavelength()
     waves, specs = map(np.array, zip(*spectrum))
     ave_wave = sum(waves*specs) / sum(specs)
-    expt.beam.set_wavelength(ave_wave)
-    MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    MAIN_LOGGER.debug("Starting wavelength=%f. Spectrum ave wavelength=%f" % (starting_wave, ave_wave))
+    if expt is not None:
+        expt.beam.set_wavelength(ave_wave)
+        MAIN_LOGGER.debug("Shifting expt wavelength from %f to %f" % (starting_wave, ave_wave))
     MAIN_LOGGER.debug("USING %d ENERGY CHANNELS" % len(spectrum))
     return spectrum
 
