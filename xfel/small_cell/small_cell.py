@@ -856,7 +856,6 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     working_set.append(spot)
 
   max_clique_len = len(max_clique_spots)
-  ok_to_integrate = False
 
   # loop, adding new spots to the clique and re-refining the unit cell paramters until no new spots can be added
   loop_count = 0
@@ -868,7 +867,6 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     if ori is None:
       print("Couldn't get basis vectors for max clique")
       break
-    ok_to_integrate = True
 
     # here I should test the angles too
     if approx_equal(ori.unit_cell().reciprocal().parameters()[0], a, out=None, eps=1.e-2) and \
@@ -945,6 +943,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
 
   detector = imageset.get_detector()
   beam = imageset.get_beam()
+  s0 = col(beam.get_s0())
 
   lattice_results = small_cell_index_lattice_detail(experiments, reflections, horiz_phil)
   if not lattice_results:
@@ -960,7 +959,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
   indexed_intensities = flex.double()
   indexed_sigmas = flex.double()
 
-  if ok_to_integrate:
+  if ori is not None: # ok to integrate
     results = []
     buffers = []
     backgrounds = []
