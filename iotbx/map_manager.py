@@ -1104,7 +1104,8 @@ class map_manager(map_reader, write_ccp4_map):
        lower_bounds = lower_bounds,
        upper_bounds = upper_bounds,
        log = self.log)
-    box.map_manager().set_original_origin_and_gridding(original_origin = (0, 0, 0))
+    box.map_manager().set_original_origin_and_gridding(
+       original_origin = (0, 0, 0))
 
     box.map_manager().add_label(
        "Restored full size from box %s - %s, pad with zero" %(
