@@ -55,13 +55,13 @@ _lastTime = None
 def _ReportTiming(verbosity, message):
   """Use None message to start the timer without printing.
   """
-  from libtbx.development.timers import work_clock
+  import time
 
   global _lastTime
   if message is None:
-    _lastTime = work_clock()
+    _lastTime = time.time()
     return
-  curTime = work_clock()
+  curTime = time.time()
   diff = curTime - _lastTime
   _lastTime = curTime
   return _VerboseCheck(verbosity, 2,"Time to {}: {:0.3f}".format(message,diff)+"\n")

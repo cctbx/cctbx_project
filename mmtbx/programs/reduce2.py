@@ -28,7 +28,6 @@ from iotbx import pdb
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
-from libtbx.development.timers import work_clock
 from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
 from mmtbx.programs import probe2
@@ -37,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.3"
+version = "1.2.4"
 
 master_phil_str = '''
 approach = *add remove
@@ -1197,20 +1196,20 @@ NOTES:
     if self.params.approach == 'add':
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
-      startAdd = work_clock()
+      startAdd = time.time()
       self._AddHydrogens()
-      doneAdd = work_clock()
+      doneAdd = time.time()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
       # all of the needed fields are filled in when we use them below.
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = work_clock()
+      startInt = time.time()
       self._ReinterpretModel()
-      doneInt = work_clock()
+      doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
-      startOpt = work_clock()
+      startOpt = time.time()
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
         self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
@@ -1219,11 +1218,11 @@ NOTES:
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity)
-      doneOpt = work_clock()
+      doneOpt = time.time()
       outString += opt.getInfo()
-      outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
-      outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
-      outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
+      outString += 'Time to Interpret = {:.3f} sec'.format(doneInt-startInt)+'\n'
+      outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
         print('Atom information used during calculations:', file=self.logger)
         print(opt.getAtomDump(), file=self.logger)
