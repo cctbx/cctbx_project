@@ -42,10 +42,11 @@ def exercise():
 
   assert new_mmm.crystal_symmetry().is_similar_symmetry(box_cs)
   assert new_mmm.unit_cell_crystal_symmetry().is_similar_symmetry(box_cs)
-  return
 
 if (__name__ == "__main__"):
   import time
   t0 = time.time()
   exercise()
   print("Time: %6.4f"%(time.time()-t0))
+  print("OK")
+
