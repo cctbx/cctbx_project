@@ -257,8 +257,9 @@ class SelectionViewerWindow(QMainWindow):
       # load in cctbx/phenix
       self.data_manager.process_model_file(filename)
       model = self.data_manager.get_model()
-      # from cctbx.maptbx.box import shift_and_box_model
-      # model_p1 = shift_and_box_model(model)
+      if model.crystal_symmetry() is None:
+        from cctbx.maptbx.box import shift_and_box_model
+        model= shift_and_box_model(model)
       self.model = model
       # print(model)
       # print(model_p1.crystal_symmetry())
@@ -297,25 +298,33 @@ class SelectionViewerWindow(QMainWindow):
 
     def view_selection(self,phenix_selection_string):
         # check if malformed phenix selection
-        validated,composition_phenix = self.validate_selection(phenix_selection_string)
-        if validated:
-          
+        validated,composition_phenix,remove_through_ok, has_partial_occ = self.validate_selection(phenix_selection_string)
+
+        if not validated:
+          self.output_notes.setText("Error: Malformed Phenix selection")
+
+        elif not remove_through_ok:
+          self.output_notes.setText("Warning!: the keyword 'through' and this selection are incompatible with visualization.")
+        elif has_partial_occ:
+          self.output_notes.setText("Warning!: the selection contains partial occupancy, which cannot be selected simultaneously in Chimera")
+          self.phenix_selection_string.setText(phenix_selection_string)
+        elif  composition_phenix is None:
+          self.output_notes.setText("Composition is None")
+        else:
           self.phenix_selection_string.setText(phenix_selection_string)
           
-          if composition_phenix is not None:
-            n_atoms, n_chains, n_residue_groups = composition_phenix["n_atoms"], composition_phenix["n_chains"], composition_phenix["n_residue_groups"]
+        if composition_phenix is not None and remove_through_ok:
+          n_atoms, n_chains, n_residue_groups = composition_phenix["n_atoms"], composition_phenix["n_chains"], composition_phenix["n_residue_groups"]
+          
+          # self.phenix_selection_result.setText(
+          #   "Atoms: {n_atoms}, Chains: {n_chains}, Residue groups: {n_residue_groups}".format(n_atoms,n_chains,n_residue_groups))
+          self.phenix_selection_result.setText(
+            str(n_atoms)+" atoms, "+str(n_chains)+" chains, "+str(n_residue_groups)+" residue groups selected")
             
-            # self.phenix_selection_result.setText(
-            #   "Atoms: {n_atoms}, Chains: {n_chains}, Residue groups: {n_residue_groups}".format(n_atoms,n_chains,n_residue_groups))
-            self.phenix_selection_result.setText(
-              str(n_atoms)+" atoms, "+str(n_chains)+" chains, "+str(n_residue_groups)+" residue groups selected")
-            
-        else:
-          self.output_notes.setText("Error: Malformed Phenix selection")
         
         
         # check if translation fails
-        if validated:
+        if validated and remove_through_ok:
           try:
             chimerax_selection = translate_phenix_selection_string(phenix_selection_string,model_number=1)
             translated = True
@@ -326,13 +335,14 @@ class SelectionViewerWindow(QMainWindow):
               raise
             translated = False
             self.output_notes.setText("Error: the translation failed")
-        
+        else:
+          translated = False
         
         # Send to ChimeraX
         success = False
         used_workaround = False
           
-        if validated and translated and self.viewer_status_alive:
+        if validated and translated and self.viewer_status_alive and remove_through_ok:
           # try to send translated selection to chimerax          
           
           chimerax_command = "sel "+chimerax_selection
@@ -366,7 +376,7 @@ class SelectionViewerWindow(QMainWindow):
               n_atoms_chimera = self.read_chimera_output_atoms_selected(response)
             except:
               n_atoms_chimera = None
-            if n_atoms_chimera!= None and n_atoms_chimera !=n_atoms:
+            if n_atoms_chimera!= None and n_atoms_chimera !=n_atoms and not has_partial_occ:
               QMessageBox.warning(self, "Warning", "Number of selected atoms differs between programs!")
           
           return success
@@ -416,6 +426,8 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
         selection_int = convert_selection_str_to_int(model,phenix_selection_string)
         if self.model == None:
           composition = None
+          remove_through_ok = None
+          has_partial_occ = None
         else:
           model_selected = self.model.select(self.model.selection(phenix_selection_string))
           n_atoms = len(list(model_selected.get_hierarchy().atoms()))
@@ -426,20 +438,23 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
             "n_chains":n_chains,
             "n_residue_groups":n_residues,
           }
-        return True, composition
+          # check that through to colon is ok
+          sel_unchanged = model.selection(phenix_selection_string)
+          sel_only_colon = model.selection(phenix_selection_string.replace("through",":"))
+          remove_through_ok = (sum(~(sel_unchanged==sel_only_colon))==0) and (self.model is not None)
+
+          # check if partial occupancy
+          has_partial_occ = int(sum(model.get_occ()))!=model.get_number_of_atoms()
+
+        return True, composition, remove_through_ok, has_partial_occ
       except:
         if self.debug:
           raise
-        return False,None
+        return False,None, None, None
  
     
     def button_clicked(self):
         phenix_selection_string = self.text_input.text()
-        # replace through with :
-        # TODO: this needs more attention
-        if "through" in phenix_selection_string:
-          phenix_selection_string = phenix_selection_string.replace("through",":")
-          self.notes.append("Warning: 'through' replaced with ':' in phenix selection")
         success = self.view_selection(phenix_selection_string)
 
             

@@ -42,22 +42,64 @@ def translate_chain(chain_id,model_number=1):
 def translate_residue_name(residue_name,model_number=1):
     return "#"+str(model_number)+":"+residue_name.lower()
 
-def translate_residue_id(residue_id,model_number=1):
+
+
+
+def translate_resid_colon(residue_id,model_number=1):
+  split = residue_id.split(":")
+  assert len(split)==2, "Residue id/number must be a single range, cannot parse: "+residue_id
+  resid_start,resid_stop = split
+  resid_start,resid_stop = resid_start.strip(),resid_stop.strip()
+  # use single value if start == stop
+  if resid_start == resid_stop:
+    return "#"+str(model_number)+":"+str(resid_start)
+  else:
+    return "#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)
+  
+
+def translate_resid_through(residue_id,model_number=1):
+  split = residue_id.split("through")
+  assert len(split)==2, "Residue id/number must be a single range, cannot parse: "+residue_id
+  resid_start,resid_stop = split
+  resid_start,resid_stop = resid_start.strip(),resid_stop.strip()
+
+  # use single value if start == stop
+  if resid_start == resid_stop:
+    return "#"+str(model_number)+":"+str(resid_start)
+  else:
+    return "#"+str(model_number)+":"+str(resid_start)+"{-}"+str(resid_stop)+"" # brackets added to denote through range
+  
+
+
+def translate_resseq_colon(residue_id,model_number=1):
+  split = residue_id.split(":")
+  assert len(split)==2, "Residue id/number must be a single range, cannot parse: "+residue_id
+  resid_start,resid_stop = split
+  resid_start,resid_stop = resid_start.strip(),resid_stop.strip()
+
+  # use dash with an addition stop:stop statement
+  return "((#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)+")|(#"+str(model_number)+":"+str(resid_stop)+"-"+str(resid_stop)+"))"
+
+
+def translate_resseq_through(residue_id,model_number=1):
+  assert False, "Resseq is not supported with through"
+
+def translate_resid(residue_id,model_number=1):
     if ":" in residue_id:
-        split = residue_id.split(":")
-        assert len(split)==2, "Residue id/number must be a single range, cannot parse: "+residue_id
-        resid_start,resid_stop = split
-        resid_start,resid_stop = resid_start.strip(),resid_stop.strip()
-        return "#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)
+       return translate_resid_colon(residue_id,model_number=model_number)
+
     elif "through" in residue_id:
-        split = residue_id.split("through")
-        assert len(split)==2, "Residue id/number must be a single range, cannot parse: "+residue_id
-        resid_start,resid_stop = split
-        resid_start,resid_stop = resid_start.strip(),resid_stop.strip()
-        return "#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)
-    
+        return translate_resid_through(residue_id,model_number=1)
     else:
         return "#"+str(model_number)+":"+str(residue_id)
+
+def translate_resseq(residue_id,model_number=1):
+    if ":" in residue_id:
+       return translate_resseq_colon(residue_id,model_number=model_number)
+    elif "through" in residue_id:
+        return translate_resseq_through(residue_id,model_number=1)
+    else:
+        return "#"+str(model_number)+":"+str(residue_id)+"-"+str(residue_id)
 
 def translate_atom_name(atom_name,model_number=1):
     return "#"+str(model_number)+"@"+atom_name.lower()
@@ -104,7 +146,9 @@ translation_dict = {
 "model":translate_model,
 "chain":translate_chain,
 "resname":translate_residue_name,
-"resid":translate_residue_id,
+"resid":translate_resid, 
+"resseq":translate_resseq, 
+"resi":translate_resid, # alias fo resid
 "name":translate_atom_name,
 "element":translate_element_name,
 
