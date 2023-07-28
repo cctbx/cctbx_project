@@ -12,20 +12,22 @@ Rationale: Hierarchy object and mmcif representations can contain
 
 Approach: Convert all non-pdb_v3-compliant chain ID and residue names
   to suitable number of characters and save the conversion information
-  as a conversion_info object and as REMARK records in PDB string
-  representations of the hierarchy.
+  as a conversion_info object and as RESNAM records (for residue names)
+  and REMARK records (for chain ID) in PDB string representations of
+  the hierarchy.
 
 Examples of typical uses:
 
 A. Write a pdb_v3 compatible string with conversion information in REMARK
-   records from any hierarchy (ph):
+   and RESNAM records from any hierarchy (ph):
    NOTE: any kw and args for as_pdb_string() can be supplied
 
   from iotbx.pdb.pdb_v3_cif_conversion import hierarchy_as_pdb_v3_string
   pdb_v3_string =  hierarchy_as_pdb_v3_string(ph)
 
 B. Read a pdb_v3 compatible string (pdb_v3_string) with conversion
-   information in REMARK records and convert to a hierarchy (inverse of A).
+   information in REMARK/RESNAM records and convert to a hierarchy (
+   inverse of A).
    NOTE: same function will read any mmcif string as well.
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
@@ -36,10 +38,10 @@ C. Get conversion info from any hierarchy (ph):
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   conversion_info = pdb_v3_cif_conversion(ph)
 
-D. Get conversion info as REMARK string
+D. Get conversion info as REMARK and RESNAM string
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  remarks_string = pdb_v3_cif_conversion(ph).conversion_as_remark_string()
+  remark_hetnam_string = pdb_v3_cif_conversion(ph).conversion_as_remark_hetnam_string()
 
 E. Convert a pdb_v3 compatible hierarchy to a full hierarchy with
    conversion information in conversion_info. This approach can be
@@ -87,9 +89,9 @@ def hierarchy_as_pdb_v3_string(ph, *args, **kw):
   else:
     ph_pdb_v3 = ph.deep_copy()
     conversion_info.convert_hierarchy_to_pdb_v3_representation(ph_pdb_v3)
-    remarks_string = conversion_info.conversion_as_remark_string()
+    remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
     pdb_v3_string = ph_pdb_v3.as_pdb_string(*args, **kw)
-    full_string = remarks_string + pdb_v3_string
+    full_string = remark_hetnam_string + pdb_v3_string
     return full_string
 
 def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
@@ -108,11 +110,13 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
   import iotbx.pdb
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   inp = iotbx.pdb.input(lines=pdb_or_mmcif_string, source_info=None)
-  remark_string = "\n".join(inp.remark_section())
+  remark_hetnam_string = "\n".join(inp.remark_section())
+  hetnam_string = "\n".join(inp.heterogen_section())
+  remark_hetnam_string += "\n"+ hetnam_string
   if (not conversion_info):
     conversion_info = pdb_v3_cif_conversion()
-    conversion_info.set_conversion_tables_from_remarks_records(
-      remarks_records = remark_string.splitlines())
+    conversion_info.set_conversion_tables_from_remark_hetnam_records(
+      remark_hetnam_records = remark_hetnam_string.splitlines())
   assert conversion_info.is_initialized()
 
   # Get the hierarchy
@@ -149,12 +153,22 @@ class pdb_v3_cif_conversion:
     6. Add code to regression test at iotbx/regression/tst_hierarchy_pdb_v3.py
     '''
 
-  def __init__(self, hierarchy = None):
+  def __init__(self, hierarchy = None,
+     residue_conversion_as_remark = True,
+     residue_conversion_as_hetnam = True,
+     end_residue_names_with_tilde_if_possible = True,
+     ):
     ''' Identify all unique chain_ids and residue names that are not compatible
         with pdb_v3. Generate dictionary relating original names and
         compatible names and for going backwards.
 
     parameters:  iotbx.pdb.hierarchy object (required)
+        residue_conversion_as_remark:   read and write conversion for residue
+            name as a REMARK
+        residue_conversion_as_hetnam:   read and write conversion for residue
+            name as a HETNAM record
+        end_residue_names_with_tilde_if_possible:  try to make 3-char residue
+                                                    names as 2 chars + "~"
 
     returns:  None
 
@@ -164,6 +178,17 @@ class pdb_v3_cif_conversion:
     # Fields in hierarchy that are limited in number of characters in pdb_v3
     self._keys = ['chain_id', 'resname']
     self._max_chars_dict = {'chain_id':2, 'resname':3}
+    self._end_with_tilde_dict = {'chain_id':False, 'resname':True}
+
+    self._remark_keys = ['chain_id']
+    self._hetnam_keys = []
+    self._residue_conversion_as_remark = residue_conversion_as_remark
+    if self._residue_conversion_as_remark:
+      self._remark_keys.append('resname')
+
+    self._residue_conversion_as_hetnam = residue_conversion_as_hetnam
+    if self._residue_conversion_as_hetnam:
+      self._hetnam_keys.append('resname')
 
     self._is_initialized = False
 
@@ -200,8 +225,8 @@ class pdb_v3_cif_conversion:
     assert self.is_initialized(), "Need to initialize"
     return self._conversion_required
 
-  def conversion_as_remark_string(self):
-    '''Public method to return a PDB REMARK string representing all the
+  def conversion_as_remark_hetnam_string(self):
+    '''Public method to return a PDB REMARK/HETNAM string representing all the
     conversions that are necessary
     '''
 
@@ -216,7 +241,9 @@ class pdb_v3_cif_conversion:
     print(
        "REMARK   PDB_V3_CONVERSION  CONVERSIONS MADE FOR PDB_V3 COMPATIBILITY",
            file = f)
-    for key in self._keys:
+
+    # Set up conversion info that goes in REMARK records
+    for key in self._remark_keys:
       info =  self._conversion_table_info_dict[key]
       if info:
         for full_text, pdb_v3_text in zip(
@@ -230,6 +257,40 @@ class pdb_v3_cif_conversion:
               pdb_v3_text),
             file = f)
     print(file = f)
+
+    # Set conversion info that goes in HETNAM records
+    """
+HETNAM
+Overview
+
+This record gives the chemical name of the compound with the given hetID.
+
+Record Format
+
+COLUMNS       DATA  TYPE    FIELD           DEFINITION
+----------------------------------------------------------------------------
+ 1 -  6       Record name   "HETNAM"
+ 9 - 10       Continuation  continuation    Allows concatenation of multiple records.
+12 - 14       LString(3)    hetID           Het identifier, right-justified.
+16 - 70       String        text            Chemical name.
+    """
+    for key in self._hetnam_keys:
+      info =  self._conversion_table_info_dict[key]
+      if info:
+        for full_text, pdb_v3_text in zip(
+           info.full_representation_list,
+           info.pdb_v3_representation_list,
+           ):
+          print("%6s  %2s %3s %55s%10s" %(
+              "HETNAM".ljust(6),
+              "".ljust(2),  # continuation chars
+              pdb_v3_text.ljust(3),  # 3-char version
+              "PDB_V3_CONVERSION (FULL NAME IN COLS 71-80)".ljust(55),  # any text for 55 chars
+              full_text.ljust(10)),  # full version
+            file = f)
+    print(file = f)
+
+
     return f.getvalue()
 
 
@@ -282,7 +343,7 @@ class pdb_v3_cif_conversion:
     assert self.is_initialized(), "Need to initialize"
 
     if hasattr(hierarchy, '_is_pdb_v3_representation') and (
-        not self.hierarchy_is_full_representation):
+        hierarchy._is_pdb_v3_representation):
       return # nothing to do because it was already converted
 
     if not self.conversion_required():
@@ -308,41 +369,62 @@ class pdb_v3_cif_conversion:
 
     hierarchy._is_pdb_v3_representation = False
 
-  def set_conversion_tables_from_remarks_records(self, remarks_records):
-    ''' Public method to set conversion tables based on remarks records
-        written in standard form as by this class
+  def add_to_conversion_tables_from_hierarchy(self):
+    pass # ZZZ
+
+  def set_conversion_tables_from_remark_hetnam_records(
+       self, remark_hetnam_records, add_to_existing = False):
+    ''' Public method to set conversion tables based on remarks and hetnam
+        records written in standard form as by this class
 
     parameters:
-      remarks_records:  list of lines, containing REMARK lines with information
-                        conversion_as_remark_string
+      remark_hetnam_records:  list of lines, containing REMARK
+                        and HETNAM lines with information
+                        conversion_as_remark_hetnam_string
+      add_to_existing: do not re-initialize if already initialized
     returns: None
     '''
 
-    self._is_initialized = True
 
-    if not remarks_records:
+    if not remark_hetnam_records:
+      self._is_initialized = True
       return # nothing to do
 
     self._conversion_required = False
 
-    full_representation_list_dict = {}
-    pdb_v3_representation_list_dict = {}
-    for key in self._keys:
-      full_representation_list_dict[key] = []
-      pdb_v3_representation_list_dict[key] = []
+    if (self._is_initialized and add_to_existing):
+      pass # keep existing dicts
+    else: # usual...initialize
+      full_representation_list_dict = {}
+      pdb_v3_representation_list_dict = {}
 
-    for line in remarks_records:
+      for key in self._keys:
+        full_representation_list_dict[key] = []
+        pdb_v3_representation_list_dict[key] = []
+    self._is_initialized = True
+
+    for line in remark_hetnam_records:
       if not line: continue
-      if not line.startswith("REMARK"): continue
       spl = line.split()
-      if len(spl) != 6: continue
-      if not spl[1] == "PDB_V3_CONVERSION": continue
-      key = spl[2].lower()[:-1] # take off ":"
-      if not key in self._keys: continue
-      full = spl[3]
-      pdb_v3 = spl[5]
-      full_representation_list_dict[key].append(full)
-      pdb_v3_representation_list_dict[key].append(pdb_v3)
+      if (spl[0] == "REMARK") and (spl[1] == "PDB_V3_CONVERSION"):
+        if len(spl) != 6: continue
+        key = spl[2].lower()[:-1] # take off ":"
+        if not key in self._remark_keys: continue
+        full = spl[3]
+        pdb_v3 = spl[5]
+      elif self._residue_conversion_as_hetnam and (spl[0] == "HETNAM"):
+        key = "resname"
+        if not key in self._hetnam_keys: continue
+        pdb_v3 = line[11:14].strip()
+        full = line[69:80].strip()
+        if not pdb_v3: continue
+        if not full: continue
+      else:
+        continue
+
+      if not full in full_representation_list_dict[key]:
+        full_representation_list_dict[key].append(full)
+        pdb_v3_representation_list_dict[key].append(pdb_v3)
 
       # there was something needing conversion
       self._conversion_required = True
@@ -374,13 +456,16 @@ class pdb_v3_cif_conversion:
     else:
       raise "NotImplemented"
 
+    end_with_tilde = self._end_with_tilde_dict[key]
+
     max_chars = self._max_chars_dict[key]
     allowed_ids, ids_needing_conversion = self._choose_allowed_ids(
         unique_values,
         max_chars = max_chars)
 
     pdb_v3_representation_list = self._get_any_pdb_v3_representation(
-        ids_needing_conversion, max_chars, exclude_list = allowed_ids)
+        ids_needing_conversion, max_chars, exclude_list = allowed_ids,
+        end_with_tilde = end_with_tilde)
 
     if ids_needing_conversion:
       assert len(ids_needing_conversion) == len(pdb_v3_representation_list)
@@ -423,13 +508,18 @@ class pdb_v3_cif_conversion:
     return resnames
 
   def _get_any_pdb_v3_representation(self, ids_needing_conversion,
-     max_chars, exclude_list = None,):
-    '''Private method to try a few ways to generate pdb_v3 representations
-      for a set of strings
+     max_chars, exclude_list = None,
+     end_with_tilde = None):
+    '''Private method to try a few ways to generate unique pdb_v3
+      representations for a set of strings.  Order to try:
+      1. take first max_chars of each.
+      2. if end_with_tilde, then generate max_chars-1 of numbers plus tilde,
+      3. generate anything up to max_chars
     parameters:
       ids_needing_conversion:  list of strings to convert
       max_chars:  maximum characters in converted strings
       exclude_list: list of strings not to use as output
+      end_with_tilde: try to end strings with a tilde ("~")
     returns:
       pdb_v3_representation_list: list of converted strings, same order and
         length as ids_needing_conversion
@@ -448,7 +538,8 @@ class pdb_v3_cif_conversion:
     # Generate unique strings for all the ids needing conversion, preventing
     #   duplications of existing ids
     pdb_v3_representation_list = self._get_pdb_v3_representation(
-        ids_needing_conversion, max_chars, exclude_list = exclude_list)
+        ids_needing_conversion, max_chars, exclude_list = exclude_list,
+        end_with_tilde = end_with_tilde)
     if pdb_v3_representation_list:
       return pdb_v3_representation_list
 
@@ -457,7 +548,8 @@ class pdb_v3_cif_conversion:
     raise Sorry("Unable to generate pdb_v3 representation of %s" %(key))
 
   def _get_pdb_v3_representation(self, ids, max_chars,
-      exclude_list = None, take_first_n_chars = False,):
+      exclude_list = None, take_first_n_chars = False,
+      end_with_tilde = False):
 
     '''Private method to try and get pdb_v3 representation of ids that fit in
        max_chars and do not duplicate anything in exclude_list
@@ -466,6 +558,7 @@ class pdb_v3_cif_conversion:
       max_chars:  maximum characters in output
       exclude_list: strings to not include in output
       take_first_n_chars: just take the first max_chars if set
+      end_with_tilde: try to end strings with a tilde ("~")
 
     returns:
       list of converted strings of same order and length as ids, if successful
@@ -480,30 +573,64 @@ class pdb_v3_cif_conversion:
           return None # cannot do it this way
       else:  # generate a new id
         new_id = self._get_new_unique_id(id, max_chars,
-           exclude_list + pdb_v3_representation_list)
+           exclude_list + pdb_v3_representation_list,
+           end_with_tilde = end_with_tilde)
         if not new_id:
           return None # could not do this
       pdb_v3_representation_list.append(new_id)
     return pdb_v3_representation_list
 
-  def _get_new_unique_id(self, id, max_chars, exclude_list):
+  def _get_new_unique_id(self, id, max_chars, exclude_list,
+     end_with_tilde):
     ''' Private method to get a unique ID with up to max_chars that is not
     in exclude_list. Start with max_chars and work down and use reverse order
     so as to generally create codes that are unlikely for others to have used.
+    Also start with numbers, then numbers and letters, then everything
     '''
-    for n_chars_inv in range(max_chars):
-      n_chars = max_chars - n_chars_inv
-      id = self._get_new_id(n_chars, exclude_list)
-      if id:
-        return id
+    for z in (
+        [False, False, True, False],
+        [True, False, True, False],
+        [True, True, True, False],
+        [True, True, True, True],):
+      include_upper, include_lower, include_numbers, include_special_chars = z
 
-  def _get_new_id(self, n_chars, exclude_list):
+      if end_with_tilde:
+        id = self._get_new_id(max_chars, exclude_list, end_with_tilde = True,
+          include_upper = include_upper,
+          include_lower = include_lower,
+          include_numbers = include_numbers,
+          include_special_chars = include_special_chars,)
+        if id:
+          return id
+
+      for n_chars_inv in range(max_chars):
+        n_chars = max_chars - n_chars_inv
+        id = self._get_new_id(n_chars, exclude_list,
+          include_upper = include_upper,
+          include_lower = include_lower,
+          include_numbers = include_numbers,
+          include_special_chars = include_special_chars,)
+        if id:
+          return id
+
+  def _get_new_id(self, n_chars, exclude_list, end_with_tilde,
+      include_upper = True,
+      include_lower = True,
+      include_numbers = True,
+      include_special_chars = True,
+       ):
     ''' Private method to get a unique ID with exactly n_chars that is not
     in exclude_list
     '''
     from iotbx.pdb.utils import generate_n_char_string
     x = generate_n_char_string(n_chars = n_chars,
-       reverse_order = True)
+       reverse_order = (not end_with_tilde),
+       end_with_tilde = end_with_tilde,
+       include_upper = include_upper,
+       include_lower = include_lower,
+       include_numbers = include_numbers,
+       include_special_chars = include_special_chars,
+      )
     while 1:
       new_id = x.next()
       if (not new_id):
