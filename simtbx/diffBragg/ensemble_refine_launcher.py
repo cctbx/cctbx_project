@@ -15,7 +15,7 @@ from xfel.merging.application.utils.memory_usage import get_memory_usage
 from simtbx.diffBragg.refiners.stage_two_refiner import StageTwoRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
-from dxtbx.model.experiment_list import ExperimentListFactory
+from dxtbx.model.experiment_list import ExperimentList, ExperimentListFactory
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 from cctbx import miller, crystal
 import logging
@@ -178,6 +178,14 @@ class RefineLauncher:
         else:
             worklist = work_distribution[COMM.rank]
         LOGGER.info("EVENT: begin loading inputs")
+
+        # load the Fhkl model once here to check which hkl are missing (and filter from the refls below)
+        first_exper = ExperimentList.from_file(exper_names[0], check_format=False)[0]
+        Fhkl_model = utils.load_Fhkl_model_from_params_and_expt(self.params, first_exper)
+        Fhkl_model = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
+        Fhkl_model_indices = set(Fhkl_model.indices())
+
+
         for i_exp in worklist:
             exper_name = exper_names[i_exp]
             LOGGER.info("EVENT: BEGIN loading experiment list")
@@ -196,8 +204,13 @@ class RefineLauncher:
             # FIXME need to remove (0,0,0) bboxes
 
             try:
-                good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
-                refls = refls.select(good_sel)
+                miller_inds = list(refls["miller_index"])
+                is_not_000 = [h != (0, 0, 0) for h in miller_inds]
+                is_in_Fhkl_model = [h in Fhkl_model_indices for h in miller_inds]
+                LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" % (
+                    np.sum(is_in_Fhkl_model), len(refls)))
+                refl_sel = flex.bool(np.logical_and(is_not_000, is_in_Fhkl_model))
+                refls = refls.select(refl_sel)
             except KeyError:
                 pass
 
