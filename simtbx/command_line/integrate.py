@@ -339,7 +339,7 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
-    
+
     params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
     if os.path.isfile(args.inputGlob):
         df_all = pandas.read_pickle(args.inputGlob)
@@ -457,6 +457,7 @@ if __name__=="__main__":
         if all_dfs:
             all_dfs = pandas.concat(all_dfs)
             all_dfs["predicted_refls"] = all_pred_names
+            all_dfs["predictions"] = all_pred_names
         else:
             all_dfs = None
 
