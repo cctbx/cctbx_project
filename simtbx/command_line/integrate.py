@@ -439,20 +439,19 @@ if __name__=="__main__":
             utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
             try:
                 int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
+                int_expt_name = "%s/%s_%d_integrated.expt" % (args.outdir, tag, i_f)
+                int_expt.as_file(int_expt_name)
+                int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
+                int_refl_name = int_expt_name.replace(".expt", ".refl")
+                int_refl.as_file(int_refl_name)
             except RuntimeError:
                 print("Integration failed for %s" % pred_file)
-                continue
-            int_expt_name = "%s/%s_%d_integrated.expt" % ( args.outdir,tag, i_f)
-            int_expt.as_file(int_expt_name)
-            int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
-            int_refl_name = int_expt_name.replace(".expt", ".refl")
-            int_refl.as_file(int_refl_name)
             all_dfs.append(df)
             all_pred_names.append(pred_file)
             spec_name = df.spectrum_filename.values[0]
             if spec_name is None:
                 spec_name = ""
-            exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, int_refl_name, spec_name))
+            exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, pred_file, spec_name))
 
         if all_dfs:
             all_dfs = pandas.concat(all_dfs)
