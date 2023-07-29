@@ -259,7 +259,7 @@ class Script:
             sigz = niter = None
             try:
                 niter = len(Modeler.target.all_hop_id)
-                sigz = np.mean(Modeler.target.all_sigZ)
+                sigz = Modeler.target.all_sigZ[-1]
             except Exception:
                 pass
 
