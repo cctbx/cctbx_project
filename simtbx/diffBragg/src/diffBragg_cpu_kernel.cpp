@@ -917,8 +917,6 @@ void diffBragg_sum_over_steps(
                     nom_k = db_cryst.nominal_hkl[i_pix*3+1];
                     nom_l = db_cryst.nominal_hkl[i_pix*3+2];
                     //f_cell_idx = l0 - nom_l + 1;
-                    if (i_pix==0)
-                        printf("nom_h=%d, nom_k=%d, nom_l=%d\n", nom_h, nom_k, nom_l);
                 }
                 double value;
                 if (db_flags.refine_Icell)
@@ -936,11 +934,6 @@ void diffBragg_sum_over_steps(
                     if (nom_h==h0 && nom_k==k0 && nom_l==l0 ){
                         fcell_manager_dI += value;
                         fcell_manager_dI2 += value2;
-                        printf("good\n");
-                    }
-                    else{
-                        if(i_pix==0)
-                            printf("bad\n");
                     }
                 }
                 else{
