@@ -182,9 +182,12 @@ class RefineLauncher:
         # load the Fhkl model once here to check which hkl are missing (and filter from the refls below)
         first_exper = ExperimentList.from_file(exper_names[0], check_format=False)[0]
         Fhkl_model = utils.load_Fhkl_model_from_params_and_expt(self.params, first_exper)
-        Fhkl_model = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
-        Fhkl_model_indices = set(Fhkl_model.indices())
-
+        self.symbol = Fhkl_model.space_group().info().type().lookup_symbol()
+        if self.params.refiner.force_symbol is not None:
+            self.symbol = self.params.refiner.force_symbol
+        LOGGER.info("Will use space group symbol %s" % self.symbol)
+        Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
+        Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
 
         for i_exp in worklist:
             exper_name = exper_names[i_exp]
@@ -206,7 +209,7 @@ class RefineLauncher:
             try:
                 miller_inds = list(refls["miller_index"])
                 is_not_000 = [h != (0, 0, 0) for h in miller_inds]
-                is_in_Fhkl_model = [h in Fhkl_model_indices for h in miller_inds]
+                is_in_Fhkl_model = [h in Fhkl_model_p1_indices for h in miller_inds]
                 LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" % (
                     np.sum(is_in_Fhkl_model), len(refls)))
                 refl_sel = flex.bool(np.logical_and(is_not_000, is_in_Fhkl_model))
@@ -217,17 +220,6 @@ class RefineLauncher:
             #UcellMan = utils.manager_from_crystal(expt.crystal)
             opt_uc_param = exper_dataframe[["a","b","c","al","be","ga"]].values[0]
             UcellMan = utils.manager_from_params(opt_uc_param)
-
-            if self.symbol is None:
-                if self.params.refiner.force_symbol is not None:
-                    self.symbol = self.params.refiner.force_symbol
-                else:
-                    self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
-                LOGGER.info("Set space group symbol: %s" % self.symbol)
-            else:
-                if self.params.refiner.force_symbol is None:
-                    if expt.crystal.get_space_group().type().lookup_symbol() != self.symbol:
-                        raise ValueError("Crystals should all have the same space group symmetry")
 
             if shot_idx == 0:  # each rank initializes a simulator only once
                 if self.params.simulator.init_scale != 1:
@@ -440,6 +432,7 @@ class RefineLauncher:
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
         self.idx_from_asu = {h: i for i, h in enumerate(set(self.Hi_asu_all_ranks))}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
+        from IPython import embed;embed()
         self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
 
         self.num_hkl_global = len(self.idx_from_asu)
