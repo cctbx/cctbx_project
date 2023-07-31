@@ -1,6 +1,5 @@
-from scitbx.array_family import flex
+from __future__ import absolute_import, division, print_function
 from iotbx.data_manager import DataManager
-from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import os
 from libtbx import easy_run
@@ -49,4 +48,3 @@ if (__name__ == "__main__"):
   exercise()
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")
-
