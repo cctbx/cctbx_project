@@ -1,3 +1,12 @@
+2023.7
+======
+
+* Initial support for handling longer residue names in mmCIF
+* Improved handling of real-space maps with unexpected metadata for the
+  origin and cell angles
+* Improvements to reduce2 and probe2
+* Reorganization of quantum mechanical restraints
+
 2023.6
 ======
 
