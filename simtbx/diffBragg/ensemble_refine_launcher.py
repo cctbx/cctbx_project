@@ -189,7 +189,7 @@ class RefineLauncher:
         Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
         Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
 
-        for i_exp in worklist:
+        for i_work, i_exp in enumerate(worklist):
             exper_name = exper_names[i_exp]
             LOGGER.info("EVENT: BEGIN loading experiment list")
             expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
@@ -338,7 +338,8 @@ class RefineLauncher:
             shot_idx += 1
             if COMM.rank == 0:
                 self._mem_usage()
-                print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)), flush=True)
+                print("Finished loading image %d / %d (%d / %d)"
+                      % (i_exp+1, len(exper_names), i_work+1, len(worklist)), flush=True)
 
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
             self.Modelers[i_exp] = shot_modeler
@@ -432,7 +433,6 @@ class RefineLauncher:
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
         self.idx_from_asu = {h: i for i, h in enumerate(set(self.Hi_asu_all_ranks))}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        from IPython import embed;embed()
         self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
 
         self.num_hkl_global = len(self.idx_from_asu)
