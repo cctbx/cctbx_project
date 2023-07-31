@@ -547,9 +547,6 @@ class StageTwoRefiner(BaseRefiner):
 
         if self.refine_Fcell:
             dF = self.D.get_derivative_pixels(self._fcell_id)
-            # breakpoint()
-            # import IPython
-            # IPython.embed()
             self._extracted_fcell_deriv = dF[:npix].as_numpy_array()
             if self.calc_curvatures:
                 d2F = self.D.get_second_derivative_pixels(self._fcell_id)
@@ -589,7 +586,6 @@ class StageTwoRefiner(BaseRefiner):
         if self.refine_Fcell:
             SG = self.scale_fac
             self.fcell_deriv = SG*(self._extracted_fcell_deriv)
-            # breakpoint()
             # handles Nan's when Fcell is 0 for whatever reason
             if self.calc_curvatures:
                 self.fcell_second_deriv = SG*self._extracted_fcell_second_deriv
@@ -851,7 +847,7 @@ class StageTwoRefiner(BaseRefiner):
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
             sig = 1
-            
+
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 
@@ -873,9 +869,6 @@ class StageTwoRefiner(BaseRefiner):
                 dumps.append(dump)
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
-        # import IPython
-        # IPython.embed()
-        # breakpoint()
 
     def _accumulate_Nabc_derivatives(self):
         if not self.params.refiner.refine_Nabc:
