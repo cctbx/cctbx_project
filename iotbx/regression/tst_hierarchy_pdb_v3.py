@@ -250,6 +250,19 @@ def test5():
   print("Hierarchy after writing/reading as pdb_v3 string without REMARKS and restoring conversion:\n%s" %(updated_pdb_v3_string))
   assert updated_pdb_v3_string == pdb_v3_string
 
+  # Initialize conversion_info with unique_values_dict
+  conversion_info = pdb_v3_cif_conversion(ph)
+  unique_values_dict = {}
+  unique_values_dict['chain_id'] = \
+     conversion_info._unique_chain_ids_from_hierarchy(ph)
+  unique_values_dict['resname'] = \
+      conversion_info._unique_resnames_from_hierarchy(ph)
+  new_conversion_info = pdb_v3_cif_conversion(
+    unique_values_dict = unique_values_dict)
+  print("\nConversion info using unique_values_dict:")
+  print(conversion_info.conversion_as_remark_hetnam_string())
+  assert conversion_info.conversion_as_remark_hetnam_string() == new_conversion_info.conversion_as_remark_hetnam_string()
+
 def remove_remarks_hetnam(text):
   new_text_list = []
   for line in text.splitlines():

@@ -36,7 +36,14 @@ B. Read a pdb_v3 compatible string (pdb_v3_string) with conversion
 C. Get conversion info from any hierarchy (ph):
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(ph)
+  conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
+
+D. Get conversion info from unique chain_ids and residue names (
+    unique_values_dict):
+
+  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
+  conversion_info = pdb_v3_cif_conversion(
+    unique_values_dict = unique_values_dict)
 
 D. Get conversion info as REMARK and RESNAM string
 
@@ -154,6 +161,7 @@ class pdb_v3_cif_conversion:
     '''
 
   def __init__(self, hierarchy = None,
+     unique_values_dict = None,
      residue_conversion_as_remark = True,
      residue_conversion_as_hetnam = True,
      end_residue_names_with_tilde_if_possible = True,
@@ -162,7 +170,9 @@ class pdb_v3_cif_conversion:
         with pdb_v3. Generate dictionary relating original names and
         compatible names and for going backwards.
 
-    parameters:  iotbx.pdb.hierarchy object (required)
+    parameters:  iotbx.pdb.hierarchy object (required unless unique_values_dict
+           is supplied)
+        unique_values_dict:  Optional dict with unique values for each key
         residue_conversion_as_remark:   read and write conversion for residue
             name as a REMARK
         residue_conversion_as_hetnam:   read and write conversion for residue
@@ -180,6 +190,10 @@ class pdb_v3_cif_conversion:
     self._max_chars_dict = {'chain_id':2, 'resname':3}
     self._end_with_tilde_dict = {'chain_id':False, 'resname':True}
 
+    if unique_values_dict is not None:
+      for key in self._keys:
+        assert key in list(unique_values_dict.keys())
+
     self._remark_keys = ['chain_id']
     self._hetnam_keys = []
     self._residue_conversion_as_remark = residue_conversion_as_remark
@@ -192,7 +206,7 @@ class pdb_v3_cif_conversion:
 
     self._is_initialized = False
 
-    if hierarchy is None:
+    if hierarchy is None and unique_values_dict is None:
       self._conversion_table_info_dict = None
       self._conversion_required = None
       return
@@ -204,7 +218,8 @@ class pdb_v3_cif_conversion:
     self._conversion_required = False
 
     for key in self._keys:
-      self._set_up_conversion_table(key, hierarchy)
+      self._set_up_conversion_table(key, hierarchy,
+        unique_values_dict = unique_values_dict)
 
     self._is_initialized = True
 
@@ -317,7 +332,7 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
     for model in hierarchy.models():
       for chain in model.chains():
-        new_id = self._get_pdb_v3_text_from_full_text(
+        new_id = self.get_pdb_v3_text_from_full_text(
            key = 'chain_id',
            full_text = chain.id)
         if new_id and new_id != chain.id:
@@ -325,7 +340,7 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
-            new_resname = self._get_pdb_v3_text_from_full_text('resname',
+            new_resname = self.get_pdb_v3_text_from_full_text('resname',
                 atom_group.resname)
             if new_resname and (new_resname != atom_group.resname):
               atom_group.resname = new_resname  # Modify residue name here
@@ -353,7 +368,7 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
     for model in hierarchy.models():
       for chain in model.chains():
-        new_id = self._get_full_text_from_pdb_v3_text(
+        new_id = self.get_full_text_from_pdb_v3_text(
           key = 'chain_id',
           pdb_v3_text = chain.id)
         if new_id and new_id != chain.id:
@@ -361,16 +376,13 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
         for residue_group in chain.residue_groups():
           for atom_group in residue_group.atom_groups():
-            new_resname = self._get_full_text_from_pdb_v3_text(
+            new_resname = self.get_full_text_from_pdb_v3_text(
               key = 'resname',
               pdb_v3_text = atom_group.resname)
             if new_resname and (new_resname != atom_group.resname):
               atom_group.resname = new_resname # Modify residue name here
 
     hierarchy._is_pdb_v3_representation = False
-
-  def add_to_conversion_tables_from_hierarchy(self):
-    pass # ZZZ
 
   def set_conversion_tables_from_remark_hetnam_records(
        self, remark_hetnam_records, add_to_existing = False):
@@ -443,13 +455,15 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
         pdb_v3_representation_list =  pdb_v3_representation_list_dict[key])
 
 
-  def _set_up_conversion_table(self, key, hierarchy):
+  def _set_up_conversion_table(self, key, hierarchy, unique_values_dict = None):
     ''' Private method to set up conversion table from a hierarchy for
         field named by key and put it in self._conversion_table_info_dict[key].
         Also set self._conversion_required if conversion is needed.
         also set self._is_initialized'''
 
-    if key == 'chain_id':
+    if unique_values_dict is not None:
+      unique_values = unique_values_dict[key]  # use supplied values
+    elif key == 'chain_id':
       unique_values = self._unique_chain_ids_from_hierarchy(hierarchy)
     elif key == 'resname':
       unique_values = self._unique_resnames_from_hierarchy(hierarchy)
@@ -613,7 +627,7 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
         if id:
           return id
 
-  def _get_new_id(self, n_chars, exclude_list, end_with_tilde,
+  def _get_new_id(self, n_chars, exclude_list, end_with_tilde = None,
       include_upper = True,
       include_lower = True,
       include_numbers = True,
@@ -671,8 +685,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     else:
       return self._conversion_table_info_dict[key]
 
-  def _get_full_text_from_pdb_v3_text(self, key = None, pdb_v3_text = None):
-    '''Private method to return full text from pdb_v3_text based on
+  def get_full_text_from_pdb_v3_text(self, key = None, pdb_v3_text = None):
+    '''Public method to return full text from pdb_v3_text based on
        conversion table
 
     parameters:
@@ -695,8 +709,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
     return full_text
 
-  def _get_pdb_v3_text_from_full_text(self, key = None, full_text = None):
-    '''Private method to return pdb_v3 text from full text based on
+  def get_pdb_v3_text_from_full_text(self, key = None, full_text = None):
+    '''Public method to return pdb_v3 text from full text based on
        conversion table
 
     parameters:

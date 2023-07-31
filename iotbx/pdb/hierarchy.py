@@ -1330,6 +1330,18 @@ class _():
     #
     return h_cif_block
 
+  def as_mmcif_string(self,
+                       crystal_symmetry=None,
+                       data_block_name=None):
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block(
+      crystal_symmetry=crystal_symmetry)
+    f = StringIO()
+    cif_object.show(out = f)
+    return f.getvalue()
+
   def write_mmcif_file(self,
                        file_name,
                        crystal_symmetry=None,
