@@ -263,6 +263,25 @@ def test5():
   print(conversion_info.conversion_as_remark_hetnam_string())
   assert conversion_info.conversion_as_remark_hetnam_string() == new_conversion_info.conversion_as_remark_hetnam_string()
 
+def test6():
+  print("Testing use of ph.as_mmcif_string(segid_as_auth_segid=True)")
+
+  # Get a hierarchy 
+  from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1)
+  # Add segid to the hierarchy
+  i = 0
+  for model in ph.models():
+    for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            for atom in atom_group.atoms():
+              atom.set_segid('UNK')
+  assert ph.as_pdb_string().find("UNK")>-1
+  assert ph.as_mmcif_string().find("UNK") == -1
+  assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
+              
+
 def remove_remarks_hetnam(text):
   new_text_list = []
   for line in text.splitlines():
@@ -278,4 +297,5 @@ if (__name__ == "__main__"):
   test3a()
   test4()
   test5()
+  test6()
   print("OK. Time: %8.3f"%(time.time()-t0))

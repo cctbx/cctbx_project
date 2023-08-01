@@ -33,6 +33,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     alt_id = self._wrap_loop_if_needed(cif_block,"_atom_site.label_alt_id") # alternate conformer id
     label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
     auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")
+    auth_segid = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_segid")
     if label_asym_id is None: label_asym_id = auth_asym_id
     if auth_asym_id is None: auth_asym_id = label_asym_id
     comp_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_comp_id")
@@ -174,7 +175,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       atom.set_serial(
         hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
-      atom.set_segid("    ")
+      if auth_segid:
+        atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid))*" ")
+      else:
+        atom.set_segid("    ")
       if group_PDB is not None and group_PDB[i_atom] == "HETATM":
         atom.hetero = True
       if formal_charge is not None:

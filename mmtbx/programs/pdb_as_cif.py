@@ -13,6 +13,12 @@ model_file_name = None
   .multiple = False
   .help = Model file name
   .style = file_type:pdb bold input_file
+segid_as_auth_segid = False
+  .type = bool
+  .short_caption = Save segid as auth_segid
+  .help = Save segid as mmcif _atom_site.auth_segid.  Alternative is \
+           to save segid as _atom_site_auth_asym_id (also known as chain id) \
+           if the length of segid is longer than the chain id.
 '''
 
 class Program(ProgramTemplate):
@@ -34,7 +40,13 @@ class Program(ProgramTemplate):
     print("Converting %s to mmCIF format." %file_name)
     basename = os.path.splitext(os.path.basename(file_name))[0]
     model = self.data_manager.get_model()
-    txt = model.model_as_mmcif()
+    if self.params.segid_as_auth_segid:
+      print("Saving segid field as _atom_site.auth_segid", file = self.logger)
+    else:
+      print("If segid field is present and longer than chain ID, saving" +
+        "\nsegid as _atom_site.auth_asym_id (chain ID)", file = self.logger)
+    txt = model.model_as_mmcif(
+      segid_as_auth_segid = self.params.segid_as_auth_segid)
     print(txt)
     with open(basename+".cif", 'w') as f:
       f.write(txt)
