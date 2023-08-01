@@ -252,7 +252,6 @@ def _PairsOverlap(mover1, atoms1, positions1,
 
 from iotbx import pdb
 import math
-import mmtbx_probe_ext as probe
 from boost_adaptbx.graph import connected_component_algorithm as cca
 
 def Test():
@@ -291,7 +290,7 @@ def Test():
     a.name = name
     a.xyz = locs[i]
     atoms.append(a)
-    e = probe.ExtraAtomInfo(rad)
+    e = probeExt.ExtraAtomInfo(rad)
     extras.append(e)
     extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
     movers.append(Movers.MoverNull(a, extrasMap))
