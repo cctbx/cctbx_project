@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# These other imports are needed within the Scons build environment.
+#import boost_adaptbx.boost.python as bp
+#bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeext
 
 #========================================================================
