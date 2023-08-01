@@ -88,14 +88,15 @@ if (USE_PYTHON)
   message(STATUS "Boost_LIBRARIES = ${Boost_LIBRARIES}")
   include_directories(../libpdb ../toolclasses ${Boost_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
   # Note: To make this work on Windows, you need to copy the boost_python*.dll file into the
-  # executable directory to avoid an error about "DLL load failed: The specified module could not be found"
+  # executable directory to avoid an error about "DLL load failed: The specified module could not be found".
+  # We also need to copy the test program into the Release (or other build) directory before running it.
   PYTHON_ADD_MODULE(mmtbx_probe_ext boost_python/probe_bpl.cpp)
   target_link_libraries(mmtbx_probe_ext PRIVATE probeLib)
 
   add_custom_command(
     TARGET mmtbx_probe_ext POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-      ${CMAKE_SOURCE_DIR}/tst_probe.py
+      ${CMAKE_SOURCE_DIR}/tst_mmtbx_probe_ext.py
       ${CMAKE_CURRENT_BINARY_DIR}
   )
 endif()
