@@ -20,6 +20,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
+  #   https://www.ebi.ac.uk/pdbe/docs/exchange/pdb-correspondence/pdb2mmcif.html#ATOM
 
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
