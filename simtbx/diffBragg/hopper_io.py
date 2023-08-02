@@ -63,6 +63,7 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
                    rank=0, write_expt=True, write_pandas=True):
     LOGGER = logging.getLogger("refine")
     opt_exp_path = None
+    basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
     if write_expt:
         rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
         opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
@@ -130,7 +131,6 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
                     lam_coefs.append([val])
             lam_coefs = tuple(lam_coefs)
 
-    basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
     new_expt = Experiment()
     new_expt.crystal = new_cryst
     new_expt.detector = expt.detector
