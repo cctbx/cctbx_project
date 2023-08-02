@@ -163,24 +163,14 @@ def filter_indicies(ori,beam,resolution,phil):
   @return list of original indices, list of asymmetric indices
   """
   sym = symmetry(unit_cell=ori.unit_cell(),space_group=phil.small_cell.spacegroup)
-  ops = []
-  for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops(): # this gets the spots related by inversion, aka Bijvoet mates
-    r = op.r().as_hkl()
-    subops = r.split(',')
-    tmpop = [1,1,1]
-    if '-' in subops[0]: tmpop[0] = -1
-    if '-' in subops[1]: tmpop[1] = -1
-    if '-' in subops[2]: tmpop[2] = -1
-
-    if tmpop not in ops:
-      ops.append(tmpop)
+  ops = [op.r() for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops()] # this gets the spots related by inversion, aka Bijvoet mates
 
   asu_indices = sym.build_miller_set(anomalous_flag=False, d_min = resolution)
   asu_indices_with_dups = []
   original_indicies = []
   for idx in asu_indices.indices():
     for op in ops:
-      orig_idx = (idx[0]*op[0],idx[1]*op[1],idx[2]*op[2])
+      orig_idx = op * idx
       if orig_idx not in original_indicies:
         original_indicies.append(orig_idx)
         asu_indices_with_dups.append(idx)
@@ -458,17 +448,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
 
   # for every combination of spots examined, test possible translation and inversions
   # based on the symmetry of cell in question
-  ops = []
-  for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops(): # this gets the spots related by inversion, aka Bijvoet mates
-    r = op.r().as_hkl()
-    subops = r.split(',')
-    tmpop = [1,1,1]
-    if '-' in subops[0]: tmpop[0] = -1
-    if '-' in subops[1]: tmpop[1] = -1
-    if '-' in subops[2]: tmpop[2] = -1
-
-    if tmpop not in ops:
-      ops.append(tmpop)
+  ops = [op.r() for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops()] # this gets the spots related by inversion, aka Bijvoet mates
 
   # make a list of the spots and the d-spacings they fall on
   spots_on_drings = []
@@ -528,10 +508,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
       tested_B = []
       for hklB_a in spotB.hkls:
         for op in ops:
-          hklB = small_cell_hkl(hklB_a.ahkl, col([hklB_a.ahkl[0]*op[0],
-                                                  hklB_a.ahkl[1]*op[1],
-                                                  hklB_a.ahkl[2]*op[2]]))
-
+          hklB = small_cell_hkl(hklB_a.ahkl, col(op * hklB_a.ahkl))
           if hklA == hklB or hklB in tested_B:
             continue
           tested_B.append(hklB)
