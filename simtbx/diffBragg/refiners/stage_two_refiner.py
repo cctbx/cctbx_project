@@ -380,11 +380,18 @@ class StageTwoRefiner(BaseRefiner):
             ma = self.S.crystal.miller_array
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
-            Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+            self._Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+            for i_shot in self.Modelers:
+                MOD = self.Modelers[i_shot]
+                nom_h = MOD.all_nominal_hkl
+                nom_h_p1 = np.dot(nom_h, self._Omatrix).astype(np.int32)
+                nom_h_p1 = list(map(tuple, nom_h_p1))
+                self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
+
             # TODO: Vectorize
             for i_fcell in range(self.n_global_fcell):
                 asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
-                P1_hkl = tuple(np.dot(Omatrix,asu_hkl).astype(int))
+                P1_hkl = tuple(np.dot(self._Omatrix, asu_hkl).astype(int))
                 fcell_val = ma_map[P1_hkl]
                 self.fcell_init_from_i_fcell.append(fcell_val)
             self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
@@ -475,8 +482,8 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         pfs = self.Modelers[self._i_shot].pan_fast_slow
         if self.use_nominal_h:
-            nom_h = self.Modelers[self._i_shot].all_nominal_hkl
-            self.D.add_diffBragg_spots(pfs, nom_h)
+            nom_h_p1 = self.Modelers[self._i_shot].all_nominal_hkl_p1
+            self.D.add_diffBragg_spots(pfs, nom_h_p1)
         else:
             self.D.add_diffBragg_spots(pfs)
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)

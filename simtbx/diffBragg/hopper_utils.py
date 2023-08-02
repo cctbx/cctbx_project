@@ -415,8 +415,6 @@ class DataModeler:
             hotpix_mask = ~is_trusted
         self.nominal_sigma_rdout = self.params.refiner.sigma_r / self.params.refiner.adu_per_photon
 
-        # from IPython import embed;embed()
-
         roi_packet = utils.get_roi_background_and_selection_flags(
             refls, img_data, shoebox_sz=self.params.roi.shoebox_size,
             reject_edge_reflections=self.params.roi.reject_edge_reflections,
@@ -563,7 +561,6 @@ class DataModeler:
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
-            # import IPython; IPython.embed()
             if self.Hi is not None:
                 self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
                 self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix

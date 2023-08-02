@@ -28,8 +28,6 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
-    # pandas_table = pandas_table.iloc[:200]
-    print("****************************\n******** CHOPPER *********** \n**************")
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
         work_distribution = prep_dataframe(pandas_table)
@@ -217,7 +215,6 @@ class RefineLauncher:
             except KeyError:
                 pass
 
-            #UcellMan = utils.manager_from_crystal(expt.crystal)
             opt_uc_param = exper_dataframe[["a","b","c","al","be","ga"]].values[0]
             UcellMan = utils.manager_from_params(opt_uc_param)
 
@@ -232,23 +229,6 @@ class RefineLauncher:
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
-
-            if "miller_index" in list(refls.keys()):
-                is_allowed = flex.bool(len(refls), True)
-                allowed_hkls = set(self.SIM.crystal.miller_array.indices())
-                uc = self.SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
-                symb = self.SIM.crystal.space_group_info.type().lookup_symbol()
-                sym = crystal.symmetry(uc, symb)
-                mset = miller.set(sym, refls['miller_index'],True)
-                op = mset.change_of_basis_op_to_primitive_setting()
-                mset_p = mset.change_basis(op)
-                refl_hkls_p1 = mset_p.indices()
-
-                for i_ref in range(len(refls)):
-                    hkl_p1 = refl_hkls_p1[i_ref]
-                    if hkl_p1 not in allowed_hkls:
-                        is_allowed[i_ref] = False
-                refls = refls.select(is_allowed)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
@@ -285,7 +265,6 @@ class RefineLauncher:
                     assert np.allclose(new_Modeler.all_trusted, all_trusted)
                     assert np.allclose(new_Modeler.roi_id, all_roi_id)
                     LOGGER.info("Gathered file approved!")
-
 
             self.Hi[shot_idx] = shot_modeler.Hi
             self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
@@ -528,7 +507,7 @@ class RefineLauncher:
             self.RUC.S.update_nanoBragg_instance('update_oversample_during_refinement',
                                                  self.params.refiner.update_oversample_during_refinement)
             self.RUC.S.update_nanoBragg_instance("Npix_to_allocate", self.NPIX_TO_ALLOC)
-            #self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
+            self.RUC.S.update_nanoBragg_instance('device_Id', self.DEVICE_ID)
             self.RUC.use_curvatures_threshold = self.params.refiner.use_curvatures_threshold
             if not self.params.refiner.curvatures:
                 self.RUC.S.update_nanoBragg_instance('compute_curvatures', False)
