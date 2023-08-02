@@ -1158,7 +1158,7 @@ class _():
       #'_atom_site.auth_comp_id',
       #'_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
-     ] 
+     ]
     if segid_as_auth_segid:
       atom_site_header.append('_atom_site.auth_segid',)
 
