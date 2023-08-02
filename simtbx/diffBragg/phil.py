@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+debug_mode = False
+  .type = bool
+  .help = If True, many output files are written to explore the diffBragg models in great detail
 nominal_Fhkl_only = True
   .type = bool
   .help = if refining Fhkls, only refine the ones that are assigned to a reflection table...

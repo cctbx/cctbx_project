@@ -190,12 +190,16 @@ class StageTwoRefiner(BaseRefiner):
         self.Zdir = os.path.join(self.output_dir, "Z")
         self.model_dir = os.path.join(self.output_dir, "model")
         for dirname in (self.Zdir, self.model_dir):
-            if self.I_AM_ROOT and not os.path.exists(dirname):
+            if self.params.debug_mode and self.I_AM_ROOT and not os.path.exists(dirname):
                 os.makedirs(dirname)
         COMM.barrier()
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
+        if not self.params.debug_mode:
+            LOGGER.info("Disabling saveZ and save_model because debug_mode=False")
+            self.saveZ_freq = None
+            self.save_model_freq = None
         LOGGER.info("Setup begins!")
         if self.refine_Fcell and not self.asu_from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
@@ -675,7 +679,7 @@ class StageTwoRefiner(BaseRefiner):
         if save_model:
             self._save_model_dir = os.path.join(self.model_dir, "iter%d" % self.iterations)
 
-            if COMM.rank == 0 and not os.path.exists(self._save_model_dir):
+            if self.params.debug_mode and COMM.rank == 0 and not os.path.exists(self._save_model_dir):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
 
@@ -719,7 +723,7 @@ class StageTwoRefiner(BaseRefiner):
 
             self._derivative_convenience_factors()
 
-            if self.iterations % self.saveZ_freq == 0:
+            if self.saveZ_freq is not None and self.iterations % self.saveZ_freq == 0:
                 MOD = self.Modelers[self._i_shot]
                 self._spot_Zscores = []
                 for i_fcell in MOD.unique_i_fcell:
@@ -808,13 +812,13 @@ class StageTwoRefiner(BaseRefiner):
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
-        if not self.iterations % self.saveZ_freq == 0:
+        if self.saveZ_freq is None or not self.iterations % self.saveZ_freq == 0:
             return
         outdir = os.path.join(self.Zdir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
         fname = os.path.join(outdir, "sigZ_iter%d_rank%d" % (self.iterations, self.rank))
-        #np.save(fname, np.array(self._shot_Zscores, object))
+        np.save(fname, np.array(self._shot_Zscores, object))
 
     def _sanity_check_grad(self):
         pass
