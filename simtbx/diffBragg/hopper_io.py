@@ -60,10 +60,12 @@ def diffBragg_Umat(rotX, rotY, rotZ, U):
 
 
 def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
-                   rank=0):
+                   rank=0, write_expt=True, write_pandas=True):
     LOGGER = logging.getLogger("refine")
-    rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
-    rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)
+    opt_exp_path = None
+    if write_expt:
+        rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
+        opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
 
     scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf,\
         diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, \
@@ -129,8 +131,6 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
             lam_coefs = tuple(lam_coefs)
 
     basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
-    opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
-    pandas_path = os.path.join(rank_pandas_outdir, "%s_%s_%d.pkl" % (params.tag, basename, rank_exp_idx))
     new_expt = Experiment()
     new_expt.crystal = new_cryst
     new_expt.detector = expt.detector
@@ -140,8 +140,9 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
     # expt.detector = refiner.get_optimized_detector()
     new_exp_list = ExperimentList()
     new_exp_list.append(new_expt)
-    new_exp_list.as_file(opt_exp_path)
-    LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
+    if write_expt:
+        new_exp_list.as_file(opt_exp_path)
+        LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
     _,flux_vals = zip(*SIM.beam.spectrum)
 
     df = single_expt_pandas(xtal_scale=scale, Amat=Amat,
@@ -173,7 +174,10 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         df['niter'] = [Mod.niter]
     df['phi_deg'] = SIM.D.phi_deg
     df['osc_deg'] = SIM.D.osc_deg
-    df.to_pickle(pandas_path)
+    if write_pandas:
+        rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)
+        pandas_path = os.path.join(rank_pandas_outdir, "%s_%s_%d.pkl" % (params.tag, basename, rank_exp_idx))
+        df.to_pickle(pandas_path)
     return df
 
 
@@ -257,7 +261,10 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
     df["total_flux"] = flux
     df["beamsize_mm"] = beamsize_mm
     df["exp_name"] = os.path.abspath(orig_exp_name)
-    df["opt_exp_name"] = os.path.abspath(opt_exp_name)
+
+    if opt_exp_name is not None:
+        opt_exp_name = os.path.abspath(opt_exp_name)
+    df["opt_exp_name"] = opt_exp_name
     df["spectrum_from_imageset"] = spec_from_imageset
     df["oversample"] = oversample
     if opt_det is not None:

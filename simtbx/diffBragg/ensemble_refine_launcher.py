@@ -28,6 +28,8 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    if params.max_process > 0:
+        pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
         work_distribution = prep_dataframe(pandas_table)

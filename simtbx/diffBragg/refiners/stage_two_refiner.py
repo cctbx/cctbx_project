@@ -251,6 +251,7 @@ class StageTwoRefiner(BaseRefiner):
                     self.hkl_totals.append(self.idx_from_asu[h])
             self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
 
+        self._setup_nominal_hkl_p1()
         self._MPI_setup_global_params()
         self._MPI_sync_fcell_parameters()
         # reduce then broadcast fcell
@@ -368,6 +369,15 @@ class StageTwoRefiner(BaseRefiner):
 
             self._setup_fcell_params()
 
+    def _setup_nominal_hkl_p1(self):
+        Omatrix = np.reshape(self.S.crystal.Omatrix.elems, [3, 3])
+        for i_shot in self.Modelers:
+            MOD = self.Modelers[i_shot]
+            nom_h = MOD.all_nominal_hkl
+            nom_h_p1 = np.dot(nom_h, Omatrix).astype(np.int32)
+            nom_h_p1 = list(map(tuple, nom_h_p1))
+            self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
+
     def _setup_fcell_params(self):
         if self.refine_Fcell:
             LOGGER.info("----loading fcell data")
@@ -384,24 +394,16 @@ class StageTwoRefiner(BaseRefiner):
             ma = self.S.crystal.miller_array
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
-            self._Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
-            for i_shot in self.Modelers:
-                MOD = self.Modelers[i_shot]
-                nom_h = MOD.all_nominal_hkl
-                nom_h_p1 = np.dot(nom_h, self._Omatrix).astype(np.int32)
-                nom_h_p1 = list(map(tuple, nom_h_p1))
-                self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
+            Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
 
             # TODO: Vectorize
             for i_fcell in range(self.n_global_fcell):
                 asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
-                P1_hkl = tuple(np.dot(self._Omatrix, asu_hkl).astype(int))
+                P1_hkl = tuple(np.dot(Omatrix, asu_hkl).astype(int))
                 fcell_val = ma_map[P1_hkl]
                 self.fcell_init_from_i_fcell.append(fcell_val)
             self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
 
-            # LOGGER.info("make fcell_init")
-            # self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
             self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 

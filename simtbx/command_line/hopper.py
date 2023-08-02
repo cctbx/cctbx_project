@@ -127,6 +127,7 @@ class Script:
 
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         trefs = []
+        this_rank_dfs = []  # dataframes storing the modeling results for each shot
         for i_exp, line in enumerate(input_lines):
             if i_exp == self.params.max_process:
                 break
@@ -275,7 +276,11 @@ class Script:
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 
-            Modeler.save_up(x,SIM, rank=COMM.rank, i_exp=i_exp)
+            dbg = self.params.debug_mode
+            shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_exp=i_exp,
+                            save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,
+                            save_sim_info=dbg, save_pandas=dbg, save_traces=dbg, save_expt=dbg)
+            this_rank_dfs.append(shot_df)
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
@@ -293,6 +298,12 @@ class Script:
                     else:
                         o.write("%s %s\n" % (e,r))
                 o.close()
+
+        all_rank_dfs = COMM.reduce(this_rank_dfs)
+        if COMM.rank == 0:
+            all_rank_dfs = pandas.concat(all_rank_dfs).reset_index(drop=True)
+            df_name = os.path.join(self.params.outdir, "hopper_results.pkl")
+            all_rank_dfs.to_pickle(df_name)
 
 
 if __name__ == '__main__':
