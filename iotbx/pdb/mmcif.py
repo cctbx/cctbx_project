@@ -176,7 +176,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
       if auth_segid:
-        atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid))*" ")
+        atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
       else:
         atom.set_segid("    ")
       if group_PDB is not None and group_PDB[i_atom] == "HETATM":
