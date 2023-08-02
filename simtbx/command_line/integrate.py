@@ -345,8 +345,12 @@ if __name__=="__main__":
 
 
     params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
-    if os.path.isfile(args.inputGlob):
-        df_all = pandas.read_pickle(args.inputGlob)
+    if os.path.isfile(args.inputGlob) or os.path.isdir(args.inputGlob):
+        if os.path.isfile(args.inputGlob):
+            input_file = args.inputGlob
+        else:
+            input_file = os.path.join( args.inputGlob, "hopper_results.pkl")
+        df_all = pandas.read_pickle(input_file)
         df_all.reset_index(inplace=True, drop=True)
         def df_iter():
             for i_f in range(len(df_all)):
@@ -356,11 +360,7 @@ if __name__=="__main__":
                 yield i_f, df_i
         Nf = len(df_all)
     else:
-        if os.path.isdir(args.inputGlob):
-            glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
-            fnames = glob.glob(glob_s)
-        else:
-            fnames = glob.glob(args.inputGlob)
+        fnames = glob.glob(args.inputGlob)
         def df_iter():
             for i_f,f in enumerate(fnames):
                 if i_f % COMM.size != COMM.rank:
