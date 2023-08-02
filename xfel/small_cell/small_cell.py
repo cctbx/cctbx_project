@@ -418,7 +418,8 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   reflections['s0_proj'] = s0_projs
 
   from dials.algorithms.indexing.assign_indices import AssignIndicesGlobal
-  reflections['imageset_id'] = reflections['id']
+  if 'imageset_id' not in reflections:
+    reflections['imageset_id'] = reflections['id']
   reflections.centroid_px_to_mm(experiments)
   reflections.map_centroids_to_reciprocal_space(experiments)
 
