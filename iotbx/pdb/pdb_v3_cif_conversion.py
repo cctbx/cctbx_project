@@ -31,7 +31,7 @@ B. Read a pdb_v3 compatible string (pdb_v3_string) with conversion
    NOTE: same function will read any mmcif string as well.
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string)
+  ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string).hierarchy
 
 C. Get conversion info from any hierarchy (ph):
 
@@ -72,7 +72,7 @@ E. Convert a pdb_v3 compatible hierarchy to a full hierarchy with
   # convert back to hierarchy (this can be a new pdb string obtained
   #  after manipulations of the model but with residue names and chain id
   #  values matching the pdb_v3_string)
-  ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks)
+  ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks).hierarchy
 
   # Apply the conversions to obtain a full representation in ph
   conversion_info.convert_hierarchy_to_full_representation(ph)
@@ -112,7 +112,7 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
       pdb_or_mmcif_string: mmcif string or a pdb_v3 compatible string
       conversion_info: optional pdb_v3_cif_conversion object to apply
 
-    returns: hierarchy
+    returns: group_args (hierarchy, crystal_symmetry)
   '''
   import iotbx.pdb
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
@@ -120,6 +120,8 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
   remark_hetnam_string = "\n".join(inp.remark_section())
   hetnam_string = "\n".join(inp.heterogen_section())
   remark_hetnam_string += "\n"+ hetnam_string
+  crystal_symmetry = inp.crystal_symmetry()
+
   if (not conversion_info):
     conversion_info = pdb_v3_cif_conversion()
     conversion_info.set_conversion_tables_from_remark_hetnam_records(
@@ -128,17 +130,21 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
 
   # Get the hierarchy
   ph = inp.construct_hierarchy()
+  from libtbx import group_args
+  result = group_args(
+    group_args_type = 'hierarchy and crystal_symmetry from text string',
+    hierarchy = ph,
+    crystal_symmetry = crystal_symmetry)
 
   # Determine if this is already in full format
   if pdb_v3_cif_conversion(ph).conversion_required(): # already set
     assert not conversion_info.conversion_required(), \
       "Cannot apply pdb_v3 conversions to a hierarchy that is not pdb_v3"
-    return ph
   elif conversion_info.conversion_required(): # convert it
     conversion_info.convert_hierarchy_to_full_representation(ph)
-    return ph
   else: # nothing to convert
-    return ph
+    pass
+  return result
 
 class pdb_v3_cif_conversion:
   ''' Class to generate and save pdb_v3 representation of 5-character

@@ -221,7 +221,7 @@ def test5():
 
   # Get a hierarchy that is not pdb_v3 compatible
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1)
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
 
   # Write a pdb_v3 compatible string with conversion information in REMARKs
   from iotbx.pdb.pdb_v3_cif_conversion import hierarchy_as_pdb_v3_string
@@ -230,7 +230,7 @@ def test5():
 
   # convert pdb_v3_string to a hierarchy
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  new_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string)
+  new_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string).hierarchy
   new_pdb_v3_string =  hierarchy_as_pdb_v3_string(new_ph)
   print("Hierarchy after writing/reading as pdb_v3 string with REMARKS:\n%s" %(new_pdb_v3_string))
   assert pdb_v3_string == new_pdb_v3_string
@@ -241,7 +241,7 @@ def test5():
   pdb_v3_string_no_remarks = remove_remarks_hetnam(pdb_v3_string)
   print("pdb_v3_string with no remarks:\n%s\n" %(pdb_v3_string_no_remarks))
 
-  updated_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks)
+  updated_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks).hierarchy
   # Apply the conversions to obtain a full representation in updated_ph
   conversion_info.convert_hierarchy_to_full_representation(updated_ph)
 
@@ -280,7 +280,6 @@ def test6():
   assert ph.as_pdb_string().find("UNK")>-1
   assert ph.as_mmcif_string().find("UNK") == -1
   assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
-              
 
 def remove_remarks_hetnam(text):
   new_text_list = []
