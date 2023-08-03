@@ -329,12 +329,13 @@ Usage examples:
     #
     if self.params.qi.iterate_NQH and len(self.params.qi.qm_restraints)==0:
       resname = self.params.qi.iterate_NQH
-      rc = get_selection_from_user(model.get_hierarchy(),
-                                   include_amino_acids=[resname])
-      if rc.find('resname %s' % resname)>-1:
-        # self.params.qi.iterate_NQH=rc
-        self.params.qi.format='qi'
-      self.params.qi.selection = [rc]
+      if not self.params.qi.selection:
+        rc = get_selection_from_user(model.get_hierarchy(),
+                                     include_amino_acids=[resname])
+        if rc.find('resname %s' % resname)>-1:
+          # self.params.qi.iterate_NQH=rc
+          self.params.qi.format='qi'
+        self.params.qi.selection = [rc]
     #
     include_amino_acids=self.params.qi.include_amino_acids
     if include_amino_acids:
@@ -378,8 +379,10 @@ Usage examples:
         qi_phil_string = self.set_all_write_to_true(qi_phil_string)
         # qi_phil_string = qi_phil_string.replace('run_in_macro_cycles = *first_only first_and_last all test',
         #                                         'run_in_macro_cycles = first_only *first_and_last all test')
-        qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
-                                                'include_nearest_neighbours_in_optimisation = True')
+        # qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                                # 'include_nearest_neighbours_in_optimisation = True')
+        qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
+                                                'ignore_x_h_distance_protein = True')
         print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
         outl += '%s' % qi_phil_string
       pf = '%s_all.phil' % (
@@ -597,7 +600,7 @@ Usage examples:
   def iterate_NQH(self, nq_or_h, classify_nqh, add_nqh_H_atoms, generate_flipping, log=None):
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
-      self.write_qmr_phil(iterate_histidine=True)
+      self.write_qmr_phil(iterate_NQH=True)
       print('Restart command with PHIL file')
       return
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
@@ -785,8 +788,6 @@ Usage examples:
     #
     outl = '  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"'
     for i, filename in enumerate(filenames):
-      # prefix='iterate_histidine_%02d' % (i+1)
-      # filename = '%s_cluster_final_%s.pdb' % (prefix, preamble)
       assert os.path.exists(filename), '"%s"' % filename
       if self.params.qi.run_directory:
         cmd += ' %s' % os.path.join(self.params.qi.run_directory, filename)
@@ -800,7 +801,7 @@ Usage examples:
       #
       if units.lower() in ['hartree']:
         de = (energy-me)*627.503
-      elif units.lower() in ['kcal/mol']:
+      elif units.lower() in ['kcal/mol', 'dirac']:
         de = (energy-me)
       elif units.lower() in ['ev']:
         de = (energy-me)*23.0605
@@ -823,10 +824,8 @@ Usage examples:
   def run_qmr(self, format, log=None):
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
-    if (qmr.calculate_starting_strain or
-        qmr.calculate_starting_energy or
-        qmr.calculate_starting_bound
-        ):
+    checks = 'starting_strain starting_energy starting_bound'
+    if any(item in checks for item in qmr.calculate):
       rc = run_energies(
         model,
         self.params,
@@ -867,13 +866,19 @@ Usage examples:
   def set_all_calculate_to_true(self, qi_phil_string):
     outl = ''
     for line in qi_phil_string.splitlines():
-      if line.find(' calculate_')>-1:
+      if line.find(' calculate =')>-1:
         tmp=line.split()
-        line = '  %s = True' % tmp[0]
+        line=''
+        for i, t in enumerate(tmp):
+          if i>1 and t.find('*')==-1:
+            line += ' *%s' % tmp[i]
+          else:
+            line += ' %s' % tmp[i]
       outl += '%s\n' % line
     return outl
 
   def set_all_write_to_true(self, qi_phil_string):
+    assert 0
     outl = ''
     for line in qi_phil_string.splitlines():
       if line.find(' write_')>-1:
@@ -893,8 +898,8 @@ Usage examples:
     qi_phil = iotbx.phil.parse(qi_phil_string,
                              # process_includes=True,
                              )
-    qi_phil_string = qi_phil_string.replace('write_final_pdb_buffer = False',
-                                            'write_final_pdb_buffer = True')
+    qi_phil_string = qi_phil_string.replace(' pdb_final_buffer',
+                                            ' *pdb_final_buffer')
     # qi_phil.show()
 
     qi_phil_string = qi_phil_string.replace('qm_restraints',
@@ -904,8 +909,6 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
-      # qi_phil_string = qi_phil_string.replace('write_restraints = True',
-      #                                         'write_restraints = False')
       qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
                                               'exclude_protein_main_chain_to_delta_from_optimisation = True')
       qi_phil_string = qi_phil_string.replace('exclude_torsions_from_optimisation = False',
