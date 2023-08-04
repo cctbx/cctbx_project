@@ -10,6 +10,7 @@ parser.add_argument("inputGlob", type=str, help="glob of input pandas tables (th
 parser.add_argument("outdir", type=str, help="path to output refls")
 
 parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
+parser.add_argument("--dialsInteg", action="store_true", help="Integrate new shoeboxes using dials and write *integrated.expt files")
 parser.add_argument("--numdev", type=int, default=1, help="number of GPUs (default=1)")
 parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for pandas pickles (default .pkl)", default=".pkl")
 parser.add_argument("--loud", action="store_true", help="show lots of screen output")
@@ -34,7 +35,6 @@ from simtbx.diffBragg.hopper_utils import downsamp_spec_from_params
 import glob
 import pandas
 import os
-import shutil
 from dials.algorithms.integration.stills_significance_filter import SignificanceFilter
 from dials.algorithms.indexing.stills_indexer import calc_2D_rmsd_and_displacements
 import logging
@@ -339,10 +339,18 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
+    rank_outdir = os.path.join( args.outdir, "rank%d" % COMM.rank)
+    if not os.path.exists(rank_outdir):
+        os.makedirs(rank_outdir)
+
 
     params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
-    if os.path.isfile(args.inputGlob):
-        df_all = pandas.read_pickle(args.inputGlob)
+    if os.path.isfile(args.inputGlob) or os.path.isdir(args.inputGlob):
+        if os.path.isfile(args.inputGlob):
+            input_file = args.inputGlob
+        else:
+            input_file = os.path.join( args.inputGlob, "hopper_results.pkl")
+        df_all = pandas.read_pickle(input_file)
         df_all.reset_index(inplace=True, drop=True)
         def df_iter():
             for i_f in range(len(df_all)):
@@ -352,11 +360,7 @@ if __name__=="__main__":
                 yield i_f, df_i
         Nf = len(df_all)
     else:
-        if os.path.isdir(args.inputGlob):
-            glob_s = os.path.join(args.inputGlob, "pandas/rank*/*.pkl")
-            fnames = glob.glob(glob_s)
-        else:
-            fnames = glob.glob(args.inputGlob)
+        fnames = glob.glob(args.inputGlob)
         def df_iter():
             for i_f,f in enumerate(fnames):
                 if i_f % COMM.size != COMM.rank:
@@ -378,13 +382,8 @@ if __name__=="__main__":
         for i_f, df in df_iter():
             printR("Shot %d / %d" % (i_f+1, Nf), flush=True)
 
-            expt_name = df.opt_exp_name.values[0]
+            expt_name = df.exp_name.values[0]
             tag = os.path.splitext(os.path.basename(expt_name))[0]
-            new_expt_name = "%s/%s_%d_predicted.expt" % (args.outdir,tag,  i_f)
-            new_expt_name = os.path.abspath(new_expt_name)
-            df["opt_exp_name"] = new_expt_name
-
-            shutil.copyfile(expt_name,  new_expt_name)
 
             data_exptList = ExperimentList.from_file(expt_name)
             data_expt = data_exptList[0]
@@ -398,7 +397,7 @@ if __name__=="__main__":
                 if args.filterDupes:
                     pred = filter_refls(pred)
             except ValueError:
-                os.remove(new_expt_name)
+                #os.remove(new_expt_name)
                 continue
 
             data = utils.image_data_from_expt(data_expt)
@@ -428,7 +427,7 @@ if __name__=="__main__":
             pred = pred.select(flex.bool(keeps))
             nstrong = np.sum(strong_sel)
             printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
-            pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( args.outdir, tag, i_f))
+            pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( rank_outdir, tag, i_f))
             pred.as_file(pred_file)
 
             Rindexed = Rstrong.select(Rstrong['indexed'])
@@ -437,21 +436,22 @@ if __name__=="__main__":
                 continue
 
             utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
-            try:
-                int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
-                int_expt_name = "%s/%s_%d_integrated.expt" % ( args.outdir,tag, i_f)
-                int_expt.as_file(int_expt_name)
-                int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
-                int_refl_name = int_expt_name.replace(".expt", ".refl")
-                int_refl.as_file(int_refl_name)
-            except RuntimeError as err:
-                print("Integration failed for %s because: '%s'" % (pred_file, str(err)))
+            if args.dialsInteg:
+                try:
+                    int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
+                    int_expt_name = "%s/%s_%d_integrated.expt" % (rank_outdir, tag, i_f)
+                    int_expt.as_file(int_expt_name)
+                    int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
+                    int_refl_name = int_expt_name.replace(".expt", ".refl")
+                    int_refl.as_file(int_refl_name)
+                except RuntimeError:
+                    print("Integration failed for %s" % pred_file)
             all_dfs.append(df)
             all_pred_names.append(pred_file)
             spec_name = df.spectrum_filename.values[0]
             if spec_name is None:
                 spec_name = ""
-            exp_ref_spec_lines.append("%s %s %s\n" % (new_expt_name, pred_file, spec_name))
+            exp_ref_spec_lines.append("%s %s %s\n" % (expt_name, pred_file, spec_name))
 
         if all_dfs:
             all_dfs = pandas.concat(all_dfs)
@@ -462,7 +462,6 @@ if __name__=="__main__":
 
         all_dfs = COMM.gather(all_dfs)
         exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
-        print0("\nReflections written to folder %s.\n" % args.outdir)
         if COMM.rank==0:
             hopper_input_name = os.path.abspath(os.path.join(args.outdir , "%s.txt" % args.hopInputName))
             o = open(hopper_input_name, "w")
@@ -479,8 +478,9 @@ if __name__=="__main__":
             all_dfs.to_pickle(best_pkl_name)
             print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper. Use the centroid=cal option to specify the predictions" % (best_pkl_name, hopper_input_name))
 
-            with open(args.outdir +".exectution.txt", "w") as o:
+            cmd_log_file = os.path.join(args.outdir, "cmdline_execution.txt")
+            with open(cmd_log_file, "w") as o:
                 o.write("integrate was run from folder: %s\n" % os.getcwd())
                 o.write("The command line input was:\n")
-                o.write(" ".join(sys.argv))
+                o.write(" ".join(sys.argv) + "\n")
                 #TODO: write the diff phils here:

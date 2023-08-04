@@ -15,7 +15,7 @@ from xfel.merging.application.utils.memory_usage import get_memory_usage
 from simtbx.diffBragg.refiners.stage_two_refiner import StageTwoRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
-from dxtbx.model.experiment_list import ExperimentListFactory
+from dxtbx.model.experiment_list import ExperimentList, ExperimentListFactory
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 from cctbx import miller, crystal
 import logging
@@ -28,6 +28,8 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    if params.max_process > 0:
+        pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if params.prep_time > 0:
         work_distribution = prep_dataframe(pandas_table)
@@ -176,7 +178,18 @@ class RefineLauncher:
         else:
             worklist = work_distribution[COMM.rank]
         LOGGER.info("EVENT: begin loading inputs")
-        for i_exp in worklist:
+
+        # load the Fhkl model once here to check which hkl are missing (and filter from the refls below)
+        first_exper = ExperimentList.from_file(exper_names[0], check_format=False)[0]
+        Fhkl_model = utils.load_Fhkl_model_from_params_and_expt(self.params, first_exper)
+        self.symbol = Fhkl_model.space_group().info().type().lookup_symbol()
+        if self.params.refiner.force_symbol is not None:
+            self.symbol = self.params.refiner.force_symbol
+        LOGGER.info("Will use space group symbol %s" % self.symbol)
+        Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
+        Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
+
+        for i_work, i_exp in enumerate(worklist):
             exper_name = exper_names[i_exp]
             LOGGER.info("EVENT: BEGIN loading experiment list")
             expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
@@ -194,25 +207,18 @@ class RefineLauncher:
             # FIXME need to remove (0,0,0) bboxes
 
             try:
-                good_sel = flex.bool([h != (0, 0, 0) for h in list(refls["miller_index"])])
-                refls = refls.select(good_sel)
+                miller_inds = list(refls["miller_index"])
+                is_not_000 = [h != (0, 0, 0) for h in miller_inds]
+                is_in_Fhkl_model = [h in Fhkl_model_p1_indices for h in miller_inds]
+                LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" % (
+                    np.sum(is_in_Fhkl_model), len(refls)))
+                refl_sel = flex.bool(np.logical_and(is_not_000, is_in_Fhkl_model))
+                refls = refls.select(refl_sel)
             except KeyError:
                 pass
 
-            #UcellMan = utils.manager_from_crystal(expt.crystal)
             opt_uc_param = exper_dataframe[["a","b","c","al","be","ga"]].values[0]
             UcellMan = utils.manager_from_params(opt_uc_param)
-
-            if self.symbol is None:
-                if self.params.refiner.force_symbol is not None:
-                    self.symbol = self.params.refiner.force_symbol
-                else:
-                    self.symbol = expt.crystal.get_space_group().type().lookup_symbol()
-                LOGGER.info("Set space group symbol: %s" % self.symbol)
-            else:
-                if self.params.refiner.force_symbol is None:
-                    if expt.crystal.get_space_group().type().lookup_symbol() != self.symbol:
-                        raise ValueError("Crystals should all have the same space group symmetry")
 
             if shot_idx == 0:  # each rank initializes a simulator only once
                 if self.params.simulator.init_scale != 1:
@@ -225,23 +231,6 @@ class RefineLauncher:
                 if self.params.refiner.stage_two.Fref_mtzname is not None:
                     self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
                                                self.params.refiner.stage_two.Fref_mtzcol)
-
-            if "miller_index" in list(refls.keys()):
-                is_allowed = flex.bool(len(refls), True)
-                allowed_hkls = set(self.SIM.crystal.miller_array.indices())
-                uc = self.SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
-                symb = self.SIM.crystal.space_group_info.type().lookup_symbol()
-                sym = crystal.symmetry(uc, symb)
-                mset = miller.set(sym, refls['miller_index'],True)
-                op = mset.change_of_basis_op_to_primitive_setting()
-                mset_p = mset.change_basis(op)
-                refl_hkls_p1 = mset_p.indices()
-
-                for i_ref in range(len(refls)):
-                    hkl_p1 = refl_hkls_p1[i_ref]
-                    if hkl_p1 not in allowed_hkls:
-                        is_allowed[i_ref] = False
-                refls = refls.select(is_allowed)
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
@@ -278,7 +267,6 @@ class RefineLauncher:
                     assert np.allclose(new_Modeler.all_trusted, all_trusted)
                     assert np.allclose(new_Modeler.roi_id, all_roi_id)
                     LOGGER.info("Gathered file approved!")
-
 
             self.Hi[shot_idx] = shot_modeler.Hi
             self.Hi_asu[shot_idx] = shot_modeler.Hi_asu
@@ -331,7 +319,8 @@ class RefineLauncher:
             shot_idx += 1
             if COMM.rank == 0:
                 self._mem_usage()
-                print("Finished loading image %d / %d" % (i_exp+1, len(exper_names)), flush=True)
+                print("Finished loading image %d / %d (%d / %d)"
+                      % (i_exp+1, len(exper_names), i_work+1, len(worklist)), flush=True)
 
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
             self.Modelers[i_exp] = shot_modeler

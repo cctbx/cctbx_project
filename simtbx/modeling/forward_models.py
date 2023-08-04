@@ -78,9 +78,12 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     df = pandas_frame
 
     if not quiet: LOGGER.info("Loading experiment models")
-    expt_name = df.opt_exp_name.values[0]
+    expt_name = df.exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
     expt = El[0]
+    crystal = expt.crystal
+    crystal.set_A(df.Amats[0])
+    expt.crystal = crystal
     columns = list(df)
     if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly
         expt.detector = utils.shift_panelZ(expt.detector, df.detz_shift_mm.values[0])

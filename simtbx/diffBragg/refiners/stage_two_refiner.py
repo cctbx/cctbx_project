@@ -190,12 +190,16 @@ class StageTwoRefiner(BaseRefiner):
         self.Zdir = os.path.join(self.output_dir, "Z")
         self.model_dir = os.path.join(self.output_dir, "model")
         for dirname in (self.Zdir, self.model_dir):
-            if self.I_AM_ROOT and not os.path.exists(dirname):
+            if self.params.debug_mode and self.I_AM_ROOT and not os.path.exists(dirname):
                 os.makedirs(dirname)
         COMM.barrier()
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
+        if not self.params.debug_mode:
+            LOGGER.info("Disabling saveZ and save_model because debug_mode=False")
+            self.saveZ_freq = None
+            self.save_model_freq = None
         LOGGER.info("Setup begins!")
         if self.refine_Fcell and not self.asu_from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
@@ -247,6 +251,7 @@ class StageTwoRefiner(BaseRefiner):
                     self.hkl_totals.append(self.idx_from_asu[h])
             self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
 
+        self._setup_nominal_hkl_p1()
         self._MPI_setup_global_params()
         self._MPI_sync_fcell_parameters()
         # reduce then broadcast fcell
@@ -364,6 +369,15 @@ class StageTwoRefiner(BaseRefiner):
 
             self._setup_fcell_params()
 
+    def _setup_nominal_hkl_p1(self):
+        Omatrix = np.reshape(self.S.crystal.Omatrix.elems, [3, 3])
+        for i_shot in self.Modelers:
+            MOD = self.Modelers[i_shot]
+            nom_h = MOD.all_nominal_hkl
+            nom_h_p1 = np.dot(nom_h, Omatrix).astype(np.int32)
+            nom_h_p1 = list(map(tuple, nom_h_p1))
+            self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
+
     def _setup_fcell_params(self):
         if self.refine_Fcell:
             LOGGER.info("----loading fcell data")
@@ -381,16 +395,15 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
             Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+
             # TODO: Vectorize
             for i_fcell in range(self.n_global_fcell):
                 asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
-                P1_hkl = tuple(np.dot(Omatrix,asu_hkl).astype(int))
+                P1_hkl = tuple(np.dot(Omatrix, asu_hkl).astype(int))
                 fcell_val = ma_map[P1_hkl]
                 self.fcell_init_from_i_fcell.append(fcell_val)
             self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
 
-            # LOGGER.info("make fcell_init")
-            # self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
             self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 
@@ -475,8 +488,8 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         pfs = self.Modelers[self._i_shot].pan_fast_slow
         if self.use_nominal_h:
-            nom_h = self.Modelers[self._i_shot].all_nominal_hkl
-            self.D.add_diffBragg_spots(pfs, nom_h)
+            nom_h_p1 = self.Modelers[self._i_shot].all_nominal_hkl_p1
+            self.D.add_diffBragg_spots(pfs, nom_h_p1)
         else:
             self.D.add_diffBragg_spots(pfs)
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
@@ -672,7 +685,7 @@ class StageTwoRefiner(BaseRefiner):
         if save_model:
             self._save_model_dir = os.path.join(self.model_dir, "iter%d" % self.iterations)
 
-            if COMM.rank == 0 and not os.path.exists(self._save_model_dir):
+            if self.params.debug_mode and COMM.rank == 0 and not os.path.exists(self._save_model_dir):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
 
@@ -716,7 +729,7 @@ class StageTwoRefiner(BaseRefiner):
 
             self._derivative_convenience_factors()
 
-            if self.iterations % self.saveZ_freq == 0:
+            if self.saveZ_freq is not None and self.iterations % self.saveZ_freq == 0:
                 MOD = self.Modelers[self._i_shot]
                 self._spot_Zscores = []
                 for i_fcell in MOD.unique_i_fcell:
@@ -805,7 +818,7 @@ class StageTwoRefiner(BaseRefiner):
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
-        if not self.iterations % self.saveZ_freq == 0:
+        if self.saveZ_freq is None or not self.iterations % self.saveZ_freq == 0:
             return
         outdir = os.path.join(self.Zdir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):

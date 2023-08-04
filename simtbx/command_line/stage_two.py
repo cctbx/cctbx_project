@@ -85,6 +85,7 @@ if __name__ == '__main__':
         if LineProfiler is not None and script.params.profile:
             lp = LineProfiler()
             lp.add_function(ensemble_refine_launcher.RefineLauncher.launch_refiner)
+            lp.add_function(ensemble_refine_launcher.RefineLauncher.load_inputs)
             lp.add_function(stage_two_refiner.StageTwoRefiner._compute_functional_and_gradients)
             lp.add_function(stage_two_refiner.StageTwoRefiner._run_diffBragg_current)
             lp.add_function(stage_two_refiner.StageTwoRefiner._update_Fcell)
@@ -118,4 +119,4 @@ if __name__ == '__main__':
             hopper_utils.print_profile(stats,
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
                      "_update_Fcell", "_scale_pixel_data", "_Fcell_derivatives", "_mpi_aggregation",
-                     "GatherFromExperiment", "_setup"])
+                     "GatherFromExperiment", "_setup", "load_inputs"])

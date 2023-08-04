@@ -137,6 +137,8 @@ class DataModeler:
         self.all_freq = None  # flag for the h,k,l frequency of the observed pixel
         self.best_model = None  # best model value at each pixel
         self.best_model_includes_background = False  # whether the best model includes the background scattering estimate
+        self.all_nominal_hkl_p1 = None  # nominal p1 hkl at each pixel
+        self.all_nominal_hkl = None  # nominal hkl at each pixel
         self.all_data =None  # data at each pixel (photon units)
         self.all_sigma_rdout = None  # this is either a float or an array. if the phil param use_perpixel_dark_rms=True, then these are different per pixel, per shot
         self.all_gain = None  # gain value per pixel (used during diffBragg/refiners/stage_two_refiner)
@@ -1100,7 +1102,9 @@ class DataModeler:
     def save_up(self, x, SIM, rank=0, i_exp=0,
                 save_fhkl_data=True, save_modeler_file=True,
                 save_refl=True,
-                save_sim_info=True):
+                save_sim_info=True,
+                save_traces=True,
+                save_pandas=True, save_expt=True):
         """
 
         :param x:
@@ -1111,6 +1115,9 @@ class DataModeler:
         :param save_modeler_file:
         :param save_refl:
         :param save_sim_info:
+        :param save_traces:
+        :param save_pandas:
+        :param save_expt:
         :return:
         """
         # TODO optionally create directories
@@ -1181,18 +1188,20 @@ class DataModeler:
 
         # TODO: pretty formatting ?
         if Modeler.target is not None:
-            rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
-            trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
             # hop number, gradient descent index (resets with each new hop), target functional
             trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
-
             trace_data = np.array([trace0, trace1, trace2]).T
-            np.savetxt(trace_path, trace_data, fmt="%s")
+
+            if save_traces:
+                rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
+                trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
+                np.savetxt(trace_path, trace_data, fmt="%s")
 
             Modeler.niter = len(trace0)
             Modeler.sigz = trace2[-1]
 
-        hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, None, rank)
+        shot_df = hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp,
+                                           self.refl_name, None, rank, write_expt=save_expt, write_pandas=save_pandas)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1283,6 +1292,8 @@ class DataModeler:
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
             # TODO separate diffBragg logger
             utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+
+        return shot_df
 
 
 def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
@@ -2120,9 +2131,23 @@ def generate_gauss_spec(central_en=9500, fwhm=10, res=1, nchan=20, total_flux=1e
     else:
         return ens, wt
 
+def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
+    """
 
-def downsamp_spec_from_params(params, expt):
-    dxtbx_spec = expt.imageset.get_spectrum(0)
+    :param params:  hopper phil params extracted
+    :param expt: a dxtbx experiment (optional)
+    :param imgset: an dxtbx imageset (optional)
+    :param i_img: index of the image in the imageset (only matters if imgset is not None)
+    :return: dxtbx spectrum with parameters applied
+    """
+    if expt is not None:
+        dxtbx_spec = expt.imageset.get_spectrum(0)
+        starting_wave = expt.beam.get_wavelength()
+    else:
+        assert imgset is not None
+        dxtbx_spec = imgset.get_spectrum(i_img)
+        starting_wave = imgset.get_beam(i_img).get_wavelength()
+
     spec_en = dxtbx_spec.get_energies_eV()
     spec_wt = dxtbx_spec.get_weights()
     if params.downsamp_spec.skip:
@@ -2152,11 +2177,12 @@ def downsamp_spec_from_params(params, expt):
         downsamp_wave = utils.ENERGY_CONV / downsamp_en
         spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
-    starting_wave = expt.beam.get_wavelength()
     waves, specs = map(np.array, zip(*spectrum))
     ave_wave = sum(waves*specs) / sum(specs)
-    expt.beam.set_wavelength(ave_wave)
-    MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    MAIN_LOGGER.debug("Starting wavelength=%f. Spectrum ave wavelength=%f" % (starting_wave, ave_wave))
+    if expt is not None:
+        expt.beam.set_wavelength(ave_wave)
+        MAIN_LOGGER.debug("Shifting expt wavelength from %f to %f" % (starting_wave, ave_wave))
     MAIN_LOGGER.debug("USING %d ENERGY CHANNELS" % len(spectrum))
     return spectrum
 
