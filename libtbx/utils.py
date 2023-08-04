@@ -2524,3 +2524,21 @@ git lfs install --local
 git lsf pull
 """%path)
   return not test
+
+class timer:
+  '''
+  Context manager for timing blocks of code
+  https://stackoverflow.com/questions/33987060/python-context-manager-that-measures-time
+
+  from libtbx.utils import timer
+
+  with timer():
+    <block of code to be timed>
+  '''
+  def __enter__(self):
+    self.time = time.perf_counter()
+    return self
+
+  def __exit__(self, type, value, traceback):
+    self.time = time.perf_counter() - self.time
+    print('Elapsed time (s): {}'.format(self.time))
