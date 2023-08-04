@@ -268,7 +268,7 @@ def test6():
 
   # Get a hierarchy
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1)
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
   # Add segid to the hierarchy
   i = 0
   for model in ph.models():
