@@ -217,7 +217,13 @@ class Script(object):
       for key in keysCreatedByMerge:
         if key not in self.params.input.persistent_refl_cols:
           self.params.input.persistent_refl_cols.append(key)
-
+    if self.params.merging.error.model == "ev11_mll":
+      if self.params.merging.error.ev11_mll.cc_after_pr:
+        if "correlation_after_post" not in self.params.input.persistent_refl_cols:
+          self.params.input.persistent_refl_cols.append("correlation_after_post")
+      else:
+        if "correlation" not in self.params.input.persistent_refl_cols:
+          self.params.input.persistent_refl_cols.append("correlation")
 
 if __name__ == '__main__':
   script = Script()

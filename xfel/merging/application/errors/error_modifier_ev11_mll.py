@@ -9,13 +9,16 @@ import sys
 from scipy.special import gamma
 from scipy.special import polygamma
 
+
 number_of_intensity_bins = 100
+
 
 class error_modifier_ev11_mll(worker):
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(error_modifier_ev11_mll, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
     self.n_coefs = self.params.merging.error.ev11_mll.n_degrees + 1
     self.tuning_param = self.params.merging.error.ev11_mll.tuning_param
+    self.expectation_scaling = self.params.merging.error.ev11_mll.expectation_scaling
     self.likelihood = self.params.merging.error.ev11_mll.likelihood
     self.tuning_param_opt = self.params.merging.error.ev11_mll.tuning_param_opt
     if self.params.merging.error.ev11_mll.cc_after_pr:
@@ -27,13 +30,12 @@ class error_modifier_ev11_mll(worker):
     return 'Adjust intensity errors -- ev11_mll'
 
   def run(self, experiments, reflections):
-    '''Modify intensity errors according to EV11 -- Brewster2019'''
+    '''Modify intensity errors according to EV11 -- Brewster2019 / Mittan-Moreau 202X'''
     assert self.params.merging.error.model == "ev11_mll"
     self.logger.log_step_time("ERROR_MODIFIER_EV11")
     self.logger.log("Modifying intensity errors -- ev11 method (starting with %d reflections)"%(len(reflections)))
     reflections = self.modify_errors(reflections)
     self.logger.log_step_time("ERROR_MODIFIER_EV11", True)
-
     return experiments, reflections
 
   def setup_work_arrays(self, reflections):
@@ -51,7 +53,7 @@ class error_modifier_ev11_mll(worker):
     var             = flex.double()
     all_biased_mean = flex.double()
     correlation     = flex.double()
-    n               = flex.double()
+    multiplicity    = flex.double()
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
@@ -75,17 +77,17 @@ class error_modifier_ev11_mll(worker):
         biased_mean.extend(refls_biased_mean)
         var.extend(refls['intensity.sum.variance'])
         correlation.extend(refls[self.cc_key])
-        n.extend(flex.double(number_of_measurements, number_of_measurements))
+        multiplicity.extend(flex.double(number_of_measurements, number_of_measurements))
 
-    self.work_table[self.cc_key]   = correlation
-    self.work_table["delta_sq"]    = delta_sq
-    self.work_table["delta_all"]   = delta_all
-    self.work_table["mean"]        = mean
-    self.work_table["biased_mean"] = biased_mean
-    self.work_table["var"]         = var
-    self.work_table["I"]           = I_wt
-    self.work_table["n"]           = n
-    reflections['biased_mean']     = all_biased_mean
+    self.work_table[self.cc_key]    = correlation
+    self.work_table["delta_sq"]     = delta_sq
+    self.work_table["delta_all"]    = delta_all
+    self.work_table["mean"]         = mean
+    self.work_table["biased_mean"]  = biased_mean
+    self.work_table["var"]          = var
+    self.work_table["I"]            = I_wt
+    self.work_table["multiplicity"] = multiplicity
+    reflections['biased_mean']      = all_biased_mean
 
     self.logger.log("Number of work reflections selected: %d"%self.deltas.size())
     return reflections
@@ -310,17 +312,38 @@ class error_modifier_ev11_mll(worker):
     self.sfac = initial_params[0]
     self.sadd = initial_params[1]
     self.sb   = initial_params[2]
-
+  
   def calculate_intensity_bin_limits(self):
-    '''Calculate the minimum and maximum values of the mean intensities for each HKL'''
+    if self.likelihood == 'original':
+      self.calculate_intensity_bin_limits_ev11()
+    else:
+      self.calculate_intensity_bin_limits_mll()
+    
+  def calculate_intensity_bin_limits_mll(self):
+    '''Calculate the minimum and maximum values of the mean intensities for each HKL
+    This is specific to the updated maximum log-likelihood error model (Mittan-Moreau 202X).'''
+    all_mean_intensities = self.mpi_helper.comm.gather(self.work_table['biased_mean'].as_numpy_array(), root=0)
+    if self.mpi_helper.rank == 0:
+      all_mean_intensities = np.sort(np.concatenate(all_mean_intensities))
+      lower_percentile = 0.005
+      upper_percentile = 0.995
+      n = all_mean_intensities.size
+      lower = all_mean_intensities[int(lower_percentile * n)]
+      upper = all_mean_intensities[int(upper_percentile * n)]
+      self.intensity_bin_limits = np.linspace(lower, upper, number_of_intensity_bins + 1)
+        
+    else:
+      self.intensity_bin_limits = None
+    self.intensity_bin_limits = self.mpi_helper.comm.bcast(self.intensity_bin_limits, root=0)
+  
+  def calculate_intensity_bin_limits_ev11(self):
+    '''Calculate the minimum and maximum values of the mean intensities for each HKL
+    This is bin limit calculation in the original Ev11 implementation (Brewster 2019)'''
     count = self.work_table.size()
     mean_intensity_min = flex.min(self.work_table['biased_mean']) if count > 0 else float('inf')
     mean_intensity_max = flex.max(self.work_table['biased_mean']) if count > 0 else float('-inf')
     if count > 0:
-      self.logger.log(
-        f"Using {count} multiply-measured HKLs; "
-        + f"mean intensity (min,max): ({mean_intensity_min},{mean_intensity_max})"
-      )
+      self.logger.log("Using %d multiply-measured HKLs; mean intensity (min,max): (%f,%f)"%(count, mean_intensity_min, mean_intensity_max))
     else:
       self.logger.log("No multiply-measured HKLs available")
 
@@ -333,19 +356,16 @@ class error_modifier_ev11_mll(worker):
     self.intensity_bin_limits = np.linspace(global_mean_intensity_min, global_mean_intensity_max, number_of_intensity_bins + 1)
     self.intensity_bin_limits[0] = float('-inf')
     self.intensity_bin_limits[len(self.intensity_bin_limits) - 1] = float('inf')
-
+    
   def distribute_reflections_over_intensity_bins(self):
     self.intensity_bins = []
     count = self.work_table.size()
 
     for bin_begin in range(number_of_intensity_bins):
       self.intensity_bins.append(flex.reflection_table())
-
       test_1 = self.work_table['biased_mean'] >= flex.double(count, self.intensity_bin_limits[bin_begin])
       test_2 = self.work_table['biased_mean'] < flex.double(count, self.intensity_bin_limits[bin_begin + 1])
-
       sel = self.work_table.select(test_1 & test_2)
-
       self.intensity_bins[bin_begin].extend(sel)
 
     # for debugging
@@ -369,30 +389,32 @@ class error_modifier_ev11_mll(worker):
       param_shift = 0
       self.x = flex.double([self.sfac, self.sb, *self.sadd])
     self.n = self.n_coefs + param_offset
-    # The * combines the grouped params into one group
     if self.mpi_helper.rank == 0:
       self.logger.main_log(
         'Initial Parameter Estimates = '
         + f'sfac: {self.sfac} '
         + f'sb: {self.sb} '
-        + f'sadd: {self.sadd[0]}'
+        + f'sadd: {self.sadd[0]} '
         + f'nu: {self.tuning_param} '
       )
     l = flex.double(self.n, 1e-8)
+    u = flex.double(self.n, 0)
+    if self.tuning_param_opt:
+      # normalization for the truncated t-distribution is numerically unstable for nu < 2
+      l[0] = 2
+      if self.x[0] < 2:
+        self.x[0] = 2
     for degree_index in range(self.n_coefs):
       l[degree_index + param_offset] = -1000
     if self.mpi_helper.rank == 0:
       self.minimizer = lbfgsb.minimizer(
         n = self.n,
         l = l,
-        u = flex.double(self.n, 0),
+        u = u,
         nbd = flex.int(self.n, 1),
       )
-    delta_print_index = 0
     while True:
       self.compute_functional_and_gradients()
-      #self.get_deltas(delta_print_index)
-      delta_print_index += 1
       status=-1
       if self.mpi_helper.rank == 0:
         if self.minimizer.process(self.x, self.f, self.g):
@@ -427,7 +449,7 @@ class error_modifier_ev11_mll(worker):
         pass
       if status==0:
         break
-
+    
     if self.mpi_helper.rank == 0:
       tuning_param = f'{self.tuning_param:0.3f}'
       sfac = f'{self.sfac:0.3f}'
@@ -441,9 +463,53 @@ class error_modifier_ev11_mll(worker):
       if self.tuning_param_opt:
         log_out += f'nu: {tuning_param}'
       self.logger.main_log(log_out)
-      self.plot_sadd()
+    
+    if self.likelihood != 'original':
+      self.scale_sfac()
     if self.params.merging.error.ev11_mll.verify_derivatives:
+      if self.mpi_helper.rank == 0:
+        self.plot_sadd()
       self.verify_derivatives()
+      self.get_deltas()
+  
+  def scale_sfac(self):
+    global_sum_squares = 0
+    global_sum = 0
+    global_count = 0
+    for reflections in self.intensity_bins:
+      number_of_reflections_in_bin = reflections.size()
+      if number_of_reflections_in_bin > 0:
+        mi = reflections['biased_mean']
+        sadd, dsadd_dsaddi = self._get_sadd(reflections[self.cc_key])
+        var = self.sfac**2 * (reflections['var'] + self.sb**2 * mi + sadd**2 * mi**2)
+        z = reflections['delta_all'] / flex.sqrt(var)
+        sum_squares_in_bin = flex.sum(z**2)
+        sum_in_bin = flex.sum(z)
+      else:
+        sum_squares_in_bin = 0
+        sum_in_bin = 0
+      global_sum_squares_in_bin = self.mpi_helper.comm.reduce(sum_squares_in_bin, self.mpi_helper.MPI.SUM, root=0)
+      global_sum_in_bin = self.mpi_helper.comm.reduce(sum_in_bin, self.mpi_helper.MPI.SUM, root=0)
+      global_count_in_bin = self.mpi_helper.comm.reduce(number_of_reflections_in_bin, self.mpi_helper.MPI.SUM, root=0)
+      if self.mpi_helper.rank == 0:
+        global_sum_squares += global_sum_squares_in_bin
+        global_sum += global_sum_in_bin
+        global_count += global_count_in_bin
+      
+    if self.mpi_helper.rank == 0:
+      std = math.sqrt(global_sum_squares/global_count - (global_sum/global_count)**2)
+      sfac_old = self.sfac
+      sfac_new = self.sfac * std
+      self.sfac = sfac_new
+      log_out = 'SCALING SFAC  '\
+        + f'Unscaled standard deviation: {std:0.3f} '\
+        + f'Optimized sfac: {sfac_old:0.3f} '\
+        + f'Scaled sfac: {sfac_new:0.3f} '
+      self.logger.main_log(log_out)
+    else:
+      sfac_new = None
+    self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
+    return None
 
   def plot_sadd(self):
     import matplotlib.pyplot as plt
@@ -549,13 +615,17 @@ class error_modifier_ev11_mll(worker):
         print(f'der_wrt_sadd - degree {degree_index} numerical: {check_der_wrt_sadd} analytical {der_wrt_sadd[degree_index]}')
     return None
 
-  def get_deltas(self, delta_print_index):
-    deltas = flex.double()
-    deltas_no_ev11 = flex.double()
-    deltas_outlier = flex.double()
-    I = flex.double()
+  def get_deltas(self):
+    import pandas as pd
+    output_keys = ['deviations', 'biased_mean', 'var', 'var_ev11', 'I', 'multiplicity']
+    output_rank = {}
+    for key in output_keys:
+      output_rank[key] = flex.double()
     for reflections in self.intensity_bins:
       number_of_reflections_in_bin = reflections.size()
+      global_reflections_in_bin = self.mpi_helper.comm.reduce(
+        number_of_reflections_in_bin, self.mpi_helper.MPI.SUM, root=0
+        )
       if number_of_reflections_in_bin > 0:
         sfac = self.sfac
         sb = self.sb
@@ -564,62 +634,99 @@ class error_modifier_ev11_mll(worker):
         sadd, _ = self._get_sadd(reflections[self.cc_key])
         var_ev11 = sfac**2 * (v + sb**2 * mi + sadd**2 * mi**2)
 
-        deltas.extend(reflections['delta_all'] / flex.sqrt(var_ev11))
-        deltas_no_ev11.extend(reflections['delta_all'] / flex.sqrt(v))
-        deltas_outlier.extend(reflections['delta_all'] / flex.sqrt(mi))
-        I.extend(reflections['I'])
-
-    output_data_rank = np.column_stack((
-        deltas.as_numpy_array(),
-        I.as_numpy_array(),
-        deltas_no_ev11.as_numpy_array(),
-        deltas_outlier.as_numpy_array(),
-      ))
-
-    output_data_all = self.mpi_helper.comm.gather(output_data_rank, root=0)
+        output_rank['multiplicity'].extend(reflections['multiplicity'])
+        output_rank['deviations'].extend(reflections['delta_all'])
+        output_rank['biased_mean'].extend(mi)
+        output_rank['var'].extend(v)
+        output_rank['var_ev11'].extend(var_ev11)
+        output_rank['I'].extend(reflections['I'])
+  
+    output_all = {}
+    for key in output_keys:
+      output_all[key] = self.mpi_helper.comm.gather(output_rank[key].as_numpy_array(), root=0)
+    
     if self.mpi_helper.rank == 0:
-      for rank_index in range(self.mpi_helper.comm.Get_size()):
-        if rank_index == 0:
-          output_data_to_save = output_data_all[rank_index]
-        else:
-          output_data_to_save = np.concatenate((output_data_to_save, output_data_all[rank_index]))
-      save_to_name = os.path.join(
+      for key in output_keys:
+        output_all[key] = np.concatenate(output_all[key])
+      pd.DataFrame(output_all).to_json(os.path.join(
         self.params.output.output_dir,
-        self.params.output.prefix + f'_deltas_{delta_print_index:03d}.npy'
-        )
-      np.save(save_to_name, output_data_to_save)
+        self.params.output.prefix + f'_deltas.npy'
+        ))
     return None
+  
+  def _get_expectations(self):
+    E = math.sqrt(self.expectation_scaling) * math.sqrt(2/math.pi)
+    S = self.expectation_scaling * math.sqrt(1 - 2/math.pi)
+    return E, S
   
   def _loss_function_gaus(self, delta_sq, var):
     # Delta_sq = I_hj - <I_h>
-    #E = 1 + 1/(n-1)
-    #z = flex.sqrt(E) - flex.sqrt(delta_sq / var)
-    #dz_dvar = 1/2 * flex.sqrt(delta_sq / var) * 1/var
-    E = math.sqrt(2/math.pi)
-    S = math.sqrt(1 - 2/math.pi)
+    E, S = self._get_expectations()
+    norm = 0.5 * (1 + math.erf(E/S))
     z = (E - flex.sqrt(delta_sq / var)) / S
     dz_dvar = 1/S * 1/2 * flex.sqrt(delta_sq / var) * 1/var
-    L = 1/2 * math.log(2*math.pi) + 1/2 * z**2
+    L = math.log(norm) + 1/2 * math.log(2*math.pi) + 1/2 * z**2
     dL_dz = z
     dL_dvar = dL_dz * dz_dvar
     return L, dL_dvar
+  
+  def t_dist_normalization(self, nu):
+    def hyp2f1(a, b, c, z):
+      # There is a function in scipy.special for this
+      # I needed the derivatives, so I am using my own implementation
+      # Setting the range to 100 results in an inf output. 
+      # Iterations | nu | % error   Iterations | nu | % error
+      #         10 | 2. | 3.5               10 | 5. | 0.008
+      #         20 | 2. | 0.7               20 | 5. | 10**-7
+      #         30 | 2. | 0.1               30 | 5. | 10**-11
+      #         40 | 2. | 0.03              40 | 5. | 10**-14
+      #         50 | 2. | 0.007             50 | 5. | 10**-14
+      H = 0
+      dH_db = 0
+      dH_dz = 0
+      prefactor = gamma(c) / (gamma(a) * gamma(b))
+      for i in range(30):
+        term = prefactor * (gamma(a+i) * gamma(b+i))/gamma(c+i) * z**i / gamma(i + 1)
+        H += term
+        dH_db += term * (polygamma(0, b+i) -  polygamma(0, b))
+        if i != 0:
+          dH_dz += prefactor * (gamma(a+i) * gamma(b+i))/gamma(c+i) * i * z**(i-1) / gamma(i + 1)
+      return H, dH_db, dH_dz
+  
+    tau = np.sqrt(2/np.pi) / np.sqrt(1 - 2/np.pi)
+    term0 = tau * gamma((nu + 1) / 2) / (np.sqrt(nu*np.pi) * gamma(nu/2))
+    dterm0_dnu = term0 * (polygamma(0, (nu + 1) / 2)/2 - polygamma(0, nu/2)/2 - 1/(2*nu))
+    a = 1/2
+    b = (nu + 1) / 2
+    db_dnu = 1/2
+    c = 3/2
+    z = -tau**2/nu
+    dz_dnu = tau**2/nu**2
+    term1, dterm1_db, dterm1_dz = hyp2f1(a, b, c, z)
+    
+    dterm1_dnu = dterm1_db*db_dnu + dterm1_dz*dz_dnu
+    d_dnu = dterm0_dnu*term1 + term0 * dterm1_dnu
+    return 1/2 +  term0 * term1, d_dnu
 
   def _loss_function_t(self, delta_sq_flex, var_flex):
     v = self.tuning_param
     delta_sq = delta_sq_flex.as_numpy_array()
     var = var_flex.as_numpy_array()
-    E = np.sqrt(2/np.pi)
-    S = np.sqrt(1 - 2/np.pi)
+    E, S = self._get_expectations()
+    norm, _ = self.t_dist_normalization(v)
+    
     z = (E - np.sqrt(delta_sq / var)) / S
     dz_dvar = 1/S * 1/2 * np.sqrt(delta_sq / var) * 1/var
     arg = 1 + 1/v * z**2
     darg_dz = 2*z/v
+    
+    L0 = np.log(norm)
     L1 = -np.log(gamma((v+1)/2))
     L2 = 1/2 * np.log(np.pi)
     L3 = 1/2 * np.log(v)
     L4 = np.log(gamma(v/2))
     L5 = (v+1)/2 * np.log(arg)
-    L = L1 + L2 + L3 + L4 + L5
+    L = L0 + L1 + L2 + L3 + L4 + L5
     dL_darg = (v+1)/2 * 1/arg
     dL_dvar = dL_darg * darg_dz * dz_dvar
     return flex.double(L), flex.double(dL_dvar)
@@ -628,26 +735,28 @@ class error_modifier_ev11_mll(worker):
     v = self.tuning_param
     delta_sq = delta_sq_flex.as_numpy_array()
     var = var_flex.as_numpy_array()
-    E = np.sqrt(2/np.pi)
-    S = np.sqrt(1 - 2/np.pi)
+    E, S = self._get_expectations()
+    norm, dnorm_dv = self.t_dist_normalization(v)
     z = (E - np.sqrt(delta_sq / var)) / S
     dz_dvar = 1/S * 1/2 * np.sqrt(delta_sq / var) * 1/var
     arg = 1 + 1/v * z**2
     darg_dnu = -z**2 / v**2
     darg_dz = 2*z/v
+    L0 = np.log(norm)
     L1 = -np.log(gamma((v+1)/2))
     L2 = 1/2 * np.log(np.pi)
     L3 = 1/2 * np.log(v)
     L4 = np.log(gamma(v/2))
     L5 = (v+1)/2 * np.log(arg)
     dL_darg = (v+1)/2 * 1/arg
+    dL0_dnu = 1/norm * dnorm_dv
     dL1_dnu = -polygamma(0, (v+1)/2) * 1/2
     dL3_dnu = 1 / (2*v)
     dL4_dnu = polygamma(0, v/2) * 1/2
     dL5_dnu = 1/2 * np.log(arg) + dL_darg * darg_dnu
-    L = L1 + L2 + L3 + L4 + L5
+    L = L0 + L1 + L2 + L3 + L4 + L5
     dL_dvar = dL_darg * darg_dz * dz_dvar
-    dL_dnu = dL1_dnu + dL3_dnu + dL4_dnu + dL5_dnu
+    dL_dnu = dL0_dnu + dL1_dnu + dL3_dnu + dL4_dnu + dL5_dnu
     return flex.double(L), flex.double(dL_dvar), flex.double(dL_dnu)
 
   def _loss_function_original(self, delta_sq, var):
@@ -748,7 +857,8 @@ class error_modifier_ev11_mll(worker):
             comm.reduce(flex.sum(dTF_dsadd_in_bin[degree_index]), MPI.SUM, root=0)
         if self.mpi_helper.rank == 0 and global_number_of_reflections_in_bin > 0:
           global_weight_for_bin = math.sqrt(global_number_of_reflections_in_bin)
-
+          
+          # var(delta) = 1/N * sum(delta_sq)
           std_delta_in_bin = (global_sum_of_delta_sq_in_bin / global_number_of_reflections_in_bin)**(1/2)
           prefactor = 1/2 \
             * (global_sum_of_delta_sq_in_bin / global_number_of_reflections_in_bin)**(-1/2) \
@@ -759,8 +869,8 @@ class error_modifier_ev11_mll(worker):
           for degree_index in range(self.n_coefs):
             dstd_delta_in_bin_dsadd[degree_index] = prefactor * global_sum_of_ddelta_sq_dsadd_in_bin[degree_index]
 
-          TF += global_weight_for_bin * (1 - std_delta_sq_in_bin)**2
-          prefactor = -2 * global_weight_for_bin * (1 - std_delta_sq_in_bin)
+          TF += global_weight_for_bin * (1 - std_delta_in_bin)**2
+          prefactor = -2 * global_weight_for_bin * (1 - std_delta_in_bin)
           dTF_dsfac += prefactor * dstd_delta_in_bin_dsfac
           dTF_dsb += prefactor * dstd_delta_in_bin_dsb
           for degree_index in range(self.n_coefs):

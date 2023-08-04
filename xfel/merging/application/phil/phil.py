@@ -425,6 +425,10 @@ postrefinement {
     .type = choice
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
+  partiality_threshold_hcfix = 0.2
+    .type = float ( value_min = 0.0001 )
+    .help = throw out observations below this value. Hard coded as 0.2 for rs2, allow value for hybrid
+    .help = must enforce minimum positive value because partiality appears in the denominator
   rs {
     fix = thetax thetay *RS G BFACTOR
       .type = choice(multi=True)
@@ -518,6 +522,21 @@ merging {
       tuning_param = 5
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
+      expectation_scaling = 1
+        .help = expectation scaling
+        .type = float
+      tuning_param_opt = False
+        .type = bool
+        .help = If True, optimize the tuning parameter
+      likelihood = 'original'
+        .help = Choice for likelihood function. Either 't-dist', 'normal'.\
+                'Original' implements the original Ev11 from Brewster 2019
+        .type = str
+      cc_after_pr = True
+        .type = bool
+        .help = If True - use correlation coefficient determined after post-refinement.\
+                If False - use correlation coefficient determined before. \
+                If post-refinement is not performed, must be False.
     }
   }
   plot_single_index_histograms = False
