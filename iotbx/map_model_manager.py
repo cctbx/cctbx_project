@@ -7239,10 +7239,15 @@ class map_model_manager(object):
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
-    assert (
-    (self.get_map_manager_by_id(map_id_1) or
-        is_model_based or is_external_based) and
-       self.get_map_manager_by_id(map_id_2))
+    if ( (is_model_based is None) and (is_external_based is None) and
+       self.model() and (not
+              (self.get_map_manager_by_id(map_id_1) and
+              self.get_map_manager_by_id(map_id_2)) )):
+         is_model_based = True # default to model-based if no info
+
+    assert ( ( is_model_based or is_external_based) or
+      (self.get_map_manager_by_id(map_id_1) and
+       self.get_map_manager_by_id(map_id_2)))
 
     if n_bins is None:
       n_bins = n_bins_default
