@@ -7179,6 +7179,7 @@ class map_model_manager(object):
       map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
+      model_id = None,
       map_id_to_be_scaled_list = None, # NOTE: not used, just allows it in call
       map_id_scaled_list = None, # NOTE: not used, just allows it in call
       mask_id = None,
@@ -7244,6 +7245,14 @@ class map_model_manager(object):
               (self.get_map_manager_by_id(map_id_1) and
               self.get_map_manager_by_id(map_id_2)) )):
          is_model_based = True # default to model-based if no info
+         if model_id is not None:
+           model = self.get_model_by_id(model_id)
+         else:
+           model = self.model()
+         assert model is not None
+         self.generate_map(map_id = 'model_map')
+         map_id_1 = 'map_manager'
+         map_id_2 = 'model_map'
 
     assert ( ( is_model_based or is_external_based) or
       (self.get_map_manager_by_id(map_id_1) and
