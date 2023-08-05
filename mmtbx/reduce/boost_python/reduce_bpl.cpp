@@ -27,8 +27,6 @@ using namespace molprobity::reduce;
 BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
   // Dependencies
-  //boost::python::object pdb_hierarchy_ext = boost::python::import( "iotbx_pdb_hierarchy_ext" );
-  //boost::python::object pdb_ext = boost::python::import( "iotbx_pdb_ext" );
 
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
@@ -37,41 +35,31 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     double, scitbx::af::shared<double> >::wrap(wd);
 
-  // These two groups below do not let us handle a flex array of flex arrays of bools...
-  /*
-  typedef scitbx::af::boost_python::shared_wrapper<bool> wbool;
-  class_<wbool::w_t> wb = wbool::wrap("af_shared_bool");
-  scitbx::af::boost_python::select_wrappers<
-    bool, scitbx::af::shared<bool> >::wrap(wb);
-    */
-
-  typedef scitbx::af::boost_python::shared_wrapper < 
-    scitbx::af::boost_python::shared_wrapper<bool> > wwbool;
+  typedef scitbx::af::shared<bool> afsbool;
+  typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
   class_<wwbool::w_t> wwb = wwbool::wrap("af_shared_af_shared_bool");
   scitbx::af::boost_python::select_wrappers<
-    scitbx::af::shared<bool>, scitbx::af::shared< scitbx::af::shared<bool> > >::wrap(wwb);
+    afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
+
+  typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
+  typedef scitbx::af::boost_python::shared_wrapper<afsPoint> wwPoint;
+  class_<wwPoint::w_t> wwd = wwPoint::wrap("af_shared_af_shared_Point");
+  scitbx::af::boost_python::select_wrappers<
+    afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
+
+  typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
+  typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
+  class_<wwei::w_t> wwExtraInfo = wwei::wrap("af_shared_af_shared_ExtraAtomInfo");
+  scitbx::af::boost_python::select_wrappers<
+    afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
 
   // Define the flex array wrapping for these classes because we take them as parameters.
-  // We wrap both the inner and the outer flex arrays.
-  /// @todo Some of these end up being multiply defined when I'm inside CCTBX.
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<bool> > >();
-  /*
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared<iotbx::pdb::hierarchy::atom> >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared<molprobity::probe::Point> >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared<molprobity::probe::ExtraAtomInfo> >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared<bool> >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared<double> >();
-    */
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
@@ -90,5 +78,4 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     ;
   // Export the global functions
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
-
 }

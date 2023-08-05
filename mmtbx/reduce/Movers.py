@@ -175,12 +175,6 @@ class MoverNull(object):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    print("XXX", self.CoarsePositions())
-    print("XXX1", self.CoarsePositions().atoms)
-    print("XXX1", self.CoarsePositions().preferenceEnergies)
-    print("XXX1", self.CoarsePositions().deleteMes)
-    print("XXX1", self.CoarsePositions().extraInfos)
-    print("XXX2", self.CoarsePositions().positions)
     if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
