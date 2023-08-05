@@ -70,7 +70,8 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
     coarsePositions = coarses.positions
     total = coarsePositions[:]
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c).positions)
+      for fp in m.FinePositions(c).positions:
+        total.append(fp)
 
     # Add the atoms and positions into our dictionaries
     atoms[m] = coarses.atoms
@@ -136,7 +137,8 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
     coarsePositions = coarses.positions
     total = coarsePositions[:]
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c).positions)
+      for fp in m.FinePositions(c).positions:
+        total.append(fp)
 
     # Find the range of positions of all atoms in X, Y, and Z
     xRange = [ 1e10, -1e10 ]
