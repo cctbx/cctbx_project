@@ -113,6 +113,7 @@ namespace molprobity {
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
           );
       }
+      bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
 
     protected:
       double m_vdwRadius;      ///< van Der Waals radius of the atom

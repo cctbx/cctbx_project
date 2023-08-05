@@ -23,6 +23,10 @@ import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
 
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import PositionReturn
+
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -54,14 +58,14 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
 #       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
-#     This array may be shorter in length than the number of atoms (any may be empty) because
-#     some Movers to not need to change the information for any or all atoms.  The index in
+#     This array may be shorter in length than the number of atoms (and may be empty) because
+#     some Movers do not need to change the information for any or all atoms.  The index in
 #     this array will match the index in the atoms array so the earliest atoms will be
 #     changed if a subset is present.
 #       The deleteMes element tells whether each atom in each set of positions should be
 #     deleted.  This means that it should be ignored in all calculations and also should be
 #     deleted from the model if this configuration is chosen.  This array may be shorter in
-#     length than the number of atoms (any may be empty) because some Movers to not need to
+#     length than the number of atoms (and may be empty) because some Movers do not need to
 #     change the information for any or all atoms.  The index in this array will match the
 #     index in the atoms array so the earliest atoms will be deleted if a subset is present.
 #       The preferenceEnergies entry holds an additional bias term that should be added to
@@ -110,17 +114,16 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #
 # The InteractionGraph.py script provides functions for determining which pairs of
 # Movers have overlaps between movable atoms.
-#
 
 ##################################################################################
-class PositionReturn(object):
-  # Return type from CoarsePosition() and FinePosition() calls.
-  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
-    self.atoms = atoms
-    self.positions = positions
-    self.extraInfos = extraInfos
-    self.deleteMes = deleteMes
-    self.preferenceEnergies = preferenceEnergies
+#class PositionReturn(object):
+#  # Return type from CoarsePosition() and FinePosition() calls.
+#  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
+#    self.atoms = atoms
+#    self.positions = positions
+#    self.extraInfos = extraInfos
+#    self.deleteMes = deleteMes
+#    self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
 class FixUpReturn(object):
@@ -172,6 +175,12 @@ class MoverNull(object):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
+    print("XXX", self.CoarsePositions())
+    print("XXX1", self.CoarsePositions().atoms)
+    print("XXX1", self.CoarsePositions().preferenceEnergies)
+    print("XXX1", self.CoarsePositions().deleteMes)
+    print("XXX1", self.CoarsePositions().extraInfos)
+    print("XXX2", self.CoarsePositions().positions)
     if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
