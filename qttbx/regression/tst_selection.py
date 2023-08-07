@@ -233,7 +233,7 @@ def tst_normal(chimera=False):
   
   #   Colon
   
-  # resseq,colon takes all the alts
+  # resseq,colon works intuitively
   t1 = ("pdb_str_normal",":","resseq",1,3)
   works, int_sel = eval_test(t1)
   assert int_sel == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
@@ -269,7 +269,7 @@ def tst_normal(chimera=False):
   
   #through
   
-  # resid will take all alts
+  # intuitive
   t5 = ("pdb_str_normal","through","resid",1,3)
   works,int_sel = eval_test(t5)
   assert int_sel == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
@@ -277,13 +277,7 @@ def tst_normal(chimera=False):
   if chimera:
       assert eval_chimerax_conversion(t5)
   
-  # take all alts
-  t6 = ("pdb_str_normal","through","resid",1,3)
-  works_int_sel = eval_test(t6)
-  assert int_sel ==[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-  assert compare_tests(t3,t6)
-  if chimera:
-      assert eval_chimerax_conversion(t6)
+  # no t6
   
   # **will NOT cross chain boundry
   t7 = ("pdb_str_normal","through","resid",1,8)
@@ -487,7 +481,7 @@ def tst_insertion_codes(chimera=False):
   if chimera:
       assert eval_chimerax_conversion(t2)
   
-  # trying to specify icode takes to end of structure. Note, this is Note the same behavior as "A01" which fails
+  # trying to specify icode takes to end of structure. Note, this is not the same behavior as "A01" which fails
   t3 =  ("pdb_str_icode",":","resseq",1,"2A")
   works, int_sel = eval_test(t3)
   assert int_sel == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44]
@@ -787,7 +781,7 @@ def tst_alt_locs(chimera=False):
 
 
 if __name__=='__main__':
-  chimera = True # change this if chimera is not available
+  chimera = True # change this to False if chimera is not available
   tst_normal(chimera=chimera)
   tst_missing_residues(chimera=chimera)
   tst_non_ascending(chimera=chimera)
