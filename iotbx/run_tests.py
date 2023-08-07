@@ -21,6 +21,7 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_external_sharpening_7.py",
   "$D/regression/tst_map_model_manager_half_map_sharpening_6.py",
   "$D/regression/tst_map_model_manager_tls_from_map_8.py",
+  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   "$D/regression/tst_map_tools.py",
   "$D/regression/tst_patterson.py",
   "$D/regression/tst_restraints_merge.py",
