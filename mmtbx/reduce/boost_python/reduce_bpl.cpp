@@ -17,6 +17,7 @@
 //#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <mmtbx/reduce/PositionReturn.h>
+#include <mmtbx/reduce/InteractionGraph.h>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -31,10 +32,13 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   //boost::python::object pdb_hierarchy_ext = boost::python::import( "iotbx_pdb_hierarchy_ext" );
   //boost::python::object pdb_ext = boost::python::import( "iotbx_pdb_ext" );
   //boost::python::object rstbx_ext = boost::python::import("rstbx_array_family_flex_ext");
+  //boost::python::object scitbx_flex_ext = boost::python::import("scitbx_array_family_flex_ext");
+  //boost::python::object scitbx_shared_ext = boost::python::import("scitbx_array_family_shared_ext");
 
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
+  /*
   std::cout << "XXX Mapping the double" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<double> wdbl;
   class_<wdbl::w_t> wd = wdbl::wrap("af_shared_double");
@@ -43,6 +47,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   std::cout << "XXX Done mapping the double" << std::endl;
   /// @todo This does not make the type available to Python
   //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
+  */
 
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
@@ -50,6 +55,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
 
+  /*
   std::cout << "XXX Mapping the Point" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
   typedef scitbx::af::boost_python::shared_wrapper<afsPoint> wwPoint;
@@ -57,6 +63,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
   std::cout << "XXX Done mapping the Point" << std::endl;
+  */
 
   typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
   typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
@@ -65,9 +72,9 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
 
   // Define the flex array wrapping for these classes because we take them as parameters.
-  /*
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
+  /*
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
@@ -91,4 +98,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     ;
   // Export the global functions
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
+
+  def("PairsOverlap", PairsOverlap, "Test for overlap between two pairs of atoms.");
 }

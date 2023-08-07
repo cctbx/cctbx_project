@@ -15,7 +15,8 @@ if (not env_etc.no_boost_python):
   env_bpl.StaticLibrary(
     target=["#reduce/lib/reduce2lib"],
     source=[
-      "PositionReturn.cpp"])
+      "PositionReturn.cpp", "InteractionGraph.cpp"
+    ])
 
   env_bpl.Append(LIBPATH=["#reduce/lib"])
   env_bpl.Prepend(LIBS=["reduce2lib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])
