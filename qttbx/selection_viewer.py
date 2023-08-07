@@ -166,6 +166,7 @@ class SelectionViewerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self._data_manager = None # Stores models
+        self._viewer = None # chimerax viewer
         self._current_model_path = None
         self._current_model_name = None
         self._current_model_spec = None
@@ -174,7 +175,7 @@ class SelectionViewerWindow(QMainWindow):
         self._model_name_to_spec = {}
         self.dfs = {}
         self.dfs_restraints = {}
-        self.restraint_types = ["bond","nonbonded","angle","dihedral","chirality","planarity","parallelity"]
+        self.restraint_types = ["bond","nonbonded","angle","dihedral","chirality"]#,"planarity","parallelity"]
         self.process = True # make restraints?
         self.debug = True
         self.notes = []
@@ -296,17 +297,23 @@ class SelectionViewerWindow(QMainWindow):
         self.tab_comp_content.mouseReleased.connect(self.on_mouse_released_comp)
         self.tab_widget.addTab(self.tab_comp_content, "Residues")
 
-        #restraints
+        # restraints
+        self.restraints_tab = QTabWidget()
+        self.tab_widget.addTab(self.restraints_tab, "Restraints")
+
         for restraint_type in self.restraint_types:
-          setattr(self,f"tab_content_{restraint_type}",FastTableView())
-          content = getattr(self,f"tab_content_{restraint_type}")
-          content.setSelectionBehavior(QTableView.SelectRows)
-          content.mouseReleased.connect(self.on_mouse_released_restraints)
-          self.tab_widget.addTab(content, restraint_type.capitalize())
-          
-        # Set the central widget of the Window. Widget will expand
-        # to take up all the space in the window by default.
+            # Create a FastTableView for each restraint_type
+            setattr(self, f"tab_content_{restraint_type}", FastTableView())
+            tab_content = getattr(self, f"tab_content_{restraint_type}")
+            tab_content.setSelectionBehavior(QTableView.SelectRows)
+            tab_content.mouseReleased.connect(self.on_mouse_released_restraints)
+
+            # Add the FastTableView to the restraints_tab
+            self.restraints_tab.addTab(tab_content, restraint_type.capitalize())
+
         self.setCentralWidget(self.tab_widget)
+
+
 
         
         
@@ -374,14 +381,14 @@ class SelectionViewerWindow(QMainWindow):
       
     @Slot()
     def on_mouse_released_restraints(self):
-        content = self.tab_widget.currentWidget()
+        content = self.restraints_tab.currentWidget()
         selected = content.selectionModel().selection()
         deselected = QtCore.QItemSelection()
         self.on_selection_changed_restraints(selected, deselected)
     
     @Slot()
     def on_selection_changed_restraints(self, selected, deselected):
-        content = self.tab_widget.currentWidget()
+        content = self.restraints_tab.currentWidget()
         selected_rows = self.get_selected_rows(content)
         model = content.model()
         df = model._df
@@ -394,9 +401,11 @@ class SelectionViewerWindow(QMainWindow):
         if not has_explicit:
           assert "i_seqs" in df.columns
           iseq_columns.append("i_seqs")
-
-        
+        #print(iseq_columns)
+        #print(selected_rows)
         selected_rows = df[iseq_columns].iloc[selected_rows]
+        #print(selected_rows)
+
         def flatten(df):
           def is_iterable(x):
             if isinstance(x,(int,np.int64)):
@@ -407,12 +416,17 @@ class SelectionViewerWindow(QMainWindow):
                 return False
             return True
           
-          return [item for sublist in df.values.flatten() for item in sublist if is_iterable(sublist)]
+          return [item for sublist in df.values.flatten().astype(int) for item in sublist if is_iterable(sublist)]
+
+        # flatten the df of indices
         try:
           selected_rows = flatten(selected_rows)
+          selected_rows = selected_rows.astype(int)
         except:
-          selected_rows = df.values.flatten()
-        print(selected_rows)
+          selected_rows = selected_rows.values.flatten()
+          selected_rows = selected_rows.astype(int)
+        
+        #print(selected_rows)
         selected_rows = [int(e) for e in selected_rows]
         selection_int = flex.int(selected_rows)
         phenix_selection_string_modified = convert_selection_int_to_str(self.model,selection_int)
@@ -420,9 +434,7 @@ class SelectionViewerWindow(QMainWindow):
         self.focus_selection()
       
     @property
-    def viewer(self):
-      if not hasattr(self,"_viewer"):
-        self._viewer = ChimeraXViewer()    
+    def viewer(self):   
       return self._viewer
     
     @viewer.setter
@@ -433,10 +445,10 @@ class SelectionViewerWindow(QMainWindow):
     @property
     def viewer_status_alive(self):
       #print("Checking status: ",type(self.viewer.url),self.viewer.url)
-      if self.viewer.url == None:
-        return False
-      else:
-        return self.viewer.is_alive()
+      if self.viewer is not None:
+        if self.viewer.url != None:
+          return self.viewer.is_alive()
+      return False
 
     @property
     def data_manager(self):
@@ -497,16 +509,10 @@ class SelectionViewerWindow(QMainWindow):
     def model_names(self):
       return [str(Path(path).name) for path in self.model_paths]
   
-    def viewer_start(self):
-      if not self.viewer_status_alive:
-        self.viewer.start_viewer(json_response=True)
-        self.checkbox_chimerax.setChecked(True)
+
         
         
-    def viewer_stop(self):
-      if self.viewer_status_alive:
-        response = self.viewer.send_command(["remotecontrol stop","close","exit"])
-        self.checkbox_chimerax.setChecked(False)
+
     
     def load_file_in_chimera(self,filename):
       if not self.viewer_status_alive:
@@ -534,23 +540,33 @@ class SelectionViewerWindow(QMainWindow):
       model_name = Path(filename).name
       self.set_active_model(model_name=model_name)
 
-    
+    def viewer_start(self):
+      if not self.viewer_status_alive:
+        self.viewer = ChimeraXViewer()
+        self.viewer.start_viewer(json_response=True)
+        self.checkbox_chimerax.setChecked(True)
       
-
+    def viewer_stop(self):
+      #print("running viewer stop")
+      if self.viewer_status_alive:
+        #response = self.viewer.send_command(["remotecontrol stop","close","exit"])
+        response = self.viewer.send_command(["exit"])
+        self.checkbox_chimerax.setChecked(False)
       
       
     
     def checkbox_changed(self, state):
         if state == 2: # 2 means the checkbox is checked
           if not self.viewer_status_alive:
-            self.viewer_start()
+            #self.viewer_start()
+            pass
           self.checkbox_chimerax.setText("Remote ChimeraX connected: "+self.viewer.url)
 
             
         else:
           self.checkbox_chimerax.setText('Remote ChimeraX connected')
           if self.viewer_status_alive:
-            self.viewer_stop()
+            #self.viewer_stop()
             for widget in self.output_widgets:
               widget.setText("")
     
@@ -750,7 +766,7 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
         response = self.viewer.send_command([f"view {spec}"])
 
     def set_active_model(self,model_name=None,index=None):
-      print("Running set_active_model()",model_name,index)
+      #print("Running set_active_model()",model_name,index)
       if model_name is not None:
         assert model_name in self.model_names, f"Chimerax model name not found: {str([model_name])} of {str(self.model_names)}"
         found = False
@@ -780,9 +796,9 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
         assert model_name in self.model_names, f"Chimerax model name not found: {str([model_name])} of {str(self.model_names)}"
         self.current_model_name = model_name
       else:
-        print("set_active_model() function was called, but setting a model failed")
-        print("model_name",model_name,"index",index)
-        print(current_text)
+        #print("set_active_model() function was called, but setting a model failed")
+        #print("model_name",model_name,"index",index)
+       # print(current_text)
         pass
         
 
@@ -794,15 +810,21 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
       model = PandasModel(df)
       self.tab2_content.setModel(model)
 
+      # residue data
       df_comp = group_by_columns(df,["asym_id","seq_id","comp_id"])
+      
       model_comp = PandasModel(df_comp)
       self.tab_comp_content.setModel(model_comp)
 
       # load restraint data
-      for restraint_type,df in self.dfs_restraints[self.current_model_name].items():
-        model = PandasModel(df)
-        content = getattr(self,f"tab_content_{restraint_type}")
-        content.setModel(model)
+      for restraint_type in self.restraint_types:
+        restraint_dict = self.dfs_restraints[self.current_model_name]
+        if restraint_type in restraint_dict:
+          df = restraint_dict[restraint_type]
+          #df.drop(columns=["labels"],inplace=True)
+          model = PandasModel(df)
+          content = getattr(self,f"tab_content_{restraint_type}")
+          content.setModel(model)
 
 
                                  

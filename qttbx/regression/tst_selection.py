@@ -22,18 +22,21 @@ from qttbx.viewers.chimerax import ChimeraXViewer
 from qttbx.sel_convert_chimera import translate_phenix_selection_string
 
 """
-This file defines a "test" as a list or tuple of: 
+1. This file defines a "test" as a list or tuple of: 
 
-  pdb_str_key, operator, keyword ,start,stop = test
-
-For example: 
-  ("pdb_str_normal", "through", "resid", 3, 5)
-
-Where "pdb_str_normal" is the string key referring to a pdb string/model object used for testing.
-This is just a structured alternative to something like:
+    pdb_str_key, operator, keyword ,start,stop = test
   
-  model = pdb_models[pdb_str_key]
-  model.selection("resid 3 through 5")
+  For example: 
+    ("pdb_str_normal", "through", "resid", 3, 5)
+  
+  Where "pdb_str_normal" is the string key referring to a pdb string/model object used for testing.
+  This is just a structured alternative to something like:
+    
+    model = pdb_models[pdb_str_key]
+    model.selection("resid 3 through 5")
+
+2. Two types of tests happen, tests of consistency (cctbx selects what is expected, and different selections aggree or disagree as expected), and tests of translation (chimeraX selects what is expected)
+
 
 """
 
