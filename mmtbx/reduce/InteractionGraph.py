@@ -194,24 +194,26 @@ def _AABBOverlap(box1, box2):
            (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
+# This function has been moved into C++ for speed. The original Python function
+# is below it and commented out.
+from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
+"""Helper function that tells whether any pair of atoms from two Movers overlap.
+:param mover1: The first Mover
+:param atoms1: Atom list for the first Mover
+:param positions1: probe.PositionReturn.positions holding possible positions for each.
+:param mover2: The second Mover
+:param atoms2: Atom list for the second Mover
+:param positions2: probe.PositionReturn.positions holding possible positions for each.
+:param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+up the information for atoms whose values need to be changed.  Can be
+obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+:param ProbeRad: Probe radius
+:param atomMoverSets: Parameter that is modified in place to record all Movers that
+a particular atom interacts with.  An entry is created whenever there is overlap
+with an atom in another Mover.
+:returns True if a pair of atoms with one from each overlap, False if not.
 def _PairsOverlap(mover1, atoms1, positions1,
                   mover2, atoms2, positions2, extraAtomInfoMap, probeRad, atomMoverSets):
-  """Helper function that tells whether any pair of atoms from two Movers overlap.
-  :param mover1: The first Mover
-  :param atoms1: Atom list for the first Mover
-  :param positions1: probe.PositionReturn.positions holding possible positions for each.
-  :param mover2: The second Mover
-  :param atoms2: Atom list for the second Mover
-  :param positions2: probe.PositionReturn.positions holding possible positions for each.
-  :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
-  up the information for atoms whose values need to be changed.  Can be
-  obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
-  :param ProbeRad: Probe radius
-  :param atomMoverSets: Parameter that is modified in place to record all Movers that
-  a particular atom interacts with.  An entry is created whenever there is overlap
-  with an atom in another Mover.
-  :returns True if a pair of atoms with one from each overlap, False if not.
-  """
 
   # Construct look-up tables for the radii of each atom to pull these calculations
   # outside of the loops.
@@ -248,6 +250,7 @@ def _PairsOverlap(mover1, atoms1, positions1,
             # interactions, not just the first one found.
             ret = True
   return ret
+"""
 
 #######################################################################################################
 # Test code and objects below here
