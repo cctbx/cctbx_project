@@ -67,8 +67,9 @@ def translate_resid_through(residue_id,model_number=1):
   if resid_start == resid_stop:
     return "#"+str(model_number)+":"+str(resid_start)
   else:
-    return "#"+str(model_number)+":"+str(resid_start)+"{-}"+str(resid_stop)+"" # brackets added to denote through range
-  
+    #return "#"+str(model_number)+":"+str(resid_start)+"{-}"+str(resid_stop)+"" # brackets added to denote through range
+    return "#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)+"" # brackets added to denote through range
+
 
 
 def translate_resseq_colon(residue_id,model_number=1):
