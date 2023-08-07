@@ -151,15 +151,18 @@ def eval_chimerax_conversion(test):
 
 
     
-    test_folder = os.getcwd()+"/chimera_tests"
-    filename = os.getcwd()+"/../devel/devel/"+pdb_str_key+".pdb"
+    test_folder = os.getcwd()+"/chimera_tests/"
+    if not os.path.exists(test_folder):
+      os.mkdir(test_folder)
+
+    filename = test_folder+pdb_str_key+".pdb"
+    #print("\n\n",filename)
     if not os.path.exists(filename):
       dm = DataManager()
       dm.write_model_file(model,filename=filename)
     file = filename
-    if not os.path.exists(test_folder):
-        os.mkdir(test_folder)
-    test_file = test_folder+"/chimerax_selection_test_"+str(hash((filename,sel_str_cctbx)))+".pdb"
+   
+    test_file = test_folder+"chimerax_selection_test_"+str(hash((filename,sel_str_cctbx)))+".pdb"
 
     
     
@@ -171,7 +174,7 @@ def eval_chimerax_conversion(test):
         if selection.count(True)==0:
             return None
         model_sel = model.select(selection)
-        #print(model_sel.get_number_of_atoms())
+        #print("\ncctbx atoms",model_sel.get_number_of_atoms())
         #print(model_sel.model_as_pdb())
         #print("cctbx atoms: ",model1_sel.get_number_of_atoms())
         coord_set1 = set([frozenset(coord) for coord in model_sel.get_sites_cart().as_numpy_array()])
@@ -205,8 +208,9 @@ def eval_chimerax_conversion(test):
         dm2.process_model_file(test_file)
         os.remove(test_file)
         model2 = dm2.get_model()
+        #print("\nchimerax atoms: ",model2.get_number_of_atoms())
         #print(model2.model_as_pdb())
-        #print("chimerax atoms: ",model2.get_number_of_atoms())
+       
         model2.add_crystal_symmetry_if_necessary()
         coord_set2 = set([frozenset(coord) for coord in model2.get_sites_cart().as_numpy_array()])
         #assert coord_set1==coord_set2, "Translation from cctbx to chimerax yields two different sets of cartesian coordinates"
@@ -783,7 +787,7 @@ def tst_alt_locs(chimera=False):
 
 
 if __name__=='__main__':
-  chimera = True
+  chimera = True # change this if chimera is not available
   tst_normal(chimera=chimera)
   tst_missing_residues(chimera=chimera)
   tst_non_ascending(chimera=chimera)
