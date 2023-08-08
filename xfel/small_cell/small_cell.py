@@ -152,7 +152,7 @@ def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
 
   return approx_equal(delta_calc, delta_obv, out=None, eps=phil.small_cell.spot_connection_epsilon), delta_obv, delta_calc
 
-def filter_indicies(ori,beam,resolution,phil):
+def filter_indices(ori,beam,resolution,phil):
   """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosaicity
   passed in the target phil file. Include their locations in reciprocal space given a crystal
   orientation.
@@ -204,7 +204,7 @@ def write_cell (ori,beam,max_clique,phil):
   cbasis = A * col((0,0,1))
 
   f = open("spots.dat",'w')
-  for index in filter_indicies(ori,beam,phil.small_cell.high_res_limit,phil)[0]:
+  for index in filter_indices(ori,beam,phil.small_cell.high_res_limit,phil)[0]:
     v = A * col(index)
     f.write(" % 6.3f % 6.3f % 6.3f\n"%(v[0],v[1],v[2]))
   f.close()
