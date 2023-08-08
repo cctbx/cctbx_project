@@ -99,13 +99,17 @@ def get_h_restraints(resname, strict=True):
   return comp_comp_id
 
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
-    md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-      residue_name=residue.resname,
-      atom_names=residue.atoms().extract_name())
-    if md is None:
-      md = get_h_restraints(residue.resname)
-      # md.show()
-    return md
+  # if get_class(residue.resname) in ['common_rna_dna']:
+  #   md = get_h_restraints(residue.resname)
+  #   return md
+  # if print_time: print(residue.resname, get_class(residue.resname))
+  md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=residue.resname,
+    atom_names=residue.atoms().extract_name())
+  if md is None:
+    md = get_h_restraints(residue.resname)
+    # md.show()
+  return md
 
 # ==============================================================================
 
@@ -351,7 +355,6 @@ class place_hydrogens():
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
-    #get_class = iotbx.pdb.common_residue_names_get_class
     #no_H_placed_resnames = list()
     for m in pdb_hierarchy.models():
       for chain in m.chains():

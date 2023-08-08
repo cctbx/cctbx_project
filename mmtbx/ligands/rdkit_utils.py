@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+from libtbx.utils import Sorry
+
 from rdkit import Chem
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem import rdFMCS
@@ -16,6 +18,28 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 
+def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal'):
+  rc = []
+  for i, (code, monomer) in enumerate(cc_cif.items()):
+    molecule = Chem.Mol()
+    rwmol = Chem.RWMol(molecule)
+    atom = monomer.get_loop('_chem_comp_atom')
+    conformer = Chem.Conformer(atom.n_rows())
+    for j, tmp in enumerate(atom.iterrows()):
+      if label=='pdbx_model_Cartn_x_ideal':
+        xyz = (tmp.get('_chem_comp_atom.pdbx_model_Cartn_x_ideal'),
+               tmp.get('_chem_comp_atom.pdbx_model_Cartn_y_ideal'),
+               tmp.get('_chem_comp_atom.pdbx_model_Cartn_z_ideal'),
+               )
+      elif label=='model_Cartn_x':
+        xyz = (tmp.get('_chem_comp_atom.model_Cartn_x'),
+               tmp.get('_chem_comp_atom.model_Cartn_y'),
+               tmp.get('_chem_comp_atom.model_Cartn_z'),
+               )
+      rc.append(xyz)
+      if '?' in xyz[-1]: return None
+  return rc
+
 def read_chemical_component_filename(filename):
   from iotbx import cif
   bond_order_ccd = {
@@ -27,6 +51,16 @@ def read_chemical_component_filename(filename):
   bond_order_rdkitkey = {value:key for key,value in bond_order_ccd.items()}
   ccd = cif.reader(filename).model()
   lookup={}
+  xyzs = get_cc_cartesian_coordinates(ccd)
+  if xyzs is None:
+    xyzs = get_cc_cartesian_coordinates(ccd, label='model_Cartn_x')
+  if xyzs is None:
+    for code, monomer in ccd.items():
+      break
+    raise Sorry('''
+  Generating H restraints from Chemical Componets for %s failed. Please supply
+  restraints.
+  ''' % code)
   for i, (code, monomer) in enumerate(ccd.items()):
     molecule = Chem.Mol()
     rwmol = Chem.RWMol(molecule)
@@ -36,10 +70,7 @@ def read_chemical_component_filename(filename):
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol'))
       new.SetFormalCharge(int(tmp.get('_chem_comp_atom.charge')))
       rdatom = rwmol.AddAtom(new)
-      xyz = (float(tmp.get('_chem_comp_atom.pdbx_model_Cartn_x_ideal')),
-             float(tmp.get('_chem_comp_atom.pdbx_model_Cartn_y_ideal')),
-             float(tmp.get('_chem_comp_atom.pdbx_model_Cartn_z_ideal')),
-             )
+      xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
       conformer.SetAtomPosition(rdatom, xyz)
       lookup[tmp.get('_chem_comp_atom.atom_id')]=j
     bond = monomer.get_loop('_chem_comp_bond')
