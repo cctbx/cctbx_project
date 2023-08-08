@@ -79,9 +79,28 @@ bool PairsOverlap(boost::python::object mover1,
   return ret;
 }
 
+void RemoveFalseEdges(PythonObjectList& graph)
+{
+  for (auto e = graph.m_edges.begin(); e != graph.m_edges.end(); /* Increment inside the loop */) {
+    /// @todo Should these be objects rather than pointers to objects?
+    boost::python::object const* sourceMover =  static_cast<boost::python::object*>(e->m_source);
+    boost::python::object const* targetMover =  static_cast<boost::python::object*>(e->m_target);
+    /* @todo
+    if (!PairsOverlap()) {
+      // Erase this element and go to the next one
+      e = graph.m_edges.erase(e);
+    } else {
+      // Go to the next element
+      ++e;
+    }
+    */
+  }
+}
+
 std::string InteractionGraph_test()
 {
   // The PairsOverlap() function is tested in the Python test script.
+  // The RemoveFalseEdges() function is tested in the Python test script.
 
   // All tests passed.
   return "";
