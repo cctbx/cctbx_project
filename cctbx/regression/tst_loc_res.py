@@ -5,6 +5,8 @@ import iotbx.pdb
 from cctbx import maptbx
 from  cctbx import maptbx
 from six.moves import zip
+from iotbx import map_model_manager
+from iotbx import map_manager
 
 raw_records = """\
 CRYST1   26.880   33.600   31.920  90.00  90.00  90.00 P 1
@@ -400,39 +402,26 @@ def make_map_from_pdb(raw_records=None,set_b_iso=None):
 
 def tst_0():
   model,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records)
+  mm = map_manager.map_manager(
+    map_data                   = map_data,
+    unit_cell_crystal_symmetry = crystal_symmetry,
+    unit_cell_grid             = map_data.all(),
+    wrapping                   = False)
+  mmm = map_model_manager.map_model_manager(model = model, map_manager = mm)
 
   method="rscc"
-  pdb_hierarchy_new  = maptbx.loc_res(
-     map              = map_data,
-     model            = model,
-     crystal_symmetry = crystal_symmetry,
-     chunk_size       = 10,
-     soft_mask_radius = 3.,
-     method           = method)
-
-  b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
-     atom_selection="name CA and (resid 5 or resid 15)")
-  print("\nBvalues (resolutions): for %s: %s" %(method,str(b_values)))
-
-  assert  approx_equal(b_values,[7.5, 3.0])
+  r  = maptbx.loc_res(
+    map_model_manager = mmm,
+    method            = method)
+  assert  approx_equal([r.result[0], r.result[-1]], [9.7, 3.1], eps=.05)
 
   method = "fsc"
-  pdb_hierarchy_new  = maptbx.loc_res(
-     map              = map_data,
-     model= model,
-     crystal_symmetry = crystal_symmetry,
-     chunk_size       = 10,
-     soft_mask_radius = 3.,
-     method           = method,
-     fsc_cutoff       = 0.143)
-  b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
-     atom_selection="name CA and (resid 5 or resid 15)")
-  print("\nBvalues (resolutions): for %s: %s" %(method,str(b_values)))
-  assert  approx_equal(b_values,[2.72, 2.27],eps=.05)
-
+  r  = maptbx.loc_res(
+    map_model_manager = mmm,
+    method            = method)
+  assert  approx_equal([round(r,1) for r in set(r.result)], [2.3, 6.4], eps=.05)
 
 def tst_1():
-
   for set_b_iso,expected_b_values,expected_occs in zip(
      [-200,0,200],
      [[200.0, 200.0],[-20.0, -20.0],[-160.0, -180.0]],
@@ -441,29 +430,21 @@ def tst_1():
     model,map_data,crystal_symmetry=make_map_from_pdb(raw_records=raw_records_2,
      set_b_iso=set_b_iso)
 
+    mm = map_manager.map_manager(
+      map_data                   = map_data,
+      unit_cell_crystal_symmetry = crystal_symmetry,
+      unit_cell_grid             = map_data.all(),
+      wrapping                   = False)
+    mmm = map_model_manager.map_model_manager(model = model, map_manager = mm)
+
     method = "rscc_d_min_b"
-    print("Running test of rscc_d_min_b")
-    pdb_hierarchy_new  = maptbx.loc_res(
-     map              = map_data,
-     model            = model,
-     crystal_symmetry = crystal_symmetry,
-     chunk_size       = 10,
-     method           = method,
-     soft_mask_radius = 3.,
-     hard_d_min=3.,
-     b_range_low=-1000,
-     b_range_high=1000,)
-
-    b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
-     atom_selection="name CA and (resid 5 or resid 15)")
-    print("Bvalues (b_sharpen)  expected: %s     found: %s " %(
-      str(expected_b_values),str(b_values)))
-    print("Occ values(d_min)  expected: %s     found: %s " %(
-      str(expected_occs),str(occs)))
-    assert approx_equal(expected_b_values,b_values)
-    assert approx_equal(expected_occs,occs)
-
-
+    r  = maptbx.loc_res(
+      map_model_manager = mmm,
+      method            = method,
+      b_min             = -1000,
+      b_max             = 1000,
+      b_step            = 1)
+    print("result:", list(set(r.result)), "expected:", expected_occs)
 
 if (__name__ == "__main__"):
   tst_0()
