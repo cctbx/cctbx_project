@@ -67,7 +67,7 @@ def read_chemical_component_filename(filename):
     atom = monomer.get_loop('_chem_comp_atom')
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
-      new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol'))
+      new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
       new.SetFormalCharge(int(tmp.get('_chem_comp_atom.charge')))
       rdatom = rwmol.AddAtom(new)
       xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
