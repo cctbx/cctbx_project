@@ -23,9 +23,9 @@ import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
 
-import boost_adaptbx.boost.python as bp
-bp.import_ext("mmtbx_reduce_ext")
-from mmtbx_reduce_ext import PositionReturn
+#import boost_adaptbx.boost.python as bp
+#bp.import_ext("mmtbx_reduce_ext")
+#from mmtbx_reduce_ext import PositionReturn
 
 
 ##################################################################################
@@ -116,14 +116,15 @@ from mmtbx_reduce_ext import PositionReturn
 # Movers have overlaps between movable atoms.
 
 ##################################################################################
-#class PositionReturn(object):
-#  # Return type from CoarsePosition() and FinePosition() calls.
-#  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
-#    self.atoms = atoms
-#    self.positions = positions
-#    self.extraInfos = extraInfos
-#    self.deleteMes = deleteMes
-#    self.preferenceEnergies = preferenceEnergies
+#from mmtbx_reduce_ext import PositionReturn
+class PositionReturn(object):
+  # Return type from CoarsePosition() and FinePosition() calls.
+  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
+    self.atoms = atoms
+    self.positions = positions
+    self.extraInfos = extraInfos
+    self.deleteMes = deleteMes
+    self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
 class FixUpReturn(object):
