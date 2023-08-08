@@ -347,9 +347,10 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   assert len(imagesets) == 1
   imageset = imagesets[0]
   path = imageset.paths()[0]
+  assert len(experiments) == 1
 
-  detector = imageset.get_detector()
-  beam = imageset.get_beam()
+  detector = experiments[0].detector
+  beam = experiments[0].beam
 
   if horiz_phil.small_cell.override_wavelength is not None:
     beam.set_wavelength(horiz_phil.small_cell.override_wavelength)
