@@ -38,6 +38,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
+  /*
   std::cout << "XXX Mapping the double" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<double> wdbl;
   class_<wdbl::w_t> wd = wdbl::wrap("af_shared_double");
@@ -47,7 +48,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   /*
   /// @todo This does not make the type available to Python
   //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
-  */
 
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
@@ -68,16 +68,16 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   class_<wwei::w_t> wwExtraInfo = wwei::wrap("af_shared_af_shared_ExtraAtomInfo");
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
+    */
 
   // Define the flex array wrapping for these classes because we take them as parameters.
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
-  /*
+  std::cout << "XXX Adding container conversions" << std::endl;
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared< scitbx::af::shared<bool> > >();
-    */
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
