@@ -96,6 +96,7 @@ class Script:
         assert os.path.exists(self.params.exp_ref_spec_file)
         input_lines = None
         best_models = None
+        pd_dir = os.path.join(self.params.outdir, "pandas")
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.skip is not None:
@@ -114,7 +115,6 @@ class Script:
                     raise ValueError("Need to provide a file dir path in order to dump_gathers")
                 utils.safe_makedirs(self.params.gathers_dir)
 
-            pd_dir = os.path.join(self.params.outdir, "pandas")
             utils.safe_makedirs(pd_dir)
 
         COMM.barrier()
