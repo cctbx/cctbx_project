@@ -81,14 +81,22 @@ def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):
     while iterations > 0:
         if background_pixels is None:
             outliers = is_outlier(img1, thresh)
-            m = np.median(img1[~outliers])
+            inlier_vals = img1[~outliers]
+            if inlier_vals.size:
+                m = np.median(inlier_vals)
+            else:
+                m = np.nan
             if only_high:
                 outliers = np.logical_and(outliers, img1 > m)
             background_pixels = ~outliers
         else:
             where_bg = np.where(background_pixels)[0]
             outliers = is_outlier(img1[background_pixels], thresh)
-            m = np.median(img1[background_pixels][~outliers])
+            inlier_vals = img1[background_pixels][~outliers]
+            if inlier_vals.size:
+                m = np.median(inlier_vals)
+            else:
+                m = np.nan
             if only_high:
                 outliers = np.logical_and(outliers, img1[background_pixels] > m)
             background_pixels[where_bg[outliers]] = False
@@ -101,10 +109,16 @@ def is_outlier(points, thresh=3.5):
     """http://stackoverflow.com/a/22357811/2077270"""
     if len(points.shape) == 1:
         points = points[:, None]
-    median = np.median(points, axis=0)
+    if points.size:
+        median = np.median(points, axis=0)
+    else:
+        median = np.nan
     diff = np.sum((points - median) ** 2, axis=-1)
     diff = np.sqrt(diff)
-    med_abs_deviation = np.median(diff)
+    if diff.size:
+        med_abs_deviation = np.median(diff)
+    else:
+        med_abs_deviation = np.nan
     if med_abs_deviation == 0:
         return np.zeros(points.shape[0], bool)
 
@@ -487,6 +501,10 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
         shoebox = imgs[pid, j1:j2, i1:i2]
 
+        if shoebox.size < 4:
+            MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
+            is_selected = False
+
         if not isinstance(sigma_rdout, float) and not isinstance(sigma_rdout, int):
             shoebox_sigma_readout = sigma_rdout[pid, j1:j2, i1:i2]
         else:
@@ -495,19 +513,27 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         if background_mask is not None:
             is_background = background_mask[pid, j1:j2, i1:i2]
         else:
-            is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2, only_high=only_high)
+            if shoebox.shape== (0,0):
+                is_background = shoebox.copy().astype(bool)
+            else:
+                is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2, only_high=only_high)
 
         Ycoords, Xcoords = np.indices((j2-j1, i2-i1))
 
         if use_robust_estimation:
             bg_pixels = shoebox[is_background]
-            bg_signal = np.median(bg_pixels)
+            if not bg_pixels.size:
+                bg_signal = np.nan
+            else:
+                bg_signal = np.median(bg_pixels)
             if bg_signal < 0:
                 num_roi_negative_bg += 1
                 if set_negative_bg_to_zero:
                     bg_signal = 0
                 elif skip_roi_with_negative_bg:
                     MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
+                    is_selected = False
+                elif np.isnan(bg_signal):
                     is_selected = False
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
             covariance = None
@@ -650,7 +676,7 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     # vector of residuals
     r = rho_bg - np.dot(A, (t1, t2, t3))
     Nbg = len(rho_bg)
-    with np.errstate(invalid='ignore'):
+    with np.errstate(divide='ignore'):
         r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
     var_covar = AWA_inv * r_fact  # TODO: check for correlations in the off diagonal elems
 
@@ -1386,15 +1412,20 @@ def refls_to_hkl(refls, detector, beam, crystal,
         return np.vstack(HKL).T, np.vstack(HKLi).T
 
 
-def get_panels_fasts_slows(expt, pids, rois):
+def get_panels_fasts_slows(expt, pids, rois, img_sh=None):
     """
     :param expt: dxtbx experiment
     :param pids: panel ids
     :param rois: regions of interest
+    :param img_sh: 3-tuple Npan, Nslow, Nfast
     :return:
     """
-    npan = len(expt.detector)
-    nfast, nslow = expt.detector[0].get_image_size()
+    if expt is not None:
+        npan = len(expt.detector)
+        nfast, nslow = expt.detector[0].get_image_size()
+    else:
+        assert img_sh is not None
+        npan, nslow, nfast = img_sh
     MASK = np.zeros((npan, nslow, nfast), bool)
     ROI_ID = np.zeros((npan, nslow, nfast), 'uint16')
     #ROI_ID = NP_ONES((npan, nslow, nfast), 'uint16') * mx

@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
 import os
+import socket
 import sys
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
@@ -31,8 +32,9 @@ def global_refiner_from_parameters(params):
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
-    if params.prep_time > 0:
-        work_distribution = prep_dataframe(pandas_table)
+    if "exp_idx" not in list(pandas_table):
+        pandas_table["exp_idx"] = 0
+    work_distribution = prep_dataframe(pandas_table)
     LOGGER.info("EVENT: DONE prep dataframe")
     return launcher.launch_refiner(pandas_table, work_distribution=work_distribution)
 
@@ -147,6 +149,8 @@ class RefineLauncher:
         """
         COMM.Barrier()
         num_exp = len(pandas_table)
+        if "exp_idx" not in list(pandas_table):
+            pandas_table["exp_idx"] = 0
         first_exper_file = pandas_table.exp_name.values[0]
         detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
         if detector is None and self.params.refiner.reference_geom is None:
@@ -171,7 +175,9 @@ class RefineLauncher:
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         exper_names = pandas_table.exp_name
-        assert len(exper_names) == len(set(exper_names))
+        exper_ids = pandas_table.exp_idx.values
+        shot_ids = list(zip(exper_names, exper_ids))
+        assert len(shot_ids) == len(set(shot_ids))
         # TODO assert all exper are single-file, probably way before this point
         if work_distribution is None:
             worklist = range(COMM.rank, len(exper_names), COMM.size)
@@ -189,22 +195,23 @@ class RefineLauncher:
         Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
         Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
 
-        for i_work, i_exp in enumerate(worklist):
-            exper_name = exper_names[i_exp]
+        for i_work, i_df in enumerate(worklist):
+            exper_name = exper_names[i_df]
+            exper_id = int(exper_ids[i_df])
             LOGGER.info("EVENT: BEGIN loading experiment list")
-            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
+            # TODO: test that the diffBragg_benchmarks is not broken
+            expt = hopper_utils.DataModeler.exper_json_single_file(exper_name, exper_id)
+            expt_list = ExperimentList()
+            expt_list.append(expt)
             LOGGER.info("EVENT: DONE loading experiment list")
-            if len(expt_list) != 1:
-                print("Input experiments need to have length 1, %s does not" % exper_name)
-            expt = expt_list[0]
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
-            exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name)
+            exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name).query("exp_idx==%d" % exper_id)
 
             refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)
-            # FIXME need to remove (0,0,0) bboxes
+            refls = refls.select(refls['id'] == exper_id)
 
             try:
                 miller_inds = list(refls["miller_index"])
@@ -235,11 +242,13 @@ class RefineLauncher:
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
             shot_modeler.exper_name = exper_name
+            shot_modeler.exper_idx = exper_id
             shot_modeler.refl_name = refl_name
             shot_modeler.rank = COMM.rank
             if self.params.refiner.load_data_from_refl:
                 gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol)
             else:
+                # Note: no need to pass exper_id here because expt and refls have already been sliced out
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
                 raise IOError("Failed to gather data from experiment %s", exper_name)
@@ -310,20 +319,21 @@ class RefineLauncher:
                 shot_modeler.originZ_init = exper_dataframe.detz_shift_mm.values[0]*1e-3
             else:
                 shot_modeler.originZ_init = 0
+            # TODO: is there a reason these 3 attribs are set once more after being set above?
             shot_modeler.exper_name = exper_name
+            shot_modeler.exper_idx = exper_id
             shot_modeler.refl_name = refl_name
 
             shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
             shot_idx += 1
-            if COMM.rank == 0:
-                self._mem_usage()
-                print("Finished loading image %d / %d (%d / %d)"
-                      % (i_exp+1, len(exper_names), i_work+1, len(worklist)), flush=True)
+            self._mem_usage("Process memory usage")
+            LOGGER.info("Finished loading image %d / %d (%d / %d)"
+                  % (i_df+1, len(exper_names), i_work+1, len(worklist))) #, flush=True)
 
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
-            self.Modelers[i_exp] = shot_modeler
+            self.Modelers[i_df] = shot_modeler  # TODO: verify that i_df as a key is ok everywhere
 
         LOGGER.info("DONE LOADING DATA; ENTER BARRIER")
         COMM.Barrier()
@@ -338,6 +348,7 @@ class RefineLauncher:
             for set_of_panels in all_refined_groups:
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
+        self._mem_usage("Mem after panel groups")
 
         LOGGER.info("EVENT: Gathering global HKL information")
         try:
@@ -348,6 +359,7 @@ class RefineLauncher:
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
+        self._mem_usage("Mem after gather Hi info")
 
         # in case of GPU
         LOGGER.info("BEGIN DETERMINE MAX PIX")
@@ -358,15 +370,15 @@ class RefineLauncher:
             n = max(n)
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         LOGGER.info("DONE DETERMINE MAX PIX")
+        self._mem_usage("Mem after determine max num pix")
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
-        self._mem_usage()
+        self._mem_usage("Mem after load_inputs")
 
-    def _mem_usage(self):
+    def _mem_usage(self, msg="Memory usage"):
         memMB = get_memory_usage()
-        import socket
         host = socket.gethostname()
-        print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
+        LOGGER.info("%s: %f GB on node %s" % (msg, memMB / 1024, host))
 
     def determine_refined_panel_groups(self, pids):
         refined_groups = []
@@ -517,7 +529,9 @@ class RefineLauncher:
                 self.RUC.S.update_nanoBragg_instance('verbose', self.params.refiner.verbose)
 
             LOGGER.info("_launch run setup")
+            self._mem_usage("Mem usage before _setup")
             self.RUC.run(setup_only=True)
+            self._mem_usage("Mem usage after _setup")
             LOGGER.info("_launch done run setup")
             # for debug purposes:
             #if not self.params.refiner.quiet:

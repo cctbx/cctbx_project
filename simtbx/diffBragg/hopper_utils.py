@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 import os
+import json
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
@@ -160,6 +161,7 @@ class DataModeler:
         self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
         self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
         self.spec_name = None  # optional name specifying spectrum file(.lam)
+        self.exper_idx = 0  # optional number specifying the index of the experiment in the experiment list
         self.rank = 0  # in case DataModelers are part of an MPI program, have a rank attribute for record keeping
 
         self.Hi = None  # miller index (P1)
@@ -213,11 +215,11 @@ class DataModeler:
         #self.target.minima.append((f,self.target.x0,accept))
         self.target.lowest_x = x
         try:
-            # TODO get SIM and i_exp in here so we can save_up each new global minima!
+            # TODO get SIM and i_shot in here so we can save_up each new global minima!
             if f < self.target.lowest_f:
                  self.target.lowest_f = f
                  MAIN_LOGGER.info("New minimum found!")
-                 self.save_up(self.target.x0, SIM, self.rank, i_exp=i_exp)
+                 self.save_up(self.target.x0, SIM, self.rank, i_shot=i_shot)
         except NameError:
             pass
 
@@ -277,9 +279,47 @@ class DataModeler:
     def clean_up(self, SIM):
         free_SIM_mem(SIM)
 
-    def set_experiment(self, exp, load_imageset=True):
+    @staticmethod
+    def exper_json_single_file(exp_file, i_exp=0):
+        """
+        load a single experiment from an exp_file
+        If working with large combined experiment files, we only want to load
+        one image at a time on each MPI rank, otherwise at least one rank would need to
+        load the entire file into memory.
+        :param exp_file: experiment list file
+        :param i_exp: experiment id
+        :return:
+        """
+        exper_json = json.load(open(exp_file))
+        nexper = len(exper_json["experiment"])
+        assert 0 <= i_exp < nexper
+
+        this_exper = exper_json["experiment"][i_exp]
+
+        new_json = {'__id__': "ExperimentList", "experiment": [deepcopy(this_exper)]}
+
+        for model in ['beam', 'detector', 'crystal', 'imageset', 'profile', 'scan', 'goniometer', 'scaling_model']:
+            if model in this_exper:
+                model_index = this_exper[model]
+                new_json[model] = [exper_json[model][model_index]]
+                new_json["experiment"][0][model] = 0
+            else:
+                new_json[model] = []
+        explist = ExperimentListFactory.from_dict(new_json)
+        assert len(explist) == 1
+        return explist[0]
+
+    def set_experiment(self, exp, load_imageset=True, exp_idx=0):
+        """
+        :param exp: experiment or filename
+        :param load_imageset: whether to load the imageset (usually True)
+        :param exp_idx: index corresponding to experiment in experiment list
+        """
         if isinstance(exp, str):
-            self.E = ExperimentListFactory.from_json_file(exp, load_imageset)[0]
+            if not load_imageset:
+                self.E = ExperimentListFactory.from_json_file(exp, False)[exp_idx]
+            else:
+                self.E = self.exper_json_single_file(exp, exp_idx)
         else:
             self.E = exp
         if self.params.opt_det is not None:
@@ -292,9 +332,15 @@ class DataModeler:
             self.E.beam = opt_beam_E.beam
             MAIN_LOGGER.info("Set the optimal beam from %s" % self.params.opt_beam)
 
-    def load_refls(self, ref):
+    def load_refls(self, ref, exp_idx=0):
+        """
+        :param ref: reflection table or filename
+        :param exp_idx: index corresponding to experiment in experiment list
+        """
         if isinstance(ref, str):
             refls = flex.reflection_table.from_file(ref)
+            # TODO: is this the proper way to select the id ?
+            refls = refls.select(refls['id']==exp_idx)
         else:
             # assert is a reflection table. ..
             refls = ref
@@ -394,10 +440,19 @@ class DataModeler:
         self.data_to_one_dim(img_data, is_trusted, background)
         return True
 
-    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True, sg_symbol=None):
-        self.set_experiment(exp, load_imageset=True)
+    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True, sg_symbol=None, exp_idx=0):
+        """
 
-        refls = self.load_refls(ref)
+        :param exp: experiment list filename , or experiment object
+        :param ref: reflection table filename, or reflection table instance
+        :param remove_duplicate_hkl: search for miller index duplicates and remove
+        :param sg_symbol: space group lookup symbol P43212
+        :param exp_idx: index of the experiment in the experiment list
+        :return:
+        """
+        self.set_experiment(exp, load_imageset=True, exp_idx=exp_idx)
+
+        refls = self.load_refls(ref, exp_idx=exp_idx)
         if len(refls)==0:
             MAIN_LOGGER.warning("no refls loaded!")
             return False
@@ -654,27 +709,15 @@ class DataModeler:
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
             # Umatrix
             # NOTE: just set the best Amatrix here
-            if self.params.apply_best_crystal_model:
-                xax = col((-1, 0, 0))
-                yax = col((0, -1, 0))
-                zax = col((0, 0, -1))
-                rotX, rotY, rotZ = best[["rotX", "rotY", "rotZ"]].values[0]
-                RX = xax.axis_and_angle_as_r3_rotation_matrix(rotX, deg=False)
-                RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
-                RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
-                M = RX * RY * RZ
-                U = M * sqr(self.E.crystal.get_U())
-                self.E.crystal.set_U(U)
-
-                # Bmatrix:
-                ucparam = best[["a","b","c","al","be","ga"]].values[0]
-                ucman = utils.manager_from_params(ucparam)
-                self.E.crystal.set_B(ucman.B_recipspace)
+            #C = deepcopy(self.E.crystal)
+            #crystal = self.E.crystal
+            #self.E.crystal = crystal
 
             ## TODO , currently need this anyway
             ucparam = best[["a","b","c","al","be","ga"]].values[0]
             ucman = utils.manager_from_params(ucparam)
             self.E.crystal.set_B(ucman.B_recipspace)
+            self.E.crystal.set_A(best.Amats.values[0])
 
             # mosaic block
             self.params.init.Nabc = tuple(best.ncells.values[0])
@@ -927,7 +970,7 @@ class DataModeler:
 
         return ret_subimgs
 
-    def Minimize(self, x0, SIM, i_exp=0):
+    def Minimize(self, x0, SIM, i_shot=0):
         self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
@@ -961,7 +1004,7 @@ class DataModeler:
             assert self.params.hopper_save_freq is None
             at_min = self.at_minimum
 
-        callback_kwargs = {"SIM":SIM, "i_exp": i_exp, "save_freq": self.params.hopper_save_freq}
+        callback_kwargs = {"SIM":SIM, "i_shot": i_shot, "save_freq": self.params.hopper_save_freq}
         callback = lambda x: self.callback(x, callback_kwargs)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
@@ -1039,13 +1082,13 @@ class DataModeler:
 
     def callback(self, x, kwargs):
         save_freq = kwargs["save_freq"]
-        i_exp = kwargs["i_exp"]
+        i_shot = kwargs["i_shot"]
         SIM = kwargs["SIM"]
         target = self.target
         if save_freq is not None and target.iteration % save_freq==0 and target.iteration> 0:
             xall = target.x0.copy()
             xall[target.vary] = x
-            self.save_up(xall, SIM, rank=self.rank, i_exp=i_exp)
+            self.save_up(xall, SIM, rank=self.rank, i_shot=i_shot)
         return
 
         rescaled_vals = np.zeros_like(xall)
@@ -1098,7 +1141,7 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-    def save_up(self, x, SIM, rank=0, i_exp=0,
+    def save_up(self, x, SIM, rank=0, i_shot=0,
                 save_fhkl_data=True, save_modeler_file=True,
                 save_refl=True,
                 save_sim_info=True,
@@ -1106,27 +1149,26 @@ class DataModeler:
                 save_pandas=True, save_expt=True):
         """
 
-        :param x:
-        :param SIM:
-        :param rank:
-        :param i_exp:
-        :param save_fhkl_data:
-        :param save_modeler_file:
-        :param save_refl:
-        :param save_sim_info:
-        :param save_traces:
-        :param save_pandas:
-        :param save_expt:
-        :return:
+        :param x: l-bfgs refinement parameters (reparameterized, e.g. unbounded)
+        :param SIM: sim_data.SimData instance
+        :param rank: MPI rank Id
+        :param i_shot: shot index for this rank (assuming each rank processes more than one shot, this should increment)
+        :param save_fhkl_data: whether to write mtz files
+        :param save_modeler_file: whether to write the DataModeler .npy file (a pickle file)
+        :param save_refl: whether to write a reflection table for this shot with updated xyzcal.px from diffBragg models
+        :param save_sim_info: whether to write a text file showing the diffBragg state
+        :param save_traces: whether to write a text file showing the refinement target functional and sigmaZ per iter
+        :param save_pandas: whether to write a single-shot pandas dataframe containing optimized diffBragg params
+        :param save_expt: whether to save a single-shot experiment file for this shot with optimized crystal model
+        :return: returns the single shot pandas dataframe (whether or not it was written)
         """
-        # TODO optionally create directories
         assert self.exper_name is not None
         assert self.refl_name is not None
         Modeler = self
         LOGGER = logging.getLogger("refine")
         Modeler.best_model, _ = model(x, Modeler, SIM,  compute_grad=False)
         Modeler.best_model_includes_background = False
-        LOGGER.info("Optimized values for i_exp %d:" % i_exp)
+        LOGGER.info("Optimized values for i_shot %d:" % i_shot)
 
         basename = os.path.splitext(os.path.basename(self.exper_name))[0]
 
@@ -1179,8 +1221,8 @@ class DataModeler:
                     scale_facs.append(scale_fac)
                     scale_vars.append(scale_var)
                     is_nominal_hkl.append(asu in all_nominal_hkl)
-                scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_channel%d_scale.npz"\
-                                     % (Modeler.params.tag, basename, i_exp, i_chan))
+                scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_%d_channel%d_scale.npz"\
+                                     % (Modeler.params.tag, basename, i_shot, self.exper_idx, i_chan))
                 np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars,
                          is_nominal_hkl=is_nominal_hkl)
 
@@ -1193,14 +1235,16 @@ class DataModeler:
 
             if save_traces:
                 rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
-                trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
+                trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_%d_traces.txt"
+                                          % (Modeler.params.tag, basename, i_shot, self.exper_idx))
                 np.savetxt(trace_path, trace_data, fmt="%s")
 
             Modeler.niter = len(trace0)
             Modeler.sigz = trace2[-1]
 
-        shot_df = hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp,
-                                           self.refl_name, None, rank, write_expt=save_expt, write_pandas=save_pandas)
+        shot_df = hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_shot,
+                                           self.refl_name, None, rank, write_expt=save_expt, write_pandas=save_pandas,
+                                           exp_idx=self.exper_idx)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1219,7 +1263,8 @@ class DataModeler:
 
         if save_refl:
             rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
-            new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+            new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d_%d.refl"
+                                          % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             new_refls = deepcopy(Modeler.refls)
             has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
             if has_xyzcal:
@@ -1279,13 +1324,16 @@ class DataModeler:
         if save_modeler_file:
             rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
             modeler_file = os.path.join(rank_imgs_outdir,
-                                        "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
+                                        "%s_%s_%d_%d_modeler.npy"
+                                        % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             np.save(modeler_file, Modeler)
         if save_sim_info:
             spectrum_file = os.path.join(rank_imgs_outdir,
-                                         "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
+                                         "%s_%s_%d_%d_spectra.lam"
+                                         % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
-            SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+            SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d_%d.txt"
+                                       % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             write_SIM_logs(SIM, log=SIMlog_path, lam=spectrum_file)
 
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
@@ -2262,12 +2310,12 @@ def set_gauss_spec(SIM=None, params=None, E=None):
 
 def sanity_test_input_lines(input_lines):
     for line in input_lines:
-        line_fields = line.strip().split()
-        if len(line_fields) not in [2, 3]:
+        line_items = line.strip().split()
+        if len(line_items) not in [2, 3, 4]:
             raise IOError("Input line %s is not formatted properly" % line)
-        for fname in line_fields:
-            if not os.path.exists(fname):
-                raise FileNotFoundError("File %s does not exist" % fname)
+        for item in line_items:
+            if os.path.isfile(item) and not os.path.exists(item):
+                raise FileNotFoundError("File %s does not exist" % item)
 
 
 def full_img_pfs(img_sh):

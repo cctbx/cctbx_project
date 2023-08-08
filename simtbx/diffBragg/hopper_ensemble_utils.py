@@ -580,6 +580,7 @@ def get_gather_name(exper_name, gather_dir):
 
 def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictions',
                 gather_dir=None):
+    # TODO: update this file for composite-mode experiments/refls!
 
     work_distribution = prep_dataframe(pandas_table, refls_key)
     COMM.barrier()

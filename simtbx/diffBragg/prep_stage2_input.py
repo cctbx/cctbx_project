@@ -29,18 +29,36 @@ def get_equal_partition(weights, partitions):
 
 def prep_dataframe(df, refls_key="predictions"):
     # TODO make sure all pred files exist
+    if refls_key not in list(df):
+        raise KeyError("Dataframe has no key %s" % refls_key)
     nshots = len(df)
-    refls_names = df[refls_key]
+    df.reset_index(drop=True, inplace=True)
+    df['index'] = df.index.values
+    refl_info = df[["index", refls_key, "exp_idx"]].values
+
+    # sort and split such that each rank will read many refls from same file
+    sorted_names_and_ids = sorted(
+        refl_info,
+        key=lambda x: x[1])  # sort by name
+    df_idx, refl_names, expt_ids = np.array_split(sorted_names_and_ids, COMM.size)[COMM.rank].T
+
     refls_per_shot = []
     if COMM.rank==0:
         LOGGER.info("Loading nrefls per shot")
-    for i_shot, name in enumerate(refls_names):
-        if i_shot % COMM.size != COMM.rank:
-            continue
-        R = flex.reflection_table.from_file(name)
-        if len(R)==0:
-            LOGGER.critical("Reflection %s has 0 reflections !" % (name, len(R)))
-        refls_per_shot.append((i_shot, len(R)))
+
+    prev_name = ""  # keep track of the most recently read refl table file
+    Rall = None
+    for (i_shot, name, expt_id) in zip(df_idx, refl_names, expt_ids):
+        if Rall is None or name != prev_name:
+            Rall = flex.reflection_table.from_file(name)
+            prev_name = name
+
+        R = Rall.select(Rall['id'] == int(expt_id))
+        num_ref = len(R)
+
+        if num_ref==0:
+            LOGGER.critical("Reflection %s id=%d has 0 reflections !" % (name, expt_id, num_ref))
+        refls_per_shot.append((i_shot, num_ref))
 
     refls_per_shot = COMM.reduce(refls_per_shot, root=0)
     work_distribution = None
