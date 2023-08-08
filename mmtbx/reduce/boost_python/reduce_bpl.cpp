@@ -38,13 +38,13 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
-  /*
   std::cout << "XXX Mapping the double" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<double> wdbl;
   class_<wdbl::w_t> wd = wdbl::wrap("af_shared_double");
   scitbx::af::boost_python::select_wrappers<
     double, scitbx::af::shared<double> >::wrap(wd);
   std::cout << "XXX Done mapping the double" << std::endl;
+  /*
   /// @todo This does not make the type available to Python
   //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
   */
@@ -55,7 +55,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
 
-  /*
   std::cout << "XXX Mapping the Point" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
   typedef scitbx::af::boost_python::shared_wrapper<afsPoint> wwPoint;
@@ -63,7 +62,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
   std::cout << "XXX Done mapping the Point" << std::endl;
-  */
 
   typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
   typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
