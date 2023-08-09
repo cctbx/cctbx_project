@@ -388,7 +388,7 @@ so far here), or as an
 be converted back into PDB hierarchies as well.</p>
 
 <p>Although all three of these representations can be interconverted, they
-are do not contain exactly the same information and it can be useful to
+do not contain exactly the same information and it can be useful to
 know some of the similarities and differences.</p>
 
 <p>The mmCIF format supersedes the PDB format and is the official
@@ -439,30 +439,34 @@ ATOM      6  CA  GLY A 103       0.000   0.000   0.000  1.00 10.00           C
 ATOM      7  C   GLY A 103       0.000   0.000   0.000  1.00 10.00           C
 ATOM      8  O   GLY A 103       0.000   0.000   0.000  1.00 10.00           O
 TER
-ATOM      9 AU    AU A 104       0.000   0.000   0.000  1.00 10.00          AU
-ATOM     10 AU    AU A 105       0.000   0.000   0.000  1.00 10.00          AU
-ATOM     11 HOH  WAT A 106       0.000   0.000   0.000  1.00 10.00           O
-ATOM     12 HOH  WAT A 107       0.000   0.000   0.000  1.00 10.00           O
-ATOM     13 HOH  WAT A 108       0.000   0.000   0.000  1.00 10.00           O
-ATOM     14 HOH  WAT A 109       0.000   0.000   0.000  1.00 10.00           O
+HETATM    9 AU    AU A 104       0.000   0.000   0.000  1.00 10.00          AU
+HETATM   10 AU    AU A 105       0.000   0.000   0.000  1.00 10.00          AU
+HETATM   11 HOH  WAT A 106       0.000   0.000   0.000  1.00 10.00           O
+HETATM   12 HOH  WAT A 107       0.000   0.000   0.000  1.00 10.00           O
+HETATM   13 HOH  WAT A 108       0.000   0.000   0.000  1.00 10.00           O
+HETATM   14 HOH  WAT A 109       0.000   0.000   0.000  1.00 10.00           O
 END
 </code></pre>
 
 If this file is read in and used to create a PDB hierarchy, the hierarchy will
 have two protein chains, both with chain ID of A. It will have one additional
-chain, also with a chain ID of A, containing the gold and waters.</p>
+chain, also with a chain ID of A, containing the gold atoms and waters.</p>
 
 In an mmCIF file, there is no "chain" and no "chain ID" and there are no
 TER lines.
 There are instead two labels that convey similar information.  One is called
-<a href="https://www.ebi.ac.uk/pdbe/docs/exchange/mmcif_pdbx.dic/Items/_atom_site.auth_asym_id.html">auth_asym_id</a>. This label generally
+<a href="https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_atom_site.auth_asym_id.html">auth_asym_id</a>. This label generally
 corresponds to the chain ID, but does not have to.  The second label is
-<a href="https://www.ebi.ac.uk/pdbe/docs/exchange/mmcif_pdbx.dic/Items/_atom_site.label_asym_id.html">label_asym_id</a>. This label is unique (no duplicates)
+<a href="https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_atom_site.label_asym_id.html">label_asym_id</a>. This label is unique (no duplicates)
 and refers to one protein or nucleic acid polymer, or one ligand, or one metal,
 or one group of waters.  </p>
 
 <p>Here is part of the mmCIF representation of this
-same structure. The auth_asym_id is the A in "ALA A 102" and the
+same structure.  The "loop_" line and the lines following it 
+that start with an underscore describe the items of data that are going to 
+follow in the lines starting with "ATOM" (for protein/nucleic acid atoms) or 
+"HETATM" (for ligands, metals, waters).
+The auth_asym_id is the A in "ALA A 102" and the
 label_asym_id is the A in "N ? A ? 1 1" at the end of the line.
 Notice that the auth_asym_id is A for all the atoms (as the chain ID
 was in the PDB format), and the label_asym_id is A for the first protein
@@ -472,6 +476,27 @@ both waters:</p>
 <pre class="CodeGreen"><code>
 # PART OF MMCIF FILE WITH TWO PROTEIN CHAINS AND ONE CHAIN WITH AU AND WAT
 
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+
    ATOM 1 N . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 N ? A ? 1 1
    ATOM 2 CA . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? A ? 1 1
    ATOM 3 C . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? A ? 1 1
@@ -480,12 +505,12 @@ both waters:</p>
    ATOM 6 CA . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? B ? 1 1
    ATOM 7 C . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? B ? 1 1
    ATOM 8 O . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? B ? 1 1
-   ATOM 9 AU . AU A 104 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? C ? . 1
-   ATOM 10 AU . AU A 105 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? D ? . 1
-   ATOM 11 HOH . WAT A 106 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
-   ATOM 12 HOH . WAT A 107 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
-   ATOM 13 HOH . WAT A 108 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
-   ATOM 14 HOH . WAT A 109 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 9 AU . AU A 104 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? C ? . 1
+   HETATM 10 AU . AU A 105 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? D ? . 1
+   HETATM 11 HOH . WAT A 106 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 12 HOH . WAT A 107 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 13 HOH . WAT A 108 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 14 HOH . WAT A 109 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
 </code></pre>
 
 <p>In cctbx, the mmCIF and PDB formatted files shown above are
