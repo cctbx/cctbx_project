@@ -38,7 +38,7 @@ namespace smtbx {
             processor->process(r.first, r.second);
             Is[i] = std::norm(processor->CIs[i]);
             if (processor->calc_grad) {
-              std::copy_n(&processor->D_dyn(i, 0), n_cols, &D_dyn(i, 0));
+              std::copy(&processor->D_dyn(i, 0), &processor->D_dyn(i, n_cols), &D_dyn(i, 0));
             }
           }
         }
