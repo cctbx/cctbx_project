@@ -395,8 +395,8 @@ class RefineLauncher:
             x1, x2, y1, y2 = map(np.array, zip(*modeler.rois))
             npix = np.sum((x2-x1)*(y2-y1))
             max_npix = max(npix, max_npix)
-            print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
-        print("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
+            #print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
+        LOGGER.info("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
         return max_npix
 
     def _try_loading_spectrum_filelist(self):
@@ -408,32 +408,38 @@ class RefineLauncher:
         return file_list
 
     def _gather_Hi_information(self):
-        nshots_on_this_rank = len(self.Hi)
         # aggregate all miller indices
-        self.Hi_all_ranks, self.Hi_asu_all_ranks = [], []
+
+        #self.Hi_asu_all_ranks = []
         # TODO assert list types are stored in Hi and Hi_asu
-        for i_shot in self.Hi: #range(nshots_on_this_rank):
-            self.Hi_all_ranks += self.Hi[i_shot]
-            self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
-        self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks)
-        self.Hi_all_ranks = COMM.bcast(self.Hi_all_ranks)
+        #for i_shot in self.Hi: #range(nshots_on_this_rank):
+        #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
 
-        self.Hi_asu_all_ranks = COMM.reduce(self.Hi_asu_all_ranks)
-        self.Hi_asu_all_ranks = COMM.bcast(self.Hi_asu_all_ranks)
+        Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
+        unique_asu_all_ranks = None
+        if COMM.rank==0:
+            temp = []
+            for Hi_asu in Hi_asu_all_ranks:
+                for i_shot in Hi_asu:
+                    temp += Hi_asu[i_shot]
+            Hi_asu_all_ranks = temp
+            unique_asu_all_ranks = set(Hi_asu_all_ranks)
+        unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
 
-        marr_unique_h = self._get_unique_Hi()
+        # Hi_asu_all_ranks should be None on all ranks except rank0
+        marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
 
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-        self.idx_from_asu = {h: i for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+        self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+        self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
 
         self.num_hkl_global = len(self.idx_from_asu)
 
         fres = marr_unique_h.d_spacings()
         self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
 
-    def _get_unique_Hi(self):
+    def _get_unique_Hi(self, Hi_asu_all_ranks):
         COMM.barrier()
         if COMM.rank == 0:
             from cctbx.crystal import symmetry
@@ -446,7 +452,7 @@ class RefineLauncher:
             if self.params.refiner.force_unit_cell is not None:
                 params = self.params.refiner.force_unit_cell
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
-            hi_asu_flex = cctbx_flex.miller_index(self.Hi_asu_all_ranks)
+            hi_asu_flex = cctbx_flex.miller_index(Hi_asu_all_ranks)
             mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
             marr = miller.array(mset)
             binner = marr.setup_binner(d_max=self.params.refiner.stage_two.d_max, d_min=self.params.refiner.stage_two.d_min,
@@ -463,15 +469,16 @@ class RefineLauncher:
                     print("\t %d refls with multi %d" % (sum(multi_in_bin == ii), ii))
 
             print("Overall completeness\n<><><><><><><><>")
+            unique_Hi_asu = set(Hi_asu_all_ranks)
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
-            hi_flex_unique = cctbx_flex.miller_index(list(set(self.Hi_asu_all_ranks)))
+            hi_flex_unique = cctbx_flex.miller_index(list(unique_Hi_asu))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
             self.binner = mset.setup_binner(d_min=self.params.refiner.stage_two.d_min,
                                             d_max=self.params.refiner.stage_two.d_max,
                                             n_bins=self.params.refiner.stage_two.n_bin)
             mset.completeness(use_binning=True).show()
             marr_unique_h = miller.array(mset)
-            print("Rank %d: total miller vars=%d" % (COMM.rank, len(set(self.Hi_asu_all_ranks))))
+            print("Rank %d: total miller vars=%d" % (COMM.rank, len(unique_Hi_asu)))
         else:
             marr_unique_h = None
 
