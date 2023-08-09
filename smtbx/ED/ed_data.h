@@ -38,11 +38,59 @@ public:
     cart_t N = rm * original_normal;
     return std::make_pair(rmf, N / N.length());
   }
+
   void update_alpha(FloatType alpha_) {
     alpha = alpha_;
     std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha_);
     RMf = r.first;
     normal = r.second;
+  }
+
+  void update_angles(FloatType alpha_, FloatType beta_, FloatType omega_) {
+    alpha = alpha_;
+    beta = beta_;
+    omega = omega_;
+    std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha_);
+    RMf = r.first;
+    normal = r.second;
+  }
+
+  // returns angle in rads at which the excitation error is 0
+  FloatType get_diffraction_angle(const miller::index<>& h,
+    FloatType Kl, FloatType sweep_angle=3) const
+  {
+    return Sg_to_angle(0, h, Kl, sweep_angle);
+  }
+
+  /* returns angle in rads at which the excitation error is Sg */
+  FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
+    FloatType Kl, FloatType sweep_angle = 3) const
+  {
+    FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
+    FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
+    std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
+    FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, Kl);
+    FloatType k = (Sg2 - Sg1) / ang_diff;
+    //FloatType a = Sg1 - k*alpha;
+    //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
+    return alpha + (Sg - Sg1) / k;
+  }
+
+  /* returns Sg or the given angle.
+  This could be used to firther remove reflections from VF where
+  excitation andle is too hight at the edge of the frame
+  */
+  FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
+    FloatType Kl, FloatType sweep_angle = 3)
+  {
+    FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
+    FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
+    std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
+    FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, Kl);
+    FloatType k = (Sg2 - Sg1) / ang_diff;
+    //FloatType a = Sg1 - k*alpha;
+    //return k * ang + a = k*(ang-alpha) + Sg1;
+    return Sg1 + k*(ang-alpha);
   }
 
   bool is_excited_index(const miller::index<> &h,
@@ -223,7 +271,8 @@ void FrameInfo<FloatType>::analyse_strength(
     if (s < 0) {
       s = -s;
     }
-    if (s / (2 * Kl) < MaxSg) {
+    FloatType Sg = s / (2 * Kl);
+    if (Sg < MaxSg) {
       strong_beams.push_back(i);
       if (i < beams.size()) {
         strong_measured_beams.push_back(i);
@@ -248,10 +297,9 @@ size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
   lookup_t bm = lookup_t(space_group, anomalous);
   size_t cnt = 0;
   for (size_t i = 0; i < beams.size(); i++) {
-    if (exclude_sys_abs && space_group.is_sys_absent(beams[i].index)) {
-      continue;
-    }
-    if (!bm.add_hkl(beams[i].index)) {
+    if ((exclude_sys_abs && space_group.is_sys_absent(beams[i].index)) ||
+      !bm.add_hkl(beams[i].index))
+    {
       beams.erase(&beams[i]);
       indices.erase(&indices[i]);
       cnt++;

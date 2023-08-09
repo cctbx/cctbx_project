@@ -59,6 +59,10 @@ namespace boost_python {
         .def("unify", &wt::unify)
         .def("add_indices", &wt::add_indices)
         .def("analyse_strength", &wt::analyse_strength)
+        .def("update_alpha", &wt::update_alpha)
+        .def("update_angles", &wt::update_angles)
+        .def("Sg_to_angle", &wt::Sg_to_angle)
+        .def("angle_to_Sg", &wt::angle_to_Sg)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }

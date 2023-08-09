@@ -72,7 +72,7 @@ namespace least_squares {
           af::select(frame.indices.const_ref(),
             frame.strong_measured_beams.const_ref()).const_ref(),
           P1,
-          false));
+          true));
         frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
       }
       beam_n = offset;
@@ -126,8 +126,8 @@ namespace least_squares {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.mat_type == 3) { // 2-beam
-            FloatType angle = scitbx::deg_as_rad(3.0),
-              step = scitbx::deg_as_rad(0.05);
+            FloatType angle = scitbx::deg_as_rad(1.0),
+              step = scitbx::deg_as_rad(0.075);
             int steps = round(angle / step);
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
@@ -135,9 +135,12 @@ namespace least_squares {
               int ii = parent.mi_lookup.find_hkl(h);
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
               FloatType I1 = -1, g1 = -1;
+              FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+              //FloatType sg_a = frame.Sg_to_angle(0.01, h, parent.Kl);
+              //int steps = std::abs(round((da-sg_a) / step));
               for (int st = -steps; st <= steps; st++) {
                 std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-                  frame.alpha + st * step);
+                  da + st * step);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
 
                 FloatType I = std::norm(utils<FloatType>::calc_amp_2beam(
@@ -152,33 +155,6 @@ namespace least_squares {
                 I1 = I;
               }
             }
-
-            //for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-            //  size_t beam_idx = frame.strong_measured_beams[i];
-            //  miller::index<> h = frame.indices[beam_idx];
-            //  int ii = parent.mi_lookup.find_hkl(h);
-            //  complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
-            //  mat3_t RMf;
-            //  cart_t N;
-            //  if (use_diff_angle) {
-            //    std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-            //      frame.beams[beam_idx].diffraction_angle);
-            //    RMf = r.first;
-            //    N = r.second;
-            //  }
-            //  else {
-            //    RMf = frame.RMf;
-            //    N = frame.normal;
-            //  }
-            //  complex_t ci = utils<FloatType>::calc_amp_2beam(
-            //    h, Fc,
-            //    thickness,
-            //    K, RMf, N);
-            //  Is[offset + i] = std::norm(ci);
-            //  if (CIs.size() != 0) {
-            //    CIs[offset + i] = ci;
-            //  }
-            //}
             return;
           }
           // modified Ug
@@ -230,43 +206,33 @@ namespace least_squares {
           af::shared<complex_t> amps;
           // 2013
           if (parent.mat_type == 0) {
-            FloatType angle = scitbx::deg_as_rad(2.0),
-              step = scitbx::deg_as_rad(0.05);
-            size_t beam_n = frame.strong_measured_beams.size();
-            af::shared<FloatType> Is1(beam_n), K_g_ls(beam_n);
+            FloatType angle = scitbx::deg_as_rad(0.75),
+              step = scitbx::deg_as_rad(0.1);
             int steps = round(angle / step);
-            bool second_step = false;
-            for (int st = -steps; st <= steps; st++) {
-              std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-                frame.alpha + st * step);
-              af::shared<FloatType> ExpDen;
-              cmat_t A1 = A.deep_copy();
-              utils<FloatType>::build_eigen_matrix_2013(A1, strong_indices, K,
-                r.first, r.second, ExpDen
-              );
-              amps = utils<FloatType>::calc_amps_2013(A1, ExpDen,
-                thickness, frame.strong_measured_beams.size());
-
-              if (second_step) {
-                for (size_t ai = 0; ai < amps.size(); ai++) {
-                  miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
-                  cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-                  FloatType K_g_l = K_g.length();
-                  FloatType I = std::norm(amps[ai]);
-                  Is[offset + ai] += (Is1[ai] + I) *
-                    std::abs(K_g_ls[ai] - K_g_l)/2;
-                  Is1[ai] = I;
-                  K_g_ls[ai] = K_g_l;
+            for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+              size_t beam_idx = frame.strong_measured_beams[i];
+              miller::index<> h = frame.indices[beam_idx];
+              int ii = parent.mi_lookup.find_hkl(h);
+              complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+              FloatType I1 = -1, g1 = -1;
+              FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+              for (int st = -steps; st <= steps; st++) {
+                std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
+                  da + st * step);
+                cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
+                af::shared<FloatType> ExpDen;
+                cmat_t A1 = A.deep_copy();
+                utils<FloatType>::build_eigen_matrix_2013(A1, strong_indices, K,
+                  r.first, r.second, ExpDen
+                );
+                FloatType I = std::norm(utils<FloatType>::calc_amps_2013_1(A1, ExpDen,
+                  thickness, i));
+                FloatType g = K_g.length();
+                if (g1 >= 0) {
+                  Is[offset + i] += (I + I1) * std::abs(g - g1) / 2;
                 }
-              }
-              else {
-                for (size_t ai = 0; ai < amps.size(); ai++) {
-                  miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
-                  cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-                  K_g_ls[ai] = K_g.length();
-                  Is1[ai] = std::norm(amps[ai]);
-                }
-                second_step = true;
+                g1 = g;
+                I1 = I;
               }
             }
             return;
@@ -313,6 +279,82 @@ namespace least_squares {
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
+    struct process_frame_profile {
+      process_frame_profile(ed_n_shared_data const& parent,
+        FrameInfo<FloatType>& frame,
+        // source kinematic Fcs, Fc, Fc_+e, Fc_-e
+        const af::shared<complex_t> Fcs_k,
+        af::shared<FloatType>& Is)
+        : parent(parent),
+        frame(frame),
+        thickness(parent.thickness.value),
+        Fcs_k(Fcs_k),
+        Is(Is)
+      {}
+
+      void process(const mat3_t& RMf, const cart_t& N) {
+        try {
+          const cart_t K = cart_t(0, 0, -parent.Kl);
+          if (parent.mat_type == 3) { // 2-beam
+            for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+              size_t beam_idx = frame.strong_measured_beams[i];
+              miller::index<> h = frame.indices[beam_idx];
+              int ii = parent.mi_lookup.find_hkl(h);
+              complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
+              Is[i] = std::norm(utils<FloatType>::calc_amp_2beam(
+                h, Fc,
+                thickness,
+                K, RMf, N));
+            }
+            return;
+          }
+          cmat_t A;
+          af::shared<miller::index<> >
+            strong_indices = af::select(frame.indices.const_ref(),
+              frame.strong_beams.const_ref());
+          utils<FloatType>::build_Ug_matrix(
+            A, Fcs_k,
+            parent.mi_lookup,
+            strong_indices
+          );
+          af::shared<complex_t> amps;
+          // 2013
+          if (parent.mat_type == 0) {
+            af::shared<FloatType> ExpDen;
+            utils<FloatType>::build_eigen_matrix_2013(A, strong_indices, K,
+              RMf, N, ExpDen
+            );
+            amps = utils<FloatType>::calc_amps_2013(A, ExpDen,
+              thickness, frame.strong_measured_beams.size());
+          }
+          else if (parent.mat_type == 1) { // 2015
+            af::shared<FloatType> M;
+            utils<FloatType>::build_eigen_matrix_2015(A, strong_indices, K,
+              RMf, N, M
+            );
+            const FloatType Kn = -frame.normal[2] * parent.Kl;
+            amps = utils<FloatType>::calc_amps_2015(A, M,
+              thickness, Kn, frame.strong_measured_beams.size());
+          }
+          for (size_t i = 0; i < amps.size(); i++) {
+            Is[i] = std::norm(amps[i]);
+          }
+        }
+        catch (smtbx::error const& e) {
+          exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const& e) {
+          exception_.reset(new smtbx::error(e.what()));
+        }
+      }
+      ed_n_shared_data const& parent;
+      FrameInfo<FloatType>& frame;
+      FloatType thickness;
+      const af::shared<complex_t>& Fcs_k;
+      af::shared<FloatType>& Is;
+      boost::scoped_ptr<smtbx::error> exception_;
+    };
+
     af::shared<FloatType> process_frame_id(int frame_id,
       af::shared<complex_t> const& Fcs_k)
     {
@@ -336,25 +378,23 @@ namespace least_squares {
       SMTBX_ASSERT(fi != frames_map.end());
       FrameInfo<FloatType>& frame = *fi->second;
       af::shared<FloatType> Is_(frame.beams.size());
-      af::shared<complex_t> CIs_;
       af::shared<PeakProfilePoint<FloatType> > rv;
-      FloatType alpha = frame.alpha;
       const cart_t K = cart_t(0, 0, -Kl);
       int steps = round(angle / step);
       for (int st = -steps; st <= steps; st++) {
-        frame.update_alpha(alpha + st*step);
+        FloatType ang = frame.alpha + st * step;
+        std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(ang);
         std::fill(Is_.begin(), Is_.end(), 0);
-        process_frame(*this, frame, Fcs_k, Is_, CIs_,
-          false, false)(); // no offset - write to Is_ at 0;
+        process_frame_profile(*this, frame, Fcs_k, Is_)
+          .process(r.first, r.second);
         for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
           size_t beam_idx = frame.strong_measured_beams[i];
           miller::index<> h = frame.indices[beam_idx];
-          cart_t g = frame.RMf * cart_t(h[0], h[1], h[2]);
+          cart_t g = r.first * cart_t(h[0], h[1], h[2]);
           FloatType Sg = utils<FloatType>::calc_Sg(g, K);
-          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, frame.alpha, (K+g).length()));
+          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, ang, (K+g).length()));
         }
       }
-      frame.update_alpha(alpha);
       return rv;
     }
 

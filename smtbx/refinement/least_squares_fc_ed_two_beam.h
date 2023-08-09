@@ -9,76 +9,142 @@
 #include <scitbx/vec3.h>
 #include <scitbx/constants.h>
 #include <smtbx/ED/ed_data.h>
+#include <smtbx/ED/kinematic.h>
 
 namespace smtbx { namespace refinement {
 namespace least_squares {
   using namespace smtbx::ED;
 
   template <typename FloatType>
-  class f_calc_function_ed_two_beam : public f_calc_function_base<FloatType> {
-  public:
+  struct two_beam_shared_data {
+    ED_UTIL_TYPEDEFS;
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
-    typedef scitbx::vec3<FloatType> cart_t;
-    typedef scitbx::mat3<FloatType> mat3_t;
+    typedef boost::shared_ptr< f_calc_function_base_t> f_calc_function_base_ptr_t;
     typedef builder_base<FloatType> data_t;
-    typedef std::complex<FloatType> complex_t;
-    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
+    typedef af::shared<const BeamInfo<FloatType>*> beam_at;
+    typedef std::pair<int, af::shared<const BeamInfo<FloatType>*> > beam_me;
     typedef boost::shared_ptr<lookup_t> lookup_ptr_t;
+    typedef cctbx::xray::fc_correction<FloatType> fc_correction_t;
+    typedef boost::shared_ptr< fc_correction_t> fc_correction_ptr_t;
 
-    f_calc_function_ed_two_beam(data_t const& data,
+    two_beam_shared_data(const scitbx::sparse::matrix<FloatType>&
+      Jt_matching_grad_fc,
+      f_calc_function_base_t& f_calc_function,
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
       af::shared<FrameInfo<FloatType> > frames,
       cctbx::xray::thickness<FloatType> const& thickness,
-      af::shared<FloatType> const& params)
-      : data(data),
+      // Kl, Fc2Ug, epsilon
+      af::shared<FloatType> const& params,
+      bool compute_grad,
+      bool do_build = true)
+      : Jt_matching_grad_fc(Jt_matching_grad_fc),
+      f_calc_function(f_calc_function),
       space_group(space_group),
+      Kl(params[1]),
+      Fc2Ug(params[2]),
       frames(frames),
-      Kl(params[0]),
-      Fc2Ug(params[1]),
       thickness(thickness),
-      use_diff_n(params[2] != 0),
-      index(-1),
-      observable_updated(false),
-      computed(false)
+      compute_grad(compute_grad),
+      thread_n(static_cast<int>(params[5]))
     {
-      f_calc = data.f_calc();
-      observables = data.observables();
-      design_matrix = data.design_matrix();
-      mi_lookup = miller::lookup_utils::lookup_tensor<FloatType>(
-        data.reflections().indices().const_ref(),
-        space_group,
-        anomalous_flag);
+      K = cart_t(0, 0, -Kl);
+      // build lookups for each frame + collect all indices and they diffs
+      af::shared<miller::index<> > all_indices;
+      size_t offset = 0;
+      // treat equivalents independently inside the frames
       sgtbx::space_group P1("P 1");
       for (size_t i = 0; i < frames.size(); i++) {
         FrameInfo<FloatType>& frame = frames[i];
         frames_map.insert(std::make_pair(frame.id, &frame));
-        lookup_ptr_t mi_l(new lookup_t(
+        af::shared<miller::index<> > indices =
           af::select(frame.indices.const_ref(),
-            frame.strong_measured_beams.const_ref()).const_ref(),
-          P1,
-          false));
+            frame.strong_measured_beams.const_ref());
+        lookup_ptr_t mi_l(new lookup_t( indices.const_ref(), P1, true));
         frame_lookups.insert(std::make_pair(frame.id, mi_l));
+        all_indices.extend(indices.begin(), indices.end());
       }
-      frame = 0;
-    } 
-    f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const & other)
-      : data(other.data),
-      space_group(other.space_group),
-      Kl(other.Kl),
-      Fc2Ug(other.Fc2Ug),
-      frames(other.frames),
-      frames_map(other.frames_map),
-      frame_lookups(other.frame_lookups),
-      thickness(other.thickness),
-      mi_lookup(other.mi_lookup),
+      // a tricky way of getting unique only...
+      mi_lookup = lookup_t(
+        all_indices.const_ref(),
+        space_group,
+        anomalous_flag);
+      indices = mi_lookup.get_unique();
+      mi_lookup = lookup_t(
+        indices.const_ref(),
+        space_group,
+        anomalous_flag);
+      if (do_build) {
+        build();
+      }
+    }
+
+    void do_build_kin_mt() {
+      if (thread_n < 0) {
+        thread_n = builder_base<FloatType>::get_available_threads();
+      }
+      build_kin_mt(thread_n, Jt_matching_grad_fc, Fc2Ug, f_calc_function,
+        indices, Fcs_kin, design_matrix_kin, compute_grad);
+    }
+
+    void build() {
+      if (Fcs_kin.size() != indices.size()) {
+        if (compute_grad) {
+          size_t cn = Jt_matching_grad_fc.n_rows() - (thickness.grad ? 1 : 0);
+          if (cn > 0) {
+            design_matrix_kin.resize(
+              af::mat_grid(indices.size(), cn));
+          }
+        }
+        Fcs_kin.resize(indices.size());
+        do_build_kin_mt();
+      }
+    }
+
+    const scitbx::sparse::matrix<FloatType>& Jt_matching_grad_fc;
+    f_calc_function_base_t& f_calc_function;
+    sgtbx::space_group const& space_group;
+    af::shared<miller::index<> > indices;
+    FloatType Kl, Fc2Ug;
+    cart_t K;
+    /* to lookup an index in particular frame, have to keep a copy of the
+    indices
+    */
+    typename std::map<int, lookup_ptr_t> frame_lookups;
+    typename std::map<int, FrameInfo<FloatType>*> frames_map;
+    af::shared<FrameInfo<FloatType> > frames;
+    cctbx::xray::thickness<FloatType> const& thickness;
+    bool compute_grad;
+    af::shared<complex_t> Fcs_kin;
+    // 
+    cmat_t design_matrix_kin;
+    lookup_t mi_lookup;
+    int thread_n;
+  };
+
+  template <typename FloatType>
+  class f_calc_function_ed_two_beam : public f_calc_function_base<FloatType> {
+  public:
+    ED_UTIL_TYPEDEFS;
+    typedef f_calc_function_base<FloatType> f_calc_function_base_t;
+    typedef two_beam_shared_data<FloatType> data_t;
+    typedef af::versa_plain<FloatType> one_dim_type;
+    typedef typename one_dim_type::accessor_type one_dim_accessor_type;
+
+    f_calc_function_ed_two_beam(data_t const& data)
+      : data(data),
+      index(-1),
       observable_updated(false),
       computed(false)
     {
-      f_calc = data.f_calc();
-      observables = data.observables();
-      design_matrix = data.design_matrix();
+      frame = 0;
     }
+
+    f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const & other)
+      : data(other.data),
+      observable_updated(false),
+      computed(false)
+    {}
 
     virtual void compute(
       miller::index<> const& h,
@@ -87,27 +153,28 @@ namespace least_squares {
       bool compute_grad = true)
     {
       SMTBX_ASSERT(fraction != 0);
-      index = mi_lookup.find_hkl(h);
+      Fsq = 0;
+      index = data.mi_lookup.find_hkl(h);
       if (index == -1) {
-        if (!space_group.is_sys_absent(h)) {
+        if (!data.space_group.is_sys_absent(h)) {
           SMTBX_ASSERT(index >= 0)(h.as_string());
         }
         Fc = 0;
-        Fsq = 0;
         observable_updated = true;
       }
       else {
         observable_updated = false;
-        Fc = f_calc[index];
-        Fsq = observables[index] * Fc2Ug * Fc2Ug;
+        Fc = data.Fcs_kin[index];
       }
       typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
-        frames_map.find(fraction->tag);
-      SMTBX_ASSERT(fi != frames_map.end());
+        data.frames_map.find(fraction->tag);
+      SMTBX_ASSERT(fi != data.frames_map.end());
       frame = fi->second;
       this->h = h;
       if (compute_grad) {
-        grads.resize(design_matrix.accessor().n_columns());
+        grads.resize(data.design_matrix_kin.accessor().n_columns() +
+        (data.thickness.grad ? 1 : 0));
+        std::fill(grads.begin(), grads.end(), 0);
       }
       else {
         grads.resize(0);
@@ -120,125 +187,58 @@ namespace least_squares {
         new f_calc_function_ed_two_beam(*this));
     }
 
-    // for derivatives testing
-    FloatType calc(FloatType Fsq, cart_t const& K, FloatType t,
-      FloatType Sg, cart_t const& n) const
-    {
-      FloatType Kl = K.length(),
-        t_part = ((scitbx::constants::pi * t) / (K * n));
-      FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
-        sin_part = scitbx::fn::pow2(std::sin(t_part * std::sqrt(X)));
-      return Fsq * sin_part / X;
-    }
-
-    // Acta Cryst. (2013). A69, 171–188
-    FloatType get_observable_pltns_2013() const {
-      typename std::map<int, lookup_ptr_t>::const_iterator frame_lkp =
-        frame_lookups.find(frame->id);
-      SMTBX_ASSERT(frame_lkp != frame_lookups.end());
-      long beam_idx = frame_lkp->second->find_hkl(h);
-      SMTBX_ASSERT(beam_idx >= 0);
-      std::pair<mat3_t, cart_t> FI = frame->compute_RMf_N(
-        frame->beams[beam_idx].diffraction_angle);
-
-      cart_t g = FI.first * cart_t(h[0], h[1], h[2]);
-      cart_t K = cart_t(0, 0, -Kl);
-
-      FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
-      FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
-        t = thickness.value,
-        t_part = ((scitbx::constants::pi * t) / (K * FI.second)),
-        P = t_part * std::sqrt(X);
-      FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
-        I = Fsq * sin_part / X;
-
-      // update gradients...
-      if (grads.size() > 0) {
-        if (index >= 0) {
-          FloatType grad_fsq = sin_part / X + Fsq *
-            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) / 2.0) * X - sin_part) / (X * X);
-          int coln = design_matrix.accessor().n_columns();
-          for (int i = 0; i < coln; i++) {
-            grads[i] = design_matrix(index, i) * grad_fsq;
+    FloatType get_observable_int() const {
+      FloatType angle = scitbx::deg_as_rad(1.0),
+        step = scitbx::deg_as_rad(0.075);
+      int steps = round(angle / step);
+      FloatType I1 = -1, g1 = -1, I_sum = 0;
+      af::shared<complex_t> grads1, grads2;
+      FloatType da = frame->get_diffraction_angle(h, data.Kl);
+      for (int st = -steps; st <= steps; st++) {
+        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(
+          da + st * step);
+        cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
+        FloatType I;
+        if (!grads.empty()) {
+          size_t n_param = data.design_matrix_kin.accessor().n_columns();
+          if (n_param > 0) {
+            grads1.assign(&data.design_matrix_kin(index, 0),
+              &data.design_matrix_kin(index, n_param));
           }
-          if (thickness.grad) {
-            int grad_index = thickness.grad_index;
-            SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-            grads[grad_index] = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
+          else {
+            grads1.clear();
           }
-
-          /* Testing derivatives shows consistensy with analytical expressions above */
-          //FloatType eps = 1e-6;
-          //FloatType v1 = calc(Fsq - eps, K, t, Sg, frame->normal);
-          //FloatType v2 = calc(Fsq + eps, K, t, Sg, frame->normal);
-          //FloatType diff = (v2 - v1) / (2*eps);
-          //
-          //v1 = calc(Fsq, K, t - eps, Sg, frame->normal);
-          //v2 = calc(Fsq, K, t + eps, Sg, frame->normal);
-          //diff = (v2 - v1) / (2 * eps);
-          //FloatType grad_t = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
-          //FloatType v = calc(Fsq, K, Sg, t, frame->normal);
-          //v = 0; // allow for a breakpoint here
+          I = std::norm(utils<FloatType>::calc_2beam_ext(
+            h, Fc, grads1,
+            data.thickness.value,
+            data.K, r.first, r.second, data.thickness.grad));
         }
         else {
-          std::fill(grads.begin(), grads.end(), 0);
+          I = std::norm(utils<FloatType>::calc_amp_2beam(
+            h, Fc,
+            data.thickness.value,
+            data.K, r.first, r.second));
+        }
+        FloatType g = K_g.length();
+        if (g1 >= 0) {
+          FloatType st = std::abs(g - g1) / 2;
+          I_sum += (I + I1) * st;
+          for (size_t i = 0; i < grads.size(); i++) {
+            grads[i] += (grads1[i].real() + grads2[i].real()) * st;
+          }
+        }
+        g1 = g;
+        I1 = I;
+        if (!grads.empty()) {
+          grads2 = grads1.deep_copy();
         }
       }
-      return I;
-    }
-
-    FloatType calc_dI_dt(FloatType eps) const {
-      cart_t K = cart_t(0, 0, -Kl);
-      complex_t Ug = Fc * Fc2Ug;
-      FloatType Ip = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
-        thickness.value + eps,
-        K, frame->RMf, frame->normal));
-      FloatType In = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
-        thickness.value - eps,
-        K, frame->RMf, frame->normal));
-      return (Ip - In) / (2 * eps);
-    }
-
-    FloatType get_observable_diff_n() const {
-      complex_t Ug = Fc * Fc2Ug;
-      cart_t K = cart_t(0, 0, -Kl);
-      FloatType I = std::norm(utils<FloatType>::calc_amp_2beam(h, Ug,
-        thickness.value, K, frame->RMf, frame->normal));
-      // update gradients...
-      if (grads.size() > 0) {
-        if (index >= 0) {
-          FloatType eps = 1e-8;
-          FloatType dI_dFsq = utils<FloatType>::calc_amp_2beam_dI_dFsq(h, Fsq,
-            thickness.value, K, frame->RMf, frame->normal, eps);
-          int coln = design_matrix.accessor().n_columns();
-          for (int i = 0; i < coln; i++) {
-            grads[i] = design_matrix(index, i) * dI_dFsq;
-          }
-          if (thickness.grad) {
-            int grad_index = thickness.grad_index;
-            SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-            grads[grad_index] = calc_dI_dt(eps);
-          }
-
-        }
-        else {
-          std::fill(grads.begin(), grads.end(), 0);
-        }
-      }
-      return I;
+      return I_sum;
     }
 
     virtual FloatType get_observable() const {
-      if (observable_updated || !computed) {
-        return Fsq;
-      }
       SMTBX_ASSERT(frame != 0);
-      if (use_diff_n) {
-        Fsq = get_observable_diff_n();
-      }
-      else {
-        Fsq = get_observable_pltns_2013();
-      }
+      Fsq = get_observable_int();
       observable_updated = true;
       return Fsq;
     }
@@ -249,17 +249,13 @@ namespace least_squares {
       }
       return Fc;
     }
+
     virtual af::const_ref<complex_t> get_grad_f_calc() const {
       SMTBX_NOT_IMPLEMENTED();
       throw 1;
     }
+
     virtual af::const_ref<FloatType> get_grad_observable() const {
-      if (!computed) {
-        typedef af::versa_plain<FloatType> one_dim_type;
-        typedef typename one_dim_type::accessor_type one_dim_accessor_type;
-        one_dim_accessor_type a(design_matrix.accessor().n_columns());
-        return af::const_ref<FloatType>(&design_matrix(index, 0), a);
-        }
       if (!observable_updated) {
         get_observable();
       }
@@ -269,22 +265,10 @@ namespace least_squares {
     virtual bool raw_gradients() const { return false; }
   private:
     data_t const& data;
-    sgtbx::space_group const& space_group;
-    af::shared<FrameInfo<FloatType> > frames;
-    FloatType Kl, Fc2Ug;
-    cctbx::xray::thickness<FloatType> const& thickness;
-    bool use_diff_n;
-    af::shared<complex_t> f_calc;
-    af::shared<FloatType> observables;
-    af::shared<FloatType> weights;
-    af::versa<FloatType, af::c_grid<2> > design_matrix;
-    lookup_t mi_lookup;
-    typename std::map<int, lookup_ptr_t> frame_lookups;
-    std::map<int, FrameInfo<FloatType>*> frames_map;
     long index;
     const FrameInfo<FloatType>* frame;
     mutable bool observable_updated, computed;
-    mutable complex_t Fc;
+      mutable complex_t Fc;
     mutable FloatType Fsq;
     mutable af::shared<FloatType> grads;
     miller::index<> h;

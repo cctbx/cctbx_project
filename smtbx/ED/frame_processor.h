@@ -33,6 +33,7 @@ namespace smtbx {
       }
 
       virtual void process(const mat3_t& RM, const cart_t& N) = 0;
+      virtual void process_1(size_t i, const mat3_t& RM, const cart_t& N) = 0;
 
       const FrameInfo<FloatType>& frame;
       cmat_t Ugs;
@@ -85,6 +86,38 @@ namespace smtbx {
             fp_t::CIs = utils<FloatType>::calc_amps_2013(A,
               ExpDen, fp_t::thickness.value,
               fp_t::frame.strong_measured_beams.size());
+          }
+        }
+        catch (smtbx::error const& e) {
+          fp_t::exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const& e) {
+          fp_t::exception_.reset(new smtbx::error(e.what()));
+        }
+      }
+      
+      void process_1(size_t idx,const mat3_t& RM, const cart_t& N) {
+        try {
+          size_t beam_n = fp_t::frame.strong_measured_beams.size();
+          af::shared<FloatType> ExpDen;
+          cmat_t A = fp_t::Ugs.deep_copy();
+          utils<FloatType>::build_eigen_matrix_2013(A, strong_indices,
+            fp_t::K,
+            RM, N, ExpDen);
+          if (fp_t::calc_grad) {
+            fp_t::CIs.resize(1);
+            fp_t::CIs[0] = utils<FloatType>::calc_amps_2013_ext_1(A,
+              fp_t::Ds_kin, ExpDen,
+              fp_t::thickness.value,
+              fp_t::thickness.grad,
+              fp_t::D_dyn,
+              idx);
+          }
+          else {
+            fp_t::CIs.resize(1);
+            fp_t::CIs[0] = utils<FloatType>::calc_amps_2013_1(A,
+              ExpDen, fp_t::thickness.value,
+              idx);
           }
         }
         catch (smtbx::error const& e) {
