@@ -192,6 +192,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       static void wrap_ed_shared_data() {
         using namespace boost::python;
         typedef ed_shared_data<FloatType> wt;
+        return_value_policy<return_by_value> rbv;
+
         class_<wt, std::auto_ptr<wt> >("ed_shared_data", no_init)
           .def(init<const scitbx::sparse::matrix<FloatType>&,
             f_calc_function_base<FloatType>&,
@@ -208,6 +210,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("frames"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
+          .add_property("frames", make_getter(&wt::frames, rbv))
           ;
       }
 
@@ -221,6 +224,31 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
+      static void wrap_two_beam_shared_data() {
+        using namespace boost::python;
+        typedef two_beam_shared_data<FloatType> wt;
+        return_value_policy<return_by_value> rbv;
+
+        class_<wt, std::auto_ptr<wt> >("two_beam_shared_data", no_init)
+          .def(init<const scitbx::sparse::matrix<FloatType>&,
+            f_calc_function_base<FloatType>&,
+            sgtbx::space_group const&,
+            bool,
+            af::shared<FrameInfo<FloatType> >,
+            cctbx::xray::thickness<FloatType> const&,
+            // Kvac, Kl, Fc2Ug, reserved, mat_type, threads_n
+            af::shared<FloatType> const&,
+            bool, bool>(
+              (arg("Jt_matching_grad_fc"),
+                arg("f_calc_function"),
+                arg("space_group"), arg("anomalous_flag"),
+                arg("frames"), arg("thickness"),
+                arg("params"), arg("compute_grad"), arg("build") = true)))
+          .def("build", &wt::build)
+          .add_property("frames", make_getter(&wt::frames, rbv))
+          ;
+      }
+
       static void wrap_ed_two_beam() {
         using namespace boost::python;
         typedef f_calc_function_ed_two_beam<FloatType> wt;
@@ -228,17 +256,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
         class_<wt, bases<f_calc_function_base<FloatType> >,
           std::auto_ptr<wt> >("f_calc_function_ed_two_beam", no_init)
-          .def(init<builder_base<FloatType> const&,
-            sgtbx::space_group const&,
-            bool,
-            af::shared<FrameInfo<FloatType> >,
-            cctbx::xray::thickness<FloatType> const&,
-            // Kl, Fc2Ug
-            af::shared<FloatType> const&>(
+          .def(init<two_beam_shared_data<FloatType> const&>(
               (arg("data"),
-                arg("space_group"), arg("anomalous_flag"),
-                arg("frame"), arg("thickness"),
-                // Kl, Fc2Ug, use_diff_n vs Pltns-2013
                 arg("params"))))
           ;
       }
@@ -314,6 +333,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         wrap_ed();
         wrap_ed_n_shared_data();
         wrap_ed_n();
+        wrap_two_beam_shared_data();
         wrap_ed_two_beam();
         wrap_mask_data();
       }

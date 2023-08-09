@@ -73,7 +73,7 @@ namespace smtbx {
               af::select(frame.indices.const_ref(),
                 frame.strong_measured_beams.const_ref()).const_ref(),
               P1,
-              false));
+              true));
             frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
           }
           beam_n = offset;
@@ -125,11 +125,14 @@ namespace smtbx {
           if (thread_n < 0) {
             thread_n = builder_base<FloatType>::get_available_threads();
           }
+
+          FrameInfo<FloatType> f0 = frames[0];
+
           boost::thread_group pool;
           typedef frame_integrator<FloatType> integrator_t;
           typedef typename boost::shared_ptr<integrator_t> frame_processor_t;
-          FloatType angle = scitbx::deg_as_rad(3.0),
-            step = scitbx::deg_as_rad(0.05);
+          FloatType angle = scitbx::deg_as_rad(0.75),
+            step = scitbx::deg_as_rad(0.1);
           size_t to = 0,
             n_param = design_matrix.accessor().n_columns();
           for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
