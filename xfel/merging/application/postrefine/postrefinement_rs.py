@@ -195,7 +195,7 @@ class postrefinement_rs(worker):
           experiments_rejected_by_reason[reason] = 1
         else:
           experiments_rejected_by_reason[reason] += 1
-      
+
       if not error_detected:
         new_experiments.append(experiment)
 

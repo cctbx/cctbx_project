@@ -516,7 +516,7 @@ merging {
       do_diagnostics = False
         .type = bool
         .help = If True show the finite vs. analytical differences, \
-                plot normalized deviations, and plot s_add and correlation coefficients. 
+                plot normalized deviations, and plot s_add and correlation coefficients.
       n_degrees = 1
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
