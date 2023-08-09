@@ -594,14 +594,14 @@ class CCTBXParser(ParserBase):
     diff_phil = self.master_phil.fetch_diff(self.working_phil)
     paths = self.check_phil_for_paths(diff_phil)
     if len(paths) > 0:
-      files = []
-      dirs = []
+      files = set()
+      dirs = set()
       for path in paths:
         if path is not None:
           if os.path.isfile(path):
-            files.append(path)
+            files.add(path)
           elif os.path.isdir(path):
-            dirs.append(path)
+            dirs.add(path)
       if self.parse_files:
         self.process_files(files, message='Processing files from PHIL:')
       if self.parse_dir:

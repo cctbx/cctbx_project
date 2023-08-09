@@ -383,15 +383,15 @@ hierarchy from a PDB file, and how to obtain the secondary view.</p>
 <h3 class="mt-3">PDB hierarchy and formatted PDB and mmCIF files</h3>
 
 <p>A PDB hierarchy can be represented as a PDB-formatted file (as illustrated
-so far here), or as an 
+so far here), or as an
 <a href="https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/beginner%E2%80%99s-guide-to-pdb-structures-and-the-pdbx-mmcif-format">mmCIF-formatted file</a>.  Both of these file formats can
 be converted back into PDB hierarchies as well.</p>
 
 <p>Although all three of these representations can be interconverted, they
-are do not contain exactly the same information and it can be useful to 
+are do not contain exactly the same information and it can be useful to
 know some of the similarities and differences.</p>
 
-<p>The mmCIF format supersedes the PDB format and is the official 
+<p>The mmCIF format supersedes the PDB format and is the official
 <a href="https://mmcif.wwpdb.org/">format for macromolecular structures</a>
  deposited in the Protein Data Bank.  The relationships
 between PDB and mmCIF formats are specified in
@@ -401,26 +401,26 @@ between PDB and mmCIF formats are specified in
 
 <h3 class="mt-3">Chains and chain IDs in a PDB hierarchy and in PDB and mmCIF files</h3>
 
-<p>The second level in a PDB hierarchy is a "chain" (see the 
-Real-world PDB files section above). A chain is normally a segment 
-of protein or nucleic acid, or a metal atom, or a group of water molecules, 
+<p>The second level in a PDB hierarchy is a "chain" (see the
+Real-world PDB files section above). A chain is normally a segment
+of protein or nucleic acid, or a metal atom, or a group of water molecules,
 or a ligand.  It can actually be any combination of these as well, however.</p>
 
-<p>When working with a hierarchy in cctbx, the chain is a basic unit 
-(the expression "for chain in model.chains():" appears almost 
+<p>When working with a hierarchy in cctbx, the chain is a basic unit
+(the expression "for chain in model.chains():" appears almost
 200 times in cctbx.) Every chain has an ID, but importantly, these chain ID
 values do not have to be unique.  Multiple chains can have the same ID. This
 allows grouping of chains that are related. For example, protein chain A may
-be next to ligand GOL that part of another chain that has the 
+be next to ligand GOL that part of another chain that has the
 same chain ID of A. The atom selection syntax (see Atom selections below)
 allows selecting all the atoms that are part of any chain that has the
 ID of A. This is done with the selection, "chain A".</p>
 
 <p>One of the important differences between PDB and mmCIF formats is the use of
 the chain ID.  In a PDB formatted file, atoms in a polymer such as a
-protein molecule are grouped by residue and are listed sequentially, one 
+protein molecule are grouped by residue and are listed sequentially, one
 atom on each line. Each line includes the chain ID.
-At the end of the polymer, a special line that 
+At the end of the polymer, a special line that
 starts with TER is present, indicating the end of a protein or nucleic acid
 polymer. Here is an example of part of such a PDB file. It contains two
 protein chains (just one residue in each chain), and two Au (gold) atoms and
@@ -452,21 +452,21 @@ If this file is read in and used to create a PDB hierarchy, the hierarchy will
 have two protein chains, both with chain ID of A. It will have one additional
 chain, also with a chain ID of A, containing the gold and waters.</p>
 
-In an mmCIF file, there is no "chain" and no "chain ID" and there are no 
+In an mmCIF file, there is no "chain" and no "chain ID" and there are no
 TER lines.
-There are instead two labels that convey similar information.  One is called 
-<a href="https://www.ebi.ac.uk/pdbe/docs/exchange/mmcif_pdbx.dic/Items/_atom_site.auth_asym_id.html">auth_asym_id</a>. This label generally 
+There are instead two labels that convey similar information.  One is called
+<a href="https://www.ebi.ac.uk/pdbe/docs/exchange/mmcif_pdbx.dic/Items/_atom_site.auth_asym_id.html">auth_asym_id</a>. This label generally
 corresponds to the chain ID, but does not have to.  The second label is
 <a href="https://www.ebi.ac.uk/pdbe/docs/exchange/mmcif_pdbx.dic/Items/_atom_site.label_asym_id.html">label_asym_id</a>. This label is unique (no duplicates)
 and refers to one protein or nucleic acid polymer, or one ligand, or one metal,
 or one group of waters.  </p>
 
-<p>Here is part of the mmCIF representation of this 
+<p>Here is part of the mmCIF representation of this
 same structure. The auth_asym_id is the A in "ALA A 102" and the
 label_asym_id is the A in "N ? A ? 1 1" at the end of the line.
 Notice that the auth_asym_id is A for all the atoms (as the chain ID
 was in the PDB format), and the label_asym_id is A for the first protein
-chain, B for the second, then C and D for the gold atoms and E for 
+chain, B for the second, then C and D for the gold atoms and E for
 both waters:</p>
 
 <pre class="CodeGreen"><code>

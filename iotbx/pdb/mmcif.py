@@ -28,7 +28,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
   #    new chain (the auth_asym_id matches the chain ID).
   #    Catch cases where one chain id is split into multiple chains in the following way:
   #    If label_asym_id changes and previous residue was protein or rna/dna or modified
-  #    (or auth_asym_id or model_id changes), create a chain break. 
+  #    (or auth_asym_id or model_id changes), create a chain break.
 
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
@@ -123,7 +123,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         "record with empty auth_asym_id, which is wrong."
       assert current_label_asym_id is not None
       if (current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id 
+          or current_model_id != last_model_id
           or (current_label_asym_id != last_label_asym_id and
              i_atom > 0 and is_aa_or_rna_dna(comp_id[i_atom-1]))
          ): # insert chain breaks

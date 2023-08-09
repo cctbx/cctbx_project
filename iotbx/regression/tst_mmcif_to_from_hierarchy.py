@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
-from libtbx.test_utils import assert_lines_in_text
 
 # ------------------------------------------------------------------------------
 
@@ -136,7 +135,7 @@ def test1():
       print("Original as CIF: %s" %(a))
       print("From CIF as CIF: %s" %(b))
       assert a==b
-     
+
   assert h.is_similar_hierarchy(new_h)
   for a,b in zip(new_h.as_mmcif_string().splitlines(),mmcif_str.splitlines()):
     if a != b:
